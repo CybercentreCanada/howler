@@ -101,7 +101,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    name: Run Howler API Unit Tests
+    name: Run Howler API Tests
 
     needs: formatting
 

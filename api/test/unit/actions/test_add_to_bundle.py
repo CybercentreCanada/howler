@@ -123,10 +123,7 @@ def test_execute_adds_hits_successfully(mock_compat, mock_ds_fn, mock_case_svc):
     folder.id = "folder-uuid"
     mock_case_svc.get_parent_from_path.return_value = folder
 
-    def append_item(case, **kwargs):
-        case.items.append(MagicMock())
-
-    mock_case_svc.append_case_item.side_effect = append_item
+    mock_case_svc.append_case_items.return_value = mock_case
 
     result = execute("howler.analytic:TestAnalytic", bundle_id="bundle-001")
 
@@ -136,9 +133,10 @@ def test_execute_adds_hits_successfully(mock_compat, mock_ds_fn, mock_case_svc):
         "hits",
         create_if_missing=True,
         user=None,
+        persist=False,
     )
-    mock_case_svc.append_case_item.assert_called_once()
-    mock_case.save.assert_called_once_with(refresh="wait_for")
+    mock_case_svc.append_case_items.assert_called_once()
+    mock_case.save.assert_not_called()
 
 
 def test_specification():

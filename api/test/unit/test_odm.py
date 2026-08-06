@@ -938,6 +938,33 @@ def test_flat_fields_show_compound_nested_list_compound():
     assert betas_field.child_type is Beta
 
 
+def test_flat_fields_cache_is_independent_and_invalidated_by_namespaces():
+    @model()
+    class Inner(Model):
+        name = Keyword()
+
+    @model()
+    class Outer(Model):
+        nested = Compound(Inner)
+        entries = List(Compound(Inner))
+
+    first = Outer.flat_fields()
+    second = Outer.flat_fields()
+
+    assert first is not second
+    assert first["nested.name"] is second["nested.name"]
+    assert first["entries.name"].multivalued
+
+    first.pop("nested.name")
+    assert "nested.name" in Outer.flat_fields()
+
+    Outer.add_namespace("added", Compound(Inner))
+    assert "added.name" in Outer.flat_fields()
+
+    Outer.remove_namespace("added")
+    assert "added.name" not in Outer.flat_fields()
+
+
 def test_model_id_field_default():
     """When id_field is not specified, it should default to '<classname_lower>_id'."""
 

@@ -14,7 +14,6 @@ on the feature branch because the ODM field has been removed.
 """
 
 import json
-import time
 from uuid import uuid4
 
 import pytest
@@ -51,6 +50,7 @@ def _post_children(session, host, count: int = 2) -> list[str]:
         session,
         f"{host}/api/v1/hit/",
         method="POST",
+        params={"refresh": "wait_for"},
         data=json.dumps(hits),
     )
     return [h["howler"]["id"] for h in resp["valid"]]
@@ -109,14 +109,13 @@ def _post_bundle_via_tool(session, host, child_count: int = 2):
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="module", autouse=True)
 def datastore(datastore_connection: HowlerDatastore):
     ds = datastore_connection
     try:
         wipe_hits(ds)
         create_hits(ds, hit_count=5)
-        ds.hit.commit()
-        time.sleep(1)
+
         yield ds
     finally:
         wipe_hits(ds)
@@ -130,32 +129,26 @@ def datastore(datastore_connection: HowlerDatastore):
 class TestCreateBundleContract:
     """POST /api/v1/hit/bundle - response shape & status code."""
 
-    def test_status_code_201(self, datastore: HowlerDatastore, login_session):
+    def test_status_code_201(self, login_session):
         session, host = login_session
         children = _post_children(session, host, count=1)
-        datastore.hit.commit()
-        time.sleep(1)
 
         resp = _post_bundle(session, host, child_ids=children)
         assert resp.status_code == 201
 
-    def test_envelope_structure(self, datastore: HowlerDatastore, login_session):
+    def test_envelope_structure(self, login_session):
         session, host = login_session
         children = _post_children(session, host, count=1)
-        datastore.hit.commit()
-        time.sleep(1)
 
         body = _post_bundle(session, host, child_ids=children).json()
         assert "api_response" in body
         assert "api_error_message" in body
         assert "api_status_code" in body
 
-    def test_howler_core_fields(self, datastore: HowlerDatastore, login_session):
+    def test_howler_core_fields(self, login_session):
         """The response must contain the standard howler hit fields."""
         session, host = login_session
         children = _post_children(session, host, count=1)
-        datastore.hit.commit()
-        time.sleep(1)
 
         hit_data = _make_hit(analytic="core-field-test", detection="core-det")
         resp = _post_bundle(session, host, bundle_data=hit_data, child_ids=children)
@@ -167,37 +160,31 @@ class TestCreateBundleContract:
         assert "hash" in howler
         assert "status" in howler
 
-    def test_is_bundle_true(self, datastore: HowlerDatastore, login_session):
+    def test_is_bundle_true(self, login_session):
         session, host = login_session
         children = _post_children(session, host, count=1)
-        datastore.hit.commit()
-        time.sleep(1)
 
         howler = _post_bundle(session, host, child_ids=children).json()["api_response"]["howler"]
         assert howler["is_bundle"] is True
 
-    def test_hits_list_matches_children(self, datastore: HowlerDatastore, login_session):
+    def test_hits_list_matches_children(self, login_session):
         """howler.hits must be a list containing exactly the supplied child IDs."""
         session, host = login_session
         children = _post_children(session, host, count=3)
-        datastore.hit.commit()
-        time.sleep(1)
 
         howler = _post_bundle(session, host, child_ids=children).json()["api_response"]["howler"]
         assert isinstance(howler["hits"], list)
         assert set(howler["hits"]) == set(children)
 
-    def test_bundle_size_is_int(self, datastore: HowlerDatastore, login_session):
+    def test_bundle_size_is_int(self, login_session):
         """bundle_size must exist and be an integer (exact value may differ)."""
         session, host = login_session
         children = _post_children(session, host, count=2)
-        datastore.hit.commit()
-        time.sleep(1)
 
         howler = _post_bundle(session, host, child_ids=children).json()["api_response"]["howler"]
         assert isinstance(howler["bundle_size"], int)
 
-    def test_missing_bundle_key_400(self, datastore: HowlerDatastore, login_session):
+    def test_missing_bundle_key_400(self, login_session):
         session, host = login_session
         resp = get_api_data(
             session,
@@ -223,8 +210,6 @@ class TestCreateBundleContract:
         """The root hit must exist in the datastore after creation."""
         session, host = login_session
         children = _post_children(session, host, count=1)
-        datastore.hit.commit()
-        time.sleep(1)
 
         howler = _post_bundle(session, host, child_ids=children).json()["api_response"]["howler"]
         datastore.hit.commit()
@@ -244,20 +229,14 @@ class TestUpdateBundleContract:
         """Create a bundle with 1 child and return its root hit ID."""
         session, host = login_session
         children = _post_children(session, host, count=1)
-        datastore.hit.commit()
-        time.sleep(1)
 
         resp = _post_bundle(session, host, child_ids=children)
         root_id = resp.json()["api_response"]["howler"]["id"]
-        datastore.hit.commit()
-        time.sleep(1)
         return root_id
 
     def test_status_code_200(self, datastore: HowlerDatastore, login_session, bundle_id):
         session, host = login_session
         new_ids = _post_children(session, host, count=1)
-        datastore.hit.commit()
-        time.sleep(1)
 
         resp = get_api_data(
             session,
@@ -271,8 +250,6 @@ class TestUpdateBundleContract:
     def test_response_has_bundle_fields(self, datastore: HowlerDatastore, login_session, bundle_id):
         session, host = login_session
         new_ids = _post_children(session, host, count=1)
-        datastore.hit.commit()
-        time.sleep(1)
 
         howler = get_api_data(
             session,
@@ -326,13 +303,9 @@ class TestRemoveBundleContract:
         """Create a bundle with 3 children; return (root_id, child_ids)."""
         session, host = login_session
         children = _post_children(session, host, count=3)
-        datastore.hit.commit()
-        time.sleep(1)
 
         resp = _post_bundle(session, host, child_ids=children)
         root_id = resp.json()["api_response"]["howler"]["id"]
-        datastore.hit.commit()
-        time.sleep(1)
         return root_id, children
 
     def test_remove_specific_status_200(self, datastore: HowlerDatastore, login_session, bundle_with_children):
@@ -472,12 +445,8 @@ class TestGetBundleRootContract:
     def test_root_hit_fetchable(self, datastore: HowlerDatastore, login_session):
         session, host = login_session
         children = _post_children(session, host, count=1)
-        datastore.hit.commit()
-        time.sleep(1)
 
         root_id = _post_bundle(session, host, child_ids=children).json()["api_response"]["howler"]["id"]
-        datastore.hit.commit()
-        time.sleep(1)
 
         hit = get_api_data(session, f"{host}/api/v1/hit/{root_id}")
         assert hit["howler"]["id"] == root_id
@@ -499,8 +468,6 @@ class TestBundleLifecycleContract:
 
         # --- Create children and a bundle ---
         initial = _post_children(session, host, count=2)
-        datastore.hit.commit()
-        time.sleep(1)
 
         resp = _post_bundle(session, host, child_ids=initial)
         assert resp.status_code == 201
@@ -510,13 +477,8 @@ class TestBundleLifecycleContract:
         assert body["howler"]["is_bundle"] is True
         assert set(body["howler"]["hits"]) == set(initial)
 
-        datastore.hit.commit()
-        time.sleep(1)
-
         # --- Add more children ---
         extra = _post_children(session, host, count=2)
-        datastore.hit.commit()
-        time.sleep(1)
 
         resp = get_api_data(
             session,
@@ -531,9 +493,6 @@ class TestBundleLifecycleContract:
         assert howler["is_bundle"] is True
         all_children = initial + extra
         assert set(howler["hits"]) == set(all_children)
-
-        datastore.hit.commit()
-        time.sleep(1)
 
         # --- Remove one child ---
         to_remove = initial[:1]
@@ -581,14 +540,10 @@ class TestBundleDiscrepancies:
         """develop: adding a child that is already in the bundle returns 409."""
         session, host = login_session
         children = _post_children(session, host, count=1)
-        datastore.hit.commit()
-        time.sleep(1)
 
         resp = _post_bundle(session, host, child_ids=children)
         assert resp.status_code == 201
         bundle_id = resp.json()["api_response"]["howler"]["id"]
-        datastore.hit.commit()
-        time.sleep(1)
 
         resp = get_api_data(
             session,
@@ -613,8 +568,6 @@ class TestBundleDiscrepancies:
             data=json.dumps([plain]),
         )
         plain_id = resp["valid"][0]["howler"]["id"]
-        datastore.hit.commit()
-        time.sleep(1)
 
         resp = get_api_data(
             session,
@@ -659,13 +612,9 @@ class TestBundleDiscrepancies:
         """develop: removing all children with ['*'] sets is_bundle to False."""
         session, host = login_session
         children = _post_children(session, host, count=2)
-        datastore.hit.commit()
-        time.sleep(1)
 
         resp = _post_bundle(session, host, child_ids=children)
         bundle_id = resp.json()["api_response"]["howler"]["id"]
-        datastore.hit.commit()
-        time.sleep(1)
 
         resp = get_api_data(
             session,
@@ -686,14 +635,10 @@ class TestBundleDiscrepancies:
         session, host = login_session
         # Create an inner bundle first
         inner_children = _post_children(session, host, count=1)
-        datastore.hit.commit()
-        time.sleep(1)
 
         inner_resp = _post_bundle(session, host, child_ids=inner_children)
         assert inner_resp.status_code == 201
         inner_id = inner_resp.json()["api_response"]["howler"]["id"]
-        datastore.hit.commit()
-        time.sleep(1)
 
         # Try to create an outer bundle containing the inner bundle
         resp = _post_bundle(session, host, child_ids=[inner_id])
@@ -706,23 +651,15 @@ class TestBundleDiscrepancies:
         session, host = login_session
         # Create a bundle to be the "child"
         child_bundle_children = _post_children(session, host, count=1)
-        datastore.hit.commit()
-        time.sleep(1)
 
         child_resp = _post_bundle(session, host, child_ids=child_bundle_children)
         child_bundle_id = child_resp.json()["api_response"]["howler"]["id"]
-        datastore.hit.commit()
-        time.sleep(1)
 
         # Create a separate bundle to be the "parent"
         parent_children = _post_children(session, host, count=1)
-        datastore.hit.commit()
-        time.sleep(1)
 
         parent_resp = _post_bundle(session, host, child_ids=parent_children)
         parent_id = parent_resp.json()["api_response"]["howler"]["id"]
-        datastore.hit.commit()
-        time.sleep(1)
 
         # Try to add the child bundle into the parent bundle
         resp = get_api_data(
@@ -747,13 +684,9 @@ class TestBundleDiscrepancies:
         """develop: each child hit has the bundle ID in howler.bundles."""
         session, host = login_session
         children = _post_children(session, host, count=2)
-        datastore.hit.commit()
-        time.sleep(1)
 
         resp = _post_bundle(session, host, child_ids=children)
         bundle_id = resp.json()["api_response"]["howler"]["id"]
-        datastore.hit.commit()
-        time.sleep(1)
 
         for child_id in children:
             hit = get_api_data(session, f"{host}/api/v1/hit/{child_id}")
@@ -774,8 +707,6 @@ class TestBundleDiscrepancies:
         plain_id = resp["valid"][0]["howler"]["id"]
 
         new_children = _post_children(session, host, count=1)
-        datastore.hit.commit()
-        time.sleep(1)
 
         resp = get_api_data(
             session,

@@ -1,6 +1,5 @@
 import logging
 import os
-import time
 
 import pytest
 
@@ -31,8 +30,6 @@ def datastore(datastore_connection: HowlerDatastore):
         create_hits(ds, hit_count=10)
 
         ds.hit.commit()
-
-        time.sleep(1)
 
         yield ds
     finally:
