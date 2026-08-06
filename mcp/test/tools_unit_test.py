@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
-from howler_mcp.tools import MAXIMUM_TICKET, RegisterTools
+from howler_mcp.tools import MAXIMUM_TICKET, register_tools
 from mcp.server.auth.provider import AccessToken
 
 FAKE_TOKEN = AccessToken(token="fake-bearer", client_id="test-client", scopes=[])
@@ -32,7 +32,7 @@ class _CaptureMCP:
 def tools_and_api():
     mock_mcp = _CaptureMCP()
     mock_api = AsyncMock()
-    RegisterTools(mock_mcp, mock_api)
+    register_tools(mock_mcp, mock_api)
     return mock_mcp._tools, mock_api
 
 

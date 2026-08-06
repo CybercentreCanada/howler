@@ -9,8 +9,8 @@ from pydantic import AnyHttpUrl
 from .api import HowlerApiClient
 from .auth import KeycloakTokenVerifier
 from .config import AUTH, HOWLER_API, MCPSettings
-from .prompts import RegisterPrompts
-from .tools import RegisterTools
+from .prompts import register_prompts
+from .tools import register_tools
 
 logging.basicConfig(
     level=logging.INFO,
@@ -68,8 +68,8 @@ mcp = FastMCP(
     lifespan=lifespan,
 )
 
-RegisterTools(mcp, api_client)
-RegisterPrompts(mcp)
+register_tools(mcp, api_client)
+register_prompts(mcp)
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def RegisterPrompts(mcp):
+def register_prompts(mcp):
     @mcp.prompt(name="whoami")
     def whoami_prompt() -> str:
         """Explain when and how to use the whoami tool."""
