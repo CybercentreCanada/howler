@@ -75,13 +75,14 @@ def _should_start_background_services() -> bool:
     """Return whether this process should start long-lived background services.
 
     Flask's development reloader imports this module in a parent process and
-    again in its serving child. The functional test server disables reloading,
-    so its single process must start the workers explicitly.
+    again in its serving child. The functional test wrapper sets
+    ``HWL_START_BACKGROUND_SERVICES`` only for its no-reload Flask server,
+    preventing pytest imports from starting competing workers.
     """
     return (
         not DEBUG
         or os.environ.get("WERKZEUG_RUN_MAIN") == "true"
-        or os.environ.get("TESTING", "").lower() == "true"
+        or os.environ.get("HWL_START_BACKGROUND_SERVICES", "").lower() == "true"
         or Path(sys.argv[0]).name.lower().startswith("gunicorn")
     )
 
