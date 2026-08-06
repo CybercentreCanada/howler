@@ -100,8 +100,8 @@ class ElasticBulkPlan(object):
         """Queue a document index operation.
 
         The Elasticsearch ``index`` action creates the document or replaces an
-        existing document with the same identifier. The serialized request body
-        always includes ``id`` set to ``doc_id``.
+        existing document with the same identifier. The document's id field is
+        set to doc_id in the serialized request body.
 
         Args:
             doc_id: Identifier of the document to create or replace.

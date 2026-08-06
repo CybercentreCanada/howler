@@ -31,7 +31,7 @@ def expand_field_patterns(
 
         regex = re.compile("^" + re.escape(pattern).replace(r"\*", ".*") + "$")
         matches = [path for path in known_paths if regex.match(path)]
-        expanded.update(matches or [pattern])
+        expanded.update(matches)
     return expanded
 
 

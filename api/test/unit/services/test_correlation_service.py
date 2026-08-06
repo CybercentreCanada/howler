@@ -334,7 +334,10 @@ class TestProcessBatch:
         assert case.items[0].name == "alerts"
 
         assert "case-1" in hit.howler.related
-        hit.save.assert_called_once()
+        mock_ds.hit.get_bulk_plan.return_value.add_update_operation.assert_called_once_with(
+            "hit-1", hit, fields=["howler.related"]
+        )
+        mock_ds.hit.bulk.assert_called_once_with(mock_ds.hit.get_bulk_plan.return_value)
 
         mock_ds.case.get_bulk_plan.return_value.add_update_operation.assert_called_once_with(
             "case-1", case, fields=["items", "targets", "threats", "indicators"]
@@ -579,6 +582,11 @@ class TestProcessBatch:
         assert len(event_items) == 1
         assert event_items[0].value == "obs-1"
         assert "case-1" in event.howler.related
+        mock_ds = mock_ds_fn.return_value
+        mock_ds.event.get_bulk_plan.return_value.add_update_operation.assert_called_once_with(
+            "obs-1", event, fields=["howler.related"]
+        )
+        mock_ds.event.bulk.assert_called_once_with(mock_ds.event.get_bulk_plan.return_value)
 
     @patch("howler.services.correlation_service.comms_service")
     @patch("howler.services.correlation_service.search_service")
@@ -706,18 +714,13 @@ class TestCorrelationUnreachableBranches:
             patch.object(correlation_service, "_resolve_backing_object", return_value=backing_obj),
             patch.object(correlation_service.case_service, "get_parent_from_path", return_value=None),
             patch.object(correlation_service.case_service, "check_conflicts", return_value=False),
-            patch.object(correlation_service.case_service, "add_backreference", return_value=False),
+            patch.object(correlation_service.case_service, "add_backreference", return_value=True),
         ):
-            added = correlation_service._add_record_to_case(
-                case,
-                "case-1",
-                {"howler": {"id": "hit-1"}},
-                rule,
-                {},
-                set(),
-            )
+            added = correlation_service._add_record_to_case(case, "case-1", {"howler": {"id": "hit-1"}}, rule, {})
 
-        assert added is True
+        assert added is not None
+        assert added[0] == "hit"
+        assert added[1] == "hit-1"
         assert item.name == "hit-1"
         assert case.items == [item]
 

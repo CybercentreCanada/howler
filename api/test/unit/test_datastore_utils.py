@@ -24,10 +24,16 @@ def test_expand_field_patterns_expands_wildcards_and_keeps_exact_fields():
     assert expanded == {"items.item_type", "items.value", "title", "__non_doc_raw__"}
 
 
-def test_expand_field_patterns_keeps_unmatched_wildcards():
+def test_expand_field_patterns_omits_unmatched_wildcards():
     expanded = expand_field_patterns(_Document, ["missing.*"])
 
-    assert expanded == {"missing.*"}
+    assert expanded == set()
+
+
+def test_expand_field_patterns_omits_unmatched_patterns_when_model_is_provided():
+    expanded = expand_field_patterns(_Document, ["items.*", "missing.*"])
+
+    assert expanded == {"items.item_type", "items.value"}
 
 
 def test_expand_field_patterns_expands_bare_star_by_default():

@@ -167,6 +167,9 @@ def create_events(
             event.howler.log = [EventLog({"timestamp": "NOW", "explanation": "Created event", "user": user})]
 
         CREATED_EVENTS.inc()
-        bulk_plan.add_insert_operation(event.howler.id, event)
+        if overwrite:
+            bulk_plan.add_index_operation(event.howler.id, event)
+        else:
+            bulk_plan.add_insert_operation(event.howler.id, event)
 
     return storage.event.bulk(bulk_plan, refresh=refresh)

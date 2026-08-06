@@ -462,7 +462,10 @@ def create_hits(
             hit.howler.log = [Log({"timestamp": "NOW", "explanation": "Created hit", "user": user})]
 
         CREATED_HITS.labels(hit.howler.analytic).inc()
-        bulk_plan.add_insert_operation(hit.howler.id, hit)
+        if overwrite:
+            bulk_plan.add_index_operation(hit.howler.id, hit)
+        else:
+            bulk_plan.add_insert_operation(hit.howler.id, hit)
 
     return storage.hit.bulk(bulk_plan, refresh=refresh)
 

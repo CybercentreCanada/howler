@@ -39,7 +39,7 @@ hit_helper = OdmHelper(Hit)
 @ingest_api.route("/<index>", methods=["POST"])
 @api_login(required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def create(index: str, user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
+def create(index: str, user: User, *, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
     """Create new records in a given index.
 
     Variables:

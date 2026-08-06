@@ -9,6 +9,7 @@ The public API consists of three functions:
 """
 
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import chevron
 from opentelemetry import trace
@@ -71,8 +72,10 @@ def _resolve_backing_object(
         ds = datastore()
         if item_type == RuleIndexTypes.EVENT:
             backing_cache[key] = ds.event.get(key=record_id)
-        else:
+        elif item_type == RuleIndexTypes.HIT:
             backing_cache[key] = ds.hit.get(record_id)
+        else:
+            raise InvalidDataException(f"Invalid index type {item_type} provided. Must be one of hit,event")
 
     backing_obj = backing_cache[key]
     if backing_obj is None:
@@ -87,8 +90,7 @@ def _add_record_to_case(
     record: dict,
     rule: CaseRule,
     backing_cache: dict[tuple[str, str], Hit | Event | None],
-    dirty_backing_keys: set[tuple[str, str]],
-) -> bool:
+) -> tuple[str, str] | None:
     """Append a single matching record to a case, in memory only (no datastore writes).
 
     Mirrors the validation/dispatch behaviour of ``case_service.append_case_item`` for hit
@@ -121,23 +123,23 @@ def _add_record_to_case(
             item.name = f"{item.name} ({item.value})" if item.name else item.value
 
             if case_service.check_conflicts(case, item):
-                return False
+                return None
 
         item.classification = backing_obj.classification
         case.items.append(item)
 
         if case_service.add_backreference(backing_obj, case_id):
-            dirty_backing_keys.add((item_type, record_id))
+            return (item_type, record_id)
 
-        return True
+        return None
     except InvalidDataException:
-        logger.info("Record %s already exists in case %s, skipping", record_id, case_id)
+        logger.info("Record %s already exists in case %s or is invalid, skipping", record_id, case_id)
     except NotFoundException:
         logger.warning("Case %s or record %s not found during correlation", case_id, record_id)
     except Exception:  # pragma: no cover
         logger.exception("Failed to add record %s to case %s", record_id, case_id)
 
-    return False
+    return None
 
 
 def enqueue_for_correlation(ids: list[str]) -> None:
@@ -279,13 +281,27 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
             continue
 
         for record in results["items"]:
-            if _add_record_to_case(case, case_id, record, rule, backing_cache, dirty_backing_keys):
+            if result := _add_record_to_case(case, case_id, record, rule, backing_cache):
+                dirty_backing_keys.add(result)
                 added += 1
 
-    for key in dirty_backing_keys:
-        backing_obj = backing_cache[key]
+    backing_collections: dict[str, Any] = {
+        str(RuleIndexTypes.HIT): ds.hit,
+        str(RuleIndexTypes.EVENT): ds.event,
+    }
+    backing_bulk_plans: dict[str, Any] = {
+        item_type: backing_collections[item_type].get_bulk_plan()
+        for item_type in {key[0] for key in dirty_backing_keys}
+    }
+
+    for item_type, record_id in dirty_backing_keys:
+        backing_obj = backing_cache[(item_type, record_id)]
         if backing_obj is not None:
-            backing_obj.save()
+            backing_bulk_plans[item_type].add_update_operation(record_id, backing_obj, fields=["howler.related"])
+
+    for item_type, bulk_plan in backing_bulk_plans.items():
+        if not backing_collections[item_type].bulk(bulk_plan):
+            raise HowlerRuntimeError("Bulk backing record update reported errors while flushing correlation batch")
 
     modified_cases = [
         case for cid, case in case_cache.items() if case and len(case.items) != case_original_item_counts[cid]
