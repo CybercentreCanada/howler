@@ -535,6 +535,11 @@ def check_conflicts(case: Case, item: CaseItem) -> bool:
     Raises:
         InvalidDataException: If there is a conflict between the existing case items and the new item
     """
+    if item.type in {CaseItemTypes.HIT, CaseItemTypes.EVENT} and any(
+        existing.type == item.type and existing.value == item.value for existing in case.items
+    ):
+        raise InvalidDataException(f"Item {item.value} already exists in case {case.case_id}")
+
     # Unnamed items (name=None) are identified by their value, not their name; skip name-based
     # conflict detection for them so that multiple unnamed hits can coexist in the same parent.
     name = item.name

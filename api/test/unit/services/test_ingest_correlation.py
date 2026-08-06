@@ -204,8 +204,8 @@ class TestIngestedAlertsCorrelation:
     @patch("howler.services.correlation_service.get_active_rules")
     @patch("howler.services.correlation_service.datastore")
     def test_duplicate_alert_skipped(self, mock_ds_fn, mock_get_rules, mock_search_svc, mock_comms):
-        """An alert that would conflict with an already-present item is skipped."""
-        existing = CaseItem({"type": "hit", "value": "hit-existing", "name": "related"})
+        """An alert already present in the case is skipped."""
+        existing = CaseItem({"type": "hit", "value": "hit-dup", "name": "related"})
         case = _make_case("case-1", items=[existing])
         _setup_ds(mock_ds_fn, {"case-1": case}, hits={"hit-dup": _make_backing_obj()})
 

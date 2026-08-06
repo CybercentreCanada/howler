@@ -143,6 +143,7 @@ class TestCorrelationPipeline:
             session,
             f"{host}/api/v2/ingest/hit",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps([_make_hit(analytic="Deeply Nested Detection", kind="alert")]),
         )
         hit_id = ingest_resp[0]
@@ -239,6 +240,7 @@ class TestCorrelationPipeline:
             session,
             f"{host}/api/v2/ingest/hit",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps([_make_hit(kind="alert")]),
         )
         hit_id = ingest_resp[0]

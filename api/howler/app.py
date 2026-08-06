@@ -73,7 +73,11 @@ logger = get_logger(__file__)
 
 def _should_start_background_services() -> bool:
     """Return whether this process should start long-lived background services."""
-    return not DEBUG or os.environ.get("WERKZEUG_RUN_MAIN") == "true"
+    return (
+        not DEBUG
+        or os.environ.get("WERKZEUG_RUN_MAIN") == "true"
+        or Path(sys.argv[0]).name.lower().startswith("gunicorn")
+    )
 
 
 app = Flask(

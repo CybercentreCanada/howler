@@ -91,7 +91,7 @@ class TestCreateEndpoint:
             assert result.status_code == 201
             body = result.get_json()
             assert body["api_response"] == ["hit-001"]
-            mock_hit_svc.create_hit.assert_called_once()
+            mock_hit_svc.create_hits.assert_called_once_with([mock_hit], user.uname, overwrite=False, refresh=None)
             mock_queue_fn.return_value.push.assert_called_once_with("hit-001")
 
     @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
@@ -106,7 +106,7 @@ class TestCreateEndpoint:
         _mock_auth(mock_auth_service, user)
 
         mock_obs = MagicMock()
-        mock_obs.howler.id = "obs-001"
+        mock_obs.howler.id = "event-001"
         mock_obs_svc.convert_event.return_value = (mock_obs, [])
 
         with request_context.test_request_context(
@@ -120,8 +120,8 @@ class TestCreateEndpoint:
 
             assert result.status_code == 201
             body = result.get_json()
-            assert body["api_response"] == ["obs-001"]
-            mock_obs_svc.create_event.assert_called_once()
+            assert body["api_response"] == ["event-001"]
+            mock_obs_svc.create_events.assert_called_once_with([mock_obs], user.uname, overwrite=False, refresh=None)
             mock_hit_svc.convert_hit.assert_not_called()
 
     @patch("howler.api.v2.ingest.hit_service")
@@ -562,7 +562,7 @@ class TestIngestionQueueing:
         _mock_auth(mock_auth_service, user)
 
         obs = MagicMock()
-        obs.howler.id = "obs-a"
+        obs.howler.id = "event-a"
         mock_obs_svc.convert_event.return_value = (obs, [])
 
         with request_context.test_request_context(
@@ -574,7 +574,7 @@ class TestIngestionQueueing:
 
             create(index="event")
 
-            mock_queue_fn.return_value.push.assert_called_once_with("obs-a")
+            mock_queue_fn.return_value.push.assert_called_once_with("event-a")
 
     @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.hit_service")

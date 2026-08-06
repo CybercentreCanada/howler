@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from howler.common.exceptions import HowlerValueError, InvalidDataException, NotFoundException
+from howler.common.exceptions import HowlerValueError, InvalidDataException, NotFoundException, ResourceExists
 from howler.config import CLASSIFICATION
 from howler.odm.models.case import Case, CaseItem, CaseRule
 from howler.odm.models.ecs.related import Related
@@ -69,7 +69,7 @@ class TestCreateCase:
         result = case_service.create_case({"title": "Title", "summary": "Summary"}, user=user)
 
         assert len(result.log) == 1
-        assert result.log[0].user == str(user)
+        assert result.log[0].user == user.uname
 
     @patch("howler.services.case_service.datastore")
     def test_create_case_no_user_defaults_to_system(self, _mock_ds_fn):
@@ -705,8 +705,8 @@ class TestAppendHit:
         mock_ds.case.save.assert_not_called()
 
     @patch("howler.services.case_service.datastore")
-    def test_append_hit_duplicate_raises(self, mock_ds_fn):
-        """append_case_item raises InvalidDataException when the destination already contains same name/parent."""
+    def test_append_hit_conflicting_name_is_disambiguated(self, mock_ds_fn):
+        """append_case_item disambiguates a hit name that conflicts with a sibling."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -717,7 +717,25 @@ class TestAppendHit:
         mock_ds.hit.get.return_value = MagicMock(classification=CLASSIFICATION.UNRESTRICTED)
 
         item = CaseItem({"type": "hit", "value": "hit-002", "name": "dup"})
-        with pytest.raises(InvalidDataException):
+        case_service.append_case_item("case-001", item=item)
+
+        assert item.name == "dup (hit-002)"
+        assert mock_case.items == [existing, item]
+
+    @patch("howler.services.case_service.datastore")
+    def test_append_hit_duplicate_value_raises(self, mock_ds_fn):
+        """append_case_item rejects a hit already present in the case."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        existing = CaseItem({"type": "hit", "value": "hit-001", "name": "existing"})
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = [existing]
+        mock_ds.case.get.return_value = mock_case
+
+        item = CaseItem({"type": "hit", "value": "hit-001", "name": "another name"})
+        with pytest.raises(InvalidDataException, match="already exists"):
             case_service.append_case_item("case-001", item=item)
 
 
@@ -784,8 +802,8 @@ class TestAppendEvent:
             case_service.append_event(mock_case, item)
 
     @patch("howler.services.case_service.datastore")
-    def test_append_event_duplicate_raises(self, mock_ds_fn):
-        """append_case_item raises InvalidDataException for duplicate destination name/parent."""
+    def test_append_event_conflicting_name_is_disambiguated(self, mock_ds_fn):
+        """append_case_item disambiguates an event name that conflicts with a sibling."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -796,8 +814,10 @@ class TestAppendEvent:
         mock_ds.event.get.return_value = MagicMock(classification=CLASSIFICATION.UNRESTRICTED)
 
         item = CaseItem({"type": "event", "value": "obs-002", "name": "dup"})
-        with pytest.raises(InvalidDataException):
-            case_service.append_case_item("case-001", item=item)
+        case_service.append_case_item("case-001", item=item)
+
+        assert item.name == "dup (obs-002)"
+        assert mock_case.items == [existing, item]
 
 
 # ---------------------------------------------------------------------------
@@ -1004,7 +1024,7 @@ class TestAppendReference:
 
     @patch("howler.services.case_service.datastore")
     def test_append_reference_duplicate_raises(self, mock_ds_fn):
-        """append_case_item raises InvalidDataException when destination sibling name already exists."""
+        """append_case_item raises ResourceExists when a reference name conflicts with a sibling."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -1014,7 +1034,7 @@ class TestAppendReference:
         mock_ds.case.get.return_value = mock_case
 
         item = CaseItem({"type": "reference", "value": "https://another.example.com", "name": "refs"})
-        with pytest.raises(InvalidDataException):
+        with pytest.raises(ResourceExists):
             case_service.append_case_item("case-001", item=item)
 
 
@@ -2312,7 +2332,7 @@ class TestAppendFolder:
 
     @patch("howler.services.case_service.datastore")
     def test_append_folder_duplicate_same_parent_raises(self, mock_ds_fn):
-        """append_case_item raises InvalidDataException for duplicate folder name under same parent."""
+        """append_case_item raises ResourceExists for a duplicate folder name under the same parent."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -2323,7 +2343,7 @@ class TestAppendFolder:
         mock_ds.case.get.return_value = mock_case
 
         item = CaseItem({"type": "folder", "name": "My Folder"})
-        with pytest.raises(InvalidDataException, match="already exists"):
+        with pytest.raises(ResourceExists, match="already exists"):
             case_service.append_case_item("case-001", item=item)
 
 
