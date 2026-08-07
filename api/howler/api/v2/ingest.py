@@ -39,7 +39,7 @@ hit_helper = OdmHelper(Hit)
 @ingest_api.route("/<index>", methods=["POST"])
 @api_login(required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def create(index: str, user: User, **kwargs):
+def create(index: str, user: User, *, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
     """Create new records in a given index.
 
     Variables:
@@ -75,11 +75,9 @@ def create(index: str, user: User, **kwargs):
     if not isinstance(records, list):
         return bad_request(err="JSON Payload must be a list of records.")
     ignore_extra_values = request.args.get("ignore_extra_values", False, type=lambda v: v.lower() == "true")
-    refresh = cast(Literal["true", "false", "wait_for"] | None, kwargs.get("refresh"))
 
-    ids: list[str] = []
+    odms: list = []
     warnings = []
-    refresh_kwargs: dict[str, Literal["true", "false", "wait_for"] | None] = {"refresh": refresh}
     for i, record in enumerate(records):
         try:
             odm: Hit | Event
@@ -87,18 +85,22 @@ def create(index: str, user: User, **kwargs):
                 odm, _warnings = event_service.convert_event(
                     record, unique=True, ignore_extra_values=ignore_extra_values
                 )
-                event_service.create_event(odm.howler.id, odm, user.uname, skip_exists=True, **refresh_kwargs)
             else:
                 odm, _warnings = hit_service.convert_hit(record, unique=True, ignore_extra_values=ignore_extra_values)
-                hit_service.create_hit(odm.howler.id, odm, user.uname, skip_exists=True, refresh=refresh)
 
-            ids.append(odm.howler.id)
+            odms.append(odm)
             warnings.extend(_warnings)
         except HowlerException as e:
             logger.exception("Ingestion failed.")
             return bad_request(err=f"Ingestion failure on record at index {i}: {e}")
 
+    if index == "event":
+        event_service.create_events(odms, user.uname, overwrite=False, refresh=refresh)
+    else:
+        hit_service.create_hits(odms, user.uname, overwrite=False, refresh=refresh)
+
     # Enqueue newly created hit IDs for the correlation worker.
+    ids = [odm.howler.id for odm in odms]
     if ids:
         correlation_service.enqueue_for_correlation(ids)
 

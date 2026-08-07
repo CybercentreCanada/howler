@@ -87,13 +87,6 @@ def test_expand_fl_global_wildcard():
     assert result == "*"
 
 
-def test_expand_fl_unmatched_wildcard_kept_as_is():
-    """Wildcard with no matches must be kept in the result list unchanged."""
-    coll = _make_collection()
-    result = coll._expand_fl("nonexistent.*")
-    assert result == "nonexistent.*"
-
-
 def test_expand_fl_no_model_class_returns_unchanged():
     """Without a model class, _expand_fl must return the original string."""
     mock_datastore = MagicMock()

@@ -372,7 +372,7 @@
   "on": "on",
   "open": "Open",
   "operations.add_label": "Add Label",
-  "operations.add_to_bundle": "Add to Bundle",
+  "operations.add_to_case": "Add to Case",
   "operations.change_field": "Change Field",
   "operations.demote": "Demote Hit",
   "operations.prioritization": "Change Prioritization",

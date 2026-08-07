@@ -372,7 +372,7 @@
   "on": "sur",
   "open": "Ouvert",
   "operations.add_label": "Ajouter un label",
-  "operations.add_to_bundle": "Ajouter à une groupe des hits",
+  "operations.add_to_case": "Ajouter au cas",
   "operations.change_field": "Modifier un champs",
   "operations.demote": "Rétrograder un hit",
   "operations.prioritization": "Modifier l'ordre de priorité",

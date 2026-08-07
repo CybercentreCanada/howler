@@ -17,10 +17,10 @@ def _make_case(title: str) -> dict:
     }
 
 
-def _execute(session, host, query: str, case_id: str, path: str = "related", title_template: str | None = None):
-    data: dict = {"case_id": case_id, "path": path}
-    if title_template is not None:
-        data["title_template"] = title_template
+def _execute(session, host, query: str, case_id: str, destination: str | None = None):
+    data: dict = {"case_id": case_id}
+    if destination is not None:
+        data["destination"] = destination
 
     req = {
         "request_id": str(uuid4()),
@@ -125,7 +125,7 @@ def test_add_to_case_happy_path(datastore: HowlerDatastore, login_session, test_
 
 
 def test_add_to_case_custom_path_and_template(datastore: HowlerDatastore, login_session, test_case: Case):
-    """Items are placed at the specified path using the title template."""
+    """Items are placed at the specified destination path using the rendered template."""
     session, host = login_session
 
     # Take only the first hit to keep things deterministic
@@ -137,8 +137,7 @@ def test_add_to_case_custom_path_and_template(datastore: HowlerDatastore, login_
         host,
         query=query,
         case_id=test_case.case_id,
-        path="investigations/test",
-        title_template="{{howler.id}}",
+        destination="investigations/test/{{howler.id}}",
     )
 
     reports = list(resp.values())
@@ -177,7 +176,7 @@ def test_add_to_case_missing_case_id(datastore: HowlerDatastore, login_session):
         "operations": [
             {
                 "operation_id": "add_to_case",
-                "data_json": json.dumps({"path": "related"}),
+                "data_json": json.dumps({}),
             }
         ],
     }

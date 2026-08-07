@@ -34,6 +34,7 @@ def main():  # noqa: C901
             "HWL_DATASTORE_INDEX_PREFIX": f"howler-test-{run_id}",
             "HWL_TEST_API_HOST": f"http://localhost:{api_port}",
             "TESTING": "true",
+            "HWL_START_BACKGROUND_SERVICES": "false",
             "HWL_CORRELATION_QUEUE_NAME": f"howler.ingestion_queue.test.{run_id}",
         }
 
@@ -45,7 +46,7 @@ def main():  # noqa: C901
         print("Running howler server (with coverage)")
         background_server = subprocess.Popen(
             prep_command("coverage run -m flask --app howler.app run --no-reload"),
-            env=test_env,
+            env={**test_env, "HWL_START_BACKGROUND_SERVICES": "true"},
         )
 
         time.sleep(5)

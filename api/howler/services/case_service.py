@@ -9,7 +9,13 @@ from typing import Any, Literal, overload
 
 from prometheus_client import Counter
 
-from howler.common.exceptions import HowlerTypeError, HowlerValueError, InvalidDataException, NotFoundException
+from howler.common.exceptions import (
+    HowlerTypeError,
+    HowlerValueError,
+    InvalidDataException,
+    NotFoundException,
+    ResourceExists,
+)
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
 from howler.config import CLASSIFICATION
@@ -49,7 +55,7 @@ def create_case(
     items = case_data.pop("items", [])
 
     case = Case(case_data)
-    case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user or "system"})]
+    case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user.uname if user else "system"})]
     case.save(refresh="wait_for")
     CREATED_CASES.inc()
 
@@ -331,6 +337,7 @@ def get_parent_from_path(
     path: str | None,
     create_if_missing: bool = False,
     refresh: Literal["true", "false", "wait_for"] | None = None,
+    persist: bool = True,
 ) -> CaseItem | None:
     """Given a path, return the lowest parent of the path in the case.
 
@@ -340,6 +347,9 @@ def get_parent_from_path(
         case: The case to search for.
         path: The path to return the lowest parent for.
         create_if_missing: Whether to create the path if it's missing or return None.
+        persist: Whether to save the case immediately when a folder is created. Callers that
+            are accumulating multiple in-memory changes before a single bulk save should pass
+            False.
 
     Raises:
         InvalidDataException: If the path is invalid.
@@ -380,9 +390,11 @@ def get_parent_from_path(
             folder_item = CaseItem({"type": CaseItemTypes.FOLDER, "name": part, "parent": current_parent, "value": ""})
             case.items.append(folder_item)
             current_parent = folder_item.id
-            case.save(refresh)
         else:
             current_parent = folder.id
+
+    if persist:
+        case.save(refresh)
 
     # Find the final parent folder
     if current_parent is None:  # pragma: no cover
@@ -470,16 +482,28 @@ def append_case_item(  # noqa: C901
     if item.parent is not None:
         _ensure_parent_exists(case, item.parent)
 
-    _check_conflicts(case, item)
+    conflict = check_conflicts(case, item)
 
     match item.type:
         case CaseItemTypes.HIT:
+            if conflict:
+                item.name = f"{item.name} ({item.value})" if item.name else item.value
+
             return append_hit(case, item, refresh)
         case CaseItemTypes.EVENT:
+            if conflict:
+                item.name = f"{item.name} ({item.value})" if item.name else item.value
+
             return append_event(case, item, refresh)
         case CaseItemTypes.CASE:
+            if conflict:
+                item.name = f"{item.name} ({item.value})" if item.name else item.value
+
             return append_case(case, item, refresh)
         case CaseItemTypes.REFERENCE | CaseItemTypes.MARKDOWN | CaseItemTypes.FOLDER:
+            if conflict:
+                raise ResourceExists("An item with the same name already exists in this location.")
+
             case.items.append(item)
 
             if not case.save(refresh):  # pragma: no cover
@@ -492,7 +516,7 @@ def append_case_item(  # noqa: C901
             raise InvalidDataException(f"Unsupported item type: {item.type}")
 
 
-def _check_conflicts(case: Case, item: CaseItem) -> None:
+def check_conflicts(case: Case, item: CaseItem) -> bool:
     """Validate that two items are not created with the same name and parent.
 
     Args:
@@ -502,17 +526,19 @@ def _check_conflicts(case: Case, item: CaseItem) -> None:
     Raises:
         InvalidDataException: If there is a conflict between the existing case items and the new item
     """
+    if item.type in {CaseItemTypes.HIT, CaseItemTypes.EVENT} and any(
+        existing.type == item.type and existing.value == item.value for existing in case.items
+    ):
+        raise InvalidDataException(f"Item {item.value} already exists in case {case.case_id}")
+
     # Unnamed items (name=None) are identified by their value, not their name; skip name-based
     # conflict detection for them so that multiple unnamed hits can coexist in the same parent.
+    name = item.name
     if item.name is None:
-        return
+        name = item.value
 
     # Check for duplicate folder under same parent
-    if any(ci.name == item.name and ci.parent == item.parent for ci in case.items):
-        raise InvalidDataException(
-            f"An item with name '{item.name}' already exists in "
-            + (f"parent {item.parent}." if item.parent else "root.")
-        )
+    return any(ci.name == name and ci.parent == item.parent for ci in case.items)
 
 
 def _ensure_parent_exists(case: Case, parent_id: str) -> None:
@@ -676,13 +702,14 @@ def remove_case_items(  # noqa: C901
 
     case.items = [item for item in case.items if item.id not in ids_to_remove]
 
-    if not case.save(refresh=refresh):  # pragma: no cover
-        raise DataStoreException("Failed to save case after item removal")
-
     for backing_obj in backing_objs:
         remove_backreference(backing_obj, case.case_id)
+        backing_obj.save()
 
-    _sync_case_metadata(case)
+    recompute_case_metadata(case)
+
+    if not case.save(refresh=refresh):  # pragma: no cover
+        raise DataStoreException("Failed to save case after item removal")
 
     comms_service.emit("cases", {"case": case.as_primitives()})
 
@@ -726,16 +753,14 @@ def append_hit(case: Case, item: CaseItem, refresh: Literal["true", "false", "wa
 
     case.items.append(item)
 
+    add_backreference(hit, case.case_id)
+    hit.save()
+
+    recompute_case_metadata(case)
     if not case.save(refresh=refresh):  # pragma: no cover
         raise DataStoreException(f"Failed to save {case.case_id} with new item {item.value}")
 
-    _add_backreference(hit, case.case_id)
-
-    _sync_case_metadata(case)
-
-    updated_case = ds.case.get(case.case_id)
-    if updated_case:
-        comms_service.emit("cases", {"case": updated_case.as_primitives()})
+    comms_service.emit("cases", {"case": case.as_primitives()})
 
     return case
 
@@ -767,15 +792,16 @@ def append_event(case: Case, item: CaseItem, refresh: Literal["true", "false", "
 
     case.items.append(item)
 
+    add_backreference(event, case.case_id)
+    event.save()
+
+    recompute_case_metadata(case)
     if not case.save(refresh=refresh):  # pragma: no cover
         raise DataStoreException(f"Failed to save {case.case_id} with new item {item.value}")
 
-    _add_backreference(event, case.case_id)
-    updated_case = _sync_case_metadata(case)
-    if updated_case:
-        comms_service.emit("cases", {"case": updated_case.as_primitives()})
+    comms_service.emit("cases", {"case": case.as_primitives()})
 
-    return updated_case or case
+    return case
 
 
 def append_case(case: Case, item: CaseItem, refresh: Literal["true", "false", "wait_for"] | None = None) -> Case:
@@ -831,19 +857,15 @@ def _collect_indicators_from_related(related: Related | None) -> set[str]:
     return indicators
 
 
-def _sync_case_metadata(  # noqa: C901
-    case: Case | None,
-    refresh: Literal["true", "false", "wait_for"] | None = None,
-) -> Case | None:  # noqa: C901
-    """Re-compute and persist threat/target/indicator lists from all case items.
+def recompute_case_metadata(case: Case) -> None:  # noqa: C901
+    """Re-compute (in memory only) threat/target/indicator lists from all case items.
 
     Iterates over hit and event items in the case and re-derives the
     ``targets``, ``threats``, and ``indicators`` lists from the backing
-    objects' ECS ``related.*`` fields and, for hits, the outline fields.
+    objects' ECS ``related.*`` fields and, for hits, the outline fields. Does
+    not persist the case; callers are responsible for saving it.
     """
     ds = datastore()
-    if case is None:
-        return None
 
     targets: set[str] = set()
     threats: set[str] = set()
@@ -876,25 +898,21 @@ def _sync_case_metadata(  # noqa: C901
     case.targets = sorted(targets)
     case.threats = sorted(threats)
     case.indicators = sorted(indicators)
-    case.save(refresh=refresh)
-
-    return case
 
 
-def _add_backreference(
-    backing_obj: Hit | Event | None,
-    case_id: str,
-    refresh: Literal["true", "false", "wait_for"] | None = None,
-):
-    """Add a back-reference from a hit or event to a case.
+def add_backreference(backing_obj: Hit | Event | None, case_id: str) -> bool:
+    """Add a back-reference from a hit or event to a case, in memory only.
 
-    Records the case ID in the backing object's ``howler.related_ids`` set so
-    that the relationship can be traversed from the hit/event side. If the
-    back-reference already exists, the call is a no-op.
+    Records the case ID in the backing object's ``howler.related`` list so
+    that the relationship can be traversed from the hit/event side. Does not
+    persist the change; callers are responsible for saving the object.
 
     Args:
         backing_obj: The Hit or Event object to add the back-reference to.
         case_id: Unique identifier of the case to reference.
+
+    Returns:
+        True if a new back-reference was added, False if it already existed.
 
     Raises:
         InvalidDataException: If backing_obj is None or case_id is empty/falsy.
@@ -906,22 +924,21 @@ def _add_backreference(
         raise InvalidDataException("Missing back reference case_id")
 
     if any(case_id == related_id for related_id in backing_obj.howler.related):
-        return
+        return False
 
     backing_obj.howler.related.append(case_id)
-    backing_obj.save(refresh=refresh)
+    return True
 
 
 def remove_backreference(
     backing_obj: Hit | Event | None,
     case_id: str,
-    refresh: Literal["true", "false", "wait_for"] | None = None,
 ):
-    """Remove a back-reference from a hit or event to a case.
+    """Remove a back-reference from a hit or event to a case, in memory only.
 
-    Removes the case ID from the backing object's ``howler.related`` list
-    and persists the change. If the case ID is not present in the list,
-    the call is a no-op.
+    Removes the case ID from the backing object's ``howler.related`` list.
+    Does not persist the change; callers are responsible for saving the
+    object. If the case ID is not present in the list, the call is a no-op.
 
     Args:
         backing_obj: The Hit or Event object to remove the back-reference from.
@@ -938,7 +955,6 @@ def remove_backreference(
 
     if case_id in backing_obj.howler.related:
         backing_obj.howler.related.remove(case_id)
-        backing_obj.save(refresh=refresh)
 
 
 def rename_case_item(

@@ -305,3 +305,23 @@ def test_create_event_increments_counter(mock_exists, mock_datastore):
     after = event_service.CREATED_EVENTS._value.get()
 
     assert after == before + 1
+
+
+@patch("howler.services.event_service.datastore")
+def test_create_events_uses_event_collection(mock_datastore):
+    """Bulk event ingestion checks and writes the event collection."""
+    storage = mock_datastore.return_value
+    storage.event.exists.return_value = False
+    storage.event.bulk.return_value = True
+    bulk_plan = storage.event.get_bulk_plan.return_value
+    event = Event(SAMPLE_EVENT_DATA)
+
+    result = event_service.create_events([event], user="test_user", refresh="wait_for")
+
+    assert result is True
+    storage.event.exists.assert_called_once_with(event.howler.id)
+    bulk_plan.add_insert_operation.assert_called_once_with(event.howler.id, event)
+    storage.event.bulk.assert_called_once_with(bulk_plan, refresh="wait_for")
+    storage.hit.exists.assert_not_called()
+    storage.hit.bulk.assert_not_called()
+    assert event.howler.log[0].user == "test_user"

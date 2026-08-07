@@ -62,10 +62,10 @@ def test_case(datastore: HowlerDatastore, login_session):
         session,
         f"{host}/api/v2/case",
         method="POST",
+        params={"refresh": "wait_for"},
         data=json.dumps(_make_case()),
     )
     case_id = resp["case_id"]
-    datastore.case.commit()
 
     yield case_id, session, host
 
@@ -88,20 +88,19 @@ class TestCorrelationPipeline:
             session,
             f"{host}/api/v2/case/{case_id}/rules",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps(rule_data),
         )
-        datastore.case.commit()
 
         # Ingest a hit that matches the rule
         ingest_resp = get_api_data(
             session,
             f"{host}/api/v2/ingest/hit",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps([_make_hit(analytic="My Detection", kind="alert")]),
         )
         hit_id = ingest_resp[0]
-        datastore.hit.commit()
-        time.sleep(1)
 
         # Run the correlation directly.  The background worker may have
         # already processed the hit from the ingestion queue, so we
@@ -122,6 +121,55 @@ class TestCorrelationPipeline:
         assert matching_item.name == "My Detection"
         assert matching_item.parent == alerts_folder.id
 
+    def test_deeply_nested_destination_persists_all_folders(self, test_case, datastore: HowlerDatastore):
+        """A deeply nested rule destination has every intermediate folder persisted to the case."""
+        case_id, session, host = test_case
+
+        parts = ["a", "b", "c", "d", "e", "f", "g", "h"]
+        rule_data = {
+            "query": "event.kind:alert",
+            "destination": "/".join(parts) + "/{{howler.analytic}}",
+        }
+        get_api_data(
+            session,
+            f"{host}/api/v2/case/{case_id}/rules",
+            method="POST",
+            params={"refresh": "wait_for"},
+            data=json.dumps(rule_data),
+        )
+        datastore.case.commit()
+
+        ingest_resp = get_api_data(
+            session,
+            f"{host}/api/v2/ingest/hit",
+            method="POST",
+            params={"refresh": "wait_for"},
+            data=json.dumps([_make_hit(analytic="Deeply Nested Detection", kind="alert")]),
+        )
+        hit_id = ingest_resp[0]
+
+        correlation_service.process_batch([hit_id])
+
+        # Re-fetch the case from the datastore to confirm the whole folder chain, not just
+        # the in-memory objects mutated by process_batch, was actually persisted.
+        datastore.case.commit()
+        case = datastore.case.get(case_id)
+        assert case is not None
+
+        folders = [item for item in case.items if item.type == "folder"]
+        assert len(folders) == len(parts)
+
+        matching_item = next(item for item in case.items if item.value == hit_id)
+        assert matching_item.name == "Deeply Nested Detection"
+
+        names_leaf_to_root = []
+        current = next((item for item in case.items if item.id == matching_item.parent), None)
+        while current is not None:
+            names_leaf_to_root.append(current.name)
+            current = next((item for item in case.items if item.id == current.parent), None)
+
+        assert names_leaf_to_root == list(reversed(parts))
+
     def test_non_matching_hit_not_added(self, test_case, datastore: HowlerDatastore):
         """A hit that does not match the rule's query is not added."""
         case_id, session, host = test_case
@@ -134,6 +182,7 @@ class TestCorrelationPipeline:
             session,
             f"{host}/api/v2/case/{case_id}/rules",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps(rule_data),
         )
         datastore.case.commit()
@@ -143,6 +192,7 @@ class TestCorrelationPipeline:
             session,
             f"{host}/api/v2/ingest/hit",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps([_make_hit(analytic="Other", kind="alert")]),
         )
         hit_id = ingest_resp[0]
@@ -169,6 +219,7 @@ class TestCorrelationPipeline:
             session,
             f"{host}/api/v2/case/{case_id}/rules",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps(rule_data),
         )
         rule_id = resp["rules"][-1]["rule_id"]
@@ -179,6 +230,7 @@ class TestCorrelationPipeline:
             session,
             f"{host}/api/v2/case/{case_id}/rules/{rule_id}",
             method="PUT",
+            params={"refresh": "wait_for"},
             data=json.dumps({"enabled": False}),
         )
         datastore.case.commit()
@@ -188,6 +240,7 @@ class TestCorrelationPipeline:
             session,
             f"{host}/api/v2/ingest/hit",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps([_make_hit(kind="alert")]),
         )
         hit_id = ingest_resp[0]
@@ -210,19 +263,18 @@ class TestCorrelationPipeline:
             session,
             f"{host}/api/v2/case/{case_id}/rules",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps(rule_data),
         )
-        datastore.case.commit()
 
         ingest_resp = get_api_data(
             session,
             f"{host}/api/v2/ingest/hit",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps([_make_hit(kind="alert")]),
         )
         hit_id = ingest_resp[0]
-        datastore.hit.commit()
-        time.sleep(1)
 
         # The background worker may have already processed the hit from
         # the ingestion queue, so we cannot rely on exact return values.
@@ -233,7 +285,6 @@ class TestCorrelationPipeline:
         assert first + second <= 1
 
         # The hit must appear exactly once in the case.
-        datastore.case.commit()
         case = datastore.case.get(case_id)
         hit_count = sum(1 for item in case.items if item.type == "hit" and item.value == hit_id)
         assert hit_count == 1
@@ -245,10 +296,9 @@ class TestCorrelationWorker:
     MAX_WAIT = 15
     POLL_INTERVAL = 0.25
 
-    @pytest.fixture()
-    def worker_event_provider(self) -> str:
+    def _worker_event_provider(self, test_name: str) -> str:
         """Create an event provider that cannot match another test's broad rule."""
-        return f"correlationworker{uuid.uuid4().hex}"
+        return f"correlation_{test_name}"
 
     def _wait_for_case_items(self, datastore: HowlerDatastore, case_id: str, hit_ids: list[str]) -> list[str]:
         """Wait for expected hits and return those that were added to the case."""
@@ -273,20 +323,27 @@ class TestCorrelationWorker:
             session,
             f"{host}/api/v2/case/{case_id}/rules",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps({"query": query, "destination": destination}),
         )
 
-    def test_worker_adds_matching_hit(self, test_case, datastore: HowlerDatastore, worker_event_provider: str):
+    def test_worker_adds_matching_hit(self, test_case, datastore: HowlerDatastore):
         """The worker adds a newly ingested hit that matches an active rule."""
         case_id, session, host = test_case
-        self._add_rule(session, host, case_id, f"event.provider:{worker_event_provider}", "worker")
-        datastore.case.commit()
+        self._add_rule(
+            session,
+            host,
+            case_id,
+            f"event.provider:{self._worker_event_provider('test_worker_adds_matching_hit')}",
+            "worker",
+        )
 
         ingest_resp = get_api_data(
             session,
             f"{host}/api/v2/ingest/hit",
             method="POST",
-            data=json.dumps([_make_hit(provider=worker_event_provider)]),
+            params={"refresh": "wait_for"},
+            data=json.dumps([_make_hit(provider=self._worker_event_provider("test_worker_adds_matching_hit"))]),
         )
 
         seen_hit_ids = self._wait_for_case_items(datastore, case_id, ingest_resp)
@@ -295,17 +352,30 @@ class TestCorrelationWorker:
             f"Worker did not add hits {missing_hit_ids} to case {case_id} within {self.MAX_WAIT}s"
         )
 
-    def test_worker_renders_destination_path(self, test_case, datastore: HowlerDatastore, worker_event_provider: str):
+    def test_worker_renders_destination_path(self, test_case, datastore: HowlerDatastore):
         """The worker renders the matching hit's destination path."""
         case_id, session, host = test_case
-        self._add_rule(session, host, case_id, f"event.provider:{worker_event_provider}", "worker/{{howler.analytic}}")
-        datastore.case.commit()
+        self._add_rule(
+            session,
+            host,
+            case_id,
+            f"event.provider:{self._worker_event_provider('test_worker_renders_destination_path')}",
+            "worker/{{howler.analytic}}",
+        )
 
         ingest_resp = get_api_data(
             session,
             f"{host}/api/v2/ingest/hit",
             method="POST",
-            data=json.dumps([_make_hit(analytic="Worker Detection", provider=worker_event_provider)]),
+            params={"refresh": "wait_for"},
+            data=json.dumps(
+                [
+                    _make_hit(
+                        analytic="Worker Detection",
+                        provider=self._worker_event_provider("test_worker_renders_destination_path"),
+                    )
+                ]
+            ),
         )
 
         seen_hit_ids = self._wait_for_case_items(datastore, case_id, ingest_resp)
@@ -320,32 +390,42 @@ class TestCorrelationWorker:
         assert matching_item.name == "Worker Detection"
         assert matching_item.parent == worker_folder.id
 
-    def test_worker_handles_multiple_hits(self, test_case, datastore: HowlerDatastore, worker_event_provider: str):
+    def test_worker_handles_multiple_hits(self, test_case, datastore: HowlerDatastore):
         """Multiple hits ingested in sequence are each processed by the worker."""
         case_id, session, host = test_case
         self._add_rule(
             session,
             host,
             case_id,
-            f"event.provider:{worker_event_provider}",
+            f"event.provider:{self._worker_event_provider('test_worker_handles_multiple_hits')}",
             "worker-multi/{{howler.analytic}}",
         )
-        datastore.case.commit()
 
-        hit_ids = []
-        for index in range(3):
-            ingest_resp = get_api_data(
+        hit_ids: list[str] = []
+        for _ in range(3):
+            hits = []
+            for index in range(3):
+                hits.append(
+                    _make_hit(
+                        analytic=f"Multi-{index}",
+                        provider=self._worker_event_provider("test_worker_handles_multiple_hits"),
+                    )
+                )
+
+            added = get_api_data(
                 session,
                 f"{host}/api/v2/ingest/hit",
                 method="POST",
-                data=json.dumps([_make_hit(analytic=f"Multi-{index}", provider=worker_event_provider)]),
+                params={"refresh": "wait_for"},
+                data=json.dumps(hits),
             )
-            hit_ids.append(ingest_resp[0])
 
+            hit_ids = [*hit_ids, *added]
         seen_hit_ids = self._wait_for_case_items(datastore, case_id, hit_ids)
         missing_hit_ids = set(hit_ids) - set(seen_hit_ids)
         assert not missing_hit_ids, (
-            f"Worker did not add hits {missing_hit_ids} to case {case_id} within {self.MAX_WAIT}s"
+            f"Worker did not add {len(missing_hit_ids)} hits ({missing_hit_ids}) "
+            f"to case {case_id} within {self.MAX_WAIT}s"
         )
 
     def test_worker_processes_v1_hit_ingestion(self, test_case, datastore: HowlerDatastore):
@@ -354,12 +434,12 @@ class TestCorrelationWorker:
         analytic = f"v1-hit-worker-{uuid.uuid4().hex}"
 
         self._add_rule(session, host, case_id, f"howler.analytic:{analytic}", "worker-v1-hit")
-        datastore.case.commit()
 
         ingest_resp = get_api_data(
             session,
             f"{host}/api/v1/hit/",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps([{"howler": {"analytic": analytic, "score": "0.8"}}]),
         )
         hit_ids = [entry["howler"]["id"] for entry in ingest_resp["valid"]]
@@ -376,12 +456,12 @@ class TestCorrelationWorker:
         analytic = f"v1-tool-worker-{uuid.uuid4().hex}"
 
         self._add_rule(session, host, case_id, f"howler.analytic:{analytic}", "worker-v1-tool")
-        datastore.case.commit()
 
         ingest_resp = get_api_data(
             session,
             f"{host}/api/v1/tools/test/hits",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps(
                 {
                     "map": {
@@ -422,3 +502,76 @@ class TestCorrelationWorker:
         assert not missing_hit_ids, (
             f"Worker did not add v1 tool ingested hits {missing_hit_ids} to case {case_id} within {self.MAX_WAIT}s"
         )
+
+
+class TestCorrelationConflicts:
+    """Integration coverage for correlation item conflict handling."""
+
+    def _ingest_hits(self, session, host: str, hits: list[dict]) -> list[str]:
+        return get_api_data(
+            session,
+            f"{host}/api/v2/ingest/hit",
+            method="POST",
+            params={"refresh": "wait_for"},
+            data=json.dumps(hits),
+        )
+
+    def _add_case_item(self, session, host: str, case_id: str, value: str, name: str) -> None:
+        get_api_data(
+            session,
+            f"{host}/api/v2/case/{case_id}/items",
+            method="POST",
+            params={"refresh": "wait_for"},
+            data=json.dumps({"type": "hit", "value": value, "name": name}),
+        )
+
+    def _add_rule(self, session, host: str, case_id: str, destination: str) -> None:
+        get_api_data(
+            session,
+            f"{host}/api/v2/case/{case_id}/rules",
+            method="POST",
+            params={"refresh": "wait_for"},
+            data=json.dumps({"query": "*:*", "destination": destination}),
+        )
+
+    def test_matching_name_is_renamed_with_record_id(self, test_case, datastore: HowlerDatastore):
+        """A real duplicate name is disambiguated with the correlated hit ID."""
+        case_id, session, host = test_case
+        hit_ids = self._ingest_hits(
+            session,
+            host,
+            [_make_hit(analytic="Existing"), _make_hit(analytic="Target")],
+        )
+        self._add_case_item(session, host, case_id, hit_ids[0], "related")
+
+        self._add_rule(session, host, case_id, "related")
+        correlation_service.process_batch([hit_ids[1]])
+
+        datastore.case.commit()
+        case = datastore.case.get(case_id)
+        assert case is not None
+        target_item = next(item for item in case.items if item.value == hit_ids[1])
+        assert target_item.name == f"related ({hit_ids[1]})"
+
+    def test_duplicate_name_after_renaming_is_skipped(self, test_case, datastore: HowlerDatastore):
+        """A real conflict with both candidate names causes correlation to skip the hit."""
+        case_id, session, host = test_case
+        hit_ids = self._ingest_hits(
+            session,
+            host,
+            [
+                _make_hit(analytic="Existing"),
+                _make_hit(analytic="Existing Name"),
+                _make_hit(analytic="Target"),
+            ],
+        )
+        self._add_case_item(session, host, case_id, hit_ids[0], "related")
+        self._add_case_item(session, host, case_id, hit_ids[1], f"related ({hit_ids[2]})")
+
+        self._add_rule(session, host, case_id, "related")
+        correlation_service.process_batch([hit_ids[2]])
+
+        datastore.case.commit()
+        case = datastore.case.get(case_id)
+        assert case is not None
+        assert not any(item.value == hit_ids[2] for item in case.items)

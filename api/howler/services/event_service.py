@@ -145,3 +145,31 @@ def create_event(
 
     CREATED_EVENTS.inc()
     return datastore().event.save(id, event, refresh=refresh)
+
+
+@tracer.start_as_current_span(f"{__name__}.create_events")
+def create_events(
+    events: list[Event], user: Optional[str] = None, overwrite: bool = False, refresh: str | None = None
+) -> bool:
+    """Bulk create multiple events in the database.
+
+    Similar to create_event for batch.
+    Will raise and abort the entire batch if any event already exists and overwrite=False.
+    """
+    storage = datastore()
+    bulk_plan = storage.event.get_bulk_plan()
+
+    for event in events:
+        if not overwrite and storage.event.exists(event.howler.id):
+            raise ResourceExists("Event %s already exists in datastore" % event.howler.id)
+
+        if user:
+            event.howler.log = [EventLog({"timestamp": "NOW", "explanation": "Created event", "user": user})]
+
+        CREATED_EVENTS.inc()
+        if overwrite:
+            bulk_plan.add_index_operation(event.howler.id, event)
+        else:
+            bulk_plan.add_insert_operation(event.howler.id, event)
+
+    return storage.event.bulk(bulk_plan, refresh=refresh)

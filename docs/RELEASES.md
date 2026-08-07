@@ -1,5 +1,12 @@
 # Howler Releases
 
+## Howler API `v4.0.2`
+
+- **Add to Case Destination Template** _(bugfix)_: The `add_to_case` action now uses a single Mustache `destination` template (e.g. `related/{{howler.analytic}} ({{howler.id}})`) instead of separate `path` and `title_template` arguments, matching the placement behavior used by case correlation rules.
+- **Correlation Bulk Case Updates** _(bugfix)_: `process_batch` now accumulates all matched items and newly-created destination folders per case in memory across the whole batch and writes each modified case exactly once via a single bulk operation, instead of saving on every matched record.
+- **Correlation Partial Field Updates** _(bugfix)_: The bulk case write issued by correlation now only merges the `items`, `targets`, `threats`, and `indicators` fields instead of overwriting the entire case document, so correlation no longer clobbers concurrent user edits to a case's title, summary, rules, or tasks.
+- **Bulk Plan Field Scoping** _(new feature)_: `ElasticBulkPlan.add_update_operation` accepts an optional `fields` list restricting a partial update to specific dotted field paths, with `*` wildcard patterns (e.g. `"items.*"`) expanded against the model's known fields via a new shared `howler.datastore.utils` helper.
+
 ## Howler API `v4.0.1`
 
 - **Case Correlation for v1 Ingestion** _(bugfix)_: Fixed a gap where records ingested through v1 endpoints were not queued for correlation processing, so case correlation rules did not apply to those records.

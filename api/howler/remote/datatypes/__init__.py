@@ -139,7 +139,7 @@ def get_client(
     host: str | redis.Redis | redis.StrictRedis | redis.RedisCluster | None,
     port: int | None,
     private: bool = False,
-):
+) -> redis.Redis | redis.StrictRedis | redis.RedisCluster:
     """
     Get Redis instance.
 
