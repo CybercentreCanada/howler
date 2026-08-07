@@ -94,6 +94,55 @@ def register_prompts(mcp):
             - Reuse field keys verbatim in lucene_query
             - If you need accepted values for one field, call get_field_values(field)"""
 
+    @mcp.prompt(name="get_label_set_options")
+    def get_label_set_options_prompt() -> str:
+        """Explain when and how to use the get_label_set_options tool."""
+        return """Use get_label_set_options to discover the valid label categories accepted by add_label_to_hit.
+
+        Call this tool when:
+        - You need to know which label_set values are allowed
+        - The user gives an uncertain or misspelled label category
+        - You want to validate the label_set before adding a label
+
+        Typical valid outputs include categories such as:
+        - generic
+        - victim
+        - threat
+        - mitigation
+
+        Rules:
+        - Use this tool before add_label_to_hit when label_set is ambiguous
+        - If the user provides an invalid label_set, correct it using the closest valid option returned by this tool
+        - Do not invent label categories that are not returned
+
+        After calling:
+        - Confirm the valid label_set you will use
+        - Then call add_label_to_hit with the corrected or validated label_set"""
+
+    @mcp.prompt(name="add_label_to_hit")
+    def add_label_to_hit_prompt() -> str:
+        """Explain when and how to use the add_label_to_hit tool."""
+        return """Use add_label_to_hit to add one or more labels to a specific Howler hit.
+
+        Required inputs:
+        - hit_id: target hit identifier
+        - labels_name: one or more label values to add
+        - label_set: valid label category such as generic or victim
+
+        Before calling:
+        - Confirm the correct hit_id
+        - Validate label_set with get_label_set_options if there is any doubt
+        - If the user supplied a wrong label_set, correct it to a valid returned option before calling this tool
+
+        Use this tool when the user asks to:
+        - Add a generic label
+        - Tag a victim, threat, campaign, or mitigation category
+        - Update a hit with analyst-defined label values
+
+        After calling:
+        - Report the updated labels for that category
+        - Mention the exact label_set used if you had to correct it"""
+
     @mcp.prompt(name="lucene_query")
     def search_lucene_prompt() -> str:
         """Build a Lucene query from the user's request and search for matching hits."""
