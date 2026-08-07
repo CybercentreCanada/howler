@@ -8,7 +8,7 @@ from mcp.server.auth.provider import AccessToken
 from .auth import AuthProvider
 from .config import HOWLER_API
 
-HttpVerb = Literal["GET", "POST", "OPTIONS"]
+HttpVerb = Literal["GET", "POST", "OPTIONS", "PUT"]
 logger = logging.getLogger(__name__)
 
 
@@ -85,9 +85,10 @@ class HowlerApiClient:
             user_access_token: The verified MCP user token used to obtain a
                 Howler bearer token via the configured ``AuthProvider``.
             path: API path relative to ``base_url``, e.g. ``/search/hit``.
-            method: HTTP verb. Only ``POST`` requests may carry a body.
-            body: JSON-serialisable request body. Must be ``None`` for
-                non-POST requests.
+            method: HTTP verb. ``GET`` and ``OPTIONS`` requests must not carry a
+                body.
+                body: JSON-serialisable request body. Must be ``None`` for
+                    ``GET`` and ``OPTIONS`` requests.
             params: Optional URL query parameters.
 
         Returns:
@@ -95,7 +96,8 @@ class HowlerApiClient:
             envelope.
 
         Raises:
-            ValueError: If a body is supplied for a non-POST request, or if
+            ValueError: If a body is supplied for a ``GET`` or ``OPTIONS``
+                request, or if
                 the response JSON does not contain an ``api_response`` key.
             httpx.HTTPStatusError: If the server returns a 4xx or 5xx status.
         """
@@ -110,9 +112,9 @@ class HowlerApiClient:
         )
 
         try:
-            if method != "POST" and body is not None:
+            if method in {"GET", "OPTIONS"} and body is not None:
                 outcome = "body_error"
-                raise ValueError("Request body is only allowed for POST")
+                raise ValueError("Request body is not allowed for GET or OPTIONS")
             exchanged_token = await self.auth_provider.get_howler_token(
                 user_access_token.token
             )
@@ -123,7 +125,7 @@ class HowlerApiClient:
                 url=url,
                 headers=headers,
                 params=params,
-                json=body if method == "POST" else None,
+                json=body if body is not None else None,
             )
             status_code = response.status_code
             response.raise_for_status()

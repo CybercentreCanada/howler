@@ -1,7 +1,9 @@
 import re
+from logging import getLogger
 from typing import Any
 
-from fastmcp.server.dependencies import get_access_token
+from fastmcp.server.dependencies import get_access_token, get_http_request
+from howler_mcp.api import HowlerApiClient
 from mcp.server.auth.provider import AccessToken
 from pydantic import BaseModel, Field
 
@@ -11,6 +13,7 @@ MAXIMUM_OFFSET: int = 10000
 # Reject ASCII control characters and path separators in path-bound
 # identifiers such as hit_id.
 CONTROL_OR_PATH_SEP_PATTERN = re.compile(r"[\x00-\x1F\x7F/\\]")
+logger = getLogger(__name__)
 
 
 class WhoAmIResponse(BaseModel):
@@ -39,7 +42,7 @@ class HowlerResponse(BaseModel):
     )
 
 
-def register_tools(mcp, api_client):
+def register_tools(mcp, api_client: HowlerApiClient):
     """Register all Howler MCP tools on the provided FastMCP instance.
 
     Args:
@@ -53,11 +56,90 @@ def register_tools(mcp, api_client):
         """Return True when value contains control chars or path separators."""
         return bool(CONTROL_OR_PATH_SEP_PATTERN.search(value))
 
+    # TODO: rework this. its AI and it was to quick debug something for somethign else
     def _proper_access_token() -> AccessToken:
         """Return the current request access token or fail consistently."""
-        access_token: AccessToken | None = get_access_token()
+        request_available = False
+        scope_user_available = False
+        scope_token_available = False
+        scope_token_type = "none"
+        auth_header_present = False
+        request_path = "unknown"
+        scope_access_token: Any = None
+
+        try:
+            request = get_http_request()
+            request_available = request is not None
+            if request_available:
+                scope_user = request.scope.get("user")
+                scope_user_available = scope_user is not None
+                if scope_user_available:
+                    scope_access_token = getattr(scope_user, "access_token", None)
+                    scope_token_available = scope_access_token is not None
+                    scope_token_type = type(scope_access_token).__name__
+                auth_header_present = bool(request.headers.get("authorization"))
+                request_path = request.url.path
+        except RuntimeError as exc:
+            logger.warning(f"auth_context_probe_failed error={exc}")
+
+        access_token: AccessToken | None = None
+        try:
+            access_token = get_access_token()
+        except ValueError as exc:
+            # FastMCP may fail internal type checks even when request.scope.user
+            # is present. Recover by coercing the scoped access_token manually.
+            if scope_token_available:
+                if isinstance(scope_access_token, AccessToken):
+                    access_token = scope_access_token
+                else:
+                    token_value = getattr(scope_access_token, "token", None)
+                    client_id = getattr(
+                        scope_access_token, "client_id", "unknown-client"
+                    )
+                    scopes = getattr(scope_access_token, "scopes", [])
+                    expires_at = getattr(scope_access_token, "expires_at", None)
+                    resource = getattr(scope_access_token, "resource", None)
+
+                    if token_value:
+                        access_token = AccessToken(
+                            token=token_value,
+                            client_id=client_id,
+                            scopes=list(scopes or []),
+                            expires_at=expires_at,
+                            resource=resource,
+                        )
+
+            if not access_token:
+                raise ValueError(
+                    "Access token is not available. "
+                    f"request_available={request_available} "
+                    f"scope_user_available={scope_user_available} "
+                    f"scope_token_available={scope_token_available} "
+                    f"scope_token_type={scope_token_type} "
+                    f"auth_header_present={auth_header_present} "
+                    f"request_path={request_path} "
+                    f"upstream_error={exc}"
+                ) from exc
+
+        logger.info(
+            "auth_context_probe "
+            f"request_available={request_available} "
+            f"scope_user_available={scope_user_available} "
+            f"scope_token_available={scope_token_available} "
+            f"scope_token_type={scope_token_type} "
+            f"auth_header_present={auth_header_present} "
+            f"request_path={request_path} "
+            f"token_resolved={bool(access_token)}"
+        )
+
         if not access_token:
-            raise ValueError("Access token is not available.")
+            raise ValueError(
+                "Access token is not available. "
+                f"request_available={request_available} "
+                f"scope_user_available={scope_user_available} "
+                f"auth_header_present={auth_header_present} "
+                f"request_path={request_path}"
+            )
         return access_token
 
     async def _validate_query_fields(query: str) -> str:
@@ -417,3 +499,101 @@ def register_tools(mcp, api_client):
                 for item in (data.get("items") or [])
             ],
         )
+
+    @mcp.tool(name="get_label_set_options")
+    async def get_label_set_options() -> list[str]:
+        """Return the valid hit label categories supported by Howler.
+
+        Returns:
+            list[str]: Label category names derived from the searchable hit
+                fields, for example ``generic`` or ``victim``.
+
+        Raises:
+            ValueError: If the request cannot be authenticated.
+        """
+        nonlocal cached_hit_fields
+
+        # Load and cache the searchable field names once for this process.
+        if cached_hit_fields is None:
+            cached_hit_fields = set((await get_hit_fields()).keys())
+
+        label_set_options: list[str] = []
+
+        for field in cached_hit_fields:
+            # Only keep hit label fields such as howler.labels.generic.
+            if not field.startswith("howler.labels."):
+                continue
+
+            # Strip the common prefix so the caller gets just the label set
+            # name, for example "generic" instead of "howler.labels.generic".
+            label = field.replace("howler.labels.", "")
+
+            if label == "":
+                continue
+
+            # Build the final list of supported label set options.
+            label_set_options.append(label)
+
+        return label_set_options
+
+    @mcp.tool(name="add_label_to_hit")
+    async def add_label_to_hit(
+        hit_id: str, labels_name: list[str], label_set: str
+    ):  # -> list[str]:
+        """Add one or more labels to a hit and return the updated label list.
+
+        Args:
+            hit_id: Howler hit identifier to update.
+            labels_name: Label values to add to the hit.
+            label_set: Label category to update, for example ``generic`` or
+                ``victim``.
+
+        Returns:
+            list[str]: Updated list of labels for the requested category.
+
+        Raises:
+            ValueError: If the hit id is empty, the label list is empty, or the
+                request cannot be authenticated.
+        """
+        # The backend expects lower-case label categories in the URL path.
+        label_set = label_set.lower()
+
+        if not isinstance(labels_name, list) or len(labels_name) == 0:
+            raise ValueError(
+                f"Label_name require to be a not empty list of string {labels_name}"
+            )
+
+        if not hit_id or not hit_id.strip():
+            raise ValueError(
+                f"hit_id require to be a none empty or white space string, received {hit_id}"
+            )
+
+        # Return just the updated labels for the requested category to keep the
+        # MCP tool response small and easy to consume.
+        data: dict = await api_client.call(
+            user_access_token=_proper_access_token(),
+            path=f"/hit/{hit_id.strip()}/labels/{label_set}",
+            method="PUT",
+            body={"value": labels_name},
+        )
+        return data.get("howler", {}).get("labels", {}).get(label_set, [])
+
+    @mcp.tool(name="create_dossier")
+    def create_dossier() -> bool:
+        """
+        - find API for it
+        - ask the LLM for the information require by the API
+        - find if dossier with same information exist
+        - create dossier
+        """
+        return False
+
+    @mcp.tool(name="update_dossier")
+    def update_dossier() -> bool:
+        """
+        - find API for it
+        - ask the LLM for the information require by the API
+        - find if dossier with same information exist
+        - create dossier
+        """
+        return False
