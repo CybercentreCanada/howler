@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import elasticsearch
 import pytest
+from elastic_transport import ApiResponseMeta
 
 from howler.datastore.collection import ESCollection
 from howler.odm.models.config import ILMConfig, ILMIndexConfig
@@ -48,6 +49,43 @@ def _make_collection(mock_datastore, ilm_config=None):
     mock_datastore._models = {"testcol": None}
     col = ESCollection(mock_datastore, "testcol", model_class=None, ilm_config=ilm_config)
     return col
+
+
+class TestExists:
+    """Tests for alias-safe document existence checks."""
+
+    def test_ilm_exists_uses_search_instead_of_single_document_endpoint(self, mock_datastore):
+        """ILM aliases can resolve to multiple indexes, so use an ids search."""
+        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
+        mock_datastore.client.search.return_value = {"hits": {"total": {"value": 1, "relation": "eq"}}}
+
+        assert col.exists("document-id") is True
+
+        mock_datastore.client.exists.assert_not_called()
+        mock_datastore.client.search.assert_called_once_with(
+            index=col.name,
+            query={"ids": {"values": ["document-id"]}},
+            size=0,
+            track_total_hits=True,
+        )
+
+    def test_exists_falls_back_to_search_after_bad_request(self, mock_datastore, caplog):
+        """Unexpected multi-index alias errors recover through the alias-safe search."""
+        col = _make_collection(mock_datastore)
+        meta = ApiResponseMeta(status=400, http_version="1.1", headers={}, duration=0.0, node=None)
+        mock_datastore.client.exists.side_effect = elasticsearch.exceptions.BadRequestError("bad_request", meta, {})
+        mock_datastore.client.search.return_value = {"hits": {"total": {"value": 0, "relation": "eq"}}}
+
+        with caplog.at_level("ERROR", logger="howler.api.datastore"):
+            assert col.exists("document-id") is False
+
+        assert "falling back to an alias-safe search" in caplog.text
+        mock_datastore.client.search.assert_called_once_with(
+            index=col.name,
+            query={"ids": {"values": ["document-id"]}},
+            size=0,
+            track_total_hits=True,
+        )
 
 
 class TestCreateILMPolicy:

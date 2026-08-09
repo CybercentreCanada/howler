@@ -1136,13 +1136,35 @@ class ESCollection(Generic[ModelType]):
 
         return data
 
+    def _search_exists(self, key) -> bool:
+        """Check document existence with an alias-safe search query."""
+        result = self.with_retries(
+            self.datastore.client.search,
+            index=self.name,
+            query={"ids": {"values": [key]}},
+            size=0,
+            track_total_hits=True,
+        )
+        total = result["hits"]["total"]
+        return total["value"] > 0 if isinstance(total, dict) else total > 0
+
     def exists(self, key) -> bool:
         """Check if a document exists in the datastore.
 
         :param key: key of the document to get from the datastore
         :return: true/false depending if the document exists or not
         """
-        return cast(bool, self.with_retries(self.datastore.client.exists, index=self.name, id=key, _source=False))
+        if self.ilm_config:
+            return self._search_exists(key)
+
+        try:
+            return cast(bool, self.with_retries(self.datastore.client.exists, index=self.name, id=key, _source=False))
+        except elasticsearch.BadRequestError:
+            logger.exception(
+                "Single-document existence check failed on %s; falling back to an alias-safe search.",
+                self.name,
+            )
+            return self._search_exists(key)
 
     @overload
     def _get(self, key, retries, version: Literal[False]) -> dict[str, Any]: ...

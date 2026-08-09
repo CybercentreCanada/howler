@@ -456,3 +456,7 @@ For legacy collections, pass the collection alias through the `aliases` argument
 ### ILM Reindex Index Discovery
 
 Reindex and cleanup must enumerate `index_list_full`, not `index_list`, so existing physical ILM rollover indices are handled even when ILM is currently disabled in configuration. Canonical rollover names are exactly `{collection}-NNNNNN`; exclude `__reindex` temporary indices from discovery and preserve source lifecycle metadata on the reindex target.
+
+### ILM Collection Existence Checks
+
+Elasticsearch single-document `exists` requests cannot target an alias that resolves to multiple ILM rollover indexes. For ILM collections, use a zero-result `ids` search against the alias and derive existence from `hits.total`; retain the same search as a logged fallback when a legacy single-document check returns `BadRequestError`.
