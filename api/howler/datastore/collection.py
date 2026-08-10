@@ -16,6 +16,7 @@ from typing import Any, Callable, Dict, Generic, Literal, Optional, TypeVar, Uni
 import elasticsearch
 from datemath import dm
 from datemath.helpers import DateMathException
+from elastic_transport import ApiResponseMeta
 from opentelemetry import trace
 
 from howler import odm
@@ -1166,6 +1167,17 @@ class ESCollection(Generic[ModelType]):
             )
             return self._search_exists(key)
 
+    def _raise_document_not_found(self, key: str, result: Any) -> typing.NoReturn:
+        """Raise the same error shape as an Elasticsearch document lookup for an empty search."""
+        meta = ApiResponseMeta(
+            status=404,
+            http_version="1.1",
+            headers=cast(Any, {}),
+            duration=0.0,
+            node=cast(Any, None),
+        )
+        raise elasticsearch.exceptions.NotFoundError(f"Document with id {key} not found", meta, result)
+
     @overload
     def _get(self, key, retries, version: Literal[False]) -> dict[str, Any]: ...
 
@@ -1176,7 +1188,7 @@ class ESCollection(Generic[ModelType]):
         """Versioned get-save for atomic update has two paths:
             1. Document doesn't exist at all. Create token will be returned for version.
                This way only the first query to try and create the document will succeed.
-            2. Document exists in hot. A version string with the info needed to do a versioned save is returned.
+            2. Document exists. A version string with the info needed to do a versioned save is returned.
 
         The create token is needed to differentiate between "I'm saving a new
         document non-atomic (version=None)" and "I'm saving a new document
@@ -1195,11 +1207,29 @@ class ESCollection(Generic[ModelType]):
         done = False
         while not done:
             try:
-                doc = self.with_retries(self.datastore.client.get, index=self.name, id=key)
+                if self.ilm_config:
+                    result = self.with_retries(
+                        self.datastore.client.search,
+                        index=self.name,
+                        query={"ids": {"values": [key]}},
+                        size=1,
+                        seq_no_primary_term=True,
+                    )
+                    hits = result["hits"]["hits"]
+                    if not hits:
+                        self._raise_document_not_found(key, result)
+                    doc = hits[0]
+                else:
+                    doc = self.with_retries(self.datastore.client.get, index=self.name, id=key)
+
                 if version:
+                    if self.ilm_config:
+                        version_token = f"{doc['_index']}---{doc['_seq_no']}---{doc['_primary_term']}"
+                    else:
+                        version_token = f"{doc['_seq_no']}---{doc['_primary_term']}"
                     return (
                         normalize_output(doc["_source"]),
-                        f"{doc['_seq_no']}---{doc['_primary_term']}",
+                        version_token,
                     )
                 return normalize_output(doc["_source"])
             except elasticsearch.exceptions.NotFoundError:
@@ -1217,6 +1247,15 @@ class ESCollection(Generic[ModelType]):
             return None, CREATE_TOKEN
 
         return None
+
+    def _get_version_write_target(self, version: str) -> tuple[str, str, str]:
+        """Return the concrete write target and optimistic-concurrency values from a version token."""
+        version_parts = version.split("---")
+        if len(version_parts) == 3:
+            return version_parts[0], version_parts[1], version_parts[2]
+
+        seq_no, primary_term = version_parts
+        return self.name, seq_no, primary_term
 
     @overload
     def get(self, key, as_obj: Literal[True], version: Literal[True]) -> tuple[ModelType | None, str]: ...
@@ -1347,13 +1386,17 @@ class ESCollection(Generic[ModelType]):
 
         saved_data["id"] = key
         operation = "index"
+        index = self.name
         seq_no = None
         primary_term = None
+
+        if version is None and self.ilm_config:
+            _, version = self.get_if_exists(key, as_obj=False, version=True)
 
         if version == CREATE_TOKEN:
             operation = "create"
         elif version:
-            seq_no, primary_term = version.split("---")
+            index, seq_no, primary_term = self._get_version_write_target(version)
 
         if refresh == "true":
             logger.warning(
@@ -1363,7 +1406,7 @@ class ESCollection(Generic[ModelType]):
         try:
             self.with_retries(
                 self.datastore.client.index,
-                index=self.name,
+                index=index,
                 id=key,
                 document=json.dumps(saved_data),
                 op_type=operation,
@@ -1563,15 +1606,16 @@ class ESCollection(Generic[ModelType]):
         """
         operations = self._validate_operations(operations)
         script = self._create_scripts_from_operations(operations)
+        index = self.name
         seq_no = None
         primary_term = None
         if version:
-            seq_no, primary_term = version.split("---")
+            index, seq_no, primary_term = self._get_version_write_target(version)
 
         try:
             res = self.with_retries(
                 self.datastore.client.update,
-                index=self.name,
+                index=index,
                 id=key,
                 script=script,
                 if_seq_no=seq_no,
@@ -1581,7 +1625,11 @@ class ESCollection(Generic[ModelType]):
             )
             return (
                 res["result"] == "updated",
-                f"{res['_seq_no']}---{res['_primary_term']}",
+                (
+                    f"{res['_index']}---{res['_seq_no']}---{res['_primary_term']}"
+                    if self.ilm_config
+                    else f"{res['_seq_no']}---{res['_primary_term']}"
+                ),
             )
         except elasticsearch.NotFoundError as e:
             logger.warning("Update - elasticsearch.NotFoundError: %s %s", e.message, e.info)

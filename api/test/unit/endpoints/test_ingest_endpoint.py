@@ -618,7 +618,7 @@ class TestOverwrite:
 
         existing = {"howler": {"id": "hit-001", "analytic": "A"}, "event": {"kind": "alert"}}
         mock_ds.return_value.__getitem__.return_value.get.side_effect = [
-            existing,
+            (existing, "v1"),
             ({"howler": {"id": "hit-001", "analytic": "B"}, "event": {"kind": "alert"}}, "v2"),
         ]
         mock_ds.return_value.__getitem__.return_value.save.return_value = True
@@ -630,10 +630,20 @@ class TestOverwrite:
         ):
             from howler.api.v2.ingest import overwrite
 
-            result: Response = overwrite(index="hit", id="hit-001", server_version="v1", user=user)
+            result: Response = overwrite(index="hit", id="hit-001", user=user)
 
             assert result.status_code == 200
             assert result.headers.get("ETag") == "v2"
+            mock_ds.return_value.__getitem__.return_value.save.assert_called_once_with(
+                "hit-001",
+                {
+                    "howler.id": "hit-001",
+                    "howler.analytic": "B",
+                    "event.kind": "alert",
+                },
+                version="v1",
+                refresh=None,
+            )
 
     @patch("howler.api.v2.ingest.datastore")
     @patch("howler.security.auth_service")
@@ -660,7 +670,7 @@ class TestOverwrite:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_ds.return_value.__getitem__.return_value.get.return_value = None
+        mock_ds.return_value.__getitem__.return_value.get.return_value = (None, "create")
 
         with request_context.test_request_context(
             method="PATCH",
@@ -680,7 +690,7 @@ class TestOverwrite:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_ds.return_value.__getitem__.return_value.get.return_value = {"howler": {"id": "hit-001"}}
+        mock_ds.return_value.__getitem__.return_value.get.return_value = ({"howler": {"id": "hit-001"}}, "v1")
 
         with request_context.test_request_context(
             method="PATCH",

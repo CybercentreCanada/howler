@@ -143,7 +143,7 @@ def update_action(id: str, user: User, **kwargs) -> Response:
 
     ds = datastore()
 
-    existing_action = ds.action.get(id, as_obj=False)
+    existing_action, server_version = ds.action.get(id, as_obj=False, version=True)
 
     if not existing_action:
         return not_found(err="The specified automation does not exist")
@@ -166,7 +166,7 @@ def update_action(id: str, user: User, **kwargs) -> Response:
         action_obj = Action(updated_action)
         action_obj.action_id = id
 
-        ds.action.save(action_obj.action_id, action_obj, refresh=refresh)
+        ds.action.save(action_obj.action_id, action_obj, version=server_version, refresh=refresh)
     except HowlerException as e:
         return bad_request(err=str(e))
 

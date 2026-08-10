@@ -164,15 +164,34 @@ class TestSaveMethod:
 
     @patch("howler.odm.mixins.datastore")
     def test_save_calls_collection_save_with_correct_id_and_instance(self, mock_datastore):
-        """save calls ds[index].save(id, self) with the correct arguments."""
+        """save delegates the ID, instance, and default refresh to ds[index].save."""
         mock_ds = MagicMock()
         mock_datastore.return_value = mock_ds
+        collection = mock_ds.__getitem__.return_value
 
         instance = _FakeModel(fake_id="my-id")
         instance.save()
 
         mock_ds.__getitem__.assert_called_once_with("_fakemodel")
-        mock_ds["_fakemodel"].save.assert_called_once_with("my-id", instance, refresh="wait_for")
+        collection.get_if_exists.assert_not_called()
+        collection.save.assert_called_once_with("my-id", instance, version=None, refresh="wait_for")
+
+    @patch("howler.odm.mixins.datastore")
+    def test_save_uses_the_supplied_version(self, mock_datastore):
+        mock_ds = MagicMock()
+        mock_datastore.return_value = mock_ds
+        instance = _FakeModel(fake_id="my-id")
+
+        instance.save(version="howler-case-000001---5---2")
+
+        collection = mock_ds.__getitem__.return_value
+        collection.get_if_exists.assert_not_called()
+        collection.save.assert_called_once_with(
+            "my-id",
+            instance,
+            version="howler-case-000001---5---2",
+            refresh="wait_for",
+        )
 
     @patch("howler.odm.mixins.datastore")
     def test_save_uses_lowercase_class_name_as_index(self, mock_datastore):
@@ -181,7 +200,7 @@ class TestSaveMethod:
         mock_datastore.return_value = mock_ds
 
         instance = _AnotherModel(another_id="another-id")
-        instance.save()
+        instance.save(version="v1")
 
         mock_ds.__getitem__.assert_called_once_with("_anothermodel")
 
@@ -193,7 +212,7 @@ class TestSaveMethod:
         mock_datastore.return_value = mock_ds
 
         instance = _FakeModel()
-        result = instance.save()
+        result = instance.save(version="v1")
 
         assert result is True
 
@@ -205,7 +224,7 @@ class TestSaveMethod:
         mock_datastore.return_value = mock_ds
 
         instance = _FakeModel()
-        result = instance.save()
+        result = instance.save(version="v1")
 
         assert result is False
 
@@ -216,7 +235,7 @@ class TestSaveMethod:
         mock_datastore.return_value = mock_ds
 
         instance = _FakeModel(fake_id="specific-id-123")
-        instance.save()
+        instance.save(version="v1")
 
         saved_id = mock_ds.__getitem__.return_value.save.call_args[0][0]
         assert saved_id == "specific-id-123"
@@ -228,7 +247,7 @@ class TestSaveMethod:
         mock_datastore.return_value = mock_ds
 
         instance = _DottedIDModel(fake_id="specific-id-456")
-        instance.save()
+        instance.save(version="v1")
 
         saved_id = mock_ds.__getitem__.return_value.save.call_args[0][0]
         assert saved_id == "specific-id-456"
@@ -240,7 +259,7 @@ class TestSaveMethod:
         mock_datastore.return_value = mock_ds
 
         instance = _FakeModel(fake_id="id-abc")
-        instance.save()
+        instance.save(version="v1")
 
         saved_obj = mock_ds.__getitem__.return_value.save.call_args[0][1]
         assert saved_obj is instance
@@ -251,7 +270,7 @@ class TestSaveMethod:
         mock_datastore.return_value = MagicMock()
 
         instance = _FakeModel()
-        instance.save()
-        instance.save()
+        instance.save(version="v1")
+        instance.save(version="v1")
 
         assert mock_datastore.call_count == 2
