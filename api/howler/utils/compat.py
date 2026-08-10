@@ -7,7 +7,7 @@ import sys
 
 if sys.version_info >= (3, 11):
     from enum import StrEnum
-    from typing import NotRequired, TypedDict
+    from typing import NotRequired, Self, TypedDict
 else:
     from enum import Enum as _Enum
 
@@ -22,6 +22,6 @@ else:
 
     # typing_extensions.TypedDict supports Generic[T] mixing on Python < 3.11;
     # the stdlib version does not gain that until 3.11.
-    from typing_extensions import NotRequired, TypedDict  # noqa: F401
+    from typing_extensions import NotRequired, Self, TypedDict  # noqa: F401
 
-__all__ = ["NotRequired", "StrEnum", "TypedDict"]
+__all__ = ["NotRequired", "StrEnum", "TypedDict", "Self"]

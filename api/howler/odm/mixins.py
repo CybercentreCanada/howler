@@ -9,12 +9,13 @@ Elasticsearch datastore without boilerplate.
 from __future__ import annotations
 
 from operator import attrgetter
-from typing import Generic, Literal, Self, TypeVar, overload
+from typing import Generic, Literal, TypeVar, overload
 
 from howler.common.exceptions import HowlerRuntimeError
 from howler.common.loader import datastore
 from howler.datastore.collection import ESCollection
 from howler.odm.base import Model
+from howler.utils.compat import Self
 
 ModelType = TypeVar("ModelType", bound=Model)
 

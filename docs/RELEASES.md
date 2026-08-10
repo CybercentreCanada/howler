@@ -1,5 +1,9 @@
 # Howler Releases
 
+## Howler API `v4.0.5`
+
+- **Python 3.10 typing error** _(bugfix)_: Fixes issue where typing import failed on POython 3.10 versions
+
 ## Howler API `v4.0.4`
 
 - **ILM Atomic Document Writes** _(bugfix)_: Versioned ILM document lookups now search all rollover indices and use the matched concrete index for optimistic-concurrency writes.
