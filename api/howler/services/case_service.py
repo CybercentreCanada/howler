@@ -19,6 +19,7 @@ from howler.common.exceptions import (
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
 from howler.config import CLASSIFICATION
+from howler.datastore.collection import CREATE_TOKEN
 from howler.datastore.exceptions import DataStoreException
 from howler.odm.models.case import Case, CaseItem, CaseItemTypes, CaseLog, CaseRule
 from howler.odm.models.ecs.related import Related
@@ -56,7 +57,7 @@ def create_case(
 
     case = Case(case_data)
     case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user.uname if user else "system"})]
-    case.save(refresh="wait_for")
+    case.save(refresh="wait_for", version=CREATE_TOKEN)
     CREATED_CASES.inc()
 
     for item in items:
@@ -693,18 +694,18 @@ def remove_case_items(  # noqa: C901
 
     # Resolve backing objects for back-reference cleanup
     items_to_remove = [items_by_id[iid] for iid in ids_to_remove if iid in items_by_id]
-    backing_objs: list[Hit | Event] = []
+    backing_objs: list[tuple[Hit | Event, str]] = []
     for item in items_to_remove:
         if item.type in [CaseItemTypes.HIT, CaseItemTypes.EVENT]:
-            obj = ds[item.type].get(item.value)
+            obj, version = ds[item.type].get(item.value, as_obj=True, version=True)
             if obj:
-                backing_objs.append(obj)
+                backing_objs.append((obj, version))
 
     case.items = [item for item in case.items if item.id not in ids_to_remove]
 
-    for backing_obj in backing_objs:
+    for backing_obj, version in backing_objs:
         remove_backreference(backing_obj, case.case_id)
-        backing_obj.save()
+        backing_obj.save(version=version)
 
     recompute_case_metadata(case)
 
@@ -745,7 +746,7 @@ def append_hit(case: Case, item: CaseItem, refresh: Literal["true", "false", "wa
     """
     ds = datastore()
 
-    hit = ds.hit.get(item.value)
+    hit, version = ds.hit.get(item.value, as_obj=True, version=True)
     if hit is None:
         raise NotFoundException(f"Hit {item.value} not found, cannot be added to case")
 
@@ -754,7 +755,7 @@ def append_hit(case: Case, item: CaseItem, refresh: Literal["true", "false", "wa
     case.items.append(item)
 
     add_backreference(hit, case.case_id)
-    hit.save()
+    hit.save(version=version)
 
     recompute_case_metadata(case)
     if not case.save(refresh=refresh):  # pragma: no cover
@@ -783,7 +784,7 @@ def append_event(case: Case, item: CaseItem, refresh: Literal["true", "false", "
     """
     ds = datastore()
 
-    event = ds.event.get(key=item.value)
+    event, version = ds.event.get(key=item.value, as_obj=True, version=True)
 
     if event is None:
         raise NotFoundException(f"Event {item.value} not found, cannot be added to case")
@@ -793,7 +794,7 @@ def append_event(case: Case, item: CaseItem, refresh: Literal["true", "false", "
     case.items.append(item)
 
     add_backreference(event, case.case_id)
-    event.save()
+    event.save(version=version)
 
     recompute_case_metadata(case)
     if not case.save(refresh=refresh):  # pragma: no cover

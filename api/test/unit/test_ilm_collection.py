@@ -88,6 +88,99 @@ class TestExists:
         )
 
 
+class TestILMVersionedOperations:
+    """Tests for alias-safe ILM reads followed by optimistic-concurrency writes."""
+
+    def test_versioned_get_uses_search_and_returns_concrete_index(self, mock_datastore):
+        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
+        concrete_index = f"{col.name}-000001"
+        mock_datastore.client.search.return_value = {
+            "hits": {
+                "hits": [
+                    {
+                        "_index": concrete_index,
+                        "_seq_no": 5,
+                        "_primary_term": 2,
+                        "_source": {"id": "document-id", "value": "original"},
+                    }
+                ]
+            }
+        }
+
+        data, version = col.get_if_exists("document-id", as_obj=False, version=True)
+
+        assert data == {"value": "original"}
+        assert version == f"{concrete_index}---5---2"
+        mock_datastore.client.get.assert_not_called()
+        mock_datastore.client.search.assert_called_once_with(
+            index=col.name,
+            query={"ids": {"values": ["document-id"]}},
+            size=1,
+            seq_no_primary_term=True,
+        )
+
+    def test_versioned_get_returns_create_token_for_missing_ilm_document(self, mock_datastore):
+        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
+        mock_datastore.client.search.return_value = {"hits": {"hits": []}}
+
+        data, version = col.get_if_exists("missing-document", as_obj=False, version=True)
+
+        assert data is None
+        assert version == "create"
+
+    def test_versioned_writes_target_the_concrete_ilm_index(self, mock_datastore):
+        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
+        concrete_index = f"{col.name}-000001"
+        version = f"{concrete_index}---5---2"
+        mock_datastore.client.update.return_value = {
+            "result": "updated",
+            "_index": concrete_index,
+            "_seq_no": 6,
+            "_primary_term": 2,
+        }
+
+        col.save("document-id", {"value": "updated"}, version=version)
+        updated, new_version = col.update("document-id", [(col.UPDATE_SET, "value", "updated")], version=version)
+
+        assert mock_datastore.client.index.call_args.kwargs["index"] == concrete_index
+        assert mock_datastore.client.update.call_args.kwargs["index"] == concrete_index
+        assert mock_datastore.client.index.call_args.kwargs["if_seq_no"] == "5"
+        assert mock_datastore.client.index.call_args.kwargs["if_primary_term"] == "2"
+        assert updated is True
+        assert new_version == f"{concrete_index}---6---2"
+
+    def test_unversioned_save_resolves_the_existing_ilm_document_version(self, mock_datastore):
+        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
+        concrete_index = f"{col.name}-000001"
+        mock_datastore.client.search.return_value = {
+            "hits": {
+                "hits": [
+                    {
+                        "_index": concrete_index,
+                        "_seq_no": 5,
+                        "_primary_term": 2,
+                        "_source": {"id": "document-id", "value": "original"},
+                    }
+                ]
+            }
+        }
+
+        col.save("document-id", {"value": "updated"})
+
+        assert mock_datastore.client.index.call_args.kwargs["index"] == concrete_index
+        assert mock_datastore.client.index.call_args.kwargs["if_seq_no"] == "5"
+        assert mock_datastore.client.index.call_args.kwargs["if_primary_term"] == "2"
+
+    def test_unversioned_save_creates_a_missing_ilm_document(self, mock_datastore):
+        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
+        mock_datastore.client.search.return_value = {"hits": {"hits": []}}
+
+        col.save("document-id", {"value": "new"})
+
+        assert mock_datastore.client.index.call_args.kwargs["index"] == col.name
+        assert mock_datastore.client.index.call_args.kwargs["op_type"] == "create"
+
+
 class TestCreateILMPolicy:
     """Tests for _create_ilm_policy."""
 

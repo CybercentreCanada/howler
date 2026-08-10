@@ -137,6 +137,7 @@ class TestUpdateCase:
         """update_case raises InvalidDataException when an immutable field is supplied."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
+        mock_ds.case.get_if_exists.return_value = (None, "create")
         mock_ds.case.get.return_value = Case(
             {
                 "case_id": "case-001",
@@ -158,6 +159,7 @@ class TestUpdateCase:
         """update_case saves the updated case and returns it."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
+        mock_ds.case.get_if_exists.return_value = (None, "create")
         mock_ds.case.get.return_value = Case(
             {
                 "case_id": "case-001",
@@ -186,6 +188,7 @@ class TestUpdateCase:
         """update_case raises InvalidDataException when the immutable 'updated' field is supplied."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
+        mock_ds.case.get_if_exists.return_value = (None, "create")
         mock_ds.case.get.return_value = Case(
             {"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"}
         )
@@ -200,6 +203,7 @@ class TestUpdateCase:
         """update_case accepts 'items' as a compound field (not immutable) and does not raise."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
+        mock_ds.case.get_if_exists.return_value = (None, "create")
         mock_ds.case.get.return_value = Case(
             {"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"}
         )
@@ -642,7 +646,7 @@ class TestAppendHit:
 
         mock_hit = MagicMock()
         mock_hit.classification = CLASSIFICATION.UNRESTRICTED
-        mock_ds.hit.get.return_value = mock_hit
+        mock_ds.hit.get.return_value = (mock_hit, "howler-hit-000001---5---2")
 
         item = CaseItem({"type": "hit", "value": "hit-001"})
         case_service.append_hit(mock_case, item)
@@ -650,7 +654,7 @@ class TestAppendHit:
         assert len(mock_case.items) == 1
         mock_backref.assert_called_once_with(mock_hit, "case-001")
         mock_sync.assert_called_once_with(mock_case)
-        mock_hit.save.assert_called_once()
+        mock_hit.save.assert_called_once_with(version="howler-hit-000001---5---2")
 
     @patch("howler.services.case_service.recompute_case_metadata")
     @patch("howler.services.case_service.add_backreference")
@@ -667,7 +671,7 @@ class TestAppendHit:
 
         mock_hit = MagicMock()
         mock_hit.classification = CLASSIFICATION.UNRESTRICTED
-        mock_ds.hit.get.return_value = mock_hit
+        mock_ds.hit.get.return_value = (mock_hit, "howler-hit-000001---5---2")
 
         item = CaseItem({"type": "hit", "value": "hit-001", "name": "My Alert", "parent": None})
         case_service.append_hit(mock_case, item)
@@ -695,7 +699,7 @@ class TestAppendHit:
         mock_case = MagicMock()
         mock_case.items = []
         mock_ds.case.get.return_value = mock_case
-        mock_ds.hit.get.return_value = None
+        mock_ds.hit.get.return_value = (None, "create")
 
         item = CaseItem({"type": "hit", "value": "nonexistent-hit"})
         with pytest.raises(NotFoundException):
@@ -714,7 +718,8 @@ class TestAppendHit:
         mock_case = MagicMock()
         mock_case.items = [existing]
         mock_ds.case.get.return_value = mock_case
-        mock_ds.hit.get.return_value = MagicMock(classification=CLASSIFICATION.UNRESTRICTED)
+        mock_hit = MagicMock(classification=CLASSIFICATION.UNRESTRICTED)
+        mock_ds.hit.get.side_effect = [(mock_hit, "howler-hit-000001---5---2"), mock_hit, mock_hit]
 
         item = CaseItem({"type": "hit", "value": "hit-002", "name": "dup"})
         case_service.append_case_item("case-001", item=item)
@@ -764,7 +769,7 @@ class TestAppendEvent:
         mock_obs = MagicMock()
         mock_obs.classification = CLASSIFICATION.UNRESTRICTED
         mock_obs.howler.id = "obs-001"
-        mock_ds.event.get.return_value = mock_obs
+        mock_ds.event.get.return_value = (mock_obs, "howler-event-000001---5---2")
 
         item = CaseItem({"type": "event", "value": "obs-001"})
         case_service.append_event(mock_case, item)
@@ -773,7 +778,7 @@ class TestAppendEvent:
         assert len(mock_case.items) == 1
         mock_backref.assert_called_once_with(mock_obs, "case-001")
         mock_sync.assert_called_once_with(mock_case)
-        mock_obs.save.assert_called_once()
+        mock_obs.save.assert_called_once_with(version="howler-event-000001---5---2")
 
     @patch("howler.services.case_service.datastore")
     def test_append_event_missing_case_raises(self, mock_ds_fn):
@@ -795,7 +800,7 @@ class TestAppendEvent:
         mock_case = MagicMock()
         mock_case.items = []
         mock_ds.case.get.return_value = mock_case
-        mock_ds.event.get.return_value = None
+        mock_ds.event.get.return_value = (None, "create")
 
         item = CaseItem({"type": "event", "value": "nonexistent-obs"})
         with pytest.raises(NotFoundException):
@@ -811,7 +816,12 @@ class TestAppendEvent:
         mock_case = MagicMock()
         mock_case.items = [existing]
         mock_ds.case.get.return_value = mock_case
-        mock_ds.event.get.return_value = MagicMock(classification=CLASSIFICATION.UNRESTRICTED)
+        mock_event = MagicMock(classification=CLASSIFICATION.UNRESTRICTED)
+        mock_ds.event.get.return_value = (
+            mock_event,
+            "howler-event-000001---5---2",
+        )
+        mock_ds.event.get.side_effect = [(mock_event, "howler-event-000001---5---2"), mock_event, mock_event]
 
         item = CaseItem({"type": "event", "value": "obs-002", "name": "dup"})
         case_service.append_case_item("case-001", item=item)
@@ -1086,7 +1096,7 @@ class TestRemoveCaseItem:
 
         mock_hit = MagicMock()
         mock_hit.howler.related = ["case-001"]
-        mock_ds.hit.get.return_value = mock_hit
+        mock_ds.__getitem__.return_value.get.return_value = (mock_hit, "howler-hit-000001---5---2")
 
         case_service.remove_case_items("case-001", [hit_item.id])
 
@@ -1110,7 +1120,7 @@ class TestRemoveCaseItem:
 
         mock_obs = MagicMock()
         mock_obs.howler.related = ["case-001"]
-        mock_ds.event.get.return_value = mock_obs
+        mock_ds.__getitem__.return_value.get.return_value = (mock_obs, "howler-event-000001---5---2")
 
         case_service.remove_case_items("case-001", [obs_item.id])
 
@@ -1547,7 +1557,7 @@ class TestCaseEventEmission:
         mock_hit.howler.id = "hit-001"
 
         mock_ds.case.get.return_value = mock_case
-        mock_ds.hit.get.return_value = mock_hit
+        mock_ds.hit.get.return_value = (mock_hit, "howler-hit-000001---5---2")
         mock_ds.case.save.return_value = True
 
         item = CaseItem({"type": "hit", "value": "hit-001", "name": "test"})
@@ -2098,7 +2108,7 @@ class TestCaseItemClassificationPropagation:
 
         mock_hit = MagicMock()
         mock_hit.classification = "RESTRICTED"
-        mock_ds.hit.get.return_value = mock_hit
+        mock_ds.hit.get.return_value = (mock_hit, "howler-hit-000001---5---2")
 
         item = CaseItem({"type": "hit", "value": "hit-001", "name": "hit-001"})
         case_service.append_hit(mock_case, item)
@@ -2121,7 +2131,7 @@ class TestCaseItemClassificationPropagation:
 
         mock_hit = MagicMock()
         mock_hit.classification = "UNRESTRICTED"
-        mock_ds.hit.get.return_value = mock_hit
+        mock_ds.hit.get.return_value = (mock_hit, "howler-hit-000001---5---2")
 
         item = CaseItem({"type": "hit", "value": "hit-001", "name": "hit-001"})
         case_service.append_hit(mock_case, item)
@@ -2145,7 +2155,7 @@ class TestCaseItemClassificationPropagation:
         mock_event = MagicMock()
         mock_event.classification = "RESTRICTED"
         mock_event.howler.id = "event-001"
-        mock_ds.event.get.return_value = mock_event
+        mock_ds.event.get.return_value = (mock_event, "howler-event-000001---5---2")
 
         item = CaseItem({"type": "event", "value": "event-001", "name": "event-001"})
         case_service.append_event(mock_case, item)
@@ -2169,7 +2179,7 @@ class TestCaseItemClassificationPropagation:
         mock_event = MagicMock()
         mock_event.classification = "UNRESTRICTED"
         mock_event.howler.id = "event-001"
-        mock_ds.event.get.return_value = mock_event
+        mock_ds.event.get.return_value = (mock_event, "howler-event-000001---5---2")
 
         item = CaseItem({"type": "event", "value": "event-001", "name": "event-001"})
         case_service.append_event(mock_case, item)

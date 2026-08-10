@@ -199,7 +199,7 @@ def update_dossier(  # noqa: C901
     storage = datastore()
 
     # Retrieve the existing dossier for access control checks
-    existing_dossier: Dossier = get_dossier(dossier_id, as_odm=True)
+    existing_dossier, server_version = get_dossier(dossier_id, as_odm=True, version=True)
 
     # Enforce access control for personal dossiers
     # Only the owner or admin users can modify personal dossiers
@@ -228,7 +228,7 @@ def update_dossier(  # noqa: C901
         # Merge the new data with existing dossier data
         new_data = Dossier(cast(dict, merge({}, existing_dossier.as_primitives(), dossier_data)))
 
-        storage.dossier.save(dossier_id, new_data, refresh=refresh)
+        storage.dossier.save(dossier_id, new_data, version=server_version, refresh=refresh)
 
         return new_data
     except SearchException:

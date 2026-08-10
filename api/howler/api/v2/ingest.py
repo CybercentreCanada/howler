@@ -265,7 +265,7 @@ def overwrite(index: str, id: str, **kwargs):
 
     ds = datastore()
 
-    record = ds[index].get(id, as_obj=False, version=False)
+    record, server_version = ds[index].get(id, as_obj=False, version=True)
     if not record:
         return not_found(err="Record %s does not exist" % id)
 
@@ -292,7 +292,7 @@ def overwrite(index: str, id: str, **kwargs):
         ds[index].save(
             id,
             odm(new_record) if odm else new_record,
-            version=kwargs.get("server_version"),
+            version=server_version,
             refresh=refresh,
         )
 

@@ -9,7 +9,7 @@ Elasticsearch datastore without boilerplate.
 from __future__ import annotations
 
 from operator import attrgetter
-from typing import Generic, Literal, TypeVar, overload
+from typing import Generic, Literal, Self, TypeVar, overload
 
 from howler.common.exceptions import HowlerRuntimeError
 from howler.common.loader import datastore
@@ -28,10 +28,10 @@ class _ObjectsDescriptor(Generic[ModelType]):
     """
 
     @overload
-    def __get__(self, obj: None, objtype: type[ModelType]) -> ESCollection[ModelType]: ...
+    def __get__(self: Self, obj: None, objtype: type[ModelType]) -> ESCollection[ModelType]: ...
 
     @overload
-    def __get__(self, obj: ModelType, objtype: type[ModelType]) -> ESCollection[ModelType]: ...
+    def __get__(self: Self, obj: ModelType, objtype: type[ModelType]) -> ESCollection[ModelType]: ...
 
     def __get__(self, obj: ModelType | None, objtype: type[ModelType] | None = None) -> ESCollection[ModelType]:
         """Return the ESCollection for the owner class.
@@ -82,7 +82,11 @@ class DatastoreMixin(Generic[ModelType]):
         """
         return datastore()
 
-    def save(self, refresh: Literal["true", "false", "wait_for"] | None = None) -> bool:
+    def save(
+        self: Self,
+        refresh: Literal["true", "false", "wait_for"] | None = None,
+        version: str | None = None,
+    ) -> bool:
         """Persist the current model instance to the datastore.
 
         Determines the target index from the lowercase class name, extracts the
@@ -96,5 +100,6 @@ class DatastoreMixin(Generic[ModelType]):
         index_name = self.__class__.__name__.lower()
         id_field = self.__class__._Model__id_field  # type: ignore[attr-defined]
         current_id = attrgetter(id_field)(self)
+        collection = self.ds[index_name]
 
-        return self.ds[index_name].save(current_id, self, refresh=refresh)
+        return collection.save(current_id, self, version=version, refresh=refresh)
