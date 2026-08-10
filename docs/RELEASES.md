@@ -1,5 +1,9 @@
 # Howler Releases
 
+## Howler UI `v3.0.2`
+
+- **Legacy View Cards** _(bugfix)_: Fixes issue on dashboard where pre-v3 settings would break view cards due to no index set
+
 ## Howler API `v4.0.5`
 
 - **Python 3.10 typing error** _(bugfix)_: Fixes issue where typing import failed on POython 3.10 versions
@@ -23,7 +27,7 @@
 
 - **Case Correlation for v1 Ingestion** _(bugfix)_: Fixed a gap where records ingested through v1 endpoints were not queued for correlation processing, so case correlation rules did not apply to those records.
 
-## Howler UI `v2.19.0`
+## Howler UI `v3.0.0`
 
 - **View Grid Preferences** _(new feature)_: Added list/grid display preferences to views, including configurable grid columns and widths, persisted local settings, view-composer controls, and safeguards for views whose grid configuration is inactive ([#444](https://github.com/CybercentreCanada/howler/pull/444)).
 - **Dossier Tooltips in Hits** _(new feature)_: Added tooltips for dossier information displayed inside hit rows and cards.

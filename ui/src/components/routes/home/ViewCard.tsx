@@ -115,7 +115,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
 
     try {
       const res = await dispatchApi(
-        api.v2.search.post(view.indexes as SearchIndex[], {
+        api.v2.search.post((view.indexes ?? ['hit']) as SearchIndex[], {
           query: view.query,
           rows: limit,
           metadata: ['analytic']
