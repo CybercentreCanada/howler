@@ -1,6 +1,4 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { RecordContext } from 'components/app/providers/RecordProvider';
-import { ViewContext } from 'components/app/providers/ViewProvider';
 import i18n from 'i18n';
 import type { PropsWithChildren } from 'react';
 import React, { useCallback, useState } from 'react';
@@ -89,6 +87,9 @@ vi.mock('components/elements/record/RecordContextMenu', () => ({
 vi.mock('commons/components/display/AppListEmpty', () => ({
   default: () => <div>No records</div>
 }));
+
+import { RecordContext } from 'components/app/providers/RecordProvider';
+import { ViewContext } from 'components/app/providers/ViewProvider';
 
 const hit = {
   __index: 'hit',
