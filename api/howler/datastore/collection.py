@@ -1252,10 +1252,14 @@ class ESCollection(Generic[ModelType]):
         """Return the concrete write target and optimistic-concurrency values from a version token."""
         version_parts = version.split("---")
         if len(version_parts) == 3:
-            return version_parts[0], version_parts[1], version_parts[2]
+            index, seq_no, primary_term = version_parts
+            return index, seq_no, primary_term
 
-        seq_no, primary_term = version_parts
-        return self.name, seq_no, primary_term
+        if len(version_parts) == 2:
+            seq_no, primary_term = version_parts
+            return self.name, seq_no, primary_term
+
+        raise DataStoreException(f"Invalid version token for {self.name}: {version!r}")
 
     @overload
     def get(self, key, as_obj: Literal[True], version: Literal[True]) -> tuple[ModelType | None, str]: ...

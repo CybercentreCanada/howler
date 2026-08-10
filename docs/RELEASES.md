@@ -1,8 +1,11 @@
 # Howler Releases
 
-## Howler API `v4.0.3`
+## Howler API `v4.0.4`
 
 - **ILM Atomic Document Writes** _(bugfix)_: Versioned ILM document lookups now search all rollover indices and use the matched concrete index for optimistic-concurrency writes.
+
+## Howler API `v4.0.3`
+
 - **ILM Collection Existence Checks** _(bugfix)_: Document existence checks now use alias-safe searches for ILM collections and recover from multi-index alias errors on legacy checks.
 
 ## Howler API `v4.0.2`
