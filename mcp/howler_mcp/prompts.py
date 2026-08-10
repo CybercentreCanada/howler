@@ -143,6 +143,108 @@ def register_prompts(mcp):
         - Report the updated labels for that category
         - Mention the exact label_set used if you had to correct it"""
 
+    @mcp.prompt(name="create_dossier")
+    def create_dossier_prompt() -> str:
+        """Explain when and how to use the create_dossier tool."""
+        return """Use create_dossier to save a Lucene query as a new dossier.
+
+        Required inputs:
+        - new_dossier_name: dossier title
+        - query: valid Lucene query for hit selection
+        - dossier_type: one of global or personal
+
+        Before calling:
+        - Ensure the query uses valid field names
+        - If field names are uncertain, call get_hit_fields first
+        - If enumerated values are uncertain, call get_field_values(field) first
+        - Confirm whether the dossier should be global or personal
+
+        Use this tool when the user asks to:
+        - Create a saved dossier from a search
+        - Persist a repeatable triage filter
+        - Share a reusable query (global dossier)
+
+        After calling:
+        - Confirm the dossier was created
+        - Repeat the dossier name, type, and query used"""
+
+    @mcp.prompt(name="update_dossier")
+    def update_dossier_prompt() -> str:
+        """Explain when and how to use the update_dossier tool."""
+        return """Use update_dossier to modify an existing dossier by ID.
+
+        Required inputs:
+        - dossier_id: target dossier identifier
+        - data_to_update: partial update object with allowed keys only
+
+        Allowed data_to_update keys:
+        - title
+        - query
+        - leads
+        - pivots
+        - type
+        - owner
+
+        Before calling:
+        - Confirm the exact dossier_id
+        - Ensure only allowed keys are present in data_to_update
+        - If query is included, validate field names with get_hit_fields and field values with get_field_values(field) when needed
+
+        Use this tool when the user asks to:
+        - Rename a dossier
+        - Update the dossier query
+        - Change dossier metadata such as type or ownership
+
+        After calling:
+        - Confirm the dossier update was applied
+        - Summarize the fields that were changed"""
+
+    @mcp.prompt(name="_verify_leads")
+    def verify_leads_prompt() -> str:
+        """Explain the expected structure for lead validation payloads."""
+        return """Use _verify_leads as the local schema reference for dossier lead objects.
+
+        Expected lead shape:
+        - icon: valid Iconify ID string
+        - label: object with exactly en and fr keys
+        - format: non-empty string
+        - content: non-empty string
+        - metadata: dictionary, which may be empty
+
+        Example:
+        - {"icon": "mdi:file-document", "label": {"en": "Overview", "fr": "Apercu"}, "format": "markdown", "content": "Initial notes", "metadata": {"source": "manual"}}
+
+        Rules:
+        - Do not add extra keys
+        - Do not use a plain string for label
+        - Do not use a non-dictionary metadata value
+        - Use query_iconify or get_inconify_exist before choosing an uncertain icon
+
+        Use this reference when building leads for create_dossier or update_dossier."""
+
+    @mcp.prompt(name="_verify_pivots")
+    def verify_pivots_prompt() -> str:
+        """Explain the expected structure for pivot validation payloads."""
+        return """Use _verify_pivots as the local schema reference for dossier pivot objects.
+
+        Expected pivot shape:
+        - icon: valid Iconify ID string
+        - label: object with exactly en and fr keys
+        - value: non-empty string
+        - format: non-empty string
+        - mappings: nested mapping container for pivot configuration
+
+        Example:
+        - {"icon": "mdi:open-in-new", "label": {"en": "Pivot Link", "fr": "Lien Pivot"}, "value": "https://example.local?q={ioc}", "format": "link", "mappings": [{"key": "ioc", "field": "howler.outline.indicators"}]}
+
+        Rules:
+        - Do not add extra keys
+        - Do not use a plain string for label
+        - Ensure value and format are both non-empty strings
+        - Use query_iconify or get_inconify_exist before choosing an uncertain icon
+
+        Use this reference when building pivots for create_dossier or update_dossier."""
+
     @mcp.prompt(name="lucene_query")
     def search_lucene_prompt() -> str:
         """Build a Lucene query from the user's request and search for matching hits."""

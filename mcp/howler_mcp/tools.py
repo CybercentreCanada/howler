@@ -2,6 +2,7 @@ import re
 from logging import getLogger
 from typing import Any
 
+import requests
 from fastmcp.server.dependencies import get_access_token, get_http_request
 from howler_mcp.api import HowlerApiClient
 from mcp.server.auth.provider import AccessToken
@@ -13,6 +14,21 @@ MAXIMUM_OFFSET: int = 10000
 # Reject ASCII control characters and path separators in path-bound
 # identifiers such as hit_id.
 CONTROL_OR_PATH_SEP_PATTERN = re.compile(r"[\x00-\x1F\x7F/\\]")
+
+# Dossier update allowed keys
+PERMITTED_KEYS = {
+    "title",
+    "query",
+    "leads",
+    "pivots",
+    "type",
+    "owner",
+}
+# API to get icons
+ICONIFY_API = "https://api.iconify.design"
+# supported languages
+INTENDED_LANGUAGE: set = {"en", "fr"}
+
 logger = getLogger(__name__)
 
 
@@ -188,6 +204,29 @@ def register_tools(mcp, api_client: HowlerApiClient):
             )
 
         return normalized
+
+    @mcp.tool(name="query_iconify")
+    def query_iconify(
+        query: str, limit: int = 30, prefix: str | None = None
+    ) -> set[str]:
+        params: dict = (
+            {"query": query, "limit": limit}
+            if isinstance(prefix, str)
+            else {"query": query, "limit": limit, "prefix": prefix}
+        )
+
+        response = requests.get(f"{ICONIFY_API}/search", params=params, timeout=10)
+        response.raise_for_status()
+
+        return set(response.json().get("icons", []))
+
+    @mcp.tool(name="get_inconify_exist")
+    def get_inconify_exist(icon_id: str) -> bool:
+        prefix, _, name = icon_id.partition(":")
+        url = (
+            f"{ICONIFY_API}/{prefix}/{name}.svg" if name else f"{ICONIFY_API}/{icon_id}"
+        )
+        return requests.get(url, timeout=10).status_code == 200
 
     @mcp.tool(name="whoami", description="Get information about the current user")
     async def whoami() -> WhoAmIResponse:
@@ -578,22 +617,271 @@ def register_tools(mcp, api_client: HowlerApiClient):
         )
         return data.get("howler", {}).get("labels", {}).get(label_set, [])
 
-    @mcp.tool(name="create_dossier")
-    def create_dossier() -> bool:
+    def _verify_leads(leads: list[dict]) -> bool:
+        """Validate locally-generated lead payloads before API submission.
+
+        This helper performs lightweight structural validation on lead payloads
+        produced by the MCP layer. It is intentionally narrower than backend
+        validation: the goal is to catch obvious schema mistakes early and give
+        the model clearer feedback before making a network request.
+
+        Args:
+            leads: List of lead dictionaries that should match the dossier lead
+                schema.
+
+        Returns:
+            bool: ``False`` when validation completes without finding an
+                error.
+
+        Raises:
+            ValueError: If a lead contains unexpected keys, references an
+                invalid icon, contains empty required string values, or has an
+                invalid localized label structure.
+            TypeError: If metadata is not provided as a dictionary.
         """
-        - find API for it
-        - ask the LLM for the information require by the API
-        - find if dossier with same information exist
-        - create dossier
-        """
+        intended_key: set = {"icon", "label", "format", "content", "metadata"}
+
+        for lead in leads:
+            lead_keys = set(lead.keys())
+            # Reject unexpected keys early so the caller sees the exact schema
+            # mismatch before the request reaches the backend.
+            if lead_keys - intended_key:
+                raise ValueError(
+                    f"A lead should have the keys {''.join(intended_key)} and the lead have {''.join(lead_keys)}"
+                )
+
+            # Mirror the UI's Iconify validation so the model only sends icon
+            # IDs that the frontend can actually render.
+            if not get_inconify_exist(lead["icon"]):
+                raise ValueError(
+                    f"The icon {lead['icon']} does not exist in iconify please use the function query_iconify to find a valid icon"
+                )
+            # Ensuring the values are the proper type, not necesserly accepted as the back end may change valid value, type are less likely
+            for key in ("format", "content"):
+                if (
+                    not isinstance(lead[key], str)
+                    or not lead[key]
+                    or not lead[key].strip()
+                ):
+                    raise ValueError("label must be a none empty or white space string")
+            if not isinstance(lead["metadata"], dict):
+                raise TypeError(
+                    "metadata key need to be a dictionary. It may be an empty dictionary. as it is an optional field"
+                )
+
+            # Require both supported localization keys so the generated dossier
+            # can be rendered consistently in the bilingual UI.
+            if lead["label"].keys() - INTENDED_LANGUAGE:
+                raise ValueError(
+                    f"the label key should contain the keys {''.join(INTENDED_LANGUAGE)} you gave {lead['label'].keys()}"
+                )
+
         return False
 
-    @mcp.tool(name="update_dossier")
-    def update_dossier() -> bool:
+    def _verify_pivots(pivots: list[dict]) -> bool:
+        """Validate locally-generated pivot payloads before API submission.
+
+        This helper checks the pivot structure used by dossier creation and
+        update requests. It exists to catch obvious MCP-side payload mistakes,
+        not to replace backend validation or business rules.
+
+        Args:
+            pivots: List of pivot dictionaries that should match the dossier
+                pivot schema.
+
+        Returns:
+            bool: ``False`` when validation completes without finding an
+                error.
+
+        Raises:
+            ValueError: If a pivot contains unexpected keys, references an
+                invalid icon, contains empty required string values, or has an
+                invalid localized label structure.
+            TypeError: If mappings is not provided using the expected
+                container type.
         """
-        - find API for it
-        - ask the LLM for the information require by the API
-        - find if dossier with same information exist
-        - create dossier
-        """
+        intended_key: set = {"icon", "label", "value", "format", "mappings"}
+        for pivot in pivots:
+            pivot_key: set = set(pivot.keys())
+
+            # Keep the accepted pivot shape explicit so malformed nested data
+            # fails locally with a specific message.
+            if pivot_key - intended_key:
+                raise ValueError(
+                    f"A pivot should have the keys {''.join(intended_key)}; your pivot has {''.join(pivot_key)}"
+                )
+
+            # Bit more verification then just having a type check but we can do it since we needed to query iconify to find what we can do anyway
+            # it should just make the LLM better at making its request
+            if not get_inconify_exist(pivot["icon"]):
+                raise ValueError(
+                    f"Invalid image was given for {pivot['icon']} please use the query_iconify function to find one or  get_inconify_exist to verify it exist"
+                )
+
+            # The frontend expects localized labels instead of a single title
+            # string, so enforce the bilingual structure here.
+            language: set = set(pivot["label"].keys())
+            if not isinstance(pivot["label"], dict) or language - INTENDED_LANGUAGE:
+                raise ValueError(
+                    f"Pivot's label key require to have only {''.join(INTENDED_LANGUAGE)} as keys you gave {''.join(language)}"
+                )
+
+            for key in ["value", "format"]:
+                if not isinstance(key, str):
+                    raise TypeError(f"The key {key} require to be of type string")
+
+                if not pivot[key] or not pivot[key].strip():
+                    raise ValueError(
+                        f"the key {key} require to be a none empty and not whitespace string"
+                    )
+
+            # Pivots carry nested mapping definitions, so reject scalar or
+            # otherwise malformed containers before hitting the API.
+            if not isinstance(pivot["mappings"], dict):
+                raise TypeError(
+                    "The key mappings may be an empty dictionary but can not be anything else"
+                )
+
         return False
+
+    @mcp.tool(name="create_dossier")
+    async def create_dossier(dossier_data: dict) -> dict:
+        """Create a new dossier from a validated Lucene query.
+
+        Use this tool when the user wants to save a reusable query as a
+        dossier for later investigation workflows.
+
+        Args:
+            new_dossier_name: Human-readable dossier title to create.
+            query: Lucene query used to define dossier membership.
+            dossier_type: Dossier visibility scope. Must be either
+                ``global`` or ``personal``.
+
+        Returns:
+            dict: The created dossier data returned by the API.
+
+        Raises:
+            ValueError: If query is empty, if the dossier name is empty, or if
+                dossier_type is not one of the supported values.
+
+        {
+            "title": "My dossier",
+            "query": "howler.id:*",
+            "type": "personal" or "global",
+            "leads": [
+                {
+                    "icon": "mdi:file-document",
+                    "label": {"en": "Overview", "fr": "Apercu"},
+                    "format": "markdown",
+                    "content": "Initial notes",
+                    "metadata": {"source": "manual"},
+                }
+            ],
+            "pivots": [
+                {
+                    "icon": "mdi:open-in-new",
+                    "label": {"en": "Pivot Link", "fr": "Lien Pivot"},
+                    "value": "https://example.local?q={ioc}",
+                    "format": "link",
+                    "mappings": [{"key": "ioc", "field": "howler.outline.indicators"}],
+                }
+            ],
+        }
+        """
+        # verify these value has been fill first before doing the API call.
+        # it is verified after in the call as well but this limit the LLM ability to send wrong data to the server and is faster to process
+        needed_data_key: set[str] = {"title", "query", "type"}
+        creation_keys = set(dossier_data.keys())
+
+        if needed_data_key - creation_keys:
+            raise ValueError(
+                f"dossier_data require at minimum the fields {''.join(needed_data_key)} you have given {''.join(dossier_data.keys())}"
+            )
+
+        for key in needed_data_key:
+            if (
+                not isinstance(dossier_data[key], str)
+                or not dossier_data[key]
+                or not dossier_data[key].strip()
+            ):
+                raise ValueError(
+                    f"dossier_data['{key}'] is required to be a none empty or not only white space string"
+                )
+
+        # more involve check but this will help the LLM with values and limit the amount of fail query
+        if dossier_data["type"] not in {"personal", "global"}:
+            raise ValueError("The key type may only be fill by personal or global.")
+
+        if "icon" in creation_keys and not get_inconify_exist(dossier_data["icon"]):
+            raise ValueError(
+                f"The icon {dossier_data['icon']} does not exist in iconify please use the function query_iconify to find a valid icon"
+            )
+
+        # Validate optional nested lead/pivot blocks locally so bad generated
+        # payloads fail before the network call.
+        if "leads" in creation_keys:
+            _verify_leads(dossier_data.get("leads", []))
+
+        if "pivots" in creation_keys:
+            _verify_pivots(dossier_data.get("pivots", []))
+
+        return await api_client.call(
+            body=dossier_data,
+            method="POST",
+            path="/dossier/",
+            user_access_token=_proper_access_token(),
+        )
+
+    @mcp.tool(name="update_dossier")
+    async def update_dossier(dossier_id: str, data_to_update: dict[str, Any]) -> dict:
+        """Update an existing dossier with a subset of permitted fields.
+
+        Use this tool when the user wants to rename a dossier, change its
+        query, or update other editable dossier attributes.
+
+        Args:
+            dossier_id: Identifier of the dossier to update.
+            data_to_update: Partial dossier payload. Allowed keys are
+                ``title``, ``query``, ``leads``, ``pivots``, ``type``, and
+                ``owner``.
+
+        Returns:
+            bool: API response payload for the update operation.
+
+        Raises:
+            ValueError: If one or more keys in data_to_update are not
+                permitted, or if query validation fails.
+        """
+        # Quick check that only data that can be updated are present
+        data_update_keys: set = set(data_to_update.keys())
+        for key in data_update_keys:
+            if key not in PERMITTED_KEYS:
+                raise ValueError(
+                    f"The permitted keys for data_to_updates are : {', '.join(PERMITTED_KEYS)} you gave {''.join(data_update_keys)}"
+                )
+
+        # lets use our query checker to ensure we send proper data
+        if "query" in data_update_keys:
+            data_to_update["query"] = await _validate_query_fields(
+                data_to_update["query"]
+            )
+        # ensure the pivots are properly formated before sending
+        # Reuse the same local nested validators for update payloads so MCP
+        # requests stay consistent with create_dossier expectations.
+        if "pivots" in data_update_keys:
+            if not isinstance(data_to_update["pivots"], list):
+                raise TypeError("The key pivots require to be a list of dictionary ")
+            _verify_pivots(data_to_update["pivots"])
+
+        # ensure the leads are properly formated before sending
+        if "leads" in data_update_keys:
+            if not isinstance(data_to_update["leads"], list):
+                raise TypeError("The key leads require to be a list of dictionary")
+            _verify_leads(data_to_update["leads"])
+
+        return await api_client.call(
+            body=data_to_update,
+            method="PUT",
+            path=f"/dossier/{dossier_id}",
+            user_access_token=_proper_access_token(),
+        )
