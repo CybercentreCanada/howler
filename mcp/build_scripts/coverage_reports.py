@@ -6,6 +6,8 @@ import sys
 import textwrap
 from pathlib import Path
 
+newline = "\n"
+
 
 def get_color(percentage: int) -> str:
     if percentage < 50:
@@ -48,13 +50,13 @@ def main() -> None:
             # Howler MCP - Coverage Results
             ![Static Badge](https://img.shields.io/badge/Total_Coverage-{total_percentage}-{total_color}?style=flat) {diff_badge}
 
-            {diff_result}
+{newline.join([(" " * 8) + line for line in diff_result.splitlines()]) if diff_result else ""}
 
             ## Full Coverage Report
             <details>
                 <summary>Expand</summary>
 
-            {report_result}
+{newline.join([(" " * 12) + line for line in report_result.splitlines()])}
             </details>
             """
         ).strip()
