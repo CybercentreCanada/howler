@@ -135,8 +135,9 @@ def main() -> int:
             )
             answer = input(f"Delete copies from {', '.join(stale_indexes)}? [yes/NO] ")
             if answer.lower() in {"y", "yes"}:
-                copies_deleted += delete_duplicates(collection, document_id, stale_indexes)
-                print(f"Deleted {len(stale_indexes)} copy/copies of '{document_id}'.")
+                deleted_count = delete_duplicates(collection, document_id, stale_indexes)
+                copies_deleted += deleted_count
+                print(f"Deleted {deleted_count} copy/copies of '{document_id}'.")
     except KeyboardInterrupt:
         print("\nInterrupted; all completed deletions have been retained.", file=sys.stderr)
         return 130
