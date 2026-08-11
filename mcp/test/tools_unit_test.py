@@ -58,7 +58,7 @@ def test_registered_tool_surface(tools_and_api):
 def test_query_iconify_requests_expected_params_without_prefix(tools_and_api):
     tools, _ = tools_and_api
 
-    with patch("howler_mcp.tools.requests.get") as mock_get:
+    with patch("howler_mcp.tools.httpx.get") as mock_get:
         mock_get.return_value.json.return_value = {"icons": ["mdi:alert", "mdi:shield"]}
 
         result = tools["query_iconify"](query="alert", limit=25)
@@ -73,7 +73,7 @@ def test_query_iconify_requests_expected_params_without_prefix(tools_and_api):
 def test_query_iconify_requests_expected_params_with_prefix(tools_and_api):
     tools, _ = tools_and_api
 
-    with patch("howler_mcp.tools.requests.get") as mock_get:
+    with patch("howler_mcp.tools.httpx.get") as mock_get:
         mock_get.return_value.json.return_value = {"icons": ["mdi:file-document"]}
 
         result = tools["query_iconify"](query="file", limit=5, prefix="mdi")
@@ -95,7 +95,7 @@ def test_get_iconify_exist_url_shape_and_result(
 ):
     tools, _ = tools_and_api
 
-    with patch("howler_mcp.tools.requests.get") as mock_get:
+    with patch("howler_mcp.tools.httpx.get") as mock_get:
         mock_get.return_value.status_code = status_code
 
         result = tools["get_iconify_exist"](icon_id=icon_id)
@@ -511,7 +511,7 @@ async def test_create_dossier_rejects_invalid_lead_icon_via_verify_leads(tools_a
 
     with (
         patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
-        patch("howler_mcp.tools.requests.get") as mock_get,
+        patch("howler_mcp.tools.httpx.get") as mock_get,
         pytest.raises(ValueError, match="does not exist in iconify"),
     ):
         mock_get.return_value.status_code = 404
@@ -541,7 +541,7 @@ async def test_create_dossier_rejects_non_dict_lead_metadata(tools_and_api):
 
     with (
         patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
-        patch("howler_mcp.tools.requests.get") as mock_get,
+        patch("howler_mcp.tools.httpx.get") as mock_get,
         pytest.raises(TypeError, match="metadata key need to be a dictionary"),
     ):
         mock_get.return_value.status_code = 200
@@ -571,7 +571,7 @@ async def test_create_dossier_rejects_invalid_pivot_mappings_type(tools_and_api)
 
     with (
         patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
-        patch("howler_mcp.tools.requests.get") as mock_get,
+        patch("howler_mcp.tools.httpx.get") as mock_get,
         pytest.raises(TypeError, match="The key mappings"),
     ):
         mock_get.return_value.status_code = 200
@@ -611,7 +611,7 @@ async def test_create_dossier_with_valid_nested_data_calls_api(tools_and_api):
 
     with (
         patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
-        patch("howler_mcp.tools.requests.get") as mock_get,
+        patch("howler_mcp.tools.httpx.get") as mock_get,
     ):
         mock_get.return_value.status_code = 200
         result = await tools["create_dossier"](dossier_data=dossier_payload)
@@ -641,7 +641,7 @@ async def test_update_dossier_rejects_invalid_lead_payload(tools_and_api):
 
     with (
         patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
-        patch("howler_mcp.tools.requests.get") as mock_get,
+        patch("howler_mcp.tools.httpx.get") as mock_get,
         pytest.raises(ValueError, match="label key should contain the keys"),
     ):
         mock_get.return_value.status_code = 200
@@ -671,7 +671,7 @@ async def test_update_dossier_with_query_and_valid_nested_data_calls_api(tools_a
 
     with (
         patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
-        patch("howler_mcp.tools.requests.get") as mock_get,
+        patch("howler_mcp.tools.httpx.get") as mock_get,
     ):
         mock_get.return_value.status_code = 200
         result = await tools["update_dossier"](
