@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import pytest
 from howler_mcp.tools import MAXIMUM_TICKET, register_tools
+
 from mcp.server.auth.provider import AccessToken
 
 FAKE_TOKEN = AccessToken(token="fake-bearer", client_id="test-client", scopes=[])
@@ -40,7 +41,7 @@ def test_registered_tool_surface(tools_and_api):
     tools, _ = tools_and_api
     assert set(tools.keys()) == {
         "query_iconify",
-        "get_inconify_exist",
+        "get_iconify_exist",
         "whoami",
         "list_assigned_hits",
         "add_comment_to_hit",
@@ -89,7 +90,7 @@ def test_query_iconify_requests_expected_params_with_prefix(tools_and_api):
         ("simple-icons", 404, "/simple-icons"),
     ],
 )
-def test_get_inconify_exist_url_shape_and_result(
+def test_get_iconify_exist_url_shape_and_result(
     tools_and_api, icon_id, status_code, expected_suffix
 ):
     tools, _ = tools_and_api
@@ -97,7 +98,7 @@ def test_get_inconify_exist_url_shape_and_result(
     with patch("howler_mcp.tools.requests.get") as mock_get:
         mock_get.return_value.status_code = status_code
 
-        result = tools["get_inconify_exist"](icon_id=icon_id)
+        result = tools["get_iconify_exist"](icon_id=icon_id)
 
     assert result is (status_code == 200)
     called_url = mock_get.call_args.args[0]

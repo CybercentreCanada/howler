@@ -2,11 +2,12 @@ import re
 from logging import getLogger
 from typing import Any
 
-import requests
+import httpx
 from fastmcp.server.dependencies import get_access_token, get_http_request
 from howler_mcp.api import HowlerApiClient
-from mcp.server.auth.provider import AccessToken
 from pydantic import BaseModel, Field
+
+from mcp.server.auth.provider import AccessToken
 
 # Safety limits to avoid oversized backend requests.
 MAXIMUM_TICKET: int = 200
@@ -215,18 +216,18 @@ def register_tools(mcp, api_client: HowlerApiClient):
             else {"query": query, "limit": limit, "prefix": prefix}
         )
 
-        response = requests.get(f"{ICONIFY_API}/search", params=params, timeout=10)
+        response = httpx.get(f"{ICONIFY_API}/search", params=params, timeout=10)
         response.raise_for_status()
 
         return set(response.json().get("icons", []))
 
-    @mcp.tool(name="get_inconify_exist")
-    def get_inconify_exist(icon_id: str) -> bool:
+    @mcp.tool(name="get_iconify_exist")
+    def get_iconify_exist(icon_id: str) -> bool:
         prefix, _, name = icon_id.partition(":")
         url = (
             f"{ICONIFY_API}/{prefix}/{name}.svg" if name else f"{ICONIFY_API}/{icon_id}"
         )
-        return requests.get(url, timeout=10).status_code == 200
+        return httpx.get(url, timeout=10).status_code == 200
 
     @mcp.tool(name="whoami", description="Get information about the current user")
     async def whoami() -> WhoAmIResponse:
@@ -652,7 +653,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
             # Mirror the UI's Iconify validation so the model only sends icon
             # IDs that the frontend can actually render.
-            if not get_inconify_exist(lead["icon"]):
+            if not get_iconify_exist(lead["icon"]):
                 raise ValueError(
                     f"The icon {lead['icon']} does not exist in iconify please use the function query_iconify to find a valid icon"
                 )
@@ -713,9 +714,9 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
             # Bit more verification then just having a type check but we can do it since we needed to query iconify to find what we can do anyway
             # it should just make the LLM better at making its request
-            if not get_inconify_exist(pivot["icon"]):
+            if not get_iconify_exist(pivot["icon"]):
                 raise ValueError(
-                    f"Invalid image was given for {pivot['icon']} please use the query_iconify function to find one or  get_inconify_exist to verify it exist"
+                    f"Invalid image was given for {pivot['icon']} please use the query_iconify function to find one or get_iconify_exist to verify it exist"
                 )
 
             # The frontend expects localized labels instead of a single title
@@ -812,7 +813,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
         if dossier_data["type"] not in {"personal", "global"}:
             raise ValueError("The key type may only be fill by personal or global.")
 
-        if "icon" in creation_keys and not get_inconify_exist(dossier_data["icon"]):
+        if "icon" in creation_keys and not get_iconify_exist(dossier_data["icon"]):
             raise ValueError(
                 f"The icon {dossier_data['icon']} does not exist in iconify please use the function query_iconify to find a valid icon"
             )
