@@ -107,17 +107,13 @@ class HowlerApiClient:
         status_code: int = -1  # Initialised to known impossible answer value
         route = f"/{path.lstrip('/')}"
         endpoint = _endpoint_name(route)
-        logger.info(
-            f"api_request_start method={method} endpoint={endpoint} timeout={self.timeout:.2f}"
-        )
+        logger.info(f"api_request_start method={method} endpoint={endpoint} timeout={self.timeout:.2f}")
 
         try:
             if method in {"GET", "OPTIONS"} and body is not None:
                 outcome = "body_error"
                 raise ValueError("Request body is not allowed for GET or OPTIONS")
-            exchanged_token = await self.auth_provider.get_howler_token(
-                user_access_token.token
-            )
+            exchanged_token = await self.auth_provider.get_howler_token(user_access_token.token)
             headers = {"Authorization": f"Bearer {exchanged_token}"}
             url = f"{self.base_url}/{route.lstrip('/')}"
             response = await self._client.request(
@@ -152,23 +148,17 @@ class HowlerApiClient:
 
         except httpx.TimeoutException:
             outcome = "timeout"
-            logger.warning(
-                f"api_request_timeout method={method} endpoint={endpoint} outcome={outcome}"
-            )
+            logger.warning(f"api_request_timeout method={method} endpoint={endpoint} outcome={outcome}")
             raise
 
         except httpx.HTTPError:
             outcome = "network_error"
-            logger.exception(
-                f"api_request_http_error method={method} endpoint={endpoint} outcome={outcome}"
-            )
+            logger.exception(f"api_request_http_error method={method} endpoint={endpoint} outcome={outcome}")
             raise
 
         except ValueError:
             outcome = "value_error"
-            logger.warning(
-                f"api_request_value_error method={method} endpoint={endpoint} outcome={outcome}"
-            )
+            logger.warning(f"api_request_value_error method={method} endpoint={endpoint} outcome={outcome}")
             raise
 
         finally:
