@@ -51,6 +51,10 @@ services:
       HWL_CORE__REDIS__NONPERSISTENT__PORT: "6379"
       HWL_CORE__REDIS__PERSISTENT__HOST: redis
       HWL_CORE__REDIS__PERSISTENT__PORT: "6379"
+      HWL_LOGGING__LOG_LEVEL: debug
+    volumes:
+      - ../api/test/unit/config.yml:/etc/howler/conf/config.yml:ro
+      - ../client/test/config/classification.yml:/etc/howler/conf/classification.yml:ro
     depends_on:
       elasticsearch:
         condition: service_healthy
