@@ -1613,6 +1613,10 @@ class ESCollection(Generic[ModelType]):
         index = self.name
         seq_no = None
         primary_term = None
+
+        if version is None and self.ilm_config:
+            _, version = self.get_if_exists(key, as_obj=False, version=True)
+
         if version:
             index, seq_no, primary_term = self._get_version_write_target(version)
 
