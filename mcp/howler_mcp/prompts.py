@@ -41,6 +41,21 @@ Required arguments:
 Use it to document findings, add triage notes, or record investigation actions.
 Before calling, confirm the correct hit_id. After calling, confirm that the comment was added."""
 
+    @mcp.prompt(name="assign_hit")
+    def assign_hit_prompt() -> str:
+        """Explain when and how to use the assign_hit tool."""
+        return """Use assign_hit to assign a hit to a specific user or release it.
+
+Required arguments:
+- hit_id: the target hit identifier
+- user_name: username to assign, or an empty string to release
+
+Behavior:
+- user_name with a value assigns the hit to that user.
+- user_name as an empty string releases/unassigns the hit using the release transition.
+
+Before calling, confirm hit_id and intended target user. After calling, verify the change with lucene_query and report hit_id, assignment, and status."""
+
     @mcp.prompt(name="get_field_values")
     def get_field_values_prompt() -> str:
         """Explain when and how to use the get_field_values tool."""

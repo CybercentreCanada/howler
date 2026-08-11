@@ -76,7 +76,7 @@ class HowlerApiClient:
         user_access_token: AccessToken,
         path: str,
         method: HttpVerb,
-        body: dict[str, Any] | None = None,
+        body: dict[str, Any] | list | None = None,
         params: dict[str, Any] | None = None,
     ) -> Any:
         """Execute an authenticated request against the Howler API.
@@ -87,8 +87,8 @@ class HowlerApiClient:
             path: API path relative to ``base_url``, e.g. ``/search/hit``.
             method: HTTP verb. ``GET`` and ``OPTIONS`` requests must not carry a
                 body.
-                body: JSON-serialisable request body. Must be ``None`` for
-                    ``GET`` and ``OPTIONS`` requests.
+            body: JSON-serializable request body. Must be ``None`` for
+                ``GET`` and ``OPTIONS`` requests.
             params: Optional URL query parameters.
 
         Returns:

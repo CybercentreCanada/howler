@@ -65,6 +65,26 @@ async def test_call_rejects_missing_api_response_envelope():
 
 
 @pytest.mark.asyncio
+async def test_call_accepts_list_json_body_for_put_requests():
+    http_client = Mock()
+    http_client.request = AsyncMock()
+    http_client.aclose = AsyncMock()
+    http_client.request.return_value = Mock(json=Mock(return_value={"api_response": {"success": True}}))
+    auth_provider = Mock()
+    auth_provider.get_howler_token = AsyncMock(return_value="howler-token")
+
+    with patch("howler_mcp.api.httpx.AsyncClient", return_value=http_client):
+        api_client = HowlerApiClient(auth_provider=auth_provider)
+
+    payload = [["SET", "howler.assignment", "analyst1"]]
+    result = await api_client.call(FAKE_TOKEN, "/hit/abc/update", "PUT", body=payload)
+
+    assert result == {"success": True}
+    request_kwargs = http_client.request.call_args.kwargs
+    assert request_kwargs["json"] == payload
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "error",
     [

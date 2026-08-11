@@ -52,6 +52,7 @@ def test_registered_tool_surface(tools_and_api):
         "add_label_to_hit",
         "create_dossier",
         "update_dossier",
+        "assign_hit",
     }
 
 
@@ -114,6 +115,7 @@ def test_get_iconify_exist_url_shape_and_result(tools_and_api, icon_id, status_c
         ("get_field_values", {"field": "howler.escalation"}),
         ("get_hit_fields", {}),
         ("lucene_query", {"query": "howler.id:*", "fl": "howler.id"}),
+        ("assign_hit", {"hit_id": "hit-1", "user_name": "analyst1"}),
     ],
 )
 async def test_access_token_required(tools_and_api, tool_name, kwargs):
@@ -206,6 +208,97 @@ async def test_add_comment_sends_correct_payload(tools_and_api):
     assert call_kwargs["path"] == f"/hit/{hit_id}/comments"
     assert call_kwargs["method"] == "POST"
     assert call_kwargs["body"] == {"value": "From MCP Client: test note"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "bad_hit_id,error_match",
+    [
+        ("", "hit_id is required and cannot be empty"),
+        ("id/with/slash", "hit_id cannot contain control characters or path separators"),
+        ("id\\with\\slash", "hit_id cannot contain control characters or path separators"),
+        ("bad\nid", "hit_id cannot contain control characters or path separators"),
+        ("bad\tid", "hit_id cannot contain control characters or path separators"),
+        ("hit 001", "hit_id cannot contain spaces"),
+        (" hit-001 ", "hit_id cannot contain spaces"),
+    ],
+)
+async def test_assign_hit_validates_hit_id_safety(tools_and_api, bad_hit_id, error_match):
+    tools, mock_api = tools_and_api
+
+    with (
+        patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
+        pytest.raises(ValueError, match=error_match),
+    ):
+        await tools["assign_hit"](hit_id=bad_hit_id, user_name="analyst")
+
+    mock_api.call.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "bad_user_name,error_match",
+    [
+        ("user/one", "user_name cannot contain control characters or path separators"),
+        ("user\\one", "user_name cannot contain control characters or path separators"),
+        ("bad\nuser", "user_name cannot contain control characters or path separators"),
+        ("bad\tuser", "user_name cannot contain control characters or path separators"),
+        ("user one", "user_name cannot contain spaces"),
+        (" analyst", "user_name cannot contain spaces"),
+        ("analyst ", "user_name cannot contain spaces"),
+    ],
+)
+async def test_assign_hit_validates_user_name_safety(tools_and_api, bad_user_name, error_match):
+    tools, mock_api = tools_and_api
+
+    with (
+        patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
+        pytest.raises(ValueError, match=error_match),
+    ):
+        await tools["assign_hit"](hit_id="hit-001", user_name=bad_user_name)
+
+    mock_api.call.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_assign_hit_assigns_user_with_update_endpoint(tools_and_api):
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = {"howler": {"assignment": "analyst1"}}
+
+    with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
+        result = await tools["assign_hit"](hit_id="hit-001", user_name="analyst1")
+
+    assert result == "Actual assignment is now : analyst1"
+    call_kwargs = mock_api.call.call_args.kwargs
+    assert call_kwargs["path"] == "/hit/hit-001/update"
+    assert call_kwargs["method"] == "PUT"
+    assert call_kwargs["body"] == [("SET", "howler.assignment", "analyst1")]
+
+
+@pytest.mark.asyncio
+async def test_assign_hit_releases_with_transition_endpoint_on_empty_username(tools_and_api):
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = {"howler": {"assignment": None}}
+
+    with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
+        result = await tools["assign_hit"](hit_id="hit-002", user_name="")
+
+    assert result == "Actual assignment is now : None"
+    call_kwargs = mock_api.call.call_args.kwargs
+    assert call_kwargs["path"] == "/hit/hit-002/transition"
+    assert call_kwargs["method"] == "POST"
+    assert call_kwargs["body"] == {"transition": "release", "data": {}}
+
+
+@pytest.mark.asyncio
+async def test_assign_hit_returns_fallback_when_assignment_missing(tools_and_api):
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = {"howler": {}}
+
+    with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
+        result = await tools["assign_hit"](hit_id="hit-003", user_name="analyst2")
+
+    assert result == "The server did not return apropriate data, can not verify if the change was made"
 
 
 @pytest.mark.asyncio
@@ -414,6 +507,10 @@ async def test_lucene_query_rejects_unknown_query_field_before_search_call(
         (
             "add_comment_to_hit",
             {"hit_id": "__VALID_HIT_ID__", "comment": "note"},
+        ),
+        (
+            "assign_hit",
+            {"hit_id": "hit-001", "user_name": "analyst1"},
         ),
         ("get_hit_fields", {}),
     ],

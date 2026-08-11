@@ -80,8 +80,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
         try:
             request = get_http_request()
-            request_available = request is not None
-            if request_available:
+            if request is not None:
                 scope_user = request.scope.get("user")
                 scope_user_available = scope_user is not None
                 if scope_user_available:
@@ -870,4 +869,70 @@ def register_tools(mcp, api_client: HowlerApiClient):
             method="PUT",
             path=f"/dossier/{dossier_id}",
             user_access_token=_proper_access_token(),
+        )
+
+    @mcp.tool(name="assign_hit")
+    async def assign_hit(hit_id: str, user_name: str) -> str:
+        """Assign a hit to a user or release it from the current assignee.
+
+        The tool uses two backend behaviors:
+        - Assignment uses ``PUT /hit/<id>/update`` with a ``SET`` operation on
+          ``howler.assignment``.
+        - Release uses ``POST /hit/<id>/transition`` with
+          ``{"transition": "release", "data": {}}`` when ``user_name`` is an
+          empty string.
+
+        Args:
+            hit_id: Identifier of the hit to update.
+            user_name: Username to assign to the hit. Provide an empty string
+                to release/unassign the hit using the transition endpoint.
+
+        Returns:
+            str: The hit's ``howler.assignment`` value after the operation
+            completes.
+
+        Raises:
+            ValueError: If ``hit_id`` is empty or contains disallowed path /
+                control characters, or if ``user_name`` contains disallowed
+                path / control characters.
+        """
+        if not hit_id or not hit_id.strip():
+            raise ValueError("hit_id is required and cannot be empty.")
+
+        if _contains_escape_characters(hit_id):
+            raise ValueError("hit_id cannot contain control characters or path separators.")
+
+        if _contains_escape_characters(user_name):
+            raise ValueError("user_name cannot contain control characters or path separators.")
+
+        if " " in hit_id:
+            raise ValueError(f"hit_id cannot contain spaces : {hit_id}")
+
+        if " " in user_name:
+            raise ValueError(f"user_name cannot contain spaces : {user_name}")
+
+        payload: dict | list
+
+        # Set to use the proper path and action if we want to give or remove an assigment
+        if user_name == "":
+            payload = {"transition": "release", "data": {}}
+            path = f"/hit/{hit_id}/transition"
+            method = "POST"
+        else:
+            payload = [("SET", "howler.assignment", user_name)]
+            path = f"/hit/{hit_id}/update"
+            method = "PUT"
+
+        data = await api_client.call(
+            body=payload,
+            method=method,
+            user_access_token=_proper_access_token(),
+            path=path,
+        )
+
+        assignment = data.get("howler", {}).get("assignment", "unknown")
+        return (
+            f"Actual assignment is now : {assignment}"
+            if assignment != "unknown"
+            else "The server did not return apropriate data, can not verify if the change was made"
         )
