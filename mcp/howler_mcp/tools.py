@@ -4,10 +4,10 @@ from typing import Any
 
 import httpx
 from fastmcp.server.dependencies import get_access_token, get_http_request
-from howler_mcp.api import HowlerApiClient
+from mcp.server.auth.provider import AccessToken
 from pydantic import BaseModel, Field
 
-from mcp.server.auth.provider import AccessToken
+from howler_mcp.api import HowlerApiClient
 
 # Safety limits to avoid oversized backend requests.
 MAXIMUM_TICKET: int = 200
@@ -34,12 +34,8 @@ logger = getLogger(__name__)
 
 
 class WhoAmIResponse(BaseModel):
-    username: str = Field(
-        description="Unique login name used to identify the current user in Howler."
-    )
-    email: str = Field(
-        description="Primary email address associated with the user account."
-    )
+    username: str = Field(description="Unique login name used to identify the current user in Howler.")
+    email: str = Field(description="Primary email address associated with the user account.")
     groups: list[str] = Field(
         default_factory=list,
         description="Security or organizational groups the user belongs to.",
@@ -54,9 +50,7 @@ class WhoAmIResponse(BaseModel):
 class HowlerResponse(BaseModel):
     rows: int = Field(description="Number of rows returned in the search results.")
     total: int = Field(description="Total number of hits matching the search criteria.")
-    hits: list[dict[str, Any]] = Field(
-        default_factory=list, description="List of hits matching the search criteria."
-    )
+    hits: list[dict[str, Any]] = Field(default_factory=list, description="List of hits matching the search criteria.")
 
 
 def register_tools(mcp, api_client: HowlerApiClient):
@@ -110,9 +104,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
                     access_token = scope_access_token
                 else:
                     token_value = getattr(scope_access_token, "token", None)
-                    client_id = getattr(
-                        scope_access_token, "client_id", "unknown-client"
-                    )
+                    client_id = getattr(scope_access_token, "client_id", "unknown-client")
                     scopes = getattr(scope_access_token, "scopes", [])
                     expires_at = getattr(scope_access_token, "expires_at", None)
                     resource = getattr(scope_access_token, "resource", None)
@@ -189,32 +181,20 @@ def register_tools(mcp, api_client: HowlerApiClient):
         if cached_hit_fields is None:
             cached_hit_fields = set((await get_hit_fields()).keys())
 
-        invalid_fields = sorted(
-            {
-                field_name
-                for field_name in referenced_fields
-                if field_name not in cached_hit_fields
-            }
-        )
+        invalid_fields = sorted({field_name for field_name in referenced_fields if field_name not in cached_hit_fields})
 
         if invalid_fields:
             raise ValueError(
-                "Invalid query field(s): "
-                f"{', '.join(invalid_fields)}. "
-                "Use get_hit_fields to list supported fields."
+                f"Invalid query field(s): {', '.join(invalid_fields)}. Use get_hit_fields to list supported fields."
             )
 
         return normalized
 
     @mcp.tool(name="query_iconify")
-    def query_iconify(
-        query: str, limit: int = 30, prefix: str | None = None
-    ) -> set[str]:
-        params: dict = (
-            {"query": query, "limit": limit}
-            if isinstance(prefix, str)
-            else {"query": query, "limit": limit, "prefix": prefix}
-        )
+    def query_iconify(query: str, limit: int = 30, prefix: str | None = None) -> set[str]:
+        params: dict[str, str | int] = {"query": query, "limit": limit}
+        if prefix is not None:
+            params["prefix"] = prefix
 
         response = httpx.get(f"{ICONIFY_API}/search", params=params, timeout=10)
         response.raise_for_status()
@@ -224,9 +204,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
     @mcp.tool(name="get_iconify_exist")
     def get_iconify_exist(icon_id: str) -> bool:
         prefix, _, name = icon_id.partition(":")
-        url = (
-            f"{ICONIFY_API}/{prefix}/{name}.svg" if name else f"{ICONIFY_API}/{icon_id}"
-        )
+        url = f"{ICONIFY_API}/{prefix}/{name}.svg" if name else f"{ICONIFY_API}/{icon_id}"
         return httpx.get(url, timeout=10).status_code == 200
 
     @mcp.tool(name="whoami", description="Get information about the current user")
@@ -297,9 +275,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
             raise ValueError("hit_id is required and cannot be empty.")
 
         if _contains_escape_characters(hit_id):
-            raise ValueError(
-                "hit_id cannot contain control characters or path separators."
-            )
+            raise ValueError("hit_id cannot contain control characters or path separators.")
 
         hit_id = hit_id.strip()  # removing any space character
 
@@ -512,8 +488,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
         # fields server-side. The API expects a comma-separated string, not
         # a list — matching the "fl": "id,score" format in the data block.
         # howler.id is always included so hits remain identifiable.
-        # We use a set -> list here to deduplicate entries
-        requested = list({f.strip() for f in fl.split(",") if f.strip()})
+        requested = list(dict.fromkeys(f.strip() for f in fl.split(",") if f.strip()))
         if "howler.id" not in requested:
             requested.insert(0, "howler.id")
         body["fl"] = ",".join(requested)
@@ -530,14 +505,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
         return HowlerResponse(
             rows=data.get("rows", 0),
             total=data.get("total", 0),
-            hits=[
-                {
-                    "classification": item.get("classification"),
-                    "howler": item.get("howler", {}),
-                    "timestamp": item.get("timestamp"),
-                }
-                for item in (data.get("items") or [])
-            ],
+            hits=data.get("items") or [],
         )
 
     @mcp.tool(name="get_label_set_options")
@@ -577,9 +545,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
         return label_set_options
 
     @mcp.tool(name="add_label_to_hit")
-    async def add_label_to_hit(
-        hit_id: str, labels_name: list[str], label_set: str
-    ):  # -> list[str]:
+    async def add_label_to_hit(hit_id: str, labels_name: list[str], label_set: str) -> list[str]:
         """Add one or more labels to a hit and return the updated label list.
 
         Args:
@@ -599,18 +565,14 @@ def register_tools(mcp, api_client: HowlerApiClient):
         label_set = label_set.lower()
 
         if not isinstance(labels_name, list) or len(labels_name) == 0:
-            raise ValueError(
-                f"Label_name require to be a not empty list of string {labels_name}"
-            )
+            raise ValueError(f"Label_name require to be a not empty list of string {labels_name}")
 
         if not hit_id or not hit_id.strip():
-            raise ValueError(
-                f"hit_id require to be a none empty or white space string, received {hit_id}"
-            )
+            raise ValueError(f"hit_id require to be a none empty or white space string, received {hit_id}")
 
         # Return just the updated labels for the requested category to keep the
         # MCP tool response small and easy to consume.
-        data: dict = await api_client.call(
+        data: dict[str, Any] = await api_client.call(
             user_access_token=_proper_access_token(),
             path=f"/hit/{hit_id.strip()}/labels/{label_set}",
             method="PUT",
@@ -659,11 +621,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
                 )
             # Ensuring the values are the proper type, not necesserly accepted as the back end may change valid value, type are less likely
             for key in ("format", "content"):
-                if (
-                    not isinstance(lead[key], str)
-                    or not lead[key]
-                    or not lead[key].strip()
-                ):
+                if not isinstance(lead[key], str) or not lead[key] or not lead[key].strip():
                     raise ValueError("label must be a none empty or white space string")
             if not isinstance(lead["metadata"], dict):
                 raise TypeError(
@@ -701,9 +659,13 @@ def register_tools(mcp, api_client: HowlerApiClient):
             TypeError: If mappings is not provided using the expected
                 container type.
         """
-        intended_key: set = {"icon", "label", "value", "format", "mappings"}
+        intended_key = {"icon", "label", "value", "format", "mappings"}
+        mapping_keys = {"key", "field", "custom_value"}
         for pivot in pivots:
-            pivot_key: set = set(pivot.keys())
+            if not isinstance(pivot, dict):
+                raise TypeError("Each pivot must be a dictionary.")
+
+            pivot_key = set(pivot)
 
             # Keep the accepted pivot shape explicit so malformed nested data
             # fails locally with a specific message.
@@ -712,8 +674,14 @@ def register_tools(mcp, api_client: HowlerApiClient):
                     f"A pivot should have the keys {''.join(intended_key)}; your pivot has {''.join(pivot_key)}"
                 )
 
+            missing_keys = intended_key - pivot_key
+            if missing_keys:
+                raise ValueError(f"A pivot is missing required keys: {', '.join(sorted(missing_keys))}.")
+
             # Bit more verification then just having a type check but we can do it since we needed to query iconify to find what we can do anyway
             # it should just make the LLM better at making its request
+            if not isinstance(pivot["icon"], str) or not pivot["icon"].strip():
+                raise ValueError("The pivot icon must be a non-empty string.")
             if not get_iconify_exist(pivot["icon"]):
                 raise ValueError(
                     f"Invalid image was given for {pivot['icon']} please use the query_iconify function to find one or get_iconify_exist to verify it exist"
@@ -721,27 +689,46 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
             # The frontend expects localized labels instead of a single title
             # string, so enforce the bilingual structure here.
-            language: set = set(pivot["label"].keys())
-            if not isinstance(pivot["label"], dict) or language - INTENDED_LANGUAGE:
+            label = pivot["label"]
+            if not isinstance(label, dict):
+                raise TypeError("The pivot label must be a dictionary.")
+            language = set(label)
+            if language != INTENDED_LANGUAGE:
                 raise ValueError(
                     f"Pivot's label key require to have only {''.join(INTENDED_LANGUAGE)} as keys you gave {''.join(language)}"
                 )
+            if any(not isinstance(value, str) or not value.strip() for value in label.values()):
+                raise ValueError("Each pivot label value must be a non-empty string.")
 
-            for key in ["value", "format"]:
-                if not isinstance(key, str):
+            for key in ("value", "format"):
+                value = pivot[key]
+                if not isinstance(value, str):
                     raise TypeError(f"The key {key} require to be of type string")
 
-                if not pivot[key] or not pivot[key].strip():
-                    raise ValueError(
-                        f"the key {key} require to be a none empty and not whitespace string"
-                    )
+                if not value.strip():
+                    raise ValueError(f"the key {key} require to be a none empty and not whitespace string")
 
             # Pivots carry nested mapping definitions, so reject scalar or
             # otherwise malformed containers before hitting the API.
-            if not isinstance(pivot["mappings"], dict):
-                raise TypeError(
-                    "The key mappings may be an empty dictionary but can not be anything else"
-                )
+            mappings = pivot["mappings"]
+            if not isinstance(mappings, list):
+                raise TypeError("The key mappings must be a list of mapping dictionaries.")
+            for mapping in mappings:
+                if not isinstance(mapping, dict):
+                    raise TypeError("Each pivot mapping must be a dictionary.")
+                if set(mapping) - mapping_keys:
+                    raise ValueError("A pivot mapping may contain only key, field, and custom_value.")
+                if {"key", "field"} - set(mapping):
+                    raise ValueError("Each pivot mapping requires key and field.")
+                for key in ("key", "field"):
+                    if not isinstance(mapping[key], str) or not mapping[key].strip():
+                        raise ValueError(f"The mapping {key} must be a non-empty string.")
+                if (
+                    "custom_value" in mapping
+                    and mapping["custom_value"] is not None
+                    and not isinstance(mapping["custom_value"], str)
+                ):
+                    raise TypeError("The mapping custom_value must be a string or null.")
 
         return False
 
@@ -800,14 +787,8 @@ def register_tools(mcp, api_client: HowlerApiClient):
             )
 
         for key in needed_data_key:
-            if (
-                not isinstance(dossier_data[key], str)
-                or not dossier_data[key]
-                or not dossier_data[key].strip()
-            ):
-                raise ValueError(
-                    f"dossier_data['{key}'] is required to be a none empty or not only white space string"
-                )
+            if not isinstance(dossier_data[key], str) or not dossier_data[key] or not dossier_data[key].strip():
+                raise ValueError(f"dossier_data['{key}'] is required to be a none empty or not only white space string")
 
         # more involve check but this will help the LLM with values and limit the amount of fail query
         if dossier_data["type"] not in {"personal", "global"}:
@@ -824,7 +805,11 @@ def register_tools(mcp, api_client: HowlerApiClient):
             _verify_leads(dossier_data.get("leads", []))
 
         if "pivots" in creation_keys:
-            _verify_pivots(dossier_data.get("pivots", []))
+            if not isinstance(dossier_data["pivots"], list):
+                raise TypeError("The key pivots must be a list of dictionaries.")
+            _verify_pivots(dossier_data["pivots"])
+
+        dossier_data["query"] = await _validate_query_fields(dossier_data["query"])
 
         return await api_client.call(
             body=dossier_data,
@@ -863,9 +848,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
         # lets use our query checker to ensure we send proper data
         if "query" in data_update_keys:
-            data_to_update["query"] = await _validate_query_fields(
-                data_to_update["query"]
-            )
+            data_to_update["query"] = await _validate_query_fields(data_to_update["query"])
         # ensure the pivots are properly formated before sending
         # Reuse the same local nested validators for update payloads so MCP
         # requests stay consistent with create_dossier expectations.

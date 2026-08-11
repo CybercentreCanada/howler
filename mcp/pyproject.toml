@@ -16,10 +16,70 @@ cryptography = "^48.0.1"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.2"
 pytest-asyncio = "0.24.0"
+ruff = ">=0.8,<0.17"
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+	"E",
+	"F",
+	"W",
+	"C901",
+	"I",
+	"N",
+	"D1",
+	"D2",
+	"ANN001",
+	"ANN002",
+	"ANN003",
+	"ANN201",
+	"ANN202",
+	"ANN204",
+	"ANN205",
+	"ANN206",
+	"S",
+	"T20",
+	"PIE",
+	"FLY",
+	"TRY",
+]
+ignore = [
+	"ANN003",
+	"ANN001",
+	"ANN201",
+	"ANN204",
+	"ANN401",
+	"D100",
+	"D101",
+	"D102",
+	"D103",
+	"D104",
+	"D105",
+	"D107",
+	"D203",
+	"D213",
+	"N818",
+	"N801",
+	"S104",
+	"S105",
+	"S603",
+	"C901",
+	"E501",
+	"TRY301",
+	"TRY400",
+	"TRY003",
+	"TRY300",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"test/*" = ["D", "ANN", "S", "N818", "TRY", "PIE", "E402"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

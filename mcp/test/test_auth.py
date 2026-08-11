@@ -2,8 +2,9 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-from howler_mcp.auth import JSONWebTokenVerifier
 from jwt.exceptions import InvalidTokenError, PyJWKClientError
+
+from howler_mcp.auth import JSONWebTokenVerifier
 
 
 @pytest.fixture()

@@ -27,8 +27,8 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Run Howler MCP Unit Tests
+  formatting:
+    name: Validate Howler MCP Code Quality
 
     runs-on: ubuntu-latest
     defaults:
@@ -56,8 +56,59 @@ jobs:
       - name: Install Dependencies
         run: poetry install --verbose --with dev
 
+      - name: Run ruff formatting checks
+        run: poetry run ruff format howler_mcp --diff
+
+      - name: Run ruff linter checks
+        run: poetry run ruff check howler_mcp --output-format=github
+
+  test:
+    name: Run Howler MCP Unit Tests
+
+    needs: formatting
+
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mcp
+    steps:
+      - name: Checkout current ref
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v4
+
+      - name: Check Poetry configuration
+        run: |
+          poetry --version
+          poetry env use 3.12
+          poetry check
+          poetry env info
+
+      - name: Install Dependencies
+        run: poetry install --verbose --with dev
+
+      - name: Build MCP image for network tests
+        run: docker build -t howler-mcp-server:latest .
+
+      - name: Spin up full test dependencies
+        uses: hoverkraft-tech/compose-action@v2.6.0
+        with:
+          compose-file: "mcp/docker-compose.yml"
+          up-flags: "--profile full"
+
       - name: Run tests
         run: poetry run pytest test
+
+      - name: Run network tests
+        run: poetry run pytest test/test_network.py
+        env:
+          RUN_MCP_NETWORK_TESTS: "1"
 
   build_docker_image:
     if: github.event_name != 'pull_request'

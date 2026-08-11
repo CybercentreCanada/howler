@@ -124,6 +124,13 @@ Optional live network tests:
 4. export TEST_AUTH_EMAIL=<email>
 5. poetry run pytest test/network_connection_test.py -v
 
+## Linting and Validation
+
+Run Ruff linting and formatting from `mcp/`:
+
+- `poetry run ruff check .`
+- `poetry run ruff format .`
+
 ## Deployment Notes
 
 Container:

@@ -1,25 +1,30 @@
 services:
   howler-mcp:
     image: howler-mcp-server:latest
-    network_mode: host
+    profiles:
+      - full
+    ports:
+      - "8000:8000"
+    networks:
+      - howler-mcp-network
     environment:
       # Howler API configuration
       HOWLER_API_VERSION: ${HOWLER_API_VERSION:-v1}
-      HOWLER_API_HOST: ${HOWLER_API_HOST:-localhost}
-      HOWLER_API_PORT: ${HOWLER_API_PORT:-3000}
-      HOWLER_API_BASE_URL: ${HOWLER_API_BASE_URL:-http://localhost:3000/api/v1}
+      HOWLER_API_HOST: ${HOWLER_API_HOST:-howler-api}
+      HOWLER_API_PORT: ${HOWLER_API_PORT:-5000}
+      HOWLER_API_BASE_URL: ${HOWLER_API_BASE_URL:-http://howler-api:5000/api/v1}
       HOWLER_API_AUDIENCE: ${HOWLER_API_AUDIENCE:-howler}
       HOWLER_API_SCOPE: ${HOWLER_API_SCOPE:-howler}
       HOWLER_API_TIMEOUT: ${HOWLER_API_TIMEOUT:-5.0}
 
       # Auth / Keycloak configuration
-      AUTH_HOST: ${AUTH_HOST:-localhost}
-      AUTH_PORT: ${AUTH_PORT:-9100}
+      AUTH_HOST: ${AUTH_HOST:-keycloak}
+      AUTH_PORT: ${AUTH_PORT:-8080}
       AUTH_REALM: ${AUTH_REALM:-HogwartsMini}
-      AUTH_TOKEN_URL: ${AUTH_TOKEN_URL:-http://localhost:9100/realms/HogwartsMini/protocol/openid-connect/token}
+      AUTH_TOKEN_URL: ${AUTH_TOKEN_URL:-http://keycloak:8080/realms/HogwartsMini/protocol/openid-connect/token}
       AUTH_CLIENT_ID: ${AUTH_CLIENT_ID:-howlermcp}
       AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET}
-      AUTH_JWKS_URI: ${AUTH_JWKS_URI:-http://localhost:9100/realms/HogwartsMini/protocol/openid-connect/certs}
+      AUTH_JWKS_URI: ${AUTH_JWKS_URI:-http://keycloak:8080/realms/HogwartsMini/protocol/openid-connect/certs}
       AUTH_ISSUER: ${AUTH_ISSUER:-http://localhost:9100/realms/HogwartsMini}
       AUTH_AS_SERVER_URL: ${AUTH_AS_SERVER_URL:-http://localhost:9100/realms/HogwartsMini}
       AUTH_TIMEOUT: ${AUTH_TIMEOUT:-5.0}
@@ -31,3 +36,74 @@ services:
       MCP_BASE_URL: ${MCP_BASE_URL:-http://localhost:8000/mcp}
       MCP_SCOPE: ${MCP_SCOPE:-howlermcp:access}
       MCP_AUDIENCE: ${MCP_AUDIENCE:-howlermcp}
+
+  howler-api:
+    image: cccs/howler-api:latest
+    profiles:
+      - full
+    networks:
+      - howler-mcp-network
+    environment:
+      HWL_DATASTORE__HOSTS: '[{"name":"elastic","scheme":"http","host":"elasticsearch:9200"}]'
+      HWL_CORE__REDIS__NONPERSISTENT__HOST: redis
+      HWL_CORE__REDIS__NONPERSISTENT__PORT: "6379"
+      HWL_CORE__REDIS__PERSISTENT__HOST: redis
+      HWL_CORE__REDIS__PERSISTENT__PORT: "6379"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.11
+    profiles:
+      - full
+    networks:
+      - howler-mcp-network
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      logger.level: WARN
+      ES_JAVA_OPTS: -Xms1024m -Xmx1024m -Dlog4j2.disable.jmx=true
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis
+    profiles:
+      - full
+    networks:
+      - howler-mcp-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  keycloak:
+    build:
+      context: ../api/dev/keycloak
+      dockerfile: Dockerfile
+    profiles:
+      - full
+    ports:
+      - "9100:8080"
+    networks:
+      - howler-mcp-network
+    environment:
+      KC_HEALTH_ENABLED: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+networks:
+  howler-mcp-network:
+    driver: bridge
