@@ -141,13 +141,9 @@ class HowlerApiClient:
             status_code = code
             status_class = _status_class(code)
             outcome = f"http_{status_class}"
-            try:
-                error_response = e.response.json()
-            except ValueError:
-                error_response = e.response.content.decode()
             logger.warning(
                 f"api_request_http_error method={method} endpoint={endpoint} status_code={code} "
-                f"outcome={outcome} response={error_response}"
+                f"outcome={outcome} response={e.response.content}"
             )
             raise
 
