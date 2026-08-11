@@ -67,87 +67,70 @@ def register_tools(mcp, api_client: HowlerApiClient):
         """Return True when value contains control chars or path separators."""
         return bool(CONTROL_OR_PATH_SEP_PATTERN.search(value))
 
-    # TODO: rework this. its AI and it was to quick debug something for somethign else
     def _proper_access_token() -> AccessToken:
         """Return the current request access token or fail consistently."""
         request_available = False
         scope_user_available = False
-        scope_token_available = False
-        scope_token_type = "none"
+        scope_token_type = "NoneType"
         auth_header_present = False
         request_path = "unknown"
         scope_access_token: Any = None
 
         try:
             request = get_http_request()
-            if request is not None:
-                scope_user = request.scope.get("user")
-                scope_user_available = scope_user is not None
-                if scope_user_available:
-                    scope_access_token = getattr(scope_user, "access_token", None)
-                    scope_token_available = scope_access_token is not None
-                    scope_token_type = type(scope_access_token).__name__
-                auth_header_present = bool(request.headers.get("authorization"))
-                request_path = request.url.path
-        except RuntimeError as exc:
-            logger.warning(f"auth_context_probe_failed error={exc}")
+            # was not able to get request
+            if not request:
+                raise ValueError("request was receive empty")
+            request_available = True
+
+            scope_user = request.scope.get("user")
+            # was not able to get user scope
+            if not scope_user:
+                raise ValueError("request did not contain the scope user")
+            scope_user_available = True
+
+            scope_access_token = getattr(scope_user, "access_token", None)
+            scope_token_type = type(scope_access_token).__name__
+            auth_header_present = bool(request.headers.get("authorization"))
+
+            request_path = request.url.path
+        except RuntimeError as e:
+            logger.warning(f"auth_context_probe_failed error={e}")
+        except ValueError as e:
+            logger.warning(f"Server did not answer properly : {e}")
 
         access_token: AccessToken | None = None
+        error: str = ""
         try:
             access_token = get_access_token()
-        except ValueError as exc:
+        except (ValueError, TypeError) as e:
             # FastMCP may fail internal type checks even when request.scope.user
-            # is present. Recover by coercing the scoped access_token manually.
-            if scope_token_available:
-                if isinstance(scope_access_token, AccessToken):
-                    access_token = scope_access_token
-                else:
-                    token_value = getattr(scope_access_token, "token", None)
-                    client_id = getattr(scope_access_token, "client_id", "unknown-client")
-                    scopes = getattr(scope_access_token, "scopes", [])
-                    expires_at = getattr(scope_access_token, "expires_at", None)
-                    resource = getattr(scope_access_token, "resource", None)
+            # is present. Recover using the raw token value from the request
+            # scope; only ``token`` is used downstream by HowlerApiClient.
+            error = str(e)
+            token_value = getattr(scope_access_token, "token", None)
+            if token_value:
+                access_token = AccessToken(
+                    token=token_value,
+                    client_id=getattr(scope_access_token, "client_id", "unknown-client"),
+                    scopes=list(getattr(scope_access_token, "scopes", [])),
+                    expires_at=getattr(scope_access_token, "expires_at", None),
+                    resource=getattr(scope_access_token, "resource", None),
+                )
 
-                    if token_value:
-                        access_token = AccessToken(
-                            token=token_value,
-                            client_id=client_id,
-                            scopes=list(scopes or []),
-                            expires_at=expires_at,
-                            resource=resource,
-                        )
-
-            if not access_token:
-                raise ValueError(
-                    "Access token is not available. "
-                    f"request_available={request_available} "
-                    f"scope_user_available={scope_user_available} "
-                    f"scope_token_available={scope_token_available} "
-                    f"scope_token_type={scope_token_type} "
-                    f"auth_header_present={auth_header_present} "
-                    f"request_path={request_path} "
-                    f"upstream_error={exc}"
-                ) from exc
-
-        logger.info(
-            "auth_context_probe "
-            f"request_available={request_available} "
-            f"scope_user_available={scope_user_available} "
-            f"scope_token_available={scope_token_available} "
-            f"scope_token_type={scope_token_type} "
-            f"auth_header_present={auth_header_present} "
-            f"request_path={request_path} "
-            f"token_resolved={bool(access_token)}"
-        )
-
+        # get_access_token may return None without raising (expired background-task snapshot)
         if not access_token:
             raise ValueError(
                 "Access token is not available. "
                 f"request_available={request_available} "
                 f"scope_user_available={scope_user_available} "
+                f"scope_token_available={scope_access_token is not None} "
+                f"scope_token_type={scope_token_type} "
                 f"auth_header_present={auth_header_present} "
-                f"request_path={request_path}"
+                f"request_path={request_path} "
+                f"upstream_error={error}"
             )
+
         return access_token
 
     async def _validate_query_fields(query: str) -> str:
