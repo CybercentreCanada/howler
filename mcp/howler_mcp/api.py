@@ -148,38 +148,28 @@ class HowlerApiClient:
             logger.warning(
                 f"api_request_http_error method={method} endpoint={endpoint} status_code={code} outcome={outcome}"
             )
-            raise httpx.HTTPStatusError(
-                f"Backend HTTP status error for {method} {endpoint}: {code}",
-                request=e.request,
-                response=e.response,
-            ) from e
+            raise
 
-        except httpx.TimeoutException as e:
+        except httpx.TimeoutException:
             outcome = "timeout"
             logger.warning(
                 f"api_request_timeout method={method} endpoint={endpoint} outcome={outcome}"
             )
-            raise httpx.TimeoutException(
-                f"Backend timeout for {method} {endpoint}",
-            ) from e
+            raise
 
-        except httpx.HTTPError as e:
+        except httpx.HTTPError:
             outcome = "network_error"
             logger.exception(
                 f"api_request_http_error method={method} endpoint={endpoint} outcome={outcome}"
             )
-            raise httpx.HTTPError(
-                f"Backend network error for {method} {endpoint}"
-            ) from e
+            raise
 
-        except ValueError as e:
+        except ValueError:
             outcome = "value_error"
             logger.warning(
                 f"api_request_value_error method={method} endpoint={endpoint} outcome={outcome}"
             )
-            raise ValueError(
-                f"Request validation error for {method} {endpoint}: {e}"
-            ) from e
+            raise
 
         finally:
             duration_seconds = time.perf_counter() - started

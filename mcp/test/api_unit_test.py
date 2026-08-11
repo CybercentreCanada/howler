@@ -1,5 +1,6 @@
 from unittest.mock import AsyncMock, Mock, patch
 
+import httpx
 import pytest
 from howler_mcp.api import HowlerApiClient
 from mcp.server.auth.provider import AccessToken
@@ -66,3 +67,32 @@ async def test_call_rejects_missing_api_response_envelope():
 
     with pytest.raises(ValueError, match="expected format"):
         await api_client.call(FAKE_TOKEN, "/whoami", "GET")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "error",
+    [
+        httpx.ReadTimeout("timed out", request=httpx.Request("GET", "https://api")),
+        httpx.ConnectError(
+            "connection failed", request=httpx.Request("GET", "https://api")
+        ),
+        httpx.HTTPStatusError(
+            "server error",
+            request=httpx.Request("GET", "https://api"),
+            response=httpx.Response(500, request=httpx.Request("GET", "https://api")),
+        ),
+    ],
+)
+async def test_call_reraises_original_httpx_error(error: httpx.HTTPError):
+    http_client = Mock()
+    http_client.request = AsyncMock(side_effect=error)
+    auth_provider = Mock()
+    auth_provider.get_howler_token = AsyncMock(return_value="howler-token")
+    api_client = HowlerApiClient(auth_provider=auth_provider, client=http_client)
+
+    with pytest.raises(type(error)) as raised_error:
+        await api_client.call(FAKE_TOKEN, "/whoami", "GET")
+
+    assert raised_error.value is error
+    assert raised_error.value.request is error.request
