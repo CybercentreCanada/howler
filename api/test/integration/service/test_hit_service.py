@@ -244,6 +244,28 @@ def test_transition_hit_not_found(mock_get_hit):
         )
 
 
+@patch("howler.services.hit_service._update_hit", return_value=({}, "new-version"))
+@patch("howler.services.hit_service.get_hit_workflow")
+@patch("howler.services.hit_service.get_hit", return_value={"howler": {"id": "hit-id", "status": "open"}})
+def test_transition_hit_returns_new_version(mock_get_hit, mock_get_workflow, mock_update_hit):
+    mock_get_workflow.return_value.transition.return_value = [
+        OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.status", "in-progress")
+    ]
+    user = User({"uname": "test_user", "name": "Test User", "password": "test_password"})
+
+    updated_hit, new_version = hit_service.transition_hit(
+        "hit-id",
+        HitStatusTransition.ASSIGN_TO_ME,
+        user=user,
+        version="current-version",
+    )
+
+    assert updated_hit
+    assert new_version == "new-version"
+    mock_update_hit.assert_called_once()
+    assert mock_update_hit.call_args.kwargs["version"] == "current-version"
+
+
 @patch("howler.services.hit_service.exists", return_value=True)
 def test_create_hit_already_exists(mock_exists):
     """Test that create_hit raises ResourceExists if the hit exists and skip_exists is False."""

@@ -697,7 +697,7 @@ def transition(id: str, user: User, server_version: str | None = None, **kwargs)
                 )
             )
 
-        hit_service.transition_hit(
+        hit, version = hit_service.transition_hit(
             id, transition, user, version, refresh=refresh, **kwargs, **transition_data.get("data", {})
         )
     except (WorkflowException, DataStoreException, InvalidDataException) as e:
@@ -707,7 +707,6 @@ def transition(id: str, user: User, server_version: str | None = None, **kwargs)
     except HowlerException as e:
         return internal_error(err=str(e))
 
-    hit, version = hit_service.get_hit(id, as_odm=False, version=True)
     return ok(hit), version
 
 

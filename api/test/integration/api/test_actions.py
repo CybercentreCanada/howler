@@ -554,6 +554,7 @@ def test_execute_transition_multiple(datastore: HowlerDatastore, login_session):
 
         for report in resp.values():
             for entry in report:
+                assert entry["title"] != "Version Conflict", entry["message"]
                 assert entry["outcome"] in ["skipped", "success"]
 
                 assert "query" in entry
