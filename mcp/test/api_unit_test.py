@@ -41,7 +41,9 @@ async def test_call_rejects_body_for_non_post_methods():
     with patch("howler_mcp.api.httpx.AsyncClient", return_value=Mock()):
         api_client = HowlerApiClient(auth_provider=auth_provider)
 
-    with pytest.raises(ValueError, match="only allowed for POST"):
+    with pytest.raises(
+        ValueError, match="Request body is not allowed for GET or OPTIONS"
+    ):
         await api_client.call(
             FAKE_TOKEN,
             "/whoami",
