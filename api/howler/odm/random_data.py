@@ -945,15 +945,14 @@ if __name__ == "__main__":
                 operations[0](ds)
 
     logger.info("Running setup steps.")
+    if "users" in args:
+        setup_users(ds)
+
     if "hits" in args:
         setup_hits(ds)
 
     if "events" in args:
         setup_events(ds)
-
-    if "users" in args:
-        setup_users(ds)
-
     for index, operations in INDEXES.items():
         if index in args:
             logger.info("Creating %s...", index)

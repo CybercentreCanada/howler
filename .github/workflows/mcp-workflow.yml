@@ -120,7 +120,7 @@ jobs:
             keycloak
 
       - name: Seed Howler API test hits
-        run: docker compose -f docker-compose.yml exec -T howler-api python -m howler.odm.random_data hits
+        run: docker compose -f docker-compose.yml exec -T howler-api python -m howler.odm.random_data users hits
 
       - name: Start Howler MCP server
         run: |
