@@ -261,6 +261,44 @@ def test_update_hit_modifies_status(datastore_connection):
         )
 
 
+def test_update_hit_fetches_version_when_missing():
+    hit = random_model_obj(cast(Any, Hit))
+    version = "hit-index---1---1"
+    storage = MagicMock()
+    storage.hit.get.side_effect = [(hit, version), ({"howler": {"id": hit.howler.id}}, version)]
+
+    with patch("howler.services.hit_service.datastore", return_value=storage):
+        hit_service._update_hit(
+            hit.howler.id,
+            [OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.score", 100, silent=True)],
+        )
+
+    storage.hit.get.assert_any_call(hit.howler.id, as_obj=True, version=True)
+    storage.hit.update.assert_called_once()
+    assert storage.hit.update.call_args.args[2] == version
+
+
+def test_update_hit_preserves_provided_version():
+    hit = random_model_obj(cast(Any, Hit))
+    version = "hit-index---2---3"
+    storage = MagicMock()
+    storage.hit.get.return_value = ({"howler": {"id": hit.howler.id}}, version)
+
+    with (
+        patch("howler.services.hit_service.datastore", return_value=storage),
+        patch("howler.services.hit_service.get_hit", return_value=hit),
+    ):
+        hit_service._update_hit(
+            hit.howler.id,
+            [OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.score", 100, silent=True)],
+            version=version,
+        )
+
+    storage.hit.get.assert_called_once_with(hit.howler.id, as_obj=False, version=True)
+    storage.hit.update.assert_called_once()
+    assert storage.hit.update.call_args.args[2] == version
+
+
 @patch("howler.services.template_service.datastore")
 @patch("howler.services.hit_service.__match_metadata")
 def test_augment_metadata_single_hit_with_template(mock_match_metadata, mock_datastore):

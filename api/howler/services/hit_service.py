@@ -573,7 +573,11 @@ def _update_hit(
     if user and not isinstance(user, str):
         raise HowlerValueError("User must be of type string")
 
-    current_hit = cast(Hit, get_hit(hit_id, as_odm=True))
+    if version is None:
+        fetched_hit, version = datastore().hit.get(hit_id, as_obj=True, version=True)
+        current_hit = cast(Hit, fetched_hit)
+    else:
+        current_hit = cast(Hit, get_hit(hit_id, as_odm=True))
 
     for operation in operations:
         if not operation:
@@ -590,15 +594,16 @@ def _update_hit(
             is_list = current_hit.flat_fields()[key].multivalued
             previous_value = "list"
 
-        operation_type = ""
         if is_list:
-            if operation.operation in (
-                ESCollection.UPDATE_APPEND,
-                ESCollection.UPDATE_APPEND_IF_MISSING,
-            ):
-                operation_type = HitOperationType.APPENDED
-            else:
-                operation_type = HitOperationType.REMOVED
+            operation_type = (
+                HitOperationType.APPENDED
+                if operation.operation
+                in (
+                    ESCollection.UPDATE_APPEND,
+                    ESCollection.UPDATE_APPEND_IF_MISSING,
+                )
+                else HitOperationType.REMOVED
+            )
         else:
             operation_type = HitOperationType.SET
 

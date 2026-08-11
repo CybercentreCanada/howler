@@ -528,7 +528,7 @@ def get_assigned_hits(user, **kwargs):
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
 @parse_parameters(refresh=parse_refresh)
-def add_label(id, label_set, user, **kwargs):
+def add_label(id: str, label_set: str, user: User, server_version: str | None = None, **kwargs):
     """Add labels to a hit.
 
     Variables:
@@ -575,7 +575,8 @@ def add_label(id, label_set, user, **kwargs):
     hit_service.update_hit(
         id,
         [hit_helper.list_add(f"howler.labels.{label_set}", label) for label in labels],
-        user["uname"],
+        user.uname,
+        version=server_version,
         refresh="true" if DEBUG_FORCE_REFRESH else refresh,
     )
 
@@ -591,7 +592,7 @@ def add_label(id, label_set, user, **kwargs):
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
 @parse_parameters(refresh=parse_refresh)
-def remove_labels(id, label_set, user, **kwargs):
+def remove_labels(id: str, label_set: str, user: User, server_version: str | None = None, **kwargs):
     """Remove labels from a hit.
 
     Variables:
@@ -632,7 +633,8 @@ def remove_labels(id, label_set, user, **kwargs):
     hit_service.update_hit(
         id,
         [hit_helper.list_remove(f"howler.labels.{label_set}", label) for label in labels],
-        user["uname"],
+        user.uname,
+        version=server_version,
         refresh="true" if DEBUG_FORCE_REFRESH else refresh,
     )
 
@@ -648,7 +650,7 @@ def remove_labels(id, label_set, user, **kwargs):
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=True)
 @parse_parameters(refresh=parse_refresh)
-def transition(id: str, user: User, **kwargs):
+def transition(id: str, user: User, server_version: str | None = None, **kwargs):
     """Transition a hit
 
     Variables:
@@ -679,11 +681,12 @@ def transition(id: str, user: User, **kwargs):
         return bad_request(err="Invalid data format")
 
     transition = transition_data["transition"]
+    version: str | None = None
     if "If-Match" in request.headers:
         version = request.headers["If-Match"]
     else:
         logger.warning("User is mising version - no If-Match header in request.")
-        version = None
+        version = server_version
 
     try:
         if transition not in HitStatusTransition.list():
@@ -712,7 +715,7 @@ def transition(id: str, user: User, **kwargs):
 @hit_api.route("/<id>/comments/<comment_id>", methods=["GET"])
 @api_login(audit=False, required_priv=["R"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
-def get_comment(id: str, comment_id: str, user: User, server_version: str, **kwargs):
+def get_comment(id: str, comment_id: str, user: User, server_version: str | None = None, **kwargs):
     """Get a comment associated with a particular hit
 
     Variables:
@@ -741,7 +744,7 @@ def get_comment(id: str, comment_id: str, user: User, server_version: str, **kwa
 @hit_api.route("/<id>/comments", methods=["POST"])
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
-def add_comment(id: str, user: dict[str, Any], **kwargs):
+def add_comment(id: str, user: User, server_version: str | None = None, **kwargs):
     """Add a comment
 
     Variables:
@@ -781,12 +784,13 @@ def add_comment(id: str, user: dict[str, Any], **kwargs):
             [
                 hit_helper.list_add(
                     "howler.comment",
-                    Comment({"user": user["uname"], "value": comment_value}),
+                    Comment({"user": user.uname, "value": comment_value}),
                     explanation=f"Added a comment:\n\n{comment_value}",
                     if_missing=True,
                 ),
             ],
-            user["uname"],
+            user.uname,
+            version=server_version,
         )
     except DataStoreException as e:
         return bad_request(err=str(e))
@@ -800,7 +804,7 @@ def add_comment(id: str, user: dict[str, Any], **kwargs):
 @hit_api.route("/<id>/comments/<comment_id>", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
-def edit_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
+def edit_comment(id: str, comment_id: str, user: dict[str, Any], server_version: str | None = None, **kwargs):
     """Edit a comment
 
     Variables:
@@ -865,6 +869,7 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
             ),
         ],
         user["uname"],
+        version=server_version,
     )
 
     return ok(new_hit), version
@@ -874,7 +879,7 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
 @hit_api.route("/<id>/comments", methods=["DELETE"])
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
-def delete_comments(id: str, user: User, **kwargs):
+def delete_comments(id: str, user: User, server_version: str | None = None, **kwargs):
     """Delete a set of comments
 
     Variables:
@@ -923,6 +928,7 @@ def delete_comments(id: str, user: User, **kwargs):
                 for comment in comments
             ],
             user.uname,
+            version=server_version,
         )
 
     except DataStoreException as e:

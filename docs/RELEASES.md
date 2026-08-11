@@ -1,5 +1,14 @@
 # Howler Releases
 
+## Howler UI `v3.0.3`
+
+- **Noisy Console Logging** _(bugfix)_: Removed noisy log call in ErrorBoundary
+
+## Howler API `v4.0.6`
+
+- **ILM Duplicate Record Cleanup** _(bugfix)_: Added an interactive, bounded-memory utility to identify duplicate IDs across ILM rollover indexes and remove obsolete copies from older indexes.
+- **ILM Hit Updates** _(bugfix)_: Hit updates now use the current version and concrete ILM index when no caller version is supplied, while ETag versions are preserved across mutation endpoints.
+
 ## Howler UI `v3.0.2`
 
 - **Legacy View Cards** _(bugfix)_: Fixes issue on dashboard where pre-v3 settings would break view cards due to no index set
