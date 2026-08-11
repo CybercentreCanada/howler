@@ -13,7 +13,7 @@ def verifier() -> JSONWebTokenVerifier:
         issuer="https://issuer.example/realms/howler",
         jwks_uri="https://issuer.example/realms/howler/protocol/openid-connect/certs",
         audience="howlermcp",
-        required_scope="howlermcp:access",
+        required_scopes=["openid", "offline_access"],
         timeout=5.0,
     )
 
