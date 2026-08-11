@@ -57,6 +57,13 @@ repos:
         language: script
         stages: [pre-commit]
         files: ^plugins/sentinel/.*\.(toml|lock)
+      - id: poetry-check-mcp
+        name: Poetry Check (MCP Server)
+        entry: hooks/check_poetry.sh
+        args: [mcp]
+        language: script
+        stages: [pre-commit]
+        files: ^client/.*\.(toml|lock)
       - id: oxlint
         name: Run oxlint
         entry: hooks/oxlint.sh
