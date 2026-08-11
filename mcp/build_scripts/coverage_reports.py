@@ -50,13 +50,13 @@ def main() -> None:
             # Howler MCP - Coverage Results
             ![Static Badge](https://img.shields.io/badge/Total_Coverage-{total_percentage}-{total_color}?style=flat) {diff_badge}
 
-{newline.join([(" " * 8) + line for line in diff_result.splitlines()]) if diff_result else ""}
+{newline.join([(" " * 12) + line for line in diff_result.splitlines()]) if diff_result else ""}
 
             ## Full Coverage Report
             <details>
                 <summary>Expand</summary>
 
-{newline.join([(" " * 12) + line for line in report_result.splitlines()])}
+{newline.join([(" " * 16) + line for line in report_result.splitlines()])}
             </details>
             """
         ).strip()
