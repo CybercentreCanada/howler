@@ -18,16 +18,16 @@ const OverviewCard: FC<{
   const { showModal, withConfirmDeleteModal } = useContext(ModalContext);
 
   const onDelete = useCallback(
-      (e: React.MouseEvent<HTMLButtonElement, MouseEvent>, id: string) => {
-        e.preventDefault();
-        e.stopPropagation();
+    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>, id: string) => {
+      e.preventDefault();
+      e.stopPropagation();
 
-        withConfirmDeleteModal(async () => {
-          await onRemove?.(id);
-        });
-      },
-      [onRemove, withConfirmDeleteModal]
-    );
+      withConfirmDeleteModal(async () => {
+        await onRemove?.(id);
+      });
+    },
+    [onRemove, withConfirmDeleteModal]
+  );
 
   return (
     <Card key={overview.overview_id} variant="outlined" sx={{ p: 1, mb: 1 }} className={className}>
