@@ -63,7 +63,7 @@ repos:
         args: [mcp]
         language: script
         stages: [pre-commit]
-        files: ^client/.*\.(toml|lock)
+        files: ^mcp/.*\.(toml|lock)
       - id: oxlint
         name: Run oxlint
         entry: hooks/oxlint.sh
