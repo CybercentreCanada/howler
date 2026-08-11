@@ -21,6 +21,7 @@ from howler.utils.list_utils import flatten_list
 OPERATION_ID = "transition"
 MAX_HITS_BASIC = 10
 MAX_HITS_ADVANCED = 1000
+MAX_VERSION_CONFLICT_ATTEMPTS = 3
 SKIP_CENTRAL_LIMIT = True  # This operation transforms the query, handles limit check locally
 
 log = get_logger(__file__)
@@ -41,6 +42,16 @@ def _transition_failure_report(hit_id: str, error: Exception) -> dict[str, str]:
         "title": "An error occurred while processing.",
         "message": str(error),
     }
+
+
+def _transition_hit_with_retry(hit_id: str, transition: HitStatusTransition, user: User, **kwargs) -> None:
+    for attempt in range(MAX_VERSION_CONFLICT_ATTEMPTS):
+        try:
+            hit_service.transition_hit(hit_id, transition, user, **kwargs)
+            return
+        except VersionConflictException:
+            if attempt == MAX_VERSION_CONFLICT_ATTEMPTS - 1:
+                raise
 
 
 def __parse_workflow_actions(workflow: Workflow) -> dict[str, set[str]]:
@@ -144,7 +155,7 @@ def execute(
     total_processed = 0
     for hit_id in ids:
         try:
-            hit_service.transition_hit(
+            _transition_hit_with_retry(
                 hit_id,
                 cast(HitStatusTransition, HitStatusTransition[transition]),
                 user,
