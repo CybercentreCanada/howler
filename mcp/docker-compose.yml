@@ -52,6 +52,10 @@ services:
       HWL_CORE__REDIS__PERSISTENT__HOST: redis
       HWL_CORE__REDIS__PERSISTENT__PORT: "6379"
       HWL_LOGGING__LOG_LEVEL: DEBUG
+      HWL_AUTH__OAUTH__PROVIDERS__KEYCLOAK__ACCESS_TOKEN_URL: http://keycloak:8080/realms/HogwartsMini/protocol/openid-connect/token
+      HWL_AUTH__OAUTH__PROVIDERS__KEYCLOAK__API_BASE_URL: http://keycloak:8080/realms/HogwartsMini/protocol/openid-connect/
+      HWL_AUTH__OAUTH__PROVIDERS__KEYCLOAK__AUTHORIZE_URL: http://keycloak:8080/realms/HogwartsMini/protocol/openid-connect/auth
+      HWL_AUTH__OAUTH__PROVIDERS__KEYCLOAK__JWKS_URI: http://keycloak:8080/realms/HogwartsMini/protocol/openid-connect/certs
     volumes:
       - ../api/test/unit/config.yml:/etc/howler/conf/config.yml:ro
       - ../client/test/config/classification.yml:/etc/howler/conf/classification.yml:ro
