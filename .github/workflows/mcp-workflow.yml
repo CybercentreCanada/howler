@@ -129,7 +129,7 @@ jobs:
           HOWLER_API_BASE_URL=http://localhost:5000/api/v1 \
           AUTH_HOST=localhost \
           AUTH_TOKEN_URL=http://localhost:9100/realms/HogwartsMini/protocol/openid-connect/token \
-          COVERAGE_FILE=.coverage.server poetry run coverage run -m howler_mcp.server &
+          COVERAGE_FILE=.coverage.server poetry run coverage run -m howler_mcp.server > /tmp/howler-mcp-server.log 2>&1 &
           echo $! > mcp-server.pid
           curl --retry 15 --retry-delay 2 --retry-all-errors -sS -o /dev/null http://localhost:8000/mcp
 
@@ -148,7 +148,15 @@ jobs:
 
       - name: Print dependency logs after failed tests
         if: steps.tests.outcome == 'failure'
-        run: docker compose -f docker-compose.yml logs --no-color howler-api keycloak
+        run: |
+          echo "--- Howler API and Keycloak logs ---"
+          docker compose -f docker-compose.yml logs --no-color howler-api keycloak
+          echo "--- Howler MCP server logs ---"
+          if [ -f /tmp/howler-mcp-server.log ]; then
+            cat /tmp/howler-mcp-server.log
+          else
+            echo "MCP server log file was not created"
+          fi
 
       - name: Stop MCP server and combine coverage
         if: always()

@@ -12,7 +12,7 @@ def verifier() -> JSONWebTokenVerifier:
     return JSONWebTokenVerifier(
         issuer="https://issuer.example/realms/howler",
         jwks_uri="https://issuer.example/realms/howler/protocol/openid-connect/certs",
-        audience="howlermcp",
+        audience="howler",
         required_scopes=["openid", "offline_access"],
         timeout=5.0,
     )
@@ -55,7 +55,7 @@ async def test_verify_token_rejects_audience_mismatch(verifier):
         "iat": 1111111111,
         "iss": "https://issuer.example/realms/howler",
         "aud": "other-audience",
-        "scope": "howlermcp:access",
+        "scope": "offline_access",
         "azp": "cli-a",
     }
 
@@ -78,7 +78,7 @@ async def test_verify_token_rejects_missing_scope(verifier):
         "exp": 9999999999,
         "iat": 1111111111,
         "iss": "https://issuer.example/realms/howler",
-        "aud": "howlermcp",
+        "aud": "howler",
         "scope": "different:scope",
         "azp": "cli-a",
     }
@@ -102,8 +102,8 @@ async def test_verify_token_accepts_valid_token(verifier):
         "exp": 9999999999,
         "iat": 1111111111,
         "iss": "https://issuer.example/realms/howler",
-        "aud": ["howlermcp", "other"],
-        "scope": "openid profile howlermcp:access",
+        "aud": ["howler", "other"],
+        "scope": "openid profile offline_access",
         "azp": "cli-a",
     }
 
@@ -120,8 +120,8 @@ async def test_verify_token_accepts_valid_token(verifier):
     assert token is not None
     assert token.token == "raw-token"
     assert token.client_id == "cli-a"
-    assert token.resource == "howlermcp"
-    assert "howlermcp:access" in token.scopes
+    assert token.resource == "howler"
+    assert "offline_access" in token.scopes
 
 
 @pytest.mark.asyncio

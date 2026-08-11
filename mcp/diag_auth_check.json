@@ -1,22 +1,22 @@
 {
   "steps": [
     {
-      "name": "token_fetch",
-      "status": 200,
       "has_token": true,
-      "scope": "profile email howlermcp:access"
+      "name": "token_fetch",
+      "scope": "profile email offline_access",
+      "status": 200
     },
     {
-      "name": "mcp_initialize",
-      "status": 200,
+      "body_preview": "event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"experimental\":{},\"prompts\":{\"listChanged\":false},\"resources\":{\"subscribe\":false,\"listChanged\":false},\"tools\":{\"listC",
       "has_session": true,
+      "name": "mcp_initialize",
       "session_id": "4596ee569f984dcba0450841a35ea8d3",
-      "body_preview": "event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"experimental\":{},\"prompts\":{\"listChanged\":false},\"resources\":{\"subscribe\":false,\"listChanged\":false},\"tools\":{\"listC"
+      "status": 200
     },
     {
+      "body_preview": "event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Error executing tool whoami: Could not get the access token\"}],\"isError\":true}}\r\n\r\n",
       "name": "whoami_call",
-      "status": 200,
-      "body_preview": "event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Error executing tool whoami: Could not get the access token\"}],\"isError\":true}}\r\n\r\n"
+      "status": 200
     }
   ]
 }
