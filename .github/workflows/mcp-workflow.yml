@@ -119,6 +119,9 @@ jobs:
             redis
             keycloak
 
+      - name: Seed Howler API test hits
+        run: docker compose -f docker-compose.yml exec -T howler-api python -m howler.odm.random_data hits
+
       - name: Start Howler MCP server
         run: |
           poetry run coverage erase --data-file=.coverage.server
@@ -142,6 +145,10 @@ jobs:
           TEST_AUTH_EMAIL: goose@howler.cyber.gc.ca
           HOWLER_API_BASE_URL: http://localhost:5000/api/v1
           COVERAGE_FILE: .coverage.tests
+
+      - name: Print dependency logs after failed tests
+        if: steps.tests.outcome == 'failure'
+        run: docker compose -f docker-compose.yml logs --no-color howler-api keycloak
 
       - name: Stop MCP server and combine coverage
         if: always()
