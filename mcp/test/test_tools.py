@@ -3,6 +3,7 @@
 These tests are fully mocked and require no live network access.
 """
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
@@ -53,6 +54,63 @@ def test_registered_tool_surface(tools_and_api):
         "create_dossier",
         "update_dossier",
     }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "http_request",
+    [
+        None,
+        SimpleNamespace(
+            scope={"user": None},
+            headers={},
+            url=SimpleNamespace(path="/mcp"),
+        ),
+    ],
+)
+async def test_tools_continue_when_request_context_is_incomplete(tools_and_api, http_request):
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = {
+        "username": "jdoe",
+        "email": "jdoe@example.com",
+        "groups": [],
+        "roles": [],
+    }
+
+    with (
+        patch("howler_mcp.tools.get_http_request", return_value=http_request),
+        patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
+    ):
+        result = await tools["whoami"]()
+
+    assert result.username == "jdoe"
+
+
+@pytest.mark.asyncio
+async def test_tools_recover_token_from_request_scope(tools_and_api):
+    tools, mock_api = tools_and_api
+    raw_token = SimpleNamespace(
+        token="raw-bearer",
+        client_id="scope-client",
+        scopes=["openid"],
+        expires_at=9999999999,
+        resource="howler",
+    )
+    request = SimpleNamespace(
+        scope={"user": SimpleNamespace(access_token=raw_token)},
+        headers={"authorization": "Bearer raw-bearer"},
+        url=SimpleNamespace(path="/mcp"),
+    )
+    mock_api.call.return_value = [{"howler": {"id": "hit-1"}}]
+
+    with (
+        patch("howler_mcp.tools.get_http_request", return_value=request),
+        patch(GET_ACCESS_TOKEN_PATH, side_effect=ValueError("context type mismatch")),
+    ):
+        result = await tools["list_assigned_hits"]()
+
+    assert result == [{"howler": {"id": "hit-1"}}]
+    assert mock_api.call.call_args.kwargs["user_access_token"].token == "raw-bearer"
 
 
 def test_query_iconify_requests_expected_params_without_prefix(tools_and_api):
@@ -300,6 +358,32 @@ async def test_lucene_query_rows_validation(tools_and_api, rows):
 
 
 @pytest.mark.asyncio
+async def test_lucene_query_rejects_empty_query(tools_and_api):
+    tools, mock_api = tools_and_api
+
+    with (
+        patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
+        pytest.raises(ValueError, match="query can not be empty"),
+    ):
+        await tools["lucene_query"](query="   ", fl="howler.id")
+
+    mock_api.call.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("offset", [-1, 10001])
+async def test_lucene_query_offset_validation(tools_and_api, offset):
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = {"howler.id": {"type": "keyword"}}
+
+    with (
+        patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
+        pytest.raises(ValueError, match="offset=.*must be between"),
+    ):
+        await tools["lucene_query"](query="howler.id:*", fl="howler.id", offset=offset)
+
+
+@pytest.mark.asyncio
 async def test_lucene_query_requires_fl(tools_and_api):
     tools, mock_api = tools_and_api
     mock_api.call.return_value = {"howler.id": {"type": "keyword"}}
@@ -384,6 +468,54 @@ async def test_lucene_query_omits_sort_when_empty(tools_and_api):
 
     search_call = mock_api.call.call_args_list[-1].kwargs
     assert "sort" not in search_call["body"]
+
+
+@pytest.mark.asyncio
+async def test_get_label_set_options_derives_non_empty_label_categories(tools_and_api):
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = {
+        "howler.labels.generic": {"type": "keyword"},
+        "howler.labels.": {"type": "keyword"},
+        "howler.status": {"type": "keyword"},
+    }
+
+    with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
+        result = await tools["get_label_set_options"]()
+
+    assert result == ["generic"]
+
+
+@pytest.mark.asyncio
+async def test_add_label_to_hit_normalizes_category_and_returns_updated_labels(tools_and_api):
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = {"howler": {"labels": {"generic": ["investigate"]}}}
+
+    with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
+        result = await tools["add_label_to_hit"](
+            hit_id=" hit-1 ",
+            labels_name=["investigate"],
+            label_set="GENERIC",
+        )
+
+    assert result == ["investigate"]
+    assert mock_api.call.call_args.kwargs["path"] == "/hit/hit-1/labels/generic"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("hit_id", "labels_name", "message"),
+    [
+        ("hit-1", [], "Label_name require"),
+        ("   ", ["investigate"], "hit_id require"),
+    ],
+)
+async def test_add_label_to_hit_validates_required_values(tools_and_api, hit_id, labels_name, message):
+    tools, mock_api = tools_and_api
+
+    with pytest.raises(ValueError, match=message):
+        await tools["add_label_to_hit"](hit_id=hit_id, labels_name=labels_name, label_set="generic")
+
+    mock_api.call.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -806,5 +938,190 @@ async def test_update_dossier_rejects_non_string_pivot_value(tools_and_api):
                 ]
             },
         )
+
+    mock_api.call.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_create_dossier_rejects_lead_with_unexpected_keys(tools_and_api):
+    tools, mock_api = tools_and_api
+    dossier_payload = {
+        "title": "Lead Validation",
+        "query": "howler.id:*",
+        "type": "personal",
+        "leads": [
+            {
+                "icon": "mdi:file-document",
+                "label": {"en": "Overview", "fr": "Apercu"},
+                "format": "markdown",
+                "content": "Initial notes",
+                "metadata": {},
+                "unexpected": True,
+            }
+        ],
+    }
+
+    with pytest.raises(ValueError, match="A lead should have the keys"):
+        await tools["create_dossier"](dossier_data=dossier_payload)
+
+    mock_api.call.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_create_dossier_rejects_empty_lead_content(tools_and_api):
+    tools, mock_api = tools_and_api
+    dossier_payload = {
+        "title": "Lead Validation",
+        "query": "howler.id:*",
+        "type": "personal",
+        "leads": [
+            {
+                "icon": "mdi:file-document",
+                "label": {"en": "Overview", "fr": "Apercu"},
+                "format": "markdown",
+                "content": " ",
+                "metadata": {},
+            }
+        ],
+    }
+
+    with (
+        patch("howler_mcp.tools.httpx.get") as mock_get,
+        pytest.raises(ValueError, match="label must be"),
+    ):
+        mock_get.return_value.status_code = 200
+        await tools["create_dossier"](dossier_data=dossier_payload)
+
+    mock_api.call.assert_not_called()
+
+
+def _valid_pivot() -> dict:
+    return {
+        "icon": "mdi:open-in-new",
+        "label": {"en": "Pivot", "fr": "Pivot"},
+        "value": "https://example.local?q={ioc}",
+        "format": "link",
+        "mappings": [{"key": "ioc", "field": "howler.outline.indicators"}],
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("pivots", "exception", "message"),
+    [
+        (["not-a-pivot"], TypeError, "Each pivot must be a dictionary"),
+        ([{**_valid_pivot(), "unexpected": True}], ValueError, "A pivot should have the keys"),
+        (
+            [{key: value for key, value in _valid_pivot().items() if key != "format"}],
+            ValueError,
+            "missing required keys",
+        ),
+        ([{**_valid_pivot(), "icon": " "}], ValueError, "pivot icon must be"),
+        ([{**_valid_pivot(), "label": {"en": "Pivot"}}], ValueError, "label key require"),
+        ([{**_valid_pivot(), "label": {"en": "", "fr": "Pivot"}}], ValueError, "label value must be"),
+        ([{**_valid_pivot(), "value": " "}], ValueError, "key value require"),
+        ([{**_valid_pivot(), "mappings": ["not-a-mapping"]}], TypeError, "mapping must be a dictionary"),
+        (
+            [{**_valid_pivot(), "mappings": [{"key": "ioc", "field": "field", "extra": True}]}],
+            ValueError,
+            "may contain only",
+        ),
+        ([{**_valid_pivot(), "mappings": [{"key": "ioc"}]}], ValueError, "requires key and field"),
+        ([{**_valid_pivot(), "mappings": [{"key": " ", "field": "field"}]}], ValueError, "key must be"),
+        (
+            [{**_valid_pivot(), "mappings": [{"key": "ioc", "field": "field", "custom_value": 1}]}],
+            TypeError,
+            "custom_value must be",
+        ),
+    ],
+)
+async def test_create_dossier_rejects_invalid_pivot_shapes(tools_and_api, pivots, exception, message):
+    tools, mock_api = tools_and_api
+    dossier_payload = {
+        "title": "Pivot Validation",
+        "query": "howler.id:*",
+        "type": "personal",
+        "pivots": pivots,
+    }
+
+    with (
+        patch("howler_mcp.tools.httpx.get") as mock_get,
+        pytest.raises(exception, match=message),
+    ):
+        mock_get.return_value.status_code = 200
+        await tools["create_dossier"](dossier_data=dossier_payload)
+
+    mock_api.call.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_create_dossier_rejects_unknown_pivot_icon(tools_and_api):
+    tools, mock_api = tools_and_api
+
+    with (
+        patch("howler_mcp.tools.httpx.get") as mock_get,
+        pytest.raises(ValueError, match="Invalid image was given"),
+    ):
+        mock_get.return_value.status_code = 404
+        await tools["create_dossier"](
+            dossier_data={
+                "title": "Pivot Validation",
+                "query": "howler.id:*",
+                "type": "personal",
+                "pivots": [_valid_pivot()],
+            }
+        )
+
+    mock_api.call.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("dossier_data", "exception", "message"),
+    [
+        ({"title": " ", "query": "howler.id:*", "type": "personal"}, ValueError, "dossier_data"),
+        ({"title": "Invalid Type", "query": "howler.id:*", "type": "team"}, ValueError, "key type may"),
+        (
+            {"title": "Bad Pivots", "query": "howler.id:*", "type": "personal", "pivots": {}},
+            TypeError,
+            "key pivots must",
+        ),
+    ],
+)
+async def test_create_dossier_validates_required_values(tools_and_api, dossier_data, exception, message):
+    tools, mock_api = tools_and_api
+
+    with pytest.raises(exception, match=message):
+        await tools["create_dossier"](dossier_data=dossier_data)
+
+    mock_api.call.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_update_dossier_rejects_unpermitted_field(tools_and_api):
+    tools, mock_api = tools_and_api
+
+    with pytest.raises(ValueError, match="permitted keys"):
+        await tools["update_dossier"](dossier_id="d-1", data_to_update={"unexpected": True})
+
+    mock_api.call.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_update_dossier_rejects_non_list_leads(tools_and_api):
+    tools, mock_api = tools_and_api
+
+    with pytest.raises(TypeError, match="leads require to be a list"):
+        await tools["update_dossier"](dossier_id="d-1", data_to_update={"leads": {}})
+
+    mock_api.call.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_update_dossier_rejects_empty_query(tools_and_api):
+    tools, mock_api = tools_and_api
+
+    with pytest.raises(ValueError, match="query must be provided"):
+        await tools["update_dossier"](dossier_id="d-1", data_to_update={"query": "\n\t"})
 
     mock_api.call.assert_not_called()

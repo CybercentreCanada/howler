@@ -154,3 +154,39 @@ async def test_verify_token_accepts_all_required_scopes():
 
     assert token is not None
     assert token.scopes == ["openid", "offline_access", "profile", "email"]
+
+
+@pytest.mark.asyncio
+async def test_verify_token_rejects_non_integer_expiry(verifier):
+    claims = {
+        "exp": "not-a-timestamp",
+        "iat": 1111111111,
+        "iss": "https://issuer.example/realms/howler",
+        "aud": "howler",
+        "scope": "openid offline_access",
+        "azp": "cli-a",
+    }
+
+    with (
+        patch.object(
+            verifier.jwks_client,
+            "get_signing_key_from_jwt",
+            return_value=SimpleNamespace(key="fake-key"),
+        ),
+        patch("howler_mcp.auth.jwt.decode", return_value=claims),
+    ):
+        token = await verifier.verify_token("raw-token")
+
+    assert token is None
+
+
+@pytest.mark.asyncio
+async def test_verify_token_returns_none_on_unexpected_error(verifier):
+    with patch.object(
+        verifier.jwks_client,
+        "get_signing_key_from_jwt",
+        side_effect=RuntimeError("unexpected failure"),
+    ):
+        token = await verifier.verify_token("raw-token")
+
+    assert token is None
