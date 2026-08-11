@@ -545,7 +545,9 @@ def register_tools(mcp, api_client: HowlerApiClient):
         return label_set_options
 
     @mcp.tool(name="add_label_to_hit")
-    async def add_label_to_hit(hit_id: str, labels_name: list[str], label_set: str) -> list[str]:
+    async def modify_label_to_hit(
+        hit_id: str, labels_name: list[str], label_set: str, is_adding: bool = True
+    ) -> list[str]:
         """Add one or more labels to a hit and return the updated label list.
 
         Args:
@@ -575,7 +577,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
         data: dict[str, Any] = await api_client.call(
             user_access_token=_proper_access_token(),
             path=f"/hit/{hit_id.strip()}/labels/{label_set}",
-            method="PUT",
+            method="PUT" if is_adding else "DELETE",
             body={"value": labels_name},
         )
         return data.get("howler", {}).get("labels", {}).get(label_set, [])

@@ -8,7 +8,7 @@ from mcp.server.auth.provider import AccessToken
 from .auth import AuthProvider
 from .config import HOWLER_API
 
-HttpVerb = Literal["GET", "POST", "OPTIONS", "PUT"]
+HttpVerb = Literal["GET", "POST", "OPTIONS", "PUT", "DELETE"]
 logger = logging.getLogger(__name__)
 
 
