@@ -68,9 +68,9 @@ async def test_call_rejects_missing_api_response_envelope():
 @pytest.mark.parametrize(
     ("content_type", "response_content", "logged_response"),
     [
-        ("application/json", b'{"api_error_message":"invalid query"}', "{'api_error_message': 'invalid query'}"),
-        ("application/json", b"not json", "unparseable"),
-        ("text/plain", b"invalid query", "not_json"),
+        ("application/json", b'{"api_error_message":"invalid query"}', '{"api_error_message":"invalid query"}'),
+        ("application/json", b"not json", "not json"),
+        ("text/plain", b"invalid query", "invalid query"),
     ],
 )
 async def test_call_logs_http_error_response(caplog, content_type, response_content, logged_response):
