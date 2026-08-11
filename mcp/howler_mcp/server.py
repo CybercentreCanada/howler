@@ -7,7 +7,7 @@ from mcp.server.fastmcp import FastMCP
 from pydantic import AnyHttpUrl
 
 from .api import HowlerApiClient
-from .auth import KeycloakTokenVerifier
+from .auth import JSONWebTokenVerifier
 from .config import AUTH, HOWLER_API, MCPSettings
 from .prompts import register_prompts
 from .tools import register_tools
@@ -51,7 +51,7 @@ async def lifespan(_: FastMCP) -> AsyncGenerator[dict[str, None]]:
 
 mcp = FastMCP(
     "Howler MCP",
-    token_verifier=KeycloakTokenVerifier(
+    token_verifier=JSONWebTokenVerifier(
         issuer=AUTH.ISSUER,
         jwks_uri=AUTH.JWKS_URI,
         audience=MCPSettings.AUDIENCE,

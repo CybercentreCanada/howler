@@ -17,8 +17,8 @@ from mcp.server.auth.provider import AccessToken, TokenVerifier
 logger = logging.getLogger(__name__)
 
 
-class KeycloakTokenVerifier(TokenVerifier):
-    """Verify JWTs issued by a Keycloak realm.
+class JSONWebTokenVerifier(TokenVerifier):
+    """Verify JWTs issued by a auth provider.
 
     Validates the signature, issuer, audience, and required scope of incoming
     MCP user tokens before allowing tool calls.

@@ -2,13 +2,13 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-from howler_mcp.auth import KeycloakTokenVerifier
+from howler_mcp.auth import JSONWebTokenVerifier
 from jwt.exceptions import InvalidTokenError, PyJWKClientError
 
 
 @pytest.fixture()
-def verifier() -> KeycloakTokenVerifier:
-    return KeycloakTokenVerifier(
+def verifier() -> JSONWebTokenVerifier:
+    return JSONWebTokenVerifier(
         issuer="https://issuer.example/realms/howler",
         jwks_uri="https://issuer.example/realms/howler/protocol/openid-connect/certs",
         audience="howlermcp",
