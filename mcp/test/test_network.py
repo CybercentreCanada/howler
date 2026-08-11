@@ -4,6 +4,7 @@ from urllib.parse import urlparse, urlunparse
 
 import httpx
 import pytest
+
 from howler_mcp.config import AUTH, HOWLER_API, MCPSettings
 
 RUN_MCP_NETWORK_TESTS = os.environ.get("RUN_MCP_NETWORK_TESTS", "").lower() in {
@@ -14,10 +15,7 @@ RUN_MCP_NETWORK_TESTS = os.environ.get("RUN_MCP_NETWORK_TESTS", "").lower() in {
 
 pytestmark = pytest.mark.skipif(
     not RUN_MCP_NETWORK_TESTS,
-    reason=(
-        "Live MCP network tests are disabled by default. "
-        "Set RUN_MCP_NETWORK_TESTS=1 to enable."
-    ),
+    reason=("Live MCP network tests are disabled by default. Set RUN_MCP_NETWORK_TESTS=1 to enable."),
 )
 
 TEST_USERNAME = os.environ.get("TEST_AUTH_USERNAME")
@@ -37,8 +35,7 @@ if RUN_MCP_NETWORK_TESTS:
     ]
     if missing_vars:
         pytest.skip(
-            "Missing required environment variables for live MCP network tests: "
-            + ", ".join(missing_vars),
+            "Missing required environment variables for live MCP network tests: " + ", ".join(missing_vars),
             allow_module_level=True,
         )
 
@@ -60,6 +57,7 @@ def _mcp_request_url() -> str:
 def get_token() -> str:
     payload = {
         "grant_type": "password",
+        "audience": MCPSettings.AUDIENCE,
         "client_id": AUTH.CLIENT_ID,
         "username": TEST_USERNAME,
         "password": TEST_PASSWORD,
@@ -97,16 +95,10 @@ def call_mcp_tool(token: str, tool_name: str, arguments: dict | None = None) -> 
         "id": 1,
     }
 
-    init_response = httpx.post(
-        url_mcp, headers=headers, json=init_payload, timeout=HOWLER_API.TIMEOUT
-    )
-    assert init_response.status_code == 200, (
-        f"Initialization failed: {init_response.text}"
-    )
+    init_response = httpx.post(url_mcp, headers=headers, json=init_payload, timeout=HOWLER_API.TIMEOUT)
+    assert init_response.status_code == 200, f"Initialization failed: {init_response.text}"
 
-    session_id = init_response.headers.get(
-        "mcp-session-id"
-    ) or init_response.headers.get("Mcp-Session-Id")
+    session_id = init_response.headers.get("mcp-session-id") or init_response.headers.get("Mcp-Session-Id")
     assert session_id is not None, "Server did not return mcp-session-id"
 
     tool_headers = headers.copy()
@@ -121,12 +113,8 @@ def call_mcp_tool(token: str, tool_name: str, arguments: dict | None = None) -> 
         "id": 2,
     }
 
-    response = httpx.post(
-        url_mcp, headers=tool_headers, json=mcp_payload, timeout=HOWLER_API.TIMEOUT
-    )
-    assert response.status_code == 200, (
-        f"Expected 200, got {response.status_code}. Response: {response.text}"
-    )
+    response = httpx.post(url_mcp, headers=tool_headers, json=mcp_payload, timeout=HOWLER_API.TIMEOUT)
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}. Response: {response.text}"
 
     response_data = None
     for line in response.text.splitlines():
@@ -153,6 +141,18 @@ def _get_any_hit_id(token: str) -> str:
     return items[0]["howler"]["id"]
 
 
+def _get_hit(token: str, hit_id: str) -> dict:
+    response = httpx.get(
+        f"{HOWLER_API.BASE_URL}/hit/{hit_id}",
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=HOWLER_API.TIMEOUT,
+    )
+    response.raise_for_status()
+    hit = response.json().get("api_response")
+    assert isinstance(hit, dict), "Howler API response did not contain a hit"
+    return hit
+
+
 def test_mcp_server_connection():
     token = get_token()
     url_mcp = _mcp_request_url()
@@ -174,9 +174,7 @@ def test_mcp_server_connection():
         "id": 1,
     }
 
-    response = httpx.post(
-        url_mcp, headers=headers, json=payload, timeout=HOWLER_API.TIMEOUT
-    )
+    response = httpx.post(url_mcp, headers=headers, json=payload, timeout=HOWLER_API.TIMEOUT)
     assert response.status_code == 200
 
 
@@ -241,16 +239,21 @@ def test_tool_lucene_query():
 def test_tool_add_comment_to_hit():
     token = get_token()
     hit_id = _get_any_hit_id(token)
+    comment = "network test comment"
 
     result = call_mcp_tool(
         token,
         "add_comment_to_hit",
-        {"hit_id": hit_id, "comment": "network test comment"},
+        {"hit_id": hit_id, "comment": comment},
     )
 
     assert not result.get("isError", False)
     text = result["content"][0]["text"]
     assert "Comment added successfully" in text
+
+    hit = _get_hit(token, hit_id)
+    comments = hit.get("howler", {}).get("comment", [])
+    assert any(comment_data.get("value") == f"From MCP Client: {comment}" for comment_data in comments)
 
 
 if __name__ == "__main__":

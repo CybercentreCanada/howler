@@ -3,6 +3,20 @@ name = "howler-mcp"
 version = "0.1.0"
 package-mode = false
 
+[tool.coverage.run]
+branch = true
+sigterm = true
+data_file = ".coverage"
+
+[tool.coverage.report]
+exclude_also = [
+	"def __repr__",
+	"raise AssertionError",
+	"raise NotImplementedError",
+	"if __name__ == .__main__.:",
+	"if TYPE_CHECKING:",
+]
+
 [tool.poetry.dependencies]
 python = "^3.12"
 mcp = "^1.0.0"
@@ -16,10 +30,77 @@ cryptography = "^48.0.1"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.2"
 pytest-asyncio = "0.24.0"
+coverage = { extras = ["toml"], version = "^7.6.1" }
+pytest-cov = "^5.0.0"
+diff-cover = "^10.3.0"
+ruff = ">=0.8,<0.17"
+
+[tool.poetry.scripts]
+test = "build_scripts.run_tests:main"
+coverage_report = "build_scripts.coverage_reports:main"
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+	"E",
+	"F",
+	"W",
+	"C901",
+	"I",
+	"N",
+	"D1",
+	"D2",
+	"ANN001",
+	"ANN002",
+	"ANN003",
+	"ANN201",
+	"ANN202",
+	"ANN204",
+	"ANN205",
+	"ANN206",
+	"S",
+	"T20",
+	"PIE",
+	"FLY",
+	"TRY",
+]
+ignore = [
+	"ANN003",
+	"ANN001",
+	"ANN201",
+	"ANN204",
+	"ANN401",
+	"D100",
+	"D101",
+	"D102",
+	"D103",
+	"D104",
+	"D105",
+	"D107",
+	"D203",
+	"D213",
+	"N818",
+	"N801",
+	"S104",
+	"S105",
+	"S603",
+	"C901",
+	"E501",
+	"TRY301",
+	"TRY400",
+	"TRY003",
+	"TRY300",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"test/*" = ["D", "ANN", "S", "N818", "TRY", "PIE", "E402"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

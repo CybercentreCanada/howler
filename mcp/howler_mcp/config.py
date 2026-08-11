@@ -10,9 +10,7 @@ def _require_https_for_non_local(url: str, env_name: str) -> str:
     parsed = urlparse(url)
 
     if parsed.scheme not in {"http", "https"}:
-        raise ValueError(
-            f"{env_name} must use http or https scheme. Got: {parsed.scheme!r}"
-        )
+        raise ValueError(f"{env_name} must use http or https scheme. Got: {parsed.scheme!r}")
 
     hostname = (parsed.hostname or "").strip().lower()
     if not hostname:
@@ -53,7 +51,7 @@ class AUTH:
         ),
         "AUTH_TOKEN_URL",
     )
-    CLIENT_ID = os.environ.get("AUTH_CLIENT_ID", "howlermcp")
+    CLIENT_ID = os.environ.get("AUTH_CLIENT_ID", "howler")
     CLIENT_SECRET = os.environ.get("AUTH_CLIENT_SECRET")
     JWKS_URI = _require_https_for_non_local(
         os.environ.get(
@@ -73,24 +71,18 @@ class AUTH:
     try:
         TIMEOUT = float(os.environ.get("AUTH_TIMEOUT", "5.0"))
     except ValueError:
-        raise ValueError(
-            f'"AUTH_TIMEOUT" need to be a float and {os.environ.get("AUTH_TIMEOUT")} is not a float.'
-        )
+        raise ValueError(f'"AUTH_TIMEOUT" need to be a float and {os.environ.get("AUTH_TIMEOUT")} is not a float.')
     if TIMEOUT <= 0.0:
-        raise ValueError(
-            f"AUTH_TIMEOUT require to be higher then 0.0. {TIMEOUT} is not bigger then 0.0"
-        )
+        raise ValueError(f"AUTH_TIMEOUT require to be higher then 0.0. {TIMEOUT} is not bigger then 0.0")
 
 
 class MCPSettings:
     HOST = os.environ.get("MCP_HOST", "0.0.0.0")
-    PUBLIC_HOST = os.environ.get(
-        "MCP_PUBLIC_HOST", "localhost" if HOST in {"0.0.0.0", "::"} else HOST
-    )
+    PUBLIC_HOST = os.environ.get("MCP_PUBLIC_HOST", "localhost" if HOST in {"0.0.0.0", "::"} else HOST)
     PORT = os.environ.get("MCP_PORT", "8000")
     BASE_URL = _require_https_for_non_local(
         os.environ.get("MCP_BASE_URL", f"http://{PUBLIC_HOST}:{PORT}/mcp"),
         "MCP_BASE_URL",
     )
-    SCOPE = os.environ.get("MCP_SCOPE", "howlermcp:access")
-    AUDIENCE = os.environ.get("MCP_AUDIENCE", "howlermcp")
+    SCOPE = os.environ.get("MCP_SCOPE", "openid offline_access")
+    AUDIENCE = os.environ.get("MCP_AUDIENCE", "howler")

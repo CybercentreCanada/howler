@@ -2,13 +2,14 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-from howler_mcp.auth import KeycloakTokenVerifier
 from jwt.exceptions import InvalidTokenError, PyJWKClientError
+
+from howler_mcp.auth import JSONWebTokenVerifier
 
 
 @pytest.fixture()
-def verifier() -> KeycloakTokenVerifier:
-    return KeycloakTokenVerifier(
+def verifier() -> JSONWebTokenVerifier:
+    return JSONWebTokenVerifier(
         issuer="https://issuer.example/realms/howler",
         jwks_uri="https://issuer.example/realms/howler/protocol/openid-connect/certs",
         audience="howlermcp",
@@ -121,3 +122,35 @@ async def test_verify_token_accepts_valid_token(verifier):
     assert token.client_id == "cli-a"
     assert token.resource == "howlermcp"
     assert "howlermcp:access" in token.scopes
+
+
+@pytest.mark.asyncio
+async def test_verify_token_accepts_all_required_scopes():
+    verifier = JSONWebTokenVerifier(
+        issuer="https://issuer.example/realms/howler",
+        jwks_uri="https://issuer.example/realms/howler/protocol/openid-connect/certs",
+        audience="howler",
+        required_scopes=["openid", "offline_access"],
+        timeout=5.0,
+    )
+    claims = {
+        "exp": 9999999999,
+        "iat": 1111111111,
+        "iss": "https://issuer.example/realms/howler",
+        "aud": "howler",
+        "scope": "openid offline_access profile email",
+        "azp": "howler",
+    }
+
+    with (
+        patch.object(
+            verifier.jwks_client,
+            "get_signing_key_from_jwt",
+            return_value=SimpleNamespace(key="fake-key"),
+        ),
+        patch("howler_mcp.auth.jwt.decode", return_value=claims),
+    ):
+        token = await verifier.verify_token("raw-token")
+
+    assert token is not None
+    assert token.scopes == ["openid", "offline_access", "profile", "email"]

@@ -17,8 +17,8 @@ from mcp.server.auth.provider import AccessToken, TokenVerifier
 logger = logging.getLogger(__name__)
 
 
-class KeycloakTokenVerifier(TokenVerifier):
-    """Verify JWTs issued by a Keycloak realm.
+class JSONWebTokenVerifier(TokenVerifier):
+    """Verify JWTs issued by a auth provider.
 
     Validates the signature, issuer, audience, and required scope of incoming
     MCP user tokens before allowing tool calls.
@@ -29,7 +29,7 @@ class KeycloakTokenVerifier(TokenVerifier):
         issuer: str,
         jwks_uri: str,
         audience: str,
-        required_scope: str,
+        required_scopes: list[str],
         timeout: float,
     ):
         """Initialise the verifier.
@@ -38,12 +38,12 @@ class KeycloakTokenVerifier(TokenVerifier):
             issuer: Expected ``iss`` claim value, typically the Keycloak realm URL.
             jwks_uri: URL of the Keycloak JWKS endpoint used to fetch signing keys.
             audience: Expected ``aud`` claim value for this resource server.
-            required_scope: Scope string that must be present in the token.
+            required_scopes: Scope strings that must be present in the token.
             timeout: Timeout in seconds for JWKS key retrieval.
         """
         self.issuer = issuer
         self.audience = audience
-        self.required_scope = required_scope
+        self.required_scopes = required_scopes
         self.jwks_client = PyJWKClient(jwks_uri, timeout=timeout)
 
     async def verify_token(self, token: str) -> AccessToken | None:
@@ -82,9 +82,10 @@ class KeycloakTokenVerifier(TokenVerifier):
 
             scopes = self._extract_scopes(claims)
 
-            if self.required_scope not in scopes:
+            missing_scopes = [scope for scope in self.required_scopes if scope not in scopes]
+            if missing_scopes:
                 logger.warning(
-                    f"token_rejected reason=missing_required_scope required_scope={self.required_scope} token_scopes={scopes}"
+                    f"token_rejected reason=missing_required_scope required_scope={' '.join(self.required_scopes)} missing_scopes={missing_scopes} token_scopes={scopes}"
                 )
                 return None
 

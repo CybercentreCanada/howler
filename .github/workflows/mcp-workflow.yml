@@ -27,8 +27,8 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Run Howler MCP Unit Tests
+  formatting:
+    name: Validate Howler MCP Code Quality
 
     runs-on: ubuntu-latest
     defaults:
@@ -56,8 +56,134 @@ jobs:
       - name: Install Dependencies
         run: poetry install --verbose --with dev
 
+      - name: Run ruff formatting checks
+        run: poetry run ruff format howler_mcp --diff
+
+      - name: Run ruff linter checks
+        run: poetry run ruff check howler_mcp --output-format=github
+
+  test:
+    name: Run Howler MCP Unit Tests
+
+    needs: formatting
+
+    env:
+      AUTH_CLIENT_ID: howler
+      AUTH_CLIENT_SECRET: 09RhSF7tp0ShDdDMCszqI4zk8HMroTTZ
+
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mcp
+    steps:
+      - name: Get base depth of PR
+        if: github.event_name == 'pull_request'
+        id: base-depth
+        working-directory: .
+        run: echo "base-depth=$(expr ${{ github.event.pull_request.commits }} + 1)" >> $GITHUB_OUTPUT
+
+      - name: Checkout current ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: ${{ steps.base-depth.outputs.base-depth || 1 }}
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v4
+
+      - name: Check Poetry configuration
+        run: |
+          poetry --version
+          poetry env use 3.12
+          poetry check
+          poetry env info
+
+      - name: Install Dependencies
+        run: poetry install --verbose --with dev
+
+      - name: Spin up full test dependencies
+        uses: hoverkraft-tech/compose-action@v2.6.0
+        with:
+          compose-file: "mcp/docker-compose.yml"
+          compose-flags: "--profile full"
+          up-flags: "-d"
+          services: |
+            howler-api
+            elasticsearch
+            redis
+            keycloak
+
+      - name: Start Howler MCP server
+        run: |
+          poetry run coverage erase --data-file=.coverage.server
+          HOWLER_API_HOST=localhost \
+          HOWLER_API_BASE_URL=http://localhost:5000/api/v1 \
+          AUTH_HOST=localhost \
+          AUTH_TOKEN_URL=http://localhost:9100/realms/HogwartsMini/protocol/openid-connect/token \
+          COVERAGE_FILE=.coverage.server poetry run coverage run -m howler_mcp.server &
+          echo $! > mcp-server.pid
+          curl --retry 15 --retry-delay 2 --retry-all-errors -sS -o /dev/null http://localhost:8000/mcp
+
       - name: Run tests
-        run: poetry run pytest test
+        id: tests
+        continue-on-error: true
+        run: poetry run test
+        env:
+          WRITE_MARKDOWN: "true"
+          RUN_MCP_NETWORK_TESTS: "1"
+          TEST_AUTH_USERNAME: goose
+          TEST_AUTH_PASSWORD: goose
+          TEST_AUTH_EMAIL: goose@howler.cyber.gc.ca
+          HOWLER_API_BASE_URL: http://localhost:5000/api/v1
+          COVERAGE_FILE: .coverage.tests
+
+      - name: Stop MCP server and combine coverage
+        if: always()
+        run: |
+          if [ -f mcp-server.pid ]; then
+            kill "$(cat mcp-server.pid)" || true
+            wait "$(cat mcp-server.pid)" || true
+          fi
+          poetry run coverage combine
+
+      - name: Add Failed Test PR Comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: github.event_name == 'pull_request' && steps.tests.outcome == 'failure'
+        continue-on-error: true
+        with:
+          path: mcp/test-results.md
+          header: mcp
+
+      - name: Coverage Results
+        if: steps.tests.outcome == 'success'
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            git fetch --depth=1 origin "$BASE_SHA"
+            git diff --name-only "$(git merge-base "$BASE_SHA" "$HEAD_SHA")..$HEAD_SHA"
+            git diff "$(git merge-base "$BASE_SHA" "$HEAD_SHA")..$HEAD_SHA" > diff.txt
+          fi
+          poetry run coverage_report
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GIT_BRANCH: ${{ github.event.pull_request.head.ref }}
+
+      - name: Add Coverage PR Comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: steps.tests.outcome == 'success' && github.event_name == 'pull_request'
+        continue-on-error: true
+        with:
+          path: mcp/coverage-results.md
+          header: mcp
+
+      - name: Force Failure if Tests Failed
+        if: steps.tests.outcome == 'failure'
+        run: exit 1
 
   build_docker_image:
     if: github.event_name != 'pull_request'
