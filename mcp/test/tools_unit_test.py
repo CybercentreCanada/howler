@@ -39,13 +39,70 @@ def tools_and_api():
 def test_registered_tool_surface(tools_and_api):
     tools, _ = tools_and_api
     assert set(tools.keys()) == {
+        "query_iconify",
+        "get_inconify_exist",
         "whoami",
         "list_assigned_hits",
         "add_comment_to_hit",
         "get_field_values",
         "get_hit_fields",
         "lucene_query",
+        "get_label_set_options",
+        "add_label_to_hit",
+        "create_dossier",
+        "update_dossier",
     }
+
+
+def test_query_iconify_requests_expected_params_without_prefix(tools_and_api):
+    tools, _ = tools_and_api
+
+    with patch("howler_mcp.tools.requests.get") as mock_get:
+        mock_get.return_value.json.return_value = {"icons": ["mdi:alert", "mdi:shield"]}
+
+        result = tools["query_iconify"](query="alert", limit=25)
+
+    assert result == {"mdi:alert", "mdi:shield"}
+    mock_get.assert_called_once()
+    call_kwargs = mock_get.call_args.kwargs
+    assert call_kwargs["params"] == {"query": "alert", "limit": 25, "prefix": None}
+    assert call_kwargs["timeout"] == 10
+
+
+def test_query_iconify_requests_expected_params_with_prefix(tools_and_api):
+    tools, _ = tools_and_api
+
+    with patch("howler_mcp.tools.requests.get") as mock_get:
+        mock_get.return_value.json.return_value = {"icons": ["mdi:file-document"]}
+
+        result = tools["query_iconify"](query="file", limit=5, prefix="mdi")
+
+    assert result == {"mdi:file-document"}
+    call_kwargs = mock_get.call_args.kwargs
+    assert call_kwargs["params"] == {"query": "file", "limit": 5}
+
+
+@pytest.mark.parametrize(
+    "icon_id,status_code,expected_suffix",
+    [
+        ("mdi:alarm", 200, "/mdi/alarm.svg"),
+        ("simple-icons", 404, "/simple-icons"),
+    ],
+)
+def test_get_inconify_exist_url_shape_and_result(
+    tools_and_api, icon_id, status_code, expected_suffix
+):
+    tools, _ = tools_and_api
+
+    with patch("howler_mcp.tools.requests.get") as mock_get:
+        mock_get.return_value.status_code = status_code
+
+        result = tools["get_inconify_exist"](icon_id=icon_id)
+
+    assert result is (status_code == 200)
+    called_url = mock_get.call_args.args[0]
+    assert called_url.endswith(expected_suffix)
+    assert mock_get.call_args.kwargs["timeout"] == 10
 
 
 @pytest.mark.asyncio
@@ -406,3 +463,244 @@ async def test_lucene_query_error_is_propagated(tools_and_api):
         pytest.raises(ValueError, match="Missing 'api_response'"),
     ):
         await tools["lucene_query"](query="howler.id:*", fl="howler.id")
+
+
+@pytest.mark.asyncio
+async def test_create_dossier_all_hit_names(tools_and_api):
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = {"dossier_id": "abc-123", "title": "All Hit Names"}
+
+    dossier_payload = {
+        "title": "All Hit Names",
+        "query": "howler.id:*",
+        "type": "personal",
+    }
+
+    with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
+        result = await tools["create_dossier"](dossier_data=dossier_payload)
+
+    assert result["dossier_id"] == "abc-123"
+
+    call_kwargs = mock_api.call.call_args.kwargs
+    assert call_kwargs["path"] == "/dossier/"
+    assert call_kwargs["method"] == "POST"
+    assert call_kwargs["body"]["title"] == "All Hit Names"
+    assert call_kwargs["body"]["query"] == "howler.id:*"
+    assert call_kwargs["body"]["type"] == "personal"
+
+
+@pytest.mark.asyncio
+async def test_create_dossier_rejects_invalid_lead_icon_via_verify_leads(tools_and_api):
+    tools, mock_api = tools_and_api
+
+    dossier_payload = {
+        "title": "Lead Validation",
+        "query": "howler.id:*",
+        "type": "personal",
+        "leads": [
+            {
+                "icon": "mdi:not-real",
+                "label": {"en": "Overview", "fr": "Apercu"},
+                "format": "markdown",
+                "content": "Initial notes",
+                "metadata": {},
+            }
+        ],
+    }
+
+    with (
+        patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
+        patch("howler_mcp.tools.requests.get") as mock_get,
+        pytest.raises(ValueError, match="does not exist in iconify"),
+    ):
+        mock_get.return_value.status_code = 404
+        await tools["create_dossier"](dossier_data=dossier_payload)
+
+    mock_api.call.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_create_dossier_rejects_non_dict_lead_metadata(tools_and_api):
+    tools, mock_api = tools_and_api
+
+    dossier_payload = {
+        "title": "Lead Validation",
+        "query": "howler.id:*",
+        "type": "personal",
+        "leads": [
+            {
+                "icon": "mdi:file-document",
+                "label": {"en": "Overview", "fr": "Apercu"},
+                "format": "markdown",
+                "content": "Initial notes",
+                "metadata": "not-a-dict",
+            }
+        ],
+    }
+
+    with (
+        patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
+        patch("howler_mcp.tools.requests.get") as mock_get,
+        pytest.raises(TypeError, match="metadata key need to be a dictionary"),
+    ):
+        mock_get.return_value.status_code = 200
+        await tools["create_dossier"](dossier_data=dossier_payload)
+
+    mock_api.call.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_create_dossier_rejects_invalid_pivot_mappings_type(tools_and_api):
+    tools, mock_api = tools_and_api
+
+    dossier_payload = {
+        "title": "Pivot Validation",
+        "query": "howler.id:*",
+        "type": "personal",
+        "pivots": [
+            {
+                "icon": "mdi:open-in-new",
+                "label": {"en": "Pivot", "fr": "Pivot"},
+                "value": "https://example.local?q={ioc}",
+                "format": "link",
+                "mappings": [],
+            }
+        ],
+    }
+
+    with (
+        patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
+        patch("howler_mcp.tools.requests.get") as mock_get,
+        pytest.raises(TypeError, match="The key mappings"),
+    ):
+        mock_get.return_value.status_code = 200
+        await tools["create_dossier"](dossier_data=dossier_payload)
+
+    mock_api.call.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_create_dossier_with_valid_nested_data_calls_api(tools_and_api):
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = {"dossier_id": "d-100"}
+
+    dossier_payload = {
+        "title": "Good Dossier",
+        "query": "howler.id:*",
+        "type": "global",
+        "leads": [
+            {
+                "icon": "mdi:file-document",
+                "label": {"en": "Overview", "fr": "Apercu"},
+                "format": "markdown",
+                "content": "Initial notes",
+                "metadata": {},
+            }
+        ],
+        "pivots": [
+            {
+                "icon": "mdi:open-in-new",
+                "label": {"en": "Pivot", "fr": "Pivot"},
+                "value": "https://example.local?q={ioc}",
+                "format": "link",
+                "mappings": {},
+            }
+        ],
+    }
+
+    with (
+        patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
+        patch("howler_mcp.tools.requests.get") as mock_get,
+    ):
+        mock_get.return_value.status_code = 200
+        result = await tools["create_dossier"](dossier_data=dossier_payload)
+
+    assert result["dossier_id"] == "d-100"
+    call_kwargs = mock_api.call.call_args.kwargs
+    assert call_kwargs["path"] == "/dossier/"
+    assert call_kwargs["method"] == "POST"
+
+
+@pytest.mark.asyncio
+async def test_update_dossier_rejects_non_list_pivots(tools_and_api):
+    tools, _ = tools_and_api
+
+    with (
+        patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
+        pytest.raises(TypeError, match="pivots require to be a list"),
+    ):
+        await tools["update_dossier"](
+            dossier_id="d-1", data_to_update={"pivots": {"bad": "shape"}}
+        )
+
+
+@pytest.mark.asyncio
+async def test_update_dossier_rejects_invalid_lead_payload(tools_and_api):
+    tools, _ = tools_and_api
+
+    with (
+        patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
+        patch("howler_mcp.tools.requests.get") as mock_get,
+        pytest.raises(ValueError, match="label key should contain the keys"),
+    ):
+        mock_get.return_value.status_code = 200
+        await tools["update_dossier"](
+            dossier_id="d-1",
+            data_to_update={
+                "leads": [
+                    {
+                        "icon": "mdi:file-document",
+                        "label": {"en": "Overview", "es": "Resumen"},
+                        "format": "markdown",
+                        "content": "Initial notes",
+                        "metadata": {},
+                    }
+                ]
+            },
+        )
+
+
+@pytest.mark.asyncio
+async def test_update_dossier_with_query_and_valid_nested_data_calls_api(tools_and_api):
+    tools, mock_api = tools_and_api
+    mock_api.call.side_effect = [
+        {"howler.id": {"type": "keyword", "description": "id", "list": False}},
+        {"updated": True},
+    ]
+
+    with (
+        patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
+        patch("howler_mcp.tools.requests.get") as mock_get,
+    ):
+        mock_get.return_value.status_code = 200
+        result = await tools["update_dossier"](
+            dossier_id="d-2",
+            data_to_update={
+                "query": " howler.id:* ",
+                "leads": [
+                    {
+                        "icon": "mdi:file-document",
+                        "label": {"en": "Overview", "fr": "Apercu"},
+                        "format": "markdown",
+                        "content": "Initial notes",
+                        "metadata": {},
+                    }
+                ],
+                "pivots": [
+                    {
+                        "icon": "mdi:open-in-new",
+                        "label": {"en": "Pivot", "fr": "Pivot"},
+                        "value": "https://example.local?q={ioc}",
+                        "format": "link",
+                        "mappings": {},
+                    }
+                ],
+            },
+        )
+
+    assert result == {"updated": True}
+
+    update_call = mock_api.call.call_args_list[-1].kwargs
+    assert update_call["path"] == "/dossier/d-2"
+    assert update_call["method"] == "PUT"
+    assert update_call["body"]["query"] == "howler.id:*"
