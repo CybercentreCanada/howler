@@ -23,8 +23,6 @@ class ErrorBoundaryComponent extends React.Component<ErrorBoundaryProps, { hasEr
   }
 
   componentDidUpdate(previousProps: ErrorBoundaryProps): void {
-    console.log(previousProps, this.props);
-
     if (this.props.locationKey !== previousProps.locationKey && this.state.hasError) {
       this.setState({ hasError: false, error: null });
     }
