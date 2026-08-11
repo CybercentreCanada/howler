@@ -17,6 +17,13 @@ def get_color(percentage: int) -> str:
     return "green"
 
 
+def generate_badge(title, percentage, color):
+    return (
+        f"![Static Badge](https://img.shields.io/badge/{title.replace(' ', '_')}-{percentage}25-{color}?style="
+        "flat&logo=azuredevops&logoColor=%230078D7)"
+    )
+
+
 def main() -> None:
     diff_exists = Path("diff.txt").exists()
     try:
@@ -48,7 +55,7 @@ def main() -> None:
             ![Static Badge](https://img.shields.io/badge/Build%20(Python%20{platform.python_version()})-passing-brightgreen)
 
             # Howler MCP - Coverage Results
-            ![Static Badge](https://img.shields.io/badge/Total_Coverage-{total_percentage}-{total_color}?style=flat) {diff_badge}
+            {generate_badge("Total Coverage", total_percentage, total_color)} {diff_badge}
 
 {newline.join([(" " * 12) + line for line in diff_result.splitlines()]) if diff_result else ""}
 
