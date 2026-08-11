@@ -244,9 +244,18 @@ def test_transition_hit_not_found(mock_get_hit):
         )
 
 
-@patch("howler.services.hit_service._update_hit", return_value=({}, "new-version"))
+@patch(
+    "howler.services.hit_service._update_hit",
+    return_value=(
+        Hit({"howler": {"id": "hit-id", "status": "open", "analytic": "example", "hash": "abc123"}}),
+        "new-version",
+    ),
+)
 @patch("howler.services.hit_service.get_hit_workflow")
-@patch("howler.services.hit_service.get_hit", return_value={"howler": {"id": "hit-id", "status": "open"}})
+@patch(
+    "howler.services.hit_service.get_hit",
+    return_value=Hit({"howler": {"id": "hit-id", "status": "open", "analytic": "example", "hash": "abc123"}}),
+)
 def test_transition_hit_returns_new_version(mock_get_hit, mock_get_workflow, mock_update_hit):
     mock_get_workflow.return_value.transition.return_value = [
         OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.status", "in-progress")
@@ -287,7 +296,7 @@ def test_update_hit_fetches_version_when_missing():
     hit = random_model_obj(cast(Any, Hit))
     version = "hit-index---1---1"
     storage = MagicMock()
-    storage.hit.get.side_effect = [(hit, version), ({"howler": {"id": hit.howler.id}}, version)]
+    storage.hit.get.side_effect = [(hit, version), (hit, version)]
 
     with patch("howler.services.hit_service.datastore", return_value=storage):
         hit_service._update_hit(
@@ -304,7 +313,7 @@ def test_update_hit_preserves_provided_version():
     hit = random_model_obj(cast(Any, Hit))
     version = "hit-index---2---3"
     storage = MagicMock()
-    storage.hit.get.return_value = ({"howler": {"id": hit.howler.id}}, version)
+    storage.hit.get.return_value = (hit, version)
 
     with (
         patch("howler.services.hit_service.datastore", return_value=storage),
@@ -316,7 +325,7 @@ def test_update_hit_preserves_provided_version():
             version=version,
         )
 
-    storage.hit.get.assert_called_once_with(hit.howler.id, as_obj=False, version=True)
+    storage.hit.get.assert_called_once_with(hit.howler.id, as_obj=True, version=True)
     storage.hit.update.assert_called_once()
     assert storage.hit.update.call_args.args[2] == version
 
