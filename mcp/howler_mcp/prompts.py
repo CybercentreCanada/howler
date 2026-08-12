@@ -3,92 +3,188 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def RegisterPrompts(mcp):
+def register_prompts(mcp):
+    @mcp.prompt(name="whoami")
+    def whoami_prompt() -> str:
+        """Explain when and how to use the whoami tool."""
+        return """Use whoami to identify the authenticated Howler user.
 
-    @mcp.prompt(name="ReviewFalsePositive")
-    def review_false_positive() -> str:
-        """Review analytics marked as false positives."""
-        logger.info("Prompt called: ReviewFalsePositive")
-        return """Retrieve all hits marked as false positives in the last 90 days using GetFalsePositiveHits.
+Call it when you need to verify the user's:
+- username
+- email
+- group memberships
+- roles
 
-            Then analyze and present a comprehensive false-positive review report with the following structure:
+Use it before user-scoped searches, permission checks, or authorization troubleshooting.
+After the call, summarize the identity in plain language."""
 
-            ## Summary Statistics
-            - Total false positives found
-            - Distribution by analytic (group the counts)
-            - Percentage breakdown showing which analytics produce the most false positives
+    @mcp.prompt(name="list_assigned_hits")
+    def list_assigned_hits_prompt() -> str:
+        """Explain when and how to use the list_assigned_hits tool."""
+        return """Use list_assigned_hits to retrieve hits assigned to the authenticated user.
 
-            ## Detailed False Positive Analysis
-            For each unique analytic identified, provide:
-            - Analytic name
-            - Count of false positives
-            - Sample hit IDs
-            - Common patterns or characteristics of the false positives
+Call it when the user asks for their queue, assigned tickets, or current workload.
+After the call:
+- report the number of hits returned
+- list each hit ID and available context such as status, analytic, and escalation
+- ask whether the user wants additional filtering with lucene_query"""
 
-            ## Root Cause Assessment
-            Based on the false positive hits returned, identify and categorize the reasons:
-            - Configuration issues (e.g., overly broad rules, missing context filters)
-            - Environment-specific noise (e.g., internal testing, legitimate security tools triggering alerts)
-            - Data quality problems (e.g., incomplete or duplicate data)
-            - Timing or threshold issues
+    @mcp.prompt(name="add_comment_to_hit")
+    def add_comment_to_hit_prompt() -> str:
+        """Explain when and how to use the add_comment_to_hit tool."""
+        return """Use add_comment_to_hit to append an analyst note to one hit.
 
-            ## Actionable Recommendations
-            Provide specific, prioritized recommendations to reduce false positives:
-            1. Analytics with highest false positive rates and suggested fixes
-            2. Quick wins (easy configuration changes with high impact)
-            3. Detection engineering improvements (rule refinement, filter additions)
-            4. Monitoring and tuning strategy going forward
+Required arguments:
+- hit_id: the hit UUID
+- comment: the note to append
 
-            Format with clear sections, bullet points, and a summary table. Make it suitable for sharing with detection engineers."""
+Use it to document findings, add triage notes, or record investigation actions.
+Before calling, confirm the correct hit_id. After calling, confirm that the comment was added."""
 
-    @mcp.prompt(name="HitReview")
-    def hit_review(hit_id: str) -> str:
-        """Review a hit and provide an analysis."""
-        return f"""Generate a report for hit {hit_id} that includes the following sections:
-        1) Summary: A brief overview of the hit, including the analytic that generated it and the reason for its creation.
-        2) Evidence: A detailed list of all evidence associated with the hit, including timestamps, sources, and any relevant metadata.
-        3) Analyst Comments: A compilation of all comments made by analysts regarding this hit, including their insights and any actions taken.
-        4) Recommendations: Based on the evidence and analyst comments, provide recommendations for next steps or further investigation.
-        Format the report in a clear and organized manner, using bullet points and headings where appropriate."""
+    @mcp.prompt(name="get_field_values")
+    def get_field_values_prompt() -> str:
+        """Explain when and how to use the get_field_values tool."""
+        return """Use get_field_values(field) to retrieve the values present for a Howler hit field and their counts.
 
-    @mcp.prompt(name="SearchMatchingIndicatorsInOtherSystem")
-    def search_indicators(hit_id: str, target_system: str) -> str:
-        """Retrieve all indicators from a hit and query a third party system for matching alerts, then produce an action plan.
-        This requires to have a third party system connected through an MCP tool."""
-        return f"""Perform the following steps for hit {hit_id}:
-        1) Retrieve the hit details using GetHitById and extract all indicators (IPs, domains, hashes, URLs, email addresses, etc.) attached to this hit.
-        2) For each indicator, query {target_system} for alerts or incidents that contain or reference that indicator. Use the available MCP tools for {target_system} to search for matching alerts, incidents, or security events.
-        3) Produce a report with the following sections:
+Call it before filtering on an enumerated or categorical field, including:
+howler.assignment, howler.escalation, howler.assessment, howler.status, and howler.analytic.
 
-        ## Executive Summary
-        A very short summary of the key findings from the {target_system} search, suitable for a non-technical audience.
+Never guess a value's spelling or casing. Use only values returned by this tool.
+After the call, summarize the most common values and use the exact selected value in lucene_query."""
 
-        ## Indicator Summary
-        A table listing each indicator extracted from the hit, its type (IP, domain, hash, etc.), and whether any matches were found in {target_system}.
+    @mcp.prompt(name="get_hit_fields")
+    def get_hit_fields_prompt() -> str:
+        """Explain when and how to use the get_hit_fields tool."""
+        return """Use get_hit_fields to retrieve the authoritative list of fields valid in Howler Lucene queries.
 
-        ## {target_system} Findings
-        For each alert or incident found in {target_system}, provide:
-        - Alert/incident name, ID, and severity
-        - Timestamp
-        - Which indicator(s) from the hit matched
-        - Status (New, In Progress, Resolved, Closed, etc.)
-        - Assigned owner or team (if available)
-        - Associated entities (hosts, users, services affected)
-        - Related context or metadata from {target_system}
+The response includes each field's key, type, list flag, and description.
+Call it when a field may not exist or when you need its exact dot-notation name.
+Reuse returned field keys verbatim in lucene_query. To discover values for a field, call get_field_values(field)."""
 
-        ## Correlation Analysis
-        Identify patterns across the {target_system} findings:
-        - Are multiple indicators appearing in the same alert or incident?
-        - Is there a timeline pattern suggesting a coordinated attack or attack chain?
-        - Are there findings from different detection sources or alert types converging on the same indicators?
-        - How do the {target_system} findings correlate with the original hit in Howler?
+    @mcp.prompt(name="get_label_set_options")
+    def get_label_set_options_prompt() -> str:
+        """Explain when and how to use the get_label_set_options tool."""
+        return """Use get_label_set_options to retrieve the label categories accepted by add_label_to_hit.
 
-        ## Recommended Action Plan
-        Based on the {target_system} findings and their current status, suggest concrete next steps:
-        - Which alerts/incidents need immediate escalation (high/critical severity, still active)?
-        - Which findings can be correlated or merged with existing investigations?
-        - What containment or remediation actions should be prioritized?
-        - What additional investigation queries should be run in {target_system} to expand scope?
-        - Should the hit in Howler be escalated, reassigned, or closed based on {target_system} findings?
+Call it when label_set is unknown, ambiguous, misspelled, or needs validation. Possible categories include generic, victim, threat, and mitigation, but treat the tool response as authoritative.
 
-        Format the report clearly with markdown headings, tables, and bullet points. Make it suitable for sharing with security analysts and response teams."""
+Do not invent categories. If the user's value is invalid, choose the closest valid returned option. Then state the label_set you will use and call add_label_to_hit."""
+
+    @mcp.prompt(name="add_label_to_hit")
+    def add_label_to_hit_prompt() -> str:
+        """Explain when and how to use the add_label_to_hit tool."""
+        return """Use add_label_to_hit to add one or more labels to a Howler hit.
+
+Required arguments:
+- hit_id: the target hit identifier
+- labels_name: a non-empty list of label values
+- label_set: a valid label category
+
+Before calling, confirm hit_id. If label_set is uncertain, call get_label_set_options first and use only a returned category. After calling, report the labels returned for that category and mention any corrected label_set."""
+
+    @mcp.prompt(name="create_dossier")
+    def create_dossier_prompt() -> str:
+        """Explain when and how to use the create_dossier tool."""
+        return """Use create_dossier to save a Lucene query as a new dossier.
+
+Required arguments:
+- new_dossier_name: the dossier title
+- query: a valid Lucene query that selects hits
+- dossier_type: global or personal
+
+Before calling:
+- verify field names with get_hit_fields when uncertain
+- verify enumerated values with get_field_values(field) when uncertain
+- confirm whether the dossier should be global or personal
+
+Use this tool to save a search, create a repeatable triage filter, or share a reusable query as a global dossier.
+After the call, confirm creation and report the name, type, and query."""
+
+    @mcp.prompt(name="update_dossier")
+    def update_dossier_prompt() -> str:
+        """Explain when and how to use the update_dossier tool."""
+        return """Use update_dossier to modify an existing dossier by ID.
+
+Required arguments:
+- dossier_id: the target dossier identifier
+- data_to_update: a partial update object
+
+Only these data_to_update keys are allowed:
+title, query, leads, pivots, type, owner.
+
+Before calling, confirm dossier_id and remove all other keys. If query is included, verify field names with get_hit_fields and enumerated values with get_field_values(field) when needed.
+Use this tool to rename a dossier, change its query, or update metadata such as type or ownership.
+After the call, confirm the update and summarize the changed fields."""
+
+    @mcp.prompt(name="_verify_leads")
+    def verify_leads_prompt() -> str:
+        """Explain the expected structure for lead validation payloads."""
+        return """Use _verify_leads as the local schema reference when building dossier leads for create_dossier or update_dossier.
+
+Each lead must contain exactly:
+- icon: a valid Iconify ID string
+- label: an object with exactly en and fr keys
+- format: a non-empty string
+- content: a non-empty string
+- metadata: a dictionary, possibly empty
+
+Example:
+{"icon": "mdi:file-document", "label": {"en": "Overview", "fr": "Apercu"}, "format": "markdown", "content": "Initial notes", "metadata": {"source": "manual"}}
+
+Do not add keys, use a string for label, or use a non-dictionary metadata value. If the icon is uncertain, validate it with query_iconify or get_iconify_exist."""
+
+    @mcp.prompt(name="_verify_pivots")
+    def verify_pivots_prompt() -> str:
+        """Explain the expected structure for pivot validation payloads."""
+        return """Use _verify_pivots as the local schema reference when building dossier pivots for create_dossier or update_dossier.
+
+Each pivot must contain exactly:
+- icon: a valid Iconify ID string
+- label: an object with exactly en and fr keys
+- value: a non-empty string
+- format: a non-empty string
+- mappings: the nested mapping configuration
+
+Example:
+{"icon": "mdi:open-in-new", "label": {"en": "Pivot Link", "fr": "Lien Pivot"}, "value": "https://example.local?q={ioc}", "format": "link", "mappings": [{"key": "ioc", "field": "howler.outline.indicators"}]}
+
+Do not add keys or use a string for label. Ensure value and format are non-empty. If the icon is uncertain, validate it with query_iconify or get_iconify_exist."""
+
+    @mcp.prompt(name="lucene_query")
+    def search_lucene_prompt() -> str:
+        """Build a Lucene query from the user's request and search for matching hits."""
+        return """Use lucene_query to search Howler hits based on the user's request.
+
+Available tools:
+- get_hit_fields: retrieve valid field names and metadata
+- get_field_values(field): retrieve accepted values and counts
+- lucene_query: execute the final search
+
+Build the query as follows:
+- use valid Lucene field:value syntax
+- quote values containing spaces
+- use AND, OR, NOT, and range syntax as needed
+- never invent field names
+- never invent enumerated values; verify them first
+- search only Howler hits
+
+Call get_hit_fields when a field name is uncertain. Call get_field_values first for categorical fields such as:
+howler.detection, howler.escalation, howler.assessment, howler.status, howler.scrutiny, howler.analytic, and howler.assignment.
+
+lucene_query arguments:
+- query: required Lucene expression
+- fl: required comma-separated list of output fields
+- rows: optional result count
+- offset: optional pagination offset
+- sort: optional sort expression, such as event.created desc
+
+Projection rules:
+- always include howler.id in fl
+- request only fields the user asked for
+
+Examples:
+- IDs only: fl="howler.id"
+- IDs and status: fl="howler.id,howler.status"
+- IDs, indicators, and threat: fl="howler.id,howler.outline.indicators,howler.outline.threat"
+
+After the search, report the query used, total matches, and returned hits clearly."""
