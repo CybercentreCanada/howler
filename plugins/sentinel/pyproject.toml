@@ -131,21 +131,21 @@ packages = [{ include = "sentinel" }]
 
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.16.1"
+ruff = "^0.16.2"
 mypy = "^1.20.2"
 pre-commit = "^4.6.1"
 howler-api = { path = "../../api" }
 pytest = "^9.1.1"
 mock = "^5.2.0"
 pytest-cov = "^6.3.0"
-coverage = { extras = ["toml"], version = "^7.15.2" }
-diff-cover = "^10.4.1"
+coverage = { extras = ["toml"], version = "^7.15.4" }
+diff-cover = "^10.5.0"
 python-dotenv = "^1.2.2"
 
 
 [tool.poetry.group.types.dependencies]
 types-mock = "^5.2.0.20260518"
-types-python-dateutil = "^2.9.0.20260716"
+types-python-dateutil = "^2.9.0.20260807"
 
 
 [tool.poetry.dependencies]
