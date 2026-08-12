@@ -24,12 +24,12 @@ def main() -> None:
     sys.stdout.write(f"> {shlex.join(pytest_cmd)}\n")
 
     process = subprocess.Popen(pytest_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    output = ""
+    output: list[str] = []
     if process.stdout is None:
         raise RuntimeError("Could not capture pytest output")
     for line in iter(process.stdout.readline, b""):
         decoded = line.decode(errors="ignore")
-        output += decoded
+        output.append(decoded)
         sys.stdout.write(decoded)
         sys.stdout.flush()
 
@@ -38,7 +38,7 @@ def main() -> None:
         return
 
     if os.environ.get("WRITE_MARKDOWN"):
-        raw_failures = re.sub(r"[\s\S]+=+ FAILURES =+([\S\s]+)-+ coverage[\s\S]+", r"\n\1", output)
+        raw_failures = re.sub(r"[\s\S]+=+ FAILURES =+([\S\s]+)-+ coverage[\s\S]+", r"\n\1", "".join(output))
         markdown_output = textwrap.dedent(
             f"""
             ![Static Badge](https://img.shields.io/badge/build%20(Python%20{platform.python_version()})-failing-red)

@@ -34,24 +34,26 @@ def main() -> None:
         sys.stdout.write(report_result + "\n")
 
         diff_report_result = ""
+        diff_percentage = "NA%"
+        diff_percentage_int = 0
+        diff_color = "grey"
+        diff_badge = ""
+        diff_result = ""
+
+        # Compute diff coverage only when diff.txt is present; otherwise keep default NA/grey values.
         if diff_exists:
             diff_report_result = subprocess.check_output(
                 shlex.split("diff-cover coverage.xml --diff-file diff.txt --markdown-report diff-cover-report.md")
             ).decode()
             sys.stdout.write(diff_report_result + "\n")
 
-        diff_result = ""
-        diff_badge = ""
-        diff_percentage = "NA%"
-        diff_percentage_int = 0
-        diff_color = "grey"
-        if diff_exists:
             try:
                 diff_percentage = (
                     [line for line in diff_report_result.splitlines() if "Coverage:" in line].pop().split(" ").pop()
                 )
                 diff_percentage_int = int(diff_percentage.replace("%", ""))
             except IndexError:
+                # Keep defaults when the coverage token is malformed.
                 pass
 
             diff_color = get_color(diff_percentage_int)
