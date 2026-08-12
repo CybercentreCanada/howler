@@ -31,22 +31,40 @@ def main() -> None:
         subprocess.check_output(shlex.split("coverage xml --data-file=.coverage"))
         subprocess.check_output(shlex.split("coverage html --data-file=.coverage"))
 
-        diff_result = ""
-        diff_badge = ""
+        sys.stdout.write(report_result + "\n")
+
+        diff_report_result = ""
         if diff_exists:
-            diff_report = subprocess.check_output(
+            diff_report_result = subprocess.check_output(
                 shlex.split("diff-cover coverage.xml --diff-file diff.txt --markdown-report diff-cover-report.md")
             ).decode()
-            diff_percentage = next(
-                (line.split()[-1] for line in diff_report.splitlines() if "Coverage:" in line), "NA%"
-            )
-            diff_badge = (
-                f"![Static Badge](https://img.shields.io/badge/Diff_Coverage-{diff_percentage}"
-                f"-{get_color(int(diff_percentage.rstrip('%')) if diff_percentage != 'NA%' else 0)}?style=flat)"
-            )
-            diff_result = Path("diff-cover-report.md").read_text()
-            diff_result = re.sub(r"### (.+py)", r"<details>\n<summary>\1</summary>\n", diff_result)
-            diff_result += "\n</details>"
+            sys.stdout.write(diff_report_result + "\n")
+
+        diff_result = ""
+        diff_badge = ""
+        diff_percentage = "NA%"
+        diff_percentage_int = 0
+        diff_color = "grey"
+        if diff_exists:
+            try:
+                diff_percentage = (
+                    [line for line in diff_report_result.splitlines() if "Coverage:" in line].pop().split(" ").pop()
+                )
+                diff_percentage_int = int(diff_percentage.replace("%", ""))
+            except IndexError:
+                pass
+
+            diff_color = get_color(diff_percentage_int)
+
+            with open("diff-cover-report.md") as diff_report:
+                diff_result = diff_report.read().replace("# ", "## ").replace("__init__.py", "\\_\\_init\\_\\_.py")
+
+                diff_result = re.sub(r"### (.+py)", r"<details>\n<summary>\1</summary>\n", diff_result)
+                diff_result = re.sub(r"\n---(\n+<details>)", r"\n</details>\1", diff_result)
+
+                diff_result += "\n</details>"
+
+            diff_badge = generate_badge("Diff Coverage", diff_percentage, diff_color)
 
         total_percentage = report_result.splitlines()[-1].split()[-1]
         total_color = get_color(int(total_percentage.rstrip("%")))
