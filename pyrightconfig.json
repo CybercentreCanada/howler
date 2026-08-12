@@ -106,6 +106,18 @@
             "root": "api/test"
         },
         {
+            "extraPaths": [
+                "./mcp"
+            ],
+            "root": "mcp"
+        },
+        {
+            "extraPaths": [
+                "./client"
+            ],
+            "root": "client"
+        },
+        {
             "reportAssignmentType": "information",
             "reportAttributeAccessIssue": "information",
             "reportReturnType": "information",
