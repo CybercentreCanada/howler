@@ -55,8 +55,7 @@ def parse_parameters(**requested_params: parser_t | Literal["required"] | tuple[
                         if raw_value is None:
                             return bad_request(err=f"Missing required parameter: [{param_name}]")
 
-                    parsed_value = parser(raw_value) if callable(parser) else raw_value
-                    kwargs[param_name] = parsed_value
+                    kwargs[param_name] = parser(raw_value) if callable(parser) else raw_value
 
             except HowlerInvalidParameterException as e:
                 return bad_request(err=e.message)
