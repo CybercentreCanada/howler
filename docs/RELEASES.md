@@ -1,5 +1,9 @@
 # Howler Releases
 
+## Howler API `v4.0.6`
+
+- **Action Batching Fix** _(bugfix)_: Fixed race condition in clearing executed batches.
+
 ## Howler UI `v3.0.3`
 
 - **Noisy Console Logging** _(bugfix)_: Removed noisy log call in ErrorBoundary
@@ -25,6 +29,7 @@
 ## Howler API `v4.0.3`
 
 - **ILM Collection Existence Checks** _(bugfix)_: Document existence checks now use alias-safe searches for ILM collections and recover from multi-index alias errors on legacy checks.
+
 ## Howler API `v4.0.2`
 
 - **Add to Case Destination Template** _(bugfix)_: The `add_to_case` action now uses a single Mustache `destination` template (e.g. `related/{{howler.analytic}} ({{howler.id}})`) instead of separate `path` and `title_template` arguments, matching the placement behavior used by case correlation rules.
