@@ -17,7 +17,12 @@ vi.mock('components/elements/addons/layout/FlexOne', () => ({
 }));
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <I18nextProvider i18n={i18n as any}><ModalProvider>{children}<Modal /></ModalProvider></I18nextProvider>
+  <I18nextProvider i18n={i18n as any}>
+    <ModalProvider>
+      {children}
+      <Modal />
+    </ModalProvider>
+  </I18nextProvider>
 );
 
 describe('OverviewCard', () => {

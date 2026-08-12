@@ -54,12 +54,12 @@ const OverviewCard: FC<{
 
         {onRemove && (
           <Tooltip title={t('route.overviews.manager.delete')}>
-            <IconButton onClick={(e) => onDelete?.(e, overview.overview_id)}>
+            <IconButton onClick={e => onDelete?.(e, overview.overview_id)}>
               <Delete />
             </IconButton>
           </Tooltip>
         )}
-      {error && (
+        {error && (
           <Stack direction="row" justifyContent="end">
             <Stack>
               <Tooltip title={t('error.invalid_detection.action')}>

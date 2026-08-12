@@ -138,8 +138,9 @@ const OverviewsBase: FC = () => {
   }, [offset]);
 
   const renderer = useCallback(
-    (item: Overview, error?: boolean, className?: string) =>
-      <OverviewCard overview={item} error={error} className={className} onRemove={removeOverview} />,
+    (item: Overview, error?: boolean, className?: string) => (
+      <OverviewCard overview={item} error={error} className={className} onRemove={removeOverview} />
+    ),
     [removeOverview]
   );
 
@@ -159,7 +160,9 @@ const OverviewsBase: FC = () => {
           {t('route.overviews.search.prompt')}
         </Typography>
       }
-      renderer={({ item }: TuiListItemProps<Overview>, classRenderer) => renderer(item.item, !!item.disabled, classRenderer())}
+      renderer={({ item }: TuiListItemProps<Overview>, classRenderer) =>
+        renderer(item.item, !!item.disabled, classRenderer())
+      }
       response={response}
       onSelect={(item: TuiListItem<Overview>) =>
         navigate(

@@ -174,13 +174,7 @@ const ActionEditor: FC = () => {
               !name ||
               loading ||
               userOperations.length < 1 ||
-              userOperations.some(
-                a =>
-                  !operationReady(
-                    a?.data_json,
-                    operations.find(_a => _a.id === a.operation_id)
-                  )
-              )
+              userOperations.some(a => !operationReady(a?.data_json, operations.find(_a => _a.id === a.operation_id)))
             }
             onClick={() => saveAction(name, responseQuery, userOperations, triggers)}
           >
@@ -336,13 +330,7 @@ const ActionEditor: FC = () => {
                 !response ||
                 loading ||
                 userOperations.length < 1 ||
-                userOperations.some(
-                  a =>
-                    !operationReady(
-                      a?.data_json,
-                      operations.find(_a => _a.id === a.operation_id)
-                    )
-                )
+                userOperations.some(a => !operationReady(a?.data_json, operations.find(_a => _a.id === a.operation_id)))
               }
               onClick={_submitAction}
             >
