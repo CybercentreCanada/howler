@@ -17,11 +17,19 @@ def _require_https_for_non_local(url: str, env_name: str) -> str:
         raise ValueError(f"{env_name} must include a hostname. Got: {url!r}")
 
     # Verify if the request go outside of the local host. If yes is it HTTPS? if no, not allowed
-    if parsed.scheme == "http" and hostname not in {
-        "localhost",
-        "127.0.0.1",
-        "::1",
-    }:
+    if (
+        parsed.scheme == "http"
+        and hostname
+        not in {
+            "localhost",
+            "127.0.0.1",
+            "::1",
+            # Support for docker compose/k8s pods
+            "howler-rest",
+            "howler-rest.howler.svc.cluster.local",
+        }
+        or hostname.endswith("svc.cluster.local")
+    ):
         raise ValueError(f"{env_name} must use https for non-local hosts. Got: {url}")
 
     return url
