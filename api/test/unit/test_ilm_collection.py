@@ -4,7 +4,7 @@ These tests mock the Elasticsearch client to verify the correct ILM policy,
 index template, and _ensure_collection_ilm logic without requiring a running ES.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import elasticsearch
 import pytest
@@ -356,6 +356,32 @@ class TestCreateIndexTemplate:
 
 class TestEnsureCollectionILM:
     """Tests for _ensure_collection_ilm bootstrap logic."""
+
+    def test_legacy_hot_migration_deletes_target_before_unblocking_source(self, mock_datastore):
+        """A failed legacy migration removes its incomplete target before restoring writes."""
+        col = _make_collection(mock_datastore)
+        mock_datastore.client.indices.exists.side_effect = [True, False]
+        mock_datastore.client.indices.exists_alias.return_value = False
+        mock_datastore.client.reindex.side_effect = RuntimeError("reindex failed")
+
+        with (
+            patch.object(col, "_get_index_mappings", return_value={}),
+            patch.object(col, "_get_index_settings", return_value={}),
+            patch.object(col, "_check_fields"),
+            pytest.raises(RuntimeError, match="reindex failed"),
+        ):
+            col._ensure_collection()
+
+        assert mock_datastore.client.indices.delete.call_args.kwargs == {"index": col.index_name}
+        assert mock_datastore.client.indices.put_settings.call_args_list[-1].kwargs == {
+            "index": col.name,
+            "settings": {"index.blocks.write": None},
+        }
+        delete_call = call.delete(index=col.index_name)
+        unblock_call = call.put_settings(index=col.name, settings={"index.blocks.write": None})
+        delete_position = mock_datastore.client.indices.method_calls.index(delete_call)
+        unblock_position = mock_datastore.client.indices.method_calls.index(unblock_call)
+        assert delete_position < unblock_position
 
     def test_refresh_ilm_index_name_uses_latest_existing_index(self, mock_datastore):
         """Maintenance commands select the active ILM index when bootstrap is skipped."""

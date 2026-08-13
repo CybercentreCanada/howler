@@ -141,11 +141,11 @@ def create_users(ds: HowlerDatastore):
 
     user_data = run_modifications("view", user_data, True)
 
-    user_bulk_plan.add_insert_operation("admin", user_data)
-    user_avatar_bulk_plan.add_insert_operation(
+    user_bulk_plan.add_index_operation("admin", user_data)
+    user_avatar_bulk_plan.add_index_operation(
         "admin", "https://static.wikia.nocookie.net/theoffice/images/b/be/Character_-_MichaelScott.PNG"
     )
-    view_bulk_plan.add_insert_operation(admin_view.view_id, admin_view)
+    view_bulk_plan.add_index_operation(admin_view.view_id, admin_view)
 
     if not TESTING:
         logger.info("\t%s:%s", user_data.uname, admin_pass)
@@ -197,11 +197,11 @@ def create_users(ds: HowlerDatastore):
     user_view = run_modifications("view", user_view)
     user_data = run_modifications("user", user_data)
 
-    user_bulk_plan.add_insert_operation("user", user_data)
-    user_avatar_bulk_plan.add_insert_operation(
+    user_bulk_plan.add_index_operation("user", user_data)
+    user_avatar_bulk_plan.add_index_operation(
         "user", "https://static.wikia.nocookie.net/theoffice/images/c/c5/Dwight_.jpg"
     )
-    view_bulk_plan.add_insert_operation(user_view.view_id, user_view)
+    view_bulk_plan.add_index_operation(user_view.view_id, user_view)
 
     if not TESTING:
         logger.info("\t%s:%s", user_data.uname, user_pass)
@@ -244,11 +244,11 @@ def create_users(ds: HowlerDatastore):
     huey_view = run_modifications("view", huey_view)
     huey_data = run_modifications("user", huey_data)
 
-    user_bulk_plan.add_insert_operation("huey", huey_data)
-    user_avatar_bulk_plan.add_insert_operation(
+    user_bulk_plan.add_index_operation("huey", huey_data)
+    user_avatar_bulk_plan.add_index_operation(
         "huey", "https://static.wikia.nocookie.net/theoffice/images/c/c5/Dwight_.jpg"
     )
-    view_bulk_plan.add_insert_operation(huey_view.view_id, huey_view)
+    view_bulk_plan.add_index_operation(huey_view.view_id, huey_view)
 
     if not TESTING:
         logger.info("\t%s:%s", huey_data.uname, huey_pass)
@@ -278,8 +278,8 @@ def create_users(ds: HowlerDatastore):
     shawnh_view = run_modifications("view", shawnh_view)
     shawn_data = run_modifications("user", shawn_data)
 
-    user_bulk_plan.add_insert_operation("shawn-h", shawn_data)
-    view_bulk_plan.add_insert_operation(shawnh_view.view_id, shawnh_view)
+    user_bulk_plan.add_index_operation("shawn-h", shawn_data)
+    view_bulk_plan.add_index_operation(shawnh_view.view_id, shawnh_view)
 
     if not TESTING:
         logger.info("\t%s:%s", shawn_data.uname, shawnh_pass)
@@ -309,8 +309,8 @@ def create_users(ds: HowlerDatastore):
     goose_view = run_modifications("view", goose_view)
     goose_data = run_modifications("user", goose_data)
 
-    user_bulk_plan.add_insert_operation("goose", goose_data)
-    view_bulk_plan.add_insert_operation(goose_view.view_id, goose_view)
+    user_bulk_plan.add_index_operation("goose", goose_data)
+    view_bulk_plan.add_index_operation(goose_view.view_id, goose_view)
 
     if not TESTING:
         logger.info("\t%s:%s", goose_data.uname, goose_pass)

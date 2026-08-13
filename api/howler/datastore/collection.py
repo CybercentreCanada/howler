@@ -8,6 +8,7 @@ import time
 import typing
 import warnings
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import datetime
 from os import environ
 from random import random
@@ -154,6 +155,16 @@ def parse_sort(sort, ret_list=True):
             return [{parts[0]: parts[1]}]
         return {parts[0]: parts[1]}
     raise SearchException("Unknown sort parameter " + sort)
+
+
+@dataclass
+class BulkResult:
+    responses: list[Any]
+    failures: list[dict[str, Any]]
+    has_errors: bool
+
+    def __bool__(self) -> bool:
+        return not self.has_errors
 
 
 class ESCollection(Generic[ModelType]):
@@ -573,26 +584,25 @@ class ESCollection(Generic[ModelType]):
             else:
                 updated += res["updated"]
 
-    def bulk(self, operations: ElasticBulkPlan, refresh: str | None = None):
+    def bulk(self, operations: ElasticBulkPlan, refresh: str | None = None) -> BulkResult:
         """Execute a bulk plan.
 
         Returns:
-            True if the operation completed without errors
+            BulkResult containing every response and item-level failure.
         """
         responses = []
         for operation_batch in operations.get_plan_batches():
             response = self.with_retries(self.datastore.client.bulk, operations=operation_batch, refresh=refresh)
             responses.append(response)
 
-        has_errors = False
+        failures = []
         for response in responses:
             if response["errors"]:
-                has_errors = True
-                failures = []
+                response_failures = []
                 for item in response.get("items", []):
                     operation, result = next(iter(item.items()))
                     if "error" in result:
-                        failures.append(
+                        response_failures.append(
                             {
                                 "operation": operation,
                                 "index": result.get("_index"),
@@ -602,9 +612,14 @@ class ESCollection(Generic[ModelType]):
                             }
                         )
 
-                logger.error("Bulk plan failures: %s", failures or response["errors"])
+                failures.extend(response_failures)
+                logger.error("Bulk plan failures: %s", response_failures or response["errors"])
 
-        return not has_errors
+        return BulkResult(
+            responses=responses,
+            failures=failures,
+            has_errors=bool(failures) or any(response["errors"] for response in responses),
+        )
 
     def get_bulk_plan(self):
         """Create a BulkPlan tailored for the current datastore.
@@ -3036,6 +3051,10 @@ class ESCollection(Generic[ModelType]):
                     ],
                 )
             except Exception:
+                try:
+                    self.with_retries(self.datastore.client.indices.delete, index=self.index_name)
+                except Exception:
+                    logger.exception("Failed to clean up incomplete index %s", self.index_name)
                 self.with_retries(
                     self.datastore.client.indices.put_settings,
                     index=self.name,

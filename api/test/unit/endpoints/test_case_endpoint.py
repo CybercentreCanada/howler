@@ -604,7 +604,7 @@ class TestHideCasesEndpoint:
         ):
             from howler.api.v2.case import hide_cases
 
-            result: Response = hide_cases(username=user)
+            result: Response = hide_cases(user=user)
 
             assert result.status_code == 204
             mock_case_service.hide_cases.assert_called_once_with(

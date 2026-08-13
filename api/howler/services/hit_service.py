@@ -19,7 +19,8 @@ from howler.common.exceptions import (
 )
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
-from howler.datastore.collection import ESCollection
+from howler.datastore.collection import BulkResult, ESCollection
+from howler.datastore.exceptions import VersionConflictException
 from howler.datastore.operations import OdmHelper, OdmUpdateOperation
 from howler.datastore.types import SearchResult
 from howler.helper.hit import (
@@ -37,7 +38,14 @@ from howler.odm.models.ecs.event import ECSEvent
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import HitOperationType, HitStatusTransition, Log, Status
 from howler.odm.models.user import User
-from howler.services import action_service, analytic_service, dossier_service, overview_service, template_service
+from howler.services import (
+    action_service,
+    analytic_service,
+    correlation_service,
+    dossier_service,
+    overview_service,
+    template_service,
+)
 from howler.utils.dict_utils import extra_keys, flatten
 from howler.utils.uid import get_random_id
 
@@ -451,7 +459,7 @@ def create_hit(
 @tracer.start_as_current_span(f"{__name__}.create_hits")
 def create_hits(
     hits: list[Hit], user: Optional[str] = None, overwrite: bool = False, refresh: str | None = None
-) -> bool:
+) -> BulkResult:
     """Bulk create multiple hits in the database.
 
     Similar to create_hit for batch.
@@ -473,7 +481,14 @@ def create_hits(
         else:
             bulk_plan.add_insert_operation(hit.howler.id, hit)
 
-    return storage.hit.bulk(bulk_plan, refresh=refresh)
+    ingest_result = storage.hit.bulk(bulk_plan, refresh=refresh)
+
+    failed_ids = {failure.get("id") for failure in ingest_result.failures}
+    ids = [hit.howler.id for hit in hits if hit.howler.id not in failed_ids]
+    if ids:
+        correlation_service.enqueue_for_correlation(ids)
+
+    return ingest_result
 
 
 @tracer.start_as_current_span(f"{__name__}.update_hit")
@@ -515,7 +530,7 @@ def update_hit(
 
 
 @tracer.start_as_current_span(f"{__name__}.overwrite_hits")
-def overwrite_hits(hits: list[Hit], refresh: str | None = None) -> bool:
+def overwrite_hits(hits: list[Hit], refresh: str | None = None) -> BulkResult:
     """Bulk save multiple hits to the datastore.
 
     Similar to save_hit for batch without versioning. Will overwrite existing hits with the same ID.
@@ -634,7 +649,11 @@ def _update_hits(
         bulk_plan.add_scripted_update_operation(hit.howler.id, script, version=version)
 
     # Format and print the profiling data
-    if not bulk_plan.empty and not collection.bulk(bulk_plan, refresh=refresh):
+    if not bulk_plan.empty and not (bulk_result := collection.bulk(bulk_plan, refresh=refresh)):
+        conflicts = [failure for failure in bulk_result.failures if failure.get("status") == 409]
+        if conflicts:
+            raise VersionConflictException("Unable to update all hits due to a version conflict", failures=conflicts)
+
         raise HowlerRuntimeError("Unable to update all hits")
 
     updated_hits = [collection.get(hit.howler.id, as_obj=False, version=True) for hit, _ in hit_updates]

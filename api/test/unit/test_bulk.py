@@ -46,7 +46,7 @@ def test_get_plan_batches(bulk_plan, operations, operation_length, batch_size):
     assert "".join(batches) == bulk_plan.get_plan_data()
 
 
-def test_collection_bulk_returns_false_and_logs_item_failures():
+def test_collection_bulk_returns_item_failures_and_logs_them():
     operations = MagicMock()
     operations.get_plan_batches.return_value = ["bulk-operation"]
     collection = MagicMock()
@@ -67,7 +67,16 @@ def test_collection_bulk_returns_false_and_logs_item_failures():
     with patch("howler.datastore.collection.logger") as mock_logger:
         result = ESCollection.bulk(collection, operations)
 
-    assert result is False
+    assert not result
+    assert result.failures == [
+        {
+            "operation": "update",
+            "index": "howler_case_hot",
+            "id": "case-123",
+            "status": 409,
+            "error": {"type": "version_conflict_engine_exception", "reason": "document changed"},
+        }
+    ]
     collection.with_retries.assert_called_once_with(
         collection.datastore.client.bulk,
         operations="bulk-operation",
@@ -85,6 +94,28 @@ def test_collection_bulk_returns_false_and_logs_item_failures():
             }
         ],
     )
+
+
+def test_collection_bulk_preserves_failures_across_batches():
+    operations = MagicMock()
+    operations.get_plan_batches.return_value = ["successful-bulk", "failed-bulk"]
+    collection = MagicMock()
+    collection.with_retries.side_effect = [
+        {"errors": False, "items": [{"update": {"status": 200}}]},
+        {
+            "errors": True,
+            "items": [
+                {"update": {"_id": "hit-1", "status": 409, "error": {"type": "conflict"}}},
+                {"update": {"_id": "hit-2", "status": 500, "error": {"type": "failure"}}},
+            ],
+        },
+    ]
+
+    result = ESCollection.bulk(collection, operations)
+
+    assert not result
+    assert [failure["id"] for failure in result.failures] == ["hit-1", "hit-2"]
+    assert len(result.responses) == 2
 
 
 def test_update_by_query_translates_wait_for_refresh_to_true():
