@@ -182,7 +182,7 @@ const HitLabels: FC<{ hit: Hit; readOnly?: boolean }> = ({ hit, readOnly = false
   }, [hit]);
 
   return (
-    <Box sx={{ py: 1 }}>
+    <Box>
       <Drawer
         open={openDrawer}
         onClose={() => setOpenDrawer(false)}
