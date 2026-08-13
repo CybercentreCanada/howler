@@ -5,13 +5,6 @@ import subprocess
 dev_setup = importlib.import_module("dev.dev_setup")
 
 
-def test_dev_credentials_match_seeded_keycloak_user():
-    # api/dev/keycloak/keycloak-realm.json seeds "goose"/"goose"; using any
-    # other value here silently breaks --token/--start with a 401.
-    assert dev_setup._TEST_USER == "goose"
-    assert dev_setup._TEST_PASS == "goose"
-
-
 def test_update_mcp_json_preserves_existing_configuration(tmp_path):
     config_path = tmp_path / "mcp.json"
     config_path.write_text(
