@@ -5,7 +5,8 @@ from howler.actions import check_hit_limit
 from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
-from howler.helper.workflow import Workflow
+from howler.datastore.exceptions import VersionConflictException
+from howler.helper.workflow import Workflow, WorkflowException
 from howler.odm.models.action import VALID_TRIGGERS
 from howler.odm.models.howler_data import (
     Assessment,
@@ -23,6 +24,23 @@ MAX_HITS_ADVANCED = 1000
 SKIP_CENTRAL_LIMIT = True  # This operation transforms the query, handles limit check locally
 
 log = get_logger(__file__)
+
+
+def _transition_failure_report(query: str, error: Exception) -> dict[str, str]:
+    if isinstance(error, VersionConflictException):
+        return {
+            "query": query,
+            "outcome": "error",
+            "title": "Version Conflict",
+            "message": "The hit was modified while this transition was running.",
+        }
+
+    return {
+        "query": query,
+        "outcome": "error",
+        "title": "An error occurred while processing.",
+        "message": str(error),
+    }
 
 
 def __parse_workflow_actions(workflow: Workflow) -> dict[str, set[str]]:
@@ -134,15 +152,8 @@ def execute(
             refresh="wait_for",
             **kwargs,
         )
-    except (InvalidDataException, NotFoundException) as error:
-        report.append(
-            {
-                "query": f"howler.id:({' OR '.join(ids)})",
-                "outcome": "error",
-                "title": "An error occurred while processing.",
-                "message": str(error),
-            }
-        )
+    except (InvalidDataException, NotFoundException, VersionConflictException, WorkflowException) as error:
+        report.append(_transition_failure_report(f"howler.id:({' OR '.join(ids)})", error))
         successful_hit_count = 0
     else:
         successful_hit_count = len(ids)

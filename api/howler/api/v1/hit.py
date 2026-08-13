@@ -1043,7 +1043,7 @@ def _deprecation_headers(response):
 @hit_api.route("/bundle", methods=["POST"])
 @api_login(audit=False, required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def create_bundle(user: User, **kwargs):
+def create_bundle(user: User, refresh: Literal["true", "false", "wait_for"] | None, **kwargs):
     """Create a new bundle (deprecated — creates a case instead).
 
     Variables:
@@ -1072,7 +1072,6 @@ def create_bundle(user: User, **kwargs):
     from howler.services import bundle_compat_service
 
     data = request.json
-    refresh = cast(Literal["true", "false", "wait_for"], kwargs.get("refresh") or "wait_for")
     if not isinstance(data, dict):
         return bad_request(err="Invalid data format")
 
@@ -1093,7 +1092,7 @@ def create_bundle(user: User, **kwargs):
 @hit_api.route("/bundle/<id>", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def update_bundle(id, **kwargs):
+def update_bundle(id: str, refresh: Literal["true", "false", "wait_for"] | None, **kwargs):
     """Add hits to a bundle (deprecated — adds items to the underlying case).
 
     Variables:
@@ -1117,8 +1116,6 @@ def update_bundle(id, **kwargs):
     }
     """
     from howler.services import bundle_compat_service
-
-    refresh = cast(Literal["true", "false", "wait_for"], kwargs.get("refresh") or "wait_for")
 
     hit_ids = request.json
     if not isinstance(hit_ids, list):
