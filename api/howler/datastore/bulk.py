@@ -13,7 +13,7 @@ from typing import List, Optional
 
 from howler import odm
 from howler.config import config
-from howler.datastore.utils import expand_field_patterns, prune_to_paths
+from howler.datastore.utils import expand_field_patterns, get_version_write_target, prune_to_paths
 
 _OPERATION_GROUP = tuple[str] | tuple[str, str]
 
@@ -204,19 +204,22 @@ class ElasticBulkPlan(object):
                     )
                 )
 
-    def add_scripted_update_operation(self, doc_id: str, script: dict, version: str | None = None, index=None):
+    def add_scripted_update_operation(
+        self, doc_id: str, script: dict, version: str | None = None, index: str | None = None
+    ):
         """Queue an Elasticsearch scripted update operation.
 
         Args:
             doc_id: Identifier of the document to update.
             script: Painless script definition to execute.
-            version: Optional ``sequence_number---primary_term`` optimistic-locking version.
-            index: Explicit index to target. When omitted, queues one update
-                operation for each configured index.
+            version: Optional ``sequence_number---primary_term`` optimistic-locking
+                version, optionally prefixed by a concrete index.
+            index: Explicit concrete index to target. When omitted, queues one
+                update operation for each configured index.
         """
         metadata = {"_id": doc_id}
         if version:
-            sequence_number, primary_term = version.split("---")
+            index, sequence_number, primary_term = get_version_write_target(version, index)
             metadata.update({"if_seq_no": sequence_number, "if_primary_term": primary_term})
 
         for current_index in [index] if index else self.indexes:

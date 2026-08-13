@@ -759,6 +759,7 @@ def test_update_hits_uses_one_bulk_plan(mock_datastore, mock_prepare_operations,
     first_operations = [OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.status", "in_progress")]
     second_operations = [OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.status", "on_hold")]
     collection = mock_datastore.return_value.hit
+    collection.ilm_config = False
     bulk_plan = MagicMock(empty=False)
     collection.get_bulk_plan.return_value = bulk_plan
     mock_prepare_operations.side_effect = [first_operations, second_operations]
@@ -775,17 +776,48 @@ def test_update_hits_uses_one_bulk_plan(mock_datastore, mock_prepare_operations,
         (second_updated_hit, "second-version"),
     ]
 
-    hit_service._update_hits([(first_hit, first_operations), (second_hit, second_operations)], username="analyst")
+    hit_service._update_hits(
+        [(first_hit, first_operations, None), (second_hit, second_operations, None)], username="analyst"
+    )
 
     collection.bulk.assert_called_once_with(bulk_plan, refresh=None)
     assert bulk_plan.add_scripted_update_operation.call_args_list == [
-        call("first-hit", {"source": "first"}, version=None),
-        call("second-hit", {"source": "second"}, version=None),
+        call("first-hit", {"source": "first"}, version=None, index=None),
+        call("second-hit", {"source": "second"}, version=None, index=None),
     ]
     assert mock_emit.call_args_list == [
         call("hits", {"hit": first_updated_hit, "version": "first-version"}),
         call("hits", {"hit": second_updated_hit, "version": "second-version"}),
     ]
+
+
+@patch("howler.services.hit_service.comms_service.emit")
+@patch("howler.services.hit_service._prepare_hit_update_operations")
+@patch("howler.services.hit_service.datastore")
+def test_update_hits_resolves_ilm_version_to_concrete_index(mock_datastore, mock_prepare_operations, mock_emit):
+    hit = MagicMock(spec=Hit)
+    hit.howler.id = "hit-001"
+    operations = [OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.status", "in_progress")]
+    collection = mock_datastore.return_value.hit
+    collection.ilm_config = True
+    collection.get_if_exists.return_value = (None, "hit-000001---10---2")
+    collection._get_version_write_target.return_value = ("hit-000001", "10", "2")
+    bulk_plan = MagicMock(empty=False)
+    collection.get_bulk_plan.return_value = bulk_plan
+    mock_prepare_operations.return_value = operations
+    collection.create_scripts_from_operations.return_value = {"source": "update"}
+    collection.bulk.return_value = True
+    collection.get.return_value = (_make_hit("hit-001"), "new-version")
+
+    hit_service._update_hits([(hit, operations, None)], username="analyst")
+
+    bulk_plan.add_scripted_update_operation.assert_called_once_with(
+        "hit-001",
+        {"source": "update"},
+        version="10---2",
+        index="hit-000001",
+    )
+    mock_emit.assert_called_once_with("hits", {"hit": _make_hit("hit-001"), "version": "new-version"})
 
 
 @patch("howler.services.hit_service._update_hits")
@@ -802,8 +834,7 @@ def test_transition_hits_accumulates_workflow_updates(mock_get_workflow, mock_up
     hit_service.transition_hits([first_hit, second_hit], HitStatusTransition.ASSIGN_TO_ME, user)
 
     mock_update_hits.assert_called_once_with(
-        [(first_hit, first_updates), (second_hit, second_updates)],
+        [(first_hit, first_updates, None), (second_hit, second_updates, None)],
         "analyst",
-        version=None,
         refresh=None,
     )

@@ -42,7 +42,7 @@ from howler.datastore.support.schemas import (
     default_mapping,
 )
 from howler.datastore.types import AggSearchResult, SearchResult
-from howler.datastore.utils import expand_field_patterns
+from howler.datastore.utils import expand_field_patterns, get_version_write_target
 from howler.odm.base import (
     BANNED_FIELDS,
     IP,
@@ -1303,19 +1303,6 @@ class ESCollection(Generic[ModelType]):
 
         return None
 
-    def _get_version_write_target(self, version: str) -> tuple[str, str, str]:
-        """Return the concrete write target and optimistic-concurrency values from a version token."""
-        version_parts = version.split("---")
-        if len(version_parts) == 3:
-            index, seq_no, primary_term = version_parts
-            return index, seq_no, primary_term
-
-        if len(version_parts) == 2:
-            seq_no, primary_term = version_parts
-            return self.name, seq_no, primary_term
-
-        raise DataStoreException(f"Invalid version token for {self.name}: {version!r}")
-
     @overload
     def get(self, key, as_obj: Literal[True], version: Literal[True]) -> tuple[ModelType | None, str]: ...
 
@@ -1455,7 +1442,7 @@ class ESCollection(Generic[ModelType]):
         if version == CREATE_TOKEN:
             operation = "create"
         elif version:
-            index, seq_no, primary_term = self._get_version_write_target(version)
+            index, seq_no, primary_term = get_version_write_target(version, self.name)
 
         if refresh == "true":
             logger.warning(
@@ -1679,7 +1666,7 @@ class ESCollection(Generic[ModelType]):
             _, version = self.get_if_exists(key, as_obj=False, version=True)
 
         if version:
-            index, seq_no, primary_term = self._get_version_write_target(version)
+            index, seq_no, primary_term = get_version_write_target(version, self.name)
 
         try:
             res = self.with_retries(

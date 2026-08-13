@@ -468,6 +468,10 @@ Reindex and cleanup must enumerate `index_list_full`, not `index_list`, so exist
 
 Elasticsearch single-document `exists` requests cannot target an alias that resolves to multiple ILM rollover indexes. For ILM collections, use a zero-result `ids` search against the alias and derive existence from `hits.total`; retain the same search as a logged fallback when a legacy single-document check returns `BadRequestError`.
 
+### ILM Scripted Bulk Updates
+
+When a scripted bulk update has no supplied version, resolve each document's version token first. For ILM collections, its token identifies the document's concrete rollover index; pass that index and the sequence number/primary term to the bulk operation instead of targeting the write alias.
+
 ### ODM Flattened Field Cache
 
 `Model.flat_fields()` caches its flattened metadata by `(show_compound, skip_mappings)`. Dynamic namespace additions and removals increment the shared cache version, so flattened field layouts are rebuilt after either operation.

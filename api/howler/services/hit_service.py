@@ -526,7 +526,7 @@ def update_hit(
     if not hit:
         raise NotFoundException("Hit does not exist")
 
-    return _update_hits([(hit, operations)], username, version=version, refresh=refresh)[0]
+    return _update_hits([(hit, operations, version)], username, refresh=refresh)[0]
 
 
 @tracer.start_as_current_span(f"{__name__}.overwrite_hits")
@@ -630,19 +630,18 @@ def _prepare_hit_update_operations(
 
 @tracer.start_as_current_span(f"{__name__}._update_hits")
 def _update_hits(
-    hit_updates: list[tuple[Hit, list[OdmUpdateOperation]]],
+    hit_updates: list[tuple[Hit, list[OdmUpdateOperation], str | None]],
     username: str | None = None,
-    version: str | None = None,
     refresh: str | None = None,
 ) -> list[tuple[dict[str, Any] | None, str | None]]:
     """Apply prepared operations to one or more hits in a single bulk request."""
-    if version and len(hit_updates) > 1:
-        raise HowlerValueError("A version can only be used when updating one hit")
-
     collection = datastore().hit
     bulk_plan = collection.get_bulk_plan()
 
-    for hit, operations in hit_updates:
+    for hit, operations, version in hit_updates:
+        if not version and collection.ilm_config:
+            _, version = collection.get_if_exists(hit.howler.id, as_obj=False, version=True)
+
         script = collection.create_scripts_from_operations(
             _prepare_hit_update_operations(hit, operations, username, version)
         )
@@ -656,7 +655,7 @@ def _update_hits(
 
         raise HowlerRuntimeError("Unable to update all hits")
 
-    updated_hits = [collection.get(hit.howler.id, as_obj=False, version=True) for hit, _ in hit_updates]
+    updated_hits = [collection.get(hit.howler.id, as_obj=False, version=True) for hit, _, _ in hit_updates]
     for data, hit_version in updated_hits:
         if data and hit_version:
             comms_service.emit("hits", {"hit": data, "version": hit_version})
@@ -709,7 +708,7 @@ def transition_hits(
         hits = [hits]
 
     workflow: Workflow = get_hit_workflow()
-    hit_updates: list[tuple[Hit, list[OdmUpdateOperation]]] = []
+    hit_updates: list[tuple[Hit, list[OdmUpdateOperation], str | None]] = []
     transitioned_ids: list[str] = []
 
     for hit in hits:
@@ -719,10 +718,10 @@ def transition_hits(
         logger.debug("Transitioning (%s)", hit)
 
         updates = workflow.transition(hit_status, transition, user=user, hit=hit, **kwargs)
-        hit_updates.append((hit, updates))
+        hit_updates.append((hit, updates, version))
         transitioned_ids.append(hit_id)
 
-    updated_hits = _update_hits(hit_updates, user.uname, version=version, refresh=refresh)
+    updated_hits = _update_hits(hit_updates, user.uname, refresh=refresh)
 
     # Execute bulk actions for transitions that require them
     # These transitions need additional processing beyond the workflow

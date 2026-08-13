@@ -1,5 +1,6 @@
 import json
 import math
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -159,6 +160,25 @@ def _get_update_body(plan: ElasticBulkPlan) -> dict:
     header, body = op
     assert json.loads(header) == {"update": {"_index": "case", "_id": "case-001"}}
     return json.loads(body)["doc"]
+
+
+def test_add_scripted_update_operation_uses_index_from_ilm_version():
+    """Scripted updates honor the concrete index in an ILM version token."""
+    plan = ElasticBulkPlan(indexes=["hit"], model=None)
+
+    plan.add_scripted_update_operation(
+        "hit-001",
+        {"source": "ctx._source.howler.status = params.status", "params": {"status": "resolved"}},
+        version="hit-000001---10---2",
+    )
+
+    header, body = cast(tuple[str, str], plan.operations[0])
+    assert json.loads(header) == {
+        "update": {"_index": "hit-000001", "_id": "hit-001", "if_seq_no": "10", "if_primary_term": "2"}
+    }
+    assert json.loads(body) == {
+        "script": {"source": "ctx._source.howler.status = params.status", "params": {"status": "resolved"}}
+    }
 
 
 def test_add_update_operation_without_fields_keeps_everything():

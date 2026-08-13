@@ -3,6 +3,8 @@
 import re
 from typing import Iterable, Optional
 
+from exceptions import DataStoreException
+
 from howler import odm
 
 
@@ -57,3 +59,20 @@ def prune_to_paths(value, allowed: set[str], prefix: str = ""):
         return [prune_to_paths(entry, allowed, prefix) for entry in value]
 
     return value
+
+
+def get_version_write_target(version: str, fallback_index: str | None) -> tuple[str, str, str]:
+    """Return the concrete write target and optimistic-concurrency values from a version token."""
+    version_parts = version.split("---")
+    if len(version_parts) == 3:
+        index, seq_no, primary_term = version_parts
+        return index, seq_no, primary_term
+
+    if not fallback_index:
+        raise DataStoreException(f"No fallback index given: {version!r}")
+
+    if len(version_parts) == 2:
+        seq_no, primary_term = version_parts
+        return fallback_index, seq_no, primary_term
+
+    raise DataStoreException(f"Invalid version token: {version!r}")
