@@ -109,7 +109,7 @@ def _post_bundle_via_tool(session, host, child_count: int = 2):
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="module", autouse=True)
 def datastore(datastore_connection: HowlerDatastore):
     ds = datastore_connection
     try:

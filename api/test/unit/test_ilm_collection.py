@@ -697,6 +697,43 @@ class TestEnsureCollectionILMDispatch:
         assert create_kwargs["aliases"] == {col.name: {}}
         mock_datastore.client.indices.put_alias.assert_not_called()
 
+    def test_legacy_creation_conflict_repairs_missing_alias(self, mock_datastore):
+        """A concurrent hot-index creation restores its alias before collection validation."""
+        col = _make_collection(mock_datastore, ilm_config=None)
+        mock_datastore.client.indices.exists.return_value = False
+        mock_datastore.client.indices.exists_alias.return_value = False
+        meta = ApiResponseMeta(status=400, http_version="1.1", headers={}, duration=0.0, node=None)
+        mock_datastore.client.indices.create.side_effect = elasticsearch.exceptions.RequestError(
+            "resource_already_exists_exception", meta, {}
+        )
+
+        with patch.object(col, "_check_fields"):
+            col._ensure_collection()
+
+        mock_datastore.client.indices.update_aliases.assert_called_once_with(
+            actions=[{"add": {"index": col.index_name, "alias": col.name}}],
+        )
+
+    def test_legacy_concrete_index_migrates_to_configured_hot_index(self, mock_datastore):
+        """A legacy concrete index is reindexed instead of cloned with stale settings."""
+        col = _make_collection(mock_datastore, ilm_config=None)
+        mock_datastore.client.indices.exists.side_effect = [True, False]
+        mock_datastore.client.indices.exists_alias.return_value = False
+        mock_datastore.client.reindex.return_value = {"failures": []}
+
+        with patch.object(col, "_check_fields"):
+            col._ensure_collection()
+
+        create_kwargs = mock_datastore.client.indices.create.call_args.kwargs
+        assert create_kwargs["index"] == col.index_name
+        assert create_kwargs["settings"] == col._get_index_settings()
+        mock_datastore.client.reindex.assert_called_once_with(
+            source={"index": col.name},
+            dest={"index": col.index_name},
+            wait_for_completion=True,
+            refresh=True,
+        )
+
 
 class TestAddFieldsILMTemplateSync:
     """Tests that _add_fields updates the index template when ILM is active."""

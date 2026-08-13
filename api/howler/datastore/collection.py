@@ -245,6 +245,7 @@ class ESCollection(Generic[ModelType]):
         self.name = f"{DATASTORE_INDEX_PREFIX}-{name}"
         self.ilm_config = ilm_config
         self.index_name = f"{self.name}_hot"
+        self._recovering_collection = False
         self.model_class = model_class
         self.validate = validate
         self.max_attempts = max_attempts
@@ -394,7 +395,12 @@ class ESCollection(Generic[ModelType]):
                 if "index_not_found_exception" in str(e):
                     time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
                     logger.debug("The index does not exist. Trying to recreate it...")
-                    self._ensure_collection()
+                    if not self._recovering_collection:
+                        self._recovering_collection = True
+                        try:
+                            self._ensure_collection()
+                        finally:
+                            self._recovering_collection = False
                     self.datastore.connection_reset()
                     retries += 1
                 else:
@@ -2992,25 +2998,50 @@ class ESCollection(Generic[ModelType]):
                 if "resource_already_exists_exception" not in str(e):
                     raise
                 logger.warning("Tried to create an index template that already exists: %s", self.name.upper())
+                if not self.with_retries(self.datastore.client.indices.exists_alias, name=self.name):
+                    self.with_retries(
+                        self.datastore.client.indices.update_aliases,
+                        actions=[{"add": {"index": self.index_name, "alias": self.name}}],
+                    )
         elif not self.with_retries(
             self.datastore.client.indices.exists, index=self.index_name
         ) and not self.with_retries(self.datastore.client.indices.exists_alias, name=self.name):
-            # Turn on write block
-            self.with_retries(self.datastore.client.indices.put_settings, settings=write_block_settings)
-
-            # Create a copy on the result index
-            self._safe_index_copy(self.datastore.client.indices.clone, self.name, self.index_name)
-
-            # Make the hot index the new clone
             self.with_retries(
-                self.datastore.client.indices.update_aliases,
-                actions=[
-                    {"add": {"index": self.index_name, "alias": self.name}},
-                    {"remove_index": {"index": self.name}},
-                ],
+                self.datastore.client.indices.put_settings,
+                index=self.name,
+                settings=write_block_settings,
             )
+            try:
+                self.with_retries(
+                    self.datastore.client.indices.create,
+                    index=self.index_name,
+                    mappings=self._get_index_mappings(),
+                    settings=self._get_index_settings(),
+                )
+                result = self.with_retries(
+                    self.datastore.client.reindex,
+                    source={"index": self.name},
+                    dest={"index": self.index_name},
+                    wait_for_completion=True,
+                    refresh=True,
+                )
+                if result.get("failures"):
+                    raise DataStoreException(f"Failed to migrate legacy index {self.name}: {result['failures']}")  # noqa: TRY301
 
-            self.with_retries(self.datastore.client.indices.put_settings, settings=write_unblock_settings)
+                self.with_retries(
+                    self.datastore.client.indices.update_aliases,
+                    actions=[
+                        {"add": {"index": self.index_name, "alias": self.name}},
+                        {"remove_index": {"index": self.name}},
+                    ],
+                )
+            except Exception:
+                self.with_retries(
+                    self.datastore.client.indices.put_settings,
+                    index=self.name,
+                    settings=write_unblock_settings,
+                )
+                raise
 
         self._check_fields()
 

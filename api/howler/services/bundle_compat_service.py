@@ -42,12 +42,39 @@ def find_case_for_bundle(bundle_hit_id: str) -> Case | None:
     if hit is None:
         return None
 
+    related_case_ids = hit.howler.related
+    if not related_case_ids:
+        return None
+
     ds = datastore()
-    for case in ds.case.search(f"case_id:({' OR '.join(hit.howler.related)})")["items"]:
+    for case in ds.case.search(f"case_id:({' OR '.join(related_case_ids)})")["items"]:
         if any(item.value == bundle_hit_id and item.parent is None for item in case.items):
             return case
 
     return None
+
+
+def _validate_child_hits(child_hit_ids: list[str], case: Case | None = None, skip_missing: bool = False) -> list[str]:
+    """Validate legacy bundle children before translating them into case items."""
+    existing_child_ids = {item.value for item in case.items if item.type == CaseItemTypes.HIT} if case else set()
+    valid_child_ids: list[str] = []
+
+    for child_id in child_hit_ids:
+        if hit_service.get_hit(child_id, as_odm=True) is None:
+            if skip_missing:
+                logger.warning("Child hit %s does not exist, skipping", child_id)
+                continue
+            raise NotFoundException(f"Hit {child_id} does not exist")
+
+        if child_id in existing_child_ids or child_hit_ids.count(child_id) > 1:
+            raise BundleConflictException(f"Hit {child_id} already exists in bundle")
+
+        if find_case_for_bundle(child_id) is not None:
+            raise InvalidDataException("A bundle cannot be added as a child of another bundle.")
+
+        valid_child_ids.append(child_id)
+
+    return valid_child_ids
 
 
 def create_bundle(
@@ -78,6 +105,8 @@ def create_bundle(
 
     if not child_hit_ids:
         raise InvalidDataException("You did not provide any child hits.")
+
+    child_hit_ids = _validate_child_hits(child_hit_ids, skip_missing=True)
 
     odm, warnings = hit_service.convert_hit(bundle_hit_data, unique=True, ignore_extra_values=True)
     hit_service.create_hit(odm.howler.id, odm, user=user.uname, refresh=refresh)
@@ -153,7 +182,10 @@ def add_to_bundle(  # noqa: C901
                 "summary": f"Auto-created case for bundle {bundle_id}",
                 "items": [{"type": "hit", "value": bundle_id}],
             },
+            refresh=refresh,
         )
+
+    _validate_child_hits(hit_ids, case)
 
     items: list[CaseItem] = []
     for hit_id in hit_ids:

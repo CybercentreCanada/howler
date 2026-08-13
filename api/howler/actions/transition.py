@@ -126,6 +126,7 @@ def execute(
         )
 
     try:
+        kwargs.pop("refresh", None)
         hit_service.transition_hits(
             hits,
             cast(HitStatusTransition, HitStatusTransition[transition]),

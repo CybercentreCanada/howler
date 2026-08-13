@@ -275,8 +275,8 @@ class TestILMDataOperations:
 
     def test_delete_by_query(self, ilm_collection: ESCollection):
         """delete_by_query should work through the alias across ILM indices."""
-        ilm_collection.save("del1", {"field_s": "to_delete", "count_i": 1})
-        ilm_collection.save("del2", {"field_s": "to_delete", "count_i": 2})
+        ilm_collection.save("del1", {"field_s": "to_delete", "count_i": 1}, refresh="wait_for")
+        ilm_collection.save("del2", {"field_s": "to_delete", "count_i": 2}, refresh="wait_for")
         ilm_collection.save("keep1", {"field_s": "to_keep", "count_i": 3}, refresh="wait_for")
 
         ilm_collection.delete_by_query("field_s:to_delete", refresh="true")

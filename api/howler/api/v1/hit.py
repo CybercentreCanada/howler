@@ -1,6 +1,6 @@
 import difflib
 import json
-from typing import Any, Optional, cast
+from typing import Any, Literal, Optional, cast
 
 from flask import request
 from mergedeep import Strategy, merge
@@ -1072,7 +1072,7 @@ def create_bundle(user: User, **kwargs):
     from howler.services import bundle_compat_service
 
     data = request.json
-    refresh = kwargs.get("refresh")
+    refresh = cast(Literal["true", "false", "wait_for"], kwargs.get("refresh") or "wait_for")
     if not isinstance(data, dict):
         return bad_request(err="Invalid data format")
 
@@ -1118,7 +1118,7 @@ def update_bundle(id, **kwargs):
     """
     from howler.services import bundle_compat_service
 
-    refresh = kwargs.get("refresh")
+    refresh = cast(Literal["true", "false", "wait_for"], kwargs.get("refresh") or "wait_for")
 
     hit_ids = request.json
     if not isinstance(hit_ids, list):
