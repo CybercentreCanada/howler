@@ -66,6 +66,7 @@ const OverviewsBase: FC = () => {
 
   // Load the items into list when response changes.
   // This hook should only trigger when the 'response' changes.
+  // or if the analytic list changes to refresh the disabled state
   useEffect(() => {
     if (response) {
       load(
@@ -83,8 +84,7 @@ const OverviewsBase: FC = () => {
         }))
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [response, load]);
+  }, [response, load, analytics]);
 
   const onPageChange = useCallback(
     (_offset: number) => {
