@@ -185,11 +185,13 @@ class HowlerData(odm.Model):
         odm.Keyword(description="Raw telemetry records associated with this hit."),
         default=[],
         store=False,
+        sync=False,
     )
     links: list[Link] = odm.List(
         odm.Compound(Link),
         default=[],
         description="A list of links associated with this hit.",
+        sync=False,
     )
     detection: str | None = odm.Optional(
         odm.CaseInsensitiveKeyword(description="The detection that produced this hit.")
@@ -248,11 +250,13 @@ class HowlerData(odm.Model):
         odm.Compound(Comment),
         default=[],
         description="A list of comments with timestamps and attribution.",
+        sync=False,
     )
     log: list[Log] = odm.List(
         odm.Compound(Log),
         default=[],
         description="A list of changes to the hit with timestamps and attribution.",
+        sync=False,
     )
     monitored: str | None = odm.Optional(odm.Keyword(description="Link to the incident monitoring dashboard."))
     reported: str | None = odm.Optional(odm.Keyword(description="Link to the incident report."))
@@ -272,5 +276,8 @@ class HowlerData(odm.Model):
         description="Votes relating to the hit",
     )
     dossier: list[Lead] = odm.List(
-        odm.Compound(Lead), default=[], description="A list of leads forming the dossier associated with this hit"
+        odm.Compound(Lead),
+        default=[],
+        description="A list of leads forming the dossier associated with this hit",
+        sync=False,
     )

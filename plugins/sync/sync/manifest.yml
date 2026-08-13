@@ -1,0 +1,4 @@
+name: sync
+modules:
+  routes:
+    - sync:sync_api
