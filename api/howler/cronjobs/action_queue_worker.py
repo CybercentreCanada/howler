@@ -45,12 +45,12 @@ def run_worker(trigger: str) -> None:  # pragma: no cover – long-running loop,
 
     while True:
         try:
-            item = queue.pop(blocking=True, timeout=BATCH_TIMEOUT)
+            item = queue.pop(timeout=BATCH_TIMEOUT)
 
             if item is not None:
                 batch.append(item)
 
-            if len(batch) % 10 == 0 or len(batch) >= BATCH_SIZE:
+            if len(batch) > 0 and (len(batch) % 10 == 0 or len(batch) >= BATCH_SIZE):
                 logger.info("Batch size: %s", len(batch))
 
             if len(batch) >= BATCH_SIZE or (item is None and batch):

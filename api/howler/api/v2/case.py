@@ -163,7 +163,7 @@ def hide_cases(user: User, refresh: Literal["true", "false", "wait_for"] | None 
     if non_existing_case_ids:
         return not_found(err=f"Case id(s) {', '.join(non_existing_case_ids)} do not exist.")
 
-    case_service.hide_cases(case_ids, user=user.uname, refresh=refresh)
+    case_service.hide_cases(case_ids, username=user.uname, refresh=refresh)
 
     return no_content()
 
@@ -258,7 +258,7 @@ def append_item(id: str, user: User, refresh: Literal["true", "false", "wait_for
 
             body["parent"] = parent.id if parent else None
 
-        updated_case = case_service.append_case_item(id, item=CaseItem(body), refresh=refresh)
+        updated_case = case_service.append_case_items(id, CaseItem(body), refresh=refresh)
 
         case_service.filter_case_items_by_classification(updated_case, user.classification)
 

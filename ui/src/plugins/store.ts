@@ -48,7 +48,9 @@ class HowlerPluginStore {
       return;
     }
 
-    console.log(`Installing plugin ${plugin.getPluginName()} by ${plugin.author}`);
+    if (import.meta.env.MODE !== 'test') {
+      console.log(`Installing plugin ${plugin.getPluginName()} by ${plugin.author}`);
+    }
 
     this.plugins.push(plugin.name);
 

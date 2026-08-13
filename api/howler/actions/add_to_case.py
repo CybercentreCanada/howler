@@ -5,6 +5,7 @@ import chevron
 from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.odm.models.action import VALID_TRIGGERS
+from howler.odm.models.case import CaseItem
 from howler.services import case_service
 
 OPERATION_ID = "add_to_case"
@@ -64,6 +65,8 @@ def execute(  # noqa: C901
     skipped = []
     added = []
 
+    items: list[CaseItem] = []
+    existing_hit_ids = {item.value for item in case.items if item.type == "hit"}
     for hit in hits:
         rendered_destination = chevron.render(destination, hit.as_primitives())
         try:
@@ -73,15 +76,20 @@ def execute(  # noqa: C901
             name = rendered_destination
 
         try:
-            parent = case_service.get_parent_from_path(case, item_path, create_if_missing=True)
+            if hit.howler.id in existing_hit_ids:
+                skipped.append(f"Item {hit.howler.id} already exists in case {case.case_id}")
+                continue
 
-            case_service.append_case_item(
-                case,
-                item_type="hit",
-                item_value=hit.howler.id,
-                item_name=name,
-                item_parent=parent.id if parent else None,
+            parent = case_service.get_parent_from_path(case, item_path, create_if_missing=True, persist=False)
+            items.append(
+                case_service.make_case_item(
+                    item_type="hit",
+                    item_value=hit.howler.id,
+                    item_name=name,
+                    item_parent=parent.id if parent else None,
+                )
             )
+            existing_hit_ids.add(hit.howler.id)
             added.append(hit.howler.id)
         except InvalidDataException as e:
             skipped.append(f"{hit.howler.id}: {e}")
@@ -89,6 +97,13 @@ def execute(  # noqa: C901
             skipped.append(f"{hit.howler.id}: {e}")
         except Exception as e:  # pragma: no cover
             skipped.append(f"{hit.howler.id}: {e}")
+
+    if items:
+        try:
+            case_service.append_case_items(case, items)
+        except (InvalidDataException, NotFoundException) as exc:  # pragma: no cover
+            skipped.extend(f"{item.value}: {exc}" for item in items)
+            added = []
 
     if added:
         report.append(

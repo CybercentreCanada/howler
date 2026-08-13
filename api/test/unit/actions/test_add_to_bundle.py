@@ -125,7 +125,7 @@ def test_execute_adds_hits_successfully(mock_compat, mock_ds_fn, mock_case_svc):
     result = execute("howler.analytic:TestAnalytic", bundle_id="bundle-001")
 
     assert any(r["outcome"] == "success" for r in result)
-    mock_case_svc.append_case_item.assert_called_once()
+    mock_case_svc.append_case_items.assert_called_once()
 
 
 def test_specification():

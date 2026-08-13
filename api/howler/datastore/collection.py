@@ -8,6 +8,7 @@ import time
 import typing
 import warnings
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import datetime
 from os import environ
 from random import random
@@ -41,7 +42,7 @@ from howler.datastore.support.schemas import (
     default_mapping,
 )
 from howler.datastore.types import AggSearchResult, SearchResult
-from howler.datastore.utils import expand_field_patterns
+from howler.datastore.utils import expand_field_patterns, get_version_write_target
 from howler.odm.base import (
     BANNED_FIELDS,
     IP,
@@ -58,6 +59,8 @@ from howler.odm.base import (
 from howler.utils.dict_utils import prune, recursive_update
 
 if typing.TYPE_CHECKING:
+    from howler.odm.models.config import ILMIndexConfig
+
     from .store import ESStore
 
 
@@ -154,6 +157,16 @@ def parse_sort(sort, ret_list=True):
     raise SearchException("Unknown sort parameter " + sort)
 
 
+@dataclass
+class BulkResult:
+    responses: list[Any]
+    failures: list[dict[str, Any]]
+    has_errors: bool
+
+    def __bool__(self) -> bool:
+        return not self.has_errors
+
+
 class ESCollection(Generic[ModelType]):
     DEFAULT_OFFSET = 0
     DEFAULT_ROW_SIZE = 25
@@ -221,7 +234,15 @@ class ESCollection(Generic[ModelType]):
     ENSURE_COLLECTION_WARNED: bool = False
     CUSTOM_AGG_PREFIX: str = "_custom_agg__"
 
-    def __init__(self, datastore: ESStore, name, model_class=None, validate=True, max_attempts=10, ilm_config=None):
+    def __init__(
+        self,
+        datastore: ESStore,
+        name: str,
+        model_class: type[odm.Model] | None = None,
+        validate: bool = True,
+        max_attempts: int = 10,
+        ilm_config: ILMIndexConfig | None = None,
+    ):
         self.replicas = int(
             environ.get(
                 f"ELASTIC_{name.upper()}_REPLICAS",
@@ -235,6 +256,7 @@ class ESCollection(Generic[ModelType]):
         self.name = f"{DATASTORE_INDEX_PREFIX}-{name}"
         self.ilm_config = ilm_config
         self.index_name = f"{self.name}_hot"
+        self._recovering_collection = False
         self.model_class = model_class
         self.validate = validate
         self.max_attempts = max_attempts
@@ -384,7 +406,12 @@ class ESCollection(Generic[ModelType]):
                 if "index_not_found_exception" in str(e):
                     time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
                     logger.debug("The index does not exist. Trying to recreate it...")
-                    self._ensure_collection()
+                    if not self._recovering_collection:
+                        self._recovering_collection = True
+                        try:
+                            self._ensure_collection()
+                        finally:
+                            self._recovering_collection = False
                     self.datastore.connection_reset()
                     retries += 1
                 else:
@@ -557,49 +584,77 @@ class ESCollection(Generic[ModelType]):
             else:
                 updated += res["updated"]
 
-    def bulk(self, operations: ElasticBulkPlan, refresh: str | None = None):
-        """
-        Execute a bulk plan.
+    def bulk(self, operations: ElasticBulkPlan, refresh: str | None = None) -> BulkResult:
+        """Execute a bulk plan.
 
-        :return: True if the operation completed without errors
+        Returns:
+            BulkResult containing every response and item-level failure.
         """
         responses = []
         for operation_batch in operations.get_plan_batches():
             response = self.with_retries(self.datastore.client.bulk, operations=operation_batch, refresh=refresh)
             responses.append(response)
 
-        has_errors = False
+        failures = []
         for response in responses:
             if response["errors"]:
-                has_errors = True
-                logger.error("Errors on bulk plan: %s", response["errors"])
+                response_failures = []
+                for item in response.get("items", []):
+                    operation, result = next(iter(item.items()))
+                    if "error" in result:
+                        response_failures.append(
+                            {
+                                "operation": operation,
+                                "index": result.get("_index"),
+                                "id": result.get("_id"),
+                                "status": result.get("status"),
+                                "error": result["error"],
+                            }
+                        )
 
-        return not has_errors
+                failures.extend(response_failures)
+                logger.error("Bulk plan failures: %s", response_failures or response["errors"])
+
+        return BulkResult(
+            responses=responses,
+            failures=failures,
+            has_errors=bool(failures) or any(response["errors"] for response in responses),
+        )
 
     def get_bulk_plan(self):
-        """
-        Create a BulkPlan tailored for the current datastore
+        """Create a BulkPlan tailored for the current datastore.
 
-        :return: The BulkPlan object
+        Returns:
+            The BulkPlan object
         """
         return ElasticBulkPlan(self.index_list, self.model_class)
 
-    @tracer.start_as_current_span(f"{__name__}.commit")
-    def commit(self):
-        """This function should be overloaded to perform a commit of the index data of all the different hosts
-        specified in self.datastore.hosts.
+    @tracer.start_as_current_span(f"{__name__}.refresh")
+    def refresh(self):
+        """Perform a refresh of the index data of all the different hosts specified in self.datastore.hosts.
 
-        :return: Should return True of the commit was successful on all hosts
+        Returns:
+            True if the refresh was successful on all hosts
         """
         self.with_retries(self.datastore.client.indices.refresh, index=self.index_name)
+        return True
+
+    @tracer.start_as_current_span(f"{__name__}.commit")
+    def commit(self):
+        """Perform a commit of the index data of all the different hosts specified in self.datastore.hosts.
+
+        Returns:
+            True if the commit was successful on all hosts
+        """
+        self.refresh()
         self.with_retries(self.datastore.client.indices.clear_cache, index=self.index_name)
         return True
 
     def fix_replicas(self):
-        """This function should be overloaded to fix the replica configuration of the index of all the different hosts
-        specified in self.datastore.hosts.
+        """Fix the replica configuration of the index of all the different hosts specified in self.datastore.hosts.
 
-        :return: Should return True of the fix was successful on all hosts
+        Returns:
+            True if the fix was successful on all hosts
         """
         replicas = self._get_index_settings()["index"]["number_of_replicas"]
         settings = {"number_of_replicas": replicas}
@@ -1248,41 +1303,37 @@ class ESCollection(Generic[ModelType]):
 
         return None
 
-    def _get_version_write_target(self, version: str) -> tuple[str, str, str]:
-        """Return the concrete write target and optimistic-concurrency values from a version token."""
-        version_parts = version.split("---")
-        if len(version_parts) == 3:
-            index, seq_no, primary_term = version_parts
-            return index, seq_no, primary_term
-
-        if len(version_parts) == 2:
-            seq_no, primary_term = version_parts
-            return self.name, seq_no, primary_term
-
-        raise DataStoreException(f"Invalid version token for {self.name}: {version!r}")
+    @overload
+    def get(self, key: str, as_obj: Literal[True], version: Literal[True]) -> tuple[ModelType | None, str]: ...
 
     @overload
-    def get(self, key, as_obj: Literal[True], version: Literal[True]) -> tuple[ModelType | None, str]: ...
+    def get(self, key: str, *, version: Literal[True]) -> tuple[ModelType | None, str]: ...
 
     @overload
-    def get(self, key, as_obj: Literal[True], version: Literal[False]) -> ModelType | None: ...
+    def get(self, key: str, *, version: Literal[False]) -> ModelType | None: ...
 
     @overload
-    def get(self, key, as_obj: Literal[True]) -> ModelType | None: ...
+    def get(self, key: str, *, version: bool) -> tuple[ModelType | None, str] | ModelType | None: ...
 
     @overload
-    def get(self, key) -> ModelType | None: ...
+    def get(self, key: str, as_obj: Literal[True], version: Literal[False]) -> ModelType | None: ...
 
     @overload
-    def get(self, key, as_obj: Literal[False], version: Literal[True]) -> tuple[dict[str, Any] | None, str]: ...
+    def get(self, key: str, as_obj: Literal[True]) -> ModelType | None: ...
 
     @overload
-    def get(self, key, as_obj: Literal[False], version: Literal[False]) -> dict[str, Any] | None: ...
+    def get(self, key: str) -> ModelType | None: ...
 
     @overload
-    def get(self, key, as_obj: Literal[False]) -> dict[str, Any] | None: ...
+    def get(self, key: str, as_obj: Literal[False], version: Literal[True]) -> tuple[dict[str, Any] | None, str]: ...
 
-    def get(self, key, as_obj=True, version=False):
+    @overload
+    def get(self, key: str, as_obj: Literal[False], version: Literal[False]) -> dict[str, Any] | None: ...
+
+    @overload
+    def get(self, key: str, as_obj: Literal[False]) -> dict[str, Any] | None: ...
+
+    def get(self, key: str, as_obj=True, version=False):
         """Get a document from the datastore, retry a few times if not found and normalize the
         document with the model provided with the collection.
 
@@ -1400,7 +1451,7 @@ class ESCollection(Generic[ModelType]):
         if version == CREATE_TOKEN:
             operation = "create"
         elif version:
-            index, seq_no, primary_term = self._get_version_write_target(version)
+            index, seq_no, primary_term = get_version_write_target(version, self.name)
 
         if refresh == "true":
             logger.warning(
@@ -1464,7 +1515,9 @@ class ESCollection(Generic[ModelType]):
         )
         return info.get("deleted", 0) != 0
 
-    def _create_scripts_from_operations(self, operations):
+    def create_scripts_from_operations(self, operations):
+        operations = self._validate_operations(operations)
+
         op_sources = []
         op_params = {}
         val_id = 0
@@ -1564,7 +1617,10 @@ class ESCollection(Generic[ModelType]):
                         raise DataStoreException(f"Invalid field for model: {doc_key}")
 
                 if prev_key:
-                    field = fields[prev_key].child_type
+                    parent_field = fields[prev_key]
+                    if not isinstance(parent_field, Mapping):
+                        raise DataStoreException(f"Invalid field for model: {prev_key}")
+                    field = parent_field.child_type
                 else:
                     field = fields[doc_key]
 
@@ -1609,7 +1665,8 @@ class ESCollection(Generic[ModelType]):
         :return: True is update successful
         """
         operations = self._validate_operations(operations)
-        script = self._create_scripts_from_operations(operations)
+        script = self.create_scripts_from_operations(operations)
+
         index = self.name
         seq_no = None
         primary_term = None
@@ -1618,7 +1675,7 @@ class ESCollection(Generic[ModelType]):
             _, version = self.get_if_exists(key, as_obj=False, version=True)
 
         if version:
-            index, seq_no, primary_term = self._get_version_write_target(version)
+            index, seq_no, primary_term = get_version_write_target(version, self.name)
 
         try:
             res = self.with_retries(
@@ -1668,14 +1725,13 @@ class ESCollection(Generic[ModelType]):
         :param operations: List of tuple of operations e.q. [(SET, document_key, operation_value), ...]
         :return: True is update successful
         """
-        operations = self._validate_operations(operations)
         if filters is None:
             filters = []
 
         if access_control:
             filters.append(access_control)
 
-        script = self._create_scripts_from_operations(operations)
+        script = self.create_scripts_from_operations(operations)
 
         try:
             res = self._update_async(
@@ -1688,9 +1744,11 @@ class ESCollection(Generic[ModelType]):
                     }
                 },
                 max_docs=max_docs,
-                refresh=refresh,
+                # Unlike bulk, Elasticsearch's update-by-query API only accepts a Boolean refresh value.
+                refresh="true" if refresh == "wait_for" else refresh,
             )
         except Exception:
+            logger.exception("Update by query failed for %s", self.name)
             return False
 
         return res["updated"]
@@ -2670,9 +2728,11 @@ class ESCollection(Generic[ModelType]):
 
             if "." in p_name:
                 parent_p_name = re.sub(r"^(.+)\..+?$", r"\1", p_name)
-                if parent_p_name in model_fields and isinstance(model_fields.get(parent_p_name), Mapping):
+                parent_field = model_fields.get(parent_p_name)
+                if isinstance(parent_field, Mapping):
                     if parent_p_name not in collection_data:
-                        field_model = model_fields.get(parent_p_name, None)
+                        field_model = parent_field
+                        child_field = field_model.child_type
                         f_type = self._get_odm_type(p_val.get("analyzer", None) or p_val["type"])
 
                         collection_data[parent_p_name] = {
@@ -2683,19 +2743,11 @@ class ESCollection(Generic[ModelType]):
                             "type": f_type,
                             "description": (field_model.description if field_model else ""),
                             "regex": (
-                                field_model.child_type.validation_regex.pattern
-                                if field_model
-                                and (
-                                    issubclass(type(field_model.child_type), ValidatedKeyword)
-                                    or issubclass(type(field_model.child_type), IP)
-                                )
+                                child_field.validation_regex.pattern
+                                if isinstance(child_field, (ValidatedKeyword, IP))
                                 else None
                             ),
-                            "values": (
-                                list(field_model.child_type.values)
-                                if field_model and issubclass(type(field_model.child_type), Enum)
-                                else None
-                            ),
+                            "values": (list(child_field.values) if isinstance(child_field, Enum) else None),
                             "deprecated_description": (field_model.deprecated_description if field_model else ""),
                         }
 
@@ -2714,12 +2766,9 @@ class ESCollection(Generic[ModelType]):
                 "type": f_type,
                 "description": field_model.description if field_model else "",
                 "regex": (
-                    field_model.validation_regex.pattern
-                    if field_model
-                    and (issubclass(type(field_model), ValidatedKeyword) or issubclass(type(field_model), IP))
-                    else None
+                    field_model.validation_regex.pattern if isinstance(field_model, (ValidatedKeyword, IP)) else None
                 ),
-                "values": list(field_model.values) if field_model and issubclass(type(field_model), Enum) else None,
+                "values": list(field_model.values) if isinstance(field_model, Enum) else None,
                 "deprecated_description": (field_model.deprecated_description if field_model else ""),
             }
 
@@ -2960,25 +3009,54 @@ class ESCollection(Generic[ModelType]):
                 if "resource_already_exists_exception" not in str(e):
                     raise
                 logger.warning("Tried to create an index template that already exists: %s", self.name.upper())
+                if not self.with_retries(self.datastore.client.indices.exists_alias, name=self.name):
+                    self.with_retries(
+                        self.datastore.client.indices.update_aliases,
+                        actions=[{"add": {"index": self.index_name, "alias": self.name}}],
+                    )
         elif not self.with_retries(
             self.datastore.client.indices.exists, index=self.index_name
         ) and not self.with_retries(self.datastore.client.indices.exists_alias, name=self.name):
-            # Turn on write block
-            self.with_retries(self.datastore.client.indices.put_settings, settings=write_block_settings)
-
-            # Create a copy on the result index
-            self._safe_index_copy(self.datastore.client.indices.clone, self.name, self.index_name)
-
-            # Make the hot index the new clone
             self.with_retries(
-                self.datastore.client.indices.update_aliases,
-                actions=[
-                    {"add": {"index": self.index_name, "alias": self.name}},
-                    {"remove_index": {"index": self.name}},
-                ],
+                self.datastore.client.indices.put_settings,
+                index=self.name,
+                settings=write_block_settings,
             )
+            try:
+                self.with_retries(
+                    self.datastore.client.indices.create,
+                    index=self.index_name,
+                    mappings=self._get_index_mappings(),
+                    settings=self._get_index_settings(),
+                )
+                result = self.with_retries(
+                    self.datastore.client.reindex,
+                    source={"index": self.name},
+                    dest={"index": self.index_name},
+                    wait_for_completion=True,
+                    refresh=True,
+                )
+                if result.get("failures"):
+                    raise DataStoreException(f"Failed to migrate legacy index {self.name}: {result['failures']}")  # noqa: TRY301
 
-            self.with_retries(self.datastore.client.indices.put_settings, settings=write_unblock_settings)
+                self.with_retries(
+                    self.datastore.client.indices.update_aliases,
+                    actions=[
+                        {"add": {"index": self.index_name, "alias": self.name}},
+                        {"remove_index": {"index": self.name}},
+                    ],
+                )
+            except Exception:
+                try:
+                    self.with_retries(self.datastore.client.indices.delete, index=self.index_name)
+                except Exception:
+                    logger.exception("Failed to clean up incomplete index %s", self.index_name)
+                self.with_retries(
+                    self.datastore.client.indices.put_settings,
+                    index=self.name,
+                    settings=write_unblock_settings,
+                )
+                raise
 
         self._check_fields()
 

@@ -321,7 +321,8 @@ def get_operations(**_) -> Response:
     check_xsrf_token=False,
     required_type=["admin", "automation_basic", "automation_advanced", "actionrunner_basic", "actionrunner_advanced"],
 )
-def execute_operations(**kwargs) -> Response:
+@parse_parameters(refresh=parse_refresh)
+def execute_operations(refresh: str | None = None, **kwargs) -> Response:
     """Execute one or more operations on a given query
 
     Variables:
@@ -361,10 +362,6 @@ def execute_operations(**kwargs) -> Response:
     current_user: User | None = kwargs.get("user", None)
     operations = execute_req["operations"]
 
-    operation_ids = [o["operation_id"] for o in operations]
-    if len(operation_ids) != len(set(operation_ids)):
-        return bad_request(err="You must have a maximum of one operation of each type in request.")
-
     for operation in operations:
         op_data = json.loads(operation["data_json"])
 
@@ -386,6 +383,7 @@ def execute_operations(**kwargs) -> Response:
             request_id=execute_req["request_id"],
             query=execute_req["query"],
             user=current_user,
+            refresh=refresh,
             **op_data,
         )
 

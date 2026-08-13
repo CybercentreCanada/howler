@@ -64,13 +64,10 @@ def _sample_event() -> dict:
 class TestCreateEndpoint:
     """Tests for the POST create endpoint."""
 
-    @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.event_service")
     @patch("howler.api.v2.ingest.hit_service")
     @patch("howler.security.auth_service")
-    def test_create_hit_success(
-        self, mock_auth_service, mock_hit_svc, mock_obs_svc, mock_queue_fn, request_context: Flask
-    ):
+    def test_create_hit_success(self, mock_auth_service, mock_hit_svc, mock_obs_svc, request_context: Flask):
         """Returns 201 with IDs when hits are created successfully."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
@@ -92,15 +89,11 @@ class TestCreateEndpoint:
             body = result.get_json()
             assert body["api_response"] == ["hit-001"]
             mock_hit_svc.create_hits.assert_called_once_with([mock_hit], user.uname, overwrite=False, refresh=None)
-            mock_queue_fn.return_value.push.assert_called_once_with("hit-001")
 
-    @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.event_service")
     @patch("howler.api.v2.ingest.hit_service")
     @patch("howler.security.auth_service")
-    def test_create_event_success(
-        self, mock_auth_service, mock_hit_svc, mock_obs_svc, mock_queue_fn, request_context: Flask
-    ):
+    def test_create_event_success(self, mock_auth_service, mock_hit_svc, mock_obs_svc, request_context: Flask):
         """Returns 201 with IDs when events are created successfully."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
@@ -179,10 +172,9 @@ class TestCreateEndpoint:
 
             assert result.status_code == 400
 
-    @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.hit_service")
     @patch("howler.security.auth_service")
-    def test_create_multiple_hits(self, mock_auth_service, mock_hit_svc, mock_queue_fn, request_context: Flask):
+    def test_create_multiple_hits(self, mock_auth_service, mock_hit_svc, request_context: Flask):
         """Returns 201 with multiple IDs when multiple hits are created."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
@@ -205,14 +197,10 @@ class TestCreateEndpoint:
             body = result.get_json()
             assert body["api_response"] == ["hit-001", "hit-002"]
             assert "warning1" in body["api_warning"]
-            mock_queue_fn.return_value.push.assert_called_once_with("hit-001", "hit-002")
 
-    @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.hit_service")
     @patch("howler.security.auth_service")
-    def test_create_conversion_failure_returns_400(
-        self, mock_auth_service, mock_hit_svc, mock_queue_fn, request_context: Flask
-    ):
+    def test_create_conversion_failure_returns_400(self, mock_auth_service, mock_hit_svc, request_context: Flask):
         """Returns 400 when hit conversion raises HowlerException."""
         from howler.common.exceptions import HowlerValueError
 
@@ -231,14 +219,10 @@ class TestCreateEndpoint:
             result: Response = create(index="hit")
 
             assert result.status_code == 400
-            mock_queue_fn.return_value.push.assert_not_called()
 
-    @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.hit_service")
     @patch("howler.security.auth_service")
-    def test_create_queue_failure_still_returns_201(
-        self, mock_auth_service, mock_hit_svc, mock_queue_fn, request_context: Flask
-    ):
+    def test_create_queue_failure_still_returns_201(self, mock_auth_service, mock_hit_svc, request_context: Flask):
         """Returns 201 even when enqueuing to correlation queue fails."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
@@ -246,7 +230,6 @@ class TestCreateEndpoint:
         mock_hit = MagicMock()
         mock_hit.howler.id = "hit-001"
         mock_hit_svc.convert_hit.return_value = (mock_hit, [])
-        mock_queue_fn.return_value.push.side_effect = Exception("Redis down")
 
         with request_context.test_request_context(
             method="POST",
@@ -529,10 +512,9 @@ class TestValidateEndpoint:
 class TestIngestionQueueing:
     """Tests that the create endpoint enqueues IDs for the correlation worker."""
 
-    @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.hit_service")
     @patch("howler.security.auth_service")
-    def test_enqueues_hit_ids(self, mock_auth_service, mock_hit_svc, mock_queue_fn, request_context: Flask):
+    def test_enqueues_hit_ids(self, mock_auth_service, mock_hit_svc, request_context: Flask):
         """All newly created hit IDs are pushed to the ingestion queue."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
@@ -551,12 +533,39 @@ class TestIngestionQueueing:
 
             create(index="hit")
 
-            mock_queue_fn.return_value.push.assert_called_once_with("hit-a", "hit-b")
+    @patch("howler.api.v2.ingest.hit_service")
+    @patch("howler.security.auth_service")
+    def test_enqueues_only_non_conflicting_hit_ids(self, mock_auth_service, mock_hit_svc, request_context: Flask):
+        """A partial bulk conflict still queues the successfully ingested hit."""
+        from howler.datastore.collection import BulkResult
 
-    @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        hit1, hit2 = MagicMock(), MagicMock()
+        hit1.howler.id = "hit-conflict"
+        hit2.howler.id = "hit-success"
+        mock_hit_svc.convert_hit.side_effect = [(hit1, []), (hit2, [])]
+        mock_hit_svc.create_hits.return_value = BulkResult(
+            responses=[],
+            failures=[{"id": "hit-conflict", "status": 409}],
+            has_errors=True,
+        )
+
+        with request_context.test_request_context(
+            method="POST",
+            json=[_sample_hit(), _sample_hit()],
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.ingest import create
+
+            result: Response = create(index="hit")
+
+            assert result.status_code == 409
+
     @patch("howler.api.v2.ingest.event_service")
     @patch("howler.security.auth_service")
-    def test_enqueues_event_ids(self, mock_auth_service, mock_obs_svc, mock_queue_fn, request_context: Flask):
+    def test_enqueues_event_ids(self, mock_auth_service, mock_obs_svc, request_context: Flask):
         """Event IDs are also enqueued for correlation."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
@@ -574,12 +583,9 @@ class TestIngestionQueueing:
 
             create(index="event")
 
-            mock_queue_fn.return_value.push.assert_called_once_with("event-a")
-
-    @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.hit_service")
     @patch("howler.security.auth_service")
-    def test_no_enqueue_when_all_fail(self, mock_auth_service, mock_hit_svc, mock_queue_fn, request_context: Flask):
+    def test_no_enqueue_when_all_fail(self, mock_auth_service, mock_hit_svc, request_context: Flask):
         """Queue push is not called when every record fails conversion."""
         from howler.common.exceptions import HowlerValueError
 
@@ -596,8 +602,6 @@ class TestIngestionQueueing:
             from howler.api.v2.ingest import create
 
             create(index="hit")
-
-            mock_queue_fn.return_value.push.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

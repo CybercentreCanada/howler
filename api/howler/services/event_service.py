@@ -8,9 +8,11 @@ from prometheus_client import Counter
 from howler.common.exceptions import HowlerTypeError, HowlerValueError, ResourceExists
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
+from howler.datastore.collection import BulkResult
 from howler.odm.models.ecs.event import ECSEvent
 from howler.odm.models.event import Event
 from howler.odm.models.event import Log as EventLog
+from howler.services import correlation_service
 from howler.utils.dict_utils import extra_keys, flatten
 from howler.utils.uid import get_random_id
 
@@ -150,7 +152,7 @@ def create_event(
 @tracer.start_as_current_span(f"{__name__}.create_events")
 def create_events(
     events: list[Event], user: Optional[str] = None, overwrite: bool = False, refresh: str | None = None
-) -> bool:
+) -> BulkResult:
     """Bulk create multiple events in the database.
 
     Similar to create_event for batch.
@@ -172,4 +174,11 @@ def create_events(
         else:
             bulk_plan.add_insert_operation(event.howler.id, event)
 
-    return storage.event.bulk(bulk_plan, refresh=refresh)
+    ingest_result = storage.event.bulk(bulk_plan, refresh=refresh)
+
+    failed_ids = {failure.get("id") for failure in ingest_result.failures}
+    ids = [event.howler.id for event in events if event.howler.id not in failed_ids]
+    if ids:
+        correlation_service.enqueue_for_correlation(ids)
+
+    return ingest_result

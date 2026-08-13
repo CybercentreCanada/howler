@@ -6,7 +6,7 @@ from howler.actions import check_hit_limit
 from howler.common.exceptions import NotFoundException
 from howler.common.loader import datastore
 from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.case import CaseItemTypes
+from howler.odm.models.case import CaseItem, CaseItemTypes
 from howler.odm.models.user import User
 from howler.services import bundle_compat_service, case_service
 from howler.utils.str_utils import sanitize_lucene_query
@@ -70,23 +70,38 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
             )
             return report
 
-        folder = case_service.get_parent_from_path(case, "hits", create_if_missing=True)
+        folder = case_service.get_parent_from_path(case, "hits", create_if_missing=True, persist=False)
 
         added = []
         skipped = []
+        items: list[CaseItem] = []
+        existing_hit_ids = {item.value for item in case.items if item.type == CaseItemTypes.HIT}
         for hit in matching_hits:
             name = f"{hit.howler.analytic} ({hit.howler.id})"
             try:
-                case_service.append_case_item(
-                    case,
-                    item_type=CaseItemTypes.HIT,
-                    item_name=name,
-                    item_value=hit.howler.id,
-                    item_parent=folder.id if folder else None,
+                if hit.howler.id in existing_hit_ids:
+                    skipped.append(hit.howler.id)
+                    continue
+
+                items.append(
+                    case_service.make_case_item(
+                        item_type=CaseItemTypes.HIT,
+                        item_name=name,
+                        item_value=hit.howler.id,
+                        item_parent=folder.id if folder else None,
+                    )
                 )
+                existing_hit_ids.add(hit.howler.id)
                 added.append(hit.howler.id)
             except Exception:  # pragma: no cover
                 skipped.append(hit.howler.id)
+
+        if items:
+            try:
+                case_service.append_case_items(case, items)
+            except Exception:  # pragma: no cover
+                skipped.extend(item.value for item in items)
+                added = []
 
         if skipped:
             report.append(

@@ -68,8 +68,12 @@ def run_modifications(odm: str, data: Any, log: bool = False):
     return data
 
 
-def create_users(ds):
+def create_users(ds: HowlerDatastore):
     """Create  number of user accounts"""
+    user_bulk_plan = ds.user.get_bulk_plan()
+    user_avatar_bulk_plan = ds.user_avatar.get_bulk_plan()
+    view_bulk_plan = ds.view.get_bulk_plan()
+
     admin_pass = os.getenv("DEV_ADMIN_PASS", "admin") or "admin"
     user_pass = os.getenv("DEV_USER_PASS", "user") or "user"
     shawnh_pass = "shawn-h"
@@ -137,12 +141,11 @@ def create_users(ds):
 
     user_data = run_modifications("view", user_data, True)
 
-    ds.user.save("admin", user_data)
-    ds.user_avatar.save(
-        "admin",
-        "https://static.wikia.nocookie.net/theoffice/images/b/be/Character_-_MichaelScott.PNG",
+    user_bulk_plan.add_index_operation("admin", user_data)
+    user_avatar_bulk_plan.add_index_operation(
+        "admin", "https://static.wikia.nocookie.net/theoffice/images/b/be/Character_-_MichaelScott.PNG"
     )
-    ds.view.save(admin_view.view_id, admin_view)
+    view_bulk_plan.add_index_operation(admin_view.view_id, admin_view)
 
     if not TESTING:
         logger.info("\t%s:%s", user_data.uname, admin_pass)
@@ -194,12 +197,11 @@ def create_users(ds):
     user_view = run_modifications("view", user_view)
     user_data = run_modifications("user", user_data)
 
-    ds.user.save("user", user_data)
-    ds.user_avatar.save(
-        "user",
-        "https://static.wikia.nocookie.net/theoffice/images/c/c5/Dwight_.jpg",
+    user_bulk_plan.add_index_operation("user", user_data)
+    user_avatar_bulk_plan.add_index_operation(
+        "user", "https://static.wikia.nocookie.net/theoffice/images/c/c5/Dwight_.jpg"
     )
-    ds.view.save(user_view.view_id, user_view)
+    view_bulk_plan.add_index_operation(user_view.view_id, user_view)
 
     if not TESTING:
         logger.info("\t%s:%s", user_data.uname, user_pass)
@@ -242,12 +244,11 @@ def create_users(ds):
     huey_view = run_modifications("view", huey_view)
     huey_data = run_modifications("user", huey_data)
 
-    ds.user.save("huey", huey_data)
-    ds.user_avatar.save(
-        "huey",
-        "https://static.wikia.nocookie.net/theoffice/images/c/c5/Dwight_.jpg",
+    user_bulk_plan.add_index_operation("huey", huey_data)
+    user_avatar_bulk_plan.add_index_operation(
+        "huey", "https://static.wikia.nocookie.net/theoffice/images/c/c5/Dwight_.jpg"
     )
-    ds.view.save(huey_view.view_id, huey_view)
+    view_bulk_plan.add_index_operation(huey_view.view_id, huey_view)
 
     if not TESTING:
         logger.info("\t%s:%s", huey_data.uname, huey_pass)
@@ -277,8 +278,8 @@ def create_users(ds):
     shawnh_view = run_modifications("view", shawnh_view)
     shawn_data = run_modifications("user", shawn_data)
 
-    ds.user.save("shawn-h", shawn_data)
-    ds.view.save(shawnh_view.view_id, shawnh_view)
+    user_bulk_plan.add_index_operation("shawn-h", shawn_data)
+    view_bulk_plan.add_index_operation(shawnh_view.view_id, shawnh_view)
 
     if not TESTING:
         logger.info("\t%s:%s", shawn_data.uname, shawnh_pass)
@@ -308,15 +309,20 @@ def create_users(ds):
     goose_view = run_modifications("view", goose_view)
     goose_data = run_modifications("user", goose_data)
 
-    ds.user.save("goose", goose_data)
-    ds.view.save(goose_view.view_id, goose_view)
+    user_bulk_plan.add_index_operation("goose", goose_data)
+    view_bulk_plan.add_index_operation(goose_view.view_id, goose_view)
 
     if not TESTING:
         logger.info("\t%s:%s", goose_data.uname, goose_pass)
 
-    ds.user.commit()
-    ds.user_avatar.commit()
-    ds.view.commit()
+    if not ds.user.bulk(user_bulk_plan, refresh="wait_for"):
+        raise RuntimeError("Failed to create one or more random users")
+
+    if not ds.user_avatar.bulk(user_avatar_bulk_plan, refresh="wait_for"):
+        raise RuntimeError("Failed to create one or more random user avatars")
+
+    if not ds.view.bulk(view_bulk_plan, refresh="wait_for"):
+        raise RuntimeError("Failed to create one or more random views")
 
 
 def wipe_users(ds):
@@ -329,6 +335,8 @@ def wipe_users(ds):
 
 def create_templates(ds: HowlerDatastore):
     """Create some random templates"""
+    bulk_plan = ds.template.get_bulk_plan()
+
     for i in range(2):
         keys = sample(list(Hit.flat_fields().keys()), 5)
 
@@ -344,10 +352,7 @@ def create_templates(ds: HowlerDatastore):
 
             template = run_modifications("template", template, i == 0)
 
-            ds.template.save(
-                template.template_id,
-                template,
-            )
+            bulk_plan.add_insert_operation(template.template_id, template)
 
     for analytic in ["Password Checker", "Bad Guy Finder"]:
         template = Template(
@@ -360,10 +365,7 @@ def create_templates(ds: HowlerDatastore):
 
         template = run_modifications("template", template)
 
-        ds.template.save(
-            template.template_id,
-            template,
-        )
+        bulk_plan.add_insert_operation(template.template_id, template)
 
         template = Template(
             {
@@ -376,10 +378,7 @@ def create_templates(ds: HowlerDatastore):
 
         template = run_modifications("template", template)
 
-        ds.template.save(
-            template.template_id,
-            template,
-        )
+        bulk_plan.add_insert_operation(template.template_id, template)
 
         template = Template(
             {
@@ -390,12 +389,10 @@ def create_templates(ds: HowlerDatastore):
             }
         )
 
-        ds.template.save(
-            template.template_id,
-            template,
-        )
+        bulk_plan.add_insert_operation(template.template_id, template)
 
-    ds.template.commit()
+    if not ds.template.bulk(bulk_plan, refresh="wait_for"):
+        raise RuntimeError("Failed to create one or more random templates")
 
 
 def wipe_templates(ds):
@@ -405,6 +402,8 @@ def wipe_templates(ds):
 
 def create_overviews(ds: HowlerDatastore):
     """Create some random overviews"""
+    bulk_plan = ds.overview.get_bulk_plan()
+
     for i in range(2):
         keys = sample(list(Hit.flat_fields().keys()), 5)
 
@@ -421,10 +420,7 @@ def create_overviews(ds: HowlerDatastore):
 
             overview = run_modifications("overview", overview, i == 0)
 
-            ds.overview.save(
-                overview.overview_id,
-                overview,
-            )
+            bulk_plan.add_insert_operation(overview.overview_id, overview)
 
     for analytic in ["Password Checker", "Bad Guy Finder"]:
         overview = Overview(
@@ -467,12 +463,10 @@ def create_overviews(ds: HowlerDatastore):
 
         overview = run_modifications("overview", overview)
 
-        ds.overview.save(
-            overview.overview_id,
-            overview,
-        )
+        bulk_plan.add_insert_operation(overview.overview_id, overview)
 
-    ds.overview.commit()
+    if not ds.overview.bulk(bulk_plan, refresh="wait_for"):
+        raise RuntimeError("Failed to create one or more random overviews")
 
 
 def wipe_overviews(ds):
@@ -482,6 +476,8 @@ def wipe_overviews(ds):
 
 def create_views(ds: HowlerDatastore):
     """Create some random views"""
+    bulk_plan = ds.view.get_bulk_plan()
+
     view = View(
         {
             "title": "CMT Hits",
@@ -493,10 +489,7 @@ def create_views(ds: HowlerDatastore):
 
     view = run_modifications("view", view)
 
-    ds.view.save(
-        view.view_id,
-        view,
-    )
+    bulk_plan.add_insert_operation(view.view_id, view)
 
     fields = Hit.flat_fields()
     key_list = [key for key in fields.keys() if isinstance(fields[key], Keyword)]
@@ -513,12 +506,10 @@ def create_views(ds: HowlerDatastore):
 
         view = run_modifications("view", view)
 
-        ds.view.save(
-            view.view_id,
-            view,
-        )
+        bulk_plan.add_insert_operation(view.view_id, view)
 
-    ds.view.commit()
+    if not ds.view.bulk(bulk_plan, refresh="wait_for"):
+        raise RuntimeError("Failed to create one or more random views")
 
 
 def wipe_views(ds):
@@ -535,12 +526,16 @@ def create_events(ds: HowlerDatastore, event_count: int = 200):
     """
     lookups = loader.get_lookups()
     users = ds.user.search("*:*")["items"]
+    bulk_plan = ds.event.get_bulk_plan()
     for event_index in range(event_count):
         event = generate_useful_event(lookups, [user.uname for user in users], prune=False)
-        ds.event.save(event.howler.id, event)
+        bulk_plan.add_insert_operation(event.howler.id, event)
 
         if event_index % 25 == 0 and "pytest" not in sys.modules:
             logger.info("\tCreated %s/%s", event_index, event_count)
+
+    if not ds.event.bulk(bulk_plan, refresh="wait_for"):
+        raise RuntimeError("Failed to create one or more random events")
 
     logger.info(
         "%s total events in datastore",
@@ -548,12 +543,14 @@ def create_events(ds: HowlerDatastore, event_count: int = 200):
     )
 
 
-def create_hits(ds: HowlerDatastore, hit_count: int = 200):
+def create_hits(ds: HowlerDatastore, hit_count: int = 200, assess_sample: bool = False):
     """Create some random records"""
     lookups = loader.get_lookups()
     users = ds.user.search("*:*")["items"]
     event_ids = [obs["howler"]["id"] for obs in ds.event.search("howler.id:*", rows=200, as_obj=False)["items"]]
     created_hit_ids: list[str] = []
+    hits: list[Hit] = []
+    bulk_plan = ds.hit.get_bulk_plan()
     hit_idx = 0
     for hit_idx in range(hit_count):
         hit = generate_useful_hit(
@@ -584,36 +581,34 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
                 }
             )
 
-        ds.hit.save(hit.howler.id, hit)
+        bulk_plan.add_insert_operation(hit.howler.id, hit)
+        hits.append(hit)
         created_hit_ids.append(hit.howler.id)
-        analytic_service.save_from_hits(hit, random.choice(users))
-        ds.analytic.commit()
 
-        if choice([True, False, False, False]):
-            user = choice(users)
-            ds.hit.update(
-                hit.howler.id,
-                [
-                    *assess_hit(
-                        assessment=choice(Assessment.list()),
-                        rationale=get_random_string(),
-                        hit=hit,
-                    ),
-                    hit_helper.update(
-                        "howler.assignment",
-                        user.get("uname", user.get("username", None)),
-                    ),
-                    hit_helper.update("howler.status", Status.RESOLVED),
-                ],
-            )
+    if not ds.hit.bulk(bulk_plan, refresh="wait_for"):
+        raise RuntimeError("Failed to create one or more random hits")
 
-        ds.hit.commit()
+    analytic_service.save_from_hits(hits, random.choice(users), refresh="wait_for")
 
-        if hit_idx % 25 == 0 and not TESTING:
-            logger.info("\tCreated %s/%s", hit_idx, hit_count)
-
-    if not TESTING:
-        logger.info("\tCreated %s/%s", hit_idx + 1, hit_count)
+    if assess_sample:
+        for hit_idx, hit in enumerate(hits):
+            if choice([True, False, False, False]):
+                user = choice(users)
+                ds.hit.update(
+                    hit.howler.id,
+                    [
+                        *assess_hit(
+                            assessment=choice(Assessment.list()),
+                            rationale=get_random_string(),
+                            hit=hit,
+                        ),
+                        hit_helper.update(
+                            "howler.assignment",
+                            user.get("uname", user.get("username", None)),
+                        ),
+                        hit_helper.update("howler.status", Status.RESOLVED),
+                    ],
+                )
 
     logger.info(
         "%s total hits in datastore", ds.hit.search(query="howler.id:*", track_total_hits=True, rows=0)["total"]
@@ -625,7 +620,7 @@ def wipe_hits(ds):
     ds.hit.wipe()
 
 
-def wipe_events(ds):
+def wipe_events(ds: HowlerDatastore):
     """Wipe the events index"""
     ds.event.wipe()
 
@@ -633,13 +628,14 @@ def wipe_events(ds):
 def create_cases(ds: HowlerDatastore, num_cases: int = 5):
     """Create random cases using references to random alerts and events."""
     generated_case_ids: list[str] = []
+    bulk_plan = ds.case.get_bulk_plan()
 
     for _ in range(num_cases):
         case = generate_useful_case(ds, generated_case_ids)
 
         case = run_modifications("case", case)
 
-        ds.case.save(case.case_id, case)
+        bulk_plan.add_insert_operation(case.case_id, case)
         generated_case_ids.append(case.case_id)
 
         case_hit_ids = list({item.value for item in case.items if item.type == "hit"})
@@ -651,7 +647,8 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
         for event_id in case_event_ids:
             ds.event.update(event_id, [hit_helper.list_add("howler.related", case.case_id)])
 
-    ds.case.commit()
+    if not ds.case.bulk(bulk_plan, refresh="wait_for"):
+        raise RuntimeError("Failed to create one or more random cases")
 
 
 def wipe_cases(ds):
@@ -677,6 +674,7 @@ def random_event_categories():
 def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
     """Create some random analytics"""
     users = [user.uname for user in ds.user.search("*:*")["items"]]
+    bulk_plan = ds.analytic.get_bulk_plan()
 
     for analytic in ds.analytic.search("*:*")["items"]:
         for detection in analytic.detections:
@@ -712,7 +710,7 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
 
         analytic = run_modifications("analytic", analytic)
 
-        ds.analytic.save(analytic.analytic_id, analytic)
+        bulk_plan.add_insert_operation(analytic.analytic_id, analytic)
 
     fields = Hit.flat_fields()
     key_list = [key for key in fields.keys() if isinstance(fields[key], Keyword)]
@@ -733,7 +731,7 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
 
         a = run_modifications("analytic", a)
 
-        ds.analytic.save(a.analytic_id, a)
+        bulk_plan.add_insert_operation(a.analytic_id, a)
 
     for rule_type in ["lucene", "eql", "sigma"]:
         a: Analytic = random_model_obj(cast(Any, Analytic))
@@ -787,9 +785,10 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
 
         a = run_modifications("analytic", a)
 
-        ds.analytic.save(a.analytic_id, a)
+        bulk_plan.add_insert_operation(a.analytic_id, a)
 
-    ds.analytic.commit()
+    if not ds.analytic.bulk(bulk_plan, refresh="wait_for"):
+        raise RuntimeError("Failed to create one or more random analytics")
     ds.hit.commit()
 
 
@@ -803,6 +802,7 @@ def create_actions(ds: HowlerDatastore, num_actions: int = 30):
     fields = Hit.flat_fields()
     key_list = [key for key in fields.keys() if isinstance(fields[key], Keyword)]
     users = ds.user.search("*:*")["items"]
+    bulk_plan = ds.action.get_bulk_plan()
 
     module_path = Path(__file__).parents[1] / "actions"
     available_operations = {
@@ -854,9 +854,10 @@ def create_actions(ds: HowlerDatastore, num_actions: int = 30):
 
         action = run_modifications("action", action)
 
-        ds.action.save(action.action_id, action)
+        bulk_plan.add_insert_operation(action.action_id, action)
 
-    ds.action.commit()
+    if not ds.action.bulk(bulk_plan, refresh="wait_for"):
+        raise RuntimeError("Failed to create one or more random actions")
 
 
 def wipe_actions(ds: HowlerDatastore):
@@ -867,15 +868,17 @@ def wipe_actions(ds: HowlerDatastore):
 def create_dossiers(ds: HowlerDatastore, num_dossiers: int = 5):
     "Create random dossiers"
     users = ds.user.search("*:*")["items"]
+    bulk_plan = ds.dossier.get_bulk_plan()
     for index in range(num_dossiers):
         dossier = generate_useful_dossier(users)
         if index == 0:
             dossier.type = "personal"
         elif index == 1:
             dossier.type = "global"
-        ds.dossier.save(dossier.dossier_id, dossier)
+        bulk_plan.add_insert_operation(dossier.dossier_id, dossier)
 
-    ds.dossier.commit()
+    if not ds.dossier.bulk(bulk_plan, refresh="wait_for"):
+        raise RuntimeError("Failed to create one or more random dossiers")
 
 
 def wipe_dossiers(ds: HowlerDatastore):
@@ -960,6 +963,9 @@ if __name__ == "__main__":
 
             # Create functions
             for create_fn in operations[1]:
-                create_fn(ds)
+                if index == "hits":
+                    create_fn(ds, assess_sample=True)
+                else:
+                    create_fn(ds)
 
     logger.info("Done.")

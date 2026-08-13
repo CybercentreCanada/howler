@@ -137,10 +137,6 @@ def validate_action(new_action: Any) -> Optional[Response]:  # noqa: C901
     if len(operations) < 1:
         return bad_request(err="You must specify at least one operation.")
 
-    operation_ids = [o["operation_id"] for o in operations]
-    if len(operation_ids) != len(set(operation_ids)):
-        return bad_request(err="You must have a maximum of one operation of each type in the action.")
-
     if set(new_action.get("triggers", [])) - set(VALID_TRIGGERS):
         return bad_request(err="Invalid trigger provided.")
 

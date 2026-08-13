@@ -10,7 +10,7 @@ import pytest
 import requests
 
 from howler.common import loader
-from howler.config import CLASSIFICATION
+from howler.config import CLASSIFICATION, config
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.helper import generate_useful_hit
 from howler.odm.models.action import Action
@@ -29,11 +29,6 @@ def datastore(datastore_connection):
         wipe_actions(ds)
         create_hits(ds, hit_count=10)
         create_actions(ds)
-
-        ds.hit.commit()
-        ds.action.commit()
-
-        time.sleep(1)
 
         yield ds
     finally:
@@ -273,9 +268,7 @@ def test_valid_action_on_triage(datastore: HowlerDatastore, login_session):
         }
     )
 
-    datastore.action.save(action_demote.action_id, action_demote)
-    datastore.action.commit()
-    assert datastore.action.exists(action_demote.action_id)
+    datastore.action.save(action_demote.action_id, action_demote, refresh="wait_for")
 
     # Create actions
     action_promote = Action(
@@ -293,9 +286,10 @@ def test_valid_action_on_triage(datastore: HowlerDatastore, login_session):
         }
     )
 
-    datastore.action.save(action_promote.action_id, action_promote)
-    datastore.action.commit()
+    datastore.action.save(action_promote.action_id, action_promote, refresh="wait_for")
+
     assert datastore.action.exists(action_promote.action_id)
+    assert datastore.action.exists(action_demote.action_id)
 
     get_api_data(
         session=session,
@@ -307,20 +301,8 @@ def test_valid_action_on_triage(datastore: HowlerDatastore, login_session):
                 "data": {"assessment": Assessment.FALSE_POSITIVE},
             }
         ),
-        headers={
-            "content-type": "application/json",
-        },
+        params={"refresh": "wait_for"},
     )
-
-    # Action execution is queued asynchronously; poll until the label appears
-    deadline = time.time() + 15
-    while time.time() < deadline:
-        datastore.hit.commit()
-        if "demoted" in (datastore.hit.get(test_hit_demote.howler.id).howler.labels.generic or []):
-            break
-        time.sleep(0.5)
-
-    assert "demoted" in datastore.hit.get(test_hit_demote.howler.id).howler.labels.generic
 
     get_api_data(
         session=session,
@@ -332,20 +314,24 @@ def test_valid_action_on_triage(datastore: HowlerDatastore, login_session):
                 "data": {"assessment": Assessment.COMPROMISE},
             }
         ),
-        headers={
-            "content-type": "application/json",
-        },
+        params={"refresh": "wait_for"},
     )
 
-    # Action execution is queued asynchronously; poll until the label appears
-    deadline = time.time() + 15
-    while time.time() < deadline:
-        datastore.hit.commit()
-        if "promoted" in (datastore.hit.get(test_hit_promote.howler.id).howler.labels.generic or []):
-            break
-        time.sleep(0.5)
+    deadline = time.monotonic() + config.system.action_queue.batch_timeout + 1
 
-    assert "promoted" in datastore.hit.get(test_hit_promote.howler.id).howler.labels.generic
+    demote_applied = False
+    promote_applied = False
+    while time.monotonic() < deadline:
+        demote_applied = "demoted" in datastore.hit.get(test_hit_demote.howler.id).howler.labels.generic
+        promote_applied = "promoted" in datastore.hit.get(test_hit_promote.howler.id).howler.labels.generic
+
+        if demote_applied and promote_applied:
+            break
+
+        time.sleep(0.25)
+
+    assert demote_applied, "demotion did not apply before deadline"
+    assert promote_applied, "promotion did not apply before deadline"
 
 
 @pytest.mark.skip(reason="Unstable Test")
@@ -355,8 +341,8 @@ def test_execute_transition_skipped(datastore: HowlerDatastore, login_session):
     if datastore.hit.search("-howler.status:open")["total"] < 1:
         hit = datastore.hit.search("howler.status:open AND -howler.assignment:goose", rows=1)["items"][0]
 
-        hit_service.transition_hit(
-            hit["howler"]["id"],
+        hit_service.transition_hits(
+            hit,
             HitStatusTransition.ASSESS,
             datastore.user.search("*:*", rows=1)["items"][0],
             assessment=Assessment.ATTEMPT,
@@ -427,13 +413,7 @@ def test_execute_transition_multiple(datastore: HowlerDatastore, login_session):
                             "assignee": "admin",
                         }
                     ),
-                }
-            ],
-        },
-        {
-            "request_id": str(uuid4()),
-            "query": "howler.id:*",
-            "operations": [
+                },
                 {
                     "operation_id": "transition",
                     "data_json": json.dumps(
@@ -443,17 +423,11 @@ def test_execute_transition_multiple(datastore: HowlerDatastore, login_session):
                             "assignee": "admin",
                         }
                     ),
-                }
-            ],
-        },
-        {
-            "request_id": str(uuid4()),
-            "query": "howler.id:*",
-            "operations": [
+                },
                 {
                     "operation_id": "transition",
                     "data_json": json.dumps({"status": "in-progress", "transition": "release"}),
-                }
+                },
             ],
         },
         {
@@ -470,13 +444,7 @@ def test_execute_transition_multiple(datastore: HowlerDatastore, login_session):
                             "assessment": "legitimate",
                         }
                     ),
-                }
-            ],
-        },
-        {
-            "request_id": str(uuid4()),
-            "query": "howler.id:*",
-            "operations": [
+                },
                 {
                     "operation_id": "transition",
                     "data_json": json.dumps(
@@ -487,13 +455,7 @@ def test_execute_transition_multiple(datastore: HowlerDatastore, login_session):
                             "assessment": "legitimate",
                         }
                     ),
-                }
-            ],
-        },
-        {
-            "request_id": str(uuid4()),
-            "query": "howler.id:*",
-            "operations": [
+                },
                 {
                     "operation_id": "transition",
                     "data_json": json.dumps(
@@ -504,7 +466,7 @@ def test_execute_transition_multiple(datastore: HowlerDatastore, login_session):
                             "assessment": "legitimate",
                         }
                     ),
-                }
+                },
             ],
         },
         {
@@ -529,17 +491,11 @@ def test_execute_transition_multiple(datastore: HowlerDatastore, login_session):
                             "transition": "promote",
                         }
                     ),
-                }
-            ],
-        },
-        {
-            "request_id": str(uuid4()),
-            "query": "howler.id:*",
-            "operations": [
+                },
                 {
                     "operation_id": "transition",
                     "data_json": json.dumps({"status": "in-progress", "transition": "release"}),
-                }
+                },
             ],
         },
     ]

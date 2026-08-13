@@ -1,6 +1,6 @@
 import difflib
 import json
-from typing import Any, Optional, cast
+from typing import Any, Literal, Optional, cast
 
 from flask import request
 from mergedeep import Strategy, merge
@@ -650,7 +650,7 @@ def remove_labels(id: str, label_set: str, user: User, server_version: str | Non
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=True)
 @parse_parameters(refresh=parse_refresh)
-def transition(id: str, user: User, server_version: str | None = None, **kwargs):
+def transition(id: str, user: User, cached_hit: Hit | None = None, server_version: str | None = None, **kwargs):
     """Transition a hit
 
     Variables:
@@ -673,7 +673,7 @@ def transition(id: str, user: User, server_version: str | None = None, **kwargs)
     """
     refresh = kwargs.pop("refresh")
 
-    if not kwargs.get("cached_hit"):
+    if not cached_hit:
         return not_found(err="Hit %s does not exist" % id)
 
     transition_data = request.json
@@ -685,7 +685,7 @@ def transition(id: str, user: User, server_version: str | None = None, **kwargs)
     if "If-Match" in request.headers:
         version = request.headers["If-Match"]
     else:
-        logger.warning("User is mising version - no If-Match header in request.")
+        logger.warning("User is missing version - no If-Match header in request.")
         version = server_version
 
     try:
@@ -697,9 +697,16 @@ def transition(id: str, user: User, server_version: str | None = None, **kwargs)
                 )
             )
 
-        hit, version = hit_service.transition_hit(
-            id, transition, user, version, refresh=refresh, **kwargs, **transition_data.get("data", {})
+        updated_hits = hit_service.transition_hits(
+            cached_hit,
+            transition,
+            user,
+            version,
+            refresh=refresh,
+            **kwargs,
+            **transition_data.get("data", {}),
         )
+        hit, version = updated_hits[0]
     except (WorkflowException, DataStoreException, InvalidDataException) as e:
         return bad_request(err=str(e))
     except VersionConflictException as e:
@@ -1036,7 +1043,7 @@ def _deprecation_headers(response):
 @hit_api.route("/bundle", methods=["POST"])
 @api_login(audit=False, required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def create_bundle(user: User, **kwargs):
+def create_bundle(user: User, refresh: Literal["true", "false", "wait_for"] | None, **kwargs):
     """Create a new bundle (deprecated — creates a case instead).
 
     Variables:
@@ -1065,11 +1072,10 @@ def create_bundle(user: User, **kwargs):
     from howler.services import bundle_compat_service
 
     data = request.json
-    refresh = kwargs.get("refresh")
     if not isinstance(data, dict):
         return bad_request(err="Invalid data format")
 
-    bundle_hit: Optional[dict[str, Any]] = data.get("bundle")
+    bundle_hit: dict[str, Any] | None = data.get("bundle")
     if bundle_hit is None:
         return bad_request(err="You did not provide a bundle hit.")
 
@@ -1086,7 +1092,7 @@ def create_bundle(user: User, **kwargs):
 @hit_api.route("/bundle/<id>", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def update_bundle(id, **kwargs):
+def update_bundle(id: str, refresh: Literal["true", "false", "wait_for"] | None, **kwargs):
     """Add hits to a bundle (deprecated — adds items to the underlying case).
 
     Variables:
@@ -1110,8 +1116,6 @@ def update_bundle(id, **kwargs):
     }
     """
     from howler.services import bundle_compat_service
-
-    refresh = kwargs.get("refresh")
 
     hit_ids = request.json
     if not isinstance(hit_ids, list):

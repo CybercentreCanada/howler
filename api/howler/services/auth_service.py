@@ -121,23 +121,23 @@ def invalidate_apikey_cache(username: str, key_name: str) -> None:
     retry_call(redis.delete, _apikey_cache_key(username, key_name))
 
 
-def _get_token_store(user: str) -> ExpiringSet:
+def _get_token_store(username: str) -> ExpiringSet:
     """Get an expiring redis set in which to add a token
 
     Args:
-        user (str): The user the token corresponds to
+        username (str): The user the token corresponds to
 
     Returns:
         ExpiringSet: The set in which we'll store the token
     """
-    return ExpiringSet(f"token_{user}", host=redis, ttl=60 * 60)  # 1 Hour expiry
+    return ExpiringSet(f"token_{username}", host=redis, ttl=60 * 60)  # 1 Hour expiry
 
 
-def _get_priv_store(user: str, token: str) -> ExpiringSet:
+def _get_priv_store(username: str, token: str) -> ExpiringSet:
     """Get an expiring redis set in which to add the privileges
 
     Args:
-        user (str): The user the token corresponds to
+        username (str): The user the token corresponds to
         token (str): The token the privileges correspond to
 
     Returns:
@@ -145,18 +145,18 @@ def _get_priv_store(user: str, token: str) -> ExpiringSet:
     """
     return ExpiringSet(
         # For security reasons, we won't save the whole token in redis. Just in case :)
-        f"token_priv_{user}_{token[:10]}",
+        f"token_priv_{username}_{token[:10]}",
         host=redis,
         # 1 Hour expiry
         ttl=60 * 60,
     )
 
 
-def create_token(user: str, priv: list[str]) -> str:
+def create_token(username: str, priv: list[str]) -> str:
     """Generate a new token associated with the given user with the given privileges
 
     Args:
-        user (str): The user to create the token as
+        username (str): The user to create the token as
         priv (list[str]): The privileges to give the token
 
     Returns:
@@ -164,26 +164,26 @@ def create_token(user: str, priv: list[str]) -> str:
     """
     token = hashlib.sha256(str(generate_random_secret()).encode("utf-8", errors="replace")).hexdigest()
 
-    _get_token_store(user).add(token)
-    priv_store = _get_priv_store(user, token)
+    _get_token_store(username).add(token)
+    priv_store = _get_priv_store(username, token)
     priv_store.pop_all()
     priv_store.add(",".join(priv))
 
     return token
 
 
-def check_token(user: str, token: str) -> Optional[list[str]]:
+def check_token(username: str, token: str) -> Optional[list[str]]:
     """Check if a token exists, and return its list of privileges
 
     Args:
-        user (str): The user corresponding to the token to check
+        username (str): The user corresponding to the token to check
         token (str): The token
 
     Returns:
         Optional[list[str]]: The list of privileges associated with the token
     """
-    if _get_token_store(user).exist(token):
-        members = _get_priv_store(user, token).members()
+    if _get_token_store(username).exist(token):
+        members = _get_priv_store(username, token).members()
         if len(members) > 0:
             priv_str = members[0]
             return priv_str.split(",")

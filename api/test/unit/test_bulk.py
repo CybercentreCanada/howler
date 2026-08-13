@@ -1,5 +1,6 @@
 import json
 import math
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -46,22 +47,92 @@ def test_get_plan_batches(bulk_plan, operations, operation_length, batch_size):
     assert "".join(batches) == bulk_plan.get_plan_data()
 
 
-def test_collection_bulk_returns_false_and_logs_errors():
+def test_collection_bulk_returns_item_failures_and_logs_them():
     operations = MagicMock()
     operations.get_plan_batches.return_value = ["bulk-operation"]
     collection = MagicMock()
-    collection.with_retries.return_value = {"errors": {"delete": "document not found"}}
+    collection.with_retries.return_value = {
+        "errors": True,
+        "items": [
+            {
+                "update": {
+                    "_index": "howler_case_hot",
+                    "_id": "case-123",
+                    "status": 409,
+                    "error": {"type": "version_conflict_engine_exception", "reason": "document changed"},
+                }
+            }
+        ],
+    }
 
     with patch("howler.datastore.collection.logger") as mock_logger:
         result = ESCollection.bulk(collection, operations)
 
-    assert result is False
+    assert not result
+    assert result.failures == [
+        {
+            "operation": "update",
+            "index": "howler_case_hot",
+            "id": "case-123",
+            "status": 409,
+            "error": {"type": "version_conflict_engine_exception", "reason": "document changed"},
+        }
+    ]
     collection.with_retries.assert_called_once_with(
         collection.datastore.client.bulk,
         operations="bulk-operation",
         refresh=None,
     )
-    mock_logger.error.assert_called_once_with("Errors on bulk plan: %s", {"delete": "document not found"})
+    mock_logger.error.assert_called_once_with(
+        "Bulk plan failures: %s",
+        [
+            {
+                "operation": "update",
+                "index": "howler_case_hot",
+                "id": "case-123",
+                "status": 409,
+                "error": {"type": "version_conflict_engine_exception", "reason": "document changed"},
+            }
+        ],
+    )
+
+
+def test_collection_bulk_preserves_failures_across_batches():
+    operations = MagicMock()
+    operations.get_plan_batches.return_value = ["successful-bulk", "failed-bulk"]
+    collection = MagicMock()
+    collection.with_retries.side_effect = [
+        {"errors": False, "items": [{"update": {"status": 200}}]},
+        {
+            "errors": True,
+            "items": [
+                {"update": {"_id": "hit-1", "status": 409, "error": {"type": "conflict"}}},
+                {"update": {"_id": "hit-2", "status": 500, "error": {"type": "failure"}}},
+            ],
+        },
+    ]
+
+    result = ESCollection.bulk(collection, operations)
+
+    assert not result
+    assert [failure["id"] for failure in result.failures] == ["hit-1", "hit-2"]
+    assert len(result.responses) == 2
+
+
+def test_update_by_query_translates_wait_for_refresh_to_true():
+    collection = MagicMock()
+    collection.create_scripts_from_operations.return_value = {"source": "ctx._source.field = params.value"}
+    collection._update_async.return_value = {"updated": 1}
+
+    result = ESCollection.update_by_query(
+        collection,
+        "howler.id:hit-123",
+        [("SET", "howler.outline.summary", "Updated summary")],
+        refresh="wait_for",
+    )
+
+    assert result == 1
+    assert collection._update_async.call_args.kwargs["refresh"] == "true"
 
 
 # ---------------------------------------------------------------------------
@@ -89,6 +160,25 @@ def _get_update_body(plan: ElasticBulkPlan) -> dict:
     header, body = op
     assert json.loads(header) == {"update": {"_index": "case", "_id": "case-001"}}
     return json.loads(body)["doc"]
+
+
+def test_add_scripted_update_operation_uses_index_from_ilm_version():
+    """Scripted updates honor the concrete index in an ILM version token."""
+    plan = ElasticBulkPlan(indexes=["hit"], model=None)
+
+    plan.add_scripted_update_operation(
+        "hit-001",
+        {"source": "ctx._source.howler.status = params.status", "params": {"status": "resolved"}},
+        version="hit-000001---10---2",
+    )
+
+    header, body = cast(tuple[str, str], plan.operations[0])
+    assert json.loads(header) == {
+        "update": {"_index": "hit-000001", "_id": "hit-001", "if_seq_no": "10", "if_primary_term": "2"}
+    }
+    assert json.loads(body) == {
+        "script": {"source": "ctx._source.howler.status = params.status", "params": {"status": "resolved"}}
+    }
 
 
 def test_add_update_operation_without_fields_keeps_everything():

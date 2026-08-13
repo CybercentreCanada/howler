@@ -4,14 +4,24 @@ from typing import Any, Literal, cast
 from flask import request
 from mergedeep import Strategy, merge
 
-from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
+from howler.api import (
+    bad_request,
+    conflict,
+    created,
+    forbidden,
+    internal_error,
+    make_subapi_blueprint,
+    no_content,
+    not_found,
+    ok,
+)
 from howler.api.v1.utils.etag import add_etag
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import HowlerException, HowlerValueError
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
-from howler.datastore.collection import ESCollection
+from howler.datastore.collection import BulkResult, ESCollection
 from howler.datastore.exceptions import DataStoreException
 from howler.datastore.howler_store import INDEXES
 from howler.datastore.operations import OdmHelper, OdmUpdateOperation
@@ -19,7 +29,7 @@ from howler.odm.models.event import Event
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
 from howler.security import api_login
-from howler.services import correlation_service, event_service, hit_service
+from howler.services import event_service, hit_service
 from howler.utils.dict_utils import flatten
 
 MAX_COMMENT_LEN = 5000
@@ -94,15 +104,18 @@ def create(index: str, user: User, *, refresh: Literal["true", "false", "wait_fo
             logger.exception("Ingestion failed.")
             return bad_request(err=f"Ingestion failure on record at index {i}: {e}")
 
+    ingest_result: BulkResult
     if index == "event":
-        event_service.create_events(odms, user.uname, overwrite=False, refresh=refresh)
+        ingest_result = event_service.create_events(odms, user.uname, overwrite=False, refresh=refresh)
     else:
-        hit_service.create_hits(odms, user.uname, overwrite=False, refresh=refresh)
+        ingest_result = hit_service.create_hits(odms, user.uname, overwrite=False, refresh=refresh)
 
-    # Enqueue newly created hit IDs for the correlation worker.
     ids = [odm.howler.id for odm in odms]
-    if ids:
-        correlation_service.enqueue_for_correlation(ids)
+
+    if not ingest_result:
+        conflicts = [failure for failure in ingest_result.failures if failure.get("status") == 409]
+        if conflicts:
+            return conflict(conflicts, err="Unable to ingest all records due to a version conflict")
 
     return created(ids, warnings=warnings)
 
@@ -296,7 +309,7 @@ def overwrite(index: str, id: str, **kwargs):
             refresh=refresh,
         )
 
-        new_record, new_version = ds[index].get(id, as_obj=False, version=True)
+        _, new_version = ds[index].get(id, as_obj=False, version=True)
 
         return ok(new_record), new_version
     except HowlerValueError as e:

@@ -252,11 +252,13 @@ def _create_new_incident(
                 user=SYSTEM_USER,
             )
 
-            case_service.append_case_item(
-                case.case_id,
-                item_type="hit",
-                item_value=bundle_odm.howler.id,
-                item_name=analytic,
+            case_service.append_case_items(
+                case,
+                case_service.make_case_item(
+                    item_type="hit",
+                    item_value=bundle_odm.howler.id,
+                    item_name=analytic,
+                ),
             )
 
             # Re-fetch the case to get the latest saved state, then create the
@@ -270,12 +272,14 @@ def _create_new_incident(
                 if child_hit:
                     child_name = f"{child_hit.howler.analytic} ({child_id})"
                     try:
-                        case_service.append_case_item(
-                            case.case_id,
-                            item_type="hit",
-                            item_value=child_id,
-                            item_parent=hits_folder.id if hits_folder else None,
-                            item_name=child_name,
+                        case_service.append_case_items(
+                            case,
+                            case_service.make_case_item(
+                                item_type="hit",
+                                item_value=child_id,
+                                item_parent=hits_folder.id if hits_folder else None,
+                                item_name=child_name,
+                            ),
                         )
                     except Exception:
                         logger.exception("Failed to add child hit %s to case", child_id)
