@@ -3,9 +3,8 @@
 import re
 from typing import Iterable, Optional
 
-from exceptions import DataStoreException
-
 from howler import odm
+from howler.datastore.exceptions import DataStoreException
 
 
 def expand_field_patterns(
