@@ -5,7 +5,7 @@ cases - collections of security alerts and investigation data organized by analy
 """
 
 from datetime import datetime, timezone
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from prometheus_client import Counter
 
@@ -450,7 +450,7 @@ def append_case_items(  # noqa: C901
 
     if not items:
         return case
-    backing_items: list[Hit | Event] = []
+    backing_items: list[tuple[Hit | Event, str]] = []
     update_metadata = False
 
     for item in items:
@@ -467,24 +467,24 @@ def append_case_items(  # noqa: C901
                 if conflict:
                     item.name = f"{item.name} ({item.value})" if item.name else item.value
 
-                backing_obj = ds[item.type].get(item.value)
+                backing_obj, version = cast(tuple[Hit | Event, str], ds[item.type].get(item.value, version=True))
                 if backing_obj is None:
                     raise NotFoundException(f"{item.type.capitalize()} {item.value} not found, cannot be added to case")
 
                 item.classification = backing_obj.classification
                 case.items.append(item)
                 add_backreference(backing_obj, case.case_id)
-                backing_items.append(backing_obj)
+                backing_items.append((backing_obj, version))
                 update_metadata = True
             case CaseItemTypes.CASE:
                 if conflict:
                     item.name = f"{item.name} ({item.value})" if item.name else item.value
 
-                if (case := ds.case.get(item.value)) is None:
+                if (child_case := ds.case.get(item.value)) is None:
                     raise NotFoundException(f"Referenced case {item.value} not found, cannot be added to case")
 
-                item.classification = case.classification
-                case.items.append(item)
+                item.classification = child_case.classification
+                child_case.items.append(item)
             case CaseItemTypes.REFERENCE | CaseItemTypes.MARKDOWN | CaseItemTypes.FOLDER:
                 if conflict:
                     raise ResourceExists("An item with the same name already exists in this location.")
@@ -496,8 +496,8 @@ def append_case_items(  # noqa: C901
     if update_metadata:
         recompute_case_metadata(case)
 
-    for backing_item in backing_items:
-        backing_item.save()
+    for backing_item, version in backing_items:
+        backing_item.save(version=version)
 
     if not case.save(refresh, version):  # pragma: no cover
         raise DataStoreException(f"Failed to save {case.case_id} with new case items")
