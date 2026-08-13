@@ -108,8 +108,22 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
           }
 
           if (match?.[1] === 'json') {
+            // Allows passing of settings like so:
+            // ```json[hideSearch=true]
+            const opts = /.*\[(.+)\].*/.exec(className ?? '')?.[1];
+            const options: Record<string, string> = Object.fromEntries(
+              (opts ? opts.split(',') : [])
+                .map(entry => entry.split('=', 2))
+                .filter(pair => pair.length === 2 && !!pair[0])
+            );
+
             try {
-              return <JSONViewer data={JSON.parse((node.children[0] as any).value)} />;
+              return (
+                <JSONViewer
+                  data={JSON.parse((node.children[0] as any).value)}
+                  hideSearch={options.hideSearch === 'true'}
+                />
+              );
             } catch {
               return <code style={{ color: 'red' }}>{t('markdown.json.invalid')}</code>;
             }
@@ -117,7 +131,7 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
 
           return match ? (
             <SyntaxHighlighter
-              // eslint-disable-next-line react/no-children-prop
+              // oxlint-disable-next-line react/no-children-prop typescript/no-base-to-string
               children={String(children).replace(/\n$/, '')}
               style={isDark ? oneDark : oneLight}
               language={match[1]}

@@ -78,7 +78,9 @@
     "source.organizeImports": "explicit",
     "source.fixAll": "explicit",
     "source.unusedImports": "explicit",
-    "source.format.oxc": "explicit"
+    "source.format.oxc": "explicit",
+    "source.fixAll.oxc": "never",
+    "source.fixAll.eslint": "never"
   },
   "python.defaultInterpreterPath": "${workspaceFolder}/api/.venv/bin/python",
   "python.analysis.autoImportCompletions": true,
@@ -137,5 +139,11 @@
       "packageManager": "ms-python.python:poetry"
     }
   ],
-  "python-envs.defaultPackageManager": "ms-python.python:poetry"
+  "python-envs.defaultPackageManager": "ms-python.python:poetry",
+  "oxc.configPath": "./ui/.oxlintrc.json",
+  "oxc.enable": true,
+  "oxc.fixKind": "all",
+  "oxc.path.oxlint": "./ui/node_modules/.bin/oxlint",
+  "oxc.path.oxfmt": "./ui/node_modules/.bin/oxfmt",
+  "oxc.path.tsgolint": "./ui/node_modules/.bin/tsgolint"
 }
