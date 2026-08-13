@@ -1,5 +1,6 @@
 import importlib
 import json
+import secrets
 import subprocess
 
 dev_setup = importlib.import_module("dev.dev_setup")
@@ -19,22 +20,24 @@ def test_update_mcp_json_preserves_existing_configuration(tmp_path):
         )
     )
 
-    dev_setup.update_mcp_json("new-token", mcp_json_path=config_path)
+    token = secrets.token_urlsafe(16)
+    dev_setup.update_mcp_json(token, mcp_json_path=config_path)
     config = json.loads(config_path.read_text())
 
     assert config["servers"]["other"] == {"url": "http://example.test"}
     assert config["inputs"] == ["existing"]
-    assert config["servers"]["howlerMcp"]["headers"]["Authorization"] == "Bearer new-token"
+    assert config["servers"]["howlerMcp"]["headers"]["Authorization"] == f"Bearer {token}"
 
 
 def test_update_mcp_json_starts_fresh_on_invalid_json(tmp_path):
     config_path = tmp_path / "mcp.json"
     config_path.write_text("not json")
 
-    dev_setup.update_mcp_json("new-token", mcp_json_path=config_path)
+    token = secrets.token_urlsafe(16)
+    dev_setup.update_mcp_json(token, mcp_json_path=config_path)
     config = json.loads(config_path.read_text())
 
-    assert config["servers"]["howlerMcp"]["headers"]["Authorization"] == "Bearer new-token"
+    assert config["servers"]["howlerMcp"]["headers"]["Authorization"] == f"Bearer {token}"
 
 
 def test_clear_port_only_targets_the_mcp_service(monkeypatch):
