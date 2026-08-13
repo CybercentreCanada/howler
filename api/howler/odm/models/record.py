@@ -1,5 +1,5 @@
 # mypy: ignore-errors
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from howler import odm
 from howler.common.logging import get_logger
@@ -342,8 +342,16 @@ class Record(odm.Model):
         )
     )
 
-    def as_primitives(self, hidden_fields=False, strip_null=True) -> dict[str, Any]:
-        result = super().as_primitives(hidden_fields, strip_null)
+    def as_primitives(
+        self,
+        hidden_fields=False,
+        strip_null=True,
+        ip_format: Literal["int", "str", "encoded_bytes"] | None = None,
+        timestamp_format: Literal["iso", "posix"] | None = None,
+    ) -> dict[str, Any]:
+        result = super().as_primitives(
+            hidden_fields, strip_null, ip_format=ip_format, timestamp_format=timestamp_format
+        )
 
         result["__index"] = self.__class__.__name__.lower()
 
