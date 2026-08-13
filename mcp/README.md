@@ -62,7 +62,7 @@ Current server capabilities:
 - howler_mcp/tools.py: MCP tool registration and validation logic.
 - howler_mcp/prompts.py: Prompt registration.
 - howler_mcp/config.py: Environment-driven config with HTTPS enforcement for non-local hosts.
-- howler_mcp/dev_setup.py: local developer bootstrap helper.
+- dev/dev_setup.py: local developer bootstrap helper.
 
 ## Development Helper (dev_setup)
 
@@ -73,14 +73,19 @@ The dev helper script exists for local development with the dockerized test real
 - Optionally fetches a local dev bearer token.
 - Optionally writes .vscode/mcp.json Authorization header for instant local MCP usage.
 
+By default, `--start` only manages the MCP server itself (clears its port, verifies Keycloak,
+fetches a token, updates `.vscode/mcp.json`, and runs the server). Dependencies
+(elasticsearch/redis/keycloak/howler-api) are assumed to already be running; start them
+separately with `docker compose up -d` (from api/dev/) if needed.
+
 This local token write is intentional for developer productivity in local docker environments. Non-development environments are expected to use proper secret handling and environment-specific auth setup managed by the operator.
 
 Typical usage from mcp/:
 
-- poetry run python -m howler_mcp.dev_setup
-- poetry run python -m howler_mcp.dev_setup --verify
-- poetry run python -m howler_mcp.dev_setup --token
-- poetry run python -m howler_mcp.dev_setup --start
+- poetry run python -m dev.dev_setup
+- poetry run python -m dev.dev_setup --verify
+- poetry run python -m dev.dev_setup --token
+- poetry run python -m dev.dev_setup --start
 
 ## Environment Variables
 
