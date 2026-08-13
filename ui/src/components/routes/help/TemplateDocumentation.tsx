@@ -2,7 +2,7 @@ import { Card, CardContent, Stack } from '@mui/material';
 import PageCenter from 'commons/components/pages/PageCenter';
 import Markdown from 'components/elements/display/Markdown';
 import { HitLayout } from 'components/elements/hit/HitLayout';
-import DefaultOutline from 'components/elements/hit/outlines/DefaultOutline';
+import HitOutline from 'components/elements/hit/HitOutline';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
 import dayjs from 'dayjs';
 import howlerPluginStore from 'plugins/store';
@@ -10,10 +10,17 @@ import type { FC } from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import type { Template } from 'models/entities/generated/Template';
 import { usePluginStore } from 'react-pluggable';
 import { modifyDocumentation } from 'utils/utils';
 import TEMPLATES_EN from './markdown/en/templates.md';
 import TEMPLATES_FR from './markdown/fr/templates.md';
+
+const TEMPLATE: Template = {
+  analytic: 'Cat Checker',
+  owner: 'cat',
+  type: 'personal'
+};
 
 const ALERTS = [
   {
@@ -50,7 +57,9 @@ const TemplateDocumentation: FC = () => {
       markdown = markdown.replace(`$ALERT_${index + 1}`, JSON.stringify(alert, null, 2));
     });
 
-    return modifyDocumentation(markdown.split('\n===SPLIT===\n'), howlerPluginStore, pluginStore);
+    return markdown
+      .split('\n===SPLIT===\n')
+      .map(section => modifyDocumentation(section, howlerPluginStore, pluginStore));
   }, [i18n.language, pluginStore]);
 
   return (
@@ -60,11 +69,15 @@ const TemplateDocumentation: FC = () => {
         {ALERTS.map(alert => (
           <Card key={alert.howler.id} variant="outlined">
             <CardContent>
-              <DefaultOutline
+              <HitOutline
                 hit={alert as any}
-                fields={Object.keys(alert).flatMap(key => Object.keys(alert[key]).map(key2 => [key, key2].join('.')))}
+                template={{
+                  ...TEMPLATE,
+                  detection: alert.howler.detection,
+                  keys: Object.keys(alert['event']).map(key => `event.${key}`)
+                }}
                 layout={HitLayout.NORMAL}
-                readonly
+                forceAllFields
               />
             </CardContent>
           </Card>

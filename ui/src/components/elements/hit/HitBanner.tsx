@@ -2,22 +2,18 @@ import { OpenInNew } from '@mui/icons-material';
 import {
   Box,
   Chip,
-  Divider,
   Grid,
   Stack,
   Tooltip,
   Typography,
-  avatarClasses,
   chipClasses,
-  iconButtonClasses,
   useTheme,
   type TypographyProps
 } from '@mui/material';
-import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { uniq } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import howlerPluginStore from 'plugins/store';
-import { useCallback, useContext, useMemo, type FC } from 'react';
+import { Fragment, useCallback, useMemo, type FC } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { ESCALATION_COLORS, PROVIDER_COLORS } from 'utils/constants';
@@ -46,7 +42,6 @@ export interface StatusProps<T extends Hit = Hit> {
 
 const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.NORMAL, showAssigned = true }) => {
   const { t } = useTranslation();
-  const { config } = useContext(ApiConfigContext);
   const theme = useTheme();
   const pluginStore = usePluginStore();
 
@@ -61,68 +56,6 @@ const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.N
     return PROVIDER_COLORS[hit?.event.provider] ?? stringToColor(hit?.event.provider);
   }, [hit?.event.provider]);
 
-  const mitreId = useMemo(() => {
-    if (hit.threat?.framework?.toLowerCase().startsWith('mitre')) {
-      return;
-    }
-
-    let _id = hit.threat?.tactic?.id;
-    if (_id && config.lookups.icons.includes(_id)) {
-      return _id;
-    }
-
-    _id = hit.threat?.technique?.id;
-    if (_id && config.lookups.icons.includes(_id)) {
-      return _id;
-    }
-  }, [config.lookups.icons, hit.threat?.framework, hit.threat?.tactic?.id, hit.threat?.technique?.id]);
-
-  const iconUrl = useMemo(() => {
-    if (!mitreId) {
-      return;
-    }
-
-    return `/api/static/mitre/${mitreId}.svg`;
-  }, [mitreId]);
-
-  const leftBox = useMemo(
-    () => (
-      <HitBannerTooltip hit={hit}>
-        <Box
-          sx={{
-            gridColumn: { xs: 'span 3', sm: 'span 1' },
-            minWidth: '90px',
-            backgroundColor: providerColor,
-            color: theme.palette.getContrastText(providerColor),
-            alignSelf: 'start',
-            borderRadius: theme.shape.borderRadius,
-            p: compressed ? 0.5 : 1,
-            pt: 2,
-            pl: 1
-          }}
-          display="flex"
-          flexDirection="column"
-        >
-          <Typography variant={compressed ? 'caption' : 'body1'} style={{ wordBreak: 'break-all' }}>
-            {hit.organization?.name ?? <Trans i18nKey="unknown" />}
-          </Typography>
-          {iconUrl && (
-            <Box
-              sx={{
-                width: '40px',
-                height: '40px',
-                mask: `url("${iconUrl}")`,
-                maskSize: 'cover',
-                background: theme.palette.getContrastText(providerColor)
-              }}
-            />
-          )}
-        </Box>
-      </HitBannerTooltip>
-    ),
-    [compressed, hit, iconUrl, providerColor, theme.palette, theme.shape.borderRadius]
-  );
-
   /**
    * The tooltips are necessary only when in the most compressed format
    */
@@ -133,11 +66,12 @@ const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.N
           <Typography
             variant={textVariant}
             noWrap={compressed}
+            fontWeight="bold"
             textOverflow={compressed ? 'ellipsis' : 'wrap'}
             {...typographyProps}
             sx={[
               { display: 'flex', flexDirection: 'row' },
-              ...(Array.isArray(typographyProps?.sx) ? typographyProps?.sx : [typographyProps?.sx])
+              ...(typographyProps?.sx && Array.isArray(typographyProps.sx) ? typographyProps.sx : [typographyProps?.sx])
             ]}
           >
             {t(i18nKey)}:
@@ -186,33 +120,38 @@ const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.N
 
   return (
     <Box
-      display="grid"
-      gridTemplateColumns="minmax(0, auto) minmax(0, 1fr) minmax(0, auto)"
-      alignItems="stretch"
-      sx={{ width: '100%', ml: 0, overflow: 'hidden', textDecoration: 'none', color: 'text.primary' }}
+      sx={{
+        width: '100%',
+        ml: 0,
+        overflow: 'hidden',
+        textDecoration: 'none',
+        color: 'text.primary'
+      }}
       component="a"
       href={`/hits/${hit?.howler.id}`}
       onClick={e => e.preventDefault()}
     >
-      {leftBox}
-      <Stack
-        sx={{
-          height: '100%',
-          padding: theme.spacing(1),
-          gridColumn: { xs: 'span 3', sm: 'span 1', md: 'span 1' }
-        }}
-        spacing={layout !== HitLayout.COMFY ? 1 : 2}
-        divider={
-          <Divider
-            orientation="horizontal"
-            sx={[
-              layout !== HitLayout.COMFY && { marginTop: '4px !important' },
-              { mr: `${theme.spacing(-1)} !important` }
-            ]}
-          />
-        }
-      >
-        <AnalyticLink lazy={lazy} hit={hit} />
+      <Stack spacing={layout !== HitLayout.COMFY ? 0.25 : 1}>
+        <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
+          <HitBannerTooltip hit={hit}>
+            <Chip
+              sx={{ backgroundColor: providerColor, color: theme.palette.getContrastText(providerColor) }}
+              label={hit.organization?.name ?? <Trans i18nKey="unknown" />}
+            />
+          </HitBannerTooltip>
+          <AnalyticLink lazy={lazy} hit={hit} />
+          <div style={{ flex: 1 }} />
+          <EscalationChip hit={hit} layout={layout} />
+          {['in-progress', 'on-hold'].includes(hit.howler.status) && (
+            <Chip sx={{ width: 'fit-content', display: 'inline-flex' }} label={hit.howler.status} color="primary" />
+          )}
+          <HitTimestamp hit={hit} layout={layout} />
+          <Assigned hit={hit} layout={layout} showAssigned={showAssigned} />
+          {hit.howler.related?.length > 0 && <RelatedRecords hit={hit} />}
+          {howlerPluginStore.plugins.flatMap(plugin => (
+            <Fragment key={plugin}>{pluginStore.executeFunction(`${plugin}.status`, { hit, layout })}</Fragment>
+          ))}
+        </Stack>
         {hit.howler?.rationale && (
           <Typography
             flex={1}
@@ -225,29 +164,15 @@ const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.N
         )}
         {hit.howler?.outline && (
           <>
-            <Grid container spacing={layout !== HitLayout.COMFY ? 1 : 2} sx={{ ml: `${theme.spacing(-1)} !important` }}>
-              {hit.howler.outline.threat && (
-                <Grid item>
-                  <Wrapper
-                    i18nKey="hit.header.threat"
-                    value={hit.howler.outline.threat}
-                    field="howler.outline.threat"
-                  />
-                </Grid>
-              )}
-              {hit.howler.outline.target && (
-                <Grid item>
-                  <Wrapper
-                    i18nKey="hit.header.target"
-                    value={hit.howler.outline.target}
-                    field="howler.outline.target"
-                  />
-                </Grid>
-              )}
-            </Grid>
+            {hit.howler.outline.threat && (
+              <Wrapper i18nKey="hit.header.threat" value={hit.howler.outline.threat} field="howler.outline.threat" />
+            )}
+            {hit.howler.outline.target && (
+              <Wrapper i18nKey="hit.header.target" value={hit.howler.outline.target} field="howler.outline.target" />
+            )}
             {hit.howler.outline.indicators?.length > 0 && (
-              <Stack direction="row" spacing={1}>
-                <Typography component="span" variant={textVariant}>
+              <Stack direction="row" spacing={layout !== HitLayout.COMFY ? 0.25 : 1}>
+                <Typography component="span" variant={textVariant} fontWeight="bold">
                   {t('hit.header.indicators')}:
                 </Typography>
                 <Grid
@@ -282,52 +207,24 @@ const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.N
                 field="howler.outline.summary"
               />
             )}
+
+            {hit.howler.links?.[0]?.href && (
+              <Chip
+                icon={<OpenInNew />}
+                label={hit.howler.links[0].title || t('hit.header.link')}
+                size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
+                component="a"
+                href={hit.howler.links[0].href}
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{ [`.${chipClasses.label}`]: { cursor: 'pointer !important' }, alignSelf: 'start' }}
+                onClick={e => {
+                  e.stopPropagation();
+                }}
+              />
+            )}
           </>
         )}
-      </Stack>
-      <Stack
-        direction="column"
-        spacing={layout !== HitLayout.COMFY ? 0.5 : 1}
-        alignSelf="stretch"
-        sx={[
-          { minWidth: 0, alignItems: { sm: 'end', md: 'start' }, flex: 1, pl: 1 },
-          compressed && {
-            [`& .${avatarClasses.root}`]: {
-              height: theme.spacing(3),
-              width: theme.spacing(3)
-            },
-            [`& .${iconButtonClasses.root}`]: {
-              height: theme.spacing(3),
-              width: theme.spacing(3)
-            }
-          }
-        ]}
-      >
-        <HitTimestamp hit={hit} layout={layout} />
-        <Assigned hit={hit} layout={layout} showAssigned={showAssigned} />
-        {hit.howler.links?.[0]?.href && (
-          <Chip
-            icon={<OpenInNew />}
-            label={hit.howler.links[0].title || t('hit.header.link')}
-            size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
-            component="a"
-            href={hit.howler.links[0].href}
-            target="_blank"
-            rel="noopener noreferrer"
-            sx={{ [`.${chipClasses.label}`]: { cursor: 'pointer !important' } }}
-            onClick={e => {
-              e.stopPropagation();
-            }}
-          />
-        )}
-        <Stack direction="row" spacing={layout !== HitLayout.COMFY ? 0.5 : 1}>
-          <EscalationChip hit={hit} layout={layout} />
-          {['in-progress', 'on-hold'].includes(hit.howler.status) && (
-            <Chip sx={{ width: 'fit-content', display: 'inline-flex' }} label={hit.howler.status} color="primary" />
-          )}
-        </Stack>
-        {hit.howler.related && <RelatedRecords hit={hit} />}
-        {howlerPluginStore.plugins.flatMap(plugin => pluginStore.executeFunction(`${plugin}.status`, { hit, layout }))}
       </Stack>
     </Box>
   );
