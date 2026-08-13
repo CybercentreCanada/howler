@@ -11,14 +11,16 @@ independent data models in python. This gives us:
 
 from __future__ import annotations
 
+import base64
 import copy
 import json
 import re
 import typing
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum as PyEnum
 from enum import EnumMeta
-from typing import TYPE_CHECKING, Callable
+from ipaddress import ip_address
+from typing import TYPE_CHECKING, Callable, Literal
 from typing import Any as _Any
 from venv import logger
 
@@ -125,6 +127,7 @@ class _Field:
         reference=None,
         optional=False,
         deprecated=False,
+        sync=True,
     ):
         self.index = index
         self.store = store
@@ -134,6 +137,7 @@ class _Field:
             self.copyto.append(copyto)
         elif copyto:
             self.copyto.extend(copyto)
+        self.sync = sync
 
         self.name = name
         self.parent_name = None
@@ -1427,34 +1431,36 @@ class Model:
         # attribute assignment
         self.__frozen = True
 
-    def as_primitives(self, hidden_fields=False, strip_null=True) -> dict[str, typing.Any]:
+    def as_primitives(
+        self,
+        hidden_fields=False,
+        strip_null=True,
+        ip_format: Literal["str", "int", "encoded_bytes"] | None = None,
+        timestamp_format: Literal["iso", "posix"] | None = None,
+    ) -> dict[str, typing.Any]:
         """Convert the object back into primitives that can be json serialized."""
         out = {}
 
         fields = self.fields()
         for key, value in self._odm_py_obj.items():
             field_type = fields.get(key, Any)
+            if isinstance(field_type, Optional):
+                field_type = field_type.child_type
+
             if value is not None or (value is None and field_type.default_set):
                 if strip_null and value is None:
                     continue
 
-                if isinstance(value, Model):
-                    out[key] = value.as_primitives(strip_null=strip_null)
-                elif isinstance(value, datetime):
-                    out[key] = value.strftime(DATEFORMAT)
-                elif isinstance(value, TypedMapping):
-                    out[key] = {
-                        k: (v.as_primitives(strip_null=strip_null) if isinstance(v, Model) else v)
-                        for k, v in value.items()
-                    }
-                elif isinstance(value, TypedList):
-                    out[key] = [(v.as_primitives(strip_null=strip_null) if isinstance(v, Model) else v) for v in value]
-                elif isinstance(value, ClassificationObject):
-                    out[key] = str(value)
-                    if hidden_fields:
-                        out.update(value.get_access_control_parts())
-                else:
-                    out[key] = value
+                out[key] = self._as_primitive(
+                    value,
+                    field_type,
+                    strip_null=strip_null,
+                    ip_format=ip_format,
+                    timestamp_format=timestamp_format,
+                )
+
+                if hidden_fields and isinstance(value, ClassificationObject):
+                    out.update(value.get_access_control_parts())
         return out
 
     def json(self):
@@ -1519,6 +1525,72 @@ class Model:
 
     def __contains__(self, name):
         return name.rstrip("_") in self.fields()
+
+    @staticmethod
+    def _as_primitive(value, field_type, strip_null=True, ip_format=None, timestamp_format=None):
+        if isinstance(value, Model):
+            return value.as_primitives(strip_null=strip_null, ip_format=ip_format, timestamp_format=timestamp_format)
+
+        if isinstance(value, datetime):
+            if timestamp_format == "iso":
+                return value.isoformat()
+
+            if timestamp_format == "posix":
+                return int(value.timestamp())
+
+            if value.tzinfo is not None:
+                value = value.astimezone(timezone.utc)
+            return value.strftime(DATEFORMAT)
+
+        if value is not None and isinstance(field_type, IP):
+            if ip_format == "encoded_bytes":
+                ip_bytes = ip_address(value).packed
+                return base64.b64encode(ip_bytes).decode("utf-8")
+
+            if ip_format == "int":
+                return int(ip_address(value))
+
+            if ip_format == "str":
+                return str(ip_address(value))
+
+            return value
+
+        if isinstance(value, TypedMapping):
+            return {
+                k: (
+                    v.as_primitives(strip_null=strip_null, ip_format=ip_format, timestamp_format=timestamp_format)
+                    if isinstance(v, Model)
+                    else Model._as_primitive(
+                        v,
+                        value.type,
+                        strip_null=strip_null,
+                        ip_format=ip_format,
+                        timestamp_format=timestamp_format,
+                    )
+                )
+                for k, v in value.items()
+            }
+
+        if isinstance(value, TypedList):
+            return [
+                (
+                    v.as_primitives(strip_null=strip_null, ip_format=ip_format, timestamp_format=timestamp_format)
+                    if isinstance(v, Model)
+                    else Model._as_primitive(
+                        v,
+                        value.type,
+                        strip_null=strip_null,
+                        ip_format=ip_format,
+                        timestamp_format=timestamp_format,
+                    )
+                )
+                for v in value
+            ]
+
+        if isinstance(value, ClassificationObject):
+            return str(value)
+
+        return value
 
 
 def recursive_set_name(field, name, to_parent=False):
