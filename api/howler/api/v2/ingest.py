@@ -309,7 +309,7 @@ def overwrite(index: str, id: str, **kwargs):
             refresh=refresh,
         )
 
-        new_record, new_version = ds[index].get(id, as_obj=False, version=True)
+        _, new_version = ds[index].get(id, as_obj=False, version=True)
 
         return ok(new_record), new_version
     except HowlerValueError as e:
