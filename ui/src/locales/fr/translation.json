@@ -212,6 +212,8 @@
   "hit.notebook.select": "Veuillez sélectionner un notebook",
   "hit.notebook.tooltip": "Ouvrir dans Jupyterhub",
   "hit.open": "Ouvrir hit",
+  "hit.outline.add_filter": "Ajouter un filtre",
+  "hit.outline.copy": "Copier la valeur",
   "hit.overview.missing": "Aucune vue d'ensemble n'a été créée pour ce hit. Pour créer une vue d'ensemble, cliquez sur le bouton pour ajouter à droite.",
   "hit.panel.aggregation.run": "Créer un sommaire",
   "hit.panel.bundles.open": "Groupes parentaux",

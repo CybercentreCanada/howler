@@ -85,6 +85,20 @@ describe('useMatchers', () => {
       expect(template).toBeNull();
     });
 
+    it('should prefer a provided template over hit metadata', async () => {
+      const { has } = await import('lodash-es');
+      const providedTemplate = { ...mockTemplate, name: 'provided-template' };
+      (has as any).mockReturnValue(true);
+
+      const { result } = renderHook(() => useMatchers());
+
+      const template = await result.current.getMatchingTemplate(mockHitWithMetadata, providedTemplate);
+
+      expect(template).toBe(providedTemplate);
+      expect(has).not.toHaveBeenCalled();
+      expect(mockGetRecord).not.toHaveBeenCalled();
+    });
+
     it('should return template from metadata when it exists', async () => {
       const { has } = await import('lodash-es');
       (has as any).mockReturnValue(true);

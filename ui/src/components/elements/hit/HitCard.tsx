@@ -34,7 +34,7 @@ const HitCard: FC<{
 
   return (
     <HowlerCard id={hit?.howler.id} tabIndex={0} sx={{ position: 'relative' }} elevation={elevation}>
-      <CardContent>
+      <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'start' }}>
         <HitBanner hit={hit} layout={layout} lazy={lazy} />
         <HitOutline hit={hit} layout={layout} lazy={lazy} />
         <HitLabels hit={hit} readOnly={readOnly} />
