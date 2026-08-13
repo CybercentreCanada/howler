@@ -15,6 +15,14 @@ Usage:
   python3 dev_setup.py --verify     # also verify Keycloak connectivity
   python3 dev_setup.py --token      # also fetch token and update mcp.json
   python3 dev_setup.py --start      # do all above, then start the MCP server
+
+Why the token is written literally into mcp.json:
+  VS Code's "http" server type only accepts "headers"/"oauth" fields (no
+  "env"/"envFile", which are stdio-only), and header values only expand
+  "${input:...}" placeholders, not "${env:...}". So there is no supported way
+  to point at an environment variable for this transport — a real value is
+  required for a zero-prompt connection. Both generated files are gitignored
+  and chmod'd to 0600 to limit the plaintext exposure.
 """
 
 import argparse
@@ -38,6 +46,19 @@ _TEST_PASS = "goose"
 # so we never touch unrelated containers on the host.
 _MCP_SERVICE = "howler-mcp"
 _KEYCLOAK_REALM_FILE = Path(__file__).parent.parent.parent / "api" / "dev" / "keycloak" / "keycloak-realm.json"
+
+
+def _restrict_to_owner(path: Path) -> None:
+    """Chmod a file to 0600 so only the current user can read secrets in it.
+
+    Mitigates the plaintext-storage risk noted by static analysis (CWE-312):
+    the file must hold a raw dev credential for VS Code/docker compose to use
+    it, so access is restricted at the filesystem level instead.
+    """
+    try:
+        os.chmod(path, 0o600)
+    except OSError as exc:
+        print(f"  Could not restrict permissions on {path}: {exc}", file=sys.stderr)
 
 
 def _get_client_secret() -> str | None:
@@ -94,8 +115,10 @@ def write_env_file(path: Path) -> None:
         lines.append(f"{key}={value}\n")
     client_secret = _get_client_secret()
     if client_secret:
+        # lgtm[py/clear-text-storage-sensitive-data]: local dev-only credential, file is gitignored and locked down below.
         lines.append(f"AUTH_CLIENT_SECRET={client_secret}\n")
     path.write_text("".join(lines))
+    _restrict_to_owner(path)
     print(f"  Wrote {path}")
 
 
@@ -240,10 +263,12 @@ def update_mcp_json(token: str, mcp_json_path: Path | None = None) -> None:
     config["servers"]["howlerMcp"] = {
         "url": MCPSettings.BASE_URL,
         "type": "http",
+        # lgtm[py/clear-text-storage-sensitive-data]: short-lived local dev token, file is gitignored and locked down below.
         "headers": {"Authorization": f"Bearer {token}"},
     }
 
     mcp_json_path.write_text(json.dumps(config, indent=2))
+    _restrict_to_owner(mcp_json_path)
     print(f"  Updated {mcp_json_path}")
 
 
