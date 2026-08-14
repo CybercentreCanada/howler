@@ -94,8 +94,8 @@ def is_valid_group(group: str) -> None:
 
 def get_dossier(
     id: str,
-    as_odm: bool = False,
-    version: bool = False,
+    as_odm: Literal[True, False] = False,
+    version: Literal[True, False] = False,
 ):
     """Retrieve a dossier from the datastore.
 
