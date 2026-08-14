@@ -80,6 +80,13 @@ separately with `docker compose up -d` (from api/dev/) if needed.
 
 This local token write is intentional for developer productivity in local docker environments. Non-development environments are expected to use proper secret handling and environment-specific auth setup managed by the operator.
 
+Security note: `mcp/.env` and `.vscode/mcp.json` are gitignored and chmod'd to 0600 by the
+script right after writing, since neither VS Code's `http` server transport (`headers`/`oauth`
+only, no `env`/`envFile`) nor `docker compose` support pulling these values from an environment
+variable at that point — a literal dev-only secret is unavoidable for zero-prompt automation.
+Static analysis findings about clear-text secret storage on these lines are expected and
+mitigated by file permissions rather than suppressed by design changes.
+
 Typical usage from mcp/:
 
 - poetry run python -m dev.dev_setup
@@ -109,6 +116,8 @@ Config guardrails:
 
 - config.py allows http only for localhost, 127.0.0.1, and ::1.
 - non-local endpoints must use https.
+- config.py calls `load_dotenv()` (mirroring api/howler/app.py), so a `mcp/.env` file is
+  picked up automatically on import; vars already exported in the shell take precedence.
 
 ## Local Run
 
