@@ -73,4 +73,5 @@ def parse_refresh(refresh: str | None):
         refresh = refresh.lower()
         if refresh not in REFRESH_ARG_OPTIONS:
             raise HowlerInvalidParameterException(f"Invalid refresh option: [{refresh}]")
+
     return refresh

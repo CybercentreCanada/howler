@@ -2,7 +2,7 @@ import type { FC } from 'react';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { HelpOutline, Save, Settings } from '@mui/icons-material';
+import { HelpOutline, PersonAdd, Save, Settings } from '@mui/icons-material';
 import {
   Alert,
   Checkbox,
@@ -19,6 +19,7 @@ import {
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
 import type { SearchIndex } from 'api/v2/search';
+import { useAppUser } from 'commons/components/app/hooks/useAppUser';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import PageCenter from 'commons/components/pages/PageCenter';
 import { GridColumnsContext } from 'components/app/providers/GridColumnsProvider';
@@ -46,11 +47,13 @@ import useMySnackbar from 'components/hooks/useMySnackbar';
 import { uniq } from 'lodash-es';
 import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { HowlerUser } from 'models/entities/HowlerUser';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import { convertDateToLucene } from 'utils/utils';
 import { buildViewUrl } from 'utils/viewUtils';
+import { MembershipManagement } from '../../elements/MembershipManagement';
 import ErrorBoundary from '../ErrorBoundary';
 import RecordQuery from '../hits/search/RecordQuery';
 import HitSort from '../hits/search/shared/HitSort';
@@ -63,6 +66,7 @@ const ViewComposer: FC = () => {
   const { showSuccessMessage, showErrorMessage } = useMySnackbar();
   const routeParams = useParams();
   const navigate = useNavigate();
+  const appUser = useAppUser<HowlerUser>();
 
   const addView = useContextSelector(ViewContext, ctx => ctx.addView);
   const editView = useContextSelector(ViewContext, ctx => ctx.editView);
@@ -75,9 +79,11 @@ const ViewComposer: FC = () => {
   const loadRecords = useContextSelector(RecordContext, ctx => ctx.loadRecords);
 
   // view state
+  const [view, setView] = useState<any>(null); // Store the actual view object for permission checks
   const [title, setTitle] = useState('');
   const [type, setType] = useState('global');
   const [advanceOnTriage, setAdvanceOnTriage] = useState(false);
+  const [memberModalOpen, setMemberModalOpen] = useState(false);
   const { columns, setColumns, columnWidths, isReady } = useContext(GridColumnsContext);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
@@ -233,6 +239,7 @@ const ViewComposer: FC = () => {
         setError(null);
       }
 
+      setView(viewToEdit);
       setTitle(viewToEdit.title);
       setAdvanceOnTriage(viewToEdit.settings?.advance_on_triage ?? false);
       setDisplayType((viewToEdit.settings?.display ?? null) as HowlerViewLayoutType);
@@ -261,6 +268,11 @@ const ViewComposer: FC = () => {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeParams.id]);
+
+  const canManageMembership =
+    view?.owner === appUser.user.username ||
+    view?.admins?.includes(appUser.user.username) ||
+    appUser.user.roles?.includes('admin');
 
   return (
     <FlexPort>
@@ -308,6 +320,13 @@ const ViewComposer: FC = () => {
                   >
                     {t('save')}
                   </CustomButton>
+
+                  {/* Permissions Button - Displayed only if the user has rights and the view exists */}
+                  {routeParams.id && canManageMembership && (
+                    <CustomButton variant="outlined" startIcon={<PersonAdd />} onClick={() => setMemberModalOpen(true)}>
+                      {t('route.actions.permission')}
+                    </CustomButton>
+                  )}
                 </Stack>
                 <Typography
                   sx={theme => ({
@@ -410,6 +429,16 @@ const ViewComposer: FC = () => {
               )}
             </VSBoxContent>
           </VSBox>
+
+          {/* Membership Modal */}
+          {routeParams.id && (
+            <MembershipManagement
+              open={memberModalOpen}
+              onClose={() => setMemberModalOpen(false)}
+              entityId={routeParams.id}
+              entityType="view"
+            />
+          )}
         </PageCenter>
       </ErrorBoundary>
     </FlexPort>

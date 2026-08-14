@@ -1,6 +1,7 @@
 src/commons/*
 src/commons_deprecated/*
 build/*
+dist/*
 src/react-app-env.d.ts
 src/serviceWorker.ts
 src/config-overrides.js

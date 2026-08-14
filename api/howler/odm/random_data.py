@@ -164,7 +164,7 @@ def create_users(ds):
             "email": "user@howler.cyber.gc.ca",
             "classification": classification.RESTRICTED,
             "apikeys": {
-                "devkey": {"acl": ["R", "W"], "password": user_hash},
+                "devkey": {"acl": ["R", "W", "E"], "password": user_hash},
                 "impersonate_admin": {
                     "acl": ["R", "W", "I"],
                     "agents": ["admin", "goose"],
@@ -176,14 +176,10 @@ def create_users(ds):
                     "password": user_hash,
                 },
             },
-            "type": [
-                "user",
-                "automation_basic",
-                "actionrunner_basic",
-            ],
             "password": user_hash,
             "uname": "user",
             "favourite_views": [user_view.view_id],
+            "type": ["user", "automation_basic"],
         }
     )
 
@@ -220,7 +216,7 @@ def create_users(ds):
             "name": "Huey Guy",
             "email": "huey@howler.cyber.gc.ca",
             "apikeys": {
-                "devkey": {"acl": ["R", "W"], "password": huey_hash},
+                "devkey": {"acl": ["R", "W", "E"], "password": huey_hash},
                 "impersonate_admin": {
                     "acl": ["R", "W", "I"],
                     "agents": ["admin", "goose"],
@@ -236,6 +232,7 @@ def create_users(ds):
             "password": huey_hash,
             "uname": "huey",
             "favourite_views": [huey_view.view_id],
+            "type": ["user", "automation_basic"],
         }
     )
 
@@ -842,18 +839,15 @@ def create_actions(ds: HowlerDatastore, num_actions: int = 30):
                 action_data["value"] = float(random.randint(0, 10000)) / 10
 
             operations.append({"operation_id": operation_id, "data_json": json.dumps((action_data))})
-
         action = Action(
             {
                 "name": get_random_word(),
-                "owner_id": choice([user["uname"] for user in users]),
+                "owner": choice([user["uname"] for user in users]),
                 "query": f"{choice(key_list)}:*{choice(VALID_CHARS)}* OR {choice(key_list)}:*{choice(VALID_CHARS)}*",
                 "operations": operations,
             }
         )
-
         action = run_modifications("action", action)
-
         ds.action.save(action.action_id, action)
 
     ds.action.commit()

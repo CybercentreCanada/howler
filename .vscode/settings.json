@@ -1,9 +1,7 @@
 {
   "eslint.validate": [
     "javascript",
-    "javascriptreact",
-    "typescript",
-    "typescriptreact"
+    "javascriptreact"
   ],
   "[css]": {
     "editor.defaultFormatter": "oxc.oxc-vscode"
@@ -47,6 +45,10 @@
     120
   ],
   "editor.tabSize": 2,
+  "files.associations": {
+    "*.ts": "typescript",
+    "*.tsx": "typescriptreact"
+  },
   "files.insertFinalNewline": true,
   "files.trimFinalNewlines": true,
   "files.trimTrailingWhitespace": true,

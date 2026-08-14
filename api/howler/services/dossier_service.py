@@ -9,7 +9,12 @@ from typing import Any, Literal, Optional, cast, overload
 
 from mergedeep.mergedeep import merge
 
-from howler.common.exceptions import ForbiddenException, HowlerException, InvalidDataException, NotFoundException
+from howler.common.exceptions import (
+    ForbiddenException,
+    HowlerException,
+    InvalidDataException,
+    NotFoundException,
+)
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import SearchException
@@ -26,7 +31,6 @@ PERMITTED_KEYS = {
     "leads",
     "pivots",
     "type",
-    "owner",
 }
 
 
@@ -203,13 +207,15 @@ def update_dossier(  # noqa: C901
 
     # Enforce access control for personal dossiers
     # Only the owner or admin users can modify personal dossiers
-    if existing_dossier.type == "personal" and existing_dossier.owner != user.uname and "admin" not in user.type:
+    is_dossier_admin: bool = user.uname == existing_dossier.owner or user.uname in existing_dossier.admins
+    if existing_dossier.type == "personal" and not is_dossier_admin and "admin" not in user.type:
         raise ForbiddenException("You cannot update a personal dossier that is not owned by you.")
 
     # Enforce access control for global dossiers
     # Only the owner or admin users can modify global dossiers
-    if existing_dossier.type == "global" and existing_dossier.owner != user.uname and "admin" not in user.type:
-        raise ForbiddenException("Only the owner of a dossier and administrators can edit a global dossier.")
+    is_member: bool = user.uname in ([existing_dossier.owner] + existing_dossier.admins + existing_dossier.members)
+    if not is_member and "admin" not in user.type:
+        raise ForbiddenException("Only the members of a dossier and global administrators can edit a global dossier.")
 
     # Validate pivot configurations if they're being updated
     # Ensure no duplicate mapping keys exist within any pivot

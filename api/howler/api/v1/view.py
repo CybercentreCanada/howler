@@ -4,8 +4,9 @@ from flask import request
 from mergedeep.mergedeep import merge
 
 from howler.api import bad_request, created, forbidden, make_subapi_blueprint, no_content, not_found, ok
+from howler.api.v1.helper import permission_helper
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
-from howler.common.exceptions import HowlerException
+from howler.common.exceptions import HowlerException, InvalidDataException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -60,7 +61,7 @@ def create_view(**kwargs):
 
     Optional Arguments:
     refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
-        'wait_for' will wait for the change to be visible in search.
+
 
     Data Block:
     {
@@ -75,6 +76,7 @@ def create_view(**kwargs):
     }
     """
     view_data = request.json
+
     if not isinstance(view_data, dict):
         return bad_request(err="Invalid data format")
 
@@ -86,8 +88,6 @@ def create_view(**kwargs):
 
     if "type" not in view_data:
         return bad_request(err="You must specify a type when creating a view.")
-
-    refresh = kwargs.get("refresh")
 
     storage = datastore()
 
@@ -106,7 +106,7 @@ def create_view(**kwargs):
 
             storage.user.save(current_user["uname"], current_user)
 
-        storage.view.save(view.view_id, view, refresh=refresh)
+        storage.view.save(view.view_id, view, refresh=kwargs.get("refresh"))
         return created(view)
     except SearchException:
         return bad_request(err="You must use a valid query when creating a view.")
@@ -126,7 +126,7 @@ def delete_view(view_id: str, user: User, **kwargs):
 
     Optional Arguments:
     refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
-        'wait_for' will wait for the change to be visible in search.
+
 
     Data Block:
     None
@@ -136,21 +136,20 @@ def delete_view(view_id: str, user: User, **kwargs):
         "success": true     # Did the deletion succeed?
     }
     """
-    refresh = kwargs.get("refresh")
-
     storage = datastore()
 
     existing_view: View = storage.view.get_if_exists(view_id)
+
     if not existing_view:
         return not_found(err="This view does not exist")
 
     if existing_view.owner != user.uname and "admin" not in user.type:
-        return forbidden(err="You cannot delete a view unless you are an administrator, or the owner.")
+        return forbidden(err="You cannot delete a view unless you are an owner or a global admin.")
 
     if existing_view.type == "readonly":
         return forbidden(err="You cannot delete built-in views.")
 
-    success = storage.view.delete(view_id, refresh=refresh)
+    success = storage.view.delete(view_id, refresh=kwargs.get("refresh"))
 
     return no_content({"success": success})
 
@@ -167,7 +166,6 @@ def update_view(view_id: str, user: User, **kwargs):
 
     Optional Arguments:
     refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
-        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -180,16 +178,22 @@ def update_view(view_id: str, user: User, **kwargs):
         ...view     # The updated view data
     }
     """
-    refresh = kwargs.get("refresh")
-
     storage = datastore()
 
     new_data = request.json
     if not isinstance(new_data, dict):
         return bad_request(err="Invalid data format")
 
-    if set(new_data.keys()) & {"view_id", "owner"}:
-        return bad_request(err="You cannot change the owner or id of a view.")
+    # Block the update of the view_id
+    if set(new_data.keys()) & {"view_id"}:
+        return bad_request(err="You cannot change the view ID.")
+
+    # Block the change of permission from this endpoint
+    if set(new_data.keys()) & {"owner", "admins", "members"}:
+        return bad_request(
+            err="You cannot change permission using this end point. "
+            "Use the give_privilege or remove_privilege endpoints."
+        )
 
     existing_view: View = storage.view.get_if_exists(view_id)
     if not existing_view:
@@ -201,23 +205,23 @@ def update_view(view_id: str, user: User, **kwargs):
     if existing_view.type == "personal" and existing_view.owner != user.uname:
         return forbidden(err="You cannot update a personal view that is not owned by you.")
 
-    if existing_view.type == "global" and existing_view.owner != user.uname and "admin" not in user.type:
-        return forbidden(err="Only the owner of a view and administrators can edit a global view.")
+    # Block none Global admin or member from updating a global view
+    is_member = user.uname in ([existing_view.owner] + existing_view.admins + existing_view.members)
+    if existing_view.type == "global" and not is_member and "admin" not in user.type:
+        return forbidden(err="Only member of a view or global admins can update a global view.")
+
+    # Block invalid querry to be added to the updated view
+    try:
+        if "query" in new_data:
+            storage.hit.search(new_data["query"])
+    except (SearchException, HowlerException) as e:
+        return bad_request(err="You must use a valid query when updating a view. " + e.message)
 
     new_view = View(cast(dict, merge({}, existing_view.as_primitives(), new_data)))
 
-    storage.view.save(new_view.view_id, new_view, refresh=refresh)
+    storage.view.save(new_view.view_id, new_view, refresh=kwargs.get("refresh"))
 
-    try:
-        if "query" in new_data:
-            # Make sure the query is valid
-            storage.hit.search(new_data["query"])
-
-        return ok(storage.view.get_if_exists(existing_view.view_id, as_obj=False))
-    except SearchException:
-        return bad_request(err="You must use a valid query when updating a view.")
-    except HowlerException as e:
-        return bad_request(err=str(e))
+    return ok(new_view.as_primitives())
 
 
 @generate_swagger_docs()
@@ -246,8 +250,10 @@ def set_as_favourite(view_id: str, **kwargs):
     if not existing_view:
         return not_found(err="This view does not exist")
 
-    if existing_view.type != "global" and (
-        existing_view.owner != kwargs["user"]["uname"] and existing_view.owner != "none"
+    if (
+        existing_view.type != "global"
+        and kwargs["user"]["uname"] != existing_view.owner
+        and existing_view.owner != "none"
     ):
         return forbidden(err="You can only favourite global views, or views owned by you.")
 
@@ -297,3 +303,76 @@ def remove_as_favourite(view_id: str, **kwargs):
         return no_content()
     except ValueError as e:
         return bad_request(err=str(e))
+
+
+# region Permission
+
+
+@generate_swagger_docs()
+@view_api.route("/<view_id>/permission", methods=["PUT"])
+@api_login(required_priv=["R", "W"])
+@parse_parameters(refresh=parse_refresh)
+def give_privilege(view_id: str, user: User, **kwargs):
+    """Grant a privilege on a view to another user.
+
+    Variables:
+    view_id => The ID of the view for which to grant a privilege
+
+    Optional Arguments:
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+
+    Data Block:
+    {
+        "privilege": "privilege to grant"  # [members, admins, owner]
+        "user_id": "user to grant permission to"
+    }
+
+    Result Example:
+    {
+        "success": True     # If the operation succeeded
+    }
+    """
+    try:
+        result = permission_helper.give_privilege(view_id, user, View, request.json, refresh=kwargs.get("refresh"))
+    except (ValueError, InvalidDataException) as e:
+        return bad_request(err=str(e))
+    return ok(result)
+
+
+@generate_swagger_docs()
+@view_api.route("/<view_id>/permission", methods=["DELETE"])
+@parse_parameters(refresh=parse_refresh)
+@api_login(required_priv=["R", "W"])
+def remove_privilege(view_id: str, user: User, **kwargs):
+    """Revoke permission from one user to another.
+
+    Variables:
+        view_id => The id of the view to revoke administrative privilege of
+
+    Arguments:
+        view_id: The id of the view to revoke administrative privilege of
+        user: The user making the request (injected by the api_login decorator)
+
+    Optional Arguments:
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
+
+    Data Block:
+        {
+            "privilege": "privilege to revoke",  # [members, admins, owner]
+            "user_id": "user to remove permission from",
+        }
+
+    Result Example:
+        {
+            "success": True
+        }
+    """
+    try:
+        result = permission_helper.remove_privilege(view_id, user, View, request.json, refresh=kwargs.get("refresh"))
+    except (ValueError, InvalidDataException) as e:
+        return bad_request(err=str(e))
+    return ok(result)
+
+
+# endregion

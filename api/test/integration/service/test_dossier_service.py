@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from mergedeep.mergedeep import merge
 
-from howler.common.exceptions import ForbiddenException, NotFoundException
+from howler.common.exceptions import NotFoundException
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.helper import generate_useful_dossier
 from howler.odm.models.dossier import Dossier
@@ -68,16 +68,15 @@ def test_update_dossier_fails(datastore: HowlerDatastore):
     user = datastore.user.search("uname:admin")["items"][0]
 
     with pytest.raises(NotFoundException):
-        dossier_service.update_dossier("potatopotatopotato", {"owner": "test"}, user).owner == "test"
-
+        dossier_service.update_dossier("potatopotatopotato", {"owner": "test"}, user)
     existing_dossier: Dossier = datastore.dossier.search("type:personal", as_obj=True)["items"][0]
 
-    with pytest.raises(ForbiddenException):
+    with pytest.raises(InvalidDataException):
         other_user = datastore.user.search(f"-uname:{existing_dossier.owner} AND -type:admin")["items"][0]
         dossier_service.update_dossier(existing_dossier.dossier_id, {"owner": other_user.uname}, other_user)
 
     existing_dossier = datastore.dossier.search("type:global", as_obj=True)["items"][0]
-    with pytest.raises(ForbiddenException):
+    with pytest.raises(InvalidDataException):
         other_user = datastore.user.search(f"-uname:{existing_dossier.owner} AND -type:admin")["items"][0]
         dossier_service.update_dossier(existing_dossier.dossier_id, {"owner": other_user.uname}, other_user)
 
@@ -97,7 +96,9 @@ def test_update_dossier(datastore: HowlerDatastore):
     user = datastore.user.search("uname:admin")["items"][0]
     existing_dossier_id = datastore.dossier.search("type:global", as_obj=True)["items"][0].dossier_id
 
-    assert dossier_service.update_dossier(existing_dossier_id, {"owner": "test"}, user).owner == "test"
+    assert (
+        dossier_service.update_dossier(existing_dossier_id, {"title": "updated title"}, user).title == "updated title"
+    )
 
 
 def test_pivot_with_duplicates(datastore: HowlerDatastore):

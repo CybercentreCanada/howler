@@ -163,6 +163,21 @@ def login_session(host):
         pytest.skip(str(err))
 
 
+@pytest.fixture(scope="function")
+def user_session(host):
+    """
+    Return a function name build_session which take the parameter "user". Base return will be the string 'user'.
+    """
+
+    def build_session(user: str = "user"):
+        auth = f"{user}:devkey:{user}".encode()
+        session = requests.Session()
+        session.headers.update({"Authorization": f"Basic {base64.b64encode(auth).decode('utf-8')}"})
+        return session, host
+
+    return build_session
+
+
 def get_api_data(  # noqa: C901
     session,
     url,
