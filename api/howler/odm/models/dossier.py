@@ -31,10 +31,8 @@ class Dossier(odm.Model):
         values=["personal", "global"],
         description="The type of dossier - personal or global.",
     )
-    group: Optional[list[str]] = odm.List(
-        odm.Keyword(
-            description="The family classification of this dossier.",
-            optional=True,
-            default=None,
-        )
+    group: Optional[str] = odm.Keyword(
+        description="The family classification of this dossier.",
+        optional=True,
+        default=None,
     )

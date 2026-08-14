@@ -5,6 +5,7 @@ dossiers - collections of security alerts and investigation data organized by an
 Dossiers can be personal (private to the creator) or global (shared with the team).
 """
 
+import re
 from typing import Any, Literal, Optional, cast, overload
 
 from mergedeep.mergedeep import merge
@@ -71,10 +72,30 @@ def get_dossier(id: str, as_odm: Literal[False], version: Literal[False]) -> dic
 def get_dossier(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
 
 
+def is_valid_group(group: str) -> None:
+    """Validate a slash-separated dossier group path.
+
+    Args:
+        group: Group path to validate, such as ``Parent/Child``.
+
+    Raises:
+        InvalidDataException: If ``group`` is not a string or contains
+            unsupported characters or empty path sections.
+    """
+    if not isinstance(group, str):
+        raise InvalidDataException('Data "group" should be a slash-separated string.')
+    if not re.fullmatch(r"[A-Za-zùûüÿàâæçéèêëïîôœÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ/]*", group):
+        raise InvalidDataException(
+            "Group contains invalid characters. Only English, French alphabetical and / character are allowed"
+        )
+    if re.match(r"/{2,}", group):
+        raise InvalidDataException('Every section of a group path need character between the "/"')
+
+
 def get_dossier(
     id: str,
-    as_odm=False,
-    version=False,
+    as_odm: bool = False,
+    version: bool = False,
 ):
     """Retrieve a dossier from the datastore.
 
@@ -149,6 +170,10 @@ def create_dossier(  # noqa: C901
 
         # Ensure the owner is set to the current user (security measure)
         dossier.owner = username
+
+        # Verify group is a valid group
+        if "group" in dossier_data:
+            is_valid_group(dossier_data["group"])
 
         # Save the dossier to the datastore
         storage.dossier.save(dossier.dossier_id, dossier, refresh=refresh)
@@ -226,6 +251,9 @@ def update_dossier(  # noqa: C901
             # Test the query against the hit index to ensure it's valid
             storage.hit.search(dossier_data["query"])
 
+        # Validate the group is only of valid character and valid type
+        if "group" in dossier_data:
+            is_valid_group(dossier_data["group"])
         # Merge the new data with existing dossier data
         new_data = Dossier(cast(dict, merge({}, existing_dossier.as_primitives(), dossier_data)))
 
