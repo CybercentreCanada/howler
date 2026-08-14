@@ -4,8 +4,9 @@ from flask import Response, request
 
 import howler.actions as actions
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
+from howler.api.v1.helper import permission_helper
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
-from howler.common.exceptions import HowlerException
+from howler.common.exceptions import HowlerException, InvalidDataException
 from howler.common.loader import datastore
 from howler.common.logging.audit import audit
 from howler.common.swagger import generate_swagger_docs
@@ -57,8 +58,7 @@ def add_action(user: User, **kwargs) -> Response:
     None
 
     Optional Arguments:
-    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
-        'wait_for' will wait for the change to be visible in search.
+        refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
 
     Data Block:
     {
@@ -77,18 +77,16 @@ def add_action(user: User, **kwargs) -> Response:
         ...action   # The saved action data
     }
     """
+    refresh = kwargs.get("refresh")
     new_action = request.json
-
     if new_action is None:
         return bad_request(err="You must specify an action")
-
-    refresh = kwargs.get("refresh")
 
     if error := action_service.validate_action(new_action):
         return error
 
     try:
-        new_action["owner_id"] = user.uname
+        new_action["owner"] = user.uname
 
         action_obj = Action(new_action)
 
@@ -112,11 +110,10 @@ def update_action(id: str, user: User, **kwargs) -> Response:
     """Update an existing action
 
     Variables:
-    id  => id of the aciton to update
+    id  => id of the action to update
 
     Optional Arguments:
     refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
-        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -136,10 +133,10 @@ def update_action(id: str, user: User, **kwargs) -> Response:
     }
     """
     updated_action = request.json
+    refresh = kwargs.get("refresh")
+
     if not isinstance(updated_action, dict):
         return bad_request(err="Incorrect data structure!")
-
-    refresh = kwargs.get("refresh")
 
     ds = datastore()
 
@@ -152,7 +149,12 @@ def update_action(id: str, user: User, **kwargs) -> Response:
         "triggers", []
     ):
         return forbidden(err="Updating triggers requires the role 'automation_advanced'.")
+    # Added for legacy owner_id field inside of Action.
+    owner = [existing_action.get("owner") or existing_action.get("owner_id")]
+    allowed_list = (owner) + (existing_action["admins"] or []) + (existing_action["members"] or [])
 
+    if user.uname not in allowed_list and "admin" not in user.type:
+        return forbidden(err="You do not have the permission to update this action")
     updated_action = {
         **existing_action,
         **updated_action,
@@ -165,8 +167,7 @@ def update_action(id: str, user: User, **kwargs) -> Response:
     try:
         action_obj = Action(updated_action)
         action_obj.action_id = id
-
-        ds.action.save(action_obj.action_id, action_obj, version=server_version, refresh=refresh)
+        ds.action.save(action_obj.action_id, action_obj, refresh=refresh)
     except HowlerException as e:
         return bad_request(err=str(e))
 
@@ -185,23 +186,21 @@ def delete_action(id: str, user: User, **kwargs) -> Response:
 
     Optional Arguments:
     refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
-        'wait_for' will wait for the change to be visible in search.
 
     Result Example:
     None
     """
-    refresh = kwargs.get("refresh")
-
     ds = datastore()
 
     result = ds.action.search(f"action_id:{id}", rows=1)
+    refresh = kwargs.get("refresh")
 
     if not result["total"]:
         return not_found(err="Action does not exist")
 
     action: Action = result["items"][0]
 
-    if action.owner_id != user.uname and "admin" not in user.type:
+    if action.owner != user.uname and "admin" not in user.type:
         return forbidden(err="You do not have the permissions necessary to delete this action.")
 
     try:
@@ -395,3 +394,79 @@ def execute_operations(**kwargs) -> Response:
         reports[operation["operation_id"]].extend(report)
 
     return ok(reports)
+
+
+# region Permission
+
+
+@generate_swagger_docs()
+@action_api.route("/<id>/permission", methods=["PUT"])
+@api_login(required_priv=["R", "W"], required_type=["automation_basic"])
+@parse_parameters(refresh=parse_refresh)
+def give_privilege(id: str, user: User, **kwargs):
+    """Give the same privilege to multiple users in a single request.
+
+    Variables:
+        id => The unique ID of the action embedded in the URL path
+        user=> The user making the request (injected by the api_login decorator)
+    Arguments:
+        refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+                'wait_for' will wait for the change to be visible in search.
+
+    Data Block:
+    {
+        "privilege": "privilege to give",  # [members, admins, owner]
+        "user_id": ["user1", "user2"]
+    }
+
+    Result Example:
+    {
+        "success": True
+    }
+    """
+    try:
+        result = permission_helper.give_privilege(id, user, Action, request.json, refresh=kwargs.get("refresh"))
+    except (ValueError, InvalidDataException) as e:
+        return bad_request(err=str(e))
+
+    return ok(result)
+
+
+@generate_swagger_docs()
+@action_api.route("/<id>/permission", methods=["DELETE"])
+@api_login(required_priv=["R", "W"], required_type=["automation_basic"])
+@parse_parameters(refresh=parse_refresh)
+def remove_privilege(id: str, user: User, **kwargs):
+    """Revoke permission from one user.
+
+    Variables:
+        id => The unique ID of the action embedded in the URL path
+
+    Arguments:
+        id: The id of the action to modify permissions for
+        user: The user making the request (injected by the api_login decorator)
+
+    Optional Arguments:
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
+
+    Data Block:
+        {
+            "privilege": "privilege to revoke",  # [members, admins, owner]
+            "user_id": "user to remove permission from",
+        }
+
+    Result Example:
+        {
+            "success": True
+        }
+    """
+    try:
+        result = permission_helper.remove_privilege(id, user, Action, request.json, refresh=kwargs.get("refresh"))
+    except (ValueError, InvalidDataException) as e:
+        return bad_request(err=str(e))
+
+    return ok(result)
+
+
+# endregion

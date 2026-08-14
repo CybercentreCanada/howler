@@ -1,9 +1,10 @@
 import { iconExists } from '@iconify/react';
-import { Language, Person, Save } from '@mui/icons-material';
+import { Language, Person, PersonAdd, Save } from '@mui/icons-material';
 import {
   Box,
   CircularProgress,
   Fab,
+  IconButton,
   Paper,
   Stack,
   Tab,
@@ -16,12 +17,15 @@ import {
   useMediaQuery
 } from '@mui/material';
 import api from 'api';
+import { useAppUser } from 'commons/components/app/hooks';
 import PageCenter from 'commons/components/pages/PageCenter';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { MembershipManagement } from 'components/elements/MembershipManagement';
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import { isEqual, omit, uniqBy } from 'lodash-es';
 import type { Dossier } from 'models/entities/generated/Dossier';
+import type { HowlerUser } from 'models/entities/HowlerUser';
 import { memo, useCallback, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -38,7 +42,8 @@ const DossierEditor: FC = () => {
   const { showSuccessMessage } = useMySnackbar();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-
+  const appUser = useAppUser<HowlerUser>();
+  const user = appUser?.user;
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
 
   const isNarrow = useMediaQuery(`(max-width: ${i18n.language === 'en' ? 1275 : 1375}px)`);
@@ -53,8 +58,18 @@ const DossierEditor: FC = () => {
   const [searchTotal, setSearchTotal] = useState(-1);
   const [searchDirty, setSearchDirty] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [memberModalOpen, setMemberModalOpen] = useState(false);
 
   const dirty = useMemo(() => !isEqual(originalDossier, dossier), [dossier, originalDossier]);
+
+  // Permission Check Logic
+  const canManageMembership = useMemo(() => {
+    if (!user || !dossier) return false;
+    const adminList = dossier.admins || [];
+    const isAdministrator = adminList.includes(user.username) || dossier.owner === user.username;
+    return isAdministrator || user.roles?.includes('admin');
+  }, [user, dossier]);
+
   const validationError = useMemo(() => {
     if (!dossier) {
       return t('route.dossiers.manager.validation.error');
@@ -176,7 +191,10 @@ const DossierEditor: FC = () => {
         showSuccessMessage(t('route.dossiers.manager.create.success'));
         navigate(`/dossiers/${result.dossier_id}/edit`);
       } else {
-        setDossier(await dispatchApi(api.dossier.put(dossier.dossier_id, omit(dossier, ['dossier_id', 'id']))));
+        const updated = await dispatchApi(
+          api.dossier.put(dossier.dossier_id, omit(dossier, ['dossier_id', 'id', 'owner']))
+        );
+        setDossier(updated);
         showSuccessMessage(t('route.dossiers.manager.edit.success'));
       }
     } finally {
@@ -220,13 +238,14 @@ const DossierEditor: FC = () => {
   }, [dispatchApi, dossier.query, setQuery]);
 
   useEffect(() => {
-    if (searchParams.get('tab') !== tab) {
-      searchParams.set('tab', tab);
+    if (searchParams.get('tab') === tab) {
+      return;
     }
 
-    setSearchParams(searchParams, { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setSearchParams, tab]);
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.set('tab', tab);
+    setSearchParams(nextSearchParams, { replace: true });
+  }, [searchParams, setSearchParams, tab]);
 
   return (
     <PageCenter maxWidth="1000px" width="100%" textAlign="left" height="97%">
@@ -256,7 +275,7 @@ const DossierEditor: FC = () => {
         <Stack spacing={1} height="100%">
           <Paper sx={{ p: 1 }}>
             <Stack spacing={1}>
-              <Stack spacing={1} direction="row">
+              <Stack spacing={1} direction="row" alignItems="center">
                 <TextField
                   id="dossier-title"
                   disabled={!dossier || loading}
@@ -283,6 +302,14 @@ const DossierEditor: FC = () => {
                     </ToggleButton>
                   </Tooltip>
                 </ToggleButtonGroup>
+
+                {dossier.dossier_id && canManageMembership && (
+                  <Tooltip title={t('members')}>
+                    <IconButton onClick={() => setMemberModalOpen(true)} disabled={loading}>
+                      <PersonAdd />
+                    </IconButton>
+                  </Tooltip>
+                )}
               </Stack>
               <Typography
                 sx={theme => ({
@@ -311,6 +338,15 @@ const DossierEditor: FC = () => {
           {tab === 'pivots' && <PivotForm dossier={dossier} setDossier={setDossier} loading={loading} />}
         </Stack>
       </Box>
+
+      {dossier.dossier_id && (
+        <MembershipManagement
+          open={memberModalOpen}
+          onClose={() => setMemberModalOpen(false)}
+          entityId={dossier.dossier_id}
+          entityType="dossier"
+        />
+      )}
     </PageCenter>
   );
 };

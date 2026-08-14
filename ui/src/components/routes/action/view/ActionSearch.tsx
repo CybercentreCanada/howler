@@ -188,15 +188,12 @@ const ActionSearch: FC = () => {
                   </Tooltip>
                 )}
                 <FlexOne />
-                {((item.item.owner_id === user.username && editRoles) || user.roles?.includes('admin')) && (
+                {((item.item.owner === user.username && editRoles) || user.roles?.includes('admin')) && (
                   <IconButton size="small" onClick={e => onDelete(e, item.item.action_id)}>
                     <Delete />
                   </IconButton>
                 )}
-                <HowlerAvatar
-                  sx={{ width: 24, height: 24, marginRight: '8px !important' }}
-                  userId={item.item.owner_id}
-                />
+                <HowlerAvatar sx={{ width: 24, height: 24, marginRight: '8px !important' }} userId={item.item.owner} />
               </Stack>
             }
             subheader={item.item.query}

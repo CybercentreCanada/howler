@@ -1,8 +1,9 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { UserListContext } from 'components/app/providers/UserListProvider';
-import type { ReactNode } from 'react';
+import React, { type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import UserList from './UserList';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -14,9 +15,8 @@ vi.mock('components/elements/display/HowlerAvatar', () => ({
   default: ({ userId }: { userId?: string | null }) => <div id={`avatar-${userId ?? 'none'}`}>{userId ?? 'none'}</div>
 }));
 
-import UserList from './UserList';
-
 const mockFetchUsers = vi.fn();
+const mockSearchUsers = vi.fn();
 
 const defaultUsers: Record<string, any> = {
   analystA: {
@@ -42,7 +42,7 @@ const createWrapper = (users: Record<string, any>) => {
       value={{
         users,
         fetchUsers: mockFetchUsers,
-        searchUsers: vi.fn()
+        searchUsers: mockSearchUsers
       }}
     >
       {children}
@@ -82,8 +82,7 @@ describe('UserList', () => {
       wrapper: createWrapper(defaultUsers)
     });
 
-    const avatarButton = screen.getByRole('button');
-    await user.click(avatarButton);
+    await user.click(screen.getByRole('button'));
 
     const combo = await screen.findByRole('combobox', { name: 'user.list.label' });
     await user.click(combo);
@@ -104,8 +103,7 @@ describe('UserList', () => {
 
     expect(screen.getAllByText('analystA')).toHaveLength(1);
 
-    const addButton = screen.getByRole('button');
-    await user.click(addButton);
+    await user.click(screen.getByRole('button'));
 
     const combo = await screen.findByRole('combobox', { name: 'user.list.label' });
     await user.click(combo);
@@ -116,7 +114,7 @@ describe('UserList', () => {
     expect(onChange).toHaveBeenCalledWith(expect.arrayContaining(['analystA', 'analystB']));
   });
 
-  it('does not open popover when disabled', async () => {
+  it('does not open popover when disabled', () => {
     const onChange = vi.fn();
 
     render(<UserList i18nLabel="user.list.label" userIds={['analystA']} onChange={onChange} disabled />, {
@@ -125,7 +123,6 @@ describe('UserList', () => {
 
     const button = screen.getByRole('button');
     expect(button).toBeDisabled();
-
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   });
 
@@ -137,9 +134,7 @@ describe('UserList', () => {
       wrapper: createWrapper(defaultUsers)
     });
 
-    const avatarButton = screen.getByRole('button');
-    await user.click(avatarButton);
-
+    await user.click(screen.getByRole('button'));
     await screen.findByRole('combobox', { name: 'user.list.label' });
 
     const clearButton = await screen.findByLabelText(/clear/i);
@@ -158,12 +153,76 @@ describe('UserList', () => {
 
     expect(screen.getByText('analystA')).toBeInTheDocument();
 
-    const avatarButton = screen.getByRole('button');
-    await user.click(avatarButton);
+    await user.click(screen.getByRole('button'));
 
     const combo = await screen.findByRole('combobox', { name: 'user.list.label' });
     await user.click(combo);
 
     expect(screen.queryAllByRole('option')).toHaveLength(0);
+  });
+
+  it('renders modified mode as an inline editable combobox', () => {
+    render(<UserList userId="alice" onChange={vi.fn()} i18nLabel="username" isModified />, {
+      wrapper: createWrapper(defaultUsers)
+    });
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
+  });
+
+  it('updates value directly while typing in modified mode', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    const StatefulModifiedUserList = () => {
+      const [value, setValue] = React.useState('');
+      return (
+        <UserList
+          userId={value}
+          onChange={nextValue => {
+            setValue(nextValue as string);
+            onChange(nextValue);
+          }}
+          i18nLabel="username"
+          isModified
+        />
+      );
+    };
+
+    render(<StatefulModifiedUserList />, { wrapper: createWrapper(defaultUsers) });
+
+    const input = screen.getByRole('combobox');
+    await user.type(input, 'ali');
+
+    expect(onChange).toHaveBeenCalled();
+    expect(onChange.mock.calls.some(call => call[0] === 'ali')).toBe(true);
+  });
+
+  it('supports multiple selected users in modified mode with removable chips', async () => {
+    const user = userEvent.setup();
+
+    const StatefulMultiUserList = () => {
+      const [value, setValue] = React.useState<string[]>(['alice']);
+      return (
+        <UserList
+          i18nLabel="username"
+          isModified
+          allowMultiple
+          selectedUserIds={value}
+          onChangeSelectedUserIds={setValue}
+        />
+      );
+    };
+
+    render(<StatefulMultiUserList />, { wrapper: createWrapper(defaultUsers) });
+
+    expect(screen.getAllByText('alice').length).toBeGreaterThan(0);
+
+    const input = screen.getByRole('combobox');
+    await user.click(input);
+    const listbox = await screen.findByRole('listbox');
+    await user.click(within(listbox).getByRole('option', { name: /analystb/i }));
+
+    expect(screen.getAllByText('analystB').length).toBeGreaterThan(0);
   });
 });
