@@ -90,7 +90,7 @@ def test_update_dossier_fails(datastore: HowlerDatastore):
         dossier_service.update_dossier(existing_dossier.dossier_id, {"test": "TEST"}, user)
 
     with pytest.raises(InvalidDataException):
-        dossier_service.update_dossier(existing_dossier.dossier_id, {"group", "//"}, user)
+        dossier_service.update_dossier(existing_dossier.dossier_id, {"group": "//"}, user)
 
     assert exc.match("can be updated")
 
@@ -370,7 +370,7 @@ def test_validate_group_name_valid_path(valid_group: str):
     dossier_service.validate_group(valid_group)
 
 
-@pytest.mark.parametrize("invalid_path", ["/" * 5, "London//Montréal", "/London", "London/"])
+@pytest.mark.parametrize("invalid_path", ["/////", "London//Montréal", "/London", "London/"])
 def test_validate_group_name_invalid_paths(invalid_path):
     with pytest.raises(InvalidDataException):
         dossier_service.validate_group(invalid_path)

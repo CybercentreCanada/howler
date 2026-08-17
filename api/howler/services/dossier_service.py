@@ -100,8 +100,9 @@ def validate_group(group: str) -> None:
         group: Group path to validate, such as ``Parent/Child``.
 
     Raises:
-        InvalidDataException: If ``group`` is not a string or contains
-            unsupported characters or empty path sections.
+        TypeError: If ``group`` is not a string.
+        InvalidDataException: If ``group`` contains unsupported characters
+            or empty path sections.
     """
     if not isinstance(group, str):
         raise TypeError('Data "group" should be a slash-separated string.')
@@ -110,13 +111,15 @@ def validate_group(group: str) -> None:
     if group == "":
         return
 
+    # 1. Check for allowed characters
     if not re.fullmatch(r"[A-Za-zùûüÿàâæçéèêëïîôœÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ/]*", group):
         raise InvalidDataException(
             "Group contains invalid characters. Only English, French alphabetical and / character are allowed"
         )
 
-    if re.match(r"/{2,}", group):
-        raise InvalidDataException('Every section of a group path need character between the "/"')
+    # 2. Check for empty sections anywhere (consecutive slashes, or leading/trailing slashes)
+    if "//" in group or group.startswith("/") or group.endswith("/"):
+        raise InvalidDataException('Every section of a group path needs characters between the "/"')
 
     return
 
