@@ -346,6 +346,33 @@ def test_get_matching_dossiers_with_lucene_service_mock(datastore: HowlerDatasto
         mock_match.assert_any_call("never_match_query", test_hit)
 
 
+@pytest.mark.parametrize("invalid_char", ["{", "}", '"', "\\", "@", "#", "$", "%", "^", "&", "*", "(", ")", "//"])
+def test_validate_group_name_invalid_characters(invalid_char):
+    test_path = f"Lond{invalid_char}on/Montréal"
+    with pytest.raises(InvalidDataException):
+        dossier_service.validate_group(test_path)
+
+
+@pytest.mark.parametrize("invalid_type", [1, ["s"], {"test": "test"}, True])
+def test_validate_group_name_invalid_type(invalid_type: Any):
+    with pytest.raises(TypeError):
+        dossier_service.validate_group(invalid_type)
+
+
+@pytest.mark.parametrize(
+    "valid_group", ["London/Montréal", "banana/Château/argent", "bread", "àâæçéèêëïîôœ/ÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ"]
+)
+def test_validate_group_name_valid_path(valid_group: str):
+    """Verify valid group path for the function validate_group_name"""
+    dossier_service.validate_group(valid_group)
+
+
+@pytest.mark.parametrize("invalid_path", ["/" * 5, "London//Montréal", "/London", "London/"])
+def test_validate_group_name_invalid_paths(invalid_path):
+    with pytest.raises(InvalidDataException):
+        dossier_service.validate_group(invalid_path)
+
+
 @patch("howler.services.dossier_service.datastore")
 def test_get_matching_dossiers_datastore_integration(mock_datastore, datastore: HowlerDatastore):
     """Test get_matching_dossiers when it fetches dossiers from datastore."""
