@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import QueryResultText from '../../elements/display/QueryResultText';
+import DossierGroupValidation from '../help/DossierGroupValidation';
 import RecordQuery from '../hits/search/RecordQuery';
 import LeadForm from './LeadForm';
 import PivotForm from './PivotForm';
@@ -40,6 +41,7 @@ const DossierEditor: FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
+  let groupError;
 
   const isNarrow = useMediaQuery(`(max-width: ${i18n.language === 'en' ? 1275 : 1375}px)`);
 
@@ -56,6 +58,11 @@ const DossierEditor: FC = () => {
   const [loading, setLoading] = useState(false);
 
   const dirty = useMemo(() => !isEqual(originalDossier, dossier), [dossier, originalDossier]);
+
+  groupError = useMemo(() => {
+    return DossierGroupValidation(dossier?.group ?? '');
+  }, [dossier?.group]);
+
   const validationError = useMemo(() => {
     if (!dossier) {
       return t('route.dossiers.manager.validation.error');
@@ -79,6 +86,11 @@ const DossierEditor: FC = () => {
 
     if ((dossier.leads ?? []).length < 1 && (dossier.pivots ?? []).length < 1) {
       return t('route.dossiers.manager.validation.error.items');
+    }
+
+    if (groupError) {
+      console.log('blocked!');
+      return t(groupError);
     }
 
     for (const lead of dossier.leads ?? []) {
@@ -323,6 +335,8 @@ const DossierEditor: FC = () => {
               value={dossier.group ?? ''}
               onChange={ev => setDossier(_dossier => ({ ..._dossier, group: ev.target.value }))}
               fullWidth
+              error={Boolean(groupError)}
+              helperText={groupError || ' '}
             />
           </Paper>
           <Tabs value={tab} onChange={(_ev, value) => setTab(value)}>
