@@ -72,26 +72,6 @@ def get_dossier(id: str, as_odm: Literal[False], version: Literal[False]) -> dic
 def get_dossier(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
 
 
-def is_valid_group(group: str) -> None:
-    """Validate a slash-separated dossier group path.
-
-    Args:
-        group: Group path to validate, such as ``Parent/Child``.
-
-    Raises:
-        InvalidDataException: If ``group`` is not a string or contains
-            unsupported characters or empty path sections.
-    """
-    if not isinstance(group, str):
-        raise InvalidDataException('Data "group" should be a slash-separated string.')
-    if not re.fullmatch(r"[A-Za-zùûüÿàâæçéèêëïîôœÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ/]*", group):
-        raise InvalidDataException(
-            "Group contains invalid characters. Only English, French alphabetical and / character are allowed"
-        )
-    if re.match(r"/{2,}", group):
-        raise InvalidDataException('Every section of a group path need character between the "/"')
-
-
 def get_dossier(
     id: str,
     as_odm: Literal[True, False] = False,
@@ -111,6 +91,34 @@ def get_dossier(
         NotFoundException: If the dossier doesn't exist
     """
     return datastore().dossier.get_if_exists(key=id, as_obj=as_odm, version=version)
+
+
+def validate_group(group: str) -> None:
+    """Validate a slash-separated dossier group path.
+
+    Args:
+        group: Group path to validate, such as ``Parent/Child``.
+
+    Raises:
+        InvalidDataException: If ``group`` is not a string or contains
+            unsupported characters or empty path sections.
+    """
+    if not isinstance(group, str):
+        raise TypeError('Data "group" should be a slash-separated string.')
+
+    # Empty string is accepted as no group
+    if group == "":
+        return
+
+    if not re.fullmatch(r"[A-Za-zùûüÿàâæçéèêëïîôœÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ/]*", group):
+        raise InvalidDataException(
+            "Group contains invalid characters. Only English, French alphabetical and / character are allowed"
+        )
+
+    if re.match(r"/{2,}", group):
+        raise InvalidDataException('Every section of a group path need character between the "/"')
+
+    return
 
 
 def create_dossier(  # noqa: C901
@@ -173,7 +181,7 @@ def create_dossier(  # noqa: C901
 
         # Verify group is a valid group
         if "group" in dossier_data:
-            is_valid_group(dossier_data["group"])
+            validate_group(dossier_data["group"])
 
         # Save the dossier to the datastore
         storage.dossier.save(dossier.dossier_id, dossier, refresh=refresh)
@@ -253,7 +261,7 @@ def update_dossier(  # noqa: C901
 
         # Validate the group is only of valid character and valid type
         if "group" in dossier_data:
-            is_valid_group(dossier_data["group"])
+            validate_group(dossier_data["group"])
         # Merge the new data with existing dossier data
         new_data = Dossier(cast(dict, merge({}, existing_dossier.as_primitives(), dossier_data)))
 
