@@ -2,7 +2,7 @@
 
 ## Howler API `v4.0.8`
 
-- **Action User Execution** _(bugfix)_: Fixed bug when running transition action via action batch
+- **Action User Execution** _(bugfix)_: Fixed bug when running transition action via action batch. This slightly changes the structure of the queue, in a minor breaking change, but this should be an internal system.
 
 ## Howler API `v4.0.7`
 
