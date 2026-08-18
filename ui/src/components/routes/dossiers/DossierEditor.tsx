@@ -41,7 +41,6 @@ const DossierEditor: FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
-  let groupError;
 
   const isNarrow = useMediaQuery(`(max-width: ${i18n.language === 'en' ? 1275 : 1375}px)`);
 
@@ -59,7 +58,7 @@ const DossierEditor: FC = () => {
 
   const dirty = useMemo(() => !isEqual(originalDossier, dossier), [dossier, originalDossier]);
 
-  groupError = useMemo(() => {
+  const groupError = useMemo(() => {
     return DossierGroupValidation(dossier?.group ?? '');
   }, [dossier?.group]);
 
@@ -89,7 +88,6 @@ const DossierEditor: FC = () => {
     }
 
     if (groupError) {
-      console.log('blocked!');
       return t(groupError);
     }
 
@@ -177,7 +175,7 @@ const DossierEditor: FC = () => {
     }
 
     return null;
-  }, [dossier, i18n.language, searchDirty, searchTotal, t]);
+  }, [dossier, i18n.language, searchDirty, searchTotal, t, groupError]);
 
   const save = useCallback(async () => {
     setLoading(true);
@@ -336,7 +334,7 @@ const DossierEditor: FC = () => {
               onChange={ev => setDossier(_dossier => ({ ..._dossier, group: ev.target.value }))}
               fullWidth
               error={Boolean(groupError)}
-              helperText={groupError || ' '}
+              helperText={t(groupError) || ' '}
             />
           </Paper>
           <Tabs value={tab} onChange={(_ev, value) => setTab(value)}>
