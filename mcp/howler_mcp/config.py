@@ -28,7 +28,7 @@ def _require_https_for_non_local(url: str, env_name: str) -> str:
             "howler-rest",
             "howler-rest.howler.svc.cluster.local",
         }
-        or hostname.endswith("svc.cluster.local")
+        and not hostname.endswith("svc.cluster.local")
     ):
         raise ValueError(f"{env_name} must use https for non-local hosts. Got: {url}")
 
