@@ -48,8 +48,7 @@ const DossierEditor: FC = () => {
   const [dossier, setDossier] = useState<Partial<Dossier>>({
     type: 'global',
     leads: [],
-    pivots: [],
-    group: ''
+    pivots: []
   });
   const [tab, setTab] = useState<'leads' | 'pivots'>((searchParams.get('tab') as 'leads' | 'pivots') ?? 'leads');
   const [searchTotal, setSearchTotal] = useState(-1);
@@ -57,10 +56,6 @@ const DossierEditor: FC = () => {
   const [loading, setLoading] = useState(false);
 
   const dirty = useMemo(() => !isEqual(originalDossier, dossier), [dossier, originalDossier]);
-
-  const groupError = useMemo(() => {
-    return DossierGroupValidation(dossier?.group ?? '');
-  }, [dossier?.group]);
 
   const validationError = useMemo(() => {
     if (!dossier) {
@@ -85,10 +80,6 @@ const DossierEditor: FC = () => {
 
     if ((dossier.leads ?? []).length < 1 && (dossier.pivots ?? []).length < 1) {
       return t('route.dossiers.manager.validation.error.items');
-    }
-
-    if (groupError) {
-      return t(groupError);
     }
 
     for (const lead of dossier.leads ?? []) {
@@ -124,6 +115,12 @@ const DossierEditor: FC = () => {
     }
 
     for (const pivot of dossier.pivots ?? []) {
+      const groupErr = DossierGroupValidation(pivot.group ?? '');
+      if (groupErr) {
+        // If there's an error, return the translated error string to disable the Save button
+        return t(groupErr);
+      }
+
       if (!pivot.label) {
         // You have not configured a pivot label.
         return t('route.dossiers.manager.validation.error.pivots.label');
@@ -175,7 +172,7 @@ const DossierEditor: FC = () => {
     }
 
     return null;
-  }, [dossier, i18n.language, searchDirty, searchTotal, t, groupError]);
+  }, [dossier, i18n.language, searchDirty, searchTotal, t]);
 
   const save = useCallback(async () => {
     setLoading(true);
@@ -313,29 +310,6 @@ const DossierEditor: FC = () => {
               />
               {searchTotal >= 0 && <QueryResultText count={searchTotal} query={dossier.query} />}
             </Stack>
-            <Typography
-              sx={theme => ({
-                color: theme.palette.text.secondary,
-                fontSize: '0.9em',
-                fontStyle: 'italic',
-                mt: 0.5
-              })}
-              variant="body2"
-            >
-              {t('route.dossiers.groups.explanation')}
-            </Typography>
-            {/* TODO : AG :  Add a dropdown to select from existing groups, and allow creating new groups. For now, just a text field to enter a group name. */}
-            <TextField
-              id="dossier-group"
-              disabled={!dossier || loading}
-              label={t('route.dossiers.groups.label')}
-              size="small"
-              value={dossier.group ?? ''}
-              onChange={ev => setDossier(_dossier => ({ ..._dossier, group: ev.target.value }))}
-              fullWidth
-              error={Boolean(groupError)}
-              helperText={t(groupError) || ' '}
-            />
           </Paper>
           <Tabs value={tab} onChange={(_ev, value) => setTab(value)}>
             <Tab label={t('route.dossiers.manager.tabs.leads')} value="leads" />
