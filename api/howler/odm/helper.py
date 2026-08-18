@@ -489,7 +489,6 @@ def generate_useful_dossier(users: list[User]) -> Dossier:
             "query": f'howler.analytic:"{choice(EXAMPLE_ANALYTICS)}"',
             "type": type,
             "owner": choice(users).uname,
-            "group": "test/group",
         }
     )
 
@@ -518,6 +517,7 @@ def generate_useful_dossier(users: list[User]) -> Dossier:
                     "label": {"en": get_random_word(), "fr": get_random_word()},
                     "value": f"https://google.com/search?q={{{{test{i}}}}} and {{{{custom_value}}}}",
                     "format": "link",
+                    "group": choice(["", "parent/child", "test/group"]),
                     "mappings": [
                         {"key": f"test{i}", "field": choice(list(Hit.flat_fields().keys()))},
                         {"key": "custom_value", "field": "custom", "custom_value": get_random_word()},

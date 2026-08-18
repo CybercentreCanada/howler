@@ -253,8 +253,9 @@ def update_dossier(  # noqa: C901
             mappings = pivot.get("mappings") or []
             if len(mappings) != len(set(mapping.get("key") for mapping in mappings)):
                 raise InvalidDataException("One of your pivots has duplicate keys set.")
-            if hasattr(pivot, "group") and isinstance(pivot.group, str):
-                validate_group(pivot.group)
+            group = pivot.get("group") if isinstance(pivot, dict) else getattr(pivot, "group", None)
+            if isinstance(group, str):
+                validate_group(group)
 
     try:
         # Validate the Lucene query if it's being updated
