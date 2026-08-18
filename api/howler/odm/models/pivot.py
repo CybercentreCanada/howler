@@ -30,6 +30,7 @@ class Pivot(odm.Model):
     icon: Optional[str] = odm.Text(
         description="An optional icon to use in the tab display for this dossier.", optional=True
     )
+    group: Optional[str] = odm.Keyword(description="The group this pivot will merge with in hitviewer")
     label: LocalizedLabel = odm.Compound(LocalizedLabel, description="Labels for the pivot in the UI.")
     value: str = odm.Keyword(description="The link/plugin information to pivot on.")
     format: str = odm.Keyword(description="The format of the pivot.")
