@@ -34,6 +34,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { useSearchParams } from 'react-router-dom';
+import DossierGroupValidation from '../help/DossierGroupValidation';
 
 export interface PivotFormProps {
   pivot: Pivot;
@@ -192,6 +193,10 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setSearchParams, tab]);
 
+  const groupError = useMemo(() => {
+    return DossierGroupValidation(pivot?.group ?? '');
+  }, [pivot?.group]);
+
   return (
     <Paper sx={{ p: 1, display: 'flex', flexDirection: 'column', flex: 1 }} id="pivot-form">
       <Stack spacing={2}>
@@ -255,6 +260,29 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
             <Add />
           </Button>
         </Stack>
+        {/* TODO : AG :  Add a dropdown to select from existing groups, and allow creating new groups. For now, just a text field to enter a group name. */}
+        <Typography
+          sx={theme => ({
+            color: theme.palette.text.secondary,
+            fontSize: '0.9em',
+            fontStyle: 'italic',
+            mt: 0.5
+          })}
+          variant="body2"
+        >
+          {t('route.dossiers.groups.explanation')}
+        </Typography>
+        <TextField
+          id="dossier-group"
+          disabled={!dossier || loading}
+          label={t('route.pivots.groups.label')}
+          size="small"
+          value={pivot?.group ?? ''}
+          onChange={ev => update({ group: ev.target.value })}
+          fullWidth
+          error={Boolean(groupError)}
+          helperText={t(groupError) || ' '}
+        />
         <Stack spacing={2}>
           <Stack direction="row" alignItems="center" position="relative">
             <TextField
@@ -278,12 +306,14 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
               <Delete />
             </Button>
           </Stack>
+
           <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: `${theme.spacing(0.5)} !important` }}>
             <Typography color="text.secondary">{t('route.dossiers.manager.icon.description')}</Typography>
             <IconButton size="small" component="a" href="https://icon-sets.iconify.design/">
               <OpenInNew fontSize="small" />
             </IconButton>
           </Stack>
+
           <Stack direction="row" spacing={2}>
             <TextField
               size="small"
