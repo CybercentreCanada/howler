@@ -15,7 +15,7 @@ from howler.services import action_service, hit_service
 def _drain_action_queues():
     """Pop all pending items from every per-trigger action queue."""
     for trigger in VALID_TRIGGERS:
-        queue = action_service._get_action_queue(trigger)
+        queue = action_service.get_action_queue(trigger)
         while queue.pop(blocking=False) is not None:
             pass
 
@@ -211,7 +211,7 @@ def test_process_action_batch_create_trigger(datastore_connection: HowlerDatasto
     datastore_connection.hit.commit()
 
     batch = [
-        {"hit_ids": [test_hit.howler.id], "user": user.as_primitives()},
+        {"hit_ids": [test_hit.howler.id], "uname": user["uname"]},
     ]
 
     with caplog.at_level(logging.INFO):
@@ -260,7 +260,7 @@ def test_process_action_batch_no_matching_action(datastore_connection: HowlerDat
     datastore_connection.hit.commit()
 
     batch = [
-        {"hit_ids": [test_hit.howler.id], "user": user.as_primitives()},
+        {"hit_ids": [test_hit.howler.id], "uname": user["uname"]},
     ]
 
     with caplog.at_level(logging.DEBUG):
@@ -321,8 +321,8 @@ def test_process_action_batch_coalesces_duplicates(datastore_connection: HowlerD
 
     # Simulate two separate queue items that get coalesced into one batch
     batch = [
-        {"hit_ids": [hit1.howler.id], "user": user.as_primitives()},
-        {"hit_ids": [hit2.howler.id], "user": user.as_primitives()},
+        {"hit_ids": [hit1.howler.id], "uname": user["uname"]},
+        {"hit_ids": [hit2.howler.id], "uname": user["uname"]},
     ]
 
     with caplog.at_level(logging.INFO):

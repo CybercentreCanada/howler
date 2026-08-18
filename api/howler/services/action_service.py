@@ -1,5 +1,6 @@
 import json
-from typing import Any, Optional
+from collections import defaultdict
+from typing import Any, Optional, TypedDict
 
 from flask import Response
 
@@ -18,11 +19,19 @@ from howler.utils.str_utils import sanitize_lucene_query
 
 logger = get_logger(__file__)
 
+
+class TriggeredAction(TypedDict):
+    """Type for triggered actions"""
+
+    hit_ids: list[str]
+    uname: str | None
+
+
 # Per-trigger persistent queues for buffering action execution requests.
-_action_queues: dict[str, NamedQueue[dict]] = {}
+_action_queues: dict[str, NamedQueue[TriggeredAction]] = {}
 
 
-def _get_action_queue(trigger: str) -> NamedQueue[dict]:
+def get_action_queue(trigger: str) -> NamedQueue[TriggeredAction]:
     """Return the action queue for *trigger*, creating it on first use.
 
     Raises:
@@ -65,10 +74,10 @@ def enqueue_action_execution(hit_ids: list[str], trigger: str = "create", user: 
         return
 
     try:
-        _get_action_queue(trigger).push(
+        get_action_queue(trigger).push(
             {
                 "hit_ids": hit_ids,
-                "user": user.as_primitives() if user is not None and hasattr(user, "as_primitives") else user,
+                "uname": user.uname if user else None,
             }
         )
     except Exception:
@@ -77,7 +86,7 @@ def enqueue_action_execution(hit_ids: list[str], trigger: str = "create", user: 
         bulk_execute_on_query(query, trigger=trigger, user=user)
 
 
-def process_action_batch(trigger: str, items: list[dict]) -> None:
+def process_action_batch(trigger: str, items: list[TriggeredAction]) -> None:
     """Process a batch of queued action execution requests for a single trigger.
 
     Groups items by user and issues a single coalesced
@@ -90,26 +99,23 @@ def process_action_batch(trigger: str, items: list[dict]) -> None:
     if not items:
         return
 
-    groups: dict[str | None, tuple[list[str], Any]] = {}
+    groups: dict[str | None, list[str]] = defaultdict(list)
 
     for item in items:
-        user_data = item.get("user")
-        user_key = user_data["uname"] if isinstance(user_data, dict) and "uname" in user_data else None
+        uname = item.get("uname")
 
-        if user_key not in groups:
-            groups[user_key] = ([], user_data)
+        groups[uname].extend(item["hit_ids"])
 
-        groups[user_key][0].extend(item["hit_ids"])
-
-    for user_key, (hit_ids, user_data) in groups.items():
+    for uname, hit_ids in groups.items():
         # Deduplicate IDs within a batch group
         unique_ids = list(dict.fromkeys(hit_ids))
         query = f"howler.id:({' OR '.join(sanitize_lucene_query(h) for h in unique_ids)})"
 
         try:
-            bulk_execute_on_query(query, trigger=trigger, user=user_data)
+            user = datastore().user.get(uname)
+            bulk_execute_on_query(query, trigger=trigger, user=user)
         except Exception:
-            logger.exception("Error processing action batch for trigger=%s user=%s", trigger, user_key)
+            logger.exception("Error processing action batch for trigger=%s user=%s", trigger, uname)
 
 
 def validate_action(new_action: Any) -> Optional[Response]:  # noqa: C901

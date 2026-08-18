@@ -13,7 +13,7 @@ from apscheduler.schedulers.base import BaseScheduler
 from howler.common.logging import get_logger
 from howler.config import config
 from howler.odm.models.action import VALID_TRIGGERS
-from howler.services.action_service import _get_action_queue, process_action_batch
+from howler.services.action_service import TriggeredAction, get_action_queue, process_action_batch
 
 logger = get_logger(__file__)
 
@@ -33,7 +33,7 @@ def run_worker(trigger: str) -> None:  # pragma: no cover – long-running loop,
         logger.info("Action queue worker disabled by configuration, not starting for trigger=%s", trigger)
         return
 
-    queue = _get_action_queue(trigger)
+    queue = get_action_queue(trigger)
     logger.info(
         "Action queue worker started for trigger=%s (batch_size=%d, timeout=%ds)",
         trigger,
@@ -41,7 +41,7 @@ def run_worker(trigger: str) -> None:  # pragma: no cover – long-running loop,
         BATCH_TIMEOUT,
     )
 
-    batch: list[dict] = []
+    batch: list[TriggeredAction] = []
 
     while True:
         try:
