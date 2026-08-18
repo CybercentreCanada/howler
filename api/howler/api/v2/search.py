@@ -98,7 +98,10 @@ def search(indexes: str, user: User, **kwargs):
         }
     )
 
-    params["sort"] = [entry for entry in params.get("sort", "").split(",") if entry] or search_service.DEFAULT_SORT
+    if params.get("sort"):
+        params["sort"] = [entry for entry in params["sort"].split(",") if entry]
+    else:
+        params.pop("sort", None)
 
     query = req_data.get("query", None)
     if not query:

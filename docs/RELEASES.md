@@ -1,5 +1,13 @@
 # Howler Releases
 
+# Howler UI `v3.0.4`
+
+- **Dashboard View Card Settings** _(bugfix)_: Dashboard view cards now apply the view's configured sort and time span when fetching records.
+
+# Howler API `v4.0.9`
+
+- **V2 Search Default Sort** _(bugfix)_: Applied the configured per-index default sort when v2 searches omit an explicit sort.
+
 ## Howler API `v4.0.8`
 
 - **Action User Execution** _(bugfix)_: Fixed bug when running transition action via action batch. This slightly changes the structure of the queue, in a minor breaking change, but this should be an internal system.

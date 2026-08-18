@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { isEvent } from 'utils/typeUtils';
+import { convertDateToLucene } from 'utils/utils';
 import { buildViewUrl } from 'utils/viewUtils';
 
 // Custom hook to select records by IDs with proper memoization
@@ -118,6 +119,8 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
         api.v2.search.post((view.indexes ?? ['hit']) as SearchIndex[], {
           query: view.query,
           rows: limit,
+          sort: view.sort,
+          filters: view.span ? [`event.created:${convertDateToLucene(view.span)}`] : [],
           metadata: ['analytic']
         })
       );
@@ -131,7 +134,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
       isRefreshing.current = false;
       onRefreshComplete?.();
     }
-  }, [dispatchApi, limit, view?.query, view?.indexes, loadRecords, onRefreshComplete]);
+  }, [dispatchApi, limit, view?.query, view?.indexes, view?.sort, view?.span, loadRecords, onRefreshComplete]);
 
   const debouncedRefresh = useCallback(() => {
     if (debounceTimerRef.current) {

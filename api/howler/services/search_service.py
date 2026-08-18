@@ -10,7 +10,7 @@ from howler.common.logging import get_logger
 from howler.datastore.collection import parse_sort
 from howler.datastore.exceptions import SearchException, SearchRetryException
 from howler.datastore.types import SearchResult
-from howler.helper.search import get_collection, has_access_control
+from howler.helper.search import get_collection, get_default_sort, has_access_control
 from howler.odm.models.user import User
 from howler.services import case_service
 from howler.utils.indexes import get_logical_index_name, normalize_indexes
@@ -113,7 +113,12 @@ def search(  # noqa: C901
         query = "id:*"
 
     if sort is None:
-        sort = DEFAULT_SORT
+        default_sorts = [get_default_sort(index, user) for index in _parse_index_list(indexes)] if user else []
+        default_sort = default_sorts[0] if default_sorts else None
+        if default_sort is not None and all(index_sort == default_sort for index_sort in default_sorts):
+            sort = default_sort
+        else:
+            sort = DEFAULT_SORT
 
     if rows is None:
         rows = DEFAULT_ROW_SIZE

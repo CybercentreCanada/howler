@@ -148,6 +148,8 @@ describe('ViewCard', () => {
     expect(mockSearchPost).toHaveBeenCalledWith(['hit'], {
       query: mockView.query,
       rows: 3,
+      sort: mockView.sort,
+      filters: [`event.created:[now-1M TO now]`],
       metadata: ['analytic']
     });
   });

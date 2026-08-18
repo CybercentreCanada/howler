@@ -154,6 +154,7 @@ class TestSearch:
             body = result.get_json()
             assert body["api_response"]["total"] == 1
             mock_search_svc.search.assert_called_once()
+            assert "sort" not in mock_search_svc.search.call_args.kwargs
 
     @patch("howler.api.v2.search.search_service")
     @patch("howler.security.auth_service")
