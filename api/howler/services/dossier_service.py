@@ -28,7 +28,6 @@ PERMITTED_KEYS = {
     "pivots",
     "type",
     "owner",
-    "group",
 }
 
 
@@ -178,13 +177,12 @@ def create_dossier(  # noqa: C901
         for pivot in dossier.pivots:
             if len(pivot.mappings) != len(set(mapping.key for mapping in pivot.mappings)):
                 raise InvalidDataException("One of your pivots has duplicate keys set.")
+            # verify the pivot group is valid format
+            if hasattr(pivot, "group") and isinstance(pivot.group, str):
+                validate_group(pivot.group)
 
         # Ensure the owner is set to the current user (security measure)
         dossier.owner = username
-
-        # Verify group is a valid group
-        if "group" in dossier_data:
-            validate_group(dossier_data["group"])
 
         # Save the dossier to the datastore
         storage.dossier.save(dossier.dossier_id, dossier, refresh=refresh)
@@ -255,6 +253,8 @@ def update_dossier(  # noqa: C901
             mappings = pivot.get("mappings") or []
             if len(mappings) != len(set(mapping.get("key") for mapping in mappings)):
                 raise InvalidDataException("One of your pivots has duplicate keys set.")
+            if hasattr(pivot, "group") and isinstance(pivot.group, str):
+                validate_group(pivot.group)
 
     try:
         # Validate the Lucene query if it's being updated
@@ -262,9 +262,6 @@ def update_dossier(  # noqa: C901
             # Test the query against the hit index to ensure it's valid
             storage.hit.search(dossier_data["query"])
 
-        # Validate the group is only of valid character and valid type
-        if "group" in dossier_data:
-            validate_group(dossier_data["group"])
         # Merge the new data with existing dossier data
         new_data = Dossier(cast(dict, merge({}, existing_dossier.as_primitives(), dossier_data)))
 
