@@ -90,6 +90,7 @@ Primary runtime variables:
 - MCP_BASE_URL
 - MCP_HOST
 - MCP_PORT
+- MCP_LOG_LEVEL
 - MCP_AUDIENCE
 - MCP_SCOPE
 
