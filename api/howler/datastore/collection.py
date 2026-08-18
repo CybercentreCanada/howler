@@ -591,7 +591,6 @@ class ESCollection(Generic[ModelType]):
 
         :return: Should return True of the commit was successful on all hosts
         """
-        logger.warning("committing index %s", self.index_name)
         self.with_retries(self.datastore.client.indices.refresh, index=self.index_name)
         self.with_retries(self.datastore.client.indices.clear_cache, index=self.index_name)
         return True
