@@ -88,6 +88,7 @@ class MCPSettings:
     HOST = os.environ.get("MCP_HOST", "0.0.0.0")
     PUBLIC_HOST = os.environ.get("MCP_PUBLIC_HOST", "localhost" if HOST in {"0.0.0.0", "::"} else HOST)
     PORT = os.environ.get("MCP_PORT", "8000")
+    LOG_LEVEL = os.environ.get("MCP_LOG_LEVEL", "INFO").upper()
     BASE_URL = _require_https_for_non_local(
         os.environ.get("MCP_BASE_URL", f"http://{PUBLIC_HOST}:{PORT}/mcp"),
         "MCP_BASE_URL",

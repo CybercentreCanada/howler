@@ -33,6 +33,7 @@ services:
       MCP_HOST: ${MCP_HOST:-0.0.0.0}
       MCP_PUBLIC_HOST: ${MCP_PUBLIC_HOST:-localhost}
       MCP_PORT: ${MCP_PORT:-8000}
+      MCP_LOG_LEVEL: ${MCP_LOG_LEVEL:-INFO}
       MCP_BASE_URL: ${MCP_BASE_URL:-http://localhost:8000/mcp}
       MCP_SCOPE: ${MCP_SCOPE:-openid offline_access}
       MCP_AUDIENCE: ${MCP_AUDIENCE:-howler}
