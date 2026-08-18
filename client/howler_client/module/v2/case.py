@@ -42,36 +42,46 @@ class Case(object):
         """
         return self._connection.post(api_path_v2("case/"), json=case_data)
 
-    def update(self: Self, case_id: str, updates: dict[str, Any]) -> dict[str, Any]:
+    def update(
+        self: Self, case_id: str, updates: dict[str, Any], refresh: bool | Literal["true", "false", "wait_for"] = False
+    ) -> dict[str, Any]:
         """Update fields on an existing case.
 
         Args:
             case_id: ID of the case to update.
             updates: Dictionary of fields to update.
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
+                Defaults to False.
 
         Returns:
             The updated case data.
         """
-        return self._connection.put(api_path_v2("case", case_id), json=updates)
+        return self._connection.put(api_path_v2("case", case_id, refresh=refresh), json=updates)
 
-    def delete(self: Self, case_ids: list[str]) -> None:
+    def delete(self: Self, case_ids: list[str], refresh: bool | Literal["true", "false", "wait_for"] = False) -> None:
         """Delete one or more cases.
 
         Args:
             case_ids: List of case IDs to delete.
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
+                Defaults to False.
         """
-        return self._connection.delete(api_path_v2("case/"), json=case_ids)
+        return self._connection.delete(api_path_v2("case/", refresh=refresh), json=case_ids)
 
-    def hide(self: Self, case_ids: list[str]) -> dict[Literal["success"], bool]:
+    def hide(
+        self: Self, case_ids: list[str], refresh: bool | Literal["true", "false", "wait_for"] = False
+    ) -> dict[Literal["success"], bool]:
         """Hide one or more cases.
 
         Args:
             case_ids: List of case IDs to hide.
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
+                Defaults to False.
 
         Returns:
             Whether the operation succeeded.
         """
-        return self._connection.post(api_path_v2("case/hide"), json=case_ids)
+        return self._connection.post(api_path_v2("case/hide", refresh=refresh), json=case_ids)
 
     def append_item(
         self: Self,
@@ -81,6 +91,7 @@ class Case(object):
         path: str | None = None,
         name: str | None = None,
         parent: str | None = None,
+        refresh: bool | Literal["true", "false", "wait_for"] = False,
     ) -> dict[str, Any]:
         """Append an item to a case.
 
@@ -92,6 +103,8 @@ class Case(object):
             name: Optional display name for the item. Defaults to ``value``.
             parent: Optional parent folder item ID. If both ``path`` and ``parent``
                 are provided, the API resolves and applies ``path``.
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
+                Defaults to False.
 
         Returns:
             The updated case data.
@@ -107,71 +120,102 @@ class Case(object):
             payload["path"] = path
 
         return self._connection.post(
-            api_path_v2("case", case_id, "items"),
+            api_path_v2("case", case_id, "items", refresh=refresh),
             json=payload,
         )
 
-    def delete_items(self: Self, case_id: str, item_ids: list[str]) -> dict[str, Any]:
+    def delete_items(
+        self: Self, case_id: str, item_ids: list[str], refresh: bool | Literal["true", "false", "wait_for"] = False
+    ) -> dict[str, Any]:
         """Remove items from a case.
 
         Args:
             case_id: ID of the case.
             item_ids: List of item IDs to remove.
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
+                Defaults to False.
 
         Returns:
             The updated case data.
         """
-        return self._connection.delete(api_path_v2("case", case_id, "items"), json={"ids": item_ids})
+        return self._connection.delete(api_path_v2("case", case_id, "items", refresh=refresh), json={"ids": item_ids})
 
-    def rename_item(self: Self, case_id: str, item_id: str, new_name: str) -> dict[str, Any]:
+    def rename_item(
+        self: Self,
+        case_id: str,
+        item_id: str,
+        new_name: str,
+        refresh: bool | Literal["true", "false", "wait_for"] = False,
+    ) -> dict[str, Any]:
         """Rename an item within a case.
 
         Args:
             case_id: ID of the case.
             item_id: ID identifying the item to rename.
             new_name: New display name for the item.
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
+                Defaults to False.
 
         Returns:
             The updated case data.
         """
         return self._connection.put(
-            api_path_v2("case", case_id, "items"),
+            api_path_v2("case", case_id, "items", refresh=refresh),
             json={"id": item_id, "name": new_name},
         )
 
-    def add_rule(self: Self, case_id: str, rule_data: dict[str, Any]) -> dict[str, Any]:
+    def add_rule(
+        self: Self,
+        case_id: str,
+        rule_data: dict[str, Any],
+        refresh: bool | Literal["true", "false", "wait_for"] = False,
+    ) -> dict[str, Any]:
         """Add a correlation rule to a case.
 
         Args:
             case_id: ID of the case.
             rule_data: Rule definition (must include ``query``, ``destination``, ``author``).
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
+                Defaults to False.
 
         Returns:
             The updated case data.
         """
-        return self._connection.post(api_path_v2("case", case_id, "rules"), json=rule_data)
+        return self._connection.post(api_path_v2("case", case_id, "rules", refresh=refresh), json=rule_data)
 
-    def delete_rule(self: Self, case_id: str, rule_id: str) -> dict[str, Any]:
+    def delete_rule(
+        self: Self, case_id: str, rule_id: str, refresh: bool | Literal["true", "false", "wait_for"] = False
+    ) -> dict[str, Any]:
         """Delete a correlation rule from a case.
 
         Args:
             case_id: ID of the case.
             rule_id: ID of the rule to delete.
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
+                Defaults to False.
 
         Returns:
             The updated case data.
         """
-        return self._connection.delete(api_path_v2("case", case_id, "rules", rule_id))
+        return self._connection.delete(api_path_v2("case", case_id, "rules", rule_id, refresh=refresh))
 
-    def update_rule(self: Self, case_id: str, rule_id: str, rule_data: dict[str, Any]) -> dict[str, Any]:
+    def update_rule(
+        self: Self,
+        case_id: str,
+        rule_id: str,
+        rule_data: dict[str, Any],
+        refresh: bool | Literal["true", "false", "wait_for"] = False,
+    ) -> dict[str, Any]:
         """Update a correlation rule on a case.
 
         Args:
             case_id: ID of the case.
             rule_id: ID of the rule to update.
             rule_data: Updated rule fields.
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
+                Defaults to False.
 
         Returns:
             The updated case data.
         """
-        return self._connection.put(api_path_v2("case", case_id, "rules", rule_id), json=rule_data)
+        return self._connection.put(api_path_v2("case", case_id, "rules", rule_id, refresh=refresh), json=rule_data)

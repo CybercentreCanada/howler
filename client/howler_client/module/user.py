@@ -26,28 +26,39 @@ class User(object):
         """
         return self._connection.get(api_path("user", username))
 
-    def add(self: Self, username: str, user_data: dict[str, Any]) -> dict[Literal["success"], bool]:
+    def add(
+        self: Self,
+        username: str,
+        user_data: dict[str, Any],
+        refresh: bool | Literal["true", "false", "wait_for"] = False,
+    ) -> dict[Literal["success"], bool]:
         """Add a user to the system
 
         Args:
             username (str): Name of the user to add to the system
             user_data (dict[str, Any]): Profile data of the user to add
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
+                Defaults to False.
 
         Returns:
             dict[Literal["success"], bool]: Whether creating the user succeeded
         """
-        return self._connection.post(api_path("user", username), json=user_data)
+        return self._connection.post(api_path("user", username, refresh=refresh), json=user_data)
 
-    def delete(self: Self, username: str) -> dict[Literal["success"], bool]:
+    def delete(
+        self: Self, username: str, refresh: bool | Literal["true", "false", "wait_for"] = False
+    ) -> dict[Literal["success"], bool]:
         """Remove the account specified by the username.
 
         Args:
-            str: Name of the user to remove from the system
+            username (str): Name of the user to remove from the system
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
+                Defaults to False.
 
         Returns:
             dict[Literal["success"], bool]: Whether the delete succeeded
         """
-        return self._connection.delete(api_path("user", username))
+        return self._connection.delete(api_path("user", username, refresh=refresh))
 
     def list(
         self: Self,
@@ -60,7 +71,7 @@ class User(object):
         """List users of the system
 
         Args:
-            query (_type_, optional): Filter to apply to the user list. Defaults to "*:*".
+            query (str, optional): Filter to apply to the user list. Defaults to "*:*".
             rows (int, optional): Total number of users returned. Defaults to 10.
             offset (int, optional): Offset in the user index. Defaults to 0.
             sort (str, optional): Sort order. Defaults to "uname asc".
@@ -80,17 +91,24 @@ class User(object):
             )
         )
 
-    def update(self: Self, username: str, user_data: dict[str, Any]) -> dict[Literal["success"], bool]:
+    def update(
+        self: Self,
+        username: str,
+        user_data: dict[str, Any],
+        refresh: bool | Literal["true", "false", "wait_for"] = False,
+    ) -> dict[Literal["success"], bool]:
         """Update a user profile in the system.
 
         Args:
             username (str): Name of the user to update in the system
             user_data (dict[str, Any]): Profile data of the user to update
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
+                Defaults to False.
 
         Returns:
             dict[Literal["success"], bool]: Whether the update succeeded
         """
-        return self._connection.put(api_path("user", username), json=user_data)
+        return self._connection.put(api_path("user", username, refresh=refresh), json=user_data)
 
     def whoami(self: Self) -> dict[str, Any]:
         "Return the currently logged in user"

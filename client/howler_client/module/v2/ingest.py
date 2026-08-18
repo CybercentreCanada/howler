@@ -42,12 +42,15 @@ class Ingest(object):
         self: Self,
         index: str,
         data: Union[dict[str, Any], list[dict[str, Any]]],
+        refresh: bool | Literal["true", "false", "wait_for"] = False,
     ) -> list[str]:
         """Create one or more records in the given index.
 
         Args:
             index: Target index (``hit`` or ``event``).
             data: A single record dict or a list of record dicts.
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
+                Defaults to False.
 
         Returns:
             List of created record IDs.
@@ -56,22 +59,26 @@ class Ingest(object):
             data = [data]
 
         return self._connection.post(
-            api_path_v2("ingest", index),
+            api_path_v2("ingest", index, refresh=refresh),
             data=json.dumps(data),
             headers={"Content-Type": "application/json"},
         )
 
-    def delete(self: Self, indexes: str, ids: list[str]) -> dict[str, Any]:
+    def delete(
+        self: Self, indexes: str, ids: list[str], refresh: bool | Literal["true", "false", "wait_for"] = False
+    ) -> dict[str, Any]:
         """Delete records across one or more indexes.
 
         Args:
             indexes: Comma-separated index names (e.g. ``"hit"`` or ``"hit,event"``).
             ids: List of record IDs to delete.
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
+                Defaults to False.
 
         Returns:
             Dictionary with deletion results.
         """
-        return self._connection.delete(api_path_v2("ingest", indexes), json=ids)
+        return self._connection.delete(api_path_v2("ingest", indexes, refresh=refresh), json=ids)
 
     def validate(
         self: Self,
@@ -102,6 +109,7 @@ class Ingest(object):
         record_id: str,
         new_data: dict[str, Any],
         replace: bool = False,
+        refresh: bool | Literal["true", "false", "wait_for"] = False,
     ) -> dict[str, Any]:
         """Overwrite (patch) a single record.
 
@@ -110,6 +118,8 @@ class Ingest(object):
             record_id: ID of the record to overwrite.
             new_data: Partial record data to merge.
             replace: If ``True``, lists are replaced instead of merged.
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
+                Defaults to False.
 
         Returns:
             The updated record data.
@@ -119,7 +129,7 @@ class Ingest(object):
 
         return self._connection.request(
             self._connection.session.patch,
-            api_path_v2("ingest", index, record_id, "overwrite", replace=replace if replace else None),
+            api_path_v2("ingest", index, record_id, "overwrite", replace=replace if replace else None, refresh=refresh),
             lambda resp: resp.json()["api_response"],
             json=new_data,
         )
@@ -129,6 +139,7 @@ class Ingest(object):
         indexes: str,
         query: str,
         operations: list[tuple[str, str, Any]],
+        refresh: bool | Literal["true", "false", "wait_for"] = False,
     ) -> dict[Literal["success"], bool]:
         """Bulk update records matching a query.
 
@@ -138,6 +149,8 @@ class Ingest(object):
             operations: List of ``(operation, key, value)`` tuples.
                 Valid operations: SET, INC, DEC, MAX, MIN, APPEND,
                 APPEND_IF_MISSING, REMOVE, DELETE.
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
+                Defaults to False.
 
         Returns:
             Whether the operation succeeded.
@@ -155,6 +168,6 @@ class Ingest(object):
                 )
 
         return self._connection.put(
-            api_path_v2("ingest", indexes, "update"),
+            api_path_v2("ingest", indexes, "update", refresh=refresh),
             json={"query": query, "operations": operations},
         )
