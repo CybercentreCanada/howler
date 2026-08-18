@@ -17,6 +17,10 @@ def test_require_https_for_non_local_rejects_unsafe_urls(url, message):
     with pytest.raises(ValueError, match=message):
         config._require_https_for_non_local(url, "TEST_URL")
 
+    valid_cluster_url = "http://howler.svc.cluster.local"
+
+    assert config._require_https_for_non_local(valid_cluster_url, "TEST_URL") == valid_cluster_url
+
 
 @pytest.mark.parametrize(
     ("timeout", "message"),
