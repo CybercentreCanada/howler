@@ -698,6 +698,8 @@
   "route.dossiers.default": "Default",
   "route.dossiers.edit": "Edit Dossier",
   "route.dossiers.groups.explanation": "Add a group value allowing this dossier to merge with other inside of the dossier buttons",
+  "route.dossiers.groups.invalid.character": "Group contain invalid character, only English, French splited with / are allowed",
+  "route.dossiers.groups.invalid.format": "the format need to be something/something. character are require in between slashes, as well as it can not start or end with a /",
   "route.dossiers.groups.label": "Dossier's Group",
   "route.dossiers.manager.create.success": "Dossier Created.",
   "route.dossiers.manager.delete": "Delete Dossier",
