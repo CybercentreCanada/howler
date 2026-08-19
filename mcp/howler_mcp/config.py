@@ -84,6 +84,13 @@ class AUTH:
         raise ValueError(f"AUTH_TIMEOUT require to be higher then 0.0. {TIMEOUT} is not bigger then 0.0")
 
 
+class ICONIFY:
+    API_URL = _require_https_for_non_local(
+        os.environ.get("ICONIFY_API_URL", "https://api.iconify.design"),
+        "ICONIFY_API_URL",
+    )
+
+
 class MCPSettings:
     HOST = os.environ.get("MCP_HOST", "0.0.0.0")
     PUBLIC_HOST = os.environ.get("MCP_PUBLIC_HOST", "localhost" if HOST in {"0.0.0.0", "::"} else HOST)
