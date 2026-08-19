@@ -794,6 +794,32 @@ async def test_create_dossier_for_hit_rejects_invalid_hit_id(tools_and_api):
 
 
 @pytest.mark.asyncio
+async def test_create_dossier_for_hit_rejects_missing_french_label(tools_and_api):
+    tools, mock_api = tools_and_api
+
+    with (
+        patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
+        patch("howler_mcp.tools.httpx.get") as mock_get,
+        pytest.raises(ValueError, match="label key should contain the keys"),
+    ):
+        mock_get.return_value.status_code = 200
+        await tools["create_dossier_for_hit"](
+            hit_id="hit-1",
+            leads=[
+                {
+                    "icon": "openmoji:flag-canada",
+                    "label": {"en": "Hello, World,"},
+                    "format": "markdown",
+                    "content": "O Canada!",
+                    "metadata": {"source": "manual"},
+                }
+            ],
+        )
+
+    mock_api.call.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_update_dossier_rejects_non_list_pivots(tools_and_api):
     tools, _ = tools_and_api
 
