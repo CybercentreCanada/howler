@@ -64,7 +64,7 @@ const HitViewer: FC = () => {
   const [orientation, setOrientation] = useMyLocalStorageItem(StorageKey.VIEWER_ORIENTATION, Orientation.VERTICAL);
   const { getMatchingOverview, getMatchingDossiers, getMatchingAnalytic } = useMatchers();
   const { emit, open } = useContext(SocketContext);
-  const pluginStore = usePluginStore();
+  const { executeFunction } = usePluginStore();
 
   const getHit = useContextSelector(RecordContext, ctx => ctx.getRecord);
   const hit = useContextSelector(RecordContext, ctx => ctx.records[params.id] as Hit);
@@ -75,10 +75,6 @@ const HitViewer: FC = () => {
   const [analytic, setAnalytic] = useState<Analytic>();
   const [dossiers, setDossiers] = useState<Dossier[]>([]);
   const [hasOverview, setHasOverview] = useState(false);
-
-  howlerPluginStore.plugins.forEach(plugin => {
-    pluginStore.executeFunction(`${plugin}.on`, 'viewing');
-  });
 
   const fetchData = useCallback(async () => {
     try {
@@ -102,6 +98,16 @@ const HitViewer: FC = () => {
       setOrientation(Orientation.HORIZONTAL);
     }
   }, [isUnderLg, setOrientation]);
+
+  useEffect(() => {
+    if (!hit) {
+      return;
+    }
+
+    howlerPluginStore.plugins.forEach(plugin => {
+      executeFunction(`${plugin}.on`, 'viewing');
+    });
+  }, [executeFunction, hit]);
 
   useEffect(() => {
     void fetchData();

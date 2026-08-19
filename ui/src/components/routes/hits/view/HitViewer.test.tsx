@@ -237,6 +237,7 @@ describe('HitViewer', () => {
       expect(screen.getByText('links:analytic-1:1')).toBeInTheDocument();
     });
     expect(screen.getByText('details-content')).toBeInTheDocument();
+    expect(mockExecutePlugin).toHaveBeenCalledTimes(1);
     expect(mockExecutePlugin).toHaveBeenCalledWith('test-plugin.on', 'viewing');
   });
 

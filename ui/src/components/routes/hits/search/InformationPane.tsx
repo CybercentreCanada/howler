@@ -50,7 +50,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
   const { emit, open } = useContext(SocketContext);
   const { getMatchingOverview, getMatchingDossiers, getMatchingAnalytic } = useMatchers();
   const selected = useContextSelector(ParameterContext, ctx => ctx?.selected) ?? _selected;
-  const pluginStore = usePluginStore();
+  const { executeFunction } = usePluginStore();
 
   const getRecord = useContextSelector(RecordContext, ctx => ctx.getRecord);
 
@@ -69,9 +69,15 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
 
   const record = useContextSelector(RecordContext, ctx => ctx.records[selected]);
 
-  howlerPluginStore.plugins.forEach(plugin => {
-    pluginStore.executeFunction(`${plugin}.on`, 'viewing');
-  });
+  useEffect(() => {
+    if (!selected) {
+      return;
+    }
+
+    howlerPluginStore.plugins.forEach(plugin => {
+      executeFunction(`${plugin}.on`, 'viewing');
+    });
+  }, [executeFunction, selected]);
 
   useEffect(() => {
     if (!selected) {
