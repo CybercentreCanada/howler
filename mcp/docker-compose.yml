@@ -16,6 +16,7 @@ services:
       HOWLER_API_AUDIENCE: ${HOWLER_API_AUDIENCE:-howler}
       HOWLER_API_SCOPE: ${HOWLER_API_SCOPE:-howler}
       HOWLER_API_TIMEOUT: ${HOWLER_API_TIMEOUT:-5.0}
+      HOWLER_UI_BASE_URL: ${HOWLER_UI_BASE_URL:-http://localhost:3000}
 
       # Auth / Keycloak configuration
       AUTH_HOST: ${AUTH_HOST:-keycloak}

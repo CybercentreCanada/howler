@@ -48,6 +48,13 @@ class HOWLER_API:
     TIMEOUT = float(os.environ.get("HOWLER_API_TIMEOUT", "5.0"))
 
 
+class HOWLER_UI:
+    BASE_URL = _require_https_for_non_local(
+        os.environ.get("HOWLER_UI_BASE_URL", "http://localhost:3000"),
+        "HOWLER_UI_BASE_URL",
+    ).rstrip("/")
+
+
 class AUTH:
     HOST = os.environ.get("AUTH_HOST", "localhost")
     PORT = os.environ.get("AUTH_PORT", "9100")

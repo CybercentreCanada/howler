@@ -20,6 +20,7 @@ The server currently registers these tools:
 | Tool                   | Backend path              | Method | Purpose                                                     |
 | ---------------------- | ------------------------- | ------ | ----------------------------------------------------------- |
 | whoami                 | /user/whoami              | GET    | Return current user identity and roles.                     |
+| craft_howler_url       | —                         | —      | Build a UI URL for a hit or event object.                   |
 | list_assigned_hits     | /hit/user                 | GET    | Return hits assigned to the authenticated user.             |
 | add_comment_to_hit     | /hit/{hit_id}/comments    | POST   | Append an analyst comment to a hit.                         |
 | get_hit_fields         | /search/fields/hit        | GET    | Return valid searchable fields for hit Lucene queries.      |
@@ -36,6 +37,7 @@ The server currently registers prompt guidance for:
 
 - whoami
 - list_assigned_hits
+- craft_howler_url
 - add_comment_to_hit
 - get_field_values
 - get_hit_fields
@@ -87,6 +89,7 @@ Typical usage from mcp/:
 Primary runtime variables:
 
 - HOWLER_API_BASE_URL
+- HOWLER_UI_BASE_URL (defaults to `http://localhost:3000`)
 - HOWLER_API_TIMEOUT
 - AUTH_ISSUER
 - AUTH_JWKS_URI
