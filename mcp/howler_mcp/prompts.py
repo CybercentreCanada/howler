@@ -100,6 +100,17 @@ Before calling:
 Use this tool to save a search, create a repeatable triage filter, or share a reusable query as a global dossier.
 After the call, confirm creation and report the name, type, and query."""
 
+    @mcp.prompt(name="create_dossier_for_hit")
+    def create_dossier_for_hit_prompt() -> str:
+        """Explain when and how to add dossier leads to one hit."""
+        return """Use create_dossier_for_hit to add dossier leads to exactly one Howler alert.
+
+Required arguments:
+- hit_id: the target alert UUID
+- leads: a non-empty list of lead objects
+
+Use this instead of create_dossier when the dossier content should not match other alerts through a Lucene query. Confirm the hit_id before calling and validate lead icons with get_iconify_exist when needed. After the call, confirm that the leads were added to that alert."""
+
     @mcp.prompt(name="update_dossier")
     def update_dossier_prompt() -> str:
         """Explain when and how to use the update_dossier tool."""
