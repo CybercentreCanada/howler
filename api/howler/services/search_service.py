@@ -10,7 +10,7 @@ from howler.common.logging import get_logger
 from howler.datastore.collection import parse_sort
 from howler.datastore.exceptions import SearchException, SearchRetryException
 from howler.datastore.types import SearchResult
-from howler.helper.search import get_collection, has_access_control
+from howler.helper.search import get_collection, get_default_sort, has_access_control
 from howler.odm.models.user import User
 from howler.services import case_service
 from howler.utils.indexes import get_logical_index_name, normalize_indexes
@@ -20,8 +20,13 @@ DEFAULT_ROW_SIZE = 25
 DEFAULT_SORT: list[dict[str, str]] = [{"_id": "asc"}]
 DEFAULT_SEARCH_FIELD = "__text__"
 SCROLL_TIMEOUT = "5m"
+SENSITIVE_USER_FIELDS = ["password", "apikeys", "*"]
 
 logger = get_logger(__file__)
+
+
+class SensitiveUserFieldsException(SearchException):
+    """Raised when a user search requests protected source fields."""
 
 
 def _format_items(hits: list[dict[str, Any]], user_classification: str | None) -> list[dict[str, Any]]:
@@ -93,6 +98,14 @@ def search(  # noqa: C901
     """
     del metadata
 
+    index_list = _parse_index_list(indexes)
+    if (
+        fl is not None
+        and "user" in index_list
+        and any(sensitive_field in fl for sensitive_field in SENSITIVE_USER_FIELDS)
+    ):
+        raise SensitiveUserFieldsException("Invalid fields to retrieve.")
+
     client: Elasticsearch = datastore().ds.client
     parsed_indexes = normalize_indexes(indexes)
 
@@ -113,7 +126,12 @@ def search(  # noqa: C901
         query = "id:*"
 
     if sort is None:
-        sort = DEFAULT_SORT
+        default_sorts = [get_default_sort(index, user) for index in _parse_index_list(indexes)] if user else []
+        default_sort = default_sorts[0] if default_sorts else None
+        if default_sort is not None and all(index_sort == default_sort for index_sort in default_sorts):
+            sort = default_sort
+        else:
+            sort = DEFAULT_SORT
 
     if rows is None:
         rows = DEFAULT_ROW_SIZE

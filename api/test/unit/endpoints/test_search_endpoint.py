@@ -154,6 +154,53 @@ class TestSearch:
             body = result.get_json()
             assert body["api_response"]["total"] == 1
             mock_search_svc.search.assert_called_once()
+            assert "sort" not in mock_search_svc.search.call_args.kwargs
+
+    @patch("howler.api.v2.search.search_service")
+    @patch("howler.security.auth_service")
+    def test_search_normalizes_sort(self, mock_auth_service, mock_search_svc, request_context: Flask):
+        """Splits comma-separated sort fields and removes empty entries."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_search_svc.search.return_value = {"total": 0, "items": [], "offset": 0}
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"query": "howler.id:*", "sort": "event.created desc,,howler.id asc"},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.search import search
+
+            result: Response = search(indexes="hit", user=user)
+
+            assert result.status_code == 200
+            assert mock_search_svc.search.call_args.kwargs["sort"] == ["event.created desc", "howler.id asc"]
+
+    @pytest.mark.parametrize("sensitive_field", ["password", "apikeys", "*"])
+    @patch("howler.api.v2.search.search_service")
+    @patch("howler.security.auth_service")
+    def test_search_rejects_sensitive_user_fields(
+        self, mock_auth_service, mock_search_svc, request_context: Flask, sensitive_field: str
+    ):
+        """Maps the service's sensitive field exception to a forbidden response."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+        from howler.services.search_service import SensitiveUserFieldsException
+
+        mock_search_svc.search.side_effect = SensitiveUserFieldsException("Invalid fields to retrieve.")
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"query": "uname:*", "fl": sensitive_field},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.search import search
+
+            result: Response = search(indexes="user", user=user)
+
+            assert result.status_code == 403
+            mock_search_svc.search.assert_called_once()
 
     @patch("howler.api.v2.search.search_service")
     @patch("howler.security.auth_service")

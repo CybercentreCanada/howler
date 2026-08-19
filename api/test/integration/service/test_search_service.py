@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import elasticsearch
 import pytest
@@ -475,6 +475,15 @@ class TestFormatItems:
 class TestSearch:
     """Tests for search_service.search."""
 
+    @pytest.mark.parametrize("sensitive_field", ["password", "apikeys", "*"])
+    @patch("howler.services.search_service.datastore")
+    def test_search_rejects_sensitive_user_fields(self, mock_ds_fn, sensitive_field):
+        """Rejects sensitive source fields before accessing Elasticsearch."""
+        with pytest.raises(search_service.SensitiveUserFieldsException, match="Invalid fields to retrieve"):
+            search_service.search("user", query="uname:*", fl=sensitive_field)
+
+        mock_ds_fn.assert_not_called()
+
     @patch("howler.services.search_service.datastore")
     def test_basic_search_returns_result(self, mock_ds_fn):
         """A basic search returns formatted results with total, offset, rows, items."""
@@ -515,6 +524,56 @@ class TestSearch:
         call_kwargs = mock_client.search.call_args
         query_string = call_kwargs.kwargs["query"]["bool"]["must"]["query_string"]["query"]
         assert query_string == "id:*"
+
+    @patch("howler.services.search_service.get_default_sort", return_value="event.created desc")
+    @patch("howler.services.search_service.datastore")
+    def test_search_uses_index_default_sort(self, mock_ds_fn, mock_get_default_sort):
+        """A single-index search uses that index's configured default sort."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.search.return_value = {"hits": {"total": {"value": 0}, "hits": []}}
+        user = MagicMock(access_control=None, classification=None)
+
+        search_service.search("hit", query="*:*", user=user)
+
+        mock_get_default_sort.assert_called_once_with("hit", user)
+        assert mock_client.search.call_args.kwargs["sort"] == [{"event.created": "desc"}]
+
+    @patch("howler.services.search_service.get_default_sort", side_effect=["event.created desc", "event.created desc"])
+    @patch("howler.services.search_service.datastore")
+    def test_search_uses_shared_default_sort_for_multiple_indexes(self, mock_ds_fn, mock_get_default_sort):
+        """Multiple indexes use their shared configured default sort."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.search.return_value = {"hits": {"total": {"value": 0}, "hits": []}}
+        user = MagicMock(access_control=None, classification=None)
+
+        search_service.search("hit,event", query="*:*", user=user)
+
+        assert mock_get_default_sort.call_args_list == [call("hit", user), call("event", user)]
+        assert mock_client.search.call_args.kwargs["sort"] == [{"event.created": "desc"}]
+
+    @patch("howler.services.search_service.get_default_sort", side_effect=["event.created desc", "created desc"])
+    @patch("howler.services.search_service.datastore")
+    def test_search_uses_fallback_for_different_default_sorts(self, mock_ds_fn, mock_get_default_sort):
+        """Multiple indexes with different defaults use the global fallback sort."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.search.return_value = {"hits": {"total": {"value": 0}, "hits": []}}
+        user = MagicMock(access_control=None, classification=None)
+
+        search_service.search("hit,case", query="*:*", user=user)
+
+        assert mock_client.search.call_args.kwargs["sort"] == [{"id": "asc"}]
 
     @patch("howler.services.search_service.datastore")
     def test_search_with_filters(self, mock_ds_fn):
