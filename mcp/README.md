@@ -64,7 +64,7 @@ Current server capabilities:
 - howler_mcp/tools.py: MCP tool registration and validation logic.
 - howler_mcp/prompts.py: Prompt registration.
 - howler_mcp/config.py: Environment-driven config with HTTPS enforcement for non-local hosts.
-- howler_mcp/dev_setup.py: local developer bootstrap helper.
+- dev/dev_setup.py: local developer bootstrap helper.
 
 ## Development Helper (dev_setup)
 
@@ -75,14 +75,26 @@ The dev helper script exists for local development with the dockerized test real
 - Optionally fetches a local dev bearer token.
 - Optionally writes .vscode/mcp.json Authorization header for instant local MCP usage.
 
+By default, `--start` only manages the MCP server itself (clears its port, verifies Keycloak,
+fetches a token, updates `.vscode/mcp.json`, and runs the server). Dependencies
+(elasticsearch/redis/keycloak/howler-api) are assumed to already be running; start them
+separately with `docker compose up -d` (from api/dev/) if needed.
+
 This local token write is intentional for developer productivity in local docker environments. Non-development environments are expected to use proper secret handling and environment-specific auth setup managed by the operator.
+
+Security note: `mcp/.env` and `.vscode/mcp.json` are gitignored and chmod'd to 0600 by the
+script right after writing, since neither VS Code's `http` server transport (`headers`/`oauth`
+only, no `env`/`envFile`) nor `docker compose` support pulling these values from an environment
+variable at that point — a literal dev-only secret is unavoidable for zero-prompt automation.
+Static analysis findings about clear-text secret storage on these lines are expected and
+mitigated by file permissions rather than suppressed by design changes.
 
 Typical usage from mcp/:
 
-- poetry run python -m howler_mcp.dev_setup
-- poetry run python -m howler_mcp.dev_setup --verify
-- poetry run python -m howler_mcp.dev_setup --token
-- poetry run python -m howler_mcp.dev_setup --start
+- poetry run python -m dev.dev_setup
+- poetry run python -m dev.dev_setup --verify
+- poetry run python -m dev.dev_setup --token
+- poetry run python -m dev.dev_setup --start
 
 ## Environment Variables
 
@@ -107,6 +119,8 @@ Config guardrails:
 
 - config.py allows http only for localhost, 127.0.0.1, and ::1.
 - non-local endpoints must use https.
+- config.py calls `load_dotenv()` (mirroring api/howler/app.py), so a `mcp/.env` file is
+  picked up automatically on import; vars already exported in the shell take precedence.
 
 ## Local Run
 
