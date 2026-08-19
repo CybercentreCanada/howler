@@ -1,5 +1,9 @@
 # Howler Releases
 
+## Howler UI `v3.0.5`
+
+- **Hit Viewing Notifications** _(bugfix)_: Hit viewers and search information panes now emit viewing notifications and invoke plugin viewing hooks without repeating them during rerenders ([#572](https://github.com/CybercentreCanada/howler/pull/572)).
+
 ## Howler UI `v3.0.4`
 
 - **Dashboard View Card Settings** _(bugfix)_: Dashboard view cards now apply the view's configured sort and time span when fetching records.
