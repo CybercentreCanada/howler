@@ -85,7 +85,9 @@ Before calling, confirm hit_id. If label_set is uncertain, call get_label_set_op
     @mcp.prompt(name="create_dossier")
     def create_dossier_prompt() -> str:
         """Explain when and how to use the create_dossier tool."""
-        return """Use create_dossier to save a Lucene query as a new dossier.
+        return """Use create_dossier to save a Lucene query as a new dossier that applies to a large number of alerts.
+
+Do not use this tool for a single alert. Use create_dossier_for_hit when the target alert list contains exactly one alert.
 
 Required arguments:
 - new_dossier_name: the dossier title
@@ -104,6 +106,8 @@ After the call, confirm creation and report the name, type, and query."""
     def create_dossier_for_hit_prompt() -> str:
         """Explain when and how to add dossier leads to one hit."""
         return """Use create_dossier_for_hit to add dossier leads to exactly one Howler alert.
+
+Use this tool only when the target alert list contains exactly one alert. For a dossier that should apply to a large number of alerts, use create_dossier with a Lucene query instead.
 
 Required arguments:
 - hit_id: the target alert UUID
