@@ -36,18 +36,17 @@ const pivotGrouping = (dossiers: Dossier[]): PivotTree => {
       let current: PivotTree = groupPivot;
 
       // if we have a group we move the pointer to the proper location
-      if (pivot.group && pivot.group != '') {
+      if (pivot.group && pivot.group !== '') {
         const group = pivot.group.split('/');
         for (let i = 0; i < group.length; i++) {
-          let key = group[i];
-          if (!(key in current)) {
-            current[key] = {};
+          if (!(group[i] in current)) {
+            current[group[i]] = {};
           }
-          current = current[key] as PivotTree;
+          current = current[group[i]] as PivotTree;
         }
       }
 
-      // Add the pivot section
+      // Add the pivot section, this(pivot) is reserved inside of the DossierGroupValidation check and the back end.
       if (!('pivot' in current)) {
         current['pivot'] = [];
       }
