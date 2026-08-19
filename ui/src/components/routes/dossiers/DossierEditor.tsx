@@ -26,8 +26,8 @@ import { memo, useCallback, useEffect, useMemo, useState, type FC } from 'react'
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
+import DossierGroupValidation from '../../../utils/DossierGroupValidation';
 import QueryResultText from '../../elements/display/QueryResultText';
-import DossierGroupValidation from '../help/DossierGroupValidation';
 import RecordQuery from '../hits/search/RecordQuery';
 import LeadForm from './LeadForm';
 import PivotForm from './PivotForm';

@@ -120,6 +120,10 @@ def validate_group(group: str) -> None:
     if "//" in group or group.startswith("/") or group.endswith("/"):
         raise InvalidDataException('Every section of a group path needs characters between the "/"')
 
+    # 3. Check for the word pivot as it is use to classify them in the front end
+    if re.match(r"(^|/)pivot(/|$)", group):
+        raise InvalidDataException('The word "pivot" can not be use as a group section.')
+
     return
 
 
