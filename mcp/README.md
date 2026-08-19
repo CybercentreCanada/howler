@@ -17,14 +17,16 @@ This service intentionally uses token pass-through. It does not mint a second ba
 
 The server currently registers these tools:
 
-| Tool               | Backend path              | Method | Purpose                                                     |
-| ------------------ | ------------------------- | ------ | ----------------------------------------------------------- |
-| whoami             | /user/whoami              | GET    | Return current user identity and roles.                     |
-| list_assigned_hits | /hit/user                 | GET    | Return hits assigned to the authenticated user.             |
-| add_comment_to_hit | /hit/{hit_id}/comments    | POST   | Append an analyst comment to a hit.                         |
-| get_hit_fields     | /search/fields/hit        | GET    | Return valid searchable fields for hit Lucene queries.      |
-| get_field_values   | /search/facet/hit/{field} | GET    | Return value distribution for one field.                    |
-| lucene_query       | /search/hit               | POST   | Execute Lucene search with field projection and pagination. |
+| Tool                   | Backend path              | Method | Purpose                                                     |
+| ---------------------- | ------------------------- | ------ | ----------------------------------------------------------- |
+| whoami                 | /user/whoami              | GET    | Return current user identity and roles.                     |
+| list_assigned_hits     | /hit/user                 | GET    | Return hits assigned to the authenticated user.             |
+| add_comment_to_hit     | /hit/{hit_id}/comments    | POST   | Append an analyst comment to a hit.                         |
+| get_hit_fields         | /search/fields/hit        | GET    | Return valid searchable fields for hit Lucene queries.      |
+| get_field_values       | /search/facet/hit/{field} | GET    | Return value distribution for one field.                    |
+| lucene_query           | /search/hit               | POST   | Execute Lucene search with field projection and pagination. |
+| create_dossier         | /dossier/                 | POST   | Create a reusable dossier from a Lucene query.              |
+| create_dossier_for_hit | /hit/{hit_id}/update      | PUT    | Append dossier leads to one alert.                          |
 
 Important note: older helper tools such as ListAlerts, GetHitById, SearchHitsWithIndicators, GetFalsePositiveHits, and ListHitsByAnalytic were replaced by lucene_query plus discovery helpers get_hit_fields and get_field_values.
 
@@ -38,6 +40,8 @@ The server currently registers prompt guidance for:
 - get_field_values
 - get_hit_fields
 - lucene_query
+- create_dossier
+- create_dossier_for_hit
 
 ## Capability Summary
 
@@ -47,6 +51,7 @@ Current server capabilities:
 - Forwards the validated user token to Howler API (token pass-through model).
 - Exposes analyst triage tools for identity checks, assigned-hit retrieval, commenting, field discovery, and Lucene hit search.
 - Validates Lucene query fields against backend-exposed searchable fields before issuing search requests.
+- Creates reusable query dossiers or appends dossier leads to a single alert.
 
 ## Project Layout
 
