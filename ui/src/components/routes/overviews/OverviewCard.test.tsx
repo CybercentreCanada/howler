@@ -1,6 +1,8 @@
 /// <reference types="vitest" />
 import { render, screen } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
+import ModalProvider from 'components/app/providers/ModalProvider';
+import Modal from 'components/elements/display/Modal';
 import i18n from 'i18n';
 import { I18nextProvider } from 'react-i18next';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -15,7 +17,12 @@ vi.mock('components/elements/addons/layout/FlexOne', () => ({
 }));
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <I18nextProvider i18n={i18n as any}>{children}</I18nextProvider>
+  <I18nextProvider i18n={i18n as any}>
+    <ModalProvider>
+      {children}
+      <Modal />
+    </ModalProvider>
+  </I18nextProvider>
 );
 
 describe('OverviewCard', () => {
@@ -110,12 +117,15 @@ describe('OverviewCard', () => {
       owner: 'testuser'
     };
 
-    render(<OverviewCard overview={overview as any} onDelete={mockOnDelete} />, { wrapper: Wrapper });
+    render(<OverviewCard overview={overview as any} onRemove={mockOnDelete} />, { wrapper: Wrapper });
 
     const deleteButton = document.querySelector('[data-testid="DeleteIcon"]').closest('button');
     await user.click(deleteButton);
 
-    expect(mockOnDelete).toHaveBeenCalledWith(expect.anything(), 'ov-1');
+    const confirmButton = screen.getByRole('button', { name: /delete/i });
+    await user.click(confirmButton);
+
+    expect(mockOnDelete).toHaveBeenCalledWith('ov-1');
   });
 
   it('should apply custom className', () => {
