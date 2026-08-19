@@ -1,6 +1,11 @@
 import os
 from urllib.parse import urlparse
 
+from dotenv import load_dotenv
+
+# Mirrors api/howler/app.py: loads mcp/.env (if present) without overriding already-exported vars.
+load_dotenv()
+
 
 def _require_https_for_non_local(url: str, env_name: str) -> str:
     """Allow HTTP only for local development endpoints.
