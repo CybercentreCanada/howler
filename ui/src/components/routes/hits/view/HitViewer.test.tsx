@@ -1,18 +1,34 @@
-import { render, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { RecordContext } from 'components/app/providers/RecordProvider';
 import { SocketContext } from 'components/app/providers/SocketProvider';
+import type { Analytic } from 'models/entities/generated/Analytic';
+import type { Dossier } from 'models/entities/generated/Dossier';
+import type { Hit } from 'models/entities/generated/Hit';
 import type { FC, PropsWithChildren } from 'react';
+import type * as MuiMaterial from '@mui/material';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockEmit = vi.hoisted(() => vi.fn());
 const mockExecutePlugin = vi.hoisted(() => vi.fn());
 const mockOpen = vi.hoisted(() => ({ current: true }));
-const mockParams = vi.hoisted(() => ({ id: 'hit-1' }));
+const mockParams = vi.hoisted(() => ({ id: 'hit-1' as string | undefined }));
 const mockGetHit = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const mockGetMatchingAnalytic = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const mockGetMatchingDossiers = vi.hoisted(() => vi.fn().mockResolvedValue([]));
 const mockGetMatchingOverview = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const mockNavigate = vi.hoisted(() => vi.fn());
+const mockUseMediaQuery = vi.hoisted(() => vi.fn(() => false));
+const mockSetOrientation = vi.hoisted(() => vi.fn());
+
+vi.mock('@mui/material', async () => {
+  const actual = await vi.importActual<typeof MuiMaterial>('@mui/material');
+
+  return {
+    ...actual,
+    useMediaQuery: mockUseMediaQuery
+  };
+});
 
 vi.mock('plugins/store', () => ({
   default: {
@@ -50,7 +66,7 @@ vi.mock('components/app/hooks/useMatchers', () => ({
 }));
 
 vi.mock('components/hooks/useMyLocalStorage', () => ({
-  useMyLocalStorageItem: () => ['vertical', vi.fn()]
+  useMyLocalStorageItem: () => [Orientation.VERTICAL, mockSetOrientation]
 }));
 
 vi.mock('components/hooks/useMyUserList', () => ({
@@ -58,85 +74,93 @@ vi.mock('components/hooks/useMyUserList', () => ({
 }));
 
 vi.mock('utils/recordFunctions', () => ({
-  getUserList: () => new Set()
+  getUserList: () => new Set(['analyst'])
 }));
 
 vi.mock('utils/utils', () => ({
-  tryParse: (value: unknown) => value
+  tryParse: (value: string) => `parsed:${value}`
 }));
 
-vi.mock('commons/components/pages/PageCenter', () => ({
-  default: ({ children }: PropsWithChildren) => <>{children}</>
-}));
-
-vi.mock('components/elements/display/HowlerCard', () => ({
-  default: ({ children }: PropsWithChildren) => <>{children}</>
+vi.mock('components/elements/hit/HitActions', () => ({
+  default: ({ orientation }: { orientation: string }) => <div>actions:{orientation}</div>
 }));
 
 vi.mock('components/elements/display/icons/SocketBadge', () => ({
   default: () => null
 }));
 
-vi.mock('components/elements/display/json/JSONViewer', () => ({
-  default: () => null
-}));
-
-vi.mock('components/elements/hit/HitActions', () => ({
-  default: () => null
-}));
-
 vi.mock('components/elements/hit/HitBanner', () => ({
-  default: () => null
-}));
-
-vi.mock('components/elements/hit/HitLabels', () => ({
-  default: () => null
-}));
-
-vi.mock('components/elements/hit/HitLinks', () => ({
-  default: () => null
+  default: () => <div>banner</div>
 }));
 
 vi.mock('components/elements/hit/HitOutline', () => ({
-  default: () => null
+  default: () => <div>outline</div>
+}));
+
+vi.mock('components/elements/hit/HitLabels', () => ({
+  default: () => <div>labels</div>
+}));
+
+vi.mock('components/elements/hit/HitLinks', () => ({
+  default: ({ analytic, dossiers }: { analytic?: Analytic; dossiers: Dossier[] }) => (
+    <div>
+      links:{analytic?.analytic_id}:{dossiers.length}
+    </div>
+  )
 }));
 
 vi.mock('components/elements/hit/HitOverview', () => ({
-  default: () => null
+  default: () => <div>overview-content</div>
 }));
 
 vi.mock('components/elements/ObjectDetails', () => ({
-  default: () => null
+  default: () => <div>details-content</div>
+}));
+
+vi.mock('components/elements/display/json/JSONViewer', () => ({
+  default: ({ data }: { data: unknown }) => <div id="json-content">{JSON.stringify(data)}</div>
 }));
 
 vi.mock('components/elements/record/RecordComments', () => ({
-  default: () => null
-}));
-
-vi.mock('components/elements/record/RecordRelated', () => ({
-  default: () => null
+  default: () => <div>comments-content</div>
 }));
 
 vi.mock('components/elements/record/RecordWorklog', () => ({
-  default: () => null
+  default: () => <div>worklog-content</div>
+}));
+
+vi.mock('components/elements/record/RecordRelated', () => ({
+  default: () => <div>related-content</div>
 }));
 
 vi.mock('./LeadRenderer', () => ({
-  default: () => null
+  default: ({ lead }: { lead: { label: { en: string } } }) => <div>lead-content:{lead.label.en}</div>
 }));
 
-import HitViewer from './HitViewer';
+import HitViewer, { Orientation } from './HitViewer';
 
-const recordContextValue = {
-  records: {
-    'hit-1': {
-      howler: {
-        data: [],
-        dossier: [],
-        comment: []
+const hit: Hit = {
+  __index: 'hit',
+  timestamp: '2026-01-01T00:00:00Z',
+  howler: {
+    id: 'hit-1',
+    analytic: 'analytic-1',
+    assignment: 'analyst',
+    hash: 'hash-1',
+    data: ['{"source":"data"}'],
+    dossier: [
+      {
+        label: { en: 'Local lead', fr: 'Piste locale' },
+        format: 'markdown',
+        content: 'local'
       }
-    }
-  },
+    ],
+    comment: [{}]
+  }
+};
+
+const recordContextValue: { records: Record<string, Hit>; getRecord: typeof mockGetHit } = {
+  records: { 'hit-1': hit },
   getRecord: mockGetHit
 };
 
@@ -163,31 +187,61 @@ const createWrapper = (): FC<PropsWithChildren> => {
   return Wrapper;
 };
 
+const renderViewer = () => render(<HitViewer />, { wrapper: createWrapper() });
+
 beforeEach(() => {
   mockEmit.mockReset();
   mockExecutePlugin.mockReset();
   mockOpen.current = true;
   mockParams.id = 'hit-1';
-  mockGetHit.mockClear().mockResolvedValue(undefined);
-  mockGetMatchingAnalytic.mockClear().mockResolvedValue(undefined);
-  mockGetMatchingDossiers.mockClear().mockResolvedValue([]);
-  mockGetMatchingOverview.mockClear().mockResolvedValue(undefined);
+  mockUseMediaQuery.mockReset().mockReturnValue(false);
+  mockSetOrientation.mockReset();
+  mockGetHit.mockReset().mockResolvedValue(undefined);
+  mockGetMatchingAnalytic.mockReset().mockResolvedValue(undefined);
+  mockGetMatchingDossiers.mockReset().mockResolvedValue([]);
+  mockGetMatchingOverview.mockReset().mockResolvedValue(undefined);
   mockNavigate.mockReset();
+  recordContextValue.records = { 'hit-1': hit };
 });
 
 describe('HitViewer', () => {
-  it('emits the plugin viewing event', async () => {
-    render(<HitViewer />, { wrapper: createWrapper() });
+  it('loads a missing hit and shows the loading state', async () => {
+    recordContextValue.records = {};
+
+    renderViewer();
+
+    expect(screen.queryByText('details-content')).not.toBeInTheDocument();
+    await waitFor(() => expect(mockGetHit).toHaveBeenCalledWith('hit-1', true));
+  });
+
+  it('navigates to the not-found page when loading fails with a 404', async () => {
+    recordContextValue.records = {};
+    mockGetHit.mockRejectedValue({ cause: { api_status_code: 404 } });
+
+    renderViewer();
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/404'));
+  });
+
+  it('fetches matching data, notifies plugins, and renders the details view', async () => {
+    const analytic = { analytic_id: 'analytic-1' };
+    const dossiers = [{ leads: [] }];
+    mockGetMatchingAnalytic.mockResolvedValue(analytic);
+    mockGetMatchingDossiers.mockResolvedValue(dossiers);
+
+    renderViewer();
 
     await waitFor(() => {
-      expect(mockGetMatchingOverview).toHaveBeenCalled();
+      expect(mockGetMatchingAnalytic).toHaveBeenCalledWith(hit);
+      expect(mockGetMatchingDossiers).toHaveBeenCalledWith(hit);
+      expect(screen.getByText('links:analytic-1:1')).toBeInTheDocument();
     });
-
+    expect(screen.getByText('details-content')).toBeInTheDocument();
     expect(mockExecutePlugin).toHaveBeenCalledWith('test-plugin.on', 'viewing');
   });
 
   it('emits viewing and stop_viewing socket events', async () => {
-    const { unmount } = render(<HitViewer />, { wrapper: createWrapper() });
+    const { unmount } = renderViewer();
 
     await waitFor(() => {
       expect(mockEmit).toHaveBeenCalledWith({
@@ -207,15 +261,79 @@ describe('HitViewer', () => {
     });
   });
 
-  it('does not emit socket events when the socket is closed', async () => {
+  it('does not emit socket events when the socket is closed or no hit id is present', async () => {
     mockOpen.current = false;
+    renderViewer();
 
-    render(<HitViewer />, { wrapper: createWrapper() });
+    await waitFor(() => expect(mockGetMatchingOverview).toHaveBeenCalledWith(hit));
+    expect(mockEmit).not.toHaveBeenCalled();
 
-    await waitFor(() => {
-      expect(mockGetMatchingOverview).toHaveBeenCalled();
-    });
+    mockParams.id = undefined;
+    renderViewer();
 
     expect(mockEmit).not.toHaveBeenCalled();
+  });
+
+  it('opens an overview by default and lets the analyst select all content tabs', async () => {
+    const user = userEvent.setup();
+    mockGetMatchingOverview.mockResolvedValue({ content: 'overview' });
+    mockGetMatchingDossiers.mockResolvedValue([
+      {
+        leads: [
+          {
+            label: { en: 'External lead', fr: 'Piste externe' },
+            format: 'markdown',
+            content: 'external'
+          }
+        ]
+      }
+    ]);
+
+    renderViewer();
+
+    await screen.findByText('overview-content');
+    await user.click(screen.getByRole('tab', { name: 'hit.viewer.details' }));
+    expect(screen.getByText('details-content')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Local lead' }));
+    expect(screen.getByText('lead-content:Local lead')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'External lead' }));
+    expect(screen.getByText('lead-content:External lead')).toBeInTheDocument();
+
+    const tabs = screen.getAllByRole('tab');
+    await user.click(tabs.at(-5)!);
+    expect(screen.getByTestId('json-content')).toHaveTextContent(JSON.stringify(['parsed:{"source":"data"}']));
+    await user.click(tabs.at(-4)!);
+    expect(screen.getByTestId('json-content')).toHaveTextContent(JSON.stringify(hit));
+    await user.click(tabs.at(-3)!);
+    expect(screen.getByText('comments-content')).toBeInTheDocument();
+    await user.click(tabs.at(-2)!);
+    expect(screen.getByText('worklog-content')).toBeInTheDocument();
+    await user.click(tabs.at(-1)!);
+    expect(screen.getByText('related-content')).toBeInTheDocument();
+  });
+
+  it('toggles the desktop layout and navigates to its matching analytic', async () => {
+    const user = userEvent.setup();
+    mockGetMatchingAnalytic.mockResolvedValue({ analytic_id: 'analytic-1' });
+
+    renderViewer();
+
+    await screen.findByText('links:analytic-1:0');
+    const buttons = screen.getAllByRole('button');
+    await user.click(buttons[0]);
+    expect(mockSetOrientation).toHaveBeenCalledWith(Orientation.HORIZONTAL);
+
+    await user.click(buttons[1]);
+    expect(mockNavigate).toHaveBeenCalledWith('/analytics/analytic-1');
+  });
+
+  it('forces a horizontal layout below the large breakpoint', async () => {
+    mockUseMediaQuery.mockReturnValue(true);
+
+    renderViewer();
+
+    await waitFor(() => expect(mockSetOrientation).toHaveBeenCalledWith(Orientation.HORIZONTAL));
   });
 });
