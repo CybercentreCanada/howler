@@ -52,6 +52,7 @@ Current server capabilities:
 - Exposes analyst triage tools for identity checks, assigned-hit retrieval, commenting, field discovery, and Lucene hit search.
 - Validates Lucene query fields against backend-exposed searchable fields before issuing search requests.
 - Creates reusable query dossiers or appends dossier leads to a single alert.
+- Use `create_dossier` only for dossiers applying to a large number of alerts; use `create_dossier_for_hit` when the target alert list contains exactly one alert.
 
 ## Project Layout
 

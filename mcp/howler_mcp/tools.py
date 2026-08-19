@@ -609,12 +609,16 @@ def register_tools(mcp, api_client: HowlerApiClient):
                     "metadata key need to be a dictionary. It may be an empty dictionary. as it is an optional field"
                 )
 
-            # Require both supported localization keys so the generated dossier
-            # can be rendered consistently in the bilingual UI.
-            if lead["label"].keys() - INTENDED_LANGUAGE:
+            # Require exactly the supported localization keys because both
+            # fields are required by the Lead ODM's LocalizedLabel model.
+            if not isinstance(lead["label"], dict):
+                raise TypeError("The lead label must be a dictionary.")
+            if set(lead["label"]) != INTENDED_LANGUAGE:
                 raise ValueError(
                     f"the label key should contain the keys {''.join(INTENDED_LANGUAGE)} you gave {lead['label'].keys()}"
                 )
+            if any(not isinstance(value, str) or not value.strip() for value in lead["label"].values()):
+                raise ValueError("Each lead label value must be a non-empty string.")
 
         return False
 
@@ -717,8 +721,9 @@ def register_tools(mcp, api_client: HowlerApiClient):
     async def create_dossier(dossier_data: dict) -> dict:
         """Create a new dossier from a validated Lucene query.
 
-        Use this tool when the user wants to save a reusable query as a
-        dossier for later investigation workflows.
+        Use this tool only when the dossier should apply to a large number of
+        alerts selected by a Lucene query. For a dossier that applies to one
+        alert, use ``create_dossier_for_hit`` instead.
 
         Args:
             new_dossier_name: Human-readable dossier title to create.
@@ -805,7 +810,9 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
         Unlike ``create_dossier``, this tool does not create a reusable query
         dossier. It appends the supplied leads to the hit's ``howler.dossier``
-        field so they apply only to the specified alert.
+        field so they apply only to the specified alert. Use this tool when the
+        target alert list contains exactly one alert; use ``create_dossier``
+        when the dossier should apply to a large number of alerts.
 
         Args:
             hit_id: Exact UUID of the hit that should receive the dossier.
