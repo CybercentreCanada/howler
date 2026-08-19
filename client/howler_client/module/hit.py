@@ -77,6 +77,7 @@ class Hit(object):
         map: dict[str, list[str]],
         documents: list[dict[str, Any]],
         ignore_extra_values: bool = False,
+        refresh: bool | Literal["true", "false", "wait_for"] = False,
     ) -> list[dict[str, str | list[str] | None]]:
         """Create hits for a given tool using the raw documents and a map of the document fields to howler's fields.
 
@@ -86,6 +87,8 @@ class Hit(object):
                     the values are a list of flattened path for Howler's fields where the data will be copied into
             documents (list[dict[str, Any]]): The data to ingest into howler, in the tool's raw document format
             ignore_extra_values (bool, optional): Whether to allow extra fields, or raise an error. Defaults to False.
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
+                Defaults to False.
 
         Returns:
             list[dict[str, str | list[str] | None]]: One entry per document, each with keys ``id``, ``error``,
@@ -103,7 +106,7 @@ class Hit(object):
 
         try:
             result = self._connection.post(
-                api_path("tools", tool_name, "hits", ignore_extra_values=ignore_extra_values),
+                api_path("tools", tool_name, "hits", ignore_extra_values=ignore_extra_values, refresh=refresh),
                 json=data,
             )
         except ClientError as e:
@@ -155,12 +158,15 @@ class Hit(object):
         self: Self,
         data: dict[str, Any] | list[dict[str, Any]],
         ignore_extra_values: bool = False,
+        refresh: bool | Literal["true", "false", "wait_for"] = False,
     ) -> CreateHitsResponse | None:
         """Create one or many hits using the howler schema.
 
         Args:
             data (dict[str, Any] | list[dict[str, Any]]): The hit or list of hits to create
             ignore_extra_values (bool, optional): Whtether to ignore extra values, or throw an exception.
+                Defaults to False.
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
                 Defaults to False.
 
         Returns:
@@ -217,7 +223,7 @@ class Hit(object):
             return None
 
         result = self._connection.post(
-            api_path("hit", ignore_extra_values=ignore_extra_values),
+            api_path("hit", ignore_extra_values=ignore_extra_values, refresh=refresh),
             data=json.dumps(final_hit_list, cls=DatetimeEncoder),
             headers={"Content-Type": "application/json"},
         )
@@ -231,7 +237,12 @@ class Hit(object):
 
         return result
 
-    def overwrite(self: Self, hit_id: str, new_hit_data: dict[str, Any]):
+    def overwrite(
+        self: Self,
+        hit_id: str,
+        new_hit_data: dict[str, Any],
+        refresh: bool | Literal["true", "false", "wait_for"] = False,
+    ):
         """Overwrite a hit.
 
         This is different from updating a hit, as you simply provide a partial hit object
@@ -246,9 +257,14 @@ class Hit(object):
         if not isinstance(new_hit_data, dict):
             raise TypeError("New hit data must be of type dict.")
 
-        return self._connection.put(api_path(f"hit/{hit_id}/overwrite"), json=new_hit_data)
+        return self._connection.put(api_path(f"hit/{hit_id}/overwrite", refresh=refresh), json=new_hit_data)
 
-    def update(self: Self, hit_id: str, updates: list[tuple[str, str, Any]]):
+    def update(
+        self: Self,
+        hit_id: str,
+        updates: list[tuple[str, str, Any]],
+        refresh: bool | Literal["true", "false", "wait_for"] = False,
+    ):
         """Update a hit.
 
         Args:
@@ -256,6 +272,8 @@ class Hit(object):
             updates (list[tuple[str, str, Any]]): A list of updates to run. The first entry in the tuple must be a valid
                 update operation (see UPDATE_OPERATIONS), the second a key for a howler hit, and the third the value
                 to use in the operation.
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
+                Defaults to False.
 
         Raises:
             ClientError: Updates provided were invalid
@@ -273,9 +291,14 @@ class Hit(object):
                     400,
                 )
 
-        return self._connection.put(api_path(f"hit/{hit_id}/update"), json=updates)
+        return self._connection.put(api_path(f"hit/{hit_id}/update", refresh=refresh), json=updates)
 
-    def update_by_query(self: Self, query: str, updates: list[tuple[str, str, Any]]):
+    def update_by_query(
+        self: Self,
+        query: str,
+        updates: list[tuple[str, str, Any]],
+        refresh: bool | Literal["true", "false", "wait_for"] = False,
+    ):
         """Update a set of hits by query.
 
         Args:
@@ -283,6 +306,8 @@ class Hit(object):
             updates (list[tuple[str, str, Any]]): A list of updates to run. The first entry in the tuple must be a valid
                 update operation (see UPDATE_OPERATIONS), the second a key for a howler hit, and the third the value
                 to use in the operation.
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
+                Defaults to False.
 
         Raises:
             ClientError: Updates provided were invalid
@@ -299,10 +324,19 @@ class Hit(object):
                     400,
                 )
 
-        return self._connection.put(api_path("hit/update"), json={"query": query, "operations": updates})
+        return self._connection.put(
+            api_path("hit/update", refresh=refresh), json={"query": query, "operations": updates}
+        )
 
-    def delete(self: Self, hit_ids: list[str]) -> dict[Literal["success"], bool]:
+    def delete(
+        self: Self, hit_ids: list[str], refresh: bool | Literal["true", "false", "wait_for"] = False
+    ) -> dict[Literal["success"], bool]:
         """Delete a list of hits by id
+
+        Args:
+            hit_ids (list[str]): List of hit ids to delete
+            refresh (bool | Literal["true", "false", "wait_for"], optional): Whether to refresh the index.
+                Defaults to False.
 
         Returns:
             dict[Literal["success"], bool]: Whether the delete operation was successful
@@ -310,4 +344,4 @@ class Hit(object):
         if not isinstance(hit_ids, list):
             hit_ids = [hit_ids]
 
-        return self._connection.delete(api_path("hit"), json=hit_ids)
+        return self._connection.delete(api_path("hit", refresh=refresh), json=hit_ids)
