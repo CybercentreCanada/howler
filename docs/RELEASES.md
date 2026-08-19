@@ -1,10 +1,10 @@
 # Howler Releases
 
-# Howler UI `v3.0.4`
+## Howler UI `v3.0.4`
 
 - **Dashboard View Card Settings** _(bugfix)_: Dashboard view cards now apply the view's configured sort and time span when fetching records.
 
-# Howler API `v4.0.9`
+## Howler API `v4.0.9`
 
 - **V2 Search Default Sort** _(bugfix)_: Applied the configured per-index default sort when v2 searches omit an explicit sort.
 

@@ -7,7 +7,7 @@ from elasticsearch import BadRequestError
 from elasticsearch._sync.client.indices import IndicesClient
 from flask import request
 
-from howler.api import bad_request, internal_error, make_subapi_blueprint, ok
+from howler.api import bad_request, forbidden, internal_error, make_subapi_blueprint, ok
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.logging.audit import audit
@@ -17,6 +17,7 @@ from howler.helper.search import get_collection, has_access_control
 from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import hit_service, lucene_service, search_service
+from howler.services.search_service import SensitiveUserFieldsException
 from howler.utils.net_utils import generate_params
 
 SUB_API = "search"
@@ -113,6 +114,8 @@ def search(indexes: str, user: User, **kwargs):
 
     try:
         result = search_service.search(indexes, query, user=user, **params)
+    except SensitiveUserFieldsException as e:
+        return forbidden(err=e.message)
     except (SearchException, BadRequestError) as e:
         logger.exception(f"SearchException on query {query}")
         return bad_request(err=f"SearchException on query {query}: {str(e)}")

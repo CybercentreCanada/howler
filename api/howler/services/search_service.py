@@ -20,8 +20,13 @@ DEFAULT_ROW_SIZE = 25
 DEFAULT_SORT: list[dict[str, str]] = [{"_id": "asc"}]
 DEFAULT_SEARCH_FIELD = "__text__"
 SCROLL_TIMEOUT = "5m"
+SENSITIVE_USER_FIELDS = ["password", "apikeys", "*"]
 
 logger = get_logger(__file__)
+
+
+class SensitiveUserFieldsException(SearchException):
+    """Raised when a user search requests protected source fields."""
 
 
 def _format_items(hits: list[dict[str, Any]], user_classification: str | None) -> list[dict[str, Any]]:
@@ -92,6 +97,14 @@ def search(  # noqa: C901
      "items": []}                           # List of results
     """
     del metadata
+
+    index_list = _parse_index_list(indexes)
+    if (
+        fl is not None
+        and "user" in index_list
+        and any(sensitive_field in fl for sensitive_field in SENSITIVE_USER_FIELDS)
+    ):
+        raise SensitiveUserFieldsException("Invalid fields to retrieve.")
 
     client: Elasticsearch = datastore().ds.client
     parsed_indexes = normalize_indexes(indexes)

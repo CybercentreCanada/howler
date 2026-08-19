@@ -475,6 +475,15 @@ class TestFormatItems:
 class TestSearch:
     """Tests for search_service.search."""
 
+    @pytest.mark.parametrize("sensitive_field", ["password", "apikeys", "*"])
+    @patch("howler.services.search_service.datastore")
+    def test_search_rejects_sensitive_user_fields(self, mock_ds_fn, sensitive_field):
+        """Rejects sensitive source fields before accessing Elasticsearch."""
+        with pytest.raises(search_service.SensitiveUserFieldsException, match="Invalid fields to retrieve"):
+            search_service.search("user", query="uname:*", fl=sensitive_field)
+
+        mock_ds_fn.assert_not_called()
+
     @patch("howler.services.search_service.datastore")
     def test_basic_search_returns_result(self, mock_ds_fn):
         """A basic search returns formatted results with total, offset, rows, items."""
