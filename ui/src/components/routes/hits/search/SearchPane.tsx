@@ -130,6 +130,7 @@ const SearchPane: FC = () => {
   const { onClick } = useRecordSelection();
 
   const searchPaneWidth = useMyLocalStorageItem(StorageKey.SEARCH_PANE_WIDTH, null)[0];
+  const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
   const verticalSorters = useMediaQuery('(max-width: 1919px)') || (searchPaneWidth ?? Number.MAX_SAFE_INTEGER) < 900;
 
@@ -198,7 +199,7 @@ const SearchPane: FC = () => {
                 <Box flex={1} />
                 <SearchPagination
                   total={response.total}
-                  limit={response.rows}
+                  limit={pageCount}
                   offset={response.offset}
                   onChange={nextOffset => setOffset(nextOffset)}
                 />
