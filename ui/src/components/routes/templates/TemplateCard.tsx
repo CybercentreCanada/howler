@@ -41,7 +41,7 @@ const TemplateCard: FC<{
         {error && (
           <Stack direction="row" justifyContent="end" width="100%">
             <Stack>
-              <Tooltip title={t('route.templates.manager.error.action')}>
+              <Tooltip title={t('error.invalid_detection.action')}>
                 <Button
                   startIcon={<ReportProblem />}
                   color="warning"
@@ -56,7 +56,7 @@ const TemplateCard: FC<{
                     )
                   }
                 >
-                  {t('route.templates.manager.error.message')}
+                  {t('error.invalid_detection.message')}
                 </Button>
               </Tooltip>
             </Stack>

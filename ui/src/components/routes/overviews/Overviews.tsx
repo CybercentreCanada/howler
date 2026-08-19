@@ -1,7 +1,7 @@
 import { Article } from '@mui/icons-material';
 import { Typography } from '@mui/material';
 import api from 'api';
-import { ModalContext } from 'components/app/providers/ModalProvider';
+import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
 import SearchResponseProvider, {
   SearchResponseContext,
   type SearchResponseContextType
@@ -24,7 +24,6 @@ const OverviewsBase: FC = () => {
   const navigate = useNavigate();
   const { dispatchApi } = useMyApi();
   const { showSuccessMessage } = useMySnackbar();
-  const { withConfirmDeleteModal } = useContext(ModalContext);
   const [searchParams, setSearchParams] = useSearchParams();
   const { load } = useContext<TuiListMethodsState<Overview>>(TuiListMethodContext);
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
@@ -34,6 +33,7 @@ const OverviewsBase: FC = () => {
   const [hasError, setHasError] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const { analytics } = useContext(AnalyticContext);
   const { response, request, remove, getSearchRequestData } =
     useContext<SearchResponseContextType<Overview>>(SearchResponseContext);
 
@@ -66,6 +66,7 @@ const OverviewsBase: FC = () => {
 
   // Load the items into list when response changes.
   // This hook should only trigger when the 'response' changes.
+  // or if the analytic list changes to refresh the disabled state
   useEffect(() => {
     if (response) {
       load(
@@ -73,12 +74,17 @@ const OverviewsBase: FC = () => {
           id: item.overview_id,
           item,
           selected: false,
-          cursor: false
+          cursor: false,
+          disabled:
+            item.detection &&
+            !analytics
+              .find(v => v.name === item.analytic)
+              ?.detections?.map((s: string) => s.toLowerCase())
+              ?.includes(item.detection?.toLowerCase())
         }))
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [response, load]);
+  }, [response, load, analytics]);
 
   const onPageChange = useCallback(
     (_offset: number) => {
@@ -92,23 +98,18 @@ const OverviewsBase: FC = () => {
     [offset, searchParams, setSearchParams, getSearchRequestData]
   );
 
-  const onDelete = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>, id: string) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      withConfirmDeleteModal(async () => {
-        try {
-          await dispatchApi(api.overview.del(id), { throwError: true, showError: true });
-          remove(id);
-          showSuccessMessage(t('route.overviews.manager.delete.success'));
-        } catch (_err) {
-          // eslint-disable-next-line no-console
-          console.warn(_err);
-        }
-      });
+  const removeOverview = useCallback(
+    async (overviewId: string) => {
+      try {
+        await dispatchApi(api.overview.del(overviewId), { throwError: true, showError: true });
+        remove(overviewId);
+        showSuccessMessage(t('route.overviews.manager.delete.success'));
+      } catch (_err) {
+        // eslint-disable-next-line no-console
+        console.warn(_err);
+      }
     },
-    [dispatchApi, remove, withConfirmDeleteModal, showSuccessMessage, t]
+    [dispatchApi, remove, showSuccessMessage, t]
   );
 
   useEffect(() => {
@@ -137,8 +138,10 @@ const OverviewsBase: FC = () => {
   }, [offset]);
 
   const renderer = useCallback(
-    (item: Overview, className?: string) => <OverviewCard overview={item} className={className} onDelete={onDelete} />,
-    [onDelete]
+    (item: Overview, error?: boolean, className?: string) => (
+      <OverviewCard overview={item} error={error} className={className} onRemove={removeOverview} />
+    ),
+    [removeOverview]
   );
 
   return (
@@ -157,7 +160,9 @@ const OverviewsBase: FC = () => {
           {t('route.overviews.search.prompt')}
         </Typography>
       }
-      renderer={({ item }: TuiListItemProps<Overview>, classRenderer) => renderer(item.item, classRenderer())}
+      renderer={({ item }: TuiListItemProps<Overview>, classRenderer) =>
+        renderer(item.item, !!item.disabled, classRenderer())
+      }
       response={response}
       onSelect={(item: TuiListItem<Overview>) =>
         navigate(

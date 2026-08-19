@@ -1,11 +1,12 @@
 import { Button, Stack, Typography } from '@mui/material';
 import { ModalContext } from 'components/app/providers/ModalProvider';
-import type { FC } from 'react';
+import type React from 'react';
+import type { FC, MouseEventHandler } from 'react';
 import { useCallback, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const ConfirmDeleteModal: FC<{
-  onConfirm: () => void;
+  onConfirm: MouseEventHandler<HTMLButtonElement> | (() => void);
   title?: string;
   description?: string;
   preferDelete?: boolean;
@@ -14,10 +15,13 @@ const ConfirmDeleteModal: FC<{
   const { t } = useTranslation();
   const { close } = useContext(ModalContext);
 
-  const handleConfirm = useCallback(() => {
-    onConfirm();
-    close();
-  }, [close, onConfirm]);
+  const handleConfirm = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      onConfirm(e);
+      close();
+    },
+    [close, onConfirm]
+  );
 
   const modalTitle = title ?? t('modal.confirm.delete.title');
   const modalDesc = description ?? t('modal.confirm.delete.description');

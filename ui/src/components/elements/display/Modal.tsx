@@ -22,7 +22,7 @@ const Modal: FC = () => {
           left: '50%',
           maxWidth: options.maxWidth || '1200px',
           maxHeight: options.maxHeight || '400px',
-          height: has(options, 'height') ? options.height : '100%',
+          height: has(options, 'height') ? options.height : 'auto',
           transform: 'translate(-50%, -50%)',
           backgroundColor: 'background.paper',
           borderRadius: theme.shape.borderRadius,
