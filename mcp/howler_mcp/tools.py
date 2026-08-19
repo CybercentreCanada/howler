@@ -799,6 +799,44 @@ def register_tools(mcp, api_client: HowlerApiClient):
             user_access_token=_proper_access_token(),
         )
 
+    @mcp.tool(name="create_dossier_for_hit")
+    async def create_dossier_for_hit(hit_id: str, leads: list[dict]) -> dict:
+        """Add dossier leads directly to one alert.
+
+        Unlike ``create_dossier``, this tool does not create a reusable query
+        dossier. It appends the supplied leads to the hit's ``howler.dossier``
+        field so they apply only to the specified alert.
+
+        Args:
+            hit_id: Exact UUID of the hit that should receive the dossier.
+            leads: Lead dictionaries to append to the hit dossier.
+
+        Returns:
+            dict: The updated hit returned by the API.
+
+        Raises:
+            ValueError: If hit_id is invalid or leads are empty.
+            TypeError: If leads are not supplied as a list.
+        """
+        if not hit_id or not hit_id.strip():
+            raise ValueError("hit_id is required and cannot be empty.")
+        if _contains_escape_characters(hit_id):
+            raise ValueError("hit_id cannot contain control characters or path separators.")
+        if not isinstance(leads, list):
+            raise TypeError("leads must be supplied as a list.")
+        if not leads:
+            raise ValueError("leads must be a non-empty list.")
+
+        _verify_leads(leads)
+
+        operations = [["APPEND", "howler.dossier", lead] for lead in leads]
+        return await api_client.call(
+            body=operations,
+            method="PUT",
+            path=f"/hit/{hit_id.strip()}/update",
+            user_access_token=_proper_access_token(),
+        )
+
     @mcp.tool(name="update_dossier")
     async def update_dossier(dossier_id: str, data_to_update: dict[str, Any]) -> dict:
         """Update an existing dossier with a subset of permitted fields.

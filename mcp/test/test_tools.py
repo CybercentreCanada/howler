@@ -52,6 +52,7 @@ def test_registered_tool_surface(tools_and_api):
         "get_label_set_options",
         "add_label_to_hit",
         "create_dossier",
+        "create_dossier_for_hit",
         "update_dossier",
     }
 
@@ -750,6 +751,46 @@ async def test_create_dossier_with_valid_nested_data_calls_api(tools_and_api):
     call_kwargs = mock_api.call.call_args.kwargs
     assert call_kwargs["path"] == "/dossier/"
     assert call_kwargs["method"] == "POST"
+
+
+@pytest.mark.asyncio
+async def test_create_dossier_for_hit_appends_leads(tools_and_api):
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = {"howler": {"id": "hit-1", "dossier": []}}
+
+    lead = {
+        "icon": "mdi:file-document",
+        "label": {"en": "Overview", "fr": "Apercu"},
+        "format": "markdown",
+        "content": "Initial notes",
+        "metadata": {},
+    }
+
+    with (
+        patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
+        patch("howler_mcp.tools.httpx.get") as mock_get,
+    ):
+        mock_get.return_value.status_code = 200
+        result = await tools["create_dossier_for_hit"](hit_id=" hit-1 ", leads=[lead])
+
+    assert result["howler"]["id"] == "hit-1"
+    call_kwargs = mock_api.call.call_args.kwargs
+    assert call_kwargs["path"] == "/hit/hit-1/update"
+    assert call_kwargs["method"] == "PUT"
+    assert call_kwargs["body"] == [["APPEND", "howler.dossier", lead]]
+
+
+@pytest.mark.asyncio
+async def test_create_dossier_for_hit_rejects_invalid_hit_id(tools_and_api):
+    tools, mock_api = tools_and_api
+
+    with (
+        patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
+        pytest.raises(ValueError, match="path separators"),
+    ):
+        await tools["create_dossier_for_hit"](hit_id="hit/1", leads=[])
+
+    mock_api.call.assert_not_called()
 
 
 @pytest.mark.asyncio
