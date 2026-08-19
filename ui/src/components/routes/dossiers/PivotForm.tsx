@@ -34,7 +34,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { useSearchParams } from 'react-router-dom';
-import DossierGroupValidation from '../help/DossierGroupValidation';
+import DossierGroupValidation from '../../../utils/DossierGroupValidation';
 
 export interface PivotFormProps {
   pivot: Pivot;

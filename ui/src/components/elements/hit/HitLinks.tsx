@@ -12,6 +12,7 @@ import HitNotebooks from 'components/elements/hit/HitNotebooks';
 import ResolvePivotUrl from 'components/elements/hit/ResolvePivotUrl';
 import PivotLink from 'components/elements/hit/related/PivotLink';
 import RelatedLink from 'components/elements/hit/related/RelatedLink';
+import type { Pivot } from 'models/entities/generated/Pivot';
 
 interface HitLinksProps {
   hit?: Hit;
@@ -21,6 +22,52 @@ interface HitLinksProps {
 
 const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
   const { i18n } = useTranslation();
+  // Tree data structure for pivot
+
+  // {
+  //   "root"{
+  //     "other parent" {
+  //     "other parent"{...}
+  //       "pivot":[]
+  //     },
+  //     "pivot":[]
+  //   }
+  // }
+  type PivotTree = {
+    pivot?: Pivot[];
+    [key: string]: any;
+  };
+
+  const groupPivot: PivotTree = {};
+
+  for (const dossier of dossiers) {
+    for (const pivot of dossier.pivots) {
+      let current = groupPivot;
+      // Doesn't have a group it will not be class
+      if (pivot.group === '') {
+        if (!('pivot' in current)) {
+          current['pivot'] = [];
+        }
+        current['pivot'].push(pivot);
+        continue;
+      }
+      // Sort it into group
+      const group = pivot.group.split('/');
+      for (let i = 0; i < group.length; i++) {
+        let key = group[i];
+        if (!(key in current)) {
+          current[key] = {};
+        }
+        current = current[key];
+      }
+
+      if (!('pivot' in current)) {
+        current['pivot'] = [];
+      }
+
+      current['pivot'].push(pivot);
+    }
+  }
 
   const displayLinks = useMemo(() => uniqBy(hit?.howler?.links ?? [], 'href').slice(0, 3), [hit?.howler?.links]);
 

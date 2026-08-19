@@ -10,12 +10,16 @@ const DossierGroupValidation = (group: string): string | null => {
   if (!group) return null;
 
   const validationRegex = /^[A-Za-zùûüÿàâæçéèêëïîôœÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ/]*$/;
+  const not_allowed_word = /(^|\/)pivot(\/|$)/;
 
   if (!validationRegex.test(group)) {
-    return 'route.dossiers.groups.invalid.character';
+    return 'route.pivots.groups.invalid.character';
+  }
+  if (not_allowed_word.test(group)) {
+    return 'route.pivots.groups.invalid.word';
   }
   if (group.includes('//') || group.startsWith('/') || group.endsWith('/')) {
-    return 'route.dossiers.groups.invalid.format';
+    return 'route.pivots.groups.invalid.format';
   }
 
   return null;
