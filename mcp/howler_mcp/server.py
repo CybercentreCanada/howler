@@ -8,9 +8,9 @@ from pydantic import AnyHttpUrl
 
 from .api import HowlerApiClient
 from .auth import JSONWebTokenVerifier
-from .auth_logging import AuthenticationLoggingMiddleware
 from .config import AUTH, HOWLER_API, MCPSettings
 from .prompts import register_prompts
+from .request_logging import RequestLoggingMiddleware
 from .tools import register_tools
 
 logging.basicConfig(
@@ -72,13 +72,13 @@ mcp = FastMCP(
 _streamable_http_app = mcp.streamable_http_app
 
 
-def streamable_http_app_with_auth_logging():
+def streamable_http_app_with_request_logging():
     app = _streamable_http_app()
-    app.add_middleware(AuthenticationLoggingMiddleware)
+    app.add_middleware(RequestLoggingMiddleware)
     return app
 
 
-mcp.streamable_http_app = streamable_http_app_with_auth_logging  # type: ignore[method-assign]
+mcp.streamable_http_app = streamable_http_app_with_request_logging  # type: ignore[method-assign]
 
 register_tools(mcp, api_client)
 register_prompts(mcp)

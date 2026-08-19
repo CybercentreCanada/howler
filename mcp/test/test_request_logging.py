@@ -5,10 +5,6 @@ import pytest
 from howler_mcp.request_logging import RequestLoggingMiddleware
 
 
-async def receive():
-    return {"type": "http.request", "body": b"", "more_body": False}
-
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("headers", "reason"),
@@ -30,7 +26,7 @@ async def test_logs_reason_for_401_response(caplog, headers, reason):
         return None
 
     with caplog.at_level(logging.WARNING, logger="howler_mcp.request_logging"):
-        await middleware(scope, receive, send)
+        await middleware(scope, None, send)
 
     assert f"reason={reason}" in caplog.text
 
@@ -48,7 +44,7 @@ async def test_does_not_log_when_response_is_not_401(caplog):
         return None
 
     with caplog.at_level(logging.WARNING, logger="howler_mcp.request_logging"):
-        await middleware(scope, receive, send)
+        await middleware(scope, None, send)
 
     assert "auth_response" not in caplog.text
 
@@ -70,7 +66,32 @@ async def test_logs_404_with_session_header_presence(caplog, headers, session_id
         return None
 
     with caplog.at_level(logging.WARNING, logger="howler_mcp.request_logging"):
-        await middleware(scope, receive, send)
+        await middleware(scope, None, send)
 
-    assert "not_found_response path=/mcp method=POST status=404" in caplog.text
+    assert "not_found_response path=/mcp method=POST status=404 detail=empty_response_body" in caplog.text
     assert f"mcp_session_id_present={session_id_present}" in caplog.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("body", "detail"),
+    [
+        (b'{"error":{"message":"Session not found"}}', "Session not found"),
+        (b"Not Found", "Not Found"),
+    ],
+)
+async def test_logs_404_response_detail(caplog, body, detail):
+    async def app(scope, receive, send):
+        await send({"type": "http.response.start", "status": 404, "headers": []})
+        await send({"type": "http.response.body", "body": body})
+
+    middleware = RequestLoggingMiddleware(app)
+    scope = {"type": "http", "path": "/mcp", "method": "POST", "headers": []}
+
+    async def send(message):
+        return None
+
+    with caplog.at_level(logging.WARNING, logger="howler_mcp.request_logging"):
+        await middleware(scope, None, send)
+
+    assert f"not_found_response path=/mcp method=POST status=404 detail={detail}" in caplog.text
