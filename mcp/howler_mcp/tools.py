@@ -8,6 +8,7 @@ from mcp.server.auth.provider import AccessToken
 from pydantic import BaseModel, Field
 
 from howler_mcp.api import HowlerApiClient
+from howler_mcp.config import ICONIFY
 
 # Safety limits to avoid oversized backend requests.
 MAXIMUM_TICKET: int = 200
@@ -25,8 +26,6 @@ PERMITTED_KEYS = {
     "type",
     "owner",
 }
-# API to get icons
-ICONIFY_API = "https://api.iconify.design"
 # supported languages
 INTENDED_LANGUAGE: set = {"en", "fr"}
 
@@ -178,7 +177,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
         if prefix is not None:
             params["prefix"] = prefix
 
-        response = httpx.get(f"{ICONIFY_API}/search", params=params, timeout=10)
+        response = httpx.get(f"{ICONIFY.API_URL}/search", params=params, timeout=10)
         response.raise_for_status()
 
         return set(response.json().get("icons", []))
@@ -186,7 +185,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
     @mcp.tool(name="get_iconify_exist")
     def get_iconify_exist(icon_id: str) -> bool:
         prefix, _, name = icon_id.partition(":")
-        url = f"{ICONIFY_API}/{prefix}/{name}.svg" if name else f"{ICONIFY_API}/{icon_id}"
+        url = f"{ICONIFY.API_URL}/{prefix}/{name}.svg" if name else f"{ICONIFY.API_URL}/{icon_id}"
         return httpx.get(url, timeout=10).status_code == 200
 
     @mcp.tool(name="whoami", description="Get information about the current user")
