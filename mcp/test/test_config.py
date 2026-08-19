@@ -32,6 +32,30 @@ def test_require_https_for_non_local_accepts_cluster_urls(url):
     assert config._require_https_for_non_local(url, "TEST_URL") == url
 
 
+def test_iconify_api_url_defaults_to_public_iconify():
+    assert config.ICONIFY.API_URL == "https://api.iconify.design"
+
+
+def test_iconify_api_url_is_configurable_via_env(monkeypatch):
+    monkeypatch.setenv("ICONIFY_API_URL", "https://icons.example.com")
+    try:
+        importlib.reload(config)
+        assert config.ICONIFY.API_URL == "https://icons.example.com"
+    finally:
+        monkeypatch.delenv("ICONIFY_API_URL", raising=False)
+        importlib.reload(config)
+
+
+def test_iconify_api_url_rejects_insecure_non_local_url(monkeypatch):
+    monkeypatch.setenv("ICONIFY_API_URL", "http://icons.example.com")
+    try:
+        with pytest.raises(ValueError, match="must use https for non-local hosts"):
+            importlib.reload(config)
+    finally:
+        monkeypatch.delenv("ICONIFY_API_URL", raising=False)
+        importlib.reload(config)
+
+
 @pytest.mark.parametrize(
     ("timeout", "message"),
     [
