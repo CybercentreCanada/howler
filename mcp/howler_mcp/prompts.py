@@ -29,6 +29,17 @@ After the call:
 - list each hit ID and available context such as status, analytic, and escalation
 - ask whether the user wants additional filtering with lucene_query"""
 
+    @mcp.prompt(name="craft_howler_url")
+    def craft_howler_url_prompt() -> str:
+        """Explain how to build a UI link for a Howler record."""
+        return """Use craft_howler_url when a user needs a clickable Howler UI link for a hit or event.
+
+Pass the complete record returned by lucene_query or another Howler tool. The record must contain:
+- __index: hit or event
+- howler.id: the record identifier
+
+Return the generated URL without changing the record identifier."""
+
     @mcp.prompt(name="add_comment_to_hit")
     def add_comment_to_hit_prompt() -> str:
         """Explain when and how to use the add_comment_to_hit tool."""

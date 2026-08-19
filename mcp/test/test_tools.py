@@ -43,6 +43,7 @@ def test_registered_tool_surface(tools_and_api):
     assert set(tools.keys()) == {
         "query_iconify",
         "get_iconify_exist",
+        "craft_howler_url",
         "whoami",
         "list_assigned_hits",
         "add_comment_to_hit",
@@ -55,6 +56,35 @@ def test_registered_tool_surface(tools_and_api):
         "create_dossier_for_hit",
         "update_dossier",
     }
+
+
+@pytest.mark.parametrize(
+    ("record", "expected_url"),
+    [
+        ({"__index": "hit", "howler": {"id": "hit-1"}}, "http://localhost:3000/hits/hit-1"),
+        ({"__index": "event", "howler": {"id": "event-1"}}, "http://localhost:3000/events/event-1"),
+    ],
+)
+def test_craft_howler_url(tools_and_api, record, expected_url):
+    tools, _ = tools_and_api
+
+    assert tools["craft_howler_url"](record) == expected_url
+
+
+@pytest.mark.parametrize(
+    "record",
+    [
+        {},
+        {"__index": "case", "howler": {"id": "case-1"}},
+        {"__index": "hit", "howler": {}},
+        {"__index": "hit", "howler": {"id": "id/with/slash"}},
+    ],
+)
+def test_craft_howler_url_rejects_invalid_records(tools_and_api, record):
+    tools, _ = tools_and_api
+
+    with pytest.raises(ValueError):
+        tools["craft_howler_url"](record)
 
 
 @pytest.mark.asyncio
