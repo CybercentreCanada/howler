@@ -22,6 +22,7 @@ def test_register_prompts_registers_and_returns_guidance():
     expected_opening = {
         "whoami": "Use whoami",
         "list_assigned_hits": "Use list_assigned_hits",
+        "craft_howler_url": "Use craft_howler_url",
         "add_comment_to_hit": "Use add_comment_to_hit",
         "get_field_values": "Use get_field_values",
         "get_hit_fields": "Use get_hit_fields",

@@ -8,7 +8,7 @@ from mcp.server.auth.provider import AccessToken
 from pydantic import BaseModel, Field
 
 from howler_mcp.api import HowlerApiClient
-from howler_mcp.config import ICONIFY
+from howler_mcp.config import HOWLER_UI, ICONIFY
 
 # Safety limits to avoid oversized backend requests.
 MAXIMUM_TICKET: int = 200
@@ -187,6 +187,35 @@ def register_tools(mcp, api_client: HowlerApiClient):
         prefix, _, name = icon_id.partition(":")
         url = f"{ICONIFY.API_URL}/{prefix}/{name}.svg" if name else f"{ICONIFY.API_URL}/{icon_id}"
         return httpx.get(url, timeout=10).status_code == 200
+
+    @mcp.tool(name="craft_howler_url")
+    def craft_howler_url(record: dict[str, Any]) -> str:
+        """Build the Howler UI URL for a hit or event returned by Howler.
+
+        Args:
+            record: Hit or event object containing ``__index`` and
+                ``howler.id`` fields.
+
+        Returns:
+            str: URL that opens the record in the Howler web interface.
+
+        Raises:
+            ValueError: If the record type or identifier is missing or unsafe.
+        """
+        record_type = record.get("__index")
+        if record_type not in {"hit", "event"}:
+            raise ValueError("record.__index must be either 'hit' or 'event'.")
+
+        howler = record.get("howler")
+        record_id = howler.get("id") if isinstance(howler, dict) else None
+        if not isinstance(record_id, str) or not record_id.strip():
+            raise ValueError("howler.id is required and cannot be empty.")
+
+        record_id = record_id.strip()
+        if _contains_escape_characters(record_id):
+            raise ValueError("record.howler.id cannot contain control characters or path separators.")
+
+        return f"{HOWLER_UI.BASE_URL}/{record_type}s/{record_id}"
 
     @mcp.tool(name="whoami", description="Get information about the current user")
     async def whoami() -> WhoAmIResponse:
