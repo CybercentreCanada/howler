@@ -64,7 +64,7 @@ const HitViewer: FC = () => {
   const [orientation, setOrientation] = useMyLocalStorageItem(StorageKey.VIEWER_ORIENTATION, Orientation.VERTICAL);
   const { getMatchingOverview, getMatchingDossiers, getMatchingAnalytic } = useMatchers();
   const { emit, open } = useContext(SocketContext);
-  const { executeFunction } = usePluginStore();
+  const pluginStore = usePluginStore();
 
   const getHit = useContextSelector(RecordContext, ctx => ctx.getRecord);
   const hit = useContextSelector(RecordContext, ctx => ctx.records[params.id] as Hit);
@@ -105,9 +105,9 @@ const HitViewer: FC = () => {
     }
 
     howlerPluginStore.plugins.forEach(plugin => {
-      executeFunction(`${plugin}.on`, 'viewing');
+      pluginStore.executeFunction(`${plugin}.on`, 'viewing');
     });
-  }, [executeFunction, hit]);
+  }, [pluginStore.executeFunction, hit]);
 
   useEffect(() => {
     void fetchData();

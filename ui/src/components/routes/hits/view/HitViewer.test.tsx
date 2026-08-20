@@ -1,3 +1,4 @@
+import type * as MuiMaterial from '@mui/material';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RecordContext } from 'components/app/providers/RecordProvider';
@@ -6,11 +7,14 @@ import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { FC, PropsWithChildren } from 'react';
-import type * as MuiMaterial from '@mui/material';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockEmit = vi.hoisted(() => vi.fn());
-const mockExecutePlugin = vi.hoisted(() => vi.fn());
+const mockExecutePlugin = vi.hoisted(() =>
+  vi.fn(function (this: { functionArray: unknown[] }) {
+    return this.functionArray;
+  })
+);
 const mockOpen = vi.hoisted(() => ({ current: true }));
 const mockParams = vi.hoisted(() => ({ id: 'hit-1' as string | undefined }));
 const mockGetHit = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
@@ -37,7 +41,7 @@ vi.mock('plugins/store', () => ({
 }));
 
 vi.mock('react-pluggable', () => ({
-  usePluginStore: () => ({ executeFunction: mockExecutePlugin })
+  usePluginStore: () => ({ executeFunction: mockExecutePlugin, functionArray: [] })
 }));
 
 vi.mock('react-i18next', () => ({
@@ -191,7 +195,7 @@ const renderViewer = () => render(<HitViewer />, { wrapper: createWrapper() });
 
 beforeEach(() => {
   mockEmit.mockReset();
-  mockExecutePlugin.mockReset();
+  mockExecutePlugin.mockClear();
   mockOpen.current = true;
   mockParams.id = 'hit-1';
   mockUseMediaQuery.mockReset().mockReturnValue(false);

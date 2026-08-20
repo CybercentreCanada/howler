@@ -1,5 +1,9 @@
 # Howler Releases
 
+## Howler UI `v3.0.6`
+
+- **Plugin Viewing Hook Crash** _(bugfix)_: Fixed a TypeError when hit viewers or search information panes invoked plugin viewing hooks without preserving the plugin store context.
+
 ## Howler UI `v3.0.5`
 
 - **Hit Viewing Notifications** _(bugfix)_: Hit viewers and search information panes now emit viewing notifications and invoke plugin viewing hooks without repeating them during rerenders ([#572](https://github.com/CybercentreCanada/howler/pull/572)).
