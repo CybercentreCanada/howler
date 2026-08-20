@@ -17,6 +17,7 @@ import {
 import PageCenter from 'commons/components/pages/PageCenter';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { RecordContext } from 'components/app/providers/RecordProvider';
+import { SocketContext } from 'components/app/providers/SocketProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import HowlerCard from 'components/elements/display/HowlerCard';
 import SocketBadge from 'components/elements/display/icons/SocketBadge';
@@ -37,9 +38,11 @@ import useMyUserList from 'components/hooks/useMyUserList';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Hit } from 'models/entities/generated/Hit';
+import howlerPluginStore from 'plugins/store';
 import type { FC } from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePluginStore } from 'react-pluggable';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
@@ -60,6 +63,8 @@ const HitViewer: FC = () => {
   const isUnderLg = useMediaQuery(theme.breakpoints.down('lg'));
   const [orientation, setOrientation] = useMyLocalStorageItem(StorageKey.VIEWER_ORIENTATION, Orientation.VERTICAL);
   const { getMatchingOverview, getMatchingDossiers, getMatchingAnalytic } = useMatchers();
+  const { emit, open } = useContext(SocketContext);
+  const { executeFunction } = usePluginStore();
 
   const getHit = useContextSelector(RecordContext, ctx => ctx.getRecord);
   const hit = useContextSelector(RecordContext, ctx => ctx.records[params.id] as Hit);
@@ -83,7 +88,7 @@ const HitViewer: FC = () => {
       setAnalytic(await getMatchingAnalytic(hit));
     } catch (err) {
       if (err.cause?.api_status_code === 404) {
-        navigate('/404');
+        void navigate('/404');
       }
     }
   }, [hit, getMatchingAnalytic, getHit, params.id, navigate]);
@@ -95,8 +100,38 @@ const HitViewer: FC = () => {
   }, [isUnderLg, setOrientation]);
 
   useEffect(() => {
+    if (!hit) {
+      return;
+    }
+
+    howlerPluginStore.plugins.forEach(plugin => {
+      executeFunction(`${plugin}.on`, 'viewing');
+    });
+  }, [executeFunction, hit]);
+
+  useEffect(() => {
     void fetchData();
   }, [params.id, fetchData, hit]);
+
+  useEffect(() => {
+    if (!params.id || !open) {
+      return;
+    }
+
+    emit({
+      broadcast: false,
+      action: 'viewing',
+      id: params.id
+    });
+
+    return () => {
+      emit({
+        broadcast: false,
+        action: 'stop_viewing',
+        id: params.id
+      });
+    };
+  }, [emit, params.id, open]);
 
   const onOrientationChange = useCallback(
     () => setOrientation(orientation === Orientation.VERTICAL ? Orientation.HORIZONTAL : Orientation.VERTICAL),
