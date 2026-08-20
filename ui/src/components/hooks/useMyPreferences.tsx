@@ -198,6 +198,13 @@ const useMyPreferences = (): AppPreferenceConfigs => {
               },
               { id: 'help.hit', type: 'route', i18nKey: 'route.help.hit', route: '/help/hit', icon: <Shield /> },
               {
+                id: 'help.cases',
+                type: 'route',
+                i18nKey: 'route.help.cases',
+                route: '/help/cases',
+                icon: <BookRounded />
+              },
+              {
                 id: 'help.search',
                 type: 'route',
                 i18nKey: 'route.help.search',

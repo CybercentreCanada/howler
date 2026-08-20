@@ -85,6 +85,7 @@ import Dossiers from 'components/routes/dossiers/Dossiers';
 import ActionDocumentation from 'components/routes/help/ActionDocumentation';
 import ApiDocumentation from 'components/routes/help/ApiDocumentation';
 import AuthDocumentation from 'components/routes/help/AuthDocumentation';
+import CaseDocumentation from 'components/routes/help/CaseDocumentation';
 import ClientDocumentation from 'components/routes/help/ClientDocumentation';
 import HelpDashboard from 'components/routes/help/Help';
 import HitDocumentation from 'components/routes/help/HitDocumentation';
@@ -598,6 +599,16 @@ const createRouter = () =>
             breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
               crumb('/help', 'route.help', <Help />),
               selfCrumb(match, 'route.help.client', <Terminal />)
+            ]
+          }
+        },
+        {
+          path: 'help/cases',
+          element: <CaseDocumentation />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/help', 'route.help', <Help />),
+              selfCrumb(match, 'route.help.cases', <BookRounded />)
             ]
           }
         },
