@@ -38,16 +38,15 @@ import useMyUserList from 'components/hooks/useMyUserList';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Hit } from 'models/entities/generated/Hit';
-import howlerPluginStore from 'plugins/store';
 import type { FC } from 'react';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { usePluginStore } from 'react-pluggable';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 import { getUserList } from 'utils/recordFunctions';
 import { tryParse } from 'utils/utils';
+import PluginViewing from '../shared/PluginViewing';
 import LeadRenderer from './LeadRenderer';
 
 export enum Orientation {
@@ -64,7 +63,6 @@ const HitViewer: FC = () => {
   const [orientation, setOrientation] = useMyLocalStorageItem(StorageKey.VIEWER_ORIENTATION, Orientation.VERTICAL);
   const { getMatchingOverview, getMatchingDossiers, getMatchingAnalytic } = useMatchers();
   const { emit, open } = useContext(SocketContext);
-  const pluginStore = usePluginStore();
 
   const getHit = useContextSelector(RecordContext, ctx => ctx.getRecord);
   const hit = useContextSelector(RecordContext, ctx => ctx.records[params.id] as Hit);
@@ -98,16 +96,6 @@ const HitViewer: FC = () => {
       setOrientation(Orientation.HORIZONTAL);
     }
   }, [isUnderLg, setOrientation]);
-
-  useEffect(() => {
-    if (!hit) {
-      return;
-    }
-
-    howlerPluginStore.plugins.forEach(plugin => {
-      pluginStore.executeFunction(`${plugin}.on`, 'viewing');
-    });
-  }, [pluginStore.executeFunction, hit]);
 
   useEffect(() => {
     void fetchData();
@@ -196,6 +184,7 @@ const HitViewer: FC = () => {
 
   return (
     <PageCenter maxWidth="1500px">
+      <PluginViewing hit={hit} />
       <Box
         sx={{
           display: 'grid',

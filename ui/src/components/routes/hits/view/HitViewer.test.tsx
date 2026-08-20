@@ -242,7 +242,7 @@ describe('HitViewer', () => {
     });
     expect(screen.getByText('details-content')).toBeInTheDocument();
     expect(mockExecutePlugin).toHaveBeenCalledTimes(1);
-    expect(mockExecutePlugin).toHaveBeenCalledWith('test-plugin.on', 'viewing');
+    expect(mockExecutePlugin).toHaveBeenCalledWith('test-plugin.on', 'viewing', hit);
   });
 
   it('emits viewing and stop_viewing socket events', async () => {

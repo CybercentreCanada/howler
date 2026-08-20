@@ -1,8 +1,12 @@
 # Howler Releases
 
+## Howler UI `v3.0.7`
+
+- **Plugin Viewing Lifecycle** _(bugfix)_: Fixed hit viewer and search information pane crashes by preserving the plugin-store context, rendering hook-based viewing handlers inside React, and consolidating the behavior in a memoized shared component so viewing hooks run once per hit.
+
 ## Howler UI `v3.0.6`
 
-- **Plugin Viewing Hook Crash** _(bugfix)_: Fixed a TypeError when hit viewers or search information panes invoked plugin viewing hooks without preserving the plugin store context.
+- **Plugin Viewing Hook Crashes** _(bugfix)_: Fixed hit viewer and search information pane crashes caused by unbound plugin-store calls and React hooks running outside a component render.
 
 ## Howler UI `v3.0.5`
 

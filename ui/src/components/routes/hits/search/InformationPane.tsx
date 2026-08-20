@@ -30,17 +30,16 @@ import useMyUserList from 'components/hooks/useMyUserList';
 import ErrorBoundary from 'components/routes/ErrorBoundary';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Dossier } from 'models/entities/generated/Dossier';
-import howlerPluginStore from 'plugins/store';
 import type { FC } from 'react';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { usePluginStore } from 'react-pluggable';
 import { useLocation } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { getUserList } from 'utils/recordFunctions';
 import { validateRegex } from 'utils/stringUtils';
 import { isHit } from 'utils/typeUtils';
 import { tryParse } from 'utils/utils';
+import PluginViewing from '../shared/PluginViewing';
 import LeadRenderer from '../view/LeadRenderer';
 
 const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onClose, selected: _selected }) => {
@@ -50,7 +49,6 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
   const { emit, open } = useContext(SocketContext);
   const { getMatchingOverview, getMatchingDossiers, getMatchingAnalytic } = useMatchers();
   const selected = useContextSelector(ParameterContext, ctx => ctx?.selected) ?? _selected;
-  const pluginStore = usePluginStore();
 
   const getRecord = useContextSelector(RecordContext, ctx => ctx.getRecord);
 
@@ -68,16 +66,6 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
   const users = useMyUserList(userIds);
 
   const record = useContextSelector(RecordContext, ctx => ctx.records[selected]);
-
-  useEffect(() => {
-    if (!selected) {
-      return;
-    }
-
-    howlerPluginStore.plugins.forEach(plugin => {
-      pluginStore.executeFunction(`${plugin}.on`, 'viewing');
-    });
-  }, [pluginStore.executeFunction, selected]);
 
   useEffect(() => {
     if (!selected) {
@@ -201,6 +189,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
 
   return (
     <VSBox top={10} sx={{ height: '100%', flex: 1 }}>
+      {isHit(record) && <PluginViewing hit={record} />}
       <Stack direction="column" flex={1} sx={{ overflowY: 'auto', flexGrow: 1 }} position="relative" spacing={1} ml={2}>
         <Stack direction="row" alignItems="center" spacing={0.5} flexShrink={0} pr={2}>
           <FlexOne />
