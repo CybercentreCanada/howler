@@ -30,6 +30,7 @@ const HelpDashboard = () => {
 
   const tabs = useMemo(
     () => ({
+      'help.cases': ['overview', 'sidebar', 'summary', 'folders', 'records', 'items', 'investigation', 'rules'],
       'help.hit': ['schema', 'header', 'bundle', 'links'],
       'help.actions': ['introduction', ...howlerPluginStore.operations]
     }),

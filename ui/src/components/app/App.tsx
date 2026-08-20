@@ -41,6 +41,7 @@ import Dossiers from 'components/routes/dossiers/Dossiers';
 import ActionDocumentation from 'components/routes/help/ActionDocumentation';
 import ApiDocumentation from 'components/routes/help/ApiDocumentation';
 import AuthDocumentation from 'components/routes/help/AuthDocumentation';
+import CaseDocumentation from 'components/routes/help/CaseDocumentation';
 import ClientDocumentation from 'components/routes/help/ClientDocumentation';
 import HelpDashboard from 'components/routes/help/Help';
 import HitDocumentation from 'components/routes/help/HitDocumentation';
@@ -419,6 +420,10 @@ const createRouter = () =>
         {
           path: 'help/client',
           element: <ClientDocumentation />
+        },
+        {
+          path: 'help/cases',
+          element: <CaseDocumentation />
         },
         {
           path: 'help/hit',

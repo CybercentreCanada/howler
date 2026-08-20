@@ -200,6 +200,13 @@ const useMyPreferences = (): AppPreferenceConfigs => {
                 nested: true,
                 icon: <Terminal />
               },
+              {
+                id: 'help.cases',
+                i18nKey: 'route.help.cases',
+                route: '/help/cases',
+                nested: true,
+                icon: <BookRounded />
+              },
               { id: 'help.hit', i18nKey: 'route.help.hit', route: '/help/hit', nested: true, icon: <Shield /> },
               {
                 id: 'help.search',

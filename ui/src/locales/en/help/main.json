@@ -1,5 +1,6 @@
 {
   "route.help.client.description": "This documentation will outline how to interact with the howler API using the howler client in both Java and python development environments. We will outline the basic process of creating a new hit in each environment as well as searching howler for hits matching your query.",
+  "route.help.cases.description": "Learn how to create and organize cases, add investigation records, and work with folders, notes, links, and related cases.",
   "route.help.hit.description": "This documentation details several parts of ingesting, displaying and interacting with hits.",
   "route.help.search.description": "Explanations and help for when you are searching for hits in Howler, including syntax and examples.",
   "route.help.views.description": "Views are a feature in Howler that allows users to create custom, default queries through which they can organize and triage hits. In this document, we will outline how to create, update, interact with and delete views.",
