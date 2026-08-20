@@ -1,7 +1,7 @@
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Pivot } from 'models/entities/generated/Pivot';
 
-type PivotTree = {
+export type PivotTree = {
   pivot?: Pivot[];
   [key: string]: PivotTree | Pivot[];
 };
@@ -24,7 +24,7 @@ type PivotTree = {
  *
  *
  */
-const pivotGrouping = (dossiers: Dossier[]): PivotTree => {
+const getGroupPivot = (dossiers: Dossier[]) => {
   const groupPivot: PivotTree = {};
 
   for (const dossier of dossiers) {
@@ -56,6 +56,40 @@ const pivotGrouping = (dossiers: Dossier[]): PivotTree => {
     }
   }
   return groupPivot;
+};
+
+// find parent pivot per tree
+const findFirstPivotInTree = (tree: PivotTree) => {
+  if ('pivot' in tree && tree.pivot.length > 0) {
+    return [tree.pivot[0]];
+  }
+  const collectedPivot: Pivot[] = [];
+
+  for (const branch of Object.keys(tree)) {
+    if (branch === 'pivot') continue;
+
+    // Add other path coming from this branch with no direct parents
+    collectedPivot.push(...findFirstPivotInTree(tree[branch] as PivotTree));
+  }
+  return collectedPivot;
+};
+
+const pivotGrouping = (dossiers: Dossier[]): Pivot[] => {
+  const groupPivot = getGroupPivot(dossiers);
+  const shownPivot: Pivot[] = [];
+
+  // pivot with no group
+  if ('pivot' in groupPivot && groupPivot.pivot.length > 0) {
+    shownPivot.push(...groupPivot.pivot);
+  }
+
+  // find other branch pivot
+  for (const root in groupPivot) {
+    if (root === 'pivot') continue; // treated before
+    shownPivot.push(...findFirstPivotInTree(groupPivot[root] as PivotTree));
+  }
+
+  return shownPivot;
 };
 
 export default pivotGrouping;
