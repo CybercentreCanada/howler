@@ -78,7 +78,6 @@ ARG version_tag=${version}
 COPY --chown=nonroot:nonroot --from=builder /var/lib/howler/ /var/lib/howler/
 COPY --chown=nonroot:nonroot --from=builder /etc/howler/lookups /etc/howler/lookups
 COPY --chown=nonroot:nonroot ./build_scripts/mappings.yml /etc/howler/conf/mappings.yml
-COPY --chown=nonroot:nonroot ./static /etc/howler/static/
 COPY --chown=nonroot:nonroot ./howler/common/classification.yml /var/lib/howler/.local/lib/python3.12/site-packages/howler/common/
 
 USER nonroot
