@@ -80,6 +80,20 @@ const useMySitemap = (): AppSiteMapConfigs => {
           icon: <BookRounded />,
           breadcrumbs: ['/help']
         },
+        {
+          path: '/help/dossiers',
+          title: t('route.help.dossiers'),
+          isLeaf: true,
+          icon: <Topic />,
+          breadcrumbs: ['/help']
+        },
+        {
+          path: '/help/advanced',
+          title: t('route.help.advanced'),
+          isLeaf: true,
+          icon: <Code />,
+          breadcrumbs: ['/help']
+        },
         { path: '/help/auth', title: t('route.help.auth'), isLeaf: true, icon: <Key />, breadcrumbs: ['/help'] },
         {
           path: '/help/actions',

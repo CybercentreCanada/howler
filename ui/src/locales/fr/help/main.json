@@ -1,6 +1,8 @@
 {
   "route.help.client.description": "Cette documentation explique comment interagir avec l'API howler à l'aide du client howler dans les environnements de développement Java et Python. Nous décrirons le processus de base de création d'un nouveau résultat dans chaque environnement ainsi que la recherche dans howler des résultats correspondant à votre requête.",
+  "route.help.advanced.description": "Apprenez à exécuter des requêtes Lucene, EQL et Sigma, à utiliser les modes d'exécution Lucene et à interpréter les réponses de requête brutes.",
   "route.help.cases.description": "Apprenez à créer et organiser des cas, à ajouter des enregistrements d'enquête et à utiliser des dossiers, des notes, des liens et des cas liés.",
+  "route.help.dossiers.description": "Apprenez à créer des consignes réutilisables pour les hits avec des requêtes correspondantes, des pistes Markdown, des pivots dynamiques et une visibilité appropriée.",
   "route.help.hit.description": "Cette documentation détaille plusieurs parties de l'acquisition, de l'affichage et de l'interaction avec les résultats.",
   "route.help.search.description": "Explications et aide pour la recherche de résultats dans Howler, y compris la syntaxe et les exemples.",
   "route.help.views.description": "Les vues sont une fonctionnalité de Howler qui permet aux utilisateurs de créer des requêtes personnalisées par défaut à travers lesquelles ils peuvent organiser et trier les résultats. Dans ce document, nous décrirons comment créer, mettre à jour, interagir avec et supprimer des vues.",

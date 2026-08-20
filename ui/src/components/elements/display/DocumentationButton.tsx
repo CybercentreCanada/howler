@@ -10,14 +10,24 @@ const DocumentationButton: FC = () => {
   const location = useLocation();
 
   const [link, i18nKey] = useMemo(() => {
+    if (location.pathname === '/advanced') {
+      return ['/help/advanced', 'documentation.open.advanced'];
+    }
+
+    if (location.pathname === '/cases' || location.pathname.startsWith('/cases/')) {
+      return ['/help/cases', 'documentation.open.cases'];
+    }
+
+    if (location.pathname === '/dossiers' || location.pathname.startsWith('/dossiers/')) {
+      return ['/help/dossiers', 'documentation.open.dossiers'];
+    }
+
     switch (location.pathname) {
       case '/action': {
         return ['/help/actions', 'documentation.open.actions'];
       }
       case '/search':
-      case '/advanced': {
         return ['/help/search', 'documentation.open.search'];
-      }
       case '/views':
       case '/views/create': {
         return ['/help/views', 'documentation.open.views'];

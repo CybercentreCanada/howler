@@ -39,10 +39,12 @@ import ItemPage from 'components/routes/cases/detail/ItemPage';
 import DossierEditor from 'components/routes/dossiers/DossierEditor';
 import Dossiers from 'components/routes/dossiers/Dossiers';
 import ActionDocumentation from 'components/routes/help/ActionDocumentation';
+import AdvancedDocumentation from 'components/routes/help/AdvancedDocumentation';
 import ApiDocumentation from 'components/routes/help/ApiDocumentation';
 import AuthDocumentation from 'components/routes/help/AuthDocumentation';
 import CaseDocumentation from 'components/routes/help/CaseDocumentation';
 import ClientDocumentation from 'components/routes/help/ClientDocumentation';
+import DossierDocumentation from 'components/routes/help/DossierDocumentation';
 import HelpDashboard from 'components/routes/help/Help';
 import HitDocumentation from 'components/routes/help/HitDocumentation';
 import NotebookDocumentation from 'components/routes/help/NotebookDocumentation';
@@ -410,6 +412,10 @@ const createRouter = () =>
           element: <SearchDocumentation />
         },
         {
+          path: 'help/advanced',
+          element: <AdvancedDocumentation />
+        },
+        {
           path: 'help/api',
           element: <ApiDocumentation />
         },
@@ -424,6 +430,10 @@ const createRouter = () =>
         {
           path: 'help/cases',
           element: <CaseDocumentation />
+        },
+        {
+          path: 'help/dossiers',
+          element: <DossierDocumentation />
         },
         {
           path: 'help/hit',

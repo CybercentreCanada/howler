@@ -207,6 +207,13 @@ const useMyPreferences = (): AppPreferenceConfigs => {
                 nested: true,
                 icon: <BookRounded />
               },
+              {
+                id: 'help.dossiers',
+                i18nKey: 'route.help.dossiers',
+                route: '/help/dossiers',
+                nested: true,
+                icon: <Topic />
+              },
               { id: 'help.hit', i18nKey: 'route.help.hit', route: '/help/hit', nested: true, icon: <Shield /> },
               {
                 id: 'help.search',
@@ -214,6 +221,13 @@ const useMyPreferences = (): AppPreferenceConfigs => {
                 route: '/help/search',
                 nested: true,
                 icon: <Search />
+              },
+              {
+                id: 'help.advanced',
+                i18nKey: 'route.help.advanced',
+                route: '/help/advanced',
+                nested: true,
+                icon: <Code />
               },
               {
                 id: 'help.views',
