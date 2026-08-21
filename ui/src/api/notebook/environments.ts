@@ -9,6 +9,6 @@ export const uri = () => {
   return joinUri(parentUri(), 'environments');
 };
 
-export const get = (): Promise<EnvsResponse> => {
-  return hget(uri());
+export const get = () => {
+  return hget<EnvsResponse>(uri());
 };

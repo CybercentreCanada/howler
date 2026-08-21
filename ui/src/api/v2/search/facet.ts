@@ -7,13 +7,10 @@ export const uri = (indexes: string[]) => {
   return joinAllUri(parentUri(), 'search', 'facet', indexes.join(','));
 };
 
-export const post = (
-  indexes: string | string[],
-  request?: HowlerFacetSearchRequest
-): Promise<HowlerFacetSearchResponse> => {
+export const post = (indexes: string | string[], request?: HowlerFacetSearchRequest) => {
   if (typeof indexes === 'string') {
     indexes = indexes.split(',');
   }
 
-  return hpost(uri(indexes), { ...request, query: request?.query || 'howler.id:*' });
+  return hpost<HowlerFacetSearchResponse>(uri(indexes), { ...request, query: request?.query || 'howler.id:*' });
 };

@@ -1,6 +1,6 @@
 import type { HowlerResponse } from 'api';
 import type { AxiosInstance, AxiosRequestConfig, AxiosRequestHeaders } from 'axios';
-import axios, { AxiosError } from 'axios';
+import { AxiosError, create } from 'axios';
 import axiosRetry, { exponentialDelay, isNetworkError } from 'axios-retry';
 import type RestClient from 'rest';
 import { getAxiosCache, setAxiosCache } from 'utils/sessionStorage';
@@ -33,7 +33,7 @@ export default class AxiosClient implements RestClient {
   private client: AxiosInstance;
 
   constructor() {
-    this.client = axios.create({
+    this.client = create({
       validateStatus: status => (status >= 200 && status < 300) || status === 304
     });
 
@@ -68,7 +68,7 @@ export default class AxiosClient implements RestClient {
     };
 
     try {
-      const response = await this.client(config);
+      const response = await this.client<HowlerResponse<R>>(config);
       return [response.data, response.status, response.headers];
     } catch (e) {
       if (e instanceof AxiosError && e.response?.data) {

@@ -10,12 +10,17 @@ export default class FetchClient implements RestClient {
     headers?: HeadersInit
   ): Promise<[HowlerResponse<R>, number, { [index: string]: any }] | null> {
     const _url = `${url}${params ? `?${params.toString()}` : ''}`;
-    const response = await fetch(_url, {
+    const request: RequestInit = {
       method,
       credentials: 'same-origin',
-      headers: headers,
-      body: body ? JSON.stringify(body) : null
-    });
+      headers: headers
+    };
+
+    if (method !== 'get' && body) {
+      request.body = JSON.stringify(body);
+    }
+
+    const response = await fetch(_url, request);
 
     if (response.status === 204) {
       return null;

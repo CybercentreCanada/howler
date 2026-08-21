@@ -10,5 +10,8 @@ export const uri = () => {
 
 export const get = async (): Promise<SearchField[]> => {
   const response = await api.hget<{ [key: string]: SearchField }>(uri());
+  if (!response) {
+    throw new Error('Search fields response was empty.');
+  }
   return indexed(response);
 };

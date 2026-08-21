@@ -15,11 +15,11 @@ export const get = (id?: string) => {
   return id ? hget<Analytic>(uri(id)) : hget<Analytic[]>(uri());
 };
 
-export const put = (id: string, editData: EditOptions, refresh?: HowlerRefreshParam): Promise<Analytic> => {
-  return hput(uri(id), editData, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
+export const put = (id: string, editData: EditOptions, refresh?: HowlerRefreshParam) => {
+  return hput<Analytic>(uri(id), editData, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export const del = (id: string, refresh?: HowlerRefreshParam): Promise<void> => {
+export const del = (id: string, refresh?: HowlerRefreshParam) => {
   return hdelete(uri(id), undefined, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 

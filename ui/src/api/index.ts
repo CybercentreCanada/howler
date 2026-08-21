@@ -164,7 +164,7 @@ export const hfetch = async <R>(
   body?: unknown,
   searchParams?: URLSearchParams,
   requestHeaders?: HeadersInit
-): Promise<R> => {
+): Promise<R | null> => {
   const authToken = getLocalStored<string>(StorageKey.APP_TOKEN);
   const xsrfToken = getXSRFCookie();
   const etags = getSessionStored<Record<string, string>>(StorageKey.ETAG) || {};
@@ -252,8 +252,8 @@ export const hfetch = async <R>(
  * @param _uri - the uri to fetch.
  * @returns the `api_response` object of the returned {@link HowlerResponse}.
  */
-export const hget = <R = any>(_uri: string, searchParams?: URLSearchParams, headers: HeadersInit = {}): Promise<R> => {
-  return hfetch(_uri, 'get', null, searchParams, headers);
+export const hget = <R = any>(_uri: string, searchParams?: URLSearchParams, headers: HeadersInit = {}) => {
+  return hfetch<R>(_uri, 'get', null, searchParams, headers);
 };
 
 /**
@@ -270,8 +270,8 @@ export const hpost = <R = any>(
   body: unknown,
   headers: HeadersInit = {},
   searchParams?: URLSearchParams
-): Promise<R> => {
-  return hfetch(_uri, 'post', body, searchParams, headers);
+) => {
+  return hfetch<R>(_uri, 'post', body, searchParams, headers);
 };
 
 /**
@@ -288,8 +288,8 @@ export const hput = <R = any>(
   body: unknown,
   headers: HeadersInit = {},
   searchParams?: URLSearchParams
-): Promise<R> => {
-  return hfetch(_uri, 'put', body, searchParams, headers);
+) => {
+  return hfetch<R>(_uri, 'put', body, searchParams, headers);
 };
 
 /**
@@ -306,8 +306,8 @@ export const hpatch = <R = any>(
   body: unknown,
   headers: HeadersInit = {},
   searchParams?: URLSearchParams
-): Promise<R> => {
-  return hfetch(_uri, 'patch', body, searchParams, headers);
+) => {
+  return hfetch<R>(_uri, 'patch', body, searchParams, headers);
 };
 
 /**
@@ -318,13 +318,13 @@ export const hpatch = <R = any>(
  * @param _uri - the uri to fetch.
  * @returns the `api_response` object of the returned {@link HowlerResponse}.
  */
-export const hdelete = <R = any>(
+export const hdelete = async (
   _uri: string,
   body: unknown = null,
   headers: HeadersInit = {},
   searchParams?: URLSearchParams
-): Promise<R> => {
-  return hfetch(_uri, 'delete', body, searchParams, headers);
+): Promise<void> => {
+  await hfetch(_uri, 'delete', body, searchParams, headers);
 };
 
 /**

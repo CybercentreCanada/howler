@@ -9,8 +9,8 @@ export const uri = (username?: string) => {
   return username ? joinUri(_uri, username) : _uri;
 };
 
-export const get = (username: string): Promise<HowlerUser> => {
-  return hget(uri(username));
+export const get = (username: string) => {
+  return hget<HowlerUser>(uri(username));
 };
 
 export const put = (
@@ -18,7 +18,7 @@ export const put = (
   newData: Partial<HowlerUser> | { new_pass: string },
   refresh?: HowlerRefreshParam
 ) => {
-  return hput(uri(username), newData, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
+  return hput<HowlerUser>(uri(username), newData, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
 export { avatar, groups, whoami };

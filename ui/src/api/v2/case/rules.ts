@@ -13,14 +13,14 @@ export const uri = (caseId: string, ruleId?: string) => {
   return joinAllUri(parentUri(caseId), 'rules');
 };
 
-export const post = (caseId: string, ruleData: Partial<Rule>): Promise<Case> => {
-  return hpost(uri(caseId), ruleData);
+export const post = (caseId: string, ruleData: Partial<Rule>) => {
+  return hpost<Case>(uri(caseId), ruleData);
 };
 
-export const del = (caseId: string, ruleId: string): Promise<Case> => {
+export const del = (caseId: string, ruleId: string) => {
   return hdelete(uri(caseId, ruleId));
 };
 
-export const put = (caseId: string, ruleId: string, data: Partial<Rule>): Promise<Case> => {
-  return hput(uri(caseId, ruleId), data);
+export const put = (caseId: string, ruleId: string, data: Partial<Rule>) => {
+  return hput<Case>(uri(caseId, ruleId), data);
 };
