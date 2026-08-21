@@ -195,7 +195,7 @@ export const hfetch = async <R>(
   }
 
   if (!json) {
-    return null as R;
+    return null;
   }
 
   // Did it work?
@@ -232,7 +232,7 @@ export const hfetch = async <R>(
     if (window.location.pathname !== '/login') {
       window.location.pathname = '/login';
     }
-    return undefined as R;
+    return null;
   }
 
   // Throw it back.
