@@ -5,7 +5,7 @@ import useMyApi from 'components/hooks/useMyApi';
 import type { Case } from 'models/entities/generated/Case';
 import type { Item } from 'models/entities/generated/Item';
 import { useCallback, useEffect, useMemo, useState, type FC } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { ESCALATION_COLORS } from 'utils/constants';
 import { buildPathFromID } from '../../utils';

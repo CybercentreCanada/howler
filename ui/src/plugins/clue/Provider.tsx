@@ -18,7 +18,7 @@ const Provider: React.FC<PropsWithChildren<{}>> = ({ children }) => {
       publicIconify={location.origin.includes('localhost')}
       customIconify={location.origin.replace(/howler(-stg)?/, 'icons')}
       defaultTimeout={5}
-      i18next={useTranslation('clue')}
+      i18next={useTranslation('clue') as any}
       chunkSize={50}
     >
       {children}

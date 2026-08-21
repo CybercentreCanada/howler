@@ -6,7 +6,7 @@
  */
 
 import { useLayoutEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 
 const getScrollPosition = (key: string) => {
   const pos = window.sessionStorage.getItem(key);

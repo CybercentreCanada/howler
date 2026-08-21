@@ -23,15 +23,14 @@ import {
   Terminal,
   Topic
 } from '@mui/icons-material';
-import { Stack } from '@mui/material';
-import { AppBrand } from 'branding/AppBrand';
-import type { AppLeftNavElement, AppPreferenceConfigs } from 'commons/components/app/AppConfigs';
+import { Divider, Stack } from '@mui/material';
+import type { AppPreferenceConfigs, LeftNavMenuProps } from '@tui/core';
 import { AppBarContext } from 'components/app/providers/AppBarProvider';
 import Classification from 'components/elements/display/Classification';
 import DocumentationButton from 'components/elements/display/DocumentationButton';
 import howlerPluginStore from 'plugins/store';
 import { Fragment, useContext, useMemo } from 'react';
-import AppMenuBuilder from 'utils/menuUtils';
+import { applyMainMenuOperations } from 'utils/menuUtils';
 
 // This is your App Name that will be displayed in the left drawer and the top navbar
 const APP_NAME = 'howler';
@@ -40,227 +39,176 @@ const useMyPreferences = (): AppPreferenceConfigs => {
   const { leftItems, rightItems } = useContext(AppBarContext);
 
   // The following menu items will show up in the Left Navigation Drawer
-  const MENU_ITEMS = useMemo<AppLeftNavElement[]>(
+  const MENU_ITEMS = useMemo<LeftNavMenuProps[]>(
     () => {
-      let defaultMenu: AppLeftNavElement[] = [
-        {
-          type: 'item',
-          element: {
+      const defaultMenu: LeftNavMenuProps = {
+        id: 'root',
+        type: 'menu',
+        items: [
+          {
             id: 'dashboard',
+            type: 'route',
             i18nKey: 'route.home',
             route: '/',
             icon: <Dashboard />
-          }
-        },
-        {
-          type: 'item',
-          element: {
+          },
+          {
             id: 'cases',
+            type: 'route',
             i18nKey: 'route.cases',
             route: '/cases',
             icon: <BookRounded />
-          }
-        },
-        {
-          type: 'group',
-          element: {
-            id: 'views',
-            i18nKey: 'route.views.saved',
-            icon: <SavedSearch />,
-            items: []
-          }
-        },
-        {
-          type: 'group',
-          element: {
-            id: 'analytics',
-            i18nKey: 'route.analytics.pinned',
-            icon: <QueryStats />,
-            items: []
-          }
-        },
-        {
-          type: 'divider',
-          element: null
-        },
-        {
-          type: 'item',
-          element: {
+          },
+          { id: 'divider.1', type: 'slot', component: Divider },
+          {
             id: 'search.hit',
+            type: 'route',
             i18nKey: 'route.search',
             route: '/search',
             icon: <Search />
-          }
-        },
-        {
-          type: 'item',
-          element: {
+          },
+          {
             id: 'advanced',
+            type: 'route',
             i18nKey: 'route.advanced',
             route: '/advanced',
             icon: <Code />
-          }
-        },
-        {
-          type: 'divider',
-          element: null
-        },
-        {
-          type: 'item',
-          element: {
+          },
+          { id: 'divider.2', type: 'slot', component: Divider },
+          {
             id: 'manage.views',
+            type: 'route',
             i18nKey: 'route.views',
             icon: <ManageSearch />,
             route: '/views'
-          }
-        },
-        {
-          type: 'item',
-          element: {
+          },
+          {
             id: 'manage.analytics',
+            type: 'route',
             i18nKey: 'route.analytics',
             icon: <QueryStats />,
             route: '/analytics'
-          }
-        },
-        {
-          type: 'item',
-          element: {
+          },
+          {
             id: 'manage.templates',
+            type: 'route',
             i18nKey: 'route.templates',
             icon: <FormatListBulleted />,
             route: '/templates'
-          }
-        },
-        {
-          type: 'item',
-          element: {
+          },
+          {
             id: 'manage.overviews',
+            type: 'route',
             i18nKey: 'route.overviews',
             icon: <Article />,
             route: '/overviews'
-          }
-        },
-        {
-          type: 'item',
-          element: {
+          },
+          {
             id: 'manage.dossiers',
+            type: 'route',
             i18nKey: 'route.dossiers',
             icon: <Topic />,
             route: '/dossiers'
-          }
-        },
-        {
-          type: 'item',
-          element: {
+          },
+          {
             id: 'manage.actions',
+            type: 'route',
             i18nKey: 'route.actions',
             icon: <Terminal />,
             route: '/action',
-            userPropValidators: [
+            validators: [
               { prop: 'roles', value: 'automation_basic' },
               { prop: 'roles', value: 'automation_advanced' },
               { prop: 'roles', value: 'actionrunner_basic' },
               { prop: 'roles', value: 'actionrunner_advanced' }
             ]
-          }
-        },
-        {
-          type: 'item',
-          element: {
+          },
+          {
             id: 'action.integrations',
+            type: 'route',
             i18nKey: 'route.integrations',
             icon: <Api />,
             route: '/action/integrations',
-            userPropValidators: [{ prop: 'roles', value: 'automation_basic' }]
-          }
-        },
-        {
-          type: 'divider',
-          element: null
-        },
-        {
-          type: 'group',
-          element: {
+            validators: [{ prop: 'roles', value: 'automation_basic' }]
+          },
+          {
             id: 'help',
+            type: 'menu',
             i18nKey: 'page.help',
             icon: <Help />,
             items: [
               {
                 id: 'help.main',
+                type: 'route',
                 i18nKey: 'route.help.main',
                 route: '/help',
-                nested: true,
                 icon: <HelpCenter />
               },
               {
                 id: 'help.client',
+                type: 'route',
                 i18nKey: 'route.help.client',
                 route: '/help/client',
-                nested: true,
                 icon: <Terminal />
               },
-              { id: 'help.hit', i18nKey: 'route.help.hit', route: '/help/hit', nested: true, icon: <Shield /> },
+              { id: 'help.hit', type: 'route', i18nKey: 'route.help.hit', route: '/help/hit', icon: <Shield /> },
               {
                 id: 'help.search',
+                type: 'route',
                 i18nKey: 'route.help.search',
                 route: '/help/search',
-                nested: true,
                 icon: <Search />
               },
               {
                 id: 'help.views',
+                type: 'route',
                 i18nKey: 'route.help.views',
                 route: '/help/views',
-                nested: true,
                 icon: <SavedSearch />
               },
               {
                 id: 'help.templates',
+                type: 'route',
                 i18nKey: 'route.help.templates',
                 route: '/help/templates',
-                nested: true,
                 icon: <FormatListBulleted />
               },
               {
                 id: 'help.overview',
+                type: 'route',
                 i18nKey: 'route.help.overviews',
                 route: '/help/overviews',
-                nested: true,
                 icon: <Article />
               },
-              { id: 'help.auth', i18nKey: 'route.help.auth', route: '/help/auth', nested: true, icon: <Key /> },
+              { id: 'help.auth', type: 'route', i18nKey: 'route.help.auth', route: '/help/auth', icon: <Key /> },
               {
                 id: 'help.actions',
+                type: 'route',
                 i18nKey: 'route.help.actions',
                 route: '/help/actions',
-                nested: true,
                 icon: <SettingsSuggest />
               },
               {
                 id: 'help.notebook',
+                type: 'route',
                 i18nKey: 'route.help.notebook',
                 route: '/help/notebook',
-                nested: true,
                 icon: <Description />
               },
-              { id: 'help.api', i18nKey: 'route.help.api', route: '/help/api', nested: true, icon: <Storage /> },
+              { id: 'help.api', type: 'route', i18nKey: 'route.help.api', route: '/help/api', icon: <Storage /> },
               {
                 id: 'help.retention',
+                type: 'route',
                 i18nKey: 'route.help.retention',
                 route: '/help/retention',
-                nested: true,
                 icon: <Book />
               }
             ]
           }
-        }
-      ];
+        ]
+      };
 
-      const appMenuBuilder = new AppMenuBuilder(defaultMenu);
-      appMenuBuilder.applyOperations(howlerPluginStore.mainMenuOperations);
-
-      return appMenuBuilder.menu;
+      return [applyMainMenuOperations(defaultMenu, howlerPluginStore.mainMenuOperations)];
     },
     // prettier-ignore
     []
@@ -300,12 +248,21 @@ const useMyPreferences = (): AppPreferenceConfigs => {
   // Return memoized config to prevent unnecessary re-renders.
   return useMemo(
     () => ({
-      appName: '',
+      brand: {
+        application: APP_NAME,
+        appName: 'Howler',
+        logo: {
+          dark: '/branding/howler/noswoosh-dark.svg',
+          light: '/branding/howler/noswoosh-light.svg'
+        },
+        name: {
+          dark: '/branding/howler/name-dark.svg',
+          light: '/branding/howler/name-light.svg'
+        }
+      },
+      appLink: '/',
       allowGravatar: false,
-      appIconDark: <AppBrand application={APP_NAME} variant="app" />,
-      appIconLight: <AppBrand application={APP_NAME} variant="app" />,
-      bannerLight: <AppBrand application={APP_NAME} variant="banner-vertical" size="large" />,
-      bannerDark: <AppBrand application={APP_NAME} variant="banner-vertical" size="large" />,
+      allowThemeSelection: true,
       defaultShowQuickSearch: true,
       avatarD: 'retro',
       topnav: {
@@ -316,25 +273,31 @@ const useMyPreferences = (): AppPreferenceConfigs => {
         adminMenuI18nKey: 'adminmenu',
         quickSearchParam: 'query',
         quickSearchURI: '/hits',
-        leftAfterBreadcrumbs: (
-          <Stack direction="row" spacing={1} alignItems="center">
-            <DocumentationButton />
-            {leftItems.map(item => (
-              <Fragment key={item.id}>{item.component}</Fragment>
-            ))}
-          </Stack>
-        ),
-        rightBeforeSearch: (
-          <Stack direction="row" spacing={1} alignItems="center" pr={1}>
-            {rightItems.map(item => (
-              <Fragment key={item.id}>{item.component}</Fragment>
-            ))}
-            <Classification />
-          </Stack>
-        )
+        slots: {
+          breadcrumbs: {
+            right: [
+              <Stack key="breadcrumbs-right" direction="row" spacing={1} alignItems="center">
+                <DocumentationButton />
+                {leftItems.map(item => (
+                  <Fragment key={item.id}>{item.component}</Fragment>
+                ))}
+              </Stack>
+            ]
+          },
+          search: {
+            left: [
+              <Stack key="search-left" direction="row" spacing={1} alignItems="center" pr={1}>
+                {rightItems.map(item => (
+                  <Fragment key={item.id}>{item.component}</Fragment>
+                ))}
+                <Classification />
+              </Stack>
+            ]
+          }
+        }
       },
       leftnav: {
-        elements: MENU_ITEMS,
+        menus: MENU_ITEMS,
         width: 280
       }
     }),

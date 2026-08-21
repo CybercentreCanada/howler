@@ -13,7 +13,7 @@ import type { WithMetadata } from 'models/WithMetadata';
 import type { FC } from 'react';
 import { memo, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { PROVIDER_COLORS, StorageKey } from 'utils/constants';
 import { stringToColor } from 'utils/utils';

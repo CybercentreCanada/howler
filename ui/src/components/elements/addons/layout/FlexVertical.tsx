@@ -1,5 +1,5 @@
-import type { PageProps } from 'commons/components/pages/hooks/usePageProps';
-import usePageProps from 'commons/components/pages/hooks/usePageProps';
+import { usePageProps } from '@tui/core';
+import type { PageProps } from '@tui/core';
 import type { ReactNode } from 'react';
 import { memo } from 'react';
 

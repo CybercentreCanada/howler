@@ -1,8 +1,7 @@
+import { parseEvent, useAppUser } from '@tui/core';
 import { Autocomplete, Button, CircularProgress, ListItemText, Stack, TextField, Typography } from '@mui/material';
 import api from 'api';
 import type { HowlerFacetSearchRequest } from 'api/search/facet';
-import { useAppUser } from 'commons/components/app/hooks/useAppUser';
-import { parseEvent } from 'commons/components/utils/keyboard';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import useMyApi from 'components/hooks/useMyApi';

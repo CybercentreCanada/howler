@@ -6,7 +6,7 @@ import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
 import { useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { isCase, isEvent, isHit } from 'utils/typeUtils';
 import CaseCard from '../case/CaseCard';
 import HitCard from '../hit/HitCard';

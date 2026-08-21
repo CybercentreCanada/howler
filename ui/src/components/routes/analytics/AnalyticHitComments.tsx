@@ -7,7 +7,7 @@ import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Comment as HitComment } from 'models/entities/generated/Comment';
 import type { FC } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router';
 import { StorageKey } from 'utils/constants';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 import { compareTimestamp } from 'utils/utils';

@@ -1,5 +1,5 @@
 import { Stack, type StackProps } from '@mui/material';
-import { useAppBar, useAppBarHeight } from 'commons/components/app/hooks';
+import { useAppBar, useAppBarHeight } from '@tui/core';
 import { createContext, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 type VSBoxProps = StackProps & {
@@ -18,7 +18,7 @@ export const VSBoxContext = createContext<{ state: VSBoxState; setState?: (state
 });
 
 const VSBox = ({ top, children, ...stackProps }: VSBoxProps) => {
-  const ref = useRef<HTMLDivElement>();
+  const ref = useRef<HTMLDivElement>(undefined);
   const appbarHeight = useAppBarHeight();
   const { autoHide } = useAppBar();
   const [state, setState] = useState<VSBoxState>({ top, scrollTop: top });

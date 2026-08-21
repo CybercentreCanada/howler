@@ -1,3 +1,4 @@
+import { AppListEmpty, PageCenter } from '@tui/core';
 import type { FC } from 'react';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,8 +20,6 @@ import {
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
 import type { SearchIndex } from 'api/v2/search';
-import AppListEmpty from 'commons/components/display/AppListEmpty';
-import PageCenter from 'commons/components/pages/PageCenter';
 import { GridColumnsContext } from 'components/app/providers/GridColumnsProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { RecordContext } from 'components/app/providers/RecordProvider';
@@ -46,7 +45,7 @@ import useMySnackbar from 'components/hooks/useMySnackbar';
 import { uniq } from 'lodash-es';
 import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import { convertDateToLucene } from 'utils/utils';
@@ -122,7 +121,7 @@ const ViewComposer: FC = () => {
           }
         });
 
-        navigate(buildViewUrl(newView));
+        void navigate(buildViewUrl(newView));
       } else {
         await editView(routeParams.id, {
           title,

@@ -6,7 +6,7 @@ import ChipPopper from 'components/elements/display/ChipPopper';
 import type { FC } from 'react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import CustomSort from './CustomSort';
 

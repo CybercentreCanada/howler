@@ -1,12 +1,12 @@
+import { PageCenter } from '@tui/core';
 import { Box, Stack, Tab, Typography, useMediaQuery, useTheme } from '@mui/material';
-import PageCenter from 'commons/components/pages/PageCenter';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
 import howlerPluginStore from 'plugins/store';
 import type { FC } from 'react';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import ActionIntroductionDocumentation from './ActionIntroductionDocumentation';
 import HelpTabs from './components/HelpTabs';
 

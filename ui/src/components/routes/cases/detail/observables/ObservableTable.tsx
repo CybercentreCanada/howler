@@ -15,7 +15,7 @@ import PluginTypography from 'components/elements/PluginTypography';
 import type { Case } from 'models/entities/generated/Case';
 import { memo, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { ESCALATION_COLORS } from 'utils/constants';
 import type { ObservableEntry, ObservableRole } from '../types';
 

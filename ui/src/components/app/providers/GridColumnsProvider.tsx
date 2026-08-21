@@ -9,7 +9,7 @@ import {
   type PropsWithChildren,
   type SetStateAction
 } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 import { parsePixelSizeStringToInt } from 'utils/stringUtils';

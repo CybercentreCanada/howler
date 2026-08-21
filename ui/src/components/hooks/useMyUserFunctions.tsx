@@ -1,5 +1,5 @@
+import { useAppUser } from '@tui/core';
 import api from 'api';
-import { useAppUser } from 'commons/components/app/hooks';
 import ApiKeyDrawer from 'components/app/drawers/ApiKeyDrawer';
 import ViewGroupsDrawer from 'components/app/drawers/ViewGroupsDrawer';
 import { AppDrawerContext } from 'components/app/providers/AppDrawerProvider';
@@ -8,7 +8,7 @@ import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDelete
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import { useCallback, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import useMyApi from './useMyApi';
 import useMySnackbar from './useMySnackbar';
 
@@ -62,7 +62,7 @@ const useMyUserFunctions = () => {
 
         showSuccessMessage(t('password.success'));
         setTimeout(() => {
-          navigate('/logout');
+          void navigate('/logout');
         }, 5000);
       },
       [currentUser.username, dispatchApi, navigate, showSuccessMessage, t]

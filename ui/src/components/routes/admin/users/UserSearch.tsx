@@ -1,9 +1,8 @@
+import { parseEvent, PageCenter } from '@tui/core';
 import { Close, Search } from '@mui/icons-material';
 import { Box, Chip, Grid, IconButton, LinearProgress, Stack, TextField, Typography } from '@mui/material';
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
-import PageCenter from 'commons/components/pages/PageCenter';
-import { parseEvent } from 'commons/components/utils/keyboard';
 import VSBox from 'components/elements/addons/layout/vsbox/VSBox';
 import VSBoxContent from 'components/elements/addons/layout/vsbox/VSBoxContent';
 import VSBoxHeader from 'components/elements/addons/layout/vsbox/VSBoxHeader';
@@ -20,7 +19,7 @@ import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { ChangeEvent, FC, KeyboardEvent } from 'react';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router';
 import { StorageKey } from 'utils/constants';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 
@@ -130,7 +129,7 @@ const UserSearch: FC = () => {
       return (
         <Grid container spacing={1}>
           {_value.map(g => (
-            <Grid key={g} item>
+            <Grid key={g}>
               <Chip label={g} size="small" sx={{ fontSize: '11px' }} />
             </Grid>
           ))}
@@ -142,7 +141,7 @@ const UserSearch: FC = () => {
   // TuiTable handler for when selecting/clicking a Row.
   const onRowSelect: TuiListItemOnSelect<HowlerUser> = useCallback(
     selection => {
-      navigate(selection.item.username);
+      void navigate(selection.item.username);
     },
     [navigate]
   );

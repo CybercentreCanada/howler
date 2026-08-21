@@ -119,18 +119,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.N
   );
 
   return (
-    <Box
-      sx={{
-        width: '100%',
-        ml: 0,
-        overflow: 'hidden',
-        textDecoration: 'none',
-        color: 'text.primary'
-      }}
-      component="a"
-      href={`/hits/${hit?.howler.id}`}
-      onClick={e => e.preventDefault()}
-    >
+    <Box sx={{ width: '100%', ml: 0, overflow: 'hidden', color: 'text.primary' }}>
       <Stack spacing={layout !== HitLayout.COMFY ? 0.25 : 1}>
         <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
           <HitBannerTooltip hit={hit}>
@@ -164,12 +153,26 @@ const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.N
         )}
         {hit.howler?.outline && (
           <>
-            {hit.howler.outline.threat && (
-              <Wrapper i18nKey="hit.header.threat" value={hit.howler.outline.threat} field="howler.outline.threat" />
-            )}
-            {hit.howler.outline.target && (
-              <Wrapper i18nKey="hit.header.target" value={hit.howler.outline.target} field="howler.outline.target" />
-            )}
+            <Grid container spacing={layout !== HitLayout.COMFY ? 1 : 2} sx={{ ml: `${theme.spacing(-1)} !important` }}>
+              {hit.howler.outline.threat && (
+                <Grid>
+                  <Wrapper
+                    i18nKey="hit.header.threat"
+                    value={hit.howler.outline.threat}
+                    field="howler.outline.threat"
+                  />
+                </Grid>
+              )}
+              {hit.howler.outline.target && (
+                <Grid>
+                  <Wrapper
+                    i18nKey="hit.header.target"
+                    value={hit.howler.outline.target}
+                    field="howler.outline.target"
+                  />
+                </Grid>
+              )}
+            </Grid>
             {hit.howler.outline.indicators?.length > 0 && (
               <Stack direction="row" spacing={layout !== HitLayout.COMFY ? 0.25 : 1}>
                 <Typography component="span" variant={textVariant} fontWeight="bold">
@@ -182,7 +185,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.N
                 >
                   {uniq(hit.howler.outline.indicators).map((_indicator, index) => {
                     return (
-                      <Grid key={_indicator} item>
+                      <Grid key={_indicator}>
                         <Stack direction="row">
                           <PluginTypography context="indicators" variant={textVariant} value={_indicator}>
                             {_indicator}

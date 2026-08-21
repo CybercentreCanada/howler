@@ -1,8 +1,8 @@
+import { AppListEmpty } from '@tui/core';
 import { OpenInNew } from '@mui/icons-material';
 import { Card, CardContent, IconButton, Skeleton, Stack, Typography } from '@mui/material';
 import api from 'api';
 import type { SearchIndex } from 'api/v2/search';
-import AppListEmpty from 'commons/components/display/AppListEmpty';
 import { useRecordContextSelector } from 'components/app/providers/RecordProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import EventCard from 'components/elements/event/EventCard';
@@ -14,7 +14,7 @@ import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
 import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { isEvent } from 'utils/typeUtils';
 import { convertDateToLucene } from 'utils/utils';

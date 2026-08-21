@@ -15,7 +15,7 @@ import useMySnackbar from 'components/hooks/useMySnackbar';
 import type { Overview } from 'models/entities/generated/Overview';
 import { useCallback, useContext, useEffect, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router';
 import { StorageKey } from 'utils/constants';
 import OverviewCard from './OverviewCard';
 

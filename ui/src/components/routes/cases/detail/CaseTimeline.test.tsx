@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { RecordContext } from 'components/app/providers/RecordProvider';
 import { createElement, type FC, type PropsWithChildren } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { createMockEvent, createMockHit } from 'tests/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildFilters } from './CaseTimeline';
@@ -79,8 +79,8 @@ vi.mock('../hooks/useCase', () => ({
   default: ({ case: c }: any) => ({ case: c, update: vi.fn(), loading: false, missing: false })
 }));
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
+vi.mock('react-router', async () => {
+  const actual = await vi.importActual('react-router');
   return { ...actual, useOutletContext: () => undefined };
 });
 

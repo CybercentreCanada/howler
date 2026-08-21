@@ -1,7 +1,7 @@
+import { useAppTheme } from '@tui/core';
 import ReactJson, { type CollapsedFieldProps } from '@microlink/react-json-view';
 import { Clear } from '@mui/icons-material';
 import { IconButton, Skeleton, Stack } from '@mui/material';
-import { useAppTheme } from 'commons/components/app/hooks';
 import Phrase from 'components/elements/addons/search/phrase/Phrase';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import { useCallback, useEffect, useMemo, useState, type FC } from 'react';

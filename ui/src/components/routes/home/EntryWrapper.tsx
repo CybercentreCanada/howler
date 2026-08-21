@@ -14,10 +14,8 @@ const EntryWrapper: FC<PropsWithChildren<{ editing: boolean; id: string; onDelet
 
   return (
     <Grid
-      item
       ref={setNodeRef}
-      xs={12}
-      md={6}
+      size={{ xs: 12, md: 6 }}
       sx={{ position: 'relative' }}
       style={{ transform: CSS.Translate.toString(transform), transition }}
     >

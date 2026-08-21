@@ -1,3 +1,5 @@
+import { useAppBar, useAppLayout, useAppUser, PageCenter } from '@tui/core';
+import type { AppTocItem } from '@tui/core';
 import { ExpandMore } from '@mui/icons-material';
 import {
   Accordion,
@@ -19,15 +21,12 @@ import {
   useMediaQuery,
   useTheme
 } from '@mui/material';
-import { useAppBar, useAppLayout, useAppUser } from 'commons/components/app/hooks';
-import type { AppTocItem } from 'commons/components/display/AppToc';
-import PageCenter from 'commons/components/pages/PageCenter';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import { memo, useContext, useMemo, type FC, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 import HelpTabs from './components/HelpTabs';
 
 const TableRoot = styled('div')(({ theme }) => ({

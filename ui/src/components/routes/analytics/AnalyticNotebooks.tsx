@@ -1,3 +1,4 @@
+import { useAppUser } from '@tui/core';
 import { Add, Delete, Label, LinkRounded, Plagiarism } from '@mui/icons-material';
 import {
   Box,
@@ -17,7 +18,6 @@ import {
   Typography
 } from '@mui/material';
 import api from 'api';
-import { useAppUser } from 'commons/components/app/hooks';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
 import HitNotebooks from 'components/elements/hit/HitNotebooks';
@@ -81,7 +81,7 @@ const AnalyticNotebooks: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => 
     <Stack direction="column" py={2} spacing={1}>
       <Box sx={{ flexGrow: 1 }}>
         <Grid container spacing={1}>
-          <Grid item xs={6} md={2}>
+          <Grid size={{ xs: 6, md: 2 }}>
             <FormControl fullWidth>
               <InputLabel id="select-label">{'Detection'}</InputLabel>
               <Select
@@ -107,7 +107,7 @@ const AnalyticNotebooks: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => 
             </FormControl>
           </Grid>
 
-          <Grid item xs={6} md={2}>
+          <Grid size={{ xs: 6, md: 2 }}>
             <TextField
               fullWidth
               label={t('analytic.notebook.name')}
@@ -125,7 +125,7 @@ const AnalyticNotebooks: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => 
             />
           </Grid>
 
-          <Grid item xs={12} md={8}>
+          <Grid size={{ xs: 12, md: 8 }}>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <TextField
                 fullWidth

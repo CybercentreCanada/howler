@@ -1,6 +1,6 @@
+import { useAppUser } from '@tui/core';
 import { Person } from '@mui/icons-material';
 import { AvatarGroup, Checkbox, Divider, FormControlLabel, Stack, Typography } from '@mui/material';
-import { useAppUser } from 'commons/components/app/hooks';
 import { UserListContext } from 'components/app/providers/UserListProvider';
 import ChipPopper from 'components/elements/display/ChipPopper';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';

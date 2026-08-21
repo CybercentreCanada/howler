@@ -6,7 +6,7 @@ import type { Hit } from 'models/entities/generated/Hit';
 import type { Overview } from 'models/entities/generated/Overview';
 import type { FC } from 'react';
 import { memo, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import HandlebarsMarkdown from '../display/HandlebarsMarkdown';
 
 const HitOverview: FC<{ content?: string; hit: Hit }> = ({ content, hit }) => {

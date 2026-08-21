@@ -45,14 +45,14 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
   }
 
   return (
-    <Grid container spacing={1} pr={2} sx={{ [`& .${gridClasses.item}`]: { display: 'flex' } }}>
+    <Grid container spacing={1} pr={2} sx={{ [`& .${gridClasses.root}`]: { display: 'flex' } }}>
       {displayLinks
         .filter(link => !!link.href)
         .map(link => {
           const safeTitle = link.title ?? link.href;
 
           return (
-            <Grid item key={link.href}>
+            <Grid key={link.href}>
               <RelatedLink compact title={safeTitle} href={link.href} target="_blank" rel="noopener noreferrer" />
             </Grid>
           );
@@ -60,13 +60,13 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
 
       {displayPivots.map(({ pivot, dossier, resolvedUrl }) => {
         return (
-          <Grid item key={`${dossier.dossier_id}-${pivot.value}`}>
+          <Grid key={`${dossier.dossier_id}-${pivot.value}`}>
             <PivotLink pivot={pivot} hit={hit} dossier={dossier} resolvedUrl={resolvedUrl} compact />
           </Grid>
         );
       })}
       {hasNotebooks && (
-        <Grid item>
+        <Grid>
           <HitNotebooks analytic={analytic} hit={hit} compact />
         </Grid>
       )}
