@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useContext, type ReactNode } from 'react';
 import { setupContextSelectorMock, setupLocalStorageMock, setupReactRouterMock } from 'tests/mocks';

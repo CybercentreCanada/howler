@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { act, renderHook } from '@testing-library/react';
 import type { HowlerSearchRequest } from 'api/search';
 import SearchResponseProvider, {

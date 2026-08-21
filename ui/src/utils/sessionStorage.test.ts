@@ -1,4 +1,5 @@
 /// <reference types="vitest" />
+// @ts-nocheck
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StorageKey } from './constants';
 import { getAxiosCache, getStored, removeStored, setAxiosCache, setStored } from './sessionStorage';

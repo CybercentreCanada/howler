@@ -1,4 +1,5 @@
 /// <reference types="vitest" />
+// @ts-nocheck
 import type { ActionOperation, ActionOperationStep } from 'models/ActionTypes';
 import { describe, expect, it } from 'vitest';
 import { checkArgsAreFilled, getArgsByContext, getOptionsByContext, operationReady } from './actionUtils';
