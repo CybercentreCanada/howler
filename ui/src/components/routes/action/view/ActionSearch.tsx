@@ -134,7 +134,7 @@ const ActionSearch: FC = () => {
   );
 
   useEffect(() => {
-    if (response && response.total! <= offset) {
+    if (response && response.total <= offset) {
       setOffset(0);
       searchParams.set('offset', '0');
       setSearchParams(searchParams, { replace: true });
@@ -248,7 +248,7 @@ const ActionSearch: FC = () => {
         />
       }
       renderer={renderer}
-      response={response!}
+      response={response}
       createPrompt="route.actions.create"
       searchPrompt="route.actions.search"
       createIcon={<Terminal sx={{ mr: 1 }} />}

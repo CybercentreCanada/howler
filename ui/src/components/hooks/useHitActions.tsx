@@ -117,13 +117,15 @@ const useHitActions = (_hits: Hit | Hit[]) => {
               const _vote = () =>
                 api.hit.transition.post(hit.howler.id, { transition: 'vote', data: { vote: v, email: user.email } });
 
-              const updatedHit: Hit = await dispatchApi(_vote(), {
+              const updatedHit = await dispatchApi(_vote(), {
                 onConflict: async () => {
                   await api.hit.get(hit.howler.id);
 
                   const newResult = await _vote();
 
-                  updateHit(newResult);
+                  if (newResult) {
+                    updateHit(newResult);
+                  }
                 }
               });
 
@@ -168,10 +170,17 @@ const useHitActions = (_hits: Hit | Hit[]) => {
                 onConflict: async () => {
                   const updatedData = await api.hit.get(hit.howler.id);
 
+                  if (!updatedData) {
+                    showWarningMessage(t('hit.actions.conflict.assess'));
+                    return;
+                  }
+
                   if (!updatedData.howler.assessment) {
                     const result = await update();
 
-                    updateHit(result);
+                    if (result) {
+                      updateHit(result);
+                    }
                   } else {
                     updateHit(updatedData);
                     showWarningMessage(t('hit.actions.conflict.assess'));
@@ -208,7 +217,9 @@ const useHitActions = (_hits: Hit | Hit[]) => {
             const updatedHit = await dispatchApi(update(), {
               onConflict: async () => {
                 const updatedData = await api.hit.get(hit.howler.id);
-                updateHit(updatedData);
+                if (updatedData) {
+                  updateHit(updatedData);
+                }
                 showWarningMessage(t('hit.actions.conflict.manage'));
               }
             });

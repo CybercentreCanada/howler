@@ -318,13 +318,13 @@ export const hpatch = <R = any>(
  * @param _uri - the uri to fetch.
  * @returns the `api_response` object of the returned {@link HowlerResponse}.
  */
-export const hdelete = async (
+export const hdelete = async <T = void>(
   _uri: string,
   body: unknown = null,
   headers: HeadersInit = {},
   searchParams?: URLSearchParams
-): Promise<void> => {
-  await hfetch(_uri, 'delete', body, searchParams, headers);
+): Promise<T | null> => {
+  return hfetch<T>(_uri, 'delete', body, searchParams, headers);
 };
 
 /**

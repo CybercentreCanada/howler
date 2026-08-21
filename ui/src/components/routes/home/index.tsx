@@ -16,6 +16,7 @@ import { useAppUser } from 'commons/components/app/hooks';
 import PageCenter from 'commons/components/pages/PageCenter';
 import { AppBarContext } from 'components/app/providers/AppBarProvider';
 import CustomButton from 'components/elements/addons/buttons/CustomButton';
+import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMyUserFunctions from 'components/hooks/useMyUserFunctions';
 import dayjs from 'dayjs';
@@ -37,6 +38,7 @@ const LUCENE_DATE_FMT = 'YYYY-MM-DD[T]HH:mm:ss';
 
 const Home: FC = () => {
   const { t } = useTranslation();
+  const { dispatchApi } = useMyApi();
   const { user, setUser } = useAppUser<HowlerUser>();
   const { addToAppBar, removeFromAppBar } = useContext(AppBarContext);
 
@@ -146,13 +148,18 @@ const Home: FC = () => {
   );
 
   useEffect(() => {
-    void api.search.hit
-      .post({
+    void dispatchApi(
+      api.search.hit.post({
         query: updateQuery,
         rows: 0
-      })
-      .then(result => setUpdatedHitTotal(result.total));
-  }, [updateQuery]);
+      }),
+      { throwError: false }
+    ).then(result => {
+      if (result) {
+        setUpdatedHitTotal(result.total);
+      }
+    });
+  }, [updateQuery, dispatchApi]);
 
   useEffect(() => {
     return () => {

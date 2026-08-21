@@ -142,6 +142,10 @@ const HitLabels: FC<{ hit: Hit; readOnly?: boolean }> = ({ hit, readOnly = false
           api.hit.labels.put(hit.howler.id, label.category, { value: [label.label] })
         );
 
+        if (!updatedHit) {
+          return;
+        }
+
         updateHit(updatedHit);
       } finally {
         setLoading(false);
@@ -158,6 +162,11 @@ const HitLabels: FC<{ hit: Hit; readOnly?: boolean }> = ({ hit, readOnly = false
         const updatedHit = await dispatchApi(
           api.hit.labels.del(hit.howler.id, label.category, { value: [label.label] })
         );
+
+        if (!updatedHit) {
+          return;
+        }
+
         updateHit(updatedHit);
       } finally {
         setLoading(false);

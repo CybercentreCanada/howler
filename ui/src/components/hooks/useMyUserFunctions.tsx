@@ -15,7 +15,7 @@ import useMySnackbar from './useMySnackbar';
 const useMyUserFunctions = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { showSuccessMessage } = useMySnackbar();
+  const { showSuccessMessage, showWarningMessage } = useMySnackbar();
   const { dispatchApi } = useMyApi();
   const { showModal } = useContext(ModalContext);
   const drawer = useContext(AppDrawerContext);
@@ -62,7 +62,7 @@ const useMyUserFunctions = () => {
 
         showSuccessMessage(t('password.success'));
         setTimeout(() => {
-          navigate('/logout');
+          void navigate('/logout');
         }, 5000);
       },
       [currentUser.username, dispatchApi, navigate, showSuccessMessage, t]
@@ -145,11 +145,16 @@ const useMyUserFunctions = () => {
     viewGroups: useCallback(async () => {
       const groups = await dispatchApi(api.user.groups.get());
 
+      if (!groups?.length) {
+        showWarningMessage(t('api.user.groups.empty'));
+        return;
+      }
+
       drawer.open({
         titleKey: 'app.drawer.user.groups.title',
         children: <ViewGroupsDrawer groups={groups} />
       });
-    }, [dispatchApi, drawer]),
+    }, [dispatchApi, drawer, showWarningMessage, t]),
 
     setDashboard: useCallback(
       async (dashboard: HowlerUser['dashboard']) => {

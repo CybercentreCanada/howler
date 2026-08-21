@@ -24,24 +24,27 @@ const AvatarProvider: FC<PropsWithChildren> = ({ children }) => {
   const { dispatchApi } = useMyApi();
 
   const getAvatar = useCallback(
-    (id: string) => {
+    (id: string): Promise<string> => {
       if (!id) {
         return Promise.resolve('');
       }
 
-      if (promises[id]) {
-        return promises[id];
+      const cachedAvatar = promises[id];
+      if (cachedAvatar) {
+        return cachedAvatar;
       }
 
-      try {
-        promises[id] = dispatchApi(api.user.avatar.get(id), { logError: false, showError: false, throwError: false });
+      const fallback = async () => (await api.user.get(id))?.name ?? id;
+      const avatarRequest = dispatchApi(api.user.avatar.get(id), {
+        logError: false,
+        showError: false,
+        throwError: false
+      })
+        .then(avatar => avatar ?? fallback())
+        .catch(() => fallback());
+      promises[id] = avatarRequest;
 
-        return promises[id];
-      } catch {
-        promises[id] = api.user.get(id).then(user => user.name);
-
-        return promises[id];
-      }
+      return avatarRequest;
     },
     [dispatchApi]
   );

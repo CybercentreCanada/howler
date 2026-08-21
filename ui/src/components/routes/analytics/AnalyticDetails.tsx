@@ -40,7 +40,7 @@ const AnalyticDetails = () => {
   const { users, searchUsers } = useContext(UserListContext);
   const { config } = useContext(ApiConfigContext);
 
-  const [analytic, setAnalytic] = useState<Analytic>(null!);
+  const [analytic, setAnalytic] = useState<Analytic | null>(null);
   const [tab, setTab] = useState(searchParams.get('tab') ?? 'overview');
 
   const filteredContributors = useMemo(
@@ -49,24 +49,27 @@ const AnalyticDetails = () => {
   );
 
   useEffect(() => {
-    void dispatchApi(api.analytic.get(params.id!) as Promise<Analytic>).then(setAnalytic);
+    if (!params.id) {
+      setAnalytic(null);
+      return;
+    }
+
+    void dispatchApi(api.analytic.get(params.id)).then(setAnalytic);
   }, [dispatchApi, params.id]);
 
   const [filter, _setFilter] = useState<string | null>(searchParams.get('filter') ?? null);
-  const setFilter = useCallback(
-    (detection: string) => {
-      if (filter === detection) {
-        _setFilter(null);
-      } else {
-        _setFilter(detection);
-      }
-    },
-    [filter]
-  );
+  const setFilter = useCallback((detection: string | null) => {
+    _setFilter(currentFilter => (currentFilter === detection ? null : detection));
+  }, []);
 
   const onOwnerChange = useCallback(
     async ([ownerId]: string[]) => {
-      const result = await dispatchApi(api.analytic.owner.post(analytic!.analytic_id!, { username: ownerId }), {
+      const analyticId = analytic?.analytic_id;
+      if (!analyticId || !ownerId) {
+        return;
+      }
+
+      const result = await dispatchApi(api.analytic.owner.post(analyticId, { username: ownerId }), {
         throwError: true,
         showError: true
       });
@@ -93,11 +96,12 @@ const AnalyticDetails = () => {
   }, [filter, searchParams, setSearchParams, tab]);
 
   useEffect(() => {
-    if (!analytic?.owner) {
+    const owner = analytic?.owner;
+    if (!owner) {
       return;
     }
 
-    searchUsers(`uname:"${analytic?.owner}"`);
+    searchUsers(`uname:"${owner}"`);
   }, [analytic?.owner, searchUsers]);
 
   return (
@@ -202,12 +206,12 @@ const AnalyticDetails = () => {
                 options={analytic?.detections ?? []}
                 renderInput={param => <TextField {...param} label={t('route.analytics.dropdown.detection')} />}
                 value={filter}
-                onChange={(_, v) => setFilter(v!)}
+                onChange={(_, v) => setFilter(v)}
               />
             </Grid>
           )}
         </Grid>
-        {
+        {analytic ? (
           {
             comments: <AnalyticComments analytic={analytic} setAnalytic={setAnalytic} />,
             hit_comments: <AnalyticHitComments analytic={analytic} />,
@@ -221,7 +225,9 @@ const AnalyticDetails = () => {
                 }
               : {})
           }[tab]
-        }
+        ) : (
+          <Skeleton variant="rounded" width="100%" height={300} sx={{ mt: 2 }} />
+        )}
       </div>
     </PageCenter>
   );

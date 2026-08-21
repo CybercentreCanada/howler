@@ -1,8 +1,7 @@
 import { Topic } from '@mui/icons-material';
 import { Stack, Typography } from '@mui/material';
 import api from 'api';
-import type { HowlerSearchResponse } from 'api/search';
-import type { FuzzySearchItem, FuzzySearchRequest } from 'api/v2/fuzzy';
+import type { FuzzySearchItem } from 'api/v2/fuzzy';
 import SearchResponseProvider, {
   createSearchResponseContext,
   useSearchResponseContext
@@ -86,16 +85,13 @@ const CasesBase: FC = () => {
       setSearchParams(searchParams, { replace: true });
 
       const filters = buildFilters();
-      await request(
-        api.v2.fuzzy.post as (request: FuzzySearchRequest) => Promise<HowlerSearchResponse<FuzzySearchItem<Case>>>,
-        {
-          query: phrase.trim() || '*',
-          filters,
-          rows: pageCount,
-          offset,
-          indexes: ['case']
-        }
-      );
+      await request(api.v2.fuzzy.post, {
+        query: phrase.trim() || '*',
+        filters,
+        rows: pageCount,
+        offset,
+        indexes: ['case']
+      });
     } catch {
       setHasError(true);
     } finally {

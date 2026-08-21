@@ -22,7 +22,7 @@ const RetentionDocumentation: FC = () => {
   const pluginStore = usePluginStore();
   useScrollRestoration();
 
-  const [hitId, setHitId] = useState<string>();
+  const [hitId, setHitId] = useState<string | null>(null);
 
   const md = useMemo(() => {
     let original = (i18n.language === 'en' ? AUTH_EN : AUTH_FR).replace(/\$CURRENT_URL/g, window.location.origin);
@@ -38,7 +38,7 @@ const RetentionDocumentation: FC = () => {
         rows: 1,
         fl: 'howler.id'
       })
-      .then(val => setHitId(val.items[0].howler.id));
+      .then(val => setHitId(val?.items[0]?.howler?.id ?? null));
   });
 
   return (

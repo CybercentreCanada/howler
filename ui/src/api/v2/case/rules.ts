@@ -18,7 +18,7 @@ export const post = (caseId: string, ruleData: Partial<Rule>) => {
 };
 
 export const del = (caseId: string, ruleId: string) => {
-  return hdelete(uri(caseId, ruleId));
+  return hdelete<Case>(uri(caseId, ruleId));
 };
 
 export const put = (caseId: string, ruleId: string, data: Partial<Rule>) => {

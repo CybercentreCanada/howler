@@ -12,5 +12,5 @@ export const put = (id: string, category: string, body: LabelActionBody, refresh
 };
 
 export const del = (id: string, category: string, body: LabelActionBody, refresh?: HowlerRefreshParam) => {
-  return hdelete(uri(id, category), body, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
+  return hdelete<Hit>(uri(id, category), body, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };

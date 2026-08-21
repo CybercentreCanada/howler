@@ -323,6 +323,36 @@ describe('request', () => {
     });
   });
 
+  it('should use an empty response when the request returns null', async () => {
+    const hook = renderProvider({
+      items: [{ id: '0', name: 'item' }],
+      offset: 0,
+      rows: TEST_PAGE_SIZE,
+      total: TEST_TOTAL_COUNT,
+      removeCount: 5
+    });
+
+    const request: HowlerSearchRequest = {
+      query: 'test',
+      rows: TEST_PAGE_SIZE,
+      offset: TEST_PAGE_SIZE
+    };
+
+    apiSearchMock.mockResolvedValue(null);
+
+    await act(async () => {
+      await hook.result.current.request(apiSearchMock, request);
+    });
+
+    expect(hook.result.current.response).toEqual({
+      items: [],
+      offset: TEST_PAGE_SIZE,
+      rows: TEST_PAGE_SIZE,
+      total: 0,
+      removeCount: 5
+    });
+  });
+
   it.for([
     { description: 'before', offset: 0 },
     { description: 'the same as', offset: TEST_PAGE_SIZE }

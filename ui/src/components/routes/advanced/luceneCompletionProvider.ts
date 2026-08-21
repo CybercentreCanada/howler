@@ -1,6 +1,5 @@
 import { useMonaco } from '@monaco-editor/react';
 import api from 'api';
-import type { HowlerFacetSearchResponse } from 'api/search/facet';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { FieldContext } from 'components/app/providers/FieldProvider';
 import Fuse from 'fuse.js';
@@ -8,6 +7,8 @@ import type { languages } from 'monaco-editor';
 import type { APILookups } from 'models/entities/generated/ApiType';
 import { useContext, useEffect, useMemo } from 'react';
 import { DEFAULT_QUERY } from 'utils/constants';
+
+const isLookupKey = (key: string, lookups: APILookups): key is keyof APILookups => Object.hasOwn(lookups, key);
 
 const useLuceneCompletionProvider = (): languages.CompletionItemProvider => {
   const { config } = useContext(ApiConfigContext);
@@ -23,6 +24,10 @@ const useLuceneCompletionProvider = (): languages.CompletionItemProvider => {
 
   return {
     provideCompletionItems: async (model, position) => {
+      if (!monaco) {
+        return { suggestions: [] };
+      }
+
       const line: string = model.getLineContent(position.lineNumber);
 
       const context = line.slice(0, position.column - 1);
@@ -34,35 +39,38 @@ const useLuceneCompletionProvider = (): languages.CompletionItemProvider => {
       // If the field is complete and we're autocompleting the value, we parse the field and see if it's an enum.
       // If it is, suggest the matching values
       if (before.trim().endsWith(':')) {
-        const key = before.trim().replace(/^.*?[^a-zA-Z._]?([a-zA-Z._]+):$/, '$1') as keyof APILookups;
+        const key = before.trim().replace(/^.*?[^a-zA-Z._]?([a-zA-Z._]+):$/, '$1');
+        const lookupValues = isLookupKey(key, config.lookups) ? config.lookups[key] : undefined;
 
-        if (config.lookups[key]) {
+        if (Array.isArray(lookupValues)) {
           const _position = model.getWordUntilPosition(position);
 
           return {
-            suggestions: (config.lookups[key] as string[]).map(_value => ({
-              label: _value,
-              kind: monaco!.languages.CompletionItemKind.Constant,
-              insertText: _value,
-              range: {
-                startLineNumber: position.lineNumber,
-                endLineNumber: position.lineNumber,
-                startColumn: _position.startColumn,
-                endColumn: _position.endColumn
-              }
-            }))
+            suggestions: lookupValues
+              .filter((value): value is string => typeof value === 'string')
+              .map(_value => ({
+                label: _value,
+                kind: monaco.languages.CompletionItemKind.Constant,
+                insertText: _value,
+                range: {
+                  startLineNumber: position.lineNumber,
+                  endLineNumber: position.lineNumber,
+                  startColumn: _position.startColumn,
+                  endColumn: _position.endColumn
+                }
+              }))
           };
         } else {
           const options = await api.search.facet.hit
             .post({ query: DEFAULT_QUERY, rows: 250, fields: [key] })
-            .catch(() => ({}) as HowlerFacetSearchResponse);
+            .catch(() => null);
 
           const _position = model.getWordUntilPosition(position);
 
           return {
-            suggestions: Object.keys(options[key] || {}).map(_value => ({
+            suggestions: Object.keys(options?.[key] ?? {}).map(_value => ({
               label: _value,
-              kind: monaco!.languages.CompletionItemKind.Constant,
+              kind: monaco.languages.CompletionItemKind.Constant,
               insertText: `"${_value}"`,
               range: {
                 startLineNumber: position.lineNumber,
@@ -86,25 +94,41 @@ const useLuceneCompletionProvider = (): languages.CompletionItemProvider => {
       if (portion) {
         const fuzzyMatches = fuse.search(portion);
         return {
-          suggestions: fuzzyMatches.map(({ item }) => ({
-            label: item.key!,
-            detail: item.type,
-            documentation: item.description,
-            kind: monaco!.languages.CompletionItemKind.Property,
-            insertText: item.key! + ':',
-            range
-          }))
+          suggestions: fuzzyMatches.flatMap(({ item }) => {
+            if (!item.key) {
+              return [];
+            }
+
+            return [
+              {
+                label: item.key,
+                detail: item.type,
+                documentation: item.description,
+                kind: monaco.languages.CompletionItemKind.Property,
+                insertText: item.key + ':',
+                range
+              }
+            ];
+          })
         };
       } else {
         return {
-          suggestions: hitFields.map(_field => ({
-            label: _field.key!,
-            detail: _field.type,
-            documentation: _field.description,
-            kind: monaco!.languages.CompletionItemKind.Property,
-            insertText: _field.key! + ':',
-            range
-          }))
+          suggestions: hitFields.flatMap(_field => {
+            if (!_field.key) {
+              return [];
+            }
+
+            return [
+              {
+                label: _field.key,
+                detail: _field.type,
+                documentation: _field.description,
+                kind: monaco.languages.CompletionItemKind.Property,
+                insertText: _field.key + ':',
+                range
+              }
+            ];
+          })
         };
       }
     }

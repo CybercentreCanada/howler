@@ -44,7 +44,7 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
       api.v2.search.post('case', { query: `case_id:(${childCaseItems.map(item => item.value!).join(' OR ')})` }),
       { throwError: false }
     )
-      .then(results => results.items)
+      .then(results => results?.items ?? [])
       .then(results => {
         if (!cancelled) {
           setChildCases(results);

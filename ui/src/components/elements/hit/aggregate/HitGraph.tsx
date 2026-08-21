@@ -87,14 +87,19 @@ const HitGraph: FC = () => {
         filters.push(`howler.escalation:${escalationFilter}`);
       }
 
-      const total = (
-        await dispatchApi(
-          api.search.count.hit.post({
-            query: query ?? DEFAULT_QUERY,
-            filters
-          })
-        )
-      ).count;
+      const countResult = await dispatchApi(
+        api.search.count.hit.post({
+          query: query ?? DEFAULT_QUERY,
+          filters
+        })
+      );
+      if (!countResult) {
+        setData([]);
+        setDisabled(false);
+        return;
+      }
+
+      const total = countResult.count;
 
       if (total > MAX_QUERY_SIZE) {
         setDisabled(true);
@@ -104,7 +109,7 @@ const HitGraph: FC = () => {
         setDisabled(false);
       }
 
-      const _data = await dispatchApi(
+      const groupedResult = await dispatchApi(
         api.search.grouped.hit.post(filterField, {
           query: query || DEFAULT_QUERY,
           fl: 'event.created,howler.assessment,howler.analytic,howler.detection,howler.outline.threat,howler.outline.target,howler.outline.summary,howler.id',
@@ -118,11 +123,17 @@ const HitGraph: FC = () => {
         })
       );
 
-      if (_data.total > MAX_ROWS && !override) {
+      if (!groupedResult) {
+        setData([]);
+        setShowWarning(false);
+        return;
+      }
+
+      if (groupedResult.total > MAX_ROWS && !override) {
         setShowWarning(true);
       }
 
-      const processed = _data.items.map(category => {
+      const processed = groupedResult.items.map(category => {
         const label = capitalize(category.value ?? 'None');
 
         return {

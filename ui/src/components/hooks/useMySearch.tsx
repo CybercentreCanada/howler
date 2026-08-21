@@ -19,7 +19,11 @@ const useMySearch = (): AppSearchService<Hit> => {
   return useMemo(
     () => ({
       onEnter: async (value: string, state?: AppSearchServiceState<Hit>) => {
-        state!.set({ ...state!, searching: true });
+        if (!state) {
+          return;
+        }
+
+        state.set({ ...state, searching: true });
         //dispatchApi not available here since snackbarProvider isn't initialised yet
 
         try {
@@ -32,14 +36,19 @@ const useMySearch = (): AppSearchService<Hit> => {
               `howler.detection:*${sanitizedValue}* OR howler.status:*${sanitizedValue}*`
           });
 
-          state!.set({
-            ...state!,
+          if (!searchResult) {
+            state.set({ ...state, searching: false, result: { error: true }, items: [] });
+            return;
+          }
+
+          state.set({
+            ...state,
             searching: false,
             result: undefined,
             items: searchResult.items.map(r => ({ id: r.howler.id, item: r }))
           });
         } catch {
-          state!.set({ ...state!, searching: false, result: { error: true }, items: [] });
+          state.set({ ...state, searching: false, result: { error: true }, items: [] });
         }
       },
       onItemSelect: ({ item }) => {

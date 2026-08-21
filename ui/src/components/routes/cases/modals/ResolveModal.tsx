@@ -181,7 +181,9 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
           })
         );
 
-        loadRecords(result.items);
+        if (result) {
+          loadRecords(result.items);
+        }
       } finally {
         setLoading(false);
       }

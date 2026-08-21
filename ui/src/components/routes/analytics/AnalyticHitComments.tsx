@@ -45,6 +45,11 @@ const AnalyticHitComments: FC<{ analytic: Analytic }> = ({ analytic }) => {
         rows: pageCount
       })
       .then(response => {
+        if (!response) {
+          setComments([]);
+          return;
+        }
+
         setComments(
           response.items.flatMap(
             h =>

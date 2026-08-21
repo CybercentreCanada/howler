@@ -36,7 +36,7 @@ const OverviewProvider: FC<PropsWithChildren> = ({ children }) => {
         try {
           setFetching(true);
 
-          const result = await api.overview.get();
+          const result = (await api.overview.get()) ?? [];
 
           setOverviews(result);
           setLoaded(true);

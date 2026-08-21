@@ -20,7 +20,7 @@ const EventViewer: FC<{ event?: Event; eventId?: string }> = ({ event: provided,
     if (eventId) {
       void dispatchApi(api.v2.search.post<Event>('event', { query: `howler.id:${eventId}`, rows: 1 }), {
         throwError: false
-      }).then(res => setEvent(res.items[0] ?? null));
+      }).then(res => setEvent(res?.items[0] ?? null));
     }
   }, [dispatchApi, eventId]);
 

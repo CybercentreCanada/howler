@@ -86,7 +86,14 @@ const RecordProvider: FC<PropsWithChildren> = ({ children }) => {
             rows: 1,
             metadata: ['template', 'dossiers', 'analytic', 'overview']
           })
-        ).then(result => result.items[0]);
+        ).then(result => {
+          const record = result?.items[0];
+          if (!record) {
+            throw new Error(`Unable to retrieve record ${id}.`);
+          }
+
+          return record;
+        });
         const newRecord = await recordRequests.current[id];
         setRecords(_records => ({ ..._records, [id]: newRecord }));
       }

@@ -82,10 +82,15 @@ const useLogin = () => {
   // OAuth login flow.
   const doOAuth = useCallback(async () => {
     const userCredential = await dispatchApi(api.auth.login.get(searchParams));
+    if (!userCredential) {
+      showErrorMessage(t('user.login.failed'));
+      return;
+    }
+
     if (saveLoginCredential(userCredential)) {
       void getUser();
     }
-  }, [dispatchApi, searchParams, getUser]);
+  }, [dispatchApi, getUser, searchParams, showErrorMessage, t]);
 
   // login service.
   return useMemo(

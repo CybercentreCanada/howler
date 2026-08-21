@@ -87,8 +87,6 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   });
   const [fzfSearch, setFzfSearch] = useState<boolean>(false);
 
-  const activeViews = views ?? [];
-
   const filters = useMemo(() => (allFilters ?? []).filter(filter => !filter.endsWith('*')), [allFilters]);
 
   // On load check to filter out any queries older than one month
@@ -101,10 +99,10 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
   // Inject default view into URL when no views present
   useEffect(() => {
-    if (activeViews.length === 0 && defaultView) {
+    if (views?.length === 0 && defaultView) {
       addView(defaultView);
     }
-  }, [activeViews.length, defaultView, addView]);
+  }, [views?.length, defaultView, addView]);
 
   const getFilters = useCallback(async () => {
     const _filters: string[] = cloneDeep(filters);
@@ -117,18 +115,19 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     }
 
     // Fetch all view queries
-    if (activeViews.length > 0) {
-      const viewObjects = await getCurrentViews({ views: activeViews });
+    if (views?.length) {
+      const viewObjects = await getCurrentViews({ views });
 
       // Filter out null/undefined views and extract queries
-      viewObjects
-        .filter(view => view?.query)
-        .map(view => view.query)
-        .forEach(viewQuery => _filters.push(viewQuery!));
+      viewObjects.forEach(view => {
+        if (view?.query) {
+          _filters.push(view.query);
+        }
+      });
     }
 
     return _filters;
-  }, [activeViews, endDate, filters, getCurrentViews, span, startDate]);
+  }, [views, endDate, filters, getCurrentViews, span, startDate]);
 
   const search = useCallback(
     async (_query?: string, appendResults?: boolean) => {
@@ -155,8 +154,13 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
         setError(null);
 
         try {
-          const _response = await dispatchApi(
-            api.v2.search.post<WithMetadata<Hit | Event>>(indexes!, {
+          if (!indexes?.length) {
+            setResponse(null);
+            return;
+          }
+
+          const responseResult = await dispatchApi(
+            api.v2.search.post<WithMetadata<Hit | Event>>(indexes, {
               offset: appendResults && !isNil(response?.rows) ? response.rows : offset,
               rows: pageCount,
               query: _query || DEFAULT_QUERY,
@@ -168,24 +172,29 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
             { showError: false, throwError: true }
           );
 
-          if ((_response.total ?? 0) < offset) {
+          if (!responseResult) {
+            setResponse(null);
+            return;
+          }
+
+          if (responseResult.total < offset) {
             setOffset(0);
           }
 
-          loadHits(_response.items);
+          loadHits(responseResult.items);
 
           if (!appendResults) {
-            setResponse(_response);
+            setResponse(responseResult);
           } else {
             setResponse(_existingResponse =>
               _existingResponse
                 ? {
-                    ..._response,
+                    ...responseResult,
                     offset: _existingResponse.offset,
-                    rows: Math.min(_existingResponse.rows + _response.rows, _response.total ?? Infinity),
-                    items: [..._existingResponse.items, ..._response.items]
+                    rows: Math.min(_existingResponse.rows + responseResult.rows, responseResult.total),
+                    items: [..._existingResponse.items, ...responseResult.items]
                   }
-                : _response
+                : responseResult
             );
           }
         } catch (e) {
@@ -220,14 +229,14 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       return;
     }
 
-    if (activeViews.length > 0 || (query && query !== DEFAULT_QUERY) || offset > 0 || filters.length > 0) {
+    if (views?.length || (query && query !== DEFAULT_QUERY) || offset > 0 || filters.length > 0) {
       void search(query);
     } else {
       setResponse(null);
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offset, pageCount, sort, span, indexes, location.pathname, startDate, endDate, filters, query, activeViews]);
+  }, [offset, pageCount, sort, span, indexes, location.pathname, startDate, endDate, filters, query, views]);
 
   return (
     <RecordSearchContext.Provider

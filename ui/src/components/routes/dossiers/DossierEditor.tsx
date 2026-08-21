@@ -38,6 +38,7 @@ const DossierEditor: FC = () => {
   const { showSuccessMessage } = useMySnackbar();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const dossierId = params.id;
 
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
 
@@ -188,47 +189,64 @@ const DossierEditor: FC = () => {
     setLoading(true);
 
     try {
-      if (!params.id) {
+      if (!dossierId) {
         const result = await dispatchApi(api.dossier.post(dossier));
+        if (!result?.dossier_id) {
+          return;
+        }
 
         showSuccessMessage(t('route.dossiers.manager.create.success'));
-        navigate(`/dossiers/${result.dossier_id!}/edit`);
+        void navigate(`/dossiers/${result.dossier_id}/edit`);
       } else {
-        setDossier(await dispatchApi(api.dossier.put(dossier.dossier_id!, omit(dossier, ['dossier_id', 'id']))));
+        const result = await dispatchApi(api.dossier.put(dossierId, omit(dossier, ['dossier_id', 'id'])));
+        if (!result) {
+          return;
+        }
+
+        setDossier(result);
         showSuccessMessage(t('route.dossiers.manager.edit.success'));
       }
     } finally {
       setLoading(false);
     }
-  }, [dispatchApi, dossier, navigate, params.id, showSuccessMessage, t]);
+  }, [dispatchApi, dossier, dossierId, navigate, showSuccessMessage, t]);
 
   useEffect(() => {
-    if (!params.id) {
+    if (!dossierId) {
       return;
     }
 
     setLoading(true);
 
-    void dispatchApi(api.dossier.get(params.id) as Promise<Dossier>)
-      .then(_dossier => {
-        setOriginalDossier(_dossier);
-        setDossier(_dossier);
+    void dispatchApi(api.dossier.get(dossierId))
+      .then(fetchedDossier => {
+        if (!fetchedDossier) {
+          return;
+        }
+
+        setOriginalDossier(fetchedDossier);
+        setDossier(fetchedDossier);
       })
       .finally(() => setLoading(false));
-  }, [dispatchApi, params.id]);
+  }, [dispatchApi, dossierId]);
 
   useEffect(() => {
-    if (!dossier.query) {
+    const query = dossier.query;
+    if (!query) {
       return;
     }
 
-    setQuery(dossier.query);
+    setQuery(query);
 
     void (async () => {
       setLoading(true);
 
       try {
-        const result = await dispatchApi(api.search.hit.post({ query: dossier.query!, rows: 0 }));
+        const result = await dispatchApi(api.search.hit.post({ query, rows: 0 }));
+        if (!result) {
+          setSearchTotal(-1);
+          return;
+        }
 
         setSearchTotal(result.total);
       } finally {

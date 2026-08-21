@@ -18,7 +18,7 @@ export const del = (id: string, ids: string | string[], force = false) => {
     ids = [ids];
   }
 
-  return hdelete(uri(id), { ids, force });
+  return hdelete<Case>(uri(id), { ids, force });
 };
 
 export const put = (caseId: string, id: string, payload: { name?: string; parent?: string } = {}) => {

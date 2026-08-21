@@ -7,15 +7,15 @@ export type SearchResponseState<T> = HowlerSearchResponse<T> & {
   removeCount: number;
 };
 
-export type SearchResponseContextType<T, R = HowlerSearchResponse<T>> = {
+export type SearchResponseContextType<T> = {
   push: (item: T) => void;
   remove: (id: string) => void;
   replace: (id: string, item: T) => void;
-  request: (
-    endpoint: (request: HowlerSearchRequest) => Promise<R>,
-    requestData: HowlerSearchRequest,
+  request: <Request extends HowlerSearchRequest>(
+    endpoint: (request: Request) => Promise<HowlerSearchResponse<T> | null>,
+    requestData: Request,
     config?: DispatchApiConfig
-  ) => Promise<R>;
+  ) => Promise<HowlerSearchResponse<T>>;
   getSearchRequestData: (requestData: Partial<HowlerSearchRequest>) => Partial<HowlerSearchRequest>;
   response: SearchResponseState<T> | null;
 };
@@ -54,18 +54,24 @@ const SearchResponseProvider = <T,>({
   const getFieldValue = useCallback((item: T): unknown => (item as Record<string, unknown>)[idField], [idField]);
 
   const request = useCallback(
-    async (
-      endpoint: (request: HowlerSearchRequest) => Promise<HowlerSearchResponse<T>>,
-      requestData: HowlerSearchRequest,
+    async <Request extends HowlerSearchRequest>(
+      endpoint: (request: Request) => Promise<HowlerSearchResponse<T> | null>,
+      requestData: Request,
       config?: DispatchApiConfig
     ) => {
       const _response = await dispatchApi(endpoint(requestData), config);
+      const searchResponse = _response ?? {
+        items: [],
+        offset: requestData.offset ?? 0,
+        rows: requestData.rows ?? 0,
+        total: 0
+      };
 
       setResponse(_prevResponse => ({
-        ..._response,
-        removeCount: (_response.offset ?? 0) <= (_prevResponse?.offset ?? 0) ? 0 : (_prevResponse?.removeCount ?? 0)
+        ...searchResponse,
+        removeCount: searchResponse.offset <= (_prevResponse?.offset ?? 0) ? 0 : (_prevResponse?.removeCount ?? 0)
       }));
-      return _response;
+      return searchResponse;
     },
     [dispatchApi]
   );

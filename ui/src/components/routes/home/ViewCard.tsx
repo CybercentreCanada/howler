@@ -128,6 +128,10 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
         })
       );
 
+      if (!res) {
+        return;
+      }
+
       const fetchedRecords = res.items ?? [];
       loadRecords(fetchedRecords);
       setRecordIds(fetchedRecords.map(r => r.howler.id));

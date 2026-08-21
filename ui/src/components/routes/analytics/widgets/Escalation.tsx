@@ -37,7 +37,7 @@ const Escalation = forwardRef<any, { analytic: Analytic; maxWidth?: string }>(({
         query: `howler.analytic:("${analytic.name}")`,
         fields: ['howler.escalation']
       })
-      .then(data => setEscalationData(data['howler.escalation']))
+      .then(data => setEscalationData(data?.['howler.escalation'] ?? {}))
       .finally(() => setLoading(false));
   }, [analytic]);
 

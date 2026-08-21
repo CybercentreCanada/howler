@@ -5,8 +5,8 @@ export const uri = (id?: string) => {
   return id ? joinAllUri(parentUri(), 'template', id) : joinUri(parentUri(), 'template');
 };
 
-export const get = () => {
-  return hget<Template[]>(uri());
+export const get = async () => {
+  return (await hget<Template[]>(uri())) ?? [];
 };
 
 export const post = (newData: Partial<Template>, refresh?: HowlerRefreshParam) => {

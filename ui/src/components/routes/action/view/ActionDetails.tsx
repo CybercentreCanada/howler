@@ -100,7 +100,7 @@ const ActionDetails = () => {
     setLoading(true);
 
     void Promise.all([
-      dispatchApi(api.action.operations.get()).then(setOperations),
+      dispatchApi(api.action.operations.get()).then(result => setOperations(result ?? [])),
       dispatchApi(api.action.get(params.id)).then(setAction)
     ]).finally(() => setLoading(false));
   }, [dispatchApi, params.id, setLoading]);

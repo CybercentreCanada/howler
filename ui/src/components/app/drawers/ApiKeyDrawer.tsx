@@ -78,13 +78,23 @@ const ApiKeyDrawer: FC<ApiKeyDrawerProps> = ({ onCreated }) => {
   }, []);
 
   const onSubmit = useCallback(async () => {
-    const result = await dispatchApi(api.auth.apikey.post(keyName, privs, expiryDate!.toISOString()), {
+    if (!expiryDate) {
+      return;
+    }
+
+    const expiryDateString = expiryDate.toISOString();
+    const result = await dispatchApi(api.auth.apikey.post(keyName, privs, expiryDateString), {
       throwError: true,
       showError: true
     });
 
+    if (!result) {
+      return;
+    }
+
+    const newKeyName = result.apikey.split(':')[0] || keyName;
     setCreatedKey(result.apikey);
-    onCreated(result.apikey.split(':')[0]!, privs, expiryDate!.toISOString(), result.apikey);
+    onCreated(newKeyName, privs, expiryDateString, result.apikey);
   }, [dispatchApi, expiryDate, keyName, onCreated, privs]);
 
   const onCopy = useCallback(async () => {

@@ -19,7 +19,7 @@ export const put = (id: string, partialView: Partial<Omit<View, 'view_id'>>, ref
 };
 
 export const del = (id: string, refresh?: HowlerRefreshParam) => {
-  return hdelete(uri(id), undefined, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
+  return hdelete<void>(uri(id), undefined, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
 export { favourite };

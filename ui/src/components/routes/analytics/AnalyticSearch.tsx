@@ -246,7 +246,7 @@ const AnalyticSearchBase: FC = () => {
         </Typography>
       }
       renderer={renderer}
-      response={response!}
+      response={response}
       searchPrompt="route.analytics.manager.search"
     />
   );

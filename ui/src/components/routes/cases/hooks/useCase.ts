@@ -38,7 +38,15 @@ const useCase: (args: CaseArguments) => CaseResult = ({ caseId, case: providedCa
     if (caseId) {
       setLoading(true);
       void dispatchApi(api.v2.case.get(caseId), { throwError: false })
-        .then(setCase)
+        .then(fetchedCase => {
+          if (!fetchedCase) {
+            setCase(undefined);
+            setMissing(true);
+            return;
+          }
+
+          setCase(fetchedCase);
+        })
         .finally(() => setLoading(false));
     }
   }, [caseId, dispatchApi]);
@@ -68,7 +76,13 @@ const useCase: (args: CaseArguments) => CaseResult = ({ caseId, case: providedCa
 
       try {
         if (publish) {
-          setCase(await dispatchApi(api.v2.case.put(activeCaseId, _updatedCase)));
+          const updatedCase = await dispatchApi(api.v2.case.put(activeCaseId, _updatedCase));
+          if (!updatedCase) {
+            setMissing(true);
+            return;
+          }
+
+          setCase(updatedCase);
         } else {
           setCase(prevCase => {
             if (!prevCase) {

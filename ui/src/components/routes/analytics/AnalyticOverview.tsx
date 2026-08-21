@@ -54,29 +54,46 @@ const AnalyticOverview: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
 
     setLoading(true);
 
+    const analyticName = analytic.name;
+    if (!analyticName) {
+      setEmpty(true);
+      setLoading(false);
+      return;
+    }
+
     void api.search.count.hit
-      .post({ query: `howler.analytic:"${sanitizeLuceneQuery(analytic.name!)}"` })
-      .then(({ count }) => setEmpty(!count))
+      .post({ query: `howler.analytic:"${sanitizeLuceneQuery(analyticName)}"` })
+      .then(response => setEmpty(!response?.count))
       .finally(() => setLoading(false));
   }, [analytic]);
 
   const onEdit = useCallback(async () => {
+    if (!editing) {
+      setEditValue(analytic.description ?? '');
+      setEditing(true);
+      return;
+    }
+
+    const analyticId = analytic.analytic_id;
+    if (!analyticId) {
+      return;
+    }
+
+    setMarkdownLoading(true);
     try {
-      if (editing) {
-        setMarkdownLoading(true);
-        const result = await dispatchApi(api.analytic.put(analytic.analytic_id!, { description: editValue }), {
-          showError: true,
-          throwError: true
-        });
+      const result = await dispatchApi(api.analytic.put(analyticId, { description: editValue }), {
+        showError: true,
+        throwError: true
+      });
 
-        setAnalytic(result);
-
-        showSuccessMessage(t('route.analytics.updated'));
-      } else {
-        setEditValue(analytic.description ?? '');
+      if (!result) {
+        return;
       }
+
+      setAnalytic(result);
+      setEditing(false);
+      showSuccessMessage(t('route.analytics.updated'));
     } finally {
-      setEditing(!editing);
       setMarkdownLoading(false);
     }
   }, [analytic, dispatchApi, editValue, editing, setAnalytic, showSuccessMessage, t]);

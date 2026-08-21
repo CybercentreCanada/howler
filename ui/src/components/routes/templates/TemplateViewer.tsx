@@ -61,7 +61,7 @@ const TemplateViewer = () => {
       throwError: true
     })
       .finally(() => setLoading(false))
-      .then(result => result.items)
+      .then(result => result?.items ?? [])
       .then(_analytics => {
         if (!_analytics.some(_analytic => _analytic.name!.toLowerCase() === analytic.toLowerCase())) {
           setAnalytic('');
@@ -70,7 +70,7 @@ const TemplateViewer = () => {
         setAnalytics(_analytics);
       });
 
-    void dispatchApi(api.template.get()).then(setTemplateList);
+    void dispatchApi(api.template.get()).then(result => setTemplateList(result ?? []));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analytic, dispatchApi]);
 
@@ -93,7 +93,7 @@ const TemplateViewer = () => {
       }
     )
       .finally(() => setLoading(false))
-      .then(result => result.items.map(i => i.value!))
+      .then(result => result?.items.map(i => i.value) ?? [])
       .then(_detections => {
         if (_detections.length < 1) {
           setDetection('ANY');
@@ -165,72 +165,76 @@ const TemplateViewer = () => {
   }, [analytic]);
 
   const onDelete = useCallback(() => {
+    const template = selectedTemplate;
+
+    if (!template?.template_id) {
+      return;
+    }
+
+    const templateId = template.template_id;
+    const templateAnalytic = template.analytic;
+    const templateDetection = template.detection;
+    const templateType = template.type;
+
     withConfirmDeleteModal(async () => {
-      await dispatchApi(api.template.del(selectedTemplate!.template_id!), {
+      await dispatchApi(api.template.del(templateId), {
         logError: false,
         showError: true,
         throwError: true
       });
       setSessionTemplateList(l =>
-        l.filter(
-          v =>
-            v.analytic != selectedTemplate!.analytic ||
-            v.detection != selectedTemplate!.detection ||
-            v.type != selectedTemplate!.type
-        )
+        l.filter(v => v.analytic != templateAnalytic || v.detection != templateDetection || v.type != templateType)
       );
       setTemplateList(l =>
-        l.filter(
-          v =>
-            v.analytic != selectedTemplate!.analytic ||
-            v.detection != selectedTemplate!.detection ||
-            v.type != selectedTemplate!.type
-        )
+        l.filter(v => v.analytic != templateAnalytic || v.detection != templateDetection || v.type != templateType)
       );
       showSuccessMessage(t('route.templates.manager.delete.success'));
     });
-  }, [
-    dispatchApi,
-    selectedTemplate?.analytic,
-    selectedTemplate?.detection,
-    selectedTemplate?.template_id,
-    selectedTemplate?.type,
-    withConfirmDeleteModal,
-    showSuccessMessage,
-    t
-  ]);
+  }, [dispatchApi, selectedTemplate, withConfirmDeleteModal, showSuccessMessage, t]);
 
   const onSave = useCallback(async () => {
-    if (analytic && detection) {
-      try {
-        setTemplateLoading(true);
-        const result = await dispatchApi(
-          selectedTemplate
-            ? api.template.put(selectedTemplate.template_id!, displayFields)
-            : api.template.post({
-                analytic,
-                detection: detection !== 'ANY' ? detection : undefined,
-                type,
-                keys: displayFields
-              }),
-          {
-            logError: false,
-            showError: true,
-            throwError: true
-          }
-        );
+    if (!analytic || !detection) {
+      return;
+    }
 
-        setSelectedTemplate(result);
-        const newList = [result, ...templateList];
-        setTemplateList(newList.filter((v1, i) => newList.findIndex(v2 => v1.template_id === v2.template_id) === i));
+    const selectedTemplateId = selectedTemplate?.template_id;
 
-        const updatedSessionList = sessionTemplateList.filter(
-          v => v.analytic !== result.analytic || v.detection !== result.detection || v.type !== result.type
-        );
-        setSessionTemplateList(updatedSessionList);
-      } finally {
-        setTemplateLoading(false);
+    if (selectedTemplate && !selectedTemplateId) {
+      return;
+    }
+
+    try {
+      setTemplateLoading(true);
+      const result = await dispatchApi(
+        selectedTemplateId
+          ? api.template.put(selectedTemplateId, displayFields)
+          : api.template.post({
+              analytic,
+              detection: detection !== 'ANY' ? detection : undefined,
+              type,
+              keys: displayFields
+            }),
+        {
+          logError: false,
+          showError: true,
+          throwError: true
+        }
+      );
+
+      if (!result) {
+        return;
       }
+
+      setSelectedTemplate(result);
+      const newList = [result, ...templateList];
+      setTemplateList(newList.filter((v1, i) => newList.findIndex(v2 => v1.template_id === v2.template_id) === i));
+
+      const updatedSessionList = sessionTemplateList.filter(
+        v => v.analytic !== result.analytic || v.detection !== result.detection || v.type !== result.type
+      );
+      setSessionTemplateList(updatedSessionList);
+    } finally {
+      setTemplateLoading(false);
     }
   }, [analytic, detection, dispatchApi, displayFields, selectedTemplate, sessionTemplateList, templateList, type]);
 

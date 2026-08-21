@@ -113,9 +113,15 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
         throwError: true,
         logError: false
       });
+      if (!result) {
+        return;
+      }
+
       setComments(sortByTimestamp(result.howler.comment ?? []));
 
-      input.current!.value = '';
+      if (input.current) {
+        input.current.value = '';
+      }
       setShowClear(false);
     } finally {
       setLoading(false);

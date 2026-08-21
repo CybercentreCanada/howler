@@ -122,7 +122,7 @@ const ViewComposer: FC = () => {
           }
         });
 
-        navigate(buildViewUrl(newView));
+        void navigate(buildViewUrl(newView));
       } else {
         await editView(routeParams.id, {
           title,
@@ -188,8 +188,15 @@ const ViewComposer: FC = () => {
           { showError: false, throwError: true }
         );
 
-        loadRecords(_response.items);
-        setResponse(_response);
+        const searchResponse: HowlerSearchResponse<Hit | Event> = _response ?? {
+          items: [],
+          offset: 0,
+          rows: pageCount,
+          total: 0
+        };
+
+        loadRecords(searchResponse.items);
+        setResponse(searchResponse);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {

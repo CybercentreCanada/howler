@@ -31,7 +31,10 @@ import type { FC } from 'react';
 import { useCallback, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-const TriageSettings: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => void }> = ({ analytic, setAnalytic }) => {
+const TriageSettings: FC<{ analytic: Analytic; setAnalytic: (a: Analytic | null) => void }> = ({
+  analytic,
+  setAnalytic
+}) => {
   const { dispatchApi } = useMyApi();
   const { t } = useTranslation();
   const { config } = useContext(ApiConfigContext);

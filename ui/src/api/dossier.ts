@@ -6,8 +6,11 @@ export const uri = (id?: string) => {
   return id ? joinAllUri(parentUri(), 'dossier', id) : joinUri(parentUri(), 'dossier');
 };
 
-export const get = (id?: string) => {
+export const get = ((id?: string) => {
   return id ? hget<Dossier>(uri(id)) : hget<Dossier[]>(uri());
+}) as {
+  (id: string): ReturnType<typeof hget<Dossier>>;
+  (id?: undefined): ReturnType<typeof hget<Dossier[]>>;
 };
 
 export const post = (newData: Partial<Dossier>, refresh?: HowlerRefreshParam) => {

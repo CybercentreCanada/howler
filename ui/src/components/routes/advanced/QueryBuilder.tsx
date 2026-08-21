@@ -122,7 +122,7 @@ const QueryBuilder: FC = () => {
   const [type, setType] = useState<'eql' | 'lucene' | 'yaml'>('lucene');
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState(DEFAULT_VALUES.lucene);
-  const [queryType, setQueryType] = useState<'default' | 'facet' | 'groupby' | 'explain'>(LUCENE_QUERY_OPTIONS[0]!);
+  const [queryType, setQueryType] = useState<'default' | 'facet' | 'groupby' | 'explain'>('default');
   const [groupByField, setGroupByField] = useState<string>('');
   const [allFields, setAllFields] = useState(true);
   const [fields, setFields] = useState<string[]>(['howler.id']);
@@ -141,15 +141,15 @@ const QueryBuilder: FC = () => {
     try {
       const searchProperties = {
         fl: allFields ? undefined : fields.join(','),
-        rows: STEPS[rows]!
+        rows: STEPS[rows]
       };
 
-      let result: SearchResponse<Hit> | HowlerExplainSearchResponse;
+      let result: SearchResponse<Hit> | HowlerExplainSearchResponse | null;
       if (type === 'lucene') {
         if (queryType === 'facet') {
           result = await api.search.facet.hit.post({
             query: sanitizeMultilineLucene(query),
-            rows: STEPS[rows]!,
+            rows: STEPS[rows],
             fields
           });
         } else if (queryType === 'groupby') {
@@ -179,8 +179,13 @@ const QueryBuilder: FC = () => {
         });
       }
 
-      setResponse(result);
       setError('');
+      if (!result) {
+        setResponse(null);
+        return;
+      }
+
+      setResponse(result);
     } catch (e) {
       setError(e instanceof Error ? (e.message ?? e.toString()) : String(e));
     } finally {

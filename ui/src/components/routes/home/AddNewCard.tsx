@@ -85,6 +85,10 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard: Da
         offset
       });
 
+      if (!response) {
+        break;
+      }
+
       allAnalytics = [...allAnalytics, ...(response.items ?? [])];
 
       total = response.total ?? 0;

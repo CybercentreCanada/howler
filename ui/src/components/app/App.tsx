@@ -143,9 +143,13 @@ const MyApp: FC = () => {
   // e.g. fetching initial app data, etc.
   useEffect(() => {
     void dispatchApi(api.configs.get()).then(data => {
+      if (!data) {
+        return;
+      }
+
       apiConfig.setConfig(data);
 
-      if (data?.configuration?.ui?.apps) {
+      if (data.configuration.ui?.apps) {
         setItems(data.configuration.ui.apps);
       }
     });

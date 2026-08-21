@@ -117,10 +117,11 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
     async (event: DragEndEvent) => {
       setActiveDragData(null);
 
-      if (!_case) {
+      if (!_case?.case_id) {
         return;
       }
 
+      const caseId = _case.case_id;
       const { active, over } = event;
 
       if (!over?.data.current || !active?.data.current) {
@@ -141,9 +142,11 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
       try {
         setLoading(true);
         const updatedCase = await dispatchApi(
-          api.v2.case.items.put(_case.case_id!, movingEntry.id!, { parent: targetFolderId })
+          api.v2.case.items.put(caseId, movingEntry.id!, { parent: targetFolderId })
         );
-        update(updatedCase);
+        if (updatedCase) {
+          update(updatedCase);
+        }
       } finally {
         setLoading(false);
       }
@@ -292,7 +295,9 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
                         value: t('page.cases.sidebar.new_folder')
                       })
                     );
-                    update(updatedCase);
+                    if (updatedCase) {
+                      update(updatedCase);
+                    }
                   } finally {
                     setLoading(false);
                   }

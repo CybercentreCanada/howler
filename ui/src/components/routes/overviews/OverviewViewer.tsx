@@ -73,7 +73,7 @@ const OverviewViewer = () => {
       setLoading(true);
 
       try {
-        setOverviewList(await getOverviews(true));
+        setOverviewList((await getOverviews(true)) ?? []);
 
         const analyticsResult = await dispatchApi(api.search.analytic.post({ query: 'analytic_id:*', rows: 1000 }), {
           logError: false,
@@ -81,7 +81,7 @@ const OverviewViewer = () => {
           throwError: true
         });
 
-        const _analytics = analyticsResult.items;
+        const _analytics = analyticsResult?.items ?? [];
 
         if (!_analytics.some(_analytic => _analytic.name!.toLowerCase() === analytic.toLowerCase())) {
           setAnalytic('');
@@ -180,13 +180,19 @@ const OverviewViewer = () => {
   }, [analytic, detection, params, setParams]);
 
   const onDelete = useCallback(() => {
+    const overviewId = selectedOverview?.overview_id;
+
+    if (!overviewId) {
+      return;
+    }
+
     withConfirmDeleteModal(async () => {
-      await dispatchApi(api.overview.del(selectedOverview!.overview_id!), {
+      await dispatchApi(api.overview.del(overviewId), {
         logError: false,
         showError: true,
         throwError: true
       });
-      setOverviewList(l => l.filter(v => v.overview_id !== selectedOverview!.overview_id!));
+      setOverviewList(l => l.filter(v => v.overview_id !== overviewId));
       setSelectedOverview(null);
       setContent('');
       showSuccessMessage(t('route.overviews.manager.delete.success'));
@@ -194,30 +200,42 @@ const OverviewViewer = () => {
   }, [dispatchApi, selectedOverview?.overview_id, withConfirmDeleteModal, showSuccessMessage, t]);
 
   const onSave = useCallback(async () => {
-    if (analytic && detection) {
-      try {
-        setOverviewLoading(true);
-        const result = await dispatchApi(
-          selectedOverview
-            ? api.overview.put(selectedOverview!.overview_id!, content)
-            : api.overview.post({
-                analytic,
-                detection: detection !== 'ANY' ? detection : null,
-                content
-              } as any),
-          {
-            logError: false,
-            showError: true,
-            throwError: true
-          }
-        );
+    if (!analytic || !detection) {
+      return;
+    }
 
-        setSelectedOverview(result);
-        const newList = [result, ...overviewList];
-        setOverviewList(newList.filter((v1, i) => newList.findIndex(v2 => v1.overview_id === v2.overview_id) === i));
-      } finally {
-        setOverviewLoading(false);
+    const selectedOverviewId = selectedOverview?.overview_id;
+
+    if (selectedOverview && !selectedOverviewId) {
+      return;
+    }
+
+    try {
+      setOverviewLoading(true);
+      const result = await dispatchApi(
+        selectedOverviewId
+          ? api.overview.put(selectedOverviewId, content)
+          : api.overview.post({
+              analytic,
+              detection: detection !== 'ANY' ? detection : undefined,
+              content
+            }),
+        {
+          logError: false,
+          showError: true,
+          throwError: true
+        }
+      );
+
+      if (!result) {
+        return;
       }
+
+      setSelectedOverview(result);
+      const newList = [result, ...overviewList];
+      setOverviewList(newList.filter((v1, i) => newList.findIndex(v2 => v1.overview_id === v2.overview_id) === i));
+    } finally {
+      setOverviewLoading(false);
     }
   }, [analytic, detection, dispatchApi, selectedOverview, content, overviewList]);
 

@@ -22,10 +22,10 @@ export const uri = () => {
   return joinAllUri(parentUri(), 'fuzzy');
 };
 
-export const post = (request: FuzzySearchRequest) => {
+export const post = <R = Hit | Event | Case>(request: FuzzySearchRequest) => {
   if (!request.query || !request.query.trim()) {
     throw new Error('Search query is required.');
   }
 
-  return hpost<HowlerSearchResponse<FuzzySearchItem>>(joinAllUri(uri(), 'search'), request);
+  return hpost<HowlerSearchResponse<FuzzySearchItem<R>>>(joinAllUri(uri(), 'search'), request);
 };

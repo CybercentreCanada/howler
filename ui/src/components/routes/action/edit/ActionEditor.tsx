@@ -118,7 +118,9 @@ const ActionEditor: FC = () => {
 
   useEffect(() => {
     void dispatchApi(api.action.operations.get())
-      .then(_operations => _operations.filter(a => difference(a.roles, user.roles ?? []).length < a.roles.length))
+      .then(_operations =>
+        (_operations ?? []).filter(a => difference(a.roles, user.roles ?? []).length < a.roles.length)
+      )
       .then(setOperations);
 
     if (responseQuery) {
@@ -247,7 +249,7 @@ const ActionEditor: FC = () => {
         </Stack>
         <RecordQuery triggerSearch={onSearch} />
         {response ? (
-          <QueryResultText count={response.total!} query={responseQuery} />
+          <QueryResultText count={response.total ?? 0} query={responseQuery} />
         ) : (
           <Typography
             sx={theme => ({

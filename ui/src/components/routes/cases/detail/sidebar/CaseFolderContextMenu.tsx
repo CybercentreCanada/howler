@@ -102,8 +102,10 @@ const CaseFolderContextMenu: FC<CaseFolderContextMenuProps> = ({ case: _case, it
       id: 'remove-item',
       label: isFolder ? t('page.cases.sidebar.folder.remove') : t('page.cases.sidebar.item.remove'),
       icon: <Delete fontSize="small" />,
-      onClick: () => {
-        if (!_case.case_id) {
+      onClick: async () => {
+        const caseId = _case.case_id;
+        const itemId = item.id;
+        if (!caseId || !itemId) {
           return;
         }
 

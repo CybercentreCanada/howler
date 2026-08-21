@@ -47,6 +47,10 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
         }
       );
 
+      if (!result) {
+        return;
+      }
+
       setAnalytic(result);
 
       input.current!.value = '';

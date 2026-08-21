@@ -71,6 +71,10 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
         metadata: ['template', 'analytic']
       })
     ).then(response => {
+      if (!response) {
+        return;
+      }
+
       loadRecords(response.items);
 
       setInvalidIds(

@@ -66,11 +66,11 @@ describe('FetchClient', () => {
     expect(callArgs.body).toBe(JSON.stringify({ key: 'val' }));
   });
 
-  it('sends null body when no body is provided', async () => {
+  it('omits the body when no body is provided', async () => {
     const spy = mockFetch(200, {});
     await client.fetch('/api/v1/hit', 'get');
     const callArgs = spy.mock.calls[0][1] as RequestInit;
-    expect(callArgs.body).toBeNull();
+    expect(callArgs.body).toBeUndefined();
   });
 
   it('forwards custom headers to fetch', async () => {
