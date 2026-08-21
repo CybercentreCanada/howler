@@ -1,6 +1,12 @@
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Pivot } from 'models/entities/generated/Pivot';
 
+export type menuPathNode = {
+  path: string;
+  pivots?: Pivot[];
+  children?: menuPathNode[];
+};
+
 export type PivotTree = {
   pivot?: Pivot[];
   [key: string]: PivotTree | Pivot[];
@@ -8,7 +14,10 @@ export type PivotTree = {
 
 /**
  *
- * This helper is use to organize pivot into a forest.
+ * This helper is use to organize pivot into a forest. Since we do not know before the groupPivot run if some dossier
+ * had common pivot, we need to make the forest more complex, the PathMap later on this file simplify the forest to the
+ * least amount of path possible for each pivot so if only one item is under the totality of Clue/information/ipLocation
+ * The path here will be [Clue][information][ipLocation] after buildPathMap it would be [Clue/information/ipLocations]
  * This is use to group them in HitLinks.tsx
  *@param dossiers array of dossier we want to organize the pivots of
  *
@@ -58,38 +67,39 @@ const getGroupPivot = (dossiers: Dossier[]) => {
   return groupPivot;
 };
 
-// find parent pivot per tree
-const findFirstPivotInTree = (tree: PivotTree) => {
-  if ('pivot' in tree && tree.pivot.length > 0) {
-    return [tree.pivot[0]];
-  }
-  const collectedPivot: Pivot[] = [];
+const buildPathMap = (tree: PivotTree): menuPathNode[] => {
+  const nodes: menuPathNode[] = [];
 
-  for (const branch of Object.keys(tree)) {
-    if (branch === 'pivot') continue;
+  for (const key in tree) {
+    if (key == 'pivot') {
+      continue;
+    } // this is not a branch these are buttons we solve it earlier
 
-    // Add other path coming from this branch with no direct parents
-    collectedPivot.push(...findFirstPivotInTree(tree[branch] as PivotTree));
+    let path: string = key;
+    let current = tree[key] as PivotTree;
+    // Check how long we can go without having more then one tree branch
+    // if pivot is present, this mean buttons are there, if its length 1 it mean there is only 1 path towards the next buttons
+    while (Object.keys(current).length === 1 && !('pivot' in current)) {
+      const newKey: string = Object.keys(current)[0];
+      path = path + `/${newKey}`;
+      current = current[newKey] as PivotTree; // Will always be a PivotTree if its not pivot
+    }
+
+    // Build the array
+    nodes.push({ path: path, pivots: current['pivot'] ?? [], children: buildPathMap(current) });
   }
-  return collectedPivot;
+
+  return nodes;
 };
 
-const pivotGrouping = (dossiers: Dossier[]): Pivot[] => {
-  const groupPivot = getGroupPivot(dossiers);
-  const shownPivot: Pivot[] = [];
-
-  // pivot with no group
-  if ('pivot' in groupPivot && groupPivot.pivot.length > 0) {
-    shownPivot.push(...groupPivot.pivot);
+const pivotForest = (dossiers: Dossier[]) => {
+  const group = getGroupPivot(dossiers);
+  const nodes: menuPathNode[] = [];
+  if ('pivot' in group) {
+    nodes.push({ path: '', pivots: group['pivot'] as Pivot[], children: [] });
   }
-
-  // find other branch pivot
-  for (const root in groupPivot) {
-    if (root === 'pivot') continue; // treated before
-    shownPivot.push(...findFirstPivotInTree(groupPivot[root] as PivotTree));
-  }
-
-  return shownPivot;
+  nodes.push(...buildPathMap(group));
+  return nodes;
 };
 
-export default pivotGrouping;
+export default pivotForest;
