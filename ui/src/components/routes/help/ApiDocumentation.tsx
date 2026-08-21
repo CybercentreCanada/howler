@@ -42,7 +42,7 @@ const ApiDocumentation: FC = () => {
 
   const isLg = useMediaQuery(theme.breakpoints.down('lg'));
 
-  const [data, setData] = useState<HelpResponse>(null);
+  const [data, setData] = useState<HelpResponse | null>(null);
 
   useEffect(() => {
     void dispatchApi(api.help.get()).then(setData);
@@ -189,8 +189,8 @@ const ApiDocumentation: FC = () => {
                       </TableCell>
                       <TableCell>
                         <Stack spacing={1} direction="row">
-                          {endpoint.required_priv.map((p: 'R' | 'W' | 'E' | 'I') => (
-                            <Chip key={p} size="small" label={t(APIKEY_LABELS[p])} />
+                          {endpoint.required_priv.map((p: string) => (
+                            <Chip key={p} size="small" label={t(APIKEY_LABELS[p as 'R' | 'W' | 'E' | 'I'])} />
                           ))}
                         </Stack>
                       </TableCell>

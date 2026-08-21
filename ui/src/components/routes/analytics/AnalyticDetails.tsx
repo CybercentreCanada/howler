@@ -40,7 +40,7 @@ const AnalyticDetails = () => {
   const { users, searchUsers } = useContext(UserListContext);
   const { config } = useContext(ApiConfigContext);
 
-  const [analytic, setAnalytic] = useState<Analytic>(null);
+  const [analytic, setAnalytic] = useState<Analytic | null>(null);
   const [tab, setTab] = useState(searchParams.get('tab') ?? 'overview');
 
   const filteredContributors = useMemo(
@@ -49,24 +49,27 @@ const AnalyticDetails = () => {
   );
 
   useEffect(() => {
-    void dispatchApi(api.analytic.get(params.id) as Promise<Analytic>).then(setAnalytic);
+    if (!params.id) {
+      setAnalytic(null);
+      return;
+    }
+
+    void dispatchApi(api.analytic.get(params.id)).then(setAnalytic);
   }, [dispatchApi, params.id]);
 
   const [filter, _setFilter] = useState<string | null>(searchParams.get('filter') ?? null);
-  const setFilter = useCallback(
-    (detection: string) => {
-      if (filter === detection) {
-        _setFilter(null);
-      } else {
-        _setFilter(detection);
-      }
-    },
-    [filter]
-  );
+  const setFilter = useCallback((detection: string | null) => {
+    _setFilter(currentFilter => (currentFilter === detection ? null : detection));
+  }, []);
 
   const onOwnerChange = useCallback(
     async ([ownerId]: string[]) => {
-      const result = await dispatchApi(api.analytic.owner.post(analytic.analytic_id, { username: ownerId }), {
+      const analyticId = analytic?.analytic_id;
+      if (!analyticId || !ownerId) {
+        return;
+      }
+
+      const result = await dispatchApi(api.analytic.owner.post(analyticId, { username: ownerId }), {
         throwError: true,
         showError: true
       });
@@ -93,11 +96,12 @@ const AnalyticDetails = () => {
   }, [filter, searchParams, setSearchParams, tab]);
 
   useEffect(() => {
-    if (!analytic?.owner) {
+    const owner = analytic?.owner;
+    if (!owner) {
       return;
     }
 
-    searchUsers(`uname:"${analytic?.owner}"`);
+    searchUsers(`uname:"${owner}"`);
   }, [analytic?.owner, searchUsers]);
 
   return (
@@ -142,21 +146,21 @@ const AnalyticDetails = () => {
                   marginLeft: `${theme.spacing(-1)} !important`,
                   marginRight: `${theme.spacing(-1)} !important`
                 }}
-                userIds={[analytic?.owner]}
+                userIds={analytic?.owner ? [analytic.owner] : []}
                 onChange={onOwnerChange}
                 i18nLabel="route.analytics.set.owner"
               />
               <Stack>
-                {users[analytic?.owner] ? (
+                {analytic?.owner && users[analytic.owner] ? (
                   <>
-                    <Typography variant="body1">{users[analytic?.owner].name}</Typography>
+                    <Typography variant="body1">{users[analytic.owner].name}</Typography>
                     <Typography
                       component="a"
-                      href={`mailto:${users[analytic?.owner].email}`}
+                      href={`mailto:${users[analytic.owner].email}`}
                       variant="caption"
                       color="text.secondary"
                     >
-                      {users[analytic?.owner].email}
+                      {users[analytic.owner].email}
                     </Typography>
                   </>
                 ) : (
@@ -207,7 +211,7 @@ const AnalyticDetails = () => {
             </Grid>
           )}
         </Grid>
-        {
+        {analytic ? (
           {
             comments: <AnalyticComments analytic={analytic} setAnalytic={setAnalytic} />,
             hit_comments: <AnalyticHitComments analytic={analytic} />,
@@ -221,7 +225,9 @@ const AnalyticDetails = () => {
                 }
               : {})
           }[tab]
-        }
+        ) : (
+          <Skeleton variant="rounded" width="100%" height={300} sx={{ mt: 2 }} />
+        )}
       </div>
     </PageCenter>
   );

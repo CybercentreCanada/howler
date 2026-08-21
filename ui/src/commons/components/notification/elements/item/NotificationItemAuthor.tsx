@@ -8,12 +8,12 @@ export const NotificationItemAuthor: FC<{ author: FeedAuthor }> = memo(({ author
 
   //Limit github avatar size to 50px
   const avatar = useMemo<string>(() => {
-    if (author?.avatar.includes('github')) {
+    if (author?.avatar?.includes('github')) {
       let url = new URLSearchParams(author?.avatar);
       url.append('s', '50');
       return decodeURIComponent(url.toString());
     } else {
-      return author?.avatar;
+      return author?.avatar ?? '';
     }
   }, [author]);
 
@@ -36,14 +36,15 @@ export const NotificationItemAuthor: FC<{ author: FeedAuthor }> = memo(({ author
           variant="caption"
           color="textSecondary"
           sx={
-            author?.url &&
-            author?.url !== '' && {
-              color: theme.palette.text.secondary,
-              transition: 'color 225ms cubic-bezier(0, 0, 0.2, 1) 0ms',
-              '&:hover': {
-                color: theme.palette.mode === 'dark' ? theme.palette.secondary.light : theme.palette.secondary.dark
-              }
-            }
+            author?.url && author.url !== ''
+              ? {
+                  color: theme.palette.text.secondary,
+                  transition: 'color 225ms cubic-bezier(0, 0, 0.2, 1) 0ms',
+                  '&:hover': {
+                    color: theme.palette.mode === 'dark' ? theme.palette.secondary.light : theme.palette.secondary.dark
+                  }
+                }
+              : undefined
           }
         >
           {author?.name}

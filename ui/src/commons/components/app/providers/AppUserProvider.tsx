@@ -3,20 +3,22 @@ import type { AppUser, AppUserService } from 'commons/components/app/AppUserServ
 import { type ReactNode } from 'react';
 
 type AppUserProviderProps<U extends AppUser> = {
-  service: AppUserService<U>;
+  service?: AppUserService<U>;
   children: ReactNode;
 };
 
-const AppUserServiceImpl = {
-  user: null,
-  setUser: () => null,
+const createDefaultAppUserService = <U extends AppUser>(): AppUserService<U> => ({
+  user: {} as U,
+  setUser: () => undefined,
   isReady: () => false,
   validateProps: () => true
-};
+});
 
-export default function AppUserProvider<U extends AppUser>({
-  service = AppUserServiceImpl,
-  children
-}: AppUserProviderProps<U>) {
-  return <AppUserContext.Provider value={{ ...AppUserServiceImpl, ...service }}>{children}</AppUserContext.Provider>;
+export default function AppUserProvider<U extends AppUser>({ service, children }: AppUserProviderProps<U>) {
+  const appUserService = service ?? createDefaultAppUserService<U>();
+
+  // AppUserContext is shared by applications with different user subtypes.
+  const contextValue = appUserService as unknown as AppUserService<AppUser>;
+
+  return <AppUserContext.Provider value={contextValue}>{children}</AppUserContext.Provider>;
 }

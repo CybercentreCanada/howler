@@ -34,19 +34,20 @@ const Stacked = forwardRef<
         fields: [field]
       });
 
-      const values = Object.entries(result[field])
+      const values = Object.entries(result?.[field] ?? {})
         .sort(([__, valA], [___, valB]) => valB - valA)
         .map(([key]) => key);
 
       setDatasets(
         await Promise.all(
           values.map(async _value => {
-            const ingestionData = await api.search.histogram.hit.post('timestamp', {
-              query: `howler.analytic:("${analytic.name}") AND ${field}:("${_value}")`,
-              start: 'now-3M',
-              gap: '1d',
-              mincount: 0
-            });
+            const ingestionData =
+              (await api.search.histogram.hit.post('timestamp', {
+                query: `howler.analytic:("${analytic.name}") AND ${field}:("${_value}")`,
+                start: 'now-3M',
+                gap: '1d',
+                mincount: 0
+              })) ?? {};
 
             return {
               label: _value,
@@ -55,8 +56,8 @@ const Stacked = forwardRef<
                 x: new Date(time).getTime(),
                 y: sum(arr.map(key => ingestionData[key]).slice(0, index))
               })),
-              borderColor: color(_value),
-              backgroundColor: color(_value),
+              borderColor: color?.(_value),
+              backgroundColor: color?.(_value),
               pointBackgroundColor: 'transparent',
               pointBorderWidth: 0
             };

@@ -13,7 +13,7 @@ const Provider: React.FC<PropsWithChildren<{}>> = ({ children }) => {
   return (
     <ClueProvider
       baseURL={location.origin + '/api/v1/clue'}
-      getToken={() => getStored(StorageKey.APP_TOKEN)}
+      getToken={() => getStored<string>(StorageKey.APP_TOKEN) ?? ''}
       enabled={features.clue}
       publicIconify={location.origin.includes('localhost')}
       customIconify={location.origin.replace(/howler(-stg)?/, 'icons')}

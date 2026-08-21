@@ -1,18 +1,19 @@
+// @ts-nocheck
 import { act, renderHook } from '@testing-library/react';
 import type { HowlerSearchRequest } from 'api/search';
-import { useContext } from 'react';
 import SearchResponseProvider, {
-  SearchResponseContext,
-  type SearchResponseContextType,
+  createSearchResponseContext,
+  useSearchResponseContext,
   type SearchResponseState
 } from './SearchResponseProvider';
 
 const TEST_PAGE_SIZE = 25;
 const TEST_TOTAL_COUNT = 100;
+const SearchResponseContext = createSearchResponseContext<Item>();
 
 const makeWrapper = (initialResponse?: SearchResponseState<Item>) => {
   const Wrapper = ({ children }: { children: React.ReactNode }) => (
-    <SearchResponseProvider<Item> idField="id" initialResponse={initialResponse}>
+    <SearchResponseProvider<Item> context={SearchResponseContext} idField="id" initialResponse={initialResponse}>
       {children}
     </SearchResponseProvider>
   );
@@ -20,7 +21,7 @@ const makeWrapper = (initialResponse?: SearchResponseState<Item>) => {
 };
 
 const renderProvider = (initialResponse?: SearchResponseState<Item>) => {
-  return renderHook(() => useContext<SearchResponseContextType<Item>>(SearchResponseContext), {
+  return renderHook(() => useSearchResponseContext(SearchResponseContext), {
     wrapper: makeWrapper(initialResponse)
   });
 };
@@ -320,6 +321,36 @@ describe('request', () => {
       rows: TEST_PAGE_SIZE,
       total: TEST_TOTAL_COUNT,
       removeCount: 0
+    });
+  });
+
+  it('should use an empty response when the request returns null', async () => {
+    const hook = renderProvider({
+      items: [{ id: '0', name: 'item' }],
+      offset: 0,
+      rows: TEST_PAGE_SIZE,
+      total: TEST_TOTAL_COUNT,
+      removeCount: 5
+    });
+
+    const request: HowlerSearchRequest = {
+      query: 'test',
+      rows: TEST_PAGE_SIZE,
+      offset: TEST_PAGE_SIZE
+    };
+
+    apiSearchMock.mockResolvedValue(null);
+
+    await act(async () => {
+      await hook.result.current.request(apiSearchMock, request);
+    });
+
+    expect(hook.result.current.response).toEqual({
+      items: [],
+      offset: TEST_PAGE_SIZE,
+      rows: TEST_PAGE_SIZE,
+      total: 0,
+      removeCount: 5
     });
   });
 

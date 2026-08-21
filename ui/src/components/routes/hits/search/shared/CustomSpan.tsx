@@ -33,8 +33,12 @@ const CustomSpan: FC<{}> = () => {
           slotProps={{ textField: { size: 'small' } }}
           label={t('date.select.start')}
           value={startDate ? dayjs(startDate) : dayjs().subtract(1, 'days')}
-          maxDateTime={endDate}
-          onChange={(newStartDate: dayjs.Dayjs) => setCustomSpan(newStartDate.toISOString(), endDate.toISOString())}
+          maxDateTime={endDate ?? undefined}
+          onChange={(newStartDate: dayjs.Dayjs | null) => {
+            if (newStartDate && endDate) {
+              setCustomSpan(newStartDate.toISOString(), endDate.toISOString());
+            }
+          }}
           ampm={false}
           disableFuture
         />
@@ -43,9 +47,13 @@ const CustomSpan: FC<{}> = () => {
           sx={{ minWidth: '175px', flexGrow: 1, marginTop: 1 }}
           slotProps={{ textField: { size: 'small' } }}
           label={t('date.select.end')}
-          value={endDate}
-          minDateTime={startDate}
-          onChange={(newEndDate: dayjs.Dayjs) => setCustomSpan(startDate.toISOString(), newEndDate.toISOString())}
+          value={endDate ?? dayjs().subtract(1, 'day')}
+          minDateTime={startDate ?? undefined}
+          onChange={(newEndDate: dayjs.Dayjs | null) => {
+            if (startDate && newEndDate) {
+              setCustomSpan(startDate.toISOString(), newEndDate.toISOString());
+            }
+          }}
           ampm={false}
           disableFuture
         />

@@ -61,11 +61,11 @@ const LeadForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Parti
               <Tab
                 disabled={!dossier || loading}
                 sx={{ py: 1, minHeight: '0 !important' }}
-                key={lead.label?.en + lead.content}
+                key={(lead.label?.en ?? '') + (lead.content ?? '')}
                 label={
                   <Stack direction="row" spacing={0.5}>
                     {lead.icon && <Icon icon={lead.icon} />}
-                    <span>{i18n.language === 'en' ? lead.label.en : lead.label.fr}</span>
+                    <span>{i18n.language === 'en' ? lead.label?.en : lead.label?.fr}</span>
                   </Stack>
                 }
                 value={index}

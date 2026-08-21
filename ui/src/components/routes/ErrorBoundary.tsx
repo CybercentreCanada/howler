@@ -9,12 +9,12 @@ type ErrorBoundaryProps = PropsWithChildren<{
 }>;
 
 class ErrorBoundaryComponent extends React.Component<ErrorBoundaryProps, { hasError: boolean; error: Error | null }> {
-  constructor(props) {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError(error: Error) {
     return { hasError: true, error: error };
   }
 
@@ -36,12 +36,12 @@ class ErrorBoundaryComponent extends React.Component<ErrorBoundaryProps, { hasEr
           <Accordion elevation={0}>
             <AccordionSummary expandIcon={<ExpandMore />} aria-controls="panel1-content" id="panel1-header">
               <Typography align="center" sx={{ width: '100%', fontSize: '1.2rem' }} variant="h5">
-                {this.state.error.message}
+                {this.state.error?.message}
               </Typography>
             </AccordionSummary>
             <AccordionDetails>
               <code>
-                <Typography variant="h6">{this.state.error.stack}</Typography>
+                <Typography variant="h6">{this.state.error?.stack}</Typography>
               </code>
             </AccordionDetails>
           </Accordion>

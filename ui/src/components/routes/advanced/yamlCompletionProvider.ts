@@ -31,22 +31,22 @@ const useYamlCompletionProvider = (): languages.CompletionItemProvider => {
         const fuzzyMatches = fuse.search(portion);
         return {
           suggestions: fuzzyMatches.map(({ item }) => ({
-            label: item.key,
+            label: item.key!,
             detail: item.type,
             documentation: item.description,
-            kind: monaco.languages.CompletionItemKind.Property,
-            insertText: item.key,
+            kind: monaco!.languages.CompletionItemKind.Property,
+            insertText: item.key!,
             range
           }))
         };
       } else {
         return {
           suggestions: hitFields.map(_field => ({
-            label: _field.key,
+            label: _field.key!,
             detail: _field.type,
             documentation: _field.description,
-            kind: monaco.languages.CompletionItemKind.Property,
-            insertText: _field.key,
+            kind: monaco!.languages.CompletionItemKind.Property,
+            insertText: _field.key!,
             range
           }))
         };

@@ -39,7 +39,7 @@ const AppName = ({ noName }: { noName?: boolean }) => {
   }
   return (
     <Link
-      to={configs.preferences.appLink}
+      to={configs.preferences.appLink!}
       style={{ color: 'inherit', textDecoration: 'none', paddingLeft: theme.spacing(2) }}
     >
       <StyledTitle>

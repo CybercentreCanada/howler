@@ -28,7 +28,7 @@ import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Template } from 'models/entities/generated/Template';
 import { useSearchParams } from 'react-router-dom';
-import hitsData from 'utils/hit.json';
+import { getExampleHit } from 'utils/exampleHit';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 
 const TemplateViewer = () => {
@@ -39,7 +39,7 @@ const TemplateViewer = () => {
   const { showSuccessMessage } = useMySnackbar();
 
   const [templateList, setTemplateList] = useState<Template[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<Template>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [sessionTemplateList, setSessionTemplateList] = useState<Template[]>([]);
   const [displayFields, setDisplayFields] = useState<string[]>([]);
 
@@ -61,16 +61,16 @@ const TemplateViewer = () => {
       throwError: true
     })
       .finally(() => setLoading(false))
-      .then(result => result.items)
+      .then(result => result?.items ?? [])
       .then(_analytics => {
-        if (!_analytics.some(_analytic => _analytic.name.toLowerCase() === analytic.toLowerCase())) {
+        if (!_analytics.some(_analytic => _analytic.name!.toLowerCase() === analytic.toLowerCase())) {
           setAnalytic('');
         }
 
         setAnalytics(_analytics);
       });
 
-    void dispatchApi(api.template.get()).then(setTemplateList);
+    void dispatchApi(api.template.get()).then(result => setTemplateList(result ?? []));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analytic, dispatchApi]);
 
@@ -93,7 +93,7 @@ const TemplateViewer = () => {
       }
     )
       .finally(() => setLoading(false))
-      .then(result => result.items.map(i => i.value))
+      .then(result => result?.items.map(i => i.value) ?? [])
       .then(_detections => {
         if (_detections.length < 1) {
           setDetection('ANY');
@@ -124,10 +124,10 @@ const TemplateViewer = () => {
 
       if (template) {
         setSelectedTemplate(template);
-        setDisplayFields(sessionTemplate ? sessionTemplate.keys : template.keys);
+        setDisplayFields((sessionTemplate ? sessionTemplate.keys : template.keys) ?? DEFAULT_FIELDS);
       } else {
         setSelectedTemplate(null);
-        setDisplayFields(sessionTemplate ? sessionTemplate.keys : DEFAULT_FIELDS);
+        setDisplayFields(sessionTemplate ? (sessionTemplate.keys ?? DEFAULT_FIELDS) : DEFAULT_FIELDS);
       }
     }
   }, [analytic, detection, sessionTemplateList, templateList, type]);
@@ -155,7 +155,7 @@ const TemplateViewer = () => {
   }, [analytic, detection, params, setParams, type]);
 
   const exampleHit = useMemo<Hit>(() => {
-    const _hit = hitsData.GET[Object.keys(hitsData.GET)[0]];
+    const _hit = getExampleHit();
 
     if (analytic) {
       _hit.howler.analytic = analytic;
@@ -165,72 +165,76 @@ const TemplateViewer = () => {
   }, [analytic]);
 
   const onDelete = useCallback(() => {
+    const template = selectedTemplate;
+
+    if (!template?.template_id) {
+      return;
+    }
+
+    const templateId = template.template_id;
+    const templateAnalytic = template.analytic;
+    const templateDetection = template.detection;
+    const templateType = template.type;
+
     withConfirmDeleteModal(async () => {
-      await dispatchApi(api.template.del(selectedTemplate.template_id), {
+      await dispatchApi(api.template.del(templateId), {
         logError: false,
         showError: true,
         throwError: true
       });
       setSessionTemplateList(l =>
-        l.filter(
-          v =>
-            v.analytic != selectedTemplate.analytic ||
-            v.detection != selectedTemplate.detection ||
-            v.type != selectedTemplate.type
-        )
+        l.filter(v => v.analytic != templateAnalytic || v.detection != templateDetection || v.type != templateType)
       );
       setTemplateList(l =>
-        l.filter(
-          v =>
-            v.analytic != selectedTemplate.analytic ||
-            v.detection != selectedTemplate.detection ||
-            v.type != selectedTemplate.type
-        )
+        l.filter(v => v.analytic != templateAnalytic || v.detection != templateDetection || v.type != templateType)
       );
       showSuccessMessage(t('route.templates.manager.delete.success'));
     });
-  }, [
-    dispatchApi,
-    selectedTemplate?.analytic,
-    selectedTemplate?.detection,
-    selectedTemplate?.template_id,
-    selectedTemplate?.type,
-    withConfirmDeleteModal,
-    showSuccessMessage,
-    t
-  ]);
+  }, [dispatchApi, selectedTemplate, withConfirmDeleteModal, showSuccessMessage, t]);
 
   const onSave = useCallback(async () => {
-    if (analytic && detection) {
-      try {
-        setTemplateLoading(true);
-        const result = await dispatchApi(
-          selectedTemplate
-            ? api.template.put(selectedTemplate.template_id, displayFields)
-            : api.template.post({
-                analytic,
-                detection: detection !== 'ANY' ? detection : null,
-                type,
-                keys: displayFields
-              }),
-          {
-            logError: false,
-            showError: true,
-            throwError: true
-          }
-        );
+    if (!analytic || !detection) {
+      return;
+    }
 
-        setSelectedTemplate(result);
-        const newList = [result, ...templateList];
-        setTemplateList(newList.filter((v1, i) => newList.findIndex(v2 => v1.template_id === v2.template_id) === i));
+    const selectedTemplateId = selectedTemplate?.template_id;
 
-        const updatedSessionList = sessionTemplateList.filter(
-          v => v.analytic !== result.analytic || v.detection !== result.detection || v.type !== result.type
-        );
-        setSessionTemplateList(updatedSessionList);
-      } finally {
-        setTemplateLoading(false);
+    if (selectedTemplate && !selectedTemplateId) {
+      return;
+    }
+
+    try {
+      setTemplateLoading(true);
+      const result = await dispatchApi(
+        selectedTemplateId
+          ? api.template.put(selectedTemplateId, displayFields)
+          : api.template.post({
+              analytic,
+              detection: detection !== 'ANY' ? detection : undefined,
+              type,
+              keys: displayFields
+            }),
+        {
+          logError: false,
+          showError: true,
+          throwError: true
+        }
+      );
+
+      if (!result) {
+        return;
       }
+
+      setSelectedTemplate(result);
+      const newList = [result, ...templateList];
+      setTemplateList(newList.filter((v1, i) => newList.findIndex(v2 => v1.template_id === v2.template_id) === i));
+
+      const updatedSessionList = sessionTemplateList.filter(
+        v => v.analytic !== result.analytic || v.detection !== result.detection || v.type !== result.type
+      );
+      setSessionTemplateList(updatedSessionList);
+    } finally {
+      setTemplateLoading(false);
     }
   }, [analytic, detection, dispatchApi, displayFields, selectedTemplate, sessionTemplateList, templateList, type]);
 
@@ -248,9 +252,9 @@ const TemplateViewer = () => {
         return;
       }
 
-      const sessionTemplate = {
+      const sessionTemplate: Template = {
         analytic: analytic,
-        detection: detection !== 'ANY' ? detection : null,
+        detection: detection !== 'ANY' ? detection : undefined,
         type: type,
         keys: displayFields
       };
@@ -275,11 +279,11 @@ const TemplateViewer = () => {
           <FormControl sx={{ flex: 1, maxWidth: '450px' }}>
             <Autocomplete
               id="analytic"
-              options={analytics.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))}
-              getOptionLabel={option => option.name}
+              options={analytics.sort((a, b) => a.name!.toLowerCase().localeCompare(b.name!.toLowerCase()))}
+              getOptionLabel={option => option.name!}
               value={analytics.find(a => a.name === analytic) || null}
               onChange={(__, newValue) => {
-                setAnalytic(newValue ? newValue.name : '');
+                setAnalytic(newValue ? newValue.name! : '');
                 setSessionTemplateList([]); // do not keep session memory if analytic or detection is changed
               }}
               renderInput={autocompleteAnalyticParams => (
@@ -295,7 +299,7 @@ const TemplateViewer = () => {
                 getOptionLabel={option => option}
                 value={detection ?? ''}
                 onChange={(__, newValue) => {
-                  setDetection(newValue);
+                  setDetection(newValue ?? 'ANY');
                   setSessionTemplateList([]); // do not keep session memory if analytic or detection is changed
                 }}
                 renderInput={autocompleteDetectionParams => (

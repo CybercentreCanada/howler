@@ -1,11 +1,10 @@
 import { Topic } from '@mui/icons-material';
 import { Stack, Typography } from '@mui/material';
 import api from 'api';
-import type { HowlerSearchResponse } from 'api/search';
-import type { FuzzySearchItem, FuzzySearchRequest } from 'api/v2/fuzzy';
+import type { FuzzySearchItem } from 'api/v2/fuzzy';
 import SearchResponseProvider, {
-  SearchResponseContext,
-  type SearchResponseContextType
+  createSearchResponseContext,
+  useSearchResponseContext
 } from 'components/app/providers/SearchResponseProvider';
 import { TuiListProvider, type TuiListItem, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext, type TuiListMethodsState } from 'components/elements/addons/lists/TuiListProvider';
@@ -23,6 +22,8 @@ import CaseAssigneeFilter from './search/CaseAssigneeFilter';
 import CaseDateFilter, { type DateRangeOption } from './search/CaseDateFilter';
 import CaseStatusFilter from './search/CaseStatusFilter';
 
+const SearchResponseContext = createSearchResponseContext<FuzzySearchItem<Case>>();
+
 const CasesBase: FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -30,10 +31,10 @@ const CasesBase: FC = () => {
   const { load } = useContext<TuiListMethodsState<Case>>(TuiListMethodContext);
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
-  const { response, request } = useContext<SearchResponseContextType<FuzzySearchItem<Case>>>(SearchResponseContext);
+  const { response, request } = useSearchResponseContext(SearchResponseContext);
 
   const [phrase, setPhrase] = useState<string>('');
-  const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
+  const [offset, setOffset] = useState(parseInt(searchParams.get('offset') ?? '') || 0);
   const [hasError, setHasError] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -84,16 +85,13 @@ const CasesBase: FC = () => {
       setSearchParams(searchParams, { replace: true });
 
       const filters = buildFilters();
-      await request(
-        api.v2.fuzzy.post as (request: FuzzySearchRequest) => Promise<HowlerSearchResponse<FuzzySearchItem<Case>>>,
-        {
-          query: phrase.trim() || '*',
-          filters,
-          rows: pageCount,
-          offset,
-          indexes: ['case']
-        }
-      );
+      await request(api.v2.fuzzy.post, {
+        query: phrase.trim() || '*',
+        filters,
+        rows: pageCount,
+        offset,
+        indexes: ['case']
+      });
     } catch {
       setHasError(true);
     } finally {
@@ -105,8 +103,8 @@ const CasesBase: FC = () => {
   useEffect(() => {
     if (response) {
       load(
-        response.items.map((item: Case) => ({
-          id: item.case_id,
+        response.items.map(item => ({
+          id: item.case_id!,
           item,
           selected: false,
           cursor: false
@@ -138,7 +136,7 @@ const CasesBase: FC = () => {
   }, []);
 
   useEffect(() => {
-    if (response?.total <= offset) {
+    if ((response?.total ?? 0) <= offset) {
       setOffset(0);
       searchParams.set('offset', '0');
       setSearchParams(searchParams, { replace: true });
@@ -208,7 +206,7 @@ const CasesBase: FC = () => {
 const Cases = () => {
   return (
     <TuiListProvider>
-      <SearchResponseProvider idField="case_id">
+      <SearchResponseProvider context={SearchResponseContext} idField="case_id">
         <CasesBase />
       </SearchResponseProvider>
     </TuiListProvider>

@@ -7,6 +7,6 @@ export const uri = () => {
   return joinAllUri(parentUri(), 'hit', 'sigma');
 };
 
-export const post = (request?: HowlerSigmaSearchRequest): Promise<HowlerSearchResponse<Hit>> => {
-  return hpost(uri(), { ...request, sigma: request?.sigma || '' });
+export const post = (request?: HowlerSigmaSearchRequest) => {
+  return hpost<HowlerSearchResponse<Hit>>(uri(), { ...request, sigma: request?.sigma || '' });
 };

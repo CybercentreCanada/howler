@@ -8,7 +8,7 @@ export interface Rule {
   author?: string;
   enabled?: boolean;
   created_at?: string;
-  timeframe?: number;
+  timeframe?: number | null;
   expire_after_resolved?: boolean;
   indexes?: ('hit' | 'event')[];
 }

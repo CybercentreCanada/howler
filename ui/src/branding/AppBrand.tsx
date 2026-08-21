@@ -78,7 +78,7 @@ export const SIZES = {
 
 export const BRAND_APPLICATIONS = ['analyticalplatform', 'assemblyline', 'howler'] as const;
 
-export const BRAND_SIZES = Object.keys(SIZES).filter(s => s !== 'app');
+export const BRAND_SIZES = ['xlarge', 'large', 'medium', 'small', 'xsmall'] as const;
 
 export const BRAND_VARIANTS = ['app', 'logo', 'banner-vertical', 'banner-horizontal'] as const;
 
@@ -87,6 +87,8 @@ export type BrandApplication = (typeof BRAND_APPLICATIONS)[number];
 export type BrandVariant = (typeof BRAND_VARIANTS)[number];
 
 export type BrandSize = (typeof BRAND_SIZES)[number];
+
+type BrandAppSize = BrandSize | 'app';
 
 const AppLogo = ({
   src,
@@ -97,10 +99,14 @@ const AppLogo = ({
   src: string;
   application: BrandApplication;
   variant: BrandVariant;
-  size?: BrandSize;
+  size?: BrandAppSize;
 }) => {
   return (
-    <img src={src} alt={`${application} logo`} style={{ ...SIZES[size].icon, marginLeft: variant === 'app' && -7 }} />
+    <img
+      src={src}
+      alt={`${application} logo`}
+      style={{ ...SIZES[size].icon, marginLeft: variant === 'app' ? -7 : undefined }}
+    />
   );
 };
 
@@ -111,7 +117,7 @@ const AppName = ({
 }: {
   src: string;
   application: BrandApplication;
-  size?: BrandSize;
+  size?: BrandAppSize;
 }) => {
   return <img src={src} alt={application} style={{ ...SIZES[size].name }} />;
 };
@@ -143,9 +149,7 @@ export const AppBrand = ({
     );
   }
 
-  if (variant === 'app') {
-    size = 'app';
-  }
+  const appSize: BrandAppSize = variant === 'app' ? 'app' : size;
 
   return (
     <Stack
@@ -153,9 +157,9 @@ export const AppBrand = ({
       alignItems="center"
       style={{ width: 'fit-content' }}
     >
-      <AppLogo application={application} src={logoSrc} variant={variant} size={size} />
-      <div style={SIZES[size].divider} />
-      <AppName application={application} src={nameSrc} size={size} />
+      <AppLogo application={application} src={logoSrc} variant={variant} size={appSize} />
+      <div style={SIZES[appSize].divider} />
+      <AppName application={application} src={nameSrc} size={appSize} />
     </Stack>
   );
 };

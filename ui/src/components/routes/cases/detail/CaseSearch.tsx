@@ -79,7 +79,7 @@ const CaseSearch: FC = () => {
 
   useEffect(() => {
     if (query) {
-      void handleSearch(query, indexes);
+      void handleSearch(query, indexes?.map(String) ?? []);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [indexes, offset]);

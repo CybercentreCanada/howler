@@ -106,7 +106,7 @@ dayjs.locale(i18n.language === 'en' ? 'en' : 'fr-ca');
 
 loader.config({ monaco });
 
-const RoleRoute = ({ roles }) => {
+const RoleRoute = ({ roles }: { roles: string[] }) => {
   const appUser = useAppUser<HowlerUser>();
 
   if (roles.some((role: string) => appUser.user?.roles?.includes(role))) {
@@ -143,9 +143,13 @@ const MyApp: FC = () => {
   // e.g. fetching initial app data, etc.
   useEffect(() => {
     void dispatchApi(api.configs.get()).then(data => {
+      if (!data) {
+        return;
+      }
+
       apiConfig.setConfig(data);
 
-      if (data?.configuration?.ui?.apps) {
+      if (data.configuration.ui?.apps) {
         setItems(data.configuration.ui.apps);
       }
     });
@@ -168,7 +172,7 @@ const MyApp: FC = () => {
       if (location.pathname !== '/login') {
         set(StorageKey.NEXT_LOCATION, location.pathname);
         set(StorageKey.NEXT_SEARCH, location.search);
-        navigate('/login');
+        void navigate('/login');
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -179,7 +183,7 @@ const MyApp: FC = () => {
   }
 
   // we don't display the skeleton for certain paths
-  return (appLayout.ready && apiConfig.config?.indexes) ||
+  return (appLayout.ready && apiConfig.loaded && apiConfig.config.indexes) ||
     location.pathname === '/login' ||
     location.pathname === '/logout' ? (
     <AppContainer />

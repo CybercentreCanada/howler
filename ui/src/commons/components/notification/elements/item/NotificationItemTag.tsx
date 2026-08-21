@@ -1,7 +1,7 @@
-import { Chip } from '@mui/material';
+import { Chip, type ChipProps } from '@mui/material';
 import { memo, type FC } from 'react';
 
-const TAG_COLOR = {
+const TAG_COLOR: Record<string, ChipProps['color']> = {
   new: 'info',
   current: 'success',
   dev: 'warning',

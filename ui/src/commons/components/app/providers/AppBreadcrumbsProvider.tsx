@@ -41,12 +41,12 @@ export default function AppBreadcrumbsProvider({ children }: AppBreadcrumbsProvi
   // Memoized context value.
   const context = useMemo(() => {
     return {
-      show: preferences.allowBreadcrumbs && show,
+      show: !!preferences.allowBreadcrumbs && !!show,
       items,
-      setItems,
+      setItems: (newItems: BreadcrumbItem[]) => setItems(newItems),
       toggle: () => setShow(!show),
-      last: () => (items.length > 0 ? items[items.length - 1] : items[0]),
-      first: () => items[0]
+      last: () => (items.length > 0 ? items[items.length - 1]! : items[0]!),
+      first: () => items[0]!
     };
   }, [preferences.allowBreadcrumbs, show, items, setShow]);
   return <AppBreadcrumbsContext.Provider value={context}>{children}</AppBreadcrumbsContext.Provider>;

@@ -5,6 +5,6 @@ export const uri = () => {
   return joinUri(parentUri(), 'configs');
 };
 
-export const get = (): Promise<ApiType> => {
-  return hget(uri());
+export const get = () => {
+  return hget<ApiType>(uri());
 };

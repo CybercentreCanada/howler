@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { hpost } from 'api';
 import { cloneDeep } from 'lodash-es';

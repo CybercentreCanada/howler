@@ -6,7 +6,7 @@ import { matchPath, type PathMatch } from 'react-router-dom';
 
 const TITLE_404 = i18n.t('breadcrumb.404');
 
-export type BreadcrumbItem = { route: AppSiteMapRoute; matcher: PathMatch<string> };
+export type BreadcrumbItem = { route: AppSiteMapRoute; matcher: PathMatch<string> | null };
 
 export const getRoute = (route: string, siteMap: AppSiteMapRoute[]): BreadcrumbItem => {
   // match all the route provide in sitemap with current route.
@@ -60,7 +60,7 @@ const resolveTitle = (breadcrumb: BreadcrumbItem, siteMap: AppSiteMapRoute[]) =>
   if (breadcrumb.matcher && breadcrumb.matcher.params) {
     const { params } = breadcrumb.matcher;
     Object.keys(params).forEach(k => {
-      title = title.replace(`{:${k}}`, params[k]);
+      title = title.replace(`{:${k}}`, params[k]!);
     });
   }
   return title;

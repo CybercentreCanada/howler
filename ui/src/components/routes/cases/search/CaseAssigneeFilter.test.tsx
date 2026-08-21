@@ -1,4 +1,5 @@
 /// <reference types="vitest" />
+// @ts-nocheck
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { UserListContext } from 'components/app/providers/UserListProvider';

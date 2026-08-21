@@ -55,7 +55,7 @@ const ChipPopper: FC<ChipPopperProps> = ({
           e.stopPropagation();
           e.preventDefault();
         }}
-        onDelete={onDelete ?? (toggleOnDelete ? () => handleToggle(!show) : null)}
+        onDelete={onDelete ?? (toggleOnDelete ? () => handleToggle(!show) : undefined)}
         ref={setAnchorEl}
         sx={[
           theme => ({

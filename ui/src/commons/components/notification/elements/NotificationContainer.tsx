@@ -29,7 +29,7 @@ export const NotificationContainer: FC<NotificationProps> = memo(props => {
     onDrawerClose = () => null,
     initialPageSize = 10,
     loadingPageDelta = 2,
-    ItemComponent = null,
+    ItemComponent = null as unknown as FC<ItemComponentProps>,
     inDrawer = true,
     status = 'loading',
     maxDrawerWidth = '500px'

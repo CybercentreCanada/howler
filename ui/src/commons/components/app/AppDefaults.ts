@@ -8,12 +8,7 @@ import type {
 
 // AppPreferenceConfigs defaults.
 export const AppDefaultsPreferencesConfigs: AppPreferenceConfigs = {
-  appName: null,
   appLink: '/',
-  appIconDark: null,
-  appIconLight: null,
-  bannerDark: null,
-  bannerLight: null,
   defaultLayout: 'side',
   defaultTheme: 'dark',
   defaultShowBreadcrumbs: true,

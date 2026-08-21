@@ -1,9 +1,9 @@
 import { Add } from '@mui/icons-material';
-import type { SxProps, Theme } from '@mui/material';
+import type { AutocompleteRenderInputParams, SxProps, Theme } from '@mui/material';
 import { Autocomplete, AvatarGroup, Box, IconButton, Popover, Stack, TextField, Typography } from '@mui/material';
 import { UserListContext } from 'components/app/providers/UserListProvider';
 import { uniq } from 'lodash-es';
-import type { FC } from 'react';
+import type { FC, HTMLAttributes } from 'react';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import HowlerAvatar from './display/HowlerAvatar';
@@ -19,7 +19,7 @@ const UserList: FC<{
 }> = ({ buttonSx = {}, userIds, onChange, i18nLabel, avatarHeight = 32, multiple = false, disabled = false }) => {
   const { t } = useTranslation();
 
-  const [anchorEl, setAnchorEl] = useState<HTMLButtonElement>(null);
+  const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const { users, fetchUsers } = useContext(UserListContext);
 
   const allUserIds = useMemo(() => Object.keys(users), [users]);
@@ -29,9 +29,11 @@ const UserList: FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userIds]);
 
-  const renderInput = params => <TextField {...params} label={t(i18nLabel)} size="small" />;
+  const renderInput = (params: AutocompleteRenderInputParams) => (
+    <TextField {...params} label={t(i18nLabel)} size="small" />
+  );
 
-  const renderOption = (props, optionUserId) => {
+  const renderOption = (props: HTMLAttributes<HTMLLIElement> & { key: any }, optionUserId: string) => {
     const { key, ...optionProps } = props;
     const user = users[optionUserId];
 

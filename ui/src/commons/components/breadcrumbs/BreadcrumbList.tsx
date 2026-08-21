@@ -25,14 +25,14 @@ const splitItems = (
   const _items = items.concat().filter(i => !i.route.exclude);
   const hasEllipsis = _items.length > itemsBeforeCount + itemsAfterCount;
   if (!hasEllipsis || isStatic) {
-    return { before: null, after: _items, hasEllipsis: false };
+    return { before: [], after: _items, hasEllipsis: false };
   }
   const before = _items.slice(0, itemsBeforeCount);
   const after = expanded ? _items.slice(itemsBeforeCount) : _items.slice(_items.length - itemsAfterCount);
   return { before, after, hasEllipsis: hasEllipsis || expanded };
 };
 
-const BreadcrumbsEllipsis = ({ onClick, expanded }) => {
+const BreadcrumbsEllipsis = ({ onClick, expanded }: { onClick: () => void; expanded: boolean }) => {
   const { t } = useTranslation();
   return (
     <Tooltip title={t(expanded ? 'tooltip.breadcrumbs.min' : 'tooltip.breadcrumbs.max')}>
@@ -61,7 +61,7 @@ export default function BreadcrumbList({
   isStatic
 }: BreadcrumbListProps) {
   const [expanded, setExpanded] = useState<boolean>(false);
-  const { before, after, hasEllipsis } = splitItems(items, itemsBefore, itemsAfter, expanded, isStatic);
+  const { before, after, hasEllipsis } = splitItems(items, itemsBefore!, itemsAfter!, expanded, !!isStatic);
   const last = after.length > 0 ? after.pop() : null;
   return (
     <MuiBreadcrumbs

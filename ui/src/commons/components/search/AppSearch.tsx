@@ -20,7 +20,15 @@ import { useAppSearchService } from 'commons/components/app/hooks/useAppSearchSe
 import AppSearchInput from 'commons/components/search/AppSearchInput';
 import AppSearchResult from 'commons/components/search/AppSearchResult';
 import { parseEvent } from 'commons/components/utils/keyboard';
-import { forwardRef, useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent as ReactKeyboardEvent
+} from 'react';
 import { useTranslation } from 'react-i18next';
 
 const MENU_LIST_SX = { maxHeight: 500, overflow: 'auto' };
@@ -33,19 +41,19 @@ const AppSearchRoot = styled(Box, { shouldForwardProp: prop => prop !== 'menuOpe
   return {
     position: 'relative',
     borderRadius: theme.shape.borderRadius,
-    borderBottomLeftRadius: menuOpen && 0,
-    borderBottomRightRadius: menuOpen && 0,
+    borderBottomLeftRadius: menuOpen ? 0 : undefined,
+    borderBottomRightRadius: menuOpen ? 0 : undefined,
 
     '.app-search-input': {
       backgroundColor:
         theme.palette.mode === 'dark' ? backgroundColor : menuOpen ? theme.palette.background.default : backgroundColor,
-      boxShadow: menuOpen && theme.shadows[4]
+      boxShadow: menuOpen ? theme.shadows[4] : undefined
     },
     '.app-search-result': {
       backgroundColor: theme.palette.mode === 'dark' ? backgroundColor : theme.palette.background.default,
       borderBottomLeftRadius: theme.shape.borderRadius,
       borderBottomRightRadius: theme.shape.borderRadius,
-      boxShadow: menuOpen && theme.shadows[4],
+      boxShadow: menuOpen ? theme.shadows[4] : undefined,
       color: theme.palette.text.primary
     }
   };
@@ -79,17 +87,17 @@ export default function AppSearch() {
   // keyboard[window] handler.
   // this is to trigger the CTLR+K shortcut to appsearch.
   useEffect(() => {
-    const keyHandler = event => {
+    const keyHandler = (event: KeyboardEvent) => {
       const { key, isCtrl } = parseEvent(event);
       if (isCtrl && key === 'k') {
         event.preventDefault();
-        const inputRef = menuRef.current.querySelector('input');
+        const inputRef = menuRef.current?.querySelector('input');
         if (provided && !inputRef) {
           state.set({ ...state, menu: !state.menu, mode: 'fullscreen' });
         } else if (provided && state.menu) {
           state.set({ ...state, mode: 'fullscreen' });
         } else {
-          inputRef.focus();
+          inputRef!.focus();
         }
       }
     };
@@ -126,7 +134,7 @@ export default function AppSearch() {
 
   // Keyboard handler.
   const onKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLElement>) => {
+    (event: ReactKeyboardEvent<HTMLElement>) => {
       const { isEnter, isEscape, isArrowDown } = parseEvent(event);
       if (isEnter) {
         onEnter();
@@ -149,7 +157,7 @@ export default function AppSearch() {
   // Clear search input handler.
   const onClear = useCallback(() => {
     setValue('');
-    state.set({ ...state, items: null });
+    state.set({ ...state, items: [] });
   }, [state]);
 
   // Fullscreen modal toggle handler.
@@ -159,7 +167,7 @@ export default function AppSearch() {
 
   return (
     <ClickAwayListener onClickAway={() => state.set({ ...state, menu: false })}>
-      <AppSearchRoot ref={menuRef} sx={{ mr: !showSearchIcon && 1 }} menuOpen={state.menu}>
+      <AppSearchRoot ref={menuRef} sx={{ mr: !showSearchIcon ? 1 : undefined }} menuOpen={state.menu}>
         {showSearchIcon ? (
           <IconButton
             color="inherit"

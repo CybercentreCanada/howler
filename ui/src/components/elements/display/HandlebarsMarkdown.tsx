@@ -41,10 +41,10 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
   const handlebars: HandlebarsInstance = useMemo(() => {
     const instance = asyncHelpers(Handlebars);
 
-    instance.registerHelper('img', async context => {
+    instance.registerHelper('img', async (context: Handlebars.HelperOptions) => {
       const hash = Object.fromEntries(
         await Promise.all(Object.entries(context.hash).map(async ([key, val]) => [key, await val]))
-      );
+      ) as Record<string, string>;
 
       if (!hash.src) {
         return '';
@@ -84,7 +84,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
           return new Handlebars.SafeString(`\`${id}\``);
         }
         try {
-          const result = helper.callback(...args);
+          const result = helper.callback!(...args);
           return result instanceof Promise
             ? result.catch(err => {
                 if (err instanceof HowlerHelperError) {
@@ -139,10 +139,10 @@ ${err.hint ? `<br/><span style="color: gray; font-family: monospace;">${err.hint
         setRendered(`
 <h2 style="color: red">${t('markdown.error')}</h2>
 
-**\`${err.toString()}\`**
+**\`${err instanceof Error ? err.toString() : String(err)}\`**
 
 <code style="font-size: 0.8rem"><pre>
-${err.stack}
+${err instanceof Error ? err.stack : ''}
 </pre></code>
         `);
       }

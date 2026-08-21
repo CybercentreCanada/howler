@@ -4,7 +4,7 @@ import { type NotificationProps } from 'commons/components/notification/elements
 import { memo, type FC } from 'react';
 
 export const NotificationCloseButton: FC<NotificationProps> = memo(
-  ({ drawer = false, onDrawerOpen = () => null, onDrawerClose = () => null }) => (
+  ({ drawer = false, onDrawerOpen = () => null, onDrawerClose = () => null }: NotificationProps) => (
     <div>
       <IconButton onClick={() => (drawer ? onDrawerClose() : onDrawerOpen())} size="large">
         <CloseOutlined fontSize="medium" />

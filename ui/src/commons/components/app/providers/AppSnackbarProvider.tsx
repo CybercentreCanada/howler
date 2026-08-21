@@ -1,5 +1,6 @@
 import { styled } from '@mui/material';
 import { SnackbarProvider } from 'notistack';
+import type { ReactNode } from 'react';
 
 const StyledSnackbarProvider = styled(SnackbarProvider)`
   & .SnackbarItem-message {
@@ -11,6 +12,6 @@ const StyledSnackbarProvider = styled(SnackbarProvider)`
 //  to calculate css styles.
 // This has to be done as child of AppContextProvider and in a separate component in order
 //  to ensure the ThemeProvider is already initialized.
-export default function AppSnackbarProvider({ children }) {
+export default function AppSnackbarProvider({ children }: { children: ReactNode }) {
   return <StyledSnackbarProvider>{children}</StyledSnackbarProvider>;
 }

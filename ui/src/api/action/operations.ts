@@ -6,6 +6,6 @@ export const uri = () => {
   return joinUri(parentUri(), 'operations');
 };
 
-export const get = (): Promise<ActionOperation[]> => {
-  return hget(uri());
+export const get = async () => {
+  return (await hget<ActionOperation[]>(uri())) ?? [];
 };

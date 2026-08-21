@@ -112,31 +112,31 @@ export type AppDrawerOpenProps = {
 };
 
 // React Context for the AppProvider (Root Context).
-export const AppContext = createContext<AppContextType>(null);
+export const AppContext = createContext<AppContextType>(null!);
 
 // React Context for the AppLayoutProvider.
-export const AppLayoutContext = createContext<AppLayoutContextType>(null);
+export const AppLayoutContext = createContext<AppLayoutContextType>(null!);
 
 // React Context for the AppBarProvider.
-export const AppBarContext = createContext<AppBarContextType>(null);
+export const AppBarContext = createContext<AppBarContextType>(null!);
 
 // React Context for the AppBreadcrumbsProvider.
-export const AppBreadcrumbsContext = createContext<AppBreadcrumbsContextType>(null);
+export const AppBreadcrumbsContext = createContext<AppBreadcrumbsContextType>(null!);
 
 // React Context for the AppLeftNavProvider.
-export const AppLeftNavContext = createContext<AppLeftNavContextType>(null);
+export const AppLeftNavContext = createContext<AppLeftNavContextType>(null!);
 
 // React Context for the AppQuickSearchProvider.
-export const AppQuickSearchContext = createContext<AppQuickSearchContextType>(null);
+export const AppQuickSearchContext = createContext<AppQuickSearchContextType>(null!);
 
 // React Context for the AppSearchServiceProvider.
-export const AppSearchServiceContext = createContext<AppSearchServiceContextType>(null);
+export const AppSearchServiceContext = createContext<AppSearchServiceContextType>(null!);
 
 // React Context for the AppSwitcherProvider.
-export const AppSwitcherContext = createContext<AppSwitcherContextType>(null);
+export const AppSwitcherContext = createContext<AppSwitcherContextType>(null!);
 
 // React Context for the AppUserProvider.
-export const AppUserContext = createContext<AppUserService<AppUser>>(null);
+export const AppUserContext = createContext<AppUserService<AppUser>>(null!);
 
 // React Context for the AppNotificationServiceProvider.
-export const AppNotificationServiceContext = createContext<AppNotificationServiceContextType>(null);
+export const AppNotificationServiceContext = createContext<AppNotificationServiceContextType>(null!);

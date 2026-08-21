@@ -25,6 +25,7 @@ import PageCenter from 'commons/components/pages/PageCenter';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
 import type { HowlerUser } from 'models/entities/HowlerUser';
+import type { APIIndexes } from 'models/entities/generated/ApiType';
 import { memo, useContext, useMemo, type FC, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
@@ -137,7 +138,7 @@ const SearchDocumentation: FC = () => {
   useScrollRestoration();
 
   const indexes = useMemo(() => {
-    return config?.indexes || [];
+    return config?.indexes || ({} as APIIndexes);
   }, [config]);
 
   return (
@@ -341,7 +342,7 @@ const SearchDocumentation: FC = () => {
             </ul>
           </Paragraph>
 
-          {Object.keys(indexes).map(idx => (
+          {(Object.keys(indexes) as (keyof APIIndexes)[]).map(idx => (
             <Accordion key={idx} sx={{ mb: 2, backgroundColor: 'background.paper' }}>
               <AccordionSummary expandIcon={<ExpandMore />}>
                 <Typography variant="h6">{t(`fields.idx_${idx}`)}</Typography>

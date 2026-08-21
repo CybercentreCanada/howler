@@ -22,7 +22,7 @@ const GroupListItem = memo(
     group: AppLeftNavGroup;
     leftNavOpen: boolean;
     collapseOpen: boolean;
-    popoverOpen;
+    popoverOpen: boolean;
     onClick: (event: React.MouseEvent) => void;
   }) => {
     const { t } = useTranslation();
@@ -39,7 +39,7 @@ const GroupListItem = memo(
                 right: 0,
                 width: 16,
                 height: 16,
-                transform: popoverOpen && 'rotate(180deg)',
+                transform: popoverOpen ? 'rotate(180deg)' : undefined,
                 transition: theme.transitions.create('transform', {
                   easing: theme.transitions.easing.sharp,
                   duration: popoverOpen
@@ -88,7 +88,7 @@ const LeftNavGroup = ({ group, onItemClick }: LeftNavGroupProps) => {
     }
   }, [leftnav.open, collapseOpen]);
 
-  return user.validateProps(group.userPropValidators) ? (
+  return (user.validateProps?.(group.userPropValidators ?? []) ?? true) ? (
     <div>
       <GroupListItem
         group={group}

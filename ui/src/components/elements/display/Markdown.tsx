@@ -47,7 +47,10 @@ const customComponents = (type: string, children: any) => {
   } else if (type === 'tabs') {
     return (
       <DynamicTabs
-        tabs={JSON.parse(child).map(t => ({ title: t.title, children: customComponents(t.lang, t.value) }))}
+        tabs={(JSON.parse(child) as { title: string; lang: string; value: string }[]).map(t => ({
+          title: t.title,
+          children: customComponents(t.lang, t.value)
+        }))}
       />
     );
   } else {
@@ -89,6 +92,13 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
       urlTransform={(value: string) => value}
       components={{
         code({ node, className, children, ...props }) {
+          if (!node) {
+            return (
+              <code className={className} {...props}>
+                {children}
+              </code>
+            );
+          }
           if (node.children?.length === 1 && node.children[0].type === 'text') {
             if (node.children[0].value.startsWith('t(')) {
               return <span>{t(node.children[0].value.replace(/t\((.+)\)/, '$1'))}</span>;

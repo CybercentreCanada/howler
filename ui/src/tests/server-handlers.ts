@@ -108,9 +108,15 @@ const handlers = [
     })
   ),
   http.post('/api/v1/search/facet/hit', async ({ request }) => {
-    const payload: any = await request.json();
+    const payload = (await request.json()) as {
+      fields: string[];
+      filters?: string[];
+      query: string;
+    };
 
-    let facetResponse = Object.fromEntries(payload.fields.map(field => [field, { 'facet 1': 1, 'facet 2': 2 }]));
+    let facetResponse: Record<string, Record<string, number>> = Object.fromEntries(
+      payload.fields.map(field => [field, { 'facet 1': 1, 'facet 2': 2 }])
+    );
     if (payload.filters?.[0]?.includes('analytic')) {
       facetResponse = Object.fromEntries(payload.fields.map(field => [field, { 'Analytic 1': 1, 'Analytic 2': 2 }]));
     } else if (payload.query.includes('test-user')) {

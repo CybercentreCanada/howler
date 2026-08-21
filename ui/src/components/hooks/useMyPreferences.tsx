@@ -25,7 +25,7 @@ import {
 } from '@mui/icons-material';
 import { Stack } from '@mui/material';
 import { AppBrand } from 'branding/AppBrand';
-import type { AppLeftNavElement, AppPreferenceConfigs } from 'commons/components/app/AppConfigs';
+import type { AppLeftNavElement, AppPreferenceConfigs, AppSwitcherItem } from 'commons/components/app/AppConfigs';
 import { AppBarContext } from 'components/app/providers/AppBarProvider';
 import Classification from 'components/elements/display/Classification';
 import DocumentationButton from 'components/elements/display/DocumentationButton';
@@ -309,7 +309,7 @@ const useMyPreferences = (): AppPreferenceConfigs => {
       defaultShowQuickSearch: true,
       avatarD: 'retro',
       topnav: {
-        apps: [],
+        apps: [] as AppSwitcherItem[],
         userMenu: USER_MENU_ITEMS,
         userMenuI18nKey: 'usermenu',
         adminMenu: ADMIN_MENU_ITEMS,

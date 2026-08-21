@@ -4,7 +4,7 @@ import { MainMenuInsertOperation } from '../plugins/store';
 
 class AppMenuBuilder {
   private items: AppLeftNavElement[];
-  private indexMap: Record<string | number, { index: number; parent?: number }>;
+  private indexMap: Record<string | number, { index: number; parent?: number }> = {};
 
   constructor(defaultMenu: AppLeftNavElement[]) {
     this.items = defaultMenu;
@@ -184,7 +184,7 @@ class AppMenuBuilder {
     } else if (id in this.indexMap) {
       // Item exists, check if it's a subitem
       if ('parent' in this.indexMap[id]) {
-        return { index: this.indexMap[id].parent, subIndex: this.indexMap[id].index };
+        return { index: this.indexMap[id].parent!, subIndex: this.indexMap[id].index };
       }
       return { index: this.indexMap[id].index };
     } else {

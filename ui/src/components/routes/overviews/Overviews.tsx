@@ -3,8 +3,8 @@ import { Typography } from '@mui/material';
 import api from 'api';
 import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
 import SearchResponseProvider, {
-  SearchResponseContext,
-  type SearchResponseContextType
+  createSearchResponseContext,
+  useSearchResponseContext
 } from 'components/app/providers/SearchResponseProvider';
 import { TuiListProvider, type TuiListItem, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext, type TuiListMethodsState } from 'components/elements/addons/lists/TuiListProvider';
@@ -19,6 +19,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { StorageKey } from 'utils/constants';
 import OverviewCard from './OverviewCard';
 
+const SearchResponseContext = createSearchResponseContext<Overview>();
+
 const OverviewsBase: FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -29,13 +31,12 @@ const OverviewsBase: FC = () => {
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
   const [phrase, setPhrase] = useState<string>('');
-  const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
+  const [offset, setOffset] = useState(parseInt(searchParams.get('offset')!) || 0);
   const [hasError, setHasError] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const { analytics } = useContext(AnalyticContext);
-  const { response, request, remove, getSearchRequestData } =
-    useContext<SearchResponseContextType<Overview>>(SearchResponseContext);
+  const { response, request, remove, getSearchRequestData } = useSearchResponseContext(SearchResponseContext);
 
   const onSearch = useCallback(async () => {
     try {
@@ -71,12 +72,12 @@ const OverviewsBase: FC = () => {
     if (response) {
       load(
         response.items.map((item: Overview) => ({
-          id: item.overview_id,
+          id: item.overview_id!,
           item,
           selected: false,
           cursor: false,
           disabled:
-            item.detection &&
+            !!item.detection &&
             !analytics
               .find(v => v.name === item.analytic)
               ?.detections?.map((s: string) => s.toLowerCase())
@@ -90,9 +91,9 @@ const OverviewsBase: FC = () => {
     (_offset: number) => {
       if (_offset !== offset) {
         const modifiedRequest = getSearchRequestData({ offset: _offset });
-        searchParams.set('offset', modifiedRequest.offset.toString());
+        searchParams.set('offset', modifiedRequest.offset!.toString());
         setSearchParams(searchParams, { replace: true });
-        setOffset(modifiedRequest.offset);
+        setOffset(modifiedRequest.offset!);
       }
     },
     [offset, searchParams, setSearchParams, getSearchRequestData]
@@ -123,7 +124,7 @@ const OverviewsBase: FC = () => {
   }, []);
 
   useEffect(() => {
-    if (response?.total <= offset) {
+    if ((response?.total ?? 0) <= offset) {
       setOffset(0);
       searchParams.set('offset', '0');
       setSearchParams(searchParams, { replace: true });
@@ -163,7 +164,7 @@ const OverviewsBase: FC = () => {
       renderer={({ item }: TuiListItemProps<Overview>, classRenderer) =>
         renderer(item.item, !!item.disabled, classRenderer())
       }
-      response={response}
+      response={response!}
       onSelect={(item: TuiListItem<Overview>) =>
         navigate(
           `/overviews/view?analytic=${item.item.analytic}${
@@ -182,7 +183,7 @@ const OverviewsBase: FC = () => {
 const Overviews = () => {
   return (
     <TuiListProvider>
-      <SearchResponseProvider idField="overview_id">
+      <SearchResponseProvider context={SearchResponseContext} idField="overview_id">
         <OverviewsBase />
       </SearchResponseProvider>
     </TuiListProvider>

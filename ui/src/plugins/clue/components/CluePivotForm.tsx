@@ -17,7 +17,6 @@ import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import type { PivotFormProps } from 'components/routes/dossiers/PivotForm';
 import ErrorBoundary from 'components/routes/ErrorBoundary';
 import { flatten, unflatten } from 'flat';
-import type { JSONSchema7 } from 'json-schema';
 import capitalize from 'lodash-es/capitalize';
 import cloneDeep from 'lodash-es/cloneDeep';
 import isBoolean from 'lodash-es/isBoolean';
@@ -27,6 +26,7 @@ import merge from 'lodash-es/merge';
 import omitBy from 'lodash-es/omitBy';
 import pick from 'lodash-es/pick';
 import pickBy from 'lodash-es/pickBy';
+import type { Mapping } from 'models/entities/generated/Mapping';
 import type { Pivot } from 'models/entities/generated/Pivot';
 import { useCallback, useContext, useMemo, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -43,6 +43,10 @@ const WRAPPED_RENDERERS = materialRenderers.map(value => ({
     </ErrorBoundary>
   )
 }));
+
+const acceptsEmpty = (action: object): boolean => {
+  return Object.getOwnPropertyDescriptor(action, 'accept_empty')?.value === true;
+};
 
 /**
  * CluePivotForm Component
@@ -91,24 +95,24 @@ const CluePivotForm: FC<PivotFormProps> = ({ pivot, update }) => {
 
     // Clone and adapt the action's parameter schema
     const clueAdaptedSchema = cloneDeep({
-      ...adaptSchema(actions[value].params),
-      ...actions[value].extra_schema
+      ...adaptSchema(actions[value]!.params),
+      ...actions[value]!.extra_schema
     });
 
     // Enhance string properties with hit index options for better UX
-    Object.entries(clueAdaptedSchema.properties).forEach(([key, prop]) => {
+    Object.entries(clueAdaptedSchema.properties ?? {}).forEach(([key, prop]) => {
       // Handle boolean properties by converting to enum with hit indexes
       if (typeof prop === 'boolean') {
-        clueAdaptedSchema.properties[key] = { enum: Object.keys(config.indexes.hit) };
+        clueAdaptedSchema.properties![key] = { enum: Object.keys(config.indexes.hit) };
         return;
       }
 
       if (prop.type === 'array') {
         if (isBoolean(prop.items)) {
-          clueAdaptedSchema.properties[key] = { enum: Object.keys(config.indexes.hit) };
+          clueAdaptedSchema.properties![key] = { enum: Object.keys(config.indexes.hit) };
           return;
         } else if (!Array.isArray(prop.items)) {
-          prop.type = prop.items.type;
+          prop.type = prop.items!.type;
           delete prop.items;
         }
       }
@@ -152,7 +156,7 @@ const CluePivotForm: FC<PivotFormProps> = ({ pivot, update }) => {
             return (a_ent as any).order - (b_ent as any).order;
           } else {
             // Required fields appear first
-            return +formSchema?.required.includes(a_key) - +formSchema?.required.includes(b_key);
+            return +(formSchema?.required ?? []).includes(a_key) - +(formSchema?.required ?? []).includes(b_key);
           }
         })
         .map(([key, value]) => ({
@@ -160,7 +164,7 @@ const CluePivotForm: FC<PivotFormProps> = ({ pivot, update }) => {
           scope: `#/properties/${key}`,
           options: {
             // Enable autocomplete for fields with enum values
-            autocomplete: !!(value as JSONSchema7).enum || !!(value as JSONSchema7).oneOf,
+            autocomplete: !!(value as JsonSchema7).enum || !!(value as JsonSchema7).oneOf,
             showUnfocusedDescription: true,
             // Apply any custom options from the schema
             ...(value as any).options
@@ -185,12 +189,16 @@ const CluePivotForm: FC<PivotFormProps> = ({ pivot, update }) => {
     (value: string) => {
       const mappings: Pivot['mappings'] = [];
 
-      // TODO: Fix type hints and remove the any cast
       // For actions that don't accept empty inputs, add selector mapping
-      if (!(actions[value] as any).accept_empty) {
+      const action = actions[value];
+      if (!action) {
+        return;
+      }
+
+      if (!acceptsEmpty(action)) {
         // Use 'selectors' for multiple selection, 'selector' for single selection
         mappings.push({
-          key: actions[value].accept_multiple ? 'selectors' : 'selector',
+          key: action.accept_multiple ? 'selectors' : 'selector',
           field: 'howler.id'
         });
       }
@@ -212,16 +220,16 @@ const CluePivotForm: FC<PivotFormProps> = ({ pivot, update }) => {
   const formData = useMemo(() => {
     const rawData = Object.fromEntries(
       (pivot?.mappings ?? []).map(mapping => {
-        const parameterSchema = actions[pivot.value]?.params?.properties?.[mapping.key];
+        const parameterSchema = actions[pivot.value!]?.params?.properties?.[mapping.key!];
         const value = mapping.custom_value ?? mapping.field;
 
         if (mapping.field === 'custom') {
           if ((parameterSchema as JsonSchema7)?.type === 'number') {
-            return [mapping.key, parseFloat(mapping.custom_value)];
+            return [mapping.key, parseFloat(mapping.custom_value!)];
           }
 
           if ((parameterSchema as JsonSchema7)?.type === 'integer') {
-            return [mapping.key, Math.floor(parseFloat(mapping.custom_value))];
+            return [mapping.key, Math.floor(parseFloat(mapping.custom_value!))];
           }
 
           return [mapping.key, mapping.custom_value];
@@ -244,7 +252,7 @@ const CluePivotForm: FC<PivotFormProps> = ({ pivot, update }) => {
   }, [actions, pivot?.mappings, pivot.value]);
 
   // Find the main selector mapping for special handling in the UI
-  const selectorMapping = pivot?.mappings?.find(_mapping => ['selector', 'selectors'].includes(_mapping.key));
+  const selectorMapping = pivot?.mappings?.find(_mapping => ['selector', 'selectors'].includes(_mapping.key!));
 
   return (
     <ErrorBoundary>
@@ -286,7 +294,7 @@ const CluePivotForm: FC<PivotFormProps> = ({ pivot, update }) => {
           <TextField {...params} size="small" fullWidth label={t('route.dossiers.manager.pivot.value')} />
         )}
         value={pivot?.value ?? ''}
-        onChange={(_ev, value) => onUpdate(value)}
+        onChange={(_ev, value) => onUpdate(value!)}
       />
 
       <Divider flexItem />
@@ -305,15 +313,15 @@ const CluePivotForm: FC<PivotFormProps> = ({ pivot, update }) => {
                 {...params}
                 size="small"
                 fullWidth
-                label={capitalize(selectorMapping.key)}
+                label={capitalize(selectorMapping.key!)}
                 sx={{ minWidth: '150px' }}
               />
             )}
-            value={selectorMapping.field}
+            value={selectorMapping.field ?? ''}
             onChange={(_ev, field) =>
               update({
-                mappings: pivot.mappings.map(_mapping =>
-                  _mapping.key === selectorMapping.key ? { ..._mapping, field } : _mapping
+                mappings: pivot.mappings!.map(_mapping =>
+                  _mapping.key === selectorMapping.key ? { ..._mapping, field: field! } : _mapping
                 )
               })
             }
@@ -325,10 +333,10 @@ const CluePivotForm: FC<PivotFormProps> = ({ pivot, update }) => {
               size="small"
               label={t('route.dossiers.manager.pivot.mapping.custom')}
               disabled={!pivot}
-              value={selectorMapping?.custom_value ?? null}
+              value={selectorMapping?.custom_value ?? ''}
               onChange={ev =>
                 update({
-                  mappings: pivot.mappings.map(_mapping =>
+                  mappings: pivot.mappings!.map(_mapping =>
                     _mapping.key === selectorMapping.key ? { ..._mapping, custom_value: ev.target.value } : _mapping
                   )
                 })
@@ -392,7 +400,11 @@ const CluePivotForm: FC<PivotFormProps> = ({ pivot, update }) => {
                 //    {key.1: 'howler.status', key.2: 'howler.id'}
                 //
                 // This is very confusing - ask Matt R if you need a better explanation.
-                const fullData = { ...nestedData, ...flatData, ...pick(pivot.mappings, ['selector', 'selectors']) };
+                const fullData = {
+                  ...nestedData,
+                  ...flatData,
+                  ...pick(pivot.mappings ?? [], ['selector', 'selectors'])
+                };
 
                 // Convert form data back to mappings format
                 const newMappings = Object.entries(fullData).map(([key, val]: [string, any]) => ({
@@ -405,7 +417,7 @@ const CluePivotForm: FC<PivotFormProps> = ({ pivot, update }) => {
 
                 // Only update if mappings have actually changed (performance optimization)
                 if (!isEqual(newMappings, pivot.mappings)) {
-                  update({ mappings: newMappings });
+                  update({ mappings: newMappings as Mapping[] });
                 }
               }}
               config={{}}

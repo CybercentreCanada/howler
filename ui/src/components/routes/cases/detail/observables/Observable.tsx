@@ -3,6 +3,7 @@ import type { Case } from 'models/entities/generated/Case';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { buildPathFromID } from '../../utils';
 import type { ObservableEntry } from '../types';
 
 const Observable: FC<{ observable: ObservableEntry; case: Case }> = ({ observable, case: _case }) => {
@@ -31,19 +32,17 @@ const Observable: FC<{ observable: ObservableEntry; case: Case }> = ({ observabl
               </Typography>
               <Stack direction="row" flexWrap="wrap" gap={0.5}>
                 {observable.sources?.map(source => {
-                  if (!source.path) {
-                    return <Chip key={source.id} size="small" label={source.label ?? source.id} variant="outlined" />;
-                  }
+                  const entry = _case.items!.find(item => item.value === source.id)!;
 
                   return (
                     <Chip
                       key={source.id}
                       clickable
                       size="small"
-                      label={source.label ?? source.id}
+                      label={entry.name!}
                       variant="outlined"
                       component={Link}
-                      to={`/cases/${_case.case_id}/${source.path}`}
+                      to={`/cases/${_case.case_id}/${buildPathFromID(_case, entry.id!)}`}
                     />
                   );
                 })}

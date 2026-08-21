@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createEvent, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';

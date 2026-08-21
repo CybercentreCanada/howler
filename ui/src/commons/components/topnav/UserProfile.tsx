@@ -41,7 +41,7 @@ const UserProfile = () => {
   const { t } = useTranslation();
   const configs = useAppConfigs();
   const { user } = useAppUser();
-  const anchorRef = useRef();
+  const anchorRef = useRef<HTMLButtonElement>(null);
   const location = useLocation();
 
   const [open, setOpen] = useState<boolean>(false);
@@ -53,7 +53,7 @@ const UserProfile = () => {
   const onClickAway = useCallback(() => setOpen(false), []);
 
   const renderThemeSelection = useCallback(
-    enabled => {
+    (enabled: boolean) => {
       if (
         enabled &&
         (configs.allowPersonalization || configs.preferences.allowTranslate || configs.preferences.allowReset)
@@ -81,7 +81,7 @@ const UserProfile = () => {
                 a.element ? (
                   <ListItem key={`${type}-${i}`}>{a.element}</ListItem>
                 ) : (
-                  <ListItemButton component={Link} to={a.route} key={`${type}-${i}`}>
+                  <ListItemButton component={Link} to={a.route!} key={`${type}-${i}`}>
                     {a.icon && <ListItemIcon>{a.icon}</ListItemIcon>}
                     <ListItemText>{a.i18nKey ? t(a.i18nKey) : a.title}</ListItemText>
                   </ListItemButton>
@@ -118,9 +118,9 @@ const UserProfile = () => {
         onClick={onProfileClick}
         size="large"
       >
-        <AppUserAvatar alt={user.name} url={user.avatar} email={user.email}>
-          {user.name
-            .split(' ', 2)
+        <AppUserAvatar alt={user.name!} url={user.avatar} email={user.email}>
+          {user
+            .name!.split(' ', 2)
             .map(n => n[0].toUpperCase())
             .join('')}
         </AppUserAvatar>
@@ -150,12 +150,12 @@ const UserProfile = () => {
                     >
                       <AppAvatar
                         sx={{ width: theme.spacing(8), height: theme.spacing(8) }}
-                        alt={user.name}
+                        alt={user.name!}
                         url={user.avatar}
                         email={user.email}
                       >
-                        {user.name
-                          .split(' ', 2)
+                        {user
+                          .name!.split(' ', 2)
                           .map(n => n[0].toUpperCase())
                           .join('')}
                       </AppAvatar>
@@ -172,16 +172,16 @@ const UserProfile = () => {
                 </List>
                 {renderMenu(
                   'usermenu',
-                  configs.preferences.topnav.userMenu,
-                  configs.preferences.topnav.userMenuTitle,
-                  configs.preferences.topnav.userMenuI18nKey
+                  configs.preferences.topnav.userMenu ?? [],
+                  configs.preferences.topnav.userMenuTitle ?? '',
+                  configs.preferences.topnav.userMenuI18nKey ?? ''
                 )}
                 {user.is_admin &&
                   renderMenu(
                     'adminmenu',
-                    configs.preferences.topnav.adminMenu,
-                    configs.preferences.topnav.adminMenuTitle,
-                    configs.preferences.topnav.adminMenuI18nKey
+                    configs.preferences.topnav.adminMenu ?? [],
+                    configs.preferences.topnav.adminMenuTitle ?? '',
+                    configs.preferences.topnav.adminMenuI18nKey ?? ''
                   )}
                 {renderThemeSelection(configs.preferences.topnav.themeSelectionMode === 'profile')}
               </Paper>

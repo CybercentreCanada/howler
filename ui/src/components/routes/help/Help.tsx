@@ -39,9 +39,9 @@ const HelpDashboard = () => {
   const links = useMemo(
     () =>
       (
-        leftnav.elements.find(el => el.type === 'group' && el.element.id === 'help')!.element as AppLeftNavGroup
+        leftnav!.elements.find(el => el.type === 'group' && el.element.id === 'help')!.element as AppLeftNavGroup
       ).items.filter(_item => _item.id !== 'help.main'),
-    [leftnav.elements]
+    [leftnav!.elements]
   );
 
   return (
@@ -64,20 +64,20 @@ const HelpDashboard = () => {
                       sx={{ '& svg': { fontSize: 'inherit' }, '& > span': { ml: 1 } }}
                     >
                       {link.icon}
-                      <span>{t(link.i18nKey)}</span>
-                      <IconButton component={Link} to={link.route} sx={{ ml: 'auto' }}>
+                      <span>{t(link.i18nKey!)}</span>
+                      <IconButton component={Link} to={link.route!} sx={{ ml: 'auto' }}>
                         <OpenInNew color="primary" fontSize="inherit" />
                       </IconButton>
                     </Stack>
                   }
                 />
                 <CardContent sx={{ flex: 1 }}>
-                  <Typography>{t(`helpMain:${link.i18nKey}.description`)}</Typography>
+                  <Typography>{t(`helpMain:${link.i18nKey!}.description`)}</Typography>
                 </CardContent>
-                {tabs[link.id] && (
+                {tabs[link.id as keyof typeof tabs] && (
                   <CardActions>
-                    {tabs[link.id].map(tab => (
-                      <Button key={tab} size="small" component={Link} to={`${link.route}?tab=${tab}`}>
+                    {tabs[link.id as keyof typeof tabs].map((tab: string) => (
+                      <Button key={tab} size="small" component={Link} to={`${link.route!}?tab=${tab}`}>
                         {tab}
                       </Button>
                     ))}

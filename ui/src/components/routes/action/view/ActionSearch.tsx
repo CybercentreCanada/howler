@@ -16,8 +16,8 @@ import api from 'api';
 import { useAppUser } from 'commons/components/app/hooks';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import SearchResponseProvider, {
-  SearchResponseContext,
-  type SearchResponseContextType
+  createSearchResponseContext,
+  useSearchResponseContext
 } from 'components/app/providers/SearchResponseProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import { TuiListProvider, type TuiListItemProps } from 'components/elements/addons/lists';
@@ -35,6 +35,8 @@ import { StorageKey, VALID_ACTION_TRIGGERS } from 'utils/constants';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 import useMyActionFunctions from '../useMyActionFunctions';
 
+const SearchResponseContext = createSearchResponseContext<Action>();
+
 const ActionSearch: FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -46,13 +48,12 @@ const ActionSearch: FC = () => {
   const { deleteAction } = useMyActionFunctions();
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
-  const { response, request, remove, getSearchRequestData } =
-    useContext<SearchResponseContextType<Action>>(SearchResponseContext);
+  const { response, request, remove, getSearchRequestData } = useSearchResponseContext(SearchResponseContext);
 
   const [searching, setSearching] = useState<boolean>(false);
   const [hasError, setHasError] = useState(false);
   const [phrase, setPhrase] = useState(searchParams.get('phrase') || '');
-  const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
+  const [offset, setOffset] = useState(parseInt(searchParams.get('offset') ?? '0') || 0);
   const [searchModifiers, setSearchModifiers] = useState<string[]>([]);
 
   // Search Handler.
@@ -89,7 +90,7 @@ const ActionSearch: FC = () => {
 
   useEffect(() => {
     if (response) {
-      load(response.items.map((item: Action) => ({ id: item.action_id, item: item })));
+      load(response.items.map((item: Action) => ({ id: item.action_id!, item: item })));
     }
   }, [response, load]);
 
@@ -97,9 +98,9 @@ const ActionSearch: FC = () => {
     (_offset: number) => {
       if (_offset !== offset) {
         const modifiedRequest = getSearchRequestData({ offset: _offset });
-        searchParams.set('offset', modifiedRequest.offset.toString());
+        searchParams.set('offset', modifiedRequest.offset!.toString());
         setSearchParams(searchParams, { replace: true });
-        setOffset(modifiedRequest.offset);
+        setOffset(modifiedRequest.offset!);
       }
     },
     [offset, searchParams, setSearchParams, getSearchRequestData]
@@ -133,7 +134,7 @@ const ActionSearch: FC = () => {
   );
 
   useEffect(() => {
-    if (response?.total <= offset) {
+    if (response && response.total <= offset) {
       setOffset(0);
       searchParams.set('offset', '0');
       setSearchParams(searchParams, { replace: true });
@@ -152,7 +153,7 @@ const ActionSearch: FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchModifiers]);
 
-  const editRoles = user.roles.includes('automation_basic') || user.roles.includes('automation_advanced');
+  const editRoles = user.roles!.includes('automation_basic') || user.roles!.includes('automation_advanced');
 
   // Search result list item renderer.
   const renderer = useCallback(
@@ -160,7 +161,7 @@ const ActionSearch: FC = () => {
       return (
         <Card
           key={item.item.name}
-          onClick={() => navigate(`/action/${item.item.action_id}`)}
+          onClick={() => navigate(`/action/${item.item.action_id!}`)}
           variant="outlined"
           className={classRenderer()}
           sx={{
@@ -174,12 +175,12 @@ const ActionSearch: FC = () => {
             title={
               <Stack direction="row" spacing={1} alignItems="center">
                 <Typography variant="h5">{item.item.name}</Typography>
-                {item.item.triggers.length > 0 && (
+                {item.item.triggers!.length > 0 && (
                   <Tooltip
                     title={
                       <Trans
                         i18nKey="route.actions.trigger.description"
-                        values={{ triggers: item.item.triggers.join(', ') }}
+                        values={{ triggers: item.item.triggers!.join(', ') }}
                         components={{ bold: <strong /> }}
                       />
                     }
@@ -189,13 +190,13 @@ const ActionSearch: FC = () => {
                 )}
                 <FlexOne />
                 {((item.item.owner_id === user.username && editRoles) || user.roles?.includes('admin')) && (
-                  <IconButton size="small" onClick={e => onDelete(e, item.item.action_id)}>
+                  <IconButton size="small" onClick={e => onDelete(e, item.item.action_id!)}>
                     <Delete />
                   </IconButton>
                 )}
                 <HowlerAvatar
                   sx={{ width: 24, height: 24, marginRight: '8px !important' }}
-                  userId={item.item.owner_id}
+                  userId={item.item.owner_id!}
                 />
               </Stack>
             }
@@ -203,7 +204,7 @@ const ActionSearch: FC = () => {
           />
           <CardContent sx={{ paddingTop: 0 }}>
             <Grid container spacing={1}>
-              {item.item.operations.map(d => (
+              {item.item.operations!.map(d => (
                 <Grid item key={d.operation_id}>
                   <Chip label={t(`operations.${d.operation_id}`)} />
                 </Grid>
@@ -258,7 +259,7 @@ const ActionSearch: FC = () => {
 const ActionSearchProvider: FC = () => {
   return (
     <TuiListProvider>
-      <SearchResponseProvider idField="action_id">
+      <SearchResponseProvider context={SearchResponseContext} idField="action_id">
         <ActionSearch />
       </SearchResponseProvider>
     </TuiListProvider>

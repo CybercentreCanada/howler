@@ -11,9 +11,9 @@ const resolvePivotUrl = (pivot: NonNullable<Dossier['pivots']>[number], currentH
       const value =
         mapping.field === 'custom'
           ? mapping.custom_value
-          : Array.isArray(flatHit[mapping.field])
-            ? flatHit[mapping.field][0]
-            : flatHit[mapping.field];
+          : Array.isArray(flatHit[mapping.field!])
+            ? flatHit[mapping.field!][0]
+            : flatHit[mapping.field!];
 
       return [mapping.key, value];
     })
@@ -24,7 +24,7 @@ const resolvePivotUrl = (pivot: NonNullable<Dossier['pivots']>[number], currentH
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error(`Failed to compile pivot template for value "${pivot.value}":`, e);
-    return pivot.value;
+    return pivot.value!;
   }
 };
 

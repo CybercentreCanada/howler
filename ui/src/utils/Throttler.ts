@@ -1,9 +1,9 @@
 export default class Throttler {
-  private throttleId: number = null;
+  private throttleId: number | null = null;
 
-  private delayId: number = null;
+  private delayId: number | null = null;
 
-  private msec: number = null;
+  private msec: number;
 
   constructor(msec: number) {
     this.msec = msec;

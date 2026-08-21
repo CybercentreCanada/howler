@@ -7,20 +7,10 @@ export const uri = (id: string, category: string) => {
   return joinAllUri(parentUri(), id, 'labels', category);
 };
 
-export const put = (
-  id: string,
-  category: string,
-  body: LabelActionBody,
-  refresh?: HowlerRefreshParam
-): Promise<Hit> => {
-  return hput(uri(id, category), body, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
+export const put = (id: string, category: string, body: LabelActionBody, refresh?: HowlerRefreshParam) => {
+  return hput<Hit>(uri(id, category), body, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export const del = (
-  id: string,
-  category: string,
-  body: LabelActionBody,
-  refresh?: HowlerRefreshParam
-): Promise<Hit> => {
-  return hdelete(uri(id, category), body, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
+export const del = (id: string, category: string, body: LabelActionBody, refresh?: HowlerRefreshParam) => {
+  return hdelete<Hit>(uri(id, category), body, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };

@@ -38,26 +38,28 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
 
   const handleCreateRule = useCallback(
     async (ruleData: Partial<Rule>) => {
-      if (!_case) {
+      if (!_case?.case_id) {
         return;
       }
 
       const updatedCase = await dispatchApi(api.v2.case.rules.post(_case.case_id, ruleData));
-      void update(updatedCase, false);
+      if (updatedCase) {
+        void update(updatedCase, false);
+      }
     },
     [_case, dispatchApi, update]
   );
 
   const handleDeleteRule = useCallback(
     async (ruleId: string) => {
-      if (!_case) {
+      if (!_case?.case_id) {
         return;
       }
 
       showModal(
         <ConfirmDeleteModal
           onConfirm={async () => {
-            const updatedCase = await dispatchApi(api.v2.case.rules.del(_case.case_id, ruleId), { throwError: false });
+            const updatedCase = await dispatchApi(api.v2.case.rules.del(_case.case_id!, ruleId), { throwError: false });
             if (updatedCase) {
               void update(updatedCase, false);
             }
@@ -71,12 +73,14 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
 
   const handleToggleEnabled = useCallback(
     async (ruleId: string, enabled: boolean) => {
-      if (!_case) {
+      if (!_case?.case_id) {
         return;
       }
 
       const updatedCase = await dispatchApi(api.v2.case.rules.put(_case.case_id, ruleId, { enabled }));
-      void update(updatedCase, false);
+      if (updatedCase) {
+        void update(updatedCase, false);
+      }
     },
     [_case, dispatchApi, update]
   );
@@ -165,7 +169,7 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
                       <Switch
                         id={`rule-toggle-${rule.rule_id}`}
                         checked={rule.enabled ?? true}
-                        onChange={(_e, checked) => handleToggleEnabled(rule.rule_id, checked)}
+                        onChange={(_e, checked) => handleToggleEnabled(rule.rule_id!, checked)}
                         size="small"
                       />
                     </TableCell>
@@ -174,7 +178,7 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
                         <IconButton
                           id={`rule-delete-${rule.rule_id}`}
                           size="small"
-                          onClick={() => handleDeleteRule(rule.rule_id)}
+                          onClick={() => handleDeleteRule(rule.rule_id!)}
                         >
                           <Delete fontSize="small" />
                         </IconButton>

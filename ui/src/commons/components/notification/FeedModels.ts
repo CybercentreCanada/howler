@@ -57,52 +57,52 @@ export type Feed = {
 };
 
 export const DEFAULT_FEED: Feed = {
-  version: null,
-  title: null,
-  home_page_url: null,
-  feed_url: null,
-  description: null,
-  user_comment: null,
-  next_url: null,
-  icon: null,
-  favicon: null,
+  version: null as any,
+  title: null as any,
+  home_page_url: null as any,
+  feed_url: null as any,
+  description: null as any,
+  user_comment: null as any,
+  next_url: null as any,
+  icon: null as any,
+  favicon: null as any,
   authors: [],
-  language: null,
+  language: null as any,
   expired: false,
   hubs: [],
   items: []
 };
 
 export const DEFAULT_FEED_ITEM: FeedItem = {
-  id: null,
-  url: null,
-  external_url: null,
-  title: null,
-  content_html: null,
-  content_text: null,
-  summary: null,
-  image: null,
-  banner_image: null,
+  id: null as any,
+  url: null as any,
+  external_url: null as any,
+  title: null as any,
+  content_html: null as any,
+  content_text: null as any,
+  summary: null as any,
+  image: null as any,
+  banner_image: null as any,
   date_published: new Date(0),
   date_modified: new Date(0),
   authors: [],
   tags: [],
-  language: null,
+  language: null as any,
   attachments: [],
   _isNew: false
 };
 
 export const DEFAULT_FEED_ATTACHMENT: FeedAttachment = {
-  url: null,
-  mime_type: null,
-  title: null,
+  url: null as any,
+  mime_type: null as any,
+  title: null as any,
   size_in_bytes: 0,
   duration_in_seconds: 0
 };
 
 export const DEFAULT_FEED_AUTHOR: any = {
   name: null,
-  url: null,
+  url: null as any,
   avatar: null
 };
 
@@ -159,5 +159,5 @@ export function parseFeed(feed: any): Feed {
         items: parseFeedItems(feed?.items),
         authors: parseFeedAuthors(feed?.authors)
       }
-    : null;
+    : (null as any);
 }
