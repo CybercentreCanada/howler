@@ -16,6 +16,15 @@ from howler.odm.models.config import OAuthProvider
 from howler.services import jwt_service
 
 
+@patch.object(jwt_service, "config")
+def test_jwe_secret_requires_configured_key(mock_config):
+    """JWE operations fail clearly when their encryption key is missing."""
+    mock_config.system.jwe_secret_key = None
+
+    with pytest.raises(HowlerValueError, match="jwe_secret_key must be configured"):
+        jwt_service.encrypt_token("******")
+
+
 def _provider(**overrides) -> OAuthProvider:
     defaults = {
         "scope": "openid",
@@ -105,3 +114,9 @@ def test_encrypt_decrypt_token(mock_config):
     assert encrypted_token != token
     assert token not in encrypted_token
     assert jwt_service.decrypt_token(encrypted_token) == token
+
+
+@pytest.mark.parametrize("operation", [jwt_service.encrypt_token, jwt_service.decrypt_token])
+def test_none_token_remains_absent(operation):
+    """JWE helpers preserve absent authorization tokens."""
+    assert operation(None) is None

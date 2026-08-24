@@ -5,6 +5,15 @@ import pytest
 from howler.services import auth_service
 
 
+@patch.object(auth_service, "config")
+def test_token_encryption_requires_configured_key(mock_config):
+    """Token encryption fails clearly when its encryption key is missing."""
+    mock_config.system.jwe_secret_key = None
+
+    with pytest.raises(auth_service.HowlerException, match="jwe_secret_key must be configured"):
+        auth_service.encrypt_token("internal-token")
+
+
 def _mock_user_with_apikey(key_name="dev", acl=None):
     """Build a mock user with a single apikey."""
     if acl is None:

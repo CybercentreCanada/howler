@@ -11,6 +11,13 @@ from howler.services import action_service, auth_service
 class TestEnqueueActionExecution:
     """Tests for enqueue_action_execution."""
 
+    def test_request_auth_token_requires_scheme_separator(self):
+        """Authorization headers without a scheme separator do not yield a token."""
+        app = Flask(__name__)
+
+        with app.test_request_context(headers={"Authorization": "malformed-token"}):
+            assert action_service._request_auth_token() is None
+
     @patch.object(action_service, "get_action_queue")
     @patch("howler.services.action_service.config")
     def test_enqueue_pushes_correct_item(self, mock_config, mock_get_queue):
@@ -290,6 +297,19 @@ class TestProcessActionBatch:
 
         # Should not raise
         action_service.process_action_batch("create", items)
+
+    @patch.object(action_service.auth_service, "decrypt_token", side_effect=ValueError("invalid ciphertext"))
+    @patch.object(action_service, "datastore")
+    @patch.object(action_service, "bulk_execute_on_query")
+    def test_process_batch_uses_no_token_when_decryption_fails(self, mock_bulk, mock_datastore, mock_decrypt):
+        """A malformed queued token should not prevent the batch from being processed."""
+        action_service.process_action_batch(
+            "create",
+            [{"hit_ids": ["id1"], "uname": "admin", "auth_token": "invalid"}],
+        )
+
+        mock_decrypt.assert_called_once_with("invalid")
+        assert mock_bulk.call_args.kwargs["auth_token"] is None
 
 
 class TestBulkExecuteOnQuery:
