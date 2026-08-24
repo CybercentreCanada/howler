@@ -1,5 +1,10 @@
 # Howler Releases
 
+## Howler API `v4.0.10`
+
+- **Queued Action Authorization** _(bugfix)_: Action workers now preserve request authorization tokens for plugin actions using encrypted Redis payloads: JWE for JWTs and AES-GCM for other token formats.
+- **Action Queue Batch Logging** _(bugfix)_: Action queue workers now report the number of finalized action requests they process instead of always reporting zero.
+
 ## Howler UI `v3.0.7`
 
 - **Plugin Viewing Lifecycle** _(bugfix)_: Fixed hit viewer and search information pane crashes by preserving the plugin-store context, rendering hook-based viewing handlers inside React, and consolidating the behavior in a memoized shared component so viewing hooks run once per hit.

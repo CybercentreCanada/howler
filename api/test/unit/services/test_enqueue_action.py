@@ -1,8 +1,11 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 
-from howler.services import action_service
+from howler.cronjobs import action_queue_worker
+from howler.services import action_service, auth_service
 
 
 class TestEnqueueActionExecution:
@@ -29,7 +32,28 @@ class TestEnqueueActionExecution:
         assert pushed["uname"] == "testuser"
 
     @patch.object(action_service, "get_action_queue")
+    @patch("howler.services.auth_service.config")
     @patch("howler.services.action_service.config")
+    def test_enqueue_encrypts_request_auth_token(self, mock_action_config, mock_jwt_config, mock_get_queue):
+        """Queued authorization tokens are ciphertext rather than Redis plaintext."""
+        mock_action_config.system.action_queue.enabled = True
+        mock_jwt_config.system.jwe_secret_key = "0123456789abcdef0123456789abcdef"
+        mock_queue = MagicMock()
+        mock_get_queue.return_value = mock_queue
+        user = MagicMock()
+        user.uname = "testuser"
+
+        app = Flask(__name__)
+        with app.test_request_context(headers={"Authorization": "Bearer oauth-access-token"}):
+            action_service.enqueue_action_execution(["id1"], trigger="create", user=user)
+
+        pushed = mock_queue.push.call_args.args[0]
+        assert pushed["auth_token"] != "oauth-access-token"
+        assert "oauth-access-token" not in pushed["auth_token"]
+        assert auth_service.decrypt_token(pushed["auth_token"]) == "oauth-access-token"
+
+    @patch.object(action_service, "get_action_queue")
+    @patch("howler.services.auth_service.config")
     def test_enqueue_routes_to_trigger_queue(self, mock_config, mock_get_queue):
         """Each trigger should route to its own named queue."""
         mock_config.system.action_queue.enabled = True
@@ -124,6 +148,25 @@ class TestGetActionQueue:
             action_service.get_action_queue("bogus_trigger")
 
 
+class TestActionQueueWorker:
+    """Tests for action queue worker batching behavior."""
+
+    @patch("howler.cronjobs.action_queue_worker.process_action_batch")
+    @patch("howler.cronjobs.action_queue_worker.get_action_queue")
+    @patch.object(action_queue_worker, "BATCH_SIZE", 1)
+    def test_logs_finalized_batch_size(self, mock_get_queue, mock_process_action_batch, caplog):
+        """A flushed batch logs its size after the working batch is cleared."""
+        queue = MagicMock()
+        queue.pop.side_effect = [{"hit_ids": ["id1"], "uname": "admin"}, KeyboardInterrupt]
+        mock_get_queue.return_value = queue
+
+        with pytest.raises(KeyboardInterrupt):
+            action_queue_worker.run_worker("promote")
+
+        mock_process_action_batch.assert_called_once_with("promote", [{"hit_ids": ["id1"], "uname": "admin"}])
+        assert "Action batch complete: 1 item(s) processed for trigger=promote" in caplog.text
+
+
 class TestProcessActionBatch:
     """Tests for process_action_batch."""
 
@@ -139,6 +182,21 @@ class TestProcessActionBatch:
         mock_datastore.return_value.user.get.assert_called_once_with("admin")
         mock_bulk.assert_called_once()
         assert mock_bulk.call_args.kwargs["user"] is user
+
+    @patch("howler.services.auth_service.config")
+    @patch.object(action_service, "datastore")
+    @patch.object(action_service, "bulk_execute_on_query")
+    def test_process_batch_decrypts_auth_token(self, mock_bulk, mock_datastore, mock_config):
+        """The worker restores the encrypted token only for action execution."""
+        mock_config.system.jwe_secret_key = "0123456789abcdef0123456789abcdef"
+        encrypted_auth_token = auth_service.encrypt_token("oauth-access-token")
+
+        action_service.process_action_batch(
+            "create",
+            [{"hit_ids": ["id1"], "uname": "admin", "auth_token": encrypted_auth_token}],
+        )
+
+        assert mock_bulk.call_args.kwargs["auth_token"] == "oauth-access-token"
 
     @patch.object(action_service, "bulk_execute_on_query")
     def test_process_batch_empty(self, mock_bulk):
@@ -232,3 +290,36 @@ class TestProcessActionBatch:
 
         # Should not raise
         action_service.process_action_batch("create", items)
+
+
+class TestBulkExecuteOnQuery:
+    """Tests for action-operation authorization token forwarding."""
+
+    @patch.object(action_service, "audit")
+    @patch.object(action_service.actions, "execute", return_value=[])
+    @patch.object(action_service, "datastore")
+    def test_only_plugin_operations_receive_auth_token(self, mock_datastore, mock_execute, mock_audit):
+        """Built-in actions omit auth_token while plugin actions receive it."""
+        built_in_operation = SimpleNamespace(operation_id="add_label", data_json="{}", data={})
+        plugin_operation = SimpleNamespace(operation_id="plugin_action", data_json="{}", data={})
+        action = SimpleNamespace(
+            action_id="action-id",
+            query="howler.id:*",
+            operations=[built_in_operation, plugin_operation],
+        )
+        storage = mock_datastore.return_value
+        storage.action.search.return_value = {"items": [action]}
+        storage.hit.search.return_value = {"total": 1}
+        user = MagicMock()
+        user.__getitem__.return_value = "admin"
+
+        action_service.bulk_execute_on_query(
+            "howler.id:(id1)",
+            trigger="create",
+            user=user,
+            auth_token="oauth-access-token",
+        )
+
+        built_in_call, plugin_call = mock_execute.call_args_list
+        assert "auth_token" not in built_in_call.kwargs
+        assert plugin_call.kwargs["auth_token"] == "oauth-access-token"

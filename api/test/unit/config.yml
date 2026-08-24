@@ -35,6 +35,7 @@ logging:
 
 system:
   type: development
+  jwe_secret_key: 0123456789abcdef0123456789abcdef
   correlation:
     enabled: true
     batch_size: 5

@@ -684,7 +684,7 @@ def transition_hit(
     workflow: Workflow = get_hit_workflow()
 
     # Log hit that will be transitioned
-    logger.debug("Transitioning (%s)", hit)
+    logger.debug("Transitioning hit %s with transition %s", hit["howler"]["id"])
 
     # Process each hit (primary + children) with the workflow transition
     hit_status = hit["howler"]["status"]
@@ -727,7 +727,7 @@ def transition_hit(
         datastore().hit.commit()
 
         # Enqueue action execution for all hits
-        action_service.enqueue_action_execution([hit_id], trigger=trigger, user=user)
+        action_service.enqueue_action_execution(hit_id, trigger=trigger, user=user)
 
         # Emit events for processed hit to notify other systems
         updated_hit, new_version = datastore().hit.get(hit_id, as_obj=True, version=True)
@@ -736,6 +736,9 @@ def transition_hit(
         )
 
         updated_hit, new_version = datastore().hit.get(hit_id, as_obj=True, version=True)
+    else:
+        logger.debug("Transition %s does not require executing bulk actions", transition)
+
     return updated_hit, new_version
 
 

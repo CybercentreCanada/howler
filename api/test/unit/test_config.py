@@ -4,7 +4,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from howler.odm.models.config import Config
+from howler.odm.models.config import Config, System
 
 yml_config_good = Path(__file__).parent / "config.yml"
 yml_config_good_mapping = Path(__file__).parent / "mappings.yml"
@@ -22,6 +22,14 @@ def test_builtin_config_mapping():
     from howler.config import config
 
     assert isinstance(config.mapping, dict)
+
+
+def test_jwe_secret_key_requires_32_bytes():
+    secret_key = "0123456789abcdef0123456789abcdef"
+
+    assert System(jwe_secret_key=secret_key).jwe_secret_key == secret_key
+    with pytest.raises(ValidationError, match="exactly 32 bytes"):
+        System(jwe_secret_key="too-short")
 
 
 def test_custom_config():

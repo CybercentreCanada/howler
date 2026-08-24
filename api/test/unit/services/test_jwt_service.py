@@ -91,3 +91,17 @@ class TestGetAudience:
         with _patch_provider("azure", provider):
             # scope contains override-audience/.default, so the check passes and the explicit audience is returned
             assert jwt_service.get_audience("azure") == "override-audience"
+
+
+@patch.object(jwt_service, "config")
+def test_encrypt_decrypt_token(mock_config):
+    """JWE-encrypted JWT tokens round-trip without exposing plaintext ciphertext."""
+    mock_config.system.jwe_secret_key = "0123456789abcdef0123456789abcdef"
+    token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhbGljZSJ9.c2lnbmF0dXJl"
+
+    encrypted_token = jwt_service.encrypt_token(token)
+
+    assert encrypted_token is not None
+    assert encrypted_token != token
+    assert token not in encrypted_token
+    assert jwt_service.decrypt_token(encrypted_token) == token
