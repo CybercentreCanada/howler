@@ -20,10 +20,9 @@ type PivotTree = {
 
 /**
  *
- * This helper is use to organize pivot into a forest. Since we do not know before the groupPivot run if some dossier
- * had common pivot, we need to make the forest more complex, the PathMap later on this file simplify the forest to the
- * least amount of path possible for each pivot so if only one item is under the totality of Clue/information/ipLocation
- * The path here will be [Clue][information][ipLocation] after buildPathMap it would be [Clue/information/ipLocations]
+ * This helper is use to organize pivot into a forest, one folder per group path segment.
+ * A pivot with group "network/dns" produces a "network" node whose only child is "dns",
+ * so the menu structure mirrors the group path exactly, with no segments skipped or merged.
  * This is use to group them in HitLinks.tsx
  *@param dossiers array of dossier we want to organize the pivots of
  *
@@ -73,26 +72,18 @@ const getGroupPivot = (dossiers: Dossier[]) => {
   return groupPivot;
 };
 
-const buildPathMap = (tree: PivotTree, language): menuPathNode[] => {
+const buildPathMap = (tree: PivotTree, language = 'en'): menuPathNode[] => {
   const nodes: menuPathNode[] = [];
   for (const key in tree) {
     if (key == 'pivot') {
       continue;
     } // this is not a branch these are buttons we solve it earlier
 
-    let path: string = key;
-    let current = tree[key] as PivotTree;
-    // Check how long we can go without having more then one tree branch
-    // if pivot is present, this mean buttons are there, if its length 1 it mean there is only 1 path towards the next buttons
-    while (Object.keys(current).length === 1 && !('pivot' in current)) {
-      const newKey: string = Object.keys(current)[0];
-      path = path + `/${newKey}`;
-      current = current[newKey] as PivotTree; // Will always be a PivotTree if its not pivot
-    }
+    const current = tree[key] as PivotTree;
 
-    // Build the array
+    // Build the array; each group path segment is always its own node, never merged with its parent or child
     nodes.push({
-      path: path,
+      path: key,
       pivots: sortBy(current['pivot'] ?? [], item => item.pivot.label?.[language]),
       children: buildPathMap(current, language)
     });
@@ -101,7 +92,7 @@ const buildPathMap = (tree: PivotTree, language): menuPathNode[] => {
   return nodes;
 };
 
-const pivotForest = (dossiers: Dossier[], language) => {
+const pivotForest = (dossiers: Dossier[], language = 'en'): menuPathNode[] => {
   const group = getGroupPivot(dossiers);
   const nodes: menuPathNode[] = [];
 
