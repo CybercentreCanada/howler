@@ -1,15 +1,21 @@
+import { sortBy } from 'lodash-es';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Pivot } from 'models/entities/generated/Pivot';
 
 export type menuPathNode = {
   path: string;
-  pivots?: Pivot[];
+  pivots?: dossierPivot[];
   children?: menuPathNode[];
 };
 
-export type PivotTree = {
-  pivot?: Pivot[];
-  [key: string]: PivotTree | Pivot[];
+type dossierPivot = {
+  pivot: Pivot;
+  dossier: Dossier;
+};
+
+type PivotTree = {
+  pivot?: dossierPivot[];
+  [key: string]: PivotTree | dossierPivot[];
 };
 
 /**
@@ -61,15 +67,14 @@ const getGroupPivot = (dossiers: Dossier[]) => {
       }
 
       // Add the pivot to its location
-      current['pivot'].push(pivot);
+      current['pivot'].push({ pivot: pivot, dossier: dossier });
     }
   }
   return groupPivot;
 };
 
-const buildPathMap = (tree: PivotTree): menuPathNode[] => {
+const buildPathMap = (tree: PivotTree, language): menuPathNode[] => {
   const nodes: menuPathNode[] = [];
-
   for (const key in tree) {
     if (key == 'pivot') {
       continue;
@@ -86,19 +91,26 @@ const buildPathMap = (tree: PivotTree): menuPathNode[] => {
     }
 
     // Build the array
-    nodes.push({ path: path, pivots: current['pivot'] ?? [], children: buildPathMap(current) });
+    nodes.push({
+      path: path,
+      pivots: sortBy(current['pivot'] ?? [], item => item.pivot.label?.[language]),
+      children: buildPathMap(current, language)
+    });
   }
 
   return nodes;
 };
 
-const pivotForest = (dossiers: Dossier[]) => {
+const pivotForest = (dossiers: Dossier[], language) => {
   const group = getGroupPivot(dossiers);
   const nodes: menuPathNode[] = [];
+
   if ('pivot' in group) {
-    nodes.push({ path: '', pivots: group['pivot'] as Pivot[], children: [] });
+    nodes.push({ path: '', pivots: group['pivot'] as dossierPivot[], children: [] });
   }
-  nodes.push(...buildPathMap(group));
+
+  nodes.push(...buildPathMap(group, language));
+
   return nodes;
 };
 
