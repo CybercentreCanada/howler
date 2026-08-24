@@ -684,7 +684,7 @@ def transition_hit(
     workflow: Workflow = get_hit_workflow()
 
     # Log hit that will be transitioned
-    logger.debug("Transitioning hit %s with transition %s", hit["howler"]["id"])
+    logger.debug("Transitioning hit %s with transition %s", hit["howler"]["id"], transition)
 
     # Process each hit (primary + children) with the workflow transition
     hit_status = hit["howler"]["status"]

@@ -241,8 +241,8 @@ def bulk_execute_on_query(
             if not user:
                 raise NotImplementedError("Running actions without a user object is not currently supported")
 
-            if not _is_builtin_operation(operation.operation_id):
-                logger.warning("Appending auth token to external operation %s", operation.operation_id)
+            if auth_token is not None and not _is_builtin_operation(operation.operation_id):
+                logger.debug("Appending auth token to external operation %s", operation.operation_id)
                 parsed_data["auth_token"] = auth_token
 
             report = actions.execute(
