@@ -460,3 +460,7 @@ Reindex and cleanup must enumerate `index_list_full`, not `index_list`, so exist
 ### ILM Collection Existence Checks
 
 Elasticsearch single-document `exists` requests cannot target an alias that resolves to multiple ILM rollover indexes. For ILM collections, use a zero-result `ids` search against the alias and derive existence from `hits.total`; retain the same search as a logged fallback when a legacy single-document check returns `BadRequestError`.
+
+### Pydantic Field Wrapper Metadata
+
+Pydantic `optional()` wrappers must inherit the wrapped field's Howler metadata, and wrapper aliases must retain the wrapped DSL field mapping. Otherwise scalar types can be inferred incorrectly, explicit `index`/`store` flags are lost, and optional IP serialization modes do not run.

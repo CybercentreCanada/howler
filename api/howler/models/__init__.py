@@ -9,6 +9,7 @@ from howler.models.base import (
     flat_to_nested,
 )
 from howler.models.construction import construct_safe
+from howler.models.extensions import ModelExtension, ModelExtensionRegistry, model_extensions
 from howler.models.fields import (
     ClassificationValue,
     HowlerFieldMetadata,
@@ -62,6 +63,8 @@ __all__ = [
     "HowlerESModel",
     "HowlerFieldMetadata",
     "HowlerModelValidationError",
+    "ModelExtension",
+    "ModelExtensionRegistry",
     "ModelMetadata",
     "any_field",
     "boolean",
@@ -92,6 +95,7 @@ __all__ = [
     "mac",
     "mapping",
     "md5",
+    "model_extensions",
     "model_registry",
     "optional",
     "phone_number",

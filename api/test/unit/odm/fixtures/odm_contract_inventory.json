@@ -141033,12 +141033,151 @@
         "path": "api/test/unit/endpoints/test_search_endpoint.py"
       },
       {
+        "line": 14,
+        "module": "howler.odm.models.case",
+        "names": [
+          "Case"
+        ],
+        "path": "api/test/unit/models/test_case_differential.py"
+      },
+      {
+        "line": 15,
+        "module": "howler.odm.models.case",
+        "names": [
+          "CaseItem"
+        ],
+        "path": "api/test/unit/models/test_case_differential.py"
+      },
+      {
+        "line": 16,
+        "module": "howler.odm.models.case",
+        "names": [
+          "CaseLog"
+        ],
+        "path": "api/test/unit/models/test_case_differential.py"
+      },
+      {
+        "line": 17,
+        "module": "howler.odm.models.case",
+        "names": [
+          "CaseRule"
+        ],
+        "path": "api/test/unit/models/test_case_differential.py"
+      },
+      {
+        "line": 14,
+        "modules": [
+          "howler.odm.models.ecs.agent"
+        ],
+        "path": "api/test/unit/models/test_ecs_differential.py"
+      },
+      {
+        "line": 15,
+        "modules": [
+          "howler.odm.models.ecs.dns"
+        ],
+        "path": "api/test/unit/models/test_ecs_differential.py"
+      },
+      {
+        "line": 16,
+        "modules": [
+          "howler.odm.models.ecs.hash"
+        ],
+        "path": "api/test/unit/models/test_ecs_differential.py"
+      },
+      {
+        "line": 17,
+        "modules": [
+          "howler.odm.models.ecs.related"
+        ],
+        "path": "api/test/unit/models/test_ecs_differential.py"
+      },
+      {
+        "line": 18,
+        "modules": [
+          "howler.odm.models.ecs.threat"
+        ],
+        "path": "api/test/unit/models/test_ecs_differential.py"
+      },
+      {
         "line": 12,
         "module": "howler",
         "names": [
           "odm"
         ],
         "path": "api/test/unit/models/test_fields.py"
+      },
+      {
+        "line": 11,
+        "module": "howler.odm.models.event",
+        "names": [
+          "Event"
+        ],
+        "path": "api/test/unit/models/test_record_hit_event_differential.py"
+      },
+      {
+        "line": 12,
+        "module": "howler.odm.models.hit",
+        "names": [
+          "Hit"
+        ],
+        "path": "api/test/unit/models/test_record_hit_event_differential.py"
+      },
+      {
+        "line": 17,
+        "module": "howler.odm.models.action",
+        "names": [
+          "Action"
+        ],
+        "path": "api/test/unit/models/test_supporting_differential.py"
+      },
+      {
+        "line": 18,
+        "module": "howler.odm.models.analytic",
+        "names": [
+          "Analytic"
+        ],
+        "path": "api/test/unit/models/test_supporting_differential.py"
+      },
+      {
+        "line": 19,
+        "module": "howler.odm.models.dossier",
+        "names": [
+          "Dossier"
+        ],
+        "path": "api/test/unit/models/test_supporting_differential.py"
+      },
+      {
+        "line": 20,
+        "module": "howler.odm.models.overview",
+        "names": [
+          "Overview"
+        ],
+        "path": "api/test/unit/models/test_supporting_differential.py"
+      },
+      {
+        "line": 21,
+        "module": "howler.odm.models.template",
+        "names": [
+          "Template"
+        ],
+        "path": "api/test/unit/models/test_supporting_differential.py"
+      },
+      {
+        "line": 22,
+        "module": "howler.odm.models.user",
+        "names": [
+          "User"
+        ],
+        "path": "api/test/unit/models/test_supporting_differential.py"
+      },
+      {
+        "line": 23,
+        "module": "howler.odm.models.view",
+        "names": [
+          "View"
+        ],
+        "path": "api/test/unit/models/test_supporting_differential.py"
       },
       {
         "line": 7,

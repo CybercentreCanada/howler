@@ -56,6 +56,13 @@ module = "howler.odm.models.*"
 disable_error_code = "assignment"
 
 [[tool.mypy.overrides]]
+module = ["howler.models", "howler.models.*"]
+# Field-builder functions (e.g. `keyword()`, `compound(Model)`) return `Annotated[...]` types and
+# are used directly as field annotations, which mypy cannot statically verify. This mirrors the
+# `howler.odm.models.*` override above for the equivalent legacy declaration convention.
+disable_error_code = ["valid-type", "var-annotated", "metaclass"]
+
+[[tool.mypy.overrides]]
 module = ["howler.odm.base", "test", "test.*"]
 ignore_errors = true
 

@@ -12,6 +12,14 @@
             "extraPaths": [
                 "./api"
             ],
+            "reportGeneralTypeIssues": "none",
+            "reportInvalidTypeForm": "none",
+            "root": "api/howler/models"
+        },
+        {
+            "extraPaths": [
+                "./api"
+            ],
             "reportArgumentType": "none",
             "reportAssignmentType": "none",
             "root": "api/howler/odm/models"
