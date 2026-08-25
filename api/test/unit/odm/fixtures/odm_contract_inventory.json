@@ -141033,6 +141033,14 @@
         "path": "api/test/unit/endpoints/test_search_endpoint.py"
       },
       {
+        "line": 12,
+        "module": "howler",
+        "names": [
+          "odm"
+        ],
+        "path": "api/test/unit/models/test_fields.py"
+      },
+      {
         "line": 7,
         "module": "howler",
         "names": [
