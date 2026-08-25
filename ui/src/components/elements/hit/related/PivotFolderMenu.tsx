@@ -46,6 +46,27 @@ const splitMainPivot = (node: menuPathNode): { main?: DossierPivot; rest: Dossie
   return { main, rest };
 };
 
+// Total pivots anywhere in this subtree; a lone unbranched chain (e.g. parent/child with nothing else under either)
+// only ever has one, and should collapse straight to it instead of forcing a hover through empty folders
+const countPivots = (node: menuPathNode): number =>
+  (node.pivots?.length ?? 0) + (node.children ?? []).reduce((sum, child) => sum + countPivots(child), 0);
+
+// only call once countPivots(node) === 1 has confirmed exactly one pivot exists somewhere in this subtree
+const findOnlyPivot = (node: menuPathNode): DossierPivot | undefined => {
+  if (node.pivots?.length) {
+    return node.pivots[0];
+  }
+
+  for (const child of node.children ?? []) {
+    const found = findOnlyPivot(child);
+    if (found) {
+      return found;
+    }
+  }
+
+  return undefined;
+};
+
 const resolvePivotUrl = (item: DossierPivot, hit?: Hit) => {
   const pivotUrl = item.pivot.format === 'link' ? ResolvePivotUrl(item.pivot, hit) : undefined;
   return pivotUrl || `/dossier/${item.dossier.dossier_id}`;
@@ -62,13 +83,13 @@ interface PivotFlyoutContentProps {
 const PivotFlyoutContent: FC<PivotFlyoutContentProps> = ({ pivots, groups, hit, onNavigate }) => (
   <>
     {pivots.map(({ pivot, dossier }) => (
-      <MenuItem key={`${dossier.dossier_id}-${pivot.value}`} onClick={onNavigate} sx={{ p: 0.5 }}>
+      <MenuItem key={`${dossier.dossier_id}-${pivot.value}`} onClick={onNavigate} sx={{ p: 0 }}>
         <PivotLink
           pivot={pivot}
           hit={hit}
           dossier={dossier}
           resolvedUrl={resolvePivotUrl({ pivot, dossier }, hit)}
-          compact
+          dense
         />
       </MenuItem>
     ))}
@@ -87,12 +108,11 @@ interface PivotSubMenuItemProps {
 // A group row inside an open menu; the chevron always opens the flyout for its own pivots and further sub-groups
 const PivotSubMenuItem: FC<PivotSubMenuItemProps> = ({ node, hit, onNavigate }) => {
   const { anchorEl, isOpen, openMenu, cancelClose, scheduleClose, closeMenu } = useHoverMenu();
-  const folderName = node.path.split('/').pop();
 
   return (
     <MenuItem sx={{ justifyContent: 'space-between', gap: 2 }}>
       <Typography variant="body2" noWrap>
-        {folderName}
+        {node.path}
       </Typography>
       <IconButton size="small" onMouseEnter={openMenu} onMouseLeave={scheduleClose} onClick={openMenu}>
         <Icon icon="mdi:chevron-right" />
@@ -104,7 +124,7 @@ const PivotSubMenuItem: FC<PivotSubMenuItemProps> = ({ node, hit, onNavigate }) 
         sx={{ zIndex: theme => theme.zIndex.modal + 1 }}
       >
         <ClickAwayListener onClickAway={closeMenu}>
-          <Paper elevation={4} onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
+          <Paper elevation={4} onMouseEnter={cancelClose} onMouseLeave={scheduleClose} sx={{ width: 'max-content' }}>
             <MenuList>
               <PivotFlyoutContent
                 pivots={node.pivots ?? []}
@@ -125,9 +145,18 @@ interface PivotFolderTriggerProps {
   hit?: Hit;
 }
 
-// The always-visible entry point for a top-level group; it's a pivot like any other, the chevron opens the rest
+// The always-visible entry point for a top-level group; a tree with a single pivot collapses straight to it,
+// otherwise it's a pivot like any other and the chevron opens the rest
 const PivotFolderTrigger: FC<PivotFolderTriggerProps> = ({ node, hit }) => {
   const { anchorEl, isOpen, openMenu, cancelClose, scheduleClose, closeMenu } = useHoverMenu();
+
+  if (countPivots(node) === 1) {
+    const only = findOnlyPivot(node);
+    return (
+      <PivotLink pivot={only.pivot} hit={hit} dossier={only.dossier} resolvedUrl={resolvePivotUrl(only, hit)} compact />
+    );
+  }
+
   const { main, rest } = splitMainPivot(node);
   const hasMore = rest.length > 0 || (node.children?.length ?? 0) > 0;
 
@@ -143,7 +172,7 @@ const PivotFolderTrigger: FC<PivotFolderTriggerProps> = ({ node, hit }) => {
         />
       ) : (
         <Typography variant="body2" noWrap>
-          {node.path.split('/').pop()}
+          {node.path}
         </Typography>
       )}
       {hasMore && (
@@ -168,7 +197,7 @@ const PivotFolderTrigger: FC<PivotFolderTriggerProps> = ({ node, hit }) => {
           sx={{ zIndex: theme => theme.zIndex.modal + 1 }}
         >
           <ClickAwayListener onClickAway={closeMenu}>
-            <Paper elevation={4} onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
+            <Paper elevation={4} onMouseEnter={cancelClose} onMouseLeave={scheduleClose} sx={{ width: 'max-content' }}>
               <MenuList>
                 <PivotFlyoutContent pivots={rest} groups={node.children ?? []} hit={hit} onNavigate={closeMenu} />
               </MenuList>

@@ -1,4 +1,4 @@
-import { Stack, Tooltip, Typography } from '@mui/material';
+import { ListItemText, Stack, Tooltip, Typography } from '@mui/material';
 import HowlerCard from 'components/elements/display/HowlerCard';
 import RelatedLinkTooltip from 'components/elements/hit/RelatedLinkTooltip';
 import React, { type PropsWithChildren } from 'react';
@@ -14,9 +14,55 @@ const RelatedLink: React.FC<
     target?: string;
     rel?: string;
     tooltip?: React.ReactNode;
+    // list-item rendering used inside dropdown menus: no card outline, details are shown inline instead of in a tooltip
+    dense?: boolean;
+    secondary?: React.ReactNode;
+    // a trailing element (e.g. a settings icon button) rendered next to the title, outside the title's own hover/link
+    action?: React.ReactNode;
   }>
-> = ({ icon, title, href, target, rel, compact = false, tooltip, children }) => {
+> = ({ icon, title, href, target, rel, compact = false, tooltip, dense = false, secondary, action, children }) => {
   const safeTitle = title ?? href ?? '';
+
+  if (dense) {
+    return (
+      <Stack
+        direction="row"
+        spacing={1}
+        alignItems="center"
+        onClick={() => href && window.open(href, target)}
+        sx={theme => ({
+          cursor: 'pointer',
+          width: '100%',
+          p: 0.5,
+          borderRadius: 1,
+          transition: theme.transitions.create(['background-color']),
+          '&:hover': { backgroundColor: 'action.hover' },
+          '& a': { textDecoration: 'none', color: 'text.primary' }
+        })}
+      >
+        {children || <RelatedIcon icon={icon} title={title} href={href} compact />}
+        <ListItemText
+          primary={
+            <Typography
+              component={Link}
+              to={href ?? '#'}
+              target={target}
+              rel={rel}
+              onClick={e => e.stopPropagation()}
+              noWrap
+              sx={{ '&:hover': { textDecoration: 'underline' } }}
+            >
+              {safeTitle}
+            </Typography>
+          }
+          secondary={secondary}
+          secondaryTypographyProps={{ component: 'div', noWrap: true }}
+        />
+        {action}
+      </Stack>
+    );
+  }
+
   const tooltipContent = tooltip ?? <RelatedLinkTooltip title={safeTitle} href={href ?? ''} />;
   return (
     <Tooltip title={tooltipContent}>

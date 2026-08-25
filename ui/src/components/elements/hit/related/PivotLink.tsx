@@ -1,5 +1,6 @@
+import { Icon } from '@iconify/react';
 import { ErrorOutline } from '@mui/icons-material';
-import { Tooltip } from '@mui/material';
+import { IconButton, Tooltip, Typography } from '@mui/material';
 import { useHelpers } from 'components/elements/display/handlebars/helpers';
 import HowlerCard from 'components/elements/display/HowlerCard';
 import PivotTooltip from 'components/elements/hit/PivotTooltip';
@@ -11,6 +12,7 @@ import type { Pivot } from 'models/entities/generated/Pivot';
 import React, { useMemo, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
+import { Link } from 'react-router-dom';
 import { flattenDeep } from 'utils/utils';
 import RelatedLink from './RelatedLink';
 
@@ -22,10 +24,11 @@ export interface PivotLinkProps {
   compact?: boolean;
   dossier: Dossier;
   resolvedUrl: string;
+  // list-item rendering used inside dropdown menus: no card outline, title/owner/dossier settings shown inline
+  dense?: boolean;
 }
-
-const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, resolvedUrl }) => {
-  const { i18n } = useTranslation();
+const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, resolvedUrl, dense = false }) => {
+  const { i18n, t } = useTranslation();
 
   const helpers = useHelpers({ async: false, components: false });
   const pluginStore = usePluginStore();
@@ -78,6 +81,39 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, r
   }, [flatHit, pivot, handlebars, helpers]);
 
   if (href) {
+    if (dense) {
+      const dossierUrl = `/dossiers/${dossier.dossier_id}/edit?tab=leads&query=${encodeURIComponent(dossier.query)}`;
+
+      return (
+        <RelatedLink
+          title={pivot.label[i18n.language]}
+          href={href}
+          icon={pivot.icon}
+          target="_blank"
+          rel="noopener noreferrer"
+          dense
+          secondary={
+            <Typography variant="caption" display="block" color="text.secondary" noWrap>
+              {[dossier.title, dossier.owner].filter(Boolean).join(' • ')}
+            </Typography>
+          }
+          action={
+            <Tooltip title={t('pivot.dossier.open')}>
+              <IconButton
+                size="small"
+                component={Link}
+                to={dossierUrl}
+                onClick={e => e.stopPropagation()}
+                sx={{ flexShrink: 0 }}
+              >
+                <Icon icon="mdi:folder-open-outline" fontSize="1.1rem" />
+              </IconButton>
+            </Tooltip>
+          }
+        />
+      );
+    }
+
     return (
       <RelatedLink
         title={pivot.label[i18n.language]}
