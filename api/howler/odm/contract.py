@@ -23,11 +23,11 @@ from howler.odm.base import Compound, Enum, List, Mapping, Model, Optional, _Fie
 
 CONTRACT_VERSION = 1
 REPOSITORY_ROOT = Path(__file__).parents[3]
-GENERATED_ARTIFACT_GLOBS = (
+GENERATED_ARTIFACT_GLOBS: tuple[str, ...] = (
     "documentation/docs/odm/**/*.md",
     "ui/src/models/entities/generated/*.d.ts",
 )
-VALIDATION_INPUTS = (
+VALIDATION_INPUTS: tuple[Any, ...] = (
     None,
     "",
     "Example",
@@ -116,7 +116,7 @@ def _field_type_contract(field_class: type[_Field]) -> dict[str, Any]:
 
 
 def _field_contract(field: _Field) -> dict[str, Any]:
-    contract = {
+    contract: dict[str, Any] = {
         "type": _qualified_name(type(field)),
         "index": field.index,
         "store": field.store,
@@ -135,8 +135,9 @@ def _field_contract(field: _Field) -> dict[str, Any]:
         if hasattr(field, attribute):
             contract[attribute] = _normalize(getattr(field, attribute))
 
-    if hasattr(field, "validation_regex"):
-        contract["validation_regex"] = field.validation_regex.pattern
+    validation_regex = getattr(field, "validation_regex", None)
+    if validation_regex is not None:
+        contract["validation_regex"] = validation_regex.pattern
 
     if isinstance(field, Enum):
         contract["values"] = _normalize(field.values)
@@ -195,7 +196,7 @@ def _collection_contract(name: str, model_class: type[Model] | None, ilm_enabled
 
     settings = collection._get_index_settings()
     mappings = collection._get_index_mappings()
-    contract = {
+    contract: dict[str, Any] = {
         "model": _qualified_name(model_class) if model_class else None,
         "ilm_enabled_by_default": ilm_enabled,
         "legacy_index": {

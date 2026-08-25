@@ -399,22 +399,22 @@ class TestExplain:
             "explanations": [{"valid": True, "explanation": "MatchAll", "index": "howler-hit"}],
         }
         mock_ds.return_value.hit.datastore.client = MagicMock()
+        mock_ds.return_value.hit.datastore.client.indices = mock_indices
 
         with request_context.test_request_context(
             method="POST",
             json={"query": "howler.id:*"},
             headers={"Authorization": "Bearer ."},
         ):
-            with patch("howler.api.v2.search.IndicesClient", return_value=mock_indices):
-                from howler.api.v2.search import explain_query
+            from howler.api.v2.search import explain_query
 
-                result: Response = explain_query(index="hit", user=user)
+            result: Response = explain_query(index="hit", user=user)
 
-                assert result.status_code == 200
-                body = result.get_json()
-                assert body["api_response"]["valid"] is True
-                assert "_shards" not in body["api_response"]
-                assert "index" not in body["api_response"]["explanations"][0]
+            assert result.status_code == 200
+            body = result.get_json()
+            assert body["api_response"]["valid"] is True
+            assert "_shards" not in body["api_response"]
+            assert "index" not in body["api_response"]["explanations"][0]
 
     @patch("howler.api.v2.search.get_collection")
     @patch("howler.security.auth_service")

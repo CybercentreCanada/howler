@@ -3,7 +3,6 @@ from copy import deepcopy
 from typing import Any
 
 from elasticsearch import BadRequestError
-from elasticsearch._sync.client.indices import IndicesClient
 from flask import request
 from sigma.backends.elasticsearch import LuceneBackend
 from sigma.rule import SigmaRule
@@ -172,10 +171,14 @@ def explain_query(index, **kwargs):
     escaped_lucene = re.sub(r'((:\()?(".+?")(\)?))', lucene_service.replace_lucene_phrase, query)
 
     try:
-        indices_client = IndicesClient(datastore().hit.datastore.client)
-
         result = deepcopy(
-            indices_client.validate_query(q=escaped_lucene, explain=True, index=collection().index_name).body
+            datastore()
+            .hit.datastore.client.indices.validate_query(
+                q=escaped_lucene,
+                explain=True,
+                index=collection().index_name,
+            )
+            .body
         )
 
         del result["_shards"]

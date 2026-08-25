@@ -4,6 +4,11 @@ Howler must be running Elasticsearch and Kibana `8.19.11` before upgrading to
 Elasticsearch 9. Run this preflight against a production-like cluster and each
 production cluster before scheduling the coordinated cutover.
 
+The coordinated cutover targets Elasticsearch and Kibana `9.5.2` with
+`elasticsearch-py` `9.5.0`. Howler continues to require Python 3.12 and declares
+Pydantic v2 directly. The server patch includes Lucene `10.5.1`, which fixes the
+query correctness issue documented for Elasticsearch 9.5.1.
+
 ## Collect the automated report
 
 Use an API key:
