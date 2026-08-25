@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, YamlConfigSettingsSource
 
 from howler.common.logging.format import HWL_DATE_FORMAT, HWL_LOG_FORMAT
@@ -476,6 +476,10 @@ class System(BaseModel):
     """
 
     type: Literal["production", "staging", "development"] = Field(default="development", description="Type of system")
+    encryption_key: str | None = Field(
+        default=None,
+        description="32-byte secret used to encrypt JWE payloads such as queued authorization tokens.",
+    )
     retention: Retention = Retention()
     "Retention Configuration"
     view_cleanup: ViewCleanup = ViewCleanup()
@@ -484,6 +488,14 @@ class System(BaseModel):
     "Correlation Worker Configuration"
     action_queue: ActionQueue = ActionQueue()
     "Action Queue Worker Configuration"
+
+    @field_validator("encryption_key")
+    @classmethod
+    def validate_encryption_key(cls, value: str | None) -> str | None:
+        if value is not None and len(value.encode("utf-8")) != 32:
+            raise ValueError("System encryption_key must be exactly 32 bytes when UTF-8 encoded")
+
+        return value
 
 
 class UI(BaseModel):

@@ -1,9 +1,12 @@
 import base64
 import hashlib
 import hmac
+import os
 from datetime import datetime
 from typing import Optional, Union
 
+import jwt
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from flask import request
 from opentelemetry import trace
 
@@ -22,7 +25,7 @@ from howler.odm.models.user import User
 from howler.remote.datatypes import retry_call
 from howler.remote.datatypes.queues.named import NamedQueue
 from howler.remote.datatypes.set import ExpiringSet
-from howler.security.utils import generate_random_secret, verify_password
+from howler.security.utils import encryption_key, generate_random_secret, verify_password
 
 logger = get_logger(__file__)
 tracer = trace.get_tracer(__name__)
@@ -38,6 +41,46 @@ _APIKEY_CACHE_TTL: int = 600  # 10 minutes
 
 # Derive the HMAC key from the configured secret
 _HMAC_KEY: bytes = hashlib.sha256(config.auth.hmac_secret_key.encode()).digest()
+
+_NON_JWT_TOKEN_PREFIX = "aesgcm:"  # noqa: S105
+_AES_GCM_NONCE_LENGTH = 12
+
+
+def _is_jwt(token: str) -> bool:
+    """Return whether *token* has the compact three-segment JWT format."""
+    if token.count(".") != 2:
+        return False
+
+    try:
+        return "alg" in jwt.get_unverified_header(token)
+    except jwt.InvalidTokenError:
+        return False
+
+
+def encrypt_token(token: str | None) -> str | None:
+    """Encrypt an authorization token before it is serialized into Redis."""
+    if token is None:
+        return None
+
+    if _is_jwt(token):
+        return jwt_service.encrypt_token(token)
+
+    nonce = os.urandom(_AES_GCM_NONCE_LENGTH)
+    ciphertext = AESGCM(encryption_key()).encrypt(nonce, token.encode("utf-8"), None)
+    return _NON_JWT_TOKEN_PREFIX + base64.urlsafe_b64encode(nonce + ciphertext).decode("ascii")
+
+
+def decrypt_token(encrypted_token: str | None) -> str | None:
+    """Decrypt a queued authorization token after reading it from Redis."""
+    if encrypted_token is None:
+        return None
+
+    if not encrypted_token.startswith(_NON_JWT_TOKEN_PREFIX):
+        return jwt_service.decrypt_token(encrypted_token)
+
+    payload = base64.urlsafe_b64decode(encrypted_token.removeprefix(_NON_JWT_TOKEN_PREFIX))
+    nonce, ciphertext = payload[:_AES_GCM_NONCE_LENGTH], payload[_AES_GCM_NONCE_LENGTH:]
+    return AESGCM(encryption_key()).decrypt(nonce, ciphertext, None).decode("utf-8")
 
 
 def _apikey_cache_key(username: str, key_name: str) -> str:

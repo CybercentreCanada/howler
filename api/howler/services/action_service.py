@@ -1,8 +1,9 @@
 import json
 from collections import defaultdict
+from importlib.util import find_spec
 from typing import Any, Optional, TypedDict
 
-from flask import Response
+from flask import Response, has_request_context, request
 
 from howler import actions
 from howler.api import bad_request
@@ -14,6 +15,7 @@ from howler.config import config
 from howler.odm.models.action import VALID_TRIGGERS, Action
 from howler.odm.models.user import User
 from howler.remote.datatypes.queues.named import NamedQueue
+from howler.services import auth_service
 from howler.utils.constants import TESTING
 from howler.utils.str_utils import sanitize_lucene_query
 
@@ -25,10 +27,28 @@ class TriggeredAction(TypedDict):
 
     hit_ids: list[str]
     uname: str | None
+    auth_token: str | None
 
 
 # Per-trigger persistent queues for buffering action execution requests.
 _action_queues: dict[str, NamedQueue[TriggeredAction]] = {}
+
+
+def _is_builtin_operation(operation_id: str) -> bool:
+    """Return whether an operation is implemented by Howler's built-in actions package."""
+    return find_spec(f"howler.actions.{operation_id}") is not None
+
+
+def _request_auth_token() -> str | None:
+    """Extract the credential portion of the current request's authorization header."""
+    if not has_request_context():
+        return None
+
+    authorization = request.headers.get("Authorization")
+    if authorization is None or " " not in authorization:
+        return None
+
+    return authorization.split(" ", maxsplit=1)[1]
 
 
 def get_action_queue(trigger: str) -> NamedQueue[TriggeredAction]:
@@ -51,7 +71,7 @@ def get_action_queue(trigger: str) -> NamedQueue[TriggeredAction]:
     return _action_queues[trigger]
 
 
-def enqueue_action_execution(hit_ids: list[str], trigger: str = "create", user: Optional[User] = None) -> None:
+def enqueue_action_execution(hit_ids: str | list[str], trigger: str = "create", user: Optional[User] = None) -> None:
     """Buffer action execution by pushing to a Redis queue.
 
     When the action queue is disabled in configuration, falls back to
@@ -65,25 +85,44 @@ def enqueue_action_execution(hit_ids: list[str], trigger: str = "create", user: 
     if not hit_ids:
         return
 
+    if not isinstance(hit_ids, list):
+        hit_ids = [hit_ids]
+
     if trigger not in VALID_TRIGGERS:
         raise HowlerValueError(f"Invalid trigger {trigger!r}. Must be one of {VALID_TRIGGERS}")
 
+    auth_token = _request_auth_token()
+
     if not config.system.action_queue.enabled:
+        logger.debug(
+            "Executing actions for trigger %s on hit id(s) [%s] with user %s",
+            trigger,
+            ", ".join(hit_ids),
+            user.uname if user else "NO_USER",
+        )
+
         query = f"howler.id:({' OR '.join(sanitize_lucene_query(h) for h in hit_ids)})"
-        bulk_execute_on_query(query, trigger=trigger, user=user)
+        bulk_execute_on_query(query, trigger=trigger, user=user, auth_token=auth_token)
         return
 
     try:
+        logger.debug(
+            "Enqueuing actions for trigger %s on hit id(s) [%s] with user %s",
+            trigger,
+            ", ".join(hit_ids),
+            user.uname if user else "NO_USER",
+        )
         get_action_queue(trigger).push(
             {
                 "hit_ids": hit_ids,
                 "uname": user.uname if user else None,
+                "auth_token": auth_service.encrypt_token(auth_token),
             }
         )
     except Exception:
         logger.exception("Failed to enqueue action execution, falling back to direct execution")
         query = f"howler.id:({' OR '.join(sanitize_lucene_query(h) for h in hit_ids)})"
-        bulk_execute_on_query(query, trigger=trigger, user=user)
+        bulk_execute_on_query(query, trigger=trigger, user=user, auth_token=auth_token)
 
 
 def process_action_batch(trigger: str, items: list[TriggeredAction]) -> None:
@@ -99,21 +138,26 @@ def process_action_batch(trigger: str, items: list[TriggeredAction]) -> None:
     if not items:
         return
 
-    groups: dict[str | None, list[str]] = defaultdict(list)
+    groups: dict[tuple[str | None, str | None], list[str]] = defaultdict(list)
 
     for item in items:
         uname = item.get("uname")
+        try:
+            auth_token = auth_service.decrypt_token(item.get("auth_token"))
+        except Exception:
+            logger.exception("Unable to decrypt queued authorization token for user=%s", uname)
+            auth_token = None
 
-        groups[uname].extend(item["hit_ids"])
+        groups[(uname, auth_token)].extend(item["hit_ids"])
 
-    for uname, hit_ids in groups.items():
+    for (uname, auth_token), hit_ids in groups.items():
         # Deduplicate IDs within a batch group
         unique_ids = list(dict.fromkeys(hit_ids))
         query = f"howler.id:({' OR '.join(sanitize_lucene_query(h) for h in unique_ids)})"
 
         try:
             user = datastore().user.get(uname)
-            bulk_execute_on_query(query, trigger=trigger, user=user)
+            bulk_execute_on_query(query, trigger=trigger, user=user, auth_token=auth_token)
         except Exception:
             logger.exception("Error processing action batch for trigger=%s user=%s", trigger, uname)
 
@@ -153,7 +197,9 @@ def validate_action(new_action: Any) -> Optional[Response]:  # noqa: C901
     return None
 
 
-def bulk_execute_on_query(query: str, trigger: str = "create", user: Optional[User] = None):
+def bulk_execute_on_query(
+    query: str, trigger: str = "create", user: Optional[User] = None, auth_token: str | None = None
+):
     """Execute the operations specified in registered actions on the given query"""
     storage = datastore()
 
@@ -194,6 +240,10 @@ def bulk_execute_on_query(query: str, trigger: str = "create", user: Optional[Us
 
             if not user:
                 raise NotImplementedError("Running actions without a user object is not currently supported")
+
+            if auth_token is not None and not _is_builtin_operation(operation.operation_id):
+                logger.debug("Appending auth token to external operation %s", operation.operation_id)
+                parsed_data["auth_token"] = auth_token
 
             report = actions.execute(
                 operation_id=operation.operation_id,

@@ -12,7 +12,7 @@ from howler.datastore.operations import OdmHelper
 from howler.odm.base import _Field
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
-from howler.security import api_login
+from howler.security.login import api_login
 from howler.services import action_service, analytic_service, correlation_service, hit_service
 from howler.utils.constants import DEBUG_FORCE_REFRESH
 from howler.utils.dict_utils import flatten

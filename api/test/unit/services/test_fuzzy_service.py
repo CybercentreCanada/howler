@@ -372,7 +372,7 @@ class TestFuzzyEndpointAudit:
         audit_mock = MagicMock()
         fuzzy_search_mock = MagicMock(return_value={"offset": 0, "rows": 0, "total": 0, "items": []})
 
-        monkeypatch.setattr("howler.security.auth_service.bearer_auth", lambda *_args, **_kwargs: (user, ["R"]))
+        monkeypatch.setattr("howler.security.login.auth_service.bearer_auth", lambda *_args, **_kwargs: (user, ["R"]))
         monkeypatch.setattr("howler.api.v2.fuzzy.audit", audit_mock)
         monkeypatch.setattr("howler.api.v2.fuzzy.has_access_control", lambda _indexes: False)
         monkeypatch.setattr("howler.api.v2.fuzzy.fuzzy_service.fuzzy_search", fuzzy_search_mock)
@@ -399,7 +399,7 @@ class TestFuzzyEndpointAudit:
         user = {"uname": "audit_user", "type": ["admin", "user"], "api_quota": 1000, "access_control": "ac:TLP:W"}
         audit_mock = MagicMock()
 
-        monkeypatch.setattr("howler.security.auth_service.bearer_auth", lambda *_args, **_kwargs: (user, ["R"]))
+        monkeypatch.setattr("howler.security.login.auth_service.bearer_auth", lambda *_args, **_kwargs: (user, ["R"]))
         monkeypatch.setattr("howler.api.v2.fuzzy.audit", audit_mock)
 
         with request_context.test_request_context(

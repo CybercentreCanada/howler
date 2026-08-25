@@ -1,7 +1,7 @@
 from flask import Blueprint
 
 from howler.api import ok
-from howler.security import api_login
+from howler.security.login import api_login
 from howler.services import docs_service
 
 API_PREFIX = "/api/v1"

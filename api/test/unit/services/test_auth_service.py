@@ -1,6 +1,17 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from howler.services import auth_service
+
+
+@patch("howler.security.utils.config")
+def test_token_encryption_requires_configured_key(mock_config):
+    """Token encryption fails clearly when its encryption key is missing."""
+    mock_config.system.encryption_key = None
+
+    with pytest.raises(auth_service.HowlerException, match="encryption_key must be configured"):
+        auth_service.encrypt_token("internal-token")
 
 
 def _mock_user_with_apikey(key_name="dev", acl=None):
@@ -82,3 +93,47 @@ def test_stale_cache_triggers_bcrypt(mock_ds, mock_verify, mock_redis):
     assert result_user == user_data
     mock_verify.assert_called_once()
     mock_redis.setex.assert_called_once()
+
+
+@patch("howler.security.utils.config")
+def test_encrypt_decrypt_non_jwt_token(mock_config):
+    """Non-JWT credentials use AES-GCM and never appear in the ciphertext."""
+    mock_config.system.encryption_key = "0123456789abcdef0123456789abcdef"
+    token = "analyst:internal-token"
+
+    encrypted_token = auth_service.encrypt_token(token)
+
+    assert encrypted_token is not None
+    assert encrypted_token.startswith("aesgcm:")
+    assert token not in encrypted_token
+    assert auth_service.decrypt_token(encrypted_token) == token
+
+
+@patch.object(auth_service.jwt_service, "encrypt_token", return_value="jwt-ciphertext")
+def test_encrypt_jwt_delegates_to_jwt_service(mock_encrypt):
+    """JWT-shaped tokens use the JWT service's JWE encryption."""
+    token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhbGljZSJ9.c2lnbmF0dXJl"
+
+    assert auth_service.encrypt_token(token) == "jwt-ciphertext"
+    mock_encrypt.assert_called_once_with(token)
+
+
+@patch.object(auth_service.jwt_service, "decrypt_token", return_value="jwt-token")
+def test_decrypt_jwt_delegates_to_jwt_service(mock_decrypt):
+    """Compact JWE ciphertext is decrypted by the JWT service."""
+    encrypted_token = "header.encrypted-key.iv.ciphertext.tag"
+
+    assert auth_service.decrypt_token(encrypted_token) == "jwt-token"
+    mock_decrypt.assert_called_once_with(encrypted_token)
+
+
+def test_non_jwt_with_three_segments_does_not_delegate_to_jwt_service():
+    """Tokens with two periods are not mistaken for JWTs without a JWT header."""
+    assert not auth_service._is_jwt("not.a.jwt")
+
+
+@pytest.mark.parametrize("token", [None])
+def test_encrypt_decrypt_none_token(token):
+    """Absent tokens remain absent and do not require an encryption key."""
+    assert auth_service.encrypt_token(token) is None
+    assert auth_service.decrypt_token(token) is None

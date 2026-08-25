@@ -10,7 +10,7 @@ from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.config import cache, config
 from howler.plugins import get_plugins
-from howler.security import api_login
+from howler.security.login import api_login
 from howler.utils.constants import TESTING
 
 SUB_API = "clue"

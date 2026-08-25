@@ -18,7 +18,7 @@ from howler.datastore.operations import OdmHelper, OdmUpdateOperation
 from howler.odm.models.event import Event
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
-from howler.security import api_login
+from howler.security.login import api_login
 from howler.services import correlation_service, event_service, hit_service
 from howler.utils.dict_utils import flatten
 

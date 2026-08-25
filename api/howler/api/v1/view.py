@@ -12,7 +12,7 @@ from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException
 from howler.odm.models.user import User
 from howler.odm.models.view import View
-from howler.security import api_login
+from howler.security.login import api_login
 
 SUB_API = "view"
 view_api = make_subapi_blueprint(SUB_API, api_version=1)

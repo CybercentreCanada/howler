@@ -17,7 +17,7 @@ from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.odm.models.overview import Overview
 from howler.odm.models.user import User
-from howler.security import api_login
+from howler.security.login import api_login
 from howler.utils.str_utils import sanitize_lucene_query
 
 SUB_API = "overview"

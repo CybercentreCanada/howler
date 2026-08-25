@@ -50,16 +50,18 @@ def run_worker(trigger: str) -> None:  # pragma: no cover – long-running loop,
             if item is not None:
                 batch.append(item)
 
-            if len(batch) % 10 == 0 or len(batch) >= BATCH_SIZE:
+            if len(batch) > 0 and (len(batch) % 10 == 0 or len(batch) >= BATCH_SIZE):
                 logger.info("Batch size: %s", len(batch))
 
             if len(batch) >= BATCH_SIZE or (item is None and batch):
                 finalized_batch = [*batch]
                 batch = []
-                logger.debug("Processing action batch of %d item(s) for trigger=%s", len(batch), trigger)
+                logger.debug("Processing action batch of %d item(s) for trigger=%s", len(finalized_batch), trigger)
                 try:
                     process_action_batch(trigger, finalized_batch)
-                    logger.info("Action batch complete: %d item(s) processed for trigger=%s", len(batch), trigger)
+                    logger.info(
+                        "Action batch complete: %d item(s) processed for trigger=%s", len(finalized_batch), trigger
+                    )
                 except Exception:
                     logger.exception("Error processing action batch for trigger=%s", trigger)
         except Exception:

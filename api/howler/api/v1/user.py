@@ -21,7 +21,7 @@ from howler.common.swagger import generate_swagger_docs
 from howler.config import config
 from howler.helper.oauth import fetch_groups
 from howler.odm.models.user import User
-from howler.security import api_login
+from howler.security.login import api_login
 from howler.security.utils import check_password_requirements, get_password_hash, get_password_requirement_message
 
 SUB_API = "user"

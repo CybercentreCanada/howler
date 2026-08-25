@@ -132,7 +132,7 @@ class TestSearch:
 
     @patch("howler.api.v2.search.hit_service")
     @patch("howler.api.v2.search.search_service")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_search_success(self, mock_auth_service, mock_search_svc, mock_hit_svc, request_context: Flask):
         """Returns 200 with search results for a valid query."""
         user = _build_user()
@@ -157,7 +157,7 @@ class TestSearch:
             assert "sort" not in mock_search_svc.search.call_args.kwargs
 
     @patch("howler.api.v2.search.search_service")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_search_normalizes_sort(self, mock_auth_service, mock_search_svc, request_context: Flask):
         """Splits comma-separated sort fields and removes empty entries."""
         user = _build_user()
@@ -179,7 +179,7 @@ class TestSearch:
 
     @pytest.mark.parametrize("sensitive_field", ["password", "apikeys", "*"])
     @patch("howler.api.v2.search.search_service")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_search_rejects_sensitive_user_fields(
         self, mock_auth_service, mock_search_svc, request_context: Flask, sensitive_field: str
     ):
@@ -203,7 +203,7 @@ class TestSearch:
             mock_search_svc.search.assert_called_once()
 
     @patch("howler.api.v2.search.search_service")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_search_no_query_returns_400(self, mock_auth_service, mock_search_svc, request_context: Flask):
         """Returns 400 when no query is provided."""
         user = _build_user()
@@ -225,7 +225,7 @@ class TestSearch:
 
     @patch("howler.api.v2.search.hit_service")
     @patch("howler.api.v2.search.search_service")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_search_with_metadata_augments(
         self, mock_auth_service, mock_search_svc, mock_hit_svc, request_context: Flask
     ):
@@ -251,7 +251,7 @@ class TestSearch:
 
     @patch("howler.api.v2.search.hit_service")
     @patch("howler.api.v2.search.search_service")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_search_passes_access_control_for_hits(
         self, mock_auth_service, mock_search_svc, mock_hit_svc, request_context: Flask
     ):
@@ -284,7 +284,7 @@ class TestCount:
     """Tests for the count endpoint."""
 
     @patch("howler.api.v2.search.get_collection")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_count_success(self, mock_auth_service, mock_get_collection, request_context: Flask):
         """Returns 200 with the count for a valid query."""
         user = _build_user()
@@ -308,7 +308,7 @@ class TestCount:
             assert body["api_response"] == 42
 
     @patch("howler.api.v2.search.get_collection")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_count_invalid_index_returns_400(self, mock_auth_service, mock_get_collection, request_context: Flask):
         """Returns 400 when the index is not valid."""
         user = _build_user()
@@ -328,7 +328,7 @@ class TestCount:
             assert result.status_code == 400
 
     @patch("howler.api.v2.search.get_collection")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_count_no_query_returns_400(self, mock_auth_service, mock_get_collection, request_context: Flask):
         """Returns 400 when no query is provided."""
         user = _build_user()
@@ -348,7 +348,7 @@ class TestCount:
             assert result.status_code == 400
 
     @patch("howler.api.v2.search.get_collection")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_count_search_exception_returns_400(self, mock_auth_service, mock_get_collection, request_context: Flask):
         """Returns 400 when the search raises a SearchException."""
         from howler.datastore.exceptions import SearchException
@@ -382,7 +382,7 @@ class TestExplain:
 
     @patch("howler.api.v2.search.datastore")
     @patch("howler.api.v2.search.get_collection")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_explain_success(self, mock_auth_service, mock_get_collection, mock_ds, request_context: Flask):
         """Returns 200 with query explanation on success."""
         user = _build_user()
@@ -417,7 +417,7 @@ class TestExplain:
                 assert "index" not in body["api_response"]["explanations"][0]
 
     @patch("howler.api.v2.search.get_collection")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_explain_invalid_index_returns_400(self, mock_auth_service, mock_get_collection, request_context: Flask):
         """Returns 400 when the index is not valid."""
         user = _build_user()
@@ -437,7 +437,7 @@ class TestExplain:
             assert result.status_code == 400
 
     @patch("howler.api.v2.search.get_collection")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_explain_no_query_returns_400(self, mock_auth_service, mock_get_collection, request_context: Flask):
         """Returns 400 when no query is provided."""
         user = _build_user()
@@ -466,7 +466,7 @@ class TestFacet:
     """Tests for the facet endpoint."""
 
     @patch("howler.api.v2.search.search_service")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_facet_success(self, mock_auth_service, mock_search_service, request_context: Flask):
         """Returns 200 with facet results for a valid request."""
         user = _build_user()
@@ -489,7 +489,7 @@ class TestFacet:
             mock_search_service.facet.assert_called_once()
 
     @patch("howler.api.v2.search.search_service")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_facet_service_exception_returns_400(self, mock_auth_service, mock_search_service, request_context: Flask):
         """Returns 400 when the service raises SearchException."""
         from howler.datastore.exceptions import SearchException
@@ -511,7 +511,7 @@ class TestFacet:
             assert result.status_code == 400
 
     @patch("howler.api.v2.search.search_service")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_facet_passes_expected_params(self, mock_auth_service, mock_search_service, request_context: Flask):
         """Facet passes parsed params through to search_service.facet."""
         user = _build_user()

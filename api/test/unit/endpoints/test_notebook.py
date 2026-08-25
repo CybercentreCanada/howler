@@ -4,16 +4,14 @@ import pytest
 from authlib.integrations.flask_client import OAuth
 from flask import Flask
 from flask import Response as FlaskResponse
-from mock import patch
+from mock import MagicMock, patch
 
 from howler.config import cache
-from test.utils.oauth_credentials import get_token
 
 
 @pytest.fixture(scope="module", autouse=True)
 def request_context():
     app = Flask("test_app")
-    token = get_token()
 
     app.config.update(SECRET_KEY="test test", TESTING=True)
 
@@ -21,14 +19,26 @@ def request_context():
     cache.init_app(app)
     with app.test_request_context(
         headers={
-            "Authorization": f"Bearer {token}",
+            "Authorization": "Bearer .",
             "Content-Type": "application/json",
         },
     ):
         yield app
 
 
-@patch("howler.security.audit")
+@pytest.fixture(autouse=True)
+def mock_auth_service():
+    with patch("howler.security.login.auth_service") as auth_service:
+        auth_service.bearer_auth = MagicMock(
+            return_value=(
+                {"uname": "test", "type": ["user"], "api_quota": 1000},
+                ["R"],
+            )
+        )
+        yield auth_service
+
+
+@patch("howler.security.login.audit")
 @patch("howler.services.notebook_service.get_user_envs", return_value={"test": "test"})
 def test_get_user_envs(get_user_envs, audit):
     from howler.api.v1.notebook import get_user_environments
@@ -41,7 +51,7 @@ def test_get_user_envs(get_user_envs, audit):
     assert json.loads(result.data.decode())["api_response"]["envs"]["test"] == "test"
 
 
-@patch("howler.security.audit")
+@patch("howler.security.login.audit")
 def test_get_notebook_missing_link(audit, request_context):
     with patch(
         "howler.api.v1.notebook.request",
@@ -56,7 +66,7 @@ def test_get_notebook_missing_link(audit, request_context):
         assert json.loads(result.data.decode())["api_error_message"] == "You must provide a link"
 
 
-@patch("howler.security.audit")
+@patch("howler.security.login.audit")
 def test_get_notebook_missing_analytic(audit, request_context):
     with patch(
         "howler.api.v1.notebook.request",
@@ -71,7 +81,7 @@ def test_get_notebook_missing_analytic(audit, request_context):
         assert json.loads(result.data.decode())["api_error_message"] == "You must provide an analytic"
 
 
-@patch("howler.security.audit")
+@patch("howler.security.login.audit")
 @patch(
     "howler.api.v1.notebook.notebook_service.get_nb_information",
     return_value=({"nb": "nb"}, "nb"),

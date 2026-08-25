@@ -6,13 +6,34 @@ from typing import Any, Optional, cast
 
 import jwt
 import requests
+from authlib.jose import JsonWebEncryption
 from jwt.api_jwk import PyJWK
 
 from howler.common.exceptions import ForbiddenException, HowlerKeyError, HowlerValueError
 from howler.common.logging import get_logger
 from howler.config import cache, config
+from howler.security.utils import encryption_key
 
 logger = get_logger(__file__)
+
+_jwe = JsonWebEncryption()
+_JWE_HEADER = {"alg": "A256GCMKW", "enc": "A256GCM"}
+
+
+def encrypt_token(auth_token: str | None) -> str | None:
+    """Encrypt an authorization token before it is serialized into Redis."""
+    if auth_token is None:
+        return None
+
+    return _jwe.serialize_compact(_JWE_HEADER, auth_token.encode("utf-8"), encryption_key()).decode("ascii")
+
+
+def decrypt_token(encrypted_auth_token: str | None) -> str | None:
+    """Decrypt a queued authorization token for in-memory action execution."""
+    if encrypted_auth_token is None:
+        return None
+
+    return _jwe.deserialize_compact(encrypted_auth_token, encryption_key())["payload"].decode("utf-8")
 
 
 def get_jwk(access_token: str) -> PyJWK:
