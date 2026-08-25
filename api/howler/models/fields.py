@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
 from ipaddress import ip_address
-from typing import Annotated, Callable, Iterable
+from typing import Annotated, Callable, Iterable, Union, get_args, get_origin
 from typing import Any as TypingAny
 
 import arrow
@@ -242,6 +242,19 @@ def _annotated(
 
 def _make_annotated(annotation: TypingAny, *metadata: TypingAny) -> TypingAny:
     return getattr(Annotated, "__class_getitem__")((annotation, *metadata))
+
+
+def _field_metadata(annotation: TypingAny) -> HowlerFieldMetadata | None:
+    origin = get_origin(annotation)
+    if origin is Annotated:
+        nested, *items = get_args(annotation)
+        metadata = next((item for item in items if isinstance(item, HowlerFieldMetadata)), None)
+        return metadata or _field_metadata(nested)
+    if origin in (Union, types.UnionType):
+        for item in get_args(annotation):
+            if item is not type(None) and (metadata := _field_metadata(item)) is not None:
+                return metadata
+    return None
 
 
 def _keyword_validator(value: TypingAny) -> str:
@@ -774,10 +787,7 @@ def classification(
         return ClassificationValue(engine, value, is_user_classification)
 
     copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Keyword(
-        ignore_above=8191,
-        **_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True),
-    )
+    mapping = dsl.Keyword(**_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True))
     return _annotated(
         ClassificationValue,
         "Classification",
@@ -800,10 +810,7 @@ def classification_string(*, yml_config: str | None = None, **kwargs: TypingAny)
         return str(value)
 
     copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Keyword(
-        ignore_above=8191,
-        **_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True),
-    )
+    mapping = dsl.Keyword(**_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True))
     return _annotated(
         str,
         "ClassificationString",
@@ -867,8 +874,25 @@ def compound(model_type: type[TypingAny], **kwargs: TypingAny) -> TypingAny:
 
 def optional(child_type: TypingAny, **kwargs: TypingAny) -> TypingAny:
     """Create a nullable field with a null default."""
+    child_metadata = _field_metadata(child_type)
+    if child_metadata is not None:
+        kwargs.setdefault("index", child_metadata.index)
+        kwargs.setdefault("store", child_metadata.store)
+        if child_metadata.copy_to:
+            kwargs.setdefault("copyto", child_metadata.copy_to)
+        if child_metadata.reference is not None:
+            kwargs.setdefault("reference", child_metadata.reference)
+        if child_metadata.deprecated:
+            kwargs.setdefault("deprecated", True)
+        if child_metadata.deprecated_description is not None:
+            kwargs.setdefault("deprecated_description", child_metadata.deprecated_description)
+        kwargs.setdefault("sync", child_metadata.sync)
+        if child_metadata.options:
+            kwargs.setdefault("options", dict(child_metadata.options))
     kwargs.setdefault("default", None)
-    return _annotated(child_type | None, "Optional", None, **kwargs)
+    return _annotated(
+        child_type | None, child_metadata.kind if child_metadata is not None else "Optional", None, **kwargs
+    )
 
 
 def ip_to_primitive(value: str, output_format: str | None) -> str | int:

@@ -50,14 +50,22 @@ def _list_item_annotation(annotation: Any) -> Any | None:
 
 
 def _mapped_field_metadata(annotation: Any) -> dict[str, Any] | None:
-    return next(
-        (
-            item
-            for item in annotation_metadata(annotation)
-            if isinstance(item, dict) and set(item) >= {"_field", "_es_name", "exclude"}
-        ),
-        None,
-    )
+    mapped_fields = [
+        item
+        for item in annotation_metadata(annotation)
+        if isinstance(item, dict) and set(item) >= {"_field", "_es_name", "exclude"}
+    ]
+    if not mapped_fields:
+        return None
+
+    resolved = copy.deepcopy(mapped_fields[0])
+    for mapped_field in mapped_fields[1:]:
+        if resolved.get("_field") is None and mapped_field.get("_field") is not None:
+            resolved["_field"] = copy.deepcopy(mapped_field["_field"])
+        if resolved.get("_es_name") is None and mapped_field.get("_es_name") is not None:
+            resolved["_es_name"] = mapped_field["_es_name"]
+        resolved["exclude"] = resolved.get("exclude", False) or mapped_field.get("exclude", False)
+    return resolved
 
 
 def _compound_model(annotation: Any) -> tuple[type[BaseModel], bool] | None:
