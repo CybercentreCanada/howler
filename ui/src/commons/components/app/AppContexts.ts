@@ -71,6 +71,12 @@ export type AppBreadcrumbsContextType = {
   first: () => BreadcrumbItem; // the last item in the breadcrumbs.
 };
 
+export type AppPivotGroupContextType = {
+  enabled: boolean; // should pivots be grouped into hits?
+  setEnabled: (enabled: boolean) => void; // specify whether pivots should be grouped into hits.
+  toggle: () => void; // toggle pivot grouping on/off.
+};
+
 export type AppDrawerContextType = {
   isOpen: boolean;
   isFloatThreshold: boolean;
@@ -122,6 +128,9 @@ export const AppBarContext = createContext<AppBarContextType>(null);
 
 // React Context for the AppBreadcrumbsProvider.
 export const AppBreadcrumbsContext = createContext<AppBreadcrumbsContextType>(null);
+
+// React Context for the AppPivotGroupProvider.
+export const AppPivotGroupContext = createContext<AppPivotGroupContextType>(null);
 
 // React Context for the AppLeftNavProvider.
 export const AppLeftNavContext = createContext<AppLeftNavContextType>(null);

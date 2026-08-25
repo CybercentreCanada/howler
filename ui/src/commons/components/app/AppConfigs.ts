@@ -27,12 +27,14 @@ export type AppPreferenceConfigs = {
   allowLayoutSelection?: boolean; // Allow the user to switch between "top" and "side" layout
   allowThemeSelection?: boolean; // Allow the user to toggle between 'dark' and 'light' mode
   allowTranslate?: boolean; // Allow the user to switch language
+  allowPivotGroupSelection?: boolean; // Allow the user to toggle on/off grouping pivots into hits
   defaultLayout?: AppLayoutMode; // Either "top" (sticky topbar) or "side" (invisible top bar)
   defaultTheme?: PaletteMode; // The default theme of the application.  'dark' or 'light'.
   defaultDrawerOpen?: boolean; // Should the lef nav drawer be opened by default
   defaultShowQuickSearch?: boolean; // Should the quick search be shown by default
   defaultAutoHideAppbar?: boolean; // Should the top bar autohide (applies only to "side" layout)
   defaultShowBreadcrumbs?: boolean; // Indicate whether breadcrumbs should be shown by default.
+  defaultPivotGroup?: boolean; // Should pivots be grouped into hits by default
   topnav?: AppTopNavConfigs; // top nav appbar specific configurations.
   leftnav?: AppLeftNavConfigs; // left nav drawer specific configurations.
   avatarD?: GravatarD; // The gravatar api uses this parameter to generate a themed image unique to an email address.

@@ -7,5 +7,6 @@ export const AppStorageKeys = {
   LS_KEY_SHOW_QUICK_SEARCH: `${APP_STORAGE_PREFIX}.showQuickSearch`,
   LS_KEY_AUTOHIDE_APPBAR: `${APP_STORAGE_PREFIX}.autoHideAppbar`,
   LS_KEY_BREADCRUMBS_ENABLED: `${APP_STORAGE_PREFIX}.breadcrumbsEnabled`,
-  LS_KEY_BREADCRUMBS_OPEN: `${APP_STORAGE_PREFIX}.breadcrumbsState`
+  LS_KEY_BREADCRUMBS_OPEN: `${APP_STORAGE_PREFIX}.breadcrumbsState`,
+  LS_KEY_PIVOT_GROUP: `${APP_STORAGE_PREFIX}.pivotGroup`
 };

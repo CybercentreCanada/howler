@@ -43,7 +43,8 @@ export function useAppConfigs() {
       _configs.preferences.allowQuickSearch ||
       _configs.preferences.allowReset ||
       _configs.preferences.allowThemeSelection ||
-      _configs.preferences.allowLayoutSelection;
+      _configs.preferences.allowLayoutSelection ||
+      _configs.preferences.allowPivotGroupSelection;
 
     // Rebuild new context.
     return {

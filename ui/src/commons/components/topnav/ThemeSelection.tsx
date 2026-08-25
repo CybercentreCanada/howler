@@ -17,6 +17,7 @@ import {
   useAppConfigs,
   useAppLanguage,
   useAppLayout,
+  useAppPivotGroup,
   useAppQuickSearch,
   useAppTheme
 } from 'commons/components/app/hooks';
@@ -34,6 +35,7 @@ const ThemeSelection = () => {
   const appbar = useAppBar();
   const appTheme = useAppTheme();
   const quicksearch = useAppQuickSearch();
+  const pivotGroup = useAppPivotGroup();
   const localStorage = useLocalStorage(APP_STORAGE_PREFIX);
   const isSmDown = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -121,6 +123,14 @@ const ThemeSelection = () => {
                 </ListItemSecondaryAction>
               </ListItemButton>
             </>
+          )}
+          {configs.preferences.allowPivotGroupSelection && (
+            <ListItemButton onClick={pivotGroup.toggle}>
+              <ListItemText>{t('personalization.pivotGroup')}</ListItemText>
+              <ListItemSecondaryAction>
+                <Switch edge="end" checked={pivotGroup.enabled} onClick={pivotGroup.toggle} />
+              </ListItemSecondaryAction>
+            </ListItemButton>
           )}
         </List>
       )}

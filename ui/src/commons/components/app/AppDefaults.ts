@@ -17,6 +17,7 @@ export const AppDefaultsPreferencesConfigs: AppPreferenceConfigs = {
   defaultLayout: 'side',
   defaultTheme: 'dark',
   defaultShowBreadcrumbs: true,
+  defaultPivotGroup: true,
   allowAutoHideTopbar: true,
   allowBreadcrumbs: true,
   allowQuickSearch: true,
@@ -24,6 +25,7 @@ export const AppDefaultsPreferencesConfigs: AppPreferenceConfigs = {
   allowLayoutSelection: true,
   allowThemeSelection: true,
   allowTranslate: true,
+  allowPivotGroupSelection: true,
   avatarD: 'mp'
 };
 

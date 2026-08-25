@@ -10,6 +10,7 @@ export * from 'commons/components/app/hooks/useAppLayout';
 export * from 'commons/components/app/hooks/useAppLeftNav';
 export * from 'commons/components/app/hooks/useAppLogo';
 export * from 'commons/components/app/hooks/useAppNotification';
+export * from 'commons/components/app/hooks/useAppPivotGroup';
 export * from 'commons/components/app/hooks/useAppQuickSearch';
 export * from 'commons/components/app/hooks/useAppSearchService';
 export * from 'commons/components/app/hooks/useAppSitemap';

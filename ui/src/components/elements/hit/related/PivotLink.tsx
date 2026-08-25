@@ -26,8 +26,18 @@ export interface PivotLinkProps {
   resolvedUrl: string;
   // list-item rendering used inside dropdown menus: no card outline, title/owner/dossier settings shown inline
   dense?: boolean;
+  // renders just the icon/label content, no card/border - used when a parent element supplies the shared button chrome
+  bare?: boolean;
 }
-const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, resolvedUrl, dense = false }) => {
+const PivotLink: FC<PivotLinkProps> = ({
+  pivot,
+  hit,
+  compact = false,
+  dossier,
+  resolvedUrl,
+  dense = false,
+  bare = false
+}) => {
   const { i18n, t } = useTranslation();
 
   const helpers = useHelpers({ async: false, components: false });
@@ -93,9 +103,14 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, r
           rel="noopener noreferrer"
           dense
           secondary={
-            <Typography variant="caption" display="block" color="text.secondary" noWrap>
-              {[dossier.title, dossier.owner].filter(Boolean).join(' • ')}
-            </Typography>
+            <>
+              <Typography variant="caption" display="block" color="text.secondary" noWrap>
+                {[dossier.title, dossier.owner].filter(Boolean).join(' • ')}
+              </Typography>
+              <Typography variant="caption" display="block" color="text.secondary" noWrap sx={{ maxWidth: 260 }}>
+                {href}
+              </Typography>
+            </>
           }
           action={
             <Tooltip title={t('pivot.dossier.open')}>
@@ -123,6 +138,7 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, r
         target="_blank"
         rel="noopener noreferrer"
         tooltip={<PivotTooltip dossier={dossier} resolvedUrl={resolvedUrl} />}
+        bare={bare}
       />
     );
   }

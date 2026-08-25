@@ -8,6 +8,7 @@ import type { AppUser, AppUserService } from 'commons/components/app/AppUserServ
 import AppBarProvider from 'commons/components/app/providers/AppBarProvider';
 import AppLayoutProvider from 'commons/components/app/providers/AppLayoutProvider';
 import AppLeftNavProvider from 'commons/components/app/providers/AppLeftNavProvider';
+import AppPivotGroupProvider from 'commons/components/app/providers/AppPivotGroupProvider';
 import AppSnackbarProvider from 'commons/components/app/providers/AppSnackbarProvider';
 import AppUserProvider from 'commons/components/app/providers/AppUserProvider';
 import useLocalStorageItem from 'commons/components/utils/hooks/useLocalStorageItem';
@@ -71,13 +72,15 @@ export default function AppProvider<U extends AppUser>({
       <StyledEngineProvider injectFirst>
         <ThemeProvider theme={_darkMode ? darkTheme : lightTheme}>
           <AppUserProvider service={user}>
-            <AppBarProvider search={search} notification={notification}>
-              <AppLeftNavProvider>
-                <AppLayoutProvider>
-                  <AppSnackbarProvider>{children}</AppSnackbarProvider>
-                </AppLayoutProvider>
-              </AppLeftNavProvider>
-            </AppBarProvider>
+            <AppPivotGroupProvider>
+              <AppBarProvider search={search} notification={notification}>
+                <AppLeftNavProvider>
+                  <AppLayoutProvider>
+                    <AppSnackbarProvider>{children}</AppSnackbarProvider>
+                  </AppLayoutProvider>
+                </AppLeftNavProvider>
+              </AppBarProvider>
+            </AppPivotGroupProvider>
           </AppUserProvider>
         </ThemeProvider>
       </StyledEngineProvider>

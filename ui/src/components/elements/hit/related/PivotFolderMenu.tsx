@@ -1,5 +1,16 @@
 import { Icon } from '@iconify/react';
-import { ClickAwayListener, IconButton, MenuItem, MenuList, Paper, Popper, Stack, Typography } from '@mui/material';
+import {
+  Box,
+  ClickAwayListener,
+  Divider,
+  IconButton,
+  MenuItem,
+  MenuList,
+  Paper,
+  Popper,
+  Typography
+} from '@mui/material';
+import HowlerCard from 'components/elements/display/HowlerCard';
 import PivotLink from 'components/elements/hit/related/PivotLink';
 import ResolvePivotUrl from 'components/elements/hit/ResolvePivotUrl';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -13,7 +24,7 @@ const CLOSE_DELAY = 200;
 
 // Popper (no modal/backdrop/focus-trap) is used instead of Menu so nested flyouts never fight each other for focus
 const useHoverMenu = () => {
-  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => () => clearTimeout(closeTimer.current), []);
@@ -22,23 +33,30 @@ const useHoverMenu = () => {
     // stop the chevron's click from bubbling into an ancestor row's onClick (which would navigate/close instead of opening)
     event.stopPropagation();
     clearTimeout(closeTimer.current);
-    setAnchorEl(event.currentTarget);
+    setIsOpen(true);
   }, []);
 
   const cancelClose = useCallback(() => clearTimeout(closeTimer.current), []);
 
   const scheduleClose = useCallback(() => {
     clearTimeout(closeTimer.current);
-    closeTimer.current = setTimeout(() => setAnchorEl(null), CLOSE_DELAY);
+    closeTimer.current = setTimeout(() => setIsOpen(false), CLOSE_DELAY);
   }, []);
 
   const closeMenu = useCallback(() => {
     clearTimeout(closeTimer.current);
-    setAnchorEl(null);
+    setIsOpen(false);
   }, []);
 
-  return { anchorEl, isOpen: Boolean(anchorEl), openMenu, cancelClose, scheduleClose, closeMenu };
+  return { isOpen, openMenu, cancelClose, scheduleClose, closeMenu };
 };
+
+// Anchors a flyout to its own row/button rather than to the small chevron, and keeps it strictly to the right,
+// so nested submenus cascade one after another instead of drifting or flipping above their trigger
+const FLYOUT_MODIFIERS = [
+  { name: 'flip', enabled: false },
+  { name: 'offset', options: { offset: [0, 0] } }
+];
 
 // The first pivot (already alphabetically sorted) represents the whole tree; only the root button hoists it out
 const splitMainPivot = (node: menuPathNode): { main?: DossierPivot; rest: DossierPivot[] } => {
@@ -107,10 +125,11 @@ interface PivotSubMenuItemProps {
 
 // A group row inside an open menu; the chevron always opens the flyout for its own pivots and further sub-groups
 const PivotSubMenuItem: FC<PivotSubMenuItemProps> = ({ node, hit, onNavigate }) => {
-  const { anchorEl, isOpen, openMenu, cancelClose, scheduleClose, closeMenu } = useHoverMenu();
+  const { isOpen, openMenu, cancelClose, scheduleClose, closeMenu } = useHoverMenu();
+  const rowRef = useRef<HTMLLIElement>(null);
 
   return (
-    <MenuItem sx={{ justifyContent: 'space-between', gap: 2 }}>
+    <MenuItem ref={rowRef} sx={{ justifyContent: 'space-between', gap: 2 }}>
       <Typography variant="body2" noWrap>
         {node.path}
       </Typography>
@@ -119,8 +138,9 @@ const PivotSubMenuItem: FC<PivotSubMenuItemProps> = ({ node, hit, onNavigate }) 
       </IconButton>
       <Popper
         open={isOpen}
-        anchorEl={anchorEl}
+        anchorEl={rowRef.current}
         placement="right-start"
+        modifiers={FLYOUT_MODIFIERS}
         sx={{ zIndex: theme => theme.zIndex.modal + 1 }}
       >
         <ClickAwayListener onClickAway={closeMenu}>
@@ -148,7 +168,8 @@ interface PivotFolderTriggerProps {
 // The always-visible entry point for a top-level group; a tree with a single pivot collapses straight to it,
 // otherwise it's a pivot like any other and the chevron opens the rest
 const PivotFolderTrigger: FC<PivotFolderTriggerProps> = ({ node, hit }) => {
-  const { anchorEl, isOpen, openMenu, cancelClose, scheduleClose, closeMenu } = useHoverMenu();
+  const { isOpen, openMenu, cancelClose, scheduleClose, closeMenu } = useHoverMenu();
+  const rowRef = useRef<HTMLDivElement>(null);
 
   if (countPivots(node) === 1) {
     const only = findOnlyPivot(node);
@@ -161,38 +182,55 @@ const PivotFolderTrigger: FC<PivotFolderTriggerProps> = ({ node, hit }) => {
   const hasMore = rest.length > 0 || (node.children?.length ?? 0) > 0;
 
   return (
-    <Stack direction="row" spacing={0.5} alignItems="center">
-      {main ? (
-        <PivotLink
-          pivot={main.pivot}
-          hit={hit}
-          dossier={main.dossier}
-          resolvedUrl={resolvePivotUrl(main, hit)}
-          compact
-        />
-      ) : (
-        <Typography variant="body2" noWrap>
-          {node.path}
-        </Typography>
-      )}
+    <HowlerCard
+      ref={rowRef}
+      variant="outlined"
+      sx={theme => ({
+        display: 'flex',
+        alignItems: 'stretch',
+        backgroundColor: 'transparent',
+        transition: theme.transitions.create(['border-color']),
+        '&:hover': { borderColor: 'primary.main', '& a': { textDecoration: 'underline' } }
+      })}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', pl: main ? 0 : 1, '& a': { color: 'text.primary' } }}>
+        {main ? (
+          <PivotLink
+            pivot={main.pivot}
+            hit={hit}
+            dossier={main.dossier}
+            resolvedUrl={resolvePivotUrl(main, hit)}
+            compact
+            bare
+          />
+        ) : (
+          <Typography variant="body2" noWrap>
+            {node.path}
+          </Typography>
+        )}
+      </Box>
       {hasMore && (
-        <IconButton
-          size="small"
-          onMouseEnter={openMenu}
-          onMouseLeave={scheduleClose}
-          onClick={openMenu}
-          sx={theme => ({
-            transition: theme.transitions.create(['color']),
-            '&:hover': { color: 'primary.main' }
-          })}
-        >
-          <Icon icon="mdi:chevron-right" />
-        </IconButton>
+        <>
+          <Divider orientation="vertical" flexItem sx={{ my: 0.75 }} />
+          <IconButton
+            size="small"
+            onMouseEnter={openMenu}
+            onMouseLeave={scheduleClose}
+            onClick={openMenu}
+            sx={theme => ({
+              borderRadius: 0,
+              transition: theme.transitions.create(['color']),
+              '&:hover': { color: 'primary.main' }
+            })}
+          >
+            <Icon icon="mdi:chevron-right" />
+          </IconButton>
+        </>
       )}
       {hasMore && (
         <Popper
           open={isOpen}
-          anchorEl={anchorEl}
+          anchorEl={rowRef.current}
           placement="bottom-start"
           sx={{ zIndex: theme => theme.zIndex.modal + 1 }}
         >
@@ -205,7 +243,7 @@ const PivotFolderTrigger: FC<PivotFolderTriggerProps> = ({ node, hit }) => {
           </ClickAwayListener>
         </Popper>
       )}
-    </Stack>
+    </HowlerCard>
   );
 };
 

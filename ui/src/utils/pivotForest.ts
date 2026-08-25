@@ -20,9 +20,9 @@ type PivotTree = {
 
 /**
  *
- * This helper is use to organize pivot into a forest, one folder per group path segment.
- * A pivot with group "network/dns" produces a "network" node whose only child is "dns",
- * so the menu structure mirrors the group path exactly, with no segments skipped or merged.
+ * This helper is use to organize pivot into a forest. A chain of path segments that has no branching and no
+ * pivots of its own (e.g. "network/ip/v4" with nothing else under "ip" or "v4") is squashed into a single node
+ * labeled with the full chain, so the menu doesn't force a hover through several empty, single-choice folders.
  * This is use to group them in HitLinks.tsx
  *@param dossiers array of dossier we want to organize the pivots of
  *
@@ -79,11 +79,18 @@ const buildPathMap = (tree: PivotTree, language = 'en'): menuPathNode[] => {
       continue;
     } // this is not a branch these are buttons we solve it earlier
 
-    const current = tree[key] as PivotTree;
+    let path: string = key;
+    let current = tree[key] as PivotTree;
+    // squash a chain as long as it neither branches nor carries pivots of its own; that's a pure "pass-through"
+    // segment, so its name is folded into the path instead of forcing its own empty menu level
+    while (Object.keys(current).length === 1 && !('pivot' in current)) {
+      const newKey: string = Object.keys(current)[0];
+      path = path + `/${newKey}`;
+      current = current[newKey] as PivotTree;
+    }
 
-    // Build the array; each group path segment is always its own node, never merged with its parent or child
     nodes.push({
-      path: key,
+      path: path,
       pivots: sortBy(current['pivot'] ?? [], item => item.pivot.label?.[language]),
       children: buildPathMap(current, language)
     });

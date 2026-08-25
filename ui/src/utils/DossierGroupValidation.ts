@@ -9,7 +9,7 @@
 const DossierGroupValidation = (group: string): string | null => {
   if (!group || group === '') return null;
 
-  const validationRegex = /^[A-Za-zùûüÿàâæçéèêëïîôœÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ/]*$/;
+  const validationRegex = /^[1-9A-Za-zùûüÿàâæçéèêëïîôœÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ/]*$/;
   const not_allowed_word = /(^|\/)pivot(\/|$)/;
 
   if (!validationRegex.test(group)) {

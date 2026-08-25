@@ -1,4 +1,4 @@
-import { ListItemText, Stack, Tooltip, Typography } from '@mui/material';
+import { Box, ListItemText, Stack, Tooltip, Typography } from '@mui/material';
 import HowlerCard from 'components/elements/display/HowlerCard';
 import RelatedLinkTooltip from 'components/elements/hit/RelatedLinkTooltip';
 import React, { type PropsWithChildren } from 'react';
@@ -19,8 +19,23 @@ const RelatedLink: React.FC<
     secondary?: React.ReactNode;
     // a trailing element (e.g. a settings icon button) rendered next to the title, outside the title's own hover/link
     action?: React.ReactNode;
+    // renders just the icon/label content, no card/border - used when a parent element supplies the shared button chrome
+    bare?: boolean;
   }>
-> = ({ icon, title, href, target, rel, compact = false, tooltip, dense = false, secondary, action, children }) => {
+> = ({
+  icon,
+  title,
+  href,
+  target,
+  rel,
+  compact = false,
+  tooltip,
+  dense = false,
+  secondary,
+  action,
+  bare = false,
+  children
+}) => {
   const safeTitle = title ?? href ?? '';
 
   if (dense) {
@@ -64,6 +79,33 @@ const RelatedLink: React.FC<
   }
 
   const tooltipContent = tooltip ?? <RelatedLinkTooltip title={safeTitle} href={href ?? ''} />;
+
+  const content = (
+    <Stack direction="row" p={compact ? 0.5 : 1} spacing={1} alignItems="center" sx={{ height: '100%' }}>
+      {children || <RelatedIcon icon={icon} title={title} href={href} compact={compact} />}
+      <Typography component={Link} to={href ?? '#'} target={target} rel={rel} onClick={e => e.stopPropagation()}>
+        {safeTitle}
+      </Typography>
+    </Stack>
+  );
+
+  if (bare) {
+    return (
+      <Tooltip title={tooltipContent}>
+        <Box
+          onClick={() => href && window.open(href, target)}
+          sx={{
+            display: 'flex',
+            cursor: 'pointer',
+            '& a': { textDecoration: 'none', color: 'text.primary' }
+          }}
+        >
+          {content}
+        </Box>
+      </Tooltip>
+    );
+  }
+
   return (
     <Tooltip title={tooltipContent}>
       <div style={{ display: 'flex' }}>
@@ -85,12 +127,7 @@ const RelatedLink: React.FC<
             !compact && { border: 'thin solid', borderColor: 'transparent' }
           ]}
         >
-          <Stack direction="row" p={compact ? 0.5 : 1} spacing={1} alignItems="center">
-            {children || <RelatedIcon icon={icon} title={title} href={href} compact={compact} />}
-            <Typography component={Link} to={href ?? '#'} target={target} rel={rel} onClick={e => e.stopPropagation()}>
-              {safeTitle}
-            </Typography>
-          </Stack>
+          {content}
         </HowlerCard>
       </div>
     </Tooltip>

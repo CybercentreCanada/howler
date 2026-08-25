@@ -41,34 +41,16 @@ describe('pivotForest', () => {
     expect(pivotForest([dossier])).toEqual([{ path: 'network', pivots: [{ pivot, dossier }], children: [] }]);
   });
 
-  it('creates one node per path segment for a multi-level group, without collapsing them', () => {
+  it('collapses an unbranched multi-level group path into a single node', () => {
     const pivot = makePivot({ group: 'network/dns/query' });
     const dossier = makeDossier([pivot]);
-    expect(pivotForest([dossier])).toEqual([
-      {
-        path: 'network',
-        pivots: [],
-        children: [
-          {
-            path: 'dns',
-            pivots: [],
-            children: [{ path: 'query', pivots: [{ pivot, dossier }], children: [] }]
-          }
-        ]
-      }
-    ]);
+    expect(pivotForest([dossier])).toEqual([{ path: 'network/dns/query', pivots: [{ pivot, dossier }], children: [] }]);
   });
 
-  it('creates a distinct node for every segment even when segment names repeat', () => {
+  it('collapses repeated segment names the same as any other unbranched chain', () => {
     const pivot = makePivot({ group: 'test/test' });
     const dossier = makeDossier([pivot]);
-    expect(pivotForest([dossier])).toEqual([
-      {
-        path: 'test',
-        pivots: [],
-        children: [{ path: 'test', pivots: [{ pivot, dossier }], children: [] }]
-      }
-    ]);
+    expect(pivotForest([dossier])).toEqual([{ path: 'test/test', pivots: [{ pivot, dossier }], children: [] }]);
   });
 
   it('keeps all pivots sharing the same group on the same node', () => {
@@ -109,6 +91,22 @@ describe('pivotForest', () => {
         children: [
           { path: 'dns', pivots: [{ pivot: dnsPivot, dossier }], children: [] },
           { path: 'http', pivots: [{ pivot: httpPivot, dossier }], children: [] }
+        ]
+      }
+    ]);
+  });
+
+  it('keeps a branch point as its own node but still collapses each unbranched chain below it', () => {
+    const v4Pivot = makePivot({ value: 'v4', group: 'network/ip/v4/local' });
+    const v6Pivot = makePivot({ value: 'v6', group: 'network/ip/v6/local' });
+    const dossier = makeDossier([v4Pivot, v6Pivot]);
+    expect(pivotForest([dossier])).toEqual([
+      {
+        path: 'network/ip',
+        pivots: [],
+        children: [
+          { path: 'v4/local', pivots: [{ pivot: v4Pivot, dossier }], children: [] },
+          { path: 'v6/local', pivots: [{ pivot: v6Pivot, dossier }], children: [] }
         ]
       }
     ]);
