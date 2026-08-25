@@ -38,7 +38,7 @@ def _build_user() -> User:
 
 
 @patch("howler.api.v1.auth.jwt_service")
-@patch("howler.security.auth_service")
+@patch("howler.security.login.auth_service")
 def test_add_apikey(mock_auth_service, mock_jwt_service, request_context: Flask):
     mock_auth_service.bearer_auth = MagicMock()
     mock_jwt_service.decode = MagicMock(return_value={"exp": (datetime.now() + timedelta(minutes=5)).timestamp()})
@@ -68,7 +68,7 @@ def test_add_apikey(mock_auth_service, mock_jwt_service, request_context: Flask)
 
 
 @patch("howler.api.v1.auth.jwt_service")
-@patch("howler.security.auth_service")
+@patch("howler.security.login.auth_service")
 def test_add_apikey_no_extended(mock_auth_service, mock_jwt_service, request_context: Flask):
     config.auth.allow_extended_apikeys = False
 
@@ -100,7 +100,7 @@ def test_add_apikey_no_extended(mock_auth_service, mock_jwt_service, request_con
 
 
 @patch("howler.api.v1.auth.jwt_service")
-@patch("howler.security.auth_service")
+@patch("howler.security.login.auth_service")
 def test_add_apikey_bad_date_format(mock_auth_service, mock_jwt_service, request_context: Flask):
     config.auth.allow_extended_apikeys = False
 
@@ -134,7 +134,7 @@ def test_add_apikey_bad_date_format(mock_auth_service, mock_jwt_service, request
         )
 
 
-@patch("howler.security.auth_service")
+@patch("howler.security.login.auth_service")
 def test_add_apikey_bad_config(mock_auth_service, request_context: Flask):
     config.auth.max_apikey_duration_amount = 10
     config.auth.max_apikey_duration_unit = "days"
@@ -165,7 +165,7 @@ def test_add_apikey_bad_config(mock_auth_service, request_context: Flask):
         assert result.json is not None and result.json["api_error_message"].startswith("Expiry date must be before")
 
 
-@patch("howler.security.auth_service")
+@patch("howler.security.login.auth_service")
 def test_add_apikey_no_exp(mock_auth_service, request_context: Flask):
     config.auth.max_apikey_duration_amount = 10
     config.auth.max_apikey_duration_unit = "days"

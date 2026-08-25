@@ -67,7 +67,7 @@ class TestCreateEndpoint:
     @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.event_service")
     @patch("howler.api.v2.ingest.hit_service")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_create_hit_success(
         self, mock_auth_service, mock_hit_svc, mock_obs_svc, mock_queue_fn, request_context: Flask
     ):
@@ -97,7 +97,7 @@ class TestCreateEndpoint:
     @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.event_service")
     @patch("howler.api.v2.ingest.hit_service")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_create_event_success(
         self, mock_auth_service, mock_hit_svc, mock_obs_svc, mock_queue_fn, request_context: Flask
     ):
@@ -125,7 +125,7 @@ class TestCreateEndpoint:
             mock_hit_svc.convert_hit.assert_not_called()
 
     @patch("howler.api.v2.ingest.hit_service")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_create_no_body_returns_400(self, mock_auth_service, mock_hit_svc, request_context: Flask):
         """Returns 400 when no JSON body is provided."""
         user = _build_user()
@@ -144,7 +144,7 @@ class TestCreateEndpoint:
             assert result.status_code == 400
 
     @patch("howler.api.v2.ingest.hit_service")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_create_non_list_returns_400(self, mock_auth_service, mock_hit_svc, request_context: Flask):
         """Returns 400 when the JSON payload is not a list."""
         user = _build_user()
@@ -162,7 +162,7 @@ class TestCreateEndpoint:
             assert result.status_code == 400
 
     @patch("howler.api.v2.ingest.hit_service")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_create_multi_index_returns_400(self, mock_auth_service, mock_hit_svc, request_context: Flask):
         """Returns 400 when trying to create across multiple indexes."""
         user = _build_user()
@@ -181,7 +181,7 @@ class TestCreateEndpoint:
 
     @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.hit_service")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_create_multiple_hits(self, mock_auth_service, mock_hit_svc, mock_queue_fn, request_context: Flask):
         """Returns 201 with multiple IDs when multiple hits are created."""
         user = _build_user()
@@ -209,7 +209,7 @@ class TestCreateEndpoint:
 
     @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.hit_service")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_create_conversion_failure_returns_400(
         self, mock_auth_service, mock_hit_svc, mock_queue_fn, request_context: Flask
     ):
@@ -235,7 +235,7 @@ class TestCreateEndpoint:
 
     @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.hit_service")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_create_queue_failure_still_returns_201(
         self, mock_auth_service, mock_hit_svc, mock_queue_fn, request_context: Flask
     ):
@@ -269,7 +269,7 @@ class TestDeleteEndpoint:
     """Tests for the DELETE endpoint."""
 
     @patch("howler.api.v2.ingest.datastore")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_delete_success_admin(self, mock_auth_service, mock_datastore, request_context: Flask):
         """Admin user can delete records and gets 204."""
         user = _build_user(["admin", "user"])
@@ -292,7 +292,7 @@ class TestDeleteEndpoint:
             assert result.status_code == 204
 
     @patch("howler.api.v2.ingest.datastore")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_delete_no_body_returns_400(self, mock_auth_service, mock_datastore, request_context: Flask):
         """Returns 400 when no JSON body is provided."""
         user = _build_user(["admin", "user"])
@@ -311,7 +311,7 @@ class TestDeleteEndpoint:
             assert result.status_code == 400
 
     @patch("howler.api.v2.ingest.datastore")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_delete_forbidden_non_admin(self, mock_auth_service, mock_datastore, request_context: Flask):
         """Non-admin user gets 403."""
         user = _build_user(["user"])
@@ -329,7 +329,7 @@ class TestDeleteEndpoint:
             assert result.status_code == 403
 
     @patch("howler.api.v2.ingest.datastore")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_delete_not_found_returns_404(self, mock_auth_service, mock_datastore, request_context: Flask):
         """Returns 404 when record IDs do not exist."""
         user = _build_user(["admin", "user"])
@@ -352,7 +352,7 @@ class TestDeleteEndpoint:
             assert result.status_code == 404
 
     @patch("howler.api.v2.ingest.datastore")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_delete_across_multiple_indexes(self, mock_auth_service, mock_datastore, request_context: Flask):
         """Deletion across comma-separated indexes returns 204."""
         user = _build_user(["admin", "user"])
@@ -376,7 +376,7 @@ class TestDeleteEndpoint:
             assert result.status_code == 204
 
     @patch("howler.api.v2.ingest.datastore")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_delete_datastore_error_returns_500(self, mock_auth_service, mock_datastore, request_context: Flask):
         """Returns 500 when the datastore raises an error during deletion."""
         from howler.datastore.exceptions import DataStoreException
@@ -531,7 +531,7 @@ class TestIngestionQueueing:
 
     @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.hit_service")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_enqueues_hit_ids(self, mock_auth_service, mock_hit_svc, mock_queue_fn, request_context: Flask):
         """All newly created hit IDs are pushed to the ingestion queue."""
         user = _build_user()
@@ -555,7 +555,7 @@ class TestIngestionQueueing:
 
     @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.event_service")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_enqueues_event_ids(self, mock_auth_service, mock_obs_svc, mock_queue_fn, request_context: Flask):
         """Event IDs are also enqueued for correlation."""
         user = _build_user()
@@ -578,7 +578,7 @@ class TestIngestionQueueing:
 
     @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.hit_service")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_no_enqueue_when_all_fail(self, mock_auth_service, mock_hit_svc, mock_queue_fn, request_context: Flask):
         """Queue push is not called when every record fails conversion."""
         from howler.common.exceptions import HowlerValueError
@@ -610,7 +610,7 @@ class TestOverwrite:
 
     @patch("howler.api.v2.ingest.INDEXES", {"hit": None})
     @patch("howler.api.v2.ingest.datastore")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_overwrite_success(self, mock_auth_service, mock_ds, request_context: Flask):
         """Returns 200 with the updated record on successful overwrite."""
         user = _build_user()
@@ -646,7 +646,7 @@ class TestOverwrite:
             )
 
     @patch("howler.api.v2.ingest.datastore")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_overwrite_multi_index_returns_400(self, mock_auth_service, mock_ds, request_context: Flask):
         """Returns 400 when index contains a comma."""
         user = _build_user()
@@ -664,7 +664,7 @@ class TestOverwrite:
             assert result.status_code == 400
 
     @patch("howler.api.v2.ingest.datastore")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_overwrite_not_found(self, mock_auth_service, mock_ds, request_context: Flask):
         """Returns 404 when the record does not exist."""
         user = _build_user()
@@ -684,7 +684,7 @@ class TestOverwrite:
             assert result.status_code == 404
 
     @patch("howler.api.v2.ingest.datastore")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_overwrite_non_dict_body_returns_400(self, mock_auth_service, mock_ds, request_context: Flask):
         """Returns 400 when the JSON payload is not a dict."""
         user = _build_user()
@@ -713,7 +713,7 @@ class TestUpdateByQuery:
     """Tests for the update_by_query endpoint."""
 
     @patch("howler.api.v2.ingest.datastore")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_update_by_query_success(self, mock_auth_service, mock_ds, request_context: Flask):
         """Returns 200 with success=True on valid update."""
         user = _build_user()
@@ -738,7 +738,7 @@ class TestUpdateByQuery:
             assert body["api_response"]["success"] is True
 
     @patch("howler.api.v2.ingest.datastore")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_update_by_query_bad_operation_returns_400(self, mock_auth_service, mock_ds, request_context: Flask):
         """Returns 400 when an operation fails validation."""
 
@@ -760,7 +760,7 @@ class TestUpdateByQuery:
             assert result.status_code == 400
 
     @patch("howler.api.v2.ingest.datastore")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_update_by_query_missing_query_returns_400(self, mock_auth_service, mock_ds, request_context: Flask):
         """Returns 400 when the query key is missing from the body."""
         user = _build_user()
