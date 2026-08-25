@@ -1,4 +1,5 @@
-import json
+import subprocess
+import sys
 from pathlib import Path
 
 from howler.odm.contract import build_contract_inventory, render_contract_inventory
@@ -7,9 +8,17 @@ CONTRACT_PATH = Path(__file__).parent / "fixtures/odm_contract_inventory.json"
 
 
 def test_odm_contract_matches_snapshot():
-    expected = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
-
-    assert build_contract_inventory() == expected
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "build_scripts.generate_odm_contract",
+            "--check",
+            "--output",
+            str(CONTRACT_PATH),
+        ],
+        check=True,
+    )
 
 
 def test_odm_contract_covers_migration_surfaces():

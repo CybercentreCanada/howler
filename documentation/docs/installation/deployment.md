@@ -32,7 +32,7 @@ relationships between Howler's services and its dependencies.
 
 Howler has dependencies on a number of other applications for its functionality:
 
-1. Elasticsearch 8 ([Configuration](/howler/installation/configuration/#datastore))
+1. Elasticsearch 9.5.2 ([Configuration](/howler/installation/configuration/#datastore))
 1. Two redis instances ([Configuration](/howler/installation/configuration/#redis))
     1. A persistent instance
     1. A non-persistent instance
