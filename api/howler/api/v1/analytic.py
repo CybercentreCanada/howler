@@ -20,7 +20,7 @@ from howler.datastore.exceptions import DataStoreException
 from howler.datastore.operations import OdmHelper
 from howler.odm.models.analytic import Analytic, Comment, Notebook, TriageOptions
 from howler.odm.models.user import User
-from howler.security import api_login
+from howler.security.login import api_login
 from howler.services import analytic_service, user_service
 
 MAX_COMMENT_LEN = 5000
