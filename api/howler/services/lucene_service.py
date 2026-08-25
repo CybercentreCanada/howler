@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from hashlib import sha256
 from typing import Any, Literal, Union, cast
 
-from elasticsearch._sync.client.indices import IndicesClient
 from luqum.parser import parser
 from luqum.tree import AndOperation, BoolOperation, Phrase, Plus, Prohibit, Range, SearchField, Word
 from luqum.utils import UnknownOperationResolver
@@ -196,7 +195,8 @@ class LuceneProcessor(TreeVisitor):
 
 NORMALIZED_QUERY_CACHE: Hash[str] = Hash("normalized_queries", redis)
 
-SEARCH_PHRASE_CACHE: dict[str, re.Match[str]] = {}
+SEARCH_PHRASE_CACHE: dict[str, str] = {}
+WILDCARD_TOKEN_PATTERN = re.compile(r'(?:(?<=\()|(?<!\S))((?:\\.|[^\s()"])*[?*](?:\\.|[^\s()"])*)(?=$|[\s)])')
 
 
 def replace_lucene_phrase(match: re.Match[str]) -> str:
@@ -212,7 +212,7 @@ def replace_lucene_phrase(match: re.Match[str]) -> str:
     else:
         key = sha256(value.encode()).hexdigest()
 
-        SEARCH_PHRASE_CACHE[key] = match
+        SEARCH_PHRASE_CACHE[key] = value
 
         result += key
 
@@ -226,9 +226,25 @@ def try_reinsert_lucene_phrase(match: re.Match[str]) -> str:
     key = match.group(1)
 
     if key in SEARCH_PHRASE_CACHE:
-        return SEARCH_PHRASE_CACHE[key].group(3)
+        return SEARCH_PHRASE_CACHE[key]
     else:
         return key
+
+
+def replace_lucene_wildcard(match: re.Match[str]) -> str:
+    """Replace a wildcard value with a stable term before requesting a Lucene explanation."""
+    wildcard_expression = match.group(1)
+    if wildcard_expression == "*:*":
+        return wildcard_expression
+
+    field, separator, value = wildcard_expression.partition(":")
+    if not separator:
+        value = field
+        field = ""
+
+    key = sha256(value.encode()).hexdigest()
+    SEARCH_PHRASE_CACHE[key] = value
+    return f"{field}{separator}{key}"
 
 
 def match(lucene: str, obj: dict[str, Any]):
@@ -237,38 +253,27 @@ def match(lucene: str, obj: dict[str, Any]):
 
     # We cache the results back from ES, since we will frequently run the same validation queries over and over again.
     if (normalized_query := NORMALIZED_QUERY_CACHE.get(hash_key)) is None or TESTING:
-        # This regex checks for lucene phrases (i.e. the "Example Analytic" part of howler.analytic:"Example Analytic")
-        # And then escapes them.
-        # https://regex101.com/r/8u5F6a/1
         escaped_lucene = re.sub(r'((:\()?(".+?")(\)?))', replace_lucene_phrase, lucene)
+        escaped_lucene = WILDCARD_TOKEN_PATTERN.sub(replace_lucene_wildcard, escaped_lucene)
 
-        # This may seem unintuitive, but elastic parses lucene queries in somewhat nonstandard ways (or at least,
-        # in ways luqum doesn't agree with). to circumvent this, we use validate_query, which returns a "normalized"
-        # query that works much better with luqum. It's also much faster than actually searching for the hit in
-        # question.
-        indices_client = IndicesClient(datastore().hit.datastore.client)
-        result = indices_client.validate_query(q=escaped_lucene, explain=True, index=datastore().hit.index_name)
+        # Elasticsearch normalizes ambiguous boolean syntax in its explanation. Wildcards are replaced before
+        # validation because Lucene 10 renders them as opaque AutomatonQuery internals instead of parseable terms.
+        hit_collection = datastore().hit
+        result = hit_collection.datastore.client.indices.validate_query(
+            q=escaped_lucene,
+            explain=True,
+            index=hit_collection.index_name,
+        )
 
         if not result["valid"]:
             logger.error("Invalid lucene query:\n%s", result["explanations"][0]["error"])
             return False
 
-        # As an example, the query:
-        #   server.address:("supports" OR "their") AND howler.votes.benign:("edge" OR "also")
-        # becomes:
-        #   +(server.address:supports server.address:their) +(howler.votes.benign:edge howler.votes.benign:also)
-        # which means the two are equivalent in elastic, but the second one is a lot less ambiguous to parse.
         normalized_query = cast(str, result["explanations"][0]["explanation"])
-
         normalized_query = re.sub(r"IndexOrDocValuesQuery *\(indexQuery=(.+?), dvQuery=.+?\)", r"\1", normalized_query)
-
-        # Elastic's explanation mangles exists queries. Since we will handle them the normal way, reset their changes
         normalized_query = re.sub(r"FieldExistsQuery *\[.*?field=(.+?)]", r"_exists_:\1", normalized_query)
         normalized_query = re.sub(r"ConstantScore", "", normalized_query)
-        # try and reinsert any phrases we have replaced with sha256 hashes
         normalized_query = re.sub(r"([0-9a-f]{64})", try_reinsert_lucene_phrase, normalized_query)
-
-        # Properly convert escaped colons back
         normalized_query = normalized_query.replace("@colon", ":")
 
         # Cache the normalized query

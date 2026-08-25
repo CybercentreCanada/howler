@@ -131233,103 +131233,103 @@
         "receiver": "storage.overview"
       },
       {
-        "line": 145,
+        "line": 144,
         "method": "search",
         "path": "api/howler/api/v1/search.py",
         "receiver": "collection()"
       },
       {
-        "line": 291,
+        "line": 294,
         "method": "raw_eql_search",
         "path": "api/howler/api/v1/search.py",
         "receiver": "collection()"
       },
       {
-        "line": 375,
+        "line": 378,
         "method": "search",
         "path": "api/howler/api/v1/search.py",
         "receiver": "es_collection"
       },
       {
-        "line": 452,
+        "line": 455,
         "method": "grouped_search",
         "path": "api/howler/api/v1/search.py",
         "receiver": "collection()"
       },
       {
-        "line": 485,
+        "line": 488,
         "method": "fields",
         "path": "api/howler/api/v1/search.py",
         "receiver": "collection()"
       },
       {
-        "line": 538,
+        "line": 541,
         "method": "count",
         "path": "api/howler/api/v1/search.py",
         "receiver": "collection()"
       },
       {
-        "line": 596,
+        "line": 599,
         "method": "fields",
         "path": "api/howler/api/v1/search.py",
         "receiver": "collection()"
       },
       {
-        "line": 603,
+        "line": 606,
         "method": "facet",
         "path": "api/howler/api/v1/search.py",
         "receiver": "collection()"
       },
       {
-        "line": 648,
+        "line": 651,
         "method": "fields",
         "path": "api/howler/api/v1/search.py",
         "receiver": "collection()"
       },
       {
-        "line": 648,
+        "line": 651,
         "method": "get",
         "path": "api/howler/api/v1/search.py",
         "receiver": "collection().fields()"
       },
       {
-        "line": 664,
+        "line": 667,
         "method": "facet",
         "path": "api/howler/api/v1/search.py",
         "receiver": "collection()"
       },
       {
-        "line": 716,
+        "line": 719,
         "method": "fields",
         "path": "api/howler/api/v1/search.py",
         "receiver": "collection()"
       },
       {
-        "line": 716,
+        "line": 719,
         "method": "get",
         "path": "api/howler/api/v1/search.py",
         "receiver": "collection().fields()"
       },
       {
-        "line": 741,
+        "line": 744,
         "method": "histogram",
         "path": "api/howler/api/v1/search.py",
         "receiver": "collection()"
       },
       {
-        "line": 782,
+        "line": 785,
         "method": "fields",
         "path": "api/howler/api/v1/search.py",
         "receiver": "collection()"
       },
       {
-        "line": 782,
+        "line": 785,
         "method": "get",
         "path": "api/howler/api/v1/search.py",
         "receiver": "collection().fields()"
       },
       {
-        "line": 798,
+        "line": 801,
         "method": "stats",
         "path": "api/howler/api/v1/search.py",
         "receiver": "collection()"
@@ -131605,7 +131605,7 @@
         "receiver": "ds[index]"
       },
       {
-        "line": 302,
+        "line": 305,
         "method": "count",
         "path": "api/howler/api/v2/search.py",
         "receiver": "collection()"
@@ -132769,7 +132769,7 @@
         "receiver": "datastore().dossier"
       },
       {
-        "line": 294,
+        "line": 299,
         "method": "search",
         "path": "api/howler/services/lucene_service.py",
         "receiver": "datastore().hit"
@@ -139372,7 +139372,7 @@
         "path": "api/howler/api/v1/overview.py"
       },
       {
-        "line": 18,
+        "line": 17,
         "module": "howler.odm.models.user",
         "names": [
           "User"
@@ -139517,7 +139517,7 @@
         "path": "api/howler/api/v2/ingest.py"
       },
       {
-        "line": 18,
+        "line": 17,
         "module": "howler.odm.models.user",
         "names": [
           "User"
@@ -143141,7 +143141,7 @@
         "path": "api/test/unit/odm/test_clue.py"
       },
       {
-        "line": 4,
+        "line": 5,
         "module": "howler.odm.contract",
         "names": [
           "build_contract_inventory",
