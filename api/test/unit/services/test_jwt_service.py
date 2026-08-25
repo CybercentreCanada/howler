@@ -16,7 +16,7 @@ from howler.odm.models.config import OAuthProvider
 from howler.services import jwt_service
 
 
-@patch.object(jwt_service, "config")
+@patch("howler.security.utils.config")
 def test_jwe_secret_requires_configured_key(mock_config):
     """JWE operations fail clearly when their encryption key is missing."""
     mock_config.system.encryption_key = None
@@ -102,7 +102,7 @@ class TestGetAudience:
             assert jwt_service.get_audience("azure") == "override-audience"
 
 
-@patch.object(jwt_service, "config")
+@patch("howler.security.utils.config")
 def test_encrypt_decrypt_token(mock_config):
     """JWE-encrypted JWT tokens round-trip without exposing plaintext ciphertext."""
     mock_config.system.encryption_key = "0123456789abcdef0123456789abcdef"

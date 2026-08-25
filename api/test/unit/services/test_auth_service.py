@@ -5,7 +5,7 @@ import pytest
 from howler.services import auth_service
 
 
-@patch.object(auth_service.jwt_service, "config")
+@patch("howler.security.utils.config")
 def test_token_encryption_requires_configured_key(mock_config):
     """Token encryption fails clearly when its encryption key is missing."""
     mock_config.system.encryption_key = None
@@ -95,7 +95,7 @@ def test_stale_cache_triggers_bcrypt(mock_ds, mock_verify, mock_redis):
     mock_redis.setex.assert_called_once()
 
 
-@patch.object(auth_service.jwt_service, "config")
+@patch("howler.security.utils.config")
 def test_encrypt_decrypt_non_jwt_token(mock_config):
     """Non-JWT credentials use AES-GCM and never appear in the ciphertext."""
     mock_config.system.encryption_key = "0123456789abcdef0123456789abcdef"

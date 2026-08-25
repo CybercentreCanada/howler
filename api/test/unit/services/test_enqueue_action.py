@@ -39,7 +39,7 @@ class TestEnqueueActionExecution:
         assert pushed["uname"] == "testuser"
 
     @patch.object(action_service, "get_action_queue")
-    @patch("howler.services.auth_service.config")
+    @patch("howler.security.utils.config")
     @patch("howler.services.action_service.config")
     def test_enqueue_encrypts_request_auth_token(self, mock_action_config, mock_jwt_config, mock_get_queue):
         """Queued authorization tokens are ciphertext rather than Redis plaintext."""
@@ -190,7 +190,7 @@ class TestProcessActionBatch:
         mock_bulk.assert_called_once()
         assert mock_bulk.call_args.kwargs["user"] is user
 
-    @patch("howler.services.auth_service.config")
+    @patch("howler.security.utils.config")
     @patch.object(action_service, "datastore")
     @patch.object(action_service, "bulk_execute_on_query")
     def test_process_batch_decrypts_auth_token(self, mock_bulk, mock_datastore, mock_config):
