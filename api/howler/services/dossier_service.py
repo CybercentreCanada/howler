@@ -73,8 +73,8 @@ def get_dossier(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
 
 def get_dossier(
     id: str,
-    as_odm: Literal[True, False] = False,
-    version: Literal[True, False] = False,
+    as_odm=False,
+    version=False,
 ):
     """Retrieve a dossier from the datastore.
 
