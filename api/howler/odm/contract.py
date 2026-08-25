@@ -302,10 +302,23 @@ def _collect_source_usage(
                 }
             )
     elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-        usage = {"line": node.lineno, "method": node.func.attr, "path": relative_path}
+        receiver = ast.unparse(node.func.value)
+        usage = {
+            "line": node.lineno,
+            "method": node.func.attr,
+            "path": relative_path,
+            "receiver": receiver,
+        }
         if node.func.attr in {"add_namespace", "remove_namespace"}:
             extension_hooks.append(usage)
-        if node.func.attr in collection_methods:
+        receiver_tokens = set(re.findall(r"[A-Za-z_]+", receiver.lower()))
+        is_collection_receiver = any(
+            token in {"col", "collection", "datastore", "ds", "es_connection", "storage"}
+            or token.endswith(("_collection", "_datastore"))
+            or token.startswith("datastore")
+            for token in receiver_tokens
+        )
+        if node.func.attr in collection_methods and is_collection_receiver:
             datastore_calls.append(usage)
 
 

@@ -42,6 +42,7 @@ nav:
   - installation/deployment.md
   - installation/deployment_minikube.md
   - migration.md
+  - installation/elasticsearch_9_preflight.md
   - Configuring Howler:
     - installation/default_configuration.md
     - installation/configuration.md
