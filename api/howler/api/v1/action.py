@@ -12,7 +12,7 @@ from howler.common.swagger import generate_swagger_docs
 from howler.config import CLASSIFICATION
 from howler.odm.models.action import Action
 from howler.odm.models.user import User
-from howler.security import api_login
+from howler.security.login import api_login
 from howler.services import action_service
 
 SUB_API = "action"

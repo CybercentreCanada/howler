@@ -1,7 +1,7 @@
 from flask import Blueprint, current_app, request
 
 from howler.api import API_PREFIX, ok
-from howler.security import api_login
+from howler.security.login import api_login
 
 api = Blueprint("api", __name__, url_prefix=API_PREFIX)
 

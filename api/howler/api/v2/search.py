@@ -15,7 +15,7 @@ from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException
 from howler.helper.search import get_collection, has_access_control
 from howler.odm.models.user import User
-from howler.security import api_login
+from howler.security.login import api_login
 from howler.services import hit_service, lucene_service, search_service
 from howler.services.search_service import SensitiveUserFieldsException
 from howler.utils.net_utils import generate_params

@@ -57,7 +57,7 @@
                 "./api"
             ],
             "reportAttributeAccessIssue": "information",
-            "root": "api/howler/security/__init__.py"
+            "root": "api/howler/security/login.py"
         },
         {
             "extraPaths": [

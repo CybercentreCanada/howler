@@ -11,7 +11,7 @@ import howler.services.viewer_service as viewer_service
 from howler.api import ok, unauthorized
 from howler.common.logging import get_logger
 from howler.helper.ws import ConnectionClosed, Server
-from howler.security import api_login
+from howler.security.login import api_login
 from howler.security.socket import websocket_auth, ws_response
 from howler.utils.socket_utils import check_action
 

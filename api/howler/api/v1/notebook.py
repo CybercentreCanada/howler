@@ -2,7 +2,7 @@ from flask import request
 
 from howler.api import bad_request, internal_error, make_subapi_blueprint, ok
 from howler.common.swagger import generate_swagger_docs
-from howler.security import api_login
+from howler.security.login import api_login
 from howler.services import notebook_service
 
 SUB_API = "notebook"

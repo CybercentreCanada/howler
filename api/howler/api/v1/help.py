@@ -1,7 +1,7 @@
 from howler.api import make_subapi_blueprint, ok
 from howler.common.swagger import generate_swagger_docs
 from howler.config import CLASSIFICATION
-from howler.security import api_login
+from howler.security.login import api_login
 
 SUB_API = "help"
 classification_definition = CLASSIFICATION.get_parsed_classification_definition()

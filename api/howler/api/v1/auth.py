@@ -31,7 +31,7 @@ from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.config import config
 from howler.odm.models.user import ApiKey, User
-from howler.security import api_login
+from howler.security.login import api_login
 from howler.security.utils import generate_random_secret
 from howler.services import jwt_service
 from howler.utils.str_utils import default_string_value
