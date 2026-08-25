@@ -19,9 +19,9 @@ from howler.services import jwt_service
 @patch.object(jwt_service, "config")
 def test_jwe_secret_requires_configured_key(mock_config):
     """JWE operations fail clearly when their encryption key is missing."""
-    mock_config.system.jwe_secret_key = None
+    mock_config.system.encryption_key = None
 
-    with pytest.raises(HowlerValueError, match="jwe_secret_key must be configured"):
+    with pytest.raises(HowlerValueError, match="encryption_key must be configured"):
         jwt_service.encrypt_token("******")
 
 
@@ -105,7 +105,7 @@ class TestGetAudience:
 @patch.object(jwt_service, "config")
 def test_encrypt_decrypt_token(mock_config):
     """JWE-encrypted JWT tokens round-trip without exposing plaintext ciphertext."""
-    mock_config.system.jwe_secret_key = "0123456789abcdef0123456789abcdef"
+    mock_config.system.encryption_key = "0123456789abcdef0123456789abcdef"
     token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhbGljZSJ9.c2lnbmF0dXJl"
 
     encrypted_token = jwt_service.encrypt_token(token)

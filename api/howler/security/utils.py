@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from opentelemetry import trace
 from passlib.hash import bcrypt
 
+from howler.common.exceptions import HowlerValueError
 from howler.config import config
 
 tracer = trace.get_tracer(__name__)
@@ -185,3 +186,12 @@ def get_disco_url(host_url: Optional[str]):
             return config.discovery.url
     else:
         return config.discovery.url
+
+
+def encryption_key() -> bytes:
+    """Return the configured encryption key for JWE payloads."""
+    secret_key = config.system.encryption_key
+    if secret_key is None:
+        raise HowlerValueError("System encryption_key must be configured before encrypting tokens")
+
+    return secret_key.encode("utf-8")

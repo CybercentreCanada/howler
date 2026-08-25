@@ -476,7 +476,7 @@ class System(BaseModel):
     """
 
     type: Literal["production", "staging", "development"] = Field(default="development", description="Type of system")
-    jwe_secret_key: str | None = Field(
+    encryption_key: str | None = Field(
         default=None,
         description="32-byte secret used to encrypt JWE payloads such as queued authorization tokens.",
     )
@@ -489,11 +489,11 @@ class System(BaseModel):
     action_queue: ActionQueue = ActionQueue()
     "Action Queue Worker Configuration"
 
-    @field_validator("jwe_secret_key")
+    @field_validator("encryption_key")
     @classmethod
-    def validate_jwe_secret_key(cls, value: str | None) -> str | None:
+    def validate_encryption_key(cls, value: str | None) -> str | None:
         if value is not None and len(value.encode("utf-8")) != 32:
-            raise ValueError("System jwe_secret_key must be exactly 32 bytes when UTF-8 encoded")
+            raise ValueError("System encryption_key must be exactly 32 bytes when UTF-8 encoded")
 
         return value
 

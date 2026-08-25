@@ -44,7 +44,7 @@ class TestEnqueueActionExecution:
     def test_enqueue_encrypts_request_auth_token(self, mock_action_config, mock_jwt_config, mock_get_queue):
         """Queued authorization tokens are ciphertext rather than Redis plaintext."""
         mock_action_config.system.action_queue.enabled = True
-        mock_jwt_config.system.jwe_secret_key = "0123456789abcdef0123456789abcdef"
+        mock_jwt_config.system.encryption_key = "0123456789abcdef0123456789abcdef"
         mock_queue = MagicMock()
         mock_get_queue.return_value = mock_queue
         user = MagicMock()
@@ -195,7 +195,7 @@ class TestProcessActionBatch:
     @patch.object(action_service, "bulk_execute_on_query")
     def test_process_batch_decrypts_auth_token(self, mock_bulk, mock_datastore, mock_config):
         """The worker restores the encrypted token only for action execution."""
-        mock_config.system.jwe_secret_key = "0123456789abcdef0123456789abcdef"
+        mock_config.system.encryption_key = "0123456789abcdef0123456789abcdef"
         encrypted_auth_token = auth_service.encrypt_token("oauth-access-token")
 
         action_service.process_action_batch(

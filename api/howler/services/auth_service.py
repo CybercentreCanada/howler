@@ -25,7 +25,7 @@ from howler.odm.models.user import User
 from howler.remote.datatypes import retry_call
 from howler.remote.datatypes.queues.named import NamedQueue
 from howler.remote.datatypes.set import ExpiringSet
-from howler.security.utils import generate_random_secret, verify_password
+from howler.security.utils import encryption_key, generate_random_secret, verify_password
 
 logger = get_logger(__file__)
 tracer = trace.get_tracer(__name__)
@@ -44,15 +44,6 @@ _HMAC_KEY: bytes = hashlib.sha256(config.auth.hmac_secret_key.encode()).digest()
 
 _NON_JWT_TOKEN_PREFIX = "aesgcm:"  # noqa: S105
 _AES_GCM_NONCE_LENGTH = 12
-
-
-def _token_encryption_key() -> bytes:
-    """Return the configured encryption key for queued authorization tokens."""
-    secret_key = config.system.jwe_secret_key
-    if secret_key is None:
-        raise HowlerException("System jwe_secret_key must be configured before encrypting tokens")
-
-    return secret_key.encode("utf-8")
 
 
 def _is_jwt(token: str) -> bool:
@@ -75,7 +66,7 @@ def encrypt_token(token: str | None) -> str | None:
         return jwt_service.encrypt_token(token)
 
     nonce = os.urandom(_AES_GCM_NONCE_LENGTH)
-    ciphertext = AESGCM(_token_encryption_key()).encrypt(nonce, token.encode("utf-8"), None)
+    ciphertext = AESGCM(encryption_key()).encrypt(nonce, token.encode("utf-8"), None)
     return _NON_JWT_TOKEN_PREFIX + base64.urlsafe_b64encode(nonce + ciphertext).decode("ascii")
 
 
@@ -89,7 +80,7 @@ def decrypt_token(encrypted_token: str | None) -> str | None:
 
     payload = base64.urlsafe_b64decode(encrypted_token.removeprefix(_NON_JWT_TOKEN_PREFIX))
     nonce, ciphertext = payload[:_AES_GCM_NONCE_LENGTH], payload[_AES_GCM_NONCE_LENGTH:]
-    return AESGCM(_token_encryption_key()).decrypt(nonce, ciphertext, None).decode("utf-8")
+    return AESGCM(encryption_key()).decrypt(nonce, ciphertext, None).decode("utf-8")
 
 
 def _apikey_cache_key(username: str, key_name: str) -> str:

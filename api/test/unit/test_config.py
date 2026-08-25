@@ -24,12 +24,12 @@ def test_builtin_config_mapping():
     assert isinstance(config.mapping, dict)
 
 
-def test_jwe_secret_key_requires_32_bytes():
+def test_encryption_key_requires_32_bytes():
     secret_key = "0123456789abcdef0123456789abcdef"
 
-    assert System(jwe_secret_key=secret_key).jwe_secret_key == secret_key
+    assert System(encryption_key=secret_key).encryption_key == secret_key
     with pytest.raises(ValidationError, match="exactly 32 bytes"):
-        System(jwe_secret_key="too-short")
+        System(encryption_key="too-short")
 
 
 def test_custom_config():
