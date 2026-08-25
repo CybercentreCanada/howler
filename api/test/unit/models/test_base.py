@@ -60,6 +60,9 @@ class FoundationDocument(HowlerESModel):
     flattened: flattened_object(default={})
     flattened_lists: flattened_list_object(default={})
     maybe: optional(keyword())
+    maybe_ip: optional(ip())
+    maybe_unindexed: optional(keyword(index=False, store=False))
+    class_: optional(keyword(), alias="class")
     classification: classification(default="UNRESTRICTED", yml_config=CLASSIFICATION_CONFIG)
 
 
@@ -157,6 +160,10 @@ def test_primitive_serialization_modes_and_access_fields() -> None:
     assert base64.b64decode(encoded["child"]["address"]) == ip_address("127.0.0.1").packed
     assert encoded["child"]["created"] == int(datetime.fromisoformat(TIMESTAMP.replace("Z", "+00:00")).timestamp())
 
+    data = _document_data()
+    data["maybe_ip"] = "127.0.0.1"
+    assert FoundationDocument.model_validate(data).as_primitives(ip_format="int")["maybe_ip"] == 2130706433
+
 
 def test_document_adapter_round_trip_preserves_metadata() -> None:
     """The Howler adapter preserves aliases, empty collections, and ES metadata."""
@@ -200,6 +207,7 @@ def test_registry_fields_flattening_and_mapping() -> None:
     assert flat["children.address"].metadata.kind == "IP"
 
     assert properties["from"]["type"] == "keyword"
+    assert properties["class"]["type"] == "keyword"
     assert properties["from"]["index"] is True
     assert properties["from"]["doc_values"] is True
     assert properties["child"]["type"] == "object"
@@ -208,7 +216,10 @@ def test_registry_fields_flattening_and_mapping() -> None:
     assert properties["child"]["properties"]["address"]["type"] == "ip"
     assert properties["counters"]["type"] == "object"
     assert properties["unindexed"] == {"type": "object", "enabled": False}
+    assert properties["maybe_unindexed"]["index"] is False
+    assert properties["maybe_unindexed"]["doc_values"] is False
     assert properties["classification"]["type"] == "keyword"
+    assert "ignore_above" not in properties["classification"]
     assert properties["__access_lvl__"] == {"type": "integer", "index": True}
     assert properties["__access_req__"] == {"type": "keyword", "index": True}
     assert "meta" not in properties

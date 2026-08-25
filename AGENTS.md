@@ -162,4 +162,5 @@ The Python workflows in `.github/workflows/` are the source of truth for CI. To 
 - Client v2 case-item calls use a required `name` on append, UUID item `id` values in `{"ids": [...]}` for delete, and `{"id": ..., "name": ...}` and/or `parent` for update.
 - Elasticsearch ILM maintenance must enumerate `index_list_full`, exclude `__reindex` temporary indexes, preserve source lifecycle metadata, and leave only the latest ILM index as the write target. Legacy aliases must be swapped atomically when creating indexes.
 - `SocketProvider.addListener` replaces a listener with the same key; case consumers must retain a stable per-instance suffix rather than keying only by case ID.
+- Pydantic `optional()` wrappers must inherit the wrapped field's Howler metadata, and wrapper aliases must retain the wrapped DSL field mapping. Otherwise scalar types can be inferred incorrectly, explicit `index`/`store` flags are lost, and optional IP serialization modes do not run.
 - MCP process-wide async HTTP clients belong to the returned Starlette application's lifespan, not FastMCP's per-session lifespan; close only clients owned by the application.
