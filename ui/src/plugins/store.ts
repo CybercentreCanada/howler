@@ -22,17 +22,6 @@ export type MainMenuOperation =
 
 export type MainMenuItemOperation = Exclude<MainMenuOperation, { type: 'remove' }>;
 
-export type SiteMapRoute = {
-  path: string;
-  title: string;
-  icon?: ReactElement;
-  isRoot?: boolean;
-  isLeaf?: boolean;
-  excluded?: boolean;
-  breadcrumbs?: string[];
-  textWidth?: number;
-};
-
 class HowlerPluginStore {
   private _pluginStore = createPluginStore();
 
@@ -45,7 +34,6 @@ class HowlerPluginStore {
   private _adminMenuItems: { i18nKey: string; route: string; icon: ReactElement }[] = [];
   private _mainMenuOperations: MainMenuOperation[] = [];
   private _routes: { path: string; element: ReactElement; children?: [] }[] = [];
-  private _sitemaps: SiteMapRoute[] = [];
 
   install(plugin: HowlerPlugin) {
     if (this.plugins.includes(plugin.name)) {
@@ -95,10 +83,6 @@ class HowlerPluginStore {
     this._routes.push(route);
   }
 
-  addSitemap(sitemap: SiteMapRoute) {
-    this._sitemaps.push(sitemap);
-  }
-
   addOperation(format: string): boolean {
     if (this._operations.includes(format)) {
       return false;
@@ -135,10 +119,6 @@ class HowlerPluginStore {
 
   public get routes() {
     return this._routes;
-  }
-
-  public get sitemaps() {
-    return this._sitemaps;
   }
 
   public get pluginStore() {

@@ -140,16 +140,6 @@ Supported operations:
 
 `item` is a `LeftNavMenuItem`, so plugins can contribute routes, actions, menus, or dividers. An append operation must target a menu; it never converts an existing route into a menu. Item IDs must be unique.
 
-#### `addRouteAndSitemap(path, element, title, icon?, children?)`
-
-Adds a Route and the bare minimum required Sitemap entry for Breadcrumb display
-
-- **`path`**: Route path, should not start with /
-- **`element`**: Element the route directs to
-- **`children`**: Child routes if required
-- **`title`**: The title/label to display in breadcrumbs for this route
-- **`icon`**: The icon component to show beside the title/label
-
 #### `addRoute(path, element, children?)`
 
 Adds a new route
@@ -157,19 +147,6 @@ Adds a new route
 - **`path`**: Route path, should not start with /
 - **`element`**: Element the route directs to
 - **`children`**: Child routes if required
-
-#### `addSitemap(path, title, icon?, isRoot?, isLeaf?, excluded?, breadcrumbs?, textWidth)`
-
-Adds Sitemap entry which is used in various places to provide breadcrumbs
-
-- **`path`**: The react router path to this route
-- **`title`**: The title/label to display in breadcrumbs for this route
-- **`icon`**: The icon component to show beside the title/label
-- **`isRoot`**: When true, indicates that the breadcrumbs will reset to this one path each time it is encountered
-- **`isLeaf`**: When true, indicates that this path does not aggregate in breadcrumbs, i.e. will be replaced by next path
-- **`excluded`**: When true, indicates to breadcrumbs component to not render this route
-- **`breadcrumbs`**: Static list of breadcrumb paths to be rendered for the given route
-- **`textWidth`**: The max width of the text when rendering the breadcrumb
 
 ### UI Hook Methods
 

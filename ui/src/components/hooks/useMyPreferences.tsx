@@ -261,18 +261,16 @@ const useMyPreferences = (): AppPreferenceConfigs => {
         }
       },
       appLink: '/',
-      allowGravatar: false,
       allowThemeSelection: true,
-      defaultShowQuickSearch: true,
-      avatarD: 'retro',
       topnav: {
-        apps: [],
-        userMenu: USER_MENU_ITEMS,
-        userMenuI18nKey: 'usermenu',
-        adminMenu: ADMIN_MENU_ITEMS,
-        adminMenuI18nKey: 'adminmenu',
         quickSearchParam: 'query',
         quickSearchURI: '/hits',
+        profile: {
+          menus: {
+            user: { i18nKey: 'usermenu', slot: USER_MENU_ITEMS },
+            admin: { i18nKey: 'adminmenu', slot: ADMIN_MENU_ITEMS }
+          }
+        },
         slots: {
           breadcrumbs: {
             right: [

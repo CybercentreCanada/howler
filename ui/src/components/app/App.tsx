@@ -7,6 +7,9 @@ import {
   useAppLayout,
   useAppUser
 } from '@tui/core';
+import { AppAccessibilityProvider } from '@tui/a11y';
+import { AppSwitcherProvider, useAppSwitcher } from '@tui/apps';
+import { AppDrawerProvider as TuiAppDrawerProvider } from '@tui/drawer';
 
 import type {
   AppBreadcrumbItem,
@@ -44,10 +47,10 @@ import {
   Terminal,
   Topic
 } from '@mui/icons-material';
-import { useAppSwitcher } from '@tui/apps';
 import api from 'api';
 import Modal from 'components/elements/display/Modal';
 import useMyApi from 'components/hooks/useMyApi';
+import { useMyAccessibility } from 'components/hooks/useMyAccessibility';
 import { APP_COOKIES_DEFAULTS } from 'components/hooks/useMyCookies';
 import useMyLocalStorage from 'components/hooks/useMyLocalStorage';
 import useMyPreferences from 'components/hooks/useMyPreferences';
@@ -272,6 +275,7 @@ const MyAppProvider: FC<PropsWithChildren> = ({ children }) => {
 
 const AppProviderWrapper = () => {
   const myTheme = useMyTheme();
+  const myAccessibility = useMyAccessibility();
   const myThemes: AppTheme[] = useMemo(
     () => [
       { id: 'howler', i18nKey: 'route.home.title', configs: myTheme, default: true },
@@ -287,10 +291,16 @@ const AppProviderWrapper = () => {
         <PluginProvider pluginStore={howlerPluginStore.pluginStore}>
           <AppBarProvider>
             <AppRoot i18n={i18n} cookies={tuiCookies} themes={myThemes}>
-              <MyAppProvider>
-                <MyApp />
-                <Modal />
-              </MyAppProvider>
+              <TuiAppDrawerProvider>
+                <AppAccessibilityProvider preferences={myAccessibility.preferences} features={myAccessibility.features}>
+                  <AppSwitcherProvider>
+                    <MyAppProvider>
+                      <MyApp />
+                      <Modal />
+                    </MyAppProvider>
+                  </AppSwitcherProvider>
+                </AppAccessibilityProvider>
+              </TuiAppDrawerProvider>
             </AppRoot>
           </AppBarProvider>
         </PluginProvider>
