@@ -8,7 +8,7 @@ export type menuPathNode = {
   children?: menuPathNode[];
 };
 
-type dossierPivot = {
+export type dossierPivot = {
   pivot: Pivot;
   dossier: Dossier;
 };

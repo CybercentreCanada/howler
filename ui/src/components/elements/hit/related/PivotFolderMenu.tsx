@@ -16,11 +16,24 @@ import ResolvePivotUrl from 'components/elements/hit/ResolvePivotUrl';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { FC, MouseEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { menuPathNode } from 'utils/pivotForest';
+import type { dossierPivot, menuPathNode } from 'utils/pivotForest';
 
-type DossierPivot = NonNullable<menuPathNode['pivots']>[number];
-
+// close delay in MS
 const CLOSE_DELAY = 200;
+
+interface PivotSharedProps {
+  hit?: Hit;
+  onNavigate?: () => void;
+}
+
+interface PivotSubMenuItemProps extends PivotSharedProps {
+  node: menuPathNode;
+}
+
+interface PivotFlyoutContentProps extends PivotSharedProps {
+  pivots: dossierPivot[];
+  groups: menuPathNode[];
+}
 
 // Popper (no modal/backdrop/focus-trap) is used instead of Menu so nested flyouts never fight each other for focus
 const useHoverMenu = () => {
@@ -51,15 +64,8 @@ const useHoverMenu = () => {
   return { isOpen, openMenu, cancelClose, scheduleClose, closeMenu };
 };
 
-// Anchors a flyout to its own row/button rather than to the small chevron, and keeps it strictly to the right,
-// so nested submenus cascade one after another instead of drifting or flipping above their trigger
-const FLYOUT_MODIFIERS = [
-  { name: 'flip', enabled: false },
-  { name: 'offset', options: { offset: [0, 0] } }
-];
-
 // The first pivot (already alphabetically sorted) represents the whole tree; only the root button hoists it out
-const splitMainPivot = (node: menuPathNode): { main?: DossierPivot; rest: DossierPivot[] } => {
+const splitMainPivot = (node: menuPathNode): { main?: dossierPivot; rest: dossierPivot[] } => {
   const [main, ...rest] = node.pivots ?? [];
   return { main, rest };
 };
@@ -70,7 +76,7 @@ const countPivots = (node: menuPathNode): number =>
   (node.pivots?.length ?? 0) + (node.children ?? []).reduce((sum, child) => sum + countPivots(child), 0);
 
 // only call once countPivots(node) === 1 has confirmed exactly one pivot exists somewhere in this subtree
-const findOnlyPivot = (node: menuPathNode): DossierPivot | undefined => {
+const findOnlyPivot = (node: menuPathNode): dossierPivot | undefined => {
   if (node.pivots?.length) {
     return node.pivots[0];
   }
@@ -85,23 +91,18 @@ const findOnlyPivot = (node: menuPathNode): DossierPivot | undefined => {
   return undefined;
 };
 
-const resolvePivotUrl = (item: DossierPivot, hit?: Hit) => {
-  const pivotUrl = item.pivot.format === 'link' ? ResolvePivotUrl(item.pivot, hit) : undefined;
-  return pivotUrl || `/dossier/${item.dossier.dossier_id}`;
+const resolvePivotUrl = (item: dossierPivot, hit?: Hit) => {
+  return (
+    (item.pivot.format === 'link' ? ResolvePivotUrl(item.pivot, hit) : undefined) ||
+    `/dossier/${item.dossier.dossier_id}`
+  );
 };
-
-interface PivotFlyoutContentProps {
-  pivots: DossierPivot[];
-  groups: menuPathNode[];
-  hit?: Hit;
-  onNavigate: () => void;
-}
 
 // Renders a group's own pivots as rows, followed by every sub-group as its own expandable submenu row
 const PivotFlyoutContent: FC<PivotFlyoutContentProps> = ({ pivots, groups, hit, onNavigate }) => (
   <>
     {pivots.map(({ pivot, dossier }) => (
-      <MenuItem key={`${dossier.dossier_id}-${pivot.value}`} onClick={onNavigate} sx={{ p: 0 }}>
+      <MenuItem key={`${dossier.dossier_id}-${pivot.value}`} onClick={() => onNavigate?.()} sx={{ p: 0 }}>
         <PivotLink
           pivot={pivot}
           hit={hit}
@@ -116,12 +117,6 @@ const PivotFlyoutContent: FC<PivotFlyoutContentProps> = ({ pivots, groups, hit, 
     ))}
   </>
 );
-
-interface PivotSubMenuItemProps {
-  node: menuPathNode;
-  hit?: Hit;
-  onNavigate: () => void;
-}
 
 // A group row inside an open menu; the chevron always opens the flyout for its own pivots and further sub-groups
 const PivotSubMenuItem: FC<PivotSubMenuItemProps> = ({ node, hit, onNavigate }) => {
@@ -140,7 +135,10 @@ const PivotSubMenuItem: FC<PivotSubMenuItemProps> = ({ node, hit, onNavigate }) 
         open={isOpen}
         anchorEl={rowRef.current}
         placement="right-start"
-        modifiers={FLYOUT_MODIFIERS}
+        modifiers={[
+          { name: 'flip', enabled: false },
+          { name: 'offset', options: { offset: [0, 0] } }
+        ]}
         sx={{ zIndex: theme => theme.zIndex.modal + 1 }}
       >
         <ClickAwayListener onClickAway={closeMenu}>
@@ -160,14 +158,9 @@ const PivotSubMenuItem: FC<PivotSubMenuItemProps> = ({ node, hit, onNavigate }) 
   );
 };
 
-interface PivotFolderTriggerProps {
-  node: menuPathNode;
-  hit?: Hit;
-}
-
 // The always-visible entry point for a top-level group; a tree with a single pivot collapses straight to it,
 // otherwise it's a pivot like any other and the chevron opens the rest
-const PivotFolderTrigger: FC<PivotFolderTriggerProps> = ({ node, hit }) => {
+const PivotFolderTrigger: FC<PivotSubMenuItemProps> = ({ node, hit }) => {
   const { isOpen, openMenu, cancelClose, scheduleClose, closeMenu } = useHoverMenu();
   const rowRef = useRef<HTMLDivElement>(null);
 
