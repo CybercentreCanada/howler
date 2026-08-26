@@ -2,12 +2,28 @@ import { sortBy } from 'lodash-es';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Pivot } from 'models/entities/generated/Pivot';
 
+/**
+ * Builds a menu-oriented forest from dossier pivots.
+ *
+ * The flow is:
+ * 1) Group pivots by their slash-delimited `pivot.group` path.
+ * 2) Store pivots at each path node under the reserved `pivot` key.
+ * 3) Convert the grouped object into `menuPathNode[]` for UI rendering.
+ * 4) Squash non-branching path chains that contain no local pivots so
+ *    navigation menus avoid unnecessary empty intermediate levels.
+ *
+ * The resulting structure is consumed by Hit links/folder components to
+ * render root pivots and nested submenu folders consistently.
+ */
+
 export type menuPathNode = {
   path: string;
   pivots?: dossierPivot[];
   children?: menuPathNode[];
 };
 
+// use here and in PivotFolderMenu to relate the pivot with its dossier at rendering since we do not consider
+// dossier in the grouping. But we need to be able to find where it came from to allow the "open dossier" button to work
 export type dossierPivot = {
   pivot: Pivot;
   dossier: Dossier;
@@ -19,31 +35,23 @@ type PivotTree = {
 };
 
 /**
+ * Builds an intermediate tree keyed by each pivot group segment.
  *
- * This helper is use to organize pivot into a forest. A chain of path segments that has no branching and no
- * pivots of its own (e.g. "network/ip/v4" with nothing else under "ip" or "v4") is squashed into a single node
- * labeled with the full chain, so the menu doesn't force a hover through several empty, single-choice folders.
- * This is use to group them in HitLinks.tsx
- *@param dossiers array of dossier we want to organize the pivots of
+ * Each slash-delimited segment in `pivot.group` creates or reuses a nested
+ * node, and pivots at that location are stored in the reserved `pivot` array.
+ * This raw tree is later converted into `menuPathNode[]` for menu rendering.
  *
- * @returns {
- *   "root"{
- *     "other parent" {
- *     "other parent"{...}
- *       "pivot":[]
- *     },
- *     "pivot":[]
- *   }
- * }
- *
- *
+ * @param dossiers Dossiers whose pivots should be grouped.
+ * @returns A nested grouping tree where branch keys are path segments and
+ *          each node may contain a reserved `pivot` array.
  */
 const getGroupPivot = (dossiers: Dossier[]) => {
-  const groupPivot: PivotTree = {};
+  // no prototype: group segments are user-defined words (e.g. "constructor", "toString") and must not resolve to inherited Object.prototype keys
+  const groupPivot: PivotTree = Object.create(null);
 
   for (const dossier of dossiers) {
     if (!dossier.pivots) {
-      continue; // fall safe
+      continue;
     }
 
     for (const pivot of dossier.pivots) {
@@ -54,7 +62,7 @@ const getGroupPivot = (dossiers: Dossier[]) => {
         const group = pivot.group.split('/');
         for (let i = 0; i < group.length; i++) {
           if (!(group[i] in current)) {
-            current[group[i]] = {};
+            current[group[i]] = Object.create(null);
           }
           current = current[group[i]] as PivotTree;
         }
@@ -72,6 +80,16 @@ const getGroupPivot = (dossiers: Dossier[]) => {
   return groupPivot;
 };
 
+/**
+ * Converts the intermediate grouping tree into UI menu nodes.
+ *
+ * While traversing, non-branching chains with no local pivots are squashed
+ * into a single `path` label to avoid empty submenu levels in the UI.
+ *
+ * @param tree Intermediate tree from `getGroupPivot`.
+ * @param language Language used to sort pivot labels.
+ * @returns A menu node list ready for nested folder rendering.
+ */
 const buildPathMap = (tree: PivotTree, language = 'en'): menuPathNode[] => {
   const nodes: menuPathNode[] = [];
   for (const key in tree) {
@@ -84,7 +102,7 @@ const buildPathMap = (tree: PivotTree, language = 'en'): menuPathNode[] => {
     // squash a chain as long as it neither branches nor carries pivots of its own; that's a pure "pass-through"
     // segment, so its name is folded into the path instead of forcing its own empty menu level
     while (Object.keys(current).length === 1 && !('pivot' in current)) {
-      const newKey: string = Object.keys(current)[0];
+      const newKey = Object.keys(current)[0];
       path = path + `/${newKey}`;
       current = current[newKey] as PivotTree;
     }
@@ -99,6 +117,16 @@ const buildPathMap = (tree: PivotTree, language = 'en'): menuPathNode[] => {
   return nodes;
 };
 
+/**
+ * Produces the final forest consumed by grouped pivot menus.
+ *
+ * Root-level pivots (no group path) are emitted as a node with an empty path,
+ * then grouped branches are appended from `buildPathMap`.
+ *
+ * @param dossiers Dossiers to convert into grouped pivot menu nodes.
+ * @param language Language used to sort labels inside each node.
+ * @returns Forest of menu nodes for hit-related pivot navigation.
+ */
 const pivotForest = (dossiers: Dossier[], language = 'en'): menuPathNode[] => {
   const group = getGroupPivot(dossiers);
   const nodes: menuPathNode[] = [];
