@@ -193,6 +193,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setSearchParams, tab]);
 
+  // Validate the pivot's folder/group path to provide inline feedback before the dossier is saved.
   const groupError = useMemo(() => {
     return DossierGroupValidation(pivot?.group ?? '');
   }, [pivot?.group]);
@@ -260,7 +261,6 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
             <Add />
           </Button>
         </Stack>
-        {/* TODO : AG :  Add a dropdown to select from existing groups, and allow creating new groups. For now, just a text field to enter a group name. */}
         <Typography
           sx={theme => ({
             color: theme.palette.text.secondary,
