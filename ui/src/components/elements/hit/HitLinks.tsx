@@ -1,4 +1,3 @@
-import { Grid, gridClasses } from '@mui/material';
 import { sortBy, uniqBy } from 'lodash-es';
 import type { FC } from 'react';
 import { useMemo } from 'react';
@@ -9,11 +8,7 @@ import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Hit } from 'models/entities/generated/Hit';
 
 import { useAppPivotGroup } from 'commons/components/app/hooks';
-import HitNotebooks from 'components/elements/hit/HitNotebooks';
 import ResolvePivotUrl from 'components/elements/hit/ResolvePivotUrl';
-import PivotFolderTrigger from 'components/elements/hit/related/PivotFolderMenu';
-import PivotLink from 'components/elements/hit/related/PivotLink';
-import RelatedLink from 'components/elements/hit/related/RelatedLink';
 import pivotForest from 'utils/pivotForest';
 
 interface HitLinksProps {
@@ -25,8 +20,6 @@ interface HitLinksProps {
 const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
   const { i18n } = useTranslation();
   const pivotGroup = useAppPivotGroup();
-
-  const displayLinks = useMemo(() => uniqBy(hit?.howler?.links ?? [], 'href').slice(0, 3), [hit?.howler?.links]);
 
   // grouped: organize pivots into a forest of groups, each with a single root button
   const forest = useMemo(
@@ -43,74 +36,28 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
       return [];
     }
 
-    const flattened = dossiers.flatMap(dossier =>
-      (dossier.pivots ?? []).map(pivot => {
-        const pivotUrl = pivot.format === 'link' ? ResolvePivotUrl(pivot, hit) : undefined;
-        return {
-          pivot,
-          dossier,
-          resolvedUrl: pivotUrl || `/dossier/${dossier.dossier_id}`
-        };
-      })
+    return sortBy(
+      dossiers.flatMap(dossier =>
+        (dossier.pivots ?? []).map(pivot => {
+          const pivotUrl = pivot.format === 'link' ? ResolvePivotUrl(pivot, hit) : undefined;
+          return {
+            pivot,
+            dossier,
+            resolvedUrl: pivotUrl || `/dossier/${dossier.dossier_id}`
+          };
+        })
+      ),
+      item => item.pivot.label?.[i18n.language]
     );
-    return sortBy(flattened, item => item.pivot.label?.[i18n.language]);
   }, [pivotGroup.enabled, dossiers, i18n.language, hit]);
 
-  const hasNotebooks = (analytic?.notebooks?.length ?? 0) > 0;
-
-  const hasPivots = pivotGroup.enabled ? rootPivots.length > 0 || groups.length > 0 : flatPivots.length > 0;
-
-  if (displayLinks.length === 0 && !hasPivots && !hasNotebooks) {
+  if (
+    useMemo(() => uniqBy(hit?.howler?.links ?? [], 'href').slice(0, 3), [hit?.howler?.links]).length === 0 &&
+    !(pivotGroup.enabled ? rootPivots.length > 0 || groups.length > 0 : flatPivots.length > 0) &&
+    !((analytic?.notebooks?.length ?? 0) > 0)
+  ) {
     return null;
   }
-
-  return (
-    <Grid container spacing={1} pr={2} sx={{ [`& .${gridClasses.item}`]: { display: 'flex' } }}>
-      {displayLinks
-        .filter(link => !!link.href)
-        .map(link => {
-          const safeTitle = link.title ?? link.href;
-
-          return (
-            <Grid item key={link.href}>
-              <RelatedLink compact title={safeTitle} href={link.href} target="_blank" rel="noopener noreferrer" />
-            </Grid>
-          );
-        })}
-
-      {!pivotGroup.enabled &&
-        flatPivots.map(({ pivot, dossier, resolvedUrl }) => (
-          <Grid item key={`${dossier.dossier_id}-${pivot.value}`}>
-            <PivotLink pivot={pivot} hit={hit} dossier={dossier} resolvedUrl={resolvedUrl} compact />
-          </Grid>
-        ))}
-
-      {pivotGroup.enabled &&
-        rootPivots.map(({ pivot, dossier }) => {
-          const pivotUrl = pivot.format === 'link' ? ResolvePivotUrl(pivot, hit) : undefined;
-          const resolvedUrl = pivotUrl || `/dossier/${dossier.dossier_id}`;
-
-          return (
-            <Grid item key={`${dossier.dossier_id}-${pivot.value}`}>
-              <PivotLink pivot={pivot} hit={hit} dossier={dossier} resolvedUrl={resolvedUrl} compact />
-            </Grid>
-          );
-        })}
-
-      {pivotGroup.enabled &&
-        groups.map(node => (
-          <Grid item key={node.path}>
-            <PivotFolderTrigger node={node} hit={hit} />
-          </Grid>
-        ))}
-
-      {hasNotebooks && (
-        <Grid item>
-          <HitNotebooks analytic={analytic} hit={hit} compact />
-        </Grid>
-      )}
-    </Grid>
-  );
 };
 
 export default HitLinks;
