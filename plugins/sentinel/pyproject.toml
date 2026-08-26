@@ -131,7 +131,7 @@ packages = [{ include = "sentinel" }]
 
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.16.3"
+ruff = "^0.16.4"
 mypy = "^1.20.2"
 pre-commit = "^4.6.2"
 howler-api = { path = "../../api" }
@@ -139,8 +139,8 @@ pytest = "^9.1.1"
 mock = "^5.2.0"
 pytest-cov = "^6.3.0"
 coverage = { extras = ["toml"], version = "^7.15.4" }
-diff-cover = "^10.5.0"
-python-dotenv = "^1.2.2"
+diff-cover = "^10.5.1"
+python-dotenv = "^1.2.3"
 
 
 [tool.poetry.group.types.dependencies]
