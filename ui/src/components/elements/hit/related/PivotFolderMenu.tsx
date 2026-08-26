@@ -18,6 +18,15 @@ import type { FC, MouseEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { dossierPivot, menuPathNode } from 'utils/pivotForest';
 
+/**
+ * Renders grouped pivot navigation with nested hover flyouts.
+ *
+ * This file provides:
+ * - a top-level folder trigger for each pivot group,
+ * - recursive submenu rows for child groups,
+ * - delayed hover open/close behavior to keep nested menus usable,
+ * - and pivot-row rendering that collapses single-item trees to one direct link.
+ */
 // close delay in MS
 const CLOSE_DELAY = 200;
 
