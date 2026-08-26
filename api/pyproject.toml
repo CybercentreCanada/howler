@@ -60,7 +60,7 @@ module = ["howler.odm.base", "test", "test.*"]
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "howler.security"
+module = "howler.security.login"
 disable_error_code = "attr-defined"
 
 [[tool.mypy.overrides]]
