@@ -1,7 +1,7 @@
 import base64
 import os
 import re
-from typing import TYPE_CHECKING, Any, List, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Union
 from urllib.parse import urlparse
 
 from opentelemetry import trace
@@ -51,9 +51,46 @@ def is_classification_accessible(
         return True
 
     return CLASSIFICATION.is_accessible(
-        cast(str, user_classification) if user_classification is not None else CLASSIFICATION.UNRESTRICTED,
+        user_classification if user_classification is not None else CLASSIFICATION.UNRESTRICTED,
         classification,
     )
+
+
+# Fields that must never be modified through bulk/script-based update endpoints.
+# ``classification`` is protected because script updates bypass ODM serialization,
+# so the derived access-control bookkeeping fields (``__access_lvl__``, etc.) would
+# silently diverge from the new classification string. The bookkeeping fields
+# themselves are protected because the search-time access filter is built directly
+# on them (``__access_lvl__:[0 TO <user_lvl>]``); rewriting them rewrites who can
+# see a document.
+PROTECTED_UPDATE_FIELDS = frozenset(
+    {
+        "classification",
+        "__access_lvl__",
+        "__access_req__",
+        "__access_grp1__",
+        "__access_grp2__",
+    }
+)
+
+
+def validate_bulk_operation_targets(operations: Iterable[tuple[str, str, Any]]) -> None:
+    """Reject bulk update operations that target protected fields.
+
+    Bulk update endpoints execute operations as datastore scripts, which bypass
+    ODM serialization. Operations on ``classification`` or its derived
+    ``__access_*`` bookkeeping fields cannot be applied safely through this path
+    and would allow users to alter document visibility (their own or others').
+
+    Args:
+        operations: List of ``(operation, key, value)`` tuples from the request.
+
+    Raises:
+        HowlerValueError: If any operation targets a protected field.
+    """
+    for _, key, _ in operations:
+        if key in PROTECTED_UPDATE_FIELDS:
+            raise HowlerValueError(f"Cannot modify protected field {key} through bulk updates")
 
 
 UPPERCASE = r"[A-Z]"

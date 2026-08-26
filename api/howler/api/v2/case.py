@@ -131,12 +131,9 @@ def get_case(id: str, user: User, **kwargs):
     """
     case = datastore().case.get(id, as_obj=False)
 
-    if not case:
-        return not_found(err="Case %s does not exist" % id)
-
-    if not is_classification_accessible(user, case.get("classification")):
+    if not case or not is_classification_accessible(user, case.get("classification")):
         # Generic 404 so classified cases are indistinguishable from nonexistent ones
-        return not_found(err="Case %s does not exist" % id)
+        return not_found(err=f"Case {id} does not exist")
 
     case_service.filter_case_items_by_classification(case, user.classification)
 
@@ -538,10 +535,10 @@ def delete_rule(
         ...case     # The updated case data
     }
     """
-    try:
-        if err := check_case_access(id, user):
-            return err
+    if err := check_case_access(id, user):
+        return err
 
+    try:
         updated_case = case_service.remove_case_rule(id, rule_id, user, refresh=refresh)
 
         case_service.filter_case_items_by_classification(updated_case, user.classification)

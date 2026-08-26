@@ -171,6 +171,10 @@ def filter_case_items_by_classification(case_data: dict | Case, user_classificat
     classification are only included when ``CLASSIFICATION.is_accessible``
     confirms the requesting user can see them.
 
+    Note: unlike ``is_classification_accessible``, this filter does not bypass
+    for admin-type users — it operates on the user's clearance string alone, so
+    admins also have over-classified case items filtered from responses.
+
     Args:
         case_data: Raw case data (as returned by ``as_obj=False`` datastore calls).
         user_classification: The requesting user's maximum classification string.

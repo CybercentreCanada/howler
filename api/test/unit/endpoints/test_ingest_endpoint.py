@@ -739,6 +739,31 @@ class TestUpdateByQuery:
 
     @patch("howler.api.v2.ingest.datastore")
     @patch("howler.security.login.auth_service")
+    def test_update_by_query_rejects_protected_field(self, mock_auth_service, mock_ds, request_context: Flask):
+        """Returns 400 when an operation targets classification or its derived
+        access-control fields — script updates bypass ODM serialization and
+        would corrupt classification enforcement."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        for field in ("classification", "__access_lvl__", "__access_grp1__"):
+            with request_context.test_request_context(
+                method="PUT",
+                json={
+                    "query": "howler.id:*",
+                    "operations": [["SET", field, "anything"]],
+                },
+                headers={"Authorization": "Bearer ."},
+            ):
+                from howler.api.v2.ingest import update_by_query
+
+                result: Response = update_by_query(indexes="hit", user=user)
+
+                assert result.status_code == 400, field
+                assert f"protected field {field}" in result.get_json()["api_error_message"]
+
+    @patch("howler.api.v2.ingest.datastore")
+    @patch("howler.security.login.auth_service")
     def test_update_by_query_bad_operation_returns_400(self, mock_auth_service, mock_ds, request_context: Flask):
         """Returns 400 when an operation fails validation."""
 

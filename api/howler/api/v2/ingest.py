@@ -20,7 +20,7 @@ from howler.odm.models.event import Event
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
 from howler.security.login import api_login
-from howler.security.utils import is_classification_accessible
+from howler.security.utils import is_classification_accessible, validate_bulk_operation_targets
 from howler.services import correlation_service, event_service, hit_service
 from howler.utils.dict_utils import flatten
 
@@ -343,6 +343,10 @@ def update_by_query(indexes: str, **kwargs):
         ]
     }
 
+    Operations targeting ``classification`` or its derived ``__access_*``
+    fields are rejected: bulk updates run as datastore scripts and cannot keep
+    the access-control bookkeeping fields consistent.
+
     Result Example:
     {
         "success": True
@@ -361,6 +365,10 @@ def update_by_query(indexes: str, **kwargs):
             OdmUpdateOperation(operation, key, value)
             explanation.append(f"- `{operation}` - `{key}` - `{json.dumps(value)}`")
 
+        # Bulk updates run as datastore scripts and bypass ODM serialization, so
+        # operations on classification/access-control fields cannot be applied safely.
+        validate_bulk_operation_targets(operations)
+
         operations.append(
             (
                 ESCollection.UPDATE_APPEND,
@@ -378,12 +386,11 @@ def update_by_query(indexes: str, **kwargs):
 
         results = []
         for index in indexes.split(","):
-            access_control = user["access_control"] if has_access_control(index) else None
             results.append(
                 ds[index].update_by_query(
                     query,
                     operations,
-                    filters=[access_control] if access_control else None,
+                    access_control=user["access_control"] if has_access_control(index) else None,
                     refresh=refresh,
                 )
             )

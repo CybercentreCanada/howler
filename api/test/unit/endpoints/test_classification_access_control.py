@@ -145,6 +145,25 @@ def request_context():
 # ---------------------------------------------------------------------------
 
 
+class TestValidateBulkOperationTargets:
+    """Tests for the shared bulk-update field validator."""
+
+    def test_allows_regular_fields(self):
+        from howler.security.utils import validate_bulk_operation_targets
+
+        validate_bulk_operation_targets([("SET", "howler.status", "open"), ("APPEND", "howler.labels.x", "y")])
+
+    def test_rejects_protected_fields(self):
+        import pytest
+
+        from howler.common.exceptions import HowlerValueError
+        from howler.security.utils import PROTECTED_UPDATE_FIELDS, validate_bulk_operation_targets
+
+        for field in PROTECTED_UPDATE_FIELDS:
+            with pytest.raises(HowlerValueError, match=f"protected field {field}"):
+                validate_bulk_operation_targets([("SET", "howler.status", "open"), ("SET", field, 1)])
+
+
 class TestIsClassificationAccessible:
     """Tests for the shared per-document classification check."""
 
@@ -562,7 +581,7 @@ class TestUpdateByQueryAccessControl:
         assert result.status_code == 200
         assert result.get_json()["api_response"]["success"] is True
         _, kwargs = mock_datastore.return_value.hit.update_by_query.call_args
-        assert kwargs["filters"] == ["(__access_lvl__:[0 TO 100])"]
+        assert kwargs["access_control"] == "(__access_lvl__:[0 TO 100])"
 
     @patch("howler.api.v1.hit.datastore")
     @patch("howler.security.login.auth_service")
@@ -583,7 +602,49 @@ class TestUpdateByQueryAccessControl:
 
         assert result.status_code == 200
         _, kwargs = mock_datastore.return_value.hit.update_by_query.call_args
-        assert kwargs["filters"] is None
+        assert kwargs["access_control"] is None
+
+    @patch("howler.api.v1.hit.datastore")
+    @patch("howler.security.login.auth_service")
+    def test_bulk_update_rejects_classification_operation(
+        self, mock_auth_service, mock_datastore, stub_classification, request_context: Flask
+    ):
+        """Bulk updates cannot change classification: script updates bypass ODM
+        serialization and would leave the __access_* bookkeeping fields stale."""
+        user = _build_user(classification="RESTRICTED")
+        _mock_auth(mock_auth_service, user)
+
+        result = self._run(
+            request_context,
+            user,
+            {"query": "howler.id:*", "operations": [["SET", "classification", "UNRESTRICTED"]]},
+        )
+
+        assert result.status_code == 400
+        assert "protected field classification" in result.get_json()["api_error_message"]
+        mock_datastore.return_value.hit.update_by_query.assert_not_called()
+
+    @patch("howler.api.v1.hit.datastore")
+    @patch("howler.security.login.auth_service")
+    def test_bulk_update_rejects_access_bookkeeping_operations(
+        self, mock_auth_service, mock_datastore, stub_classification, request_context: Flask
+    ):
+        """Rewriting __access_lvl__ directly would make documents visible to
+        lower-clearance users in search results."""
+        user = _build_user(classification="RESTRICTED")
+        _mock_auth(mock_auth_service, user)
+
+        for field in ("__access_lvl__", "__access_req__", "__access_grp1__", "__access_grp2__"):
+            result = self._run(
+                request_context,
+                user,
+                {"query": "howler.id:*", "operations": [["SET", field, 0]]},
+            )
+
+            assert result.status_code == 400, field
+            assert f"protected field {field}" in result.get_json()["api_error_message"]
+
+        mock_datastore.return_value.hit.update_by_query.assert_not_called()
 
 
 class TestBundleEndpointClassification:
