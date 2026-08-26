@@ -34,7 +34,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { useSearchParams } from 'react-router-dom';
-import DossierGroupValidation from '../../../utils/DossierGroupValidation';
+import pivotGroupValidation from '../../../utils/pivotGroupValidation';
 
 export interface PivotFormProps {
   pivot: Pivot;
@@ -195,7 +195,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
 
   // Validate the pivot's folder/group path to provide inline feedback before the dossier is saved.
   const groupError = useMemo(() => {
-    return DossierGroupValidation(pivot?.group ?? '');
+    return pivotGroupValidation(pivot?.group ?? '');
   }, [pivot?.group]);
 
   return (

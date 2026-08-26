@@ -1,61 +1,61 @@
 import { describe, expect, it } from 'vitest';
-import DossierGroupValidation from '../utils/DossierGroupValidation';
+import pivotGroupValidation from '../utils/pivotGroupValidation';
 
-describe('DossierGroupValidation', () => {
+describe('pivotGroupValidation', () => {
   it('returns null for an empty string', () => {
-    expect(DossierGroupValidation('')).toBeNull();
+    expect(pivotGroupValidation('')).toBeNull();
   });
 
   it('returns null for undefined/null-like input', () => {
-    expect(DossierGroupValidation(undefined as unknown as string)).toBeNull();
-    expect(DossierGroupValidation(null as unknown as string)).toBeNull();
+    expect(pivotGroupValidation(undefined as unknown as string)).toBeNull();
+    expect(pivotGroupValidation(null as unknown as string)).toBeNull();
   });
 
   it('returns null for a valid single-level group', () => {
-    expect(DossierGroupValidation('network')).toBeNull();
+    expect(pivotGroupValidation('network')).toBeNull();
   });
 
   it('returns null for a valid multi-level group', () => {
-    expect(DossierGroupValidation('network/dns/query')).toBeNull();
+    expect(pivotGroupValidation('network/dns/query')).toBeNull();
   });
 
   it('accepts accented characters', () => {
-    expect(DossierGroupValidation('réseauÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ')).toBeNull();
+    expect(pivotGroupValidation('réseauÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ')).toBeNull();
   });
 
   it('accepts digits but still rejects other disallowed characters', () => {
-    expect(DossierGroupValidation('network1')).toBeNull();
-    expect(DossierGroupValidation('net2work')).toBeNull();
-    expect(DossierGroupValidation('network/zone2')).toBeNull();
-    expect(DossierGroupValidation('network-dns')).toBe('route.dossiers.pivots.invalid.character');
-    expect(DossierGroupValidation('network_dns')).toBe('route.dossiers.pivots.invalid.character');
+    expect(pivotGroupValidation('network1')).toBeNull();
+    expect(pivotGroupValidation('net2work')).toBeNull();
+    expect(pivotGroupValidation('network/zone2')).toBeNull();
+    expect(pivotGroupValidation('network-dns')).toBe('route.dossiers.pivots.invalid.character');
+    expect(pivotGroupValidation('network_dns')).toBe('route.dossiers.pivots.invalid.character');
   });
 
   it('rejects "pivot" as a whole path segment', () => {
-    expect(DossierGroupValidation('pivot')).toBe('route.pivots.groups.invalid.word');
-    expect(DossierGroupValidation('pivot/network')).toBe('route.pivots.groups.invalid.word');
-    expect(DossierGroupValidation('network/pivot')).toBe('route.pivots.groups.invalid.word');
-    expect(DossierGroupValidation('network/pivot/dns')).toBe('route.pivots.groups.invalid.word');
+    expect(pivotGroupValidation('pivot')).toBe('route.pivots.groups.invalid.word');
+    expect(pivotGroupValidation('pivot/network')).toBe('route.pivots.groups.invalid.word');
+    expect(pivotGroupValidation('network/pivot')).toBe('route.pivots.groups.invalid.word');
+    expect(pivotGroupValidation('network/pivot/dns')).toBe('route.pivots.groups.invalid.word');
   });
 
   it('allows "pivot" as part of a longer segment', () => {
-    expect(DossierGroupValidation('pivots')).toBeNull();
-    expect(DossierGroupValidation('network/pivots')).toBeNull();
+    expect(pivotGroupValidation('pivots')).toBeNull();
+    expect(pivotGroupValidation('network/pivots')).toBeNull();
   });
 
   it('rejects consecutive slashes', () => {
-    expect(DossierGroupValidation('network//dns')).toBe('route.pivots.groups.invalid.format');
+    expect(pivotGroupValidation('network//dns')).toBe('route.pivots.groups.invalid.format');
   });
 
   it('rejects a leading slash', () => {
-    expect(DossierGroupValidation('/network')).toBe('route.pivots.groups.invalid.format');
+    expect(pivotGroupValidation('/network')).toBe('route.pivots.groups.invalid.format');
   });
 
   it('rejects a trailing slash', () => {
-    expect(DossierGroupValidation('network/')).toBe('route.pivots.groups.invalid.format');
+    expect(pivotGroupValidation('network/')).toBe('route.pivots.groups.invalid.format');
   });
 
   it('allows reserved word variants that are not exact segment matches', () => {
-    expect(DossierGroupValidation('pivot1')).toBeNull();
+    expect(pivotGroupValidation('pivot1')).toBeNull();
   });
 });

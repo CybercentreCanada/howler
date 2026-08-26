@@ -60,7 +60,7 @@ const getGroupPivot = (dossiers: Dossier[]) => {
         }
       }
 
-      // Add the pivot section, this(pivot) is reserved inside of the DossierGroupValidation check and the back end.
+      // Add the pivot section, this(pivot) is reserved inside of the PivotGroupValidation check and the back end.
       if (!('pivot' in current)) {
         current['pivot'] = [];
       }
