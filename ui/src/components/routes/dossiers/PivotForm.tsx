@@ -270,7 +270,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
           })}
           variant="body2"
         >
-          {t('route.dossiers.groups.explanation')}
+          {t('route.dossiers.pivot.explanation')}
         </Typography>
         <TextField
           id="dossier-group"

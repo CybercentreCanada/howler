@@ -13,7 +13,7 @@ const DossierGroupValidation = (group: string): string | null => {
   const not_allowed_word = /(^|\/)pivot(\/|$)/;
 
   if (!validationRegex.test(group)) {
-    return 'route.pivots.groups.invalid.character';
+    return 'route.dossiers.pivots.invalid.character';
   }
   if (not_allowed_word.test(group)) {
     return 'route.pivots.groups.invalid.word';

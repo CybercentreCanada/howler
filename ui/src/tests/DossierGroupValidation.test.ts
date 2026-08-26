@@ -23,10 +23,12 @@ describe('DossierGroupValidation', () => {
     expect(DossierGroupValidation('réseauÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ')).toBeNull();
   });
 
-  it('rejects digits and other disallowed characters', () => {
-    expect(DossierGroupValidation('network1')).toBe('route.pivots.groups.invalid.character');
-    expect(DossierGroupValidation('network-dns')).toBe('route.pivots.groups.invalid.character');
-    expect(DossierGroupValidation('network_dns')).toBe('route.pivots.groups.invalid.character');
+  it('accepts digits but still rejects other disallowed characters', () => {
+    expect(DossierGroupValidation('network1')).toBeNull();
+    expect(DossierGroupValidation('net2work')).toBeNull();
+    expect(DossierGroupValidation('network/zone2')).toBeNull();
+    expect(DossierGroupValidation('network-dns')).toBe('route.dossiers.pivots.invalid.character');
+    expect(DossierGroupValidation('network_dns')).toBe('route.dossiers.pivots.invalid.character');
   });
 
   it('rejects "pivot" as a whole path segment', () => {
@@ -53,7 +55,7 @@ describe('DossierGroupValidation', () => {
     expect(DossierGroupValidation('network/')).toBe('route.pivots.groups.invalid.format');
   });
 
-  it('prioritizes the character check over the reserved word check', () => {
-    expect(DossierGroupValidation('pivot1')).toBe('route.pivots.groups.invalid.character');
+  it('allows reserved word variants that are not exact segment matches', () => {
+    expect(DossierGroupValidation('pivot1')).toBeNull();
   });
 });
