@@ -51,6 +51,8 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
     );
   }, [pivotGroup.enabled, dossiers, i18n.language, hit]);
 
+  // Hide the section when the hit has no direct links, no pivot entries in either the grouped or legacy view,
+  // and no attached notebooks. This prevents empty link panels from rendering in the hit details UI.
   if (
     useMemo(() => uniqBy(hit?.howler?.links ?? [], 'href').slice(0, 3), [hit?.howler?.links]).length === 0 &&
     !(pivotGroup.enabled ? rootPivots.length > 0 || groups.length > 0 : flatPivots.length > 0) &&
