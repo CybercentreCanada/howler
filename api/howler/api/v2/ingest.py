@@ -15,10 +15,12 @@ from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import DataStoreException
 from howler.datastore.howler_store import INDEXES
 from howler.datastore.operations import OdmHelper, OdmUpdateOperation
+from howler.helper.search import has_access_control
 from howler.odm.models.event import Event
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
 from howler.security.login import api_login
+from howler.security.utils import is_classification_accessible
 from howler.services import correlation_service, event_service, hit_service
 from howler.utils.dict_utils import flatten
 
@@ -33,6 +35,12 @@ FIELDS = Hit.flat_fields()
 logger = get_logger(__file__)
 
 hit_helper = OdmHelper(Hit)
+
+
+def _validate_classification(user: User, odm: Hit | Event):
+    """Ensure the user can create a record at the ODM's classification."""
+    if not is_classification_accessible(user, getattr(odm, "classification", None)):
+        raise HowlerException(f"User cannot create records at classification {getattr(odm, 'classification', None)}")
 
 
 @generate_swagger_docs()
@@ -87,6 +95,8 @@ def create(index: str, user: User, *, refresh: Literal["true", "false", "wait_fo
                 )
             else:
                 odm, _warnings = hit_service.convert_hit(record, unique=True, ignore_extra_values=ignore_extra_values)
+
+            _validate_classification(user, odm)
 
             odms.append(odm)
             warnings.extend(_warnings)
@@ -264,9 +274,14 @@ def overwrite(index: str, id: str, **kwargs):
         return bad_request(err="You cannot overwrite across multiple indexes.")
 
     ds = datastore()
+    user = kwargs["user"]
 
     record, server_version = ds[index].get(id, as_obj=False, version=True)
     if not record:
+        return not_found(err="Record %s does not exist" % id)
+
+    if has_access_control(index) and not is_classification_accessible(user, record.get("classification")):
+        # Generic 404 so classified records are indistinguishable from nonexistent ones
         return not_found(err="Record %s does not exist" % id)
 
     new_fields = request.json
@@ -288,6 +303,9 @@ def overwrite(index: str, id: str, **kwargs):
                 else Strategy.ADDITIVE,
             ),
         )
+
+        if has_access_control(index) and not is_classification_accessible(user, new_record.get("classification")):
+            return bad_request(err=f"Cannot set classification to {new_record.get('classification')}")
 
         ds[index].save(
             id,
@@ -356,10 +374,21 @@ def update_by_query(indexes: str, **kwargs):
         )
 
         ds = datastore()
+        user = kwargs["user"]
 
-        success = all(ds[index].update_by_query(query, operations, refresh=refresh) for index in indexes.split(","))
+        results = []
+        for index in indexes.split(","):
+            access_control = user["access_control"] if has_access_control(index) else None
+            results.append(
+                ds[index].update_by_query(
+                    query,
+                    operations,
+                    filters=[access_control] if access_control else None,
+                    refresh=refresh,
+                )
+            )
 
-        return ok({"success": success})
+        return ok({"success": all(results)})
     except (HowlerValueError, KeyError, DataStoreException) as e:
         return bad_request(err=str(e))
     except Exception as e:  # pragma: no cover

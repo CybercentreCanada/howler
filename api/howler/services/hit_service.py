@@ -781,6 +781,7 @@ def search(
     timeout: int | None = None,
     deep_paging_id: str | None = None,
     track_total_hits: bool = False,
+    filters: list[str] | None = None,
 ) -> SearchResult[Hit]: ...
 
 
@@ -795,6 +796,7 @@ def search(
     timeout: int | None = None,
     deep_paging_id: str | None = None,
     track_total_hits: bool = False,
+    filters: list[str] | None = None,
 ) -> SearchResult[dict[str, Any]]: ...
 
 
@@ -809,6 +811,7 @@ def search(
     timeout=None,
     deep_paging_id=None,
     track_total_hits=False,
+    filters=None,
 ):
     """Search for hits in the datastore using a query.
 
@@ -839,6 +842,7 @@ def search(
         timeout=timeout,
         deep_paging_id=deep_paging_id,
         track_total_hits=track_total_hits,
+        filters=filters,
         as_obj=as_obj,
     )
 

@@ -13,6 +13,7 @@ from howler.datastore.exceptions import DataStoreException
 from howler.odm.models.case import Case, CaseItem
 from howler.odm.models.user import User
 from howler.security.login import api_login
+from howler.security.utils import is_classification_accessible
 from howler.services import case_service
 
 SUB_API = "case"
@@ -20,6 +21,49 @@ case_api = make_subapi_blueprint(SUB_API, api_version=2)
 case_api._doc = "Manage the different cases created"  # type: ignore
 
 logger = get_logger(__file__)
+
+
+def check_case_access(case_id: str, user: User):
+    """Verify that a case exists and is accessible to the given user.
+
+    Args:
+        case_id: The id of the case being accessed.
+        user: The requesting user.
+
+    Returns:
+        An error response if the case doesn't exist or the user's classification
+        does not allow access to the case, None otherwise.
+    """
+    case = datastore().case.get(case_id, as_obj=False)
+    if not case:
+        return not_found(err=f"Case {case_id} does not exist")
+
+    if not is_classification_accessible(user, case.get("classification")):
+        # Generic 404 so classified cases are indistinguishable from nonexistent ones
+        return not_found(err=f"Case {case_id} does not exist")
+
+    return None
+
+
+def check_item_access(item_type: str | None, item_value: str | None, user: User):
+    """Verify that a backing object referenced by a case item is accessible to the user.
+
+    Prevents users from attaching hits/events/cases classified above their
+    clearance to a case, which would leak metadata computed from those objects
+    (targets, threats, indicators) into the case document.
+
+    Returns:
+        An error response if access is denied, None otherwise.
+    """
+    if item_type not in ("hit", "event", "case") or not item_value:
+        return None
+
+    obj = datastore()[item_type].get(item_value, as_obj=False)
+    if obj and not is_classification_accessible(user, obj.get("classification")):
+        # Generic 404 so classified objects are indistinguishable from nonexistent ones
+        return not_found(err=f"{item_type} {item_value} does not exist")
+
+    return None
 
 
 @generate_swagger_docs()
@@ -51,6 +95,13 @@ def create_case(user: User, **kwargs):
     if not case_data or not isinstance(case_data, dict):
         return bad_request(err="Request body must be a JSON object with case data.")
 
+    if not is_classification_accessible(user, case_data.get("classification")):
+        return bad_request(err=f"Invalid case classification {case_data.get('classification')}")
+
+    for item in case_data.get("items", []):
+        if isinstance(item, dict) and (err := check_item_access(item.get("type"), item.get("value"), user)):
+            return err
+
     try:
         return created(case_service.create_case(case_data, user))
     except InvalidDataException as e:
@@ -81,6 +132,10 @@ def get_case(id: str, user: User, **kwargs):
     case = datastore().case.get(id, as_obj=False)
 
     if not case:
+        return not_found(err="Case %s does not exist" % id)
+
+    if not is_classification_accessible(user, case.get("classification")):
+        # Generic 404 so classified cases are indistinguishable from nonexistent ones
         return not_found(err="Case %s does not exist" % id)
 
     case_service.filter_case_items_by_classification(case, user.classification)
@@ -158,7 +213,14 @@ def hide_cases(user: User, refresh: Literal["true", "false", "wait_for"] | None 
 
     ds = datastore()
 
-    non_existing_case_ids = set([case_id for case_id in case_ids if not ds.case.exists(case_id)])
+    # Treat cases the user cannot access as nonexistent, so the response does not
+    # leak the existence of classified cases.
+    non_existing_case_ids = set(
+        case_id
+        for case_id in case_ids
+        if (case := ds.case.get(case_id, as_obj=False)) is None
+        or not is_classification_accessible(user, case.get("classification"))
+    )
 
     if non_existing_case_ids:
         return not_found(err=f"Case id(s) {', '.join(non_existing_case_ids)} do not exist.")
@@ -196,6 +258,12 @@ def update_case(id: str, user: User, refresh: Literal["true", "false", "wait_for
 
     if not case_data or not isinstance(case_data, dict):
         return bad_request(err="Request body must be a JSON object with fields to update.")
+
+    if err := check_case_access(id, user):
+        return err
+
+    if "classification" in case_data and not is_classification_accessible(user, case_data["classification"]):
+        return bad_request(err=f"Cannot set classification to {case_data['classification']}")
 
     try:
         updated_case = case_service.update_case(id, case_data, user, refresh=refresh)
@@ -251,6 +319,12 @@ def append_item(id: str, user: User, refresh: Literal["true", "false", "wait_for
     for field in ["value", "type", "name"]:
         if field not in body:
             return bad_request(err=f"CaseItem '{field}' is required")
+
+    if err := check_case_access(id, user):
+        return err
+
+    if err := check_item_access(body["type"], body["value"], user):
+        return err
 
     try:
         if path := body.pop("path", None):
@@ -315,6 +389,9 @@ def delete_item(case_id: str, user: User, refresh: Literal["true", "false", "wai
     elif not all(isinstance(item_id, str) for item_id in ids):
         return bad_request(err="All items in 'ids' must be strings.")
 
+    if err := check_case_access(case_id, user):
+        return err
+
     try:
         updated_case = case_service.remove_case_items(case_id, ids, force=force, refresh=refresh)
 
@@ -364,6 +441,10 @@ def rename_item(case_id: str, user: User, refresh: Literal["true", "false", "wai
         return bad_request(err="'id' is required.")
 
     item_id = body["id"]
+
+    if err := check_case_access(case_id, user):
+        return err
+
     try:
         result: Case | None = None
         if "name" in body:
@@ -421,6 +502,9 @@ def add_rule(id: str, user: User, refresh: Literal["true", "false", "wait_for"] 
     if not body or not isinstance(body, dict):
         return bad_request(err="Request body must be a JSON object with rule data.")
 
+    if err := check_case_access(id, user):
+        return err
+
     try:
         updated_case = case_service.add_case_rule(id, body, user, refresh=refresh)
 
@@ -455,6 +539,9 @@ def delete_rule(
     }
     """
     try:
+        if err := check_case_access(id, user):
+            return err
+
         updated_case = case_service.remove_case_rule(id, rule_id, user, refresh=refresh)
 
         case_service.filter_case_items_by_classification(updated_case, user.classification)
@@ -499,6 +586,9 @@ def update_rule(
 
     if not body or not isinstance(body, dict):
         return bad_request(err="Request body must be a JSON object with fields to update.")
+
+    if err := check_case_access(id, user):
+        return err
 
     try:
         updated_case = case_service.update_case_rule(id, rule_id, body, user, refresh=refresh)

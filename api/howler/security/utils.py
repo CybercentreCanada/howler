@@ -1,16 +1,60 @@
 import base64
 import os
 import re
-from typing import List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional, Union, cast
 from urllib.parse import urlparse
 
 from opentelemetry import trace
 from passlib.hash import bcrypt
 
 from howler.common.exceptions import HowlerValueError
-from howler.config import config
+from howler.config import CLASSIFICATION, config
+
+if TYPE_CHECKING:
+    from howler.odm.models.user import User
 
 tracer = trace.get_tracer(__name__)
+
+
+def is_classification_accessible(
+    user: Union["User", dict[str, Any]],
+    classification: Optional[str],
+) -> bool:
+    """Check whether a user can access a document at the given classification.
+
+    This is the per-document counterpart of the ``access_control`` Lucene filter
+    applied by search endpoints: documents on access-controlled indexes (hit,
+    event, case) must have their classification checked against the requesting
+    user's clearance whenever they are fetched or modified directly by ID.
+
+    Admin-type users bypass classification access control entirely, mirroring
+    the behaviour of the search filtering path.
+
+    Args:
+        user: The requesting user (User ODM object or its primitive dict).
+        classification: The classification of the document being accessed.
+
+    Returns:
+        True if the user can access the document, False otherwise.
+    """
+    if not classification:
+        return True
+
+    if isinstance(user, dict):
+        user_type = user.get("type", [])
+        user_classification: Any = user.get("classification")
+    else:
+        user_type = user["type"]
+        user_classification = user["classification"]
+
+    if "admin" in user_type:
+        return True
+
+    return CLASSIFICATION.is_accessible(
+        cast(str, user_classification) if user_classification is not None else CLASSIFICATION.UNRESTRICTED,
+        classification,
+    )
+
 
 UPPERCASE = r"[A-Z]"
 LOWERCASE = r"[a-z]"

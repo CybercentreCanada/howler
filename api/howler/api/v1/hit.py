@@ -30,6 +30,7 @@ from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import Comment, HitOperationType, HitStatusTransition
 from howler.odm.models.user import User
 from howler.security.login import api_login
+from howler.security.utils import is_classification_accessible
 from howler.services import action_service, analytic_service, comms_service, correlation_service, hit_service
 from howler.utils.constants import DEBUG_FORCE_REFRESH
 from howler.utils.str_utils import sanitize_lucene_query
@@ -113,6 +114,8 @@ def create_hits(user: User, **kwargs):
     for hit in hits:
         try:
             odm, _warnings = hit_service.convert_hit(hit, unique=True, ignore_extra_values=ignore_extra_values)
+            if not is_classification_accessible(user, odm.classification):
+                raise HowlerValueError(f"User cannot create hits at classification {odm.classification}")
             response_body["valid"].append(odm.as_primitives())
             odms.append(odm)
             warnings.extend(_warnings)
@@ -270,7 +273,7 @@ def get_hit(id: str, server_version: str, **kwargs):
     """
     hit = cast(Optional[Any], kwargs.get("cached_hit"))
 
-    if not hit:
+    if not hit or not is_classification_accessible(kwargs["user"], hit.classification):
         return not_found(err="Hit %s does not exist" % id)
 
     if "metadata" in request.args:
@@ -318,6 +321,9 @@ def overwrite_hit(id: str, server_version: str, **kwargs):
     if not hit:
         return not_found(err="Hit %s does not exist" % id)
 
+    if not is_classification_accessible(kwargs["user"], hit.classification):
+        return not_found(err=f"Hit {id} does not exist")
+
     new_fields = request.json
 
     if not isinstance(new_fields, dict):
@@ -334,6 +340,9 @@ def overwrite_hit(id: str, server_version: str, **kwargs):
                 else Strategy.ADDITIVE,
             ),
         )
+
+        if not is_classification_accessible(kwargs["user"], new_hit.get("classification")):
+            return bad_request(err=f"Cannot set classification to {new_hit.get('classification')}")
 
         new_hit, new_version = hit_service.save_hit(Hit(new_hit), server_version, refresh=refresh)
 
@@ -372,7 +381,7 @@ def update_hit(id: str, server_version: str, **kwargs):
     hit = cast(Optional[Hit], kwargs.get("cached_hit"))
     refresh = kwargs.get("refresh")
 
-    if not hit:
+    if not hit or not is_classification_accessible(kwargs["user"], hit.classification):
         return not_found(err="Hit %s does not exist" % id)
 
     try:
@@ -383,6 +392,9 @@ def update_hit(id: str, server_version: str, **kwargs):
         explanation: list[str] = []
 
         for operation, key, value in attempted_operations:
+            if key == "classification" and not is_classification_accessible(kwargs["user"], value):
+                return bad_request(err=f"Cannot set classification to {value}")
+
             operations.append(OdmUpdateOperation(operation, key, value, silent=True))
             explanation.append(f"- `{operation}` - `{key}` - `{json.dumps(value)}`")
 
@@ -471,7 +483,14 @@ def update_by_query(**kwargs):
             )
         )
 
-        datastore().hit.update_by_query(query, operations, refresh=refresh)
+        access_control = kwargs["user"]["access_control"]
+
+        datastore().hit.update_by_query(
+            query,
+            operations,
+            filters=[access_control] if access_control else None,
+            refresh=refresh,
+        )
 
         return ok({"success": True})
     except (HowlerValueError, KeyError, DataStoreException) as e:
@@ -517,6 +536,7 @@ def get_assigned_hits(user, **kwargs):
         sort=request.args.get("sort", None, type=str),
         fl=request.args.get("fl", None, type=str),
         timeout=request.args.get("timeout", None, type=int),
+        filters=[user["access_control"]] if user["access_control"] else None,
         as_obj=False,
     )["items"]
 
@@ -555,6 +575,9 @@ def add_label(id: str, label_set: str, user: User, server_version: str | None = 
         return not_found(err=f"Hit {id} does not exist")
 
     existing_hit: Hit = hit_service.get_hit(id, as_odm=True)
+    if not is_classification_accessible(user, existing_hit.classification):
+        return not_found(err=f"Hit {id} does not exist")
+
     if f"howler.labels.{label_set}" not in existing_hit.flat_fields():
         return not_found(err=f"Label set {label_set} does not exist")
 
@@ -618,7 +641,11 @@ def remove_labels(id: str, label_set: str, user: User, server_version: str | Non
     if not hit_service.exists(id):
         return not_found(err=f"Hit {id} does not exist")
 
-    if f"howler.labels.{label_set}" not in hit_service.get_hit(id, as_odm=True).flat_fields():
+    existing_hit = hit_service.get_hit(id, as_odm=True)
+    if not is_classification_accessible(user, existing_hit.classification):
+        return not_found(err=f"Hit {id} does not exist")
+
+    if f"howler.labels.{label_set}" not in existing_hit.flat_fields():
         return not_found(err=f"Label set {label_set} does not exist")
 
     label_data = request.json
@@ -673,8 +700,12 @@ def transition(id: str, user: User, server_version: str | None = None, **kwargs)
     """
     refresh = kwargs.pop("refresh")
 
-    if not kwargs.get("cached_hit"):
+    hit = kwargs.get("cached_hit")
+    if not hit:
         return not_found(err="Hit %s does not exist" % id)
+
+    if not is_classification_accessible(user, hit.classification):
+        return not_found(err=f"Hit {id} does not exist")
 
     transition_data = request.json
     if not isinstance(transition_data, dict):
@@ -728,7 +759,7 @@ def get_comment(id: str, comment_id: str, user: User, server_version: str | None
     See: https://github.com/CybercentreCanada/howler-api/blob/main/howler/odm/models/howler_data.py#L17
     """
     hit: Optional[Hit] = kwargs.get("cached_hit")
-    if not hit:
+    if not hit or not is_classification_accessible(user, hit.classification):
         return not_found(err=f"Hit {id} does not exist")
 
     comment: Optional[Comment] = next((c for c in hit.howler.comment if c.id == comment_id), None)
@@ -774,7 +805,8 @@ def add_comment(id: str, user: User, server_version: str | None = None, **kwargs
     if len(comment_value) > MAX_COMMENT_LEN:
         return bad_request(err="Comment is too long.")
 
-    if not kwargs.get("cached_hit"):
+    cached_hit: Optional[Hit] = kwargs.get("cached_hit")
+    if not cached_hit or not is_classification_accessible(user, cached_hit.classification):
         return not_found(err="Hit %s does not exist" % id)
 
     try:
@@ -835,10 +867,9 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], server_version:
     if len(comment_value) > MAX_COMMENT_LEN:
         return bad_request(err="Comment is too long.")
 
-    if not hit_service.exists(id):
-        return not_found(err=f"Hit {id} does not exist")
-
     hit: Hit = kwargs["cached_hit"]
+    if not hit or not is_classification_accessible(user, hit.classification):
+        return not_found(err=f"Hit {id} does not exist")
 
     comment: Optional[Comment] = next((c for c in hit.howler.comment if c.id == comment_id), None)
 
@@ -897,15 +928,14 @@ def delete_comments(id: str, user: User, server_version: str | None = None, **kw
         ...hit            # The new data for the hit
     }
     """
-    if not hit_service.exists(id):
+    hit: Hit = kwargs["cached_hit"]
+    if not hit or not is_classification_accessible(user, hit.classification):
         return not_found(err=f"Hit {id} does not exist")
 
     comment_ids: list[str] = request.json or []
 
     if len(comment_ids) == 0:
         return bad_request(err="Supply at least one comment to delete.")
-
-    hit: Hit = kwargs["cached_hit"]
     comments = [comment for comment in hit.howler.comment if comment.id in comment_ids]
 
     if ("admin" not in user["type"]) and any(comment for comment in comments if comment.user != user["uname"]):
@@ -971,7 +1001,7 @@ def react_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
         return bad_request(err="Type cannot be empty.")
 
     hit: Optional[Hit] = kwargs.get("cached_hit")
-    if not hit:
+    if not hit or not is_classification_accessible(user, hit.classification):
         return not_found(err=f"Hit {id} does not exist")
 
     for comment in hit.howler.comment:
@@ -1006,7 +1036,7 @@ def remove_react_comment(id: str, comment_id: str, user: dict[str, Any], **kwarg
     }
     """
     hit: Optional[Hit] = kwargs.get("cached_hit")
-    if not hit:
+    if not hit or not is_classification_accessible(user, hit.classification):
         return not_found(err=f"Hit {id} does not exist")
 
     for comment in hit.howler.comment:
@@ -1073,7 +1103,18 @@ def create_bundle(user: User, **kwargs):
     if bundle_hit is None:
         return bad_request(err="You did not provide a bundle hit.")
 
+    if not is_classification_accessible(user, bundle_hit.get("classification")):
+        return bad_request(err=f"Invalid bundle classification {bundle_hit.get('classification')}")
+
     child_hits: list[str] = data.get("hits", [])
+
+    # Silently drop children the user cannot access, mirroring the handling of nonexistent hits
+    child_hits = [
+        child_id
+        for child_id in child_hits
+        if (child_hit := hit_service.get_hit(child_id, as_odm=True)) is not None
+        and is_classification_accessible(user, child_hit.classification)
+    ]
 
     try:
         result = bundle_compat_service.create_bundle(bundle_hit, child_hits, user=user, refresh=refresh)
@@ -1111,11 +1152,24 @@ def update_bundle(id, **kwargs):
     """
     from howler.services import bundle_compat_service
 
+    user = kwargs["user"]
     refresh = kwargs.get("refresh")
 
     hit_ids = request.json
     if not isinstance(hit_ids, list):
         return bad_request(err="Invalid data format")
+
+    root_hit = hit_service.get_hit(id, as_odm=True)
+    if root_hit and not is_classification_accessible(user, root_hit.classification):
+        return not_found(err=f"Bundle hit {id} does not exist")
+
+    # Silently drop children the user cannot access, mirroring the handling of nonexistent hits
+    hit_ids = [
+        hit_id
+        for hit_id in hit_ids
+        if (child_hit := hit_service.get_hit(hit_id, as_odm=True)) is not None
+        and is_classification_accessible(user, child_hit.classification)
+    ]
 
     try:
         result = bundle_compat_service.add_to_bundle(id, hit_ids, refresh=refresh)
@@ -1157,11 +1211,16 @@ def remove_bundle_children(id, **kwargs):
     """
     from howler.services import bundle_compat_service
 
+    user = kwargs["user"]
     refresh = kwargs.get("refresh")
 
     hit_ids = request.json
     if not isinstance(hit_ids, list):
         return bad_request(err="Invalid data format")
+
+    root_hit = hit_service.get_hit(id, as_odm=True)
+    if root_hit and not is_classification_accessible(user, root_hit.classification):
+        return not_found(err=f"Bundle hit {id} does not exist")
 
     try:
         result = bundle_compat_service.remove_from_bundle(id, hit_ids, refresh=refresh)
