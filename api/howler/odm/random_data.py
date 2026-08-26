@@ -881,6 +881,7 @@ def wipe_actions(ds: HowlerDatastore):
 def create_dossiers(ds: HowlerDatastore, num_dossiers: int = 5):
     "Create random dossiers"
     users = ds.user.search("*:*")["items"]
+    grouped_paths = ("network", "network/dns", "network/http")
     for index in range(num_dossiers):
         dossier = generate_useful_dossier(users)
         ownership_data = _get_ownership_data(users, dossier.owner)
@@ -890,6 +891,14 @@ def create_dossiers(ds: HowlerDatastore, num_dossiers: int = 5):
             dossier.type = "personal"
         elif index == 1:
             dossier.type = "global"
+
+        # Keep one dossier's random pivot data intact, while ensuring the mock data
+        # always includes shared and nested groups for the grouped-pivot UI.
+        if index > 0:
+            group = grouped_paths[(index - 1) % len(grouped_paths)]
+            for pivot in dossier.pivots:
+                pivot.group = group
+
         ds.dossier.save(dossier.dossier_id, dossier)
 
     ds.dossier.commit()

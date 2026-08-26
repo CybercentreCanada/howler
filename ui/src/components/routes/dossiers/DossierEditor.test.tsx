@@ -23,7 +23,8 @@ vi.mock('api', () => ({
     dossier: {
       get: (...args) => mockApiDossierGet(...args),
       post: (...args) => mockApiDossierPost(...args),
-      put: (...args) => mockApiDossierPut(...args)
+      put: (...args) => mockApiDossierPut(...args),
+      groups: { get: vi.fn() }
     }
   }
 }));
@@ -421,6 +422,49 @@ describe('DossierEditor', () => {
         await waitFor(() => {
           expect(screen.getByTestId('pivot-form')).toBeInTheDocument();
         });
+      });
+
+      it('removes the group property when clearing a pivot group', async () => {
+        const user = userEvent.setup();
+        mockUseParams.mockReturnValue({ id: 'test-dossier-1' });
+        mockApiDossierGet.mockResolvedValueOnce({
+          ...mockDossier,
+          pivots: [{ ...mockDossier.pivots[0], group: 'network' }]
+        });
+
+        render(
+          <Wrapper>
+            <DossierEditor />
+          </Wrapper>
+        );
+
+        await waitFor(() => {
+          expect(screen.getByTestId('dossier-title')).toHaveValue('Test Dossier');
+        });
+
+        await user.click(screen.getByRole('tab', { name: /pivots/i }));
+
+        await waitFor(() => {
+          expect(screen.getByTestId('pivot-form')).toBeInTheDocument();
+        });
+
+        const [groupInput] = screen.getAllByRole('combobox');
+        expect(groupInput).toHaveValue('network');
+
+        await user.clear(groupInput);
+
+        await waitFor(() => {
+          expect(screen.getByRole('button', { name: /save/i })).not.toBeDisabled();
+        });
+
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        await waitFor(() => {
+          expect(mockApiDossierPut).toHaveBeenCalledOnce();
+        });
+
+        const savedDossier = mockApiDossierPut.mock.calls[0][1];
+        expect(savedDossier.pivots[0]).not.toHaveProperty('group');
       });
     });
 

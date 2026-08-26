@@ -133,6 +133,19 @@ def test_type_validation():
         instance.first = b"abc"
 
 
+def test_keyword_coerce_setting():
+    @model()
+    class Test(Model):
+        strict = Keyword(coerce=False)
+
+    with pytest.raises(ValueError):
+        Test(dict(strict=123))
+
+    instance = Test(dict(strict="abc"))
+    with pytest.raises(ValueError):
+        instance.strict = 123
+
+
 # noinspection PyPropertyAccess
 def test_setters():
     # noinspection PyPropertyDefinition

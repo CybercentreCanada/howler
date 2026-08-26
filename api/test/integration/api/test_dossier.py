@@ -1,9 +1,11 @@
 import json
+import uuid
 from typing import Any
 
 import pytest
 
 from howler.datastore.howler_store import HowlerDatastore
+from howler.odm.models.dossier import Dossier
 from howler.odm.random_data import create_dossiers, wipe_dossiers
 from test.conftest import APIError, get_api_data
 
@@ -17,6 +19,40 @@ def datastore(datastore_connection):
         yield ds
     finally:
         wipe_dossiers(ds)
+
+
+@pytest.fixture
+def pivot_group_dossiers(datastore: HowlerDatastore):
+    created_ids = []
+
+    def create(groups: list[str], owner: str = "admin", dossier_type: str = "global") -> Dossier:
+        dossier = Dossier(
+            {
+                "title": f"Pivot group API integration test {uuid.uuid4().hex}",
+                "query": "howler.id:*",
+                "type": dossier_type,
+                "owner": owner,
+                "pivots": [
+                    {
+                        "group": group,
+                        "label": {"en": group, "fr": group},
+                        "value": group,
+                        "format": "link",
+                    }
+                    for group in groups
+                ],
+                "leads": [],
+            }
+        )
+        datastore.dossier.save(dossier.dossier_id, dossier)
+        created_ids.append(dossier.dossier_id)
+        return dossier
+
+    yield create
+
+    for dossier_id in created_ids:
+        datastore.dossier.delete(dossier_id)
+    datastore.dossier.commit()
 
 
 # noinspection PyUnusedLocal
@@ -87,6 +123,151 @@ def test_get_dossiers(datastore, login_session):
     resp = get_api_data(session, f"{host}/api/v1/dossier/")
 
     assert all(t["type"] == "global" or t["owner"] in ["admin", "none"] for t in resp)
+
+
+# noinspection PyUnusedLocal
+def test_get_pivot_groups_scopes_results_and_matches_prefix(
+    datastore: HowlerDatastore, login_session, pivot_group_dossiers
+):
+    session, host = login_session
+    prefix = f"integration-{uuid.uuid4().hex[:12]}"
+
+    global_dossier = Dossier(
+        {
+            "title": "Global Pivot Group Test",
+            "query": "howler.id:*",
+            "type": "global",
+            "owner": "admin",
+            "pivots": [
+                {
+                    "group": f"{prefix}/global",
+                    "label": {"en": "Global", "fr": "Global"},
+                    "value": "global",
+                    "format": "link",
+                }
+            ],
+            "leads": [],
+        }
+    )
+    other_user_dossier = Dossier(
+        {
+            "title": "Other User Pivot Group Test",
+            "query": "howler.id:*",
+            "type": "personal",
+            "owner": "other_user",
+            "pivots": [
+                {
+                    "group": f"{prefix}/private",
+                    "label": {"en": "Private", "fr": "Privé"},
+                    "value": "private",
+                    "format": "link",
+                }
+            ],
+            "leads": [],
+        }
+    )
+    datastore.dossier.save(global_dossier.dossier_id, global_dossier)
+    datastore.dossier.save(other_user_dossier.dossier_id, other_user_dossier)
+    datastore.dossier.commit()
+
+    try:
+        groups = get_api_data(session, f"{host}/api/v1/dossier/groups?prefix={prefix}")
+
+        assert f"{prefix}/global" in groups
+        assert f"{prefix}/private" not in groups
+    finally:
+        datastore.dossier.delete(global_dossier.dossier_id)
+        datastore.dossier.delete(other_user_dossier.dossier_id)
+        datastore.dossier.commit()
+
+
+# noinspection PyUnusedLocal
+def test_get_pivot_groups_filters_prefix_deduplicates_sorts_and_caps(
+    datastore: HowlerDatastore, login_session, pivot_group_dossiers
+):
+    session, host = login_session
+    prefix = f"integration-api-pivot-{uuid.uuid4().hex}"
+    matching_groups = [f"{prefix}/alpha-{index:02}" for index in range(27)]
+    additional_groups = [f"{prefix}/dns", f"{prefix}/DHCP"]
+
+    pivot_group_dossiers(matching_groups)
+    pivot_group_dossiers([matching_groups[0], *additional_groups, f"{prefix}-other/user"])
+    datastore.dossier.commit()
+
+    groups = get_api_data(session, f"{host}/api/v1/dossier/groups", params={"prefix": f"{prefix.upper()}/"})
+
+    expected_groups = sorted({*matching_groups, *additional_groups})[:25]
+    assert groups == expected_groups
+    assert len(groups) == 25
+
+
+# noinspection PyUnusedLocal
+def test_get_pivot_groups_includes_owned_personal_dossiers_only(
+    datastore: HowlerDatastore, login_session, pivot_group_dossiers
+):
+    session, host = login_session
+    prefix = f"integration-api-visible-{uuid.uuid4().hex}"
+    global_group = f"{prefix}/global"
+    own_group = f"{prefix}/own"
+    other_group = f"{prefix}/other"
+
+    pivot_group_dossiers([global_group])
+    pivot_group_dossiers([own_group], owner="admin", dossier_type="personal")
+    pivot_group_dossiers([other_group], owner="other_user", dossier_type="personal")
+    datastore.dossier.commit()
+
+    groups = get_api_data(session, f"{host}/api/v1/dossier/groups", params={"prefix": prefix})
+
+    assert groups == sorted([global_group, own_group])
+
+
+# noinspection PyUnusedLocal
+def test_get_pivot_groups_ignores_dossiers_without_pivots(
+    datastore: HowlerDatastore, login_session, pivot_group_dossiers
+):
+    session, host = login_session
+    prefix = f"integration-api-missing-{uuid.uuid4().hex}"
+    group = f"{prefix}/dns"
+
+    pivot_group_dossiers([])
+    pivot_group_dossiers([group])
+    datastore.dossier.commit()
+
+    groups = get_api_data(session, f"{host}/api/v1/dossier/groups", params={"prefix": prefix})
+
+    assert groups == [group]
+
+
+# noinspection PyUnusedLocal
+def test_get_pivot_groups_pages_before_returning_matching_groups(
+    datastore: HowlerDatastore, login_session, pivot_group_dossiers
+):
+    session, host = login_session
+    prefix = f"integration-api-pagination-{uuid.uuid4().hex}"
+    groups_before_match = [f"{prefix}/other-{index:03}" for index in range(100)]
+    matching_groups = [f"{prefix}/target/alpha", f"{prefix}/target/zulu"]
+
+    pivot_group_dossiers([*groups_before_match, *matching_groups])
+    datastore.dossier.commit()
+
+    groups = get_api_data(session, f"{host}/api/v1/dossier/groups", params={"prefix": f"{prefix}/target"})
+
+    assert groups == sorted(matching_groups)
+
+
+# noinspection PyUnusedLocal
+def test_get_pivot_groups_stops_after_the_page_limit(datastore: HowlerDatastore, login_session, pivot_group_dossiers):
+    session, host = login_session
+    prefix = f"integration-api-page-limit-{uuid.uuid4().hex}"
+    groups_before_match = [f"{prefix}/other-{index:03}" for index in range(500)]
+    target_group = f"{prefix}/target"
+
+    pivot_group_dossiers([*groups_before_match, target_group])
+    datastore.dossier.commit()
+
+    groups = get_api_data(session, f"{host}/api/v1/dossier/groups", params={"prefix": f"{prefix}/target"})
+
+    assert groups == []
 
 
 # noinspection PyUnusedLocal
@@ -282,9 +463,9 @@ def test_get_dossier_for_hit_user_scoping(datastore: HowlerDatastore, login_sess
 
         # All returned dossiers must be either global or owned by admin
         for dossier in resp:
-            assert (
-                dossier["type"] == "global" or dossier["owner"] == "admin"
-            ), f"Unexpected dossier in results: {dossier}"
+            assert dossier["type"] == "global" or dossier["owner"] == "admin", (
+                f"Unexpected dossier in results: {dossier}"
+            )
 
     finally:
         datastore.hit.delete(test_hit_id)
