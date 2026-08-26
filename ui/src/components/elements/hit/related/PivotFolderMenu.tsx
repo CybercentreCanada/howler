@@ -169,7 +169,7 @@ const PivotSubMenuItem: FC<PivotSubMenuItemProps> = ({ node, hit, onNavigate }) 
 
 // The always-visible entry point for a top-level group; a tree with a single pivot collapses straight to it,
 // otherwise it's a pivot like any other and the chevron opens the rest
-const PivotFolderTrigger: FC<PivotSubMenuItemProps> = ({ node, hit }) => {
+const PivotFolderMenu: FC<PivotSubMenuItemProps> = ({ node, hit }) => {
   const { isOpen, openMenu, cancelClose, scheduleClose, closeMenu } = useHoverMenu();
   const rowRef = useRef<HTMLDivElement>(null);
 
@@ -255,4 +255,4 @@ const PivotFolderTrigger: FC<PivotSubMenuItemProps> = ({ node, hit }) => {
   );
 };
 
-export default PivotFolderTrigger;
+export default PivotFolderMenu;

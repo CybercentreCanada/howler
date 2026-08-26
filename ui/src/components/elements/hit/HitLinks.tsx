@@ -11,7 +11,7 @@ import type { Hit } from 'models/entities/generated/Hit';
 import { useAppPivotGroup } from 'commons/components/app/hooks';
 import HitNotebooks from 'components/elements/hit/HitNotebooks';
 import ResolvePivotUrl from 'components/elements/hit/ResolvePivotUrl';
-import PivotFolderTrigger from 'components/elements/hit/related/PivotFolderMenu';
+import PivotFolderMenu from 'components/elements/hit/related/PivotFolderMenu';
 import PivotLink from 'components/elements/hit/related/PivotLink';
 import RelatedLink from 'components/elements/hit/related/RelatedLink';
 import pivotForest from 'utils/pivotForest';
@@ -104,7 +104,7 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
       {pivotGroup.enabled &&
         groups.map(node => (
           <Grid item key={node.path}>
-            <PivotFolderTrigger node={node} hit={hit} />
+            <PivotFolderMenu node={node} hit={hit} />
           </Grid>
         ))}
 
