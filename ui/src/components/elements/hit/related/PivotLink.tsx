@@ -26,8 +26,8 @@ export interface PivotLinkProps {
   resolvedUrl: string;
   // list-item rendering used inside dropdown menus: no card outline, title/owner/dossier settings shown inline
   dense?: boolean;
-  // renders just the icon/label content, no card/border - used when a parent element supplies the shared button chrome
-  bare?: boolean;
+  // wraps the content in its own bordered card - used for standalone entries not already inside a parent's card/button chrome
+  card?: boolean;
 }
 const PivotLink: FC<PivotLinkProps> = ({
   pivot,
@@ -36,7 +36,7 @@ const PivotLink: FC<PivotLinkProps> = ({
   dossier,
   resolvedUrl,
   dense = false,
-  bare = false
+  card = false
 }) => {
   const { i18n, t } = useTranslation();
 
@@ -90,45 +90,46 @@ const PivotLink: FC<PivotLinkProps> = ({
     }
   }, [flatHit, pivot, handlebars, helpers]);
 
+  // Removed from the if statement bellow for readability. This was extremly nested.
+  if (dense && href) {
+    const dossierUrl = `/dossiers/${dossier.dossier_id}/edit?tab=leads&query=${encodeURIComponent(dossier.query)}`;
+
+    return (
+      <RelatedLink
+        title={pivot.label[i18n.language]}
+        href={href}
+        icon={pivot.icon}
+        target="_blank"
+        rel="noopener noreferrer"
+        dense
+        secondary={
+          <>
+            <Typography variant="caption" display="block" color="text.secondary" noWrap>
+              {[dossier.title, dossier.owner].filter(Boolean).join(' • ')}
+            </Typography>
+            <Typography variant="caption" display="block" color="text.secondary" noWrap sx={{ maxWidth: 260 }}>
+              {href}
+            </Typography>
+          </>
+        }
+        action={
+          <Tooltip title={t('pivot.dossier.open')}>
+            <IconButton
+              size="small"
+              component={Link}
+              to={dossierUrl}
+              onClick={e => e.stopPropagation()}
+              sx={{ flexShrink: 0 }}
+            >
+              <Icon icon="mdi:folder-open-outline" fontSize="1.1rem" />
+            </IconButton>
+          </Tooltip>
+        }
+      />
+    );
+  }
+
   if (href) {
-    if (dense) {
-      const dossierUrl = `/dossiers/${dossier.dossier_id}/edit?tab=leads&query=${encodeURIComponent(dossier.query)}`;
-
-      return (
-        <RelatedLink
-          title={pivot.label[i18n.language]}
-          href={href}
-          icon={pivot.icon}
-          target="_blank"
-          rel="noopener noreferrer"
-          dense
-          secondary={
-            <>
-              <Typography variant="caption" display="block" color="text.secondary" noWrap>
-                {[dossier.title, dossier.owner].filter(Boolean).join(' • ')}
-              </Typography>
-              <Typography variant="caption" display="block" color="text.secondary" noWrap sx={{ maxWidth: 260 }}>
-                {href}
-              </Typography>
-            </>
-          }
-          action={
-            <Tooltip title={t('pivot.dossier.open')}>
-              <IconButton
-                size="small"
-                component={Link}
-                to={dossierUrl}
-                onClick={e => e.stopPropagation()}
-                sx={{ flexShrink: 0 }}
-              >
-                <Icon icon="mdi:folder-open-outline" fontSize="1.1rem" />
-              </IconButton>
-            </Tooltip>
-          }
-        />
-      );
-    }
-
     return (
       <RelatedLink
         title={pivot.label[i18n.language]}
@@ -138,7 +139,7 @@ const PivotLink: FC<PivotLinkProps> = ({
         target="_blank"
         rel="noopener noreferrer"
         tooltip={<PivotTooltip dossier={dossier} resolvedUrl={resolvedUrl} />}
-        bare={bare}
+        card={card}
       />
     );
   }

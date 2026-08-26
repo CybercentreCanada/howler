@@ -19,8 +19,8 @@ const RelatedLink: React.FC<
     secondary?: React.ReactNode;
     // a trailing element (e.g. a settings icon button) rendered next to the title, outside the title's own hover/link
     action?: React.ReactNode;
-    // renders just the icon/label content, no card/border - used when a parent element supplies the shared button chrome
-    bare?: boolean;
+    // wraps the content in its own bordered card - used for standalone entries not already inside a parent's card/button chrome
+    card?: boolean;
   }>
 > = ({
   icon,
@@ -33,7 +33,7 @@ const RelatedLink: React.FC<
   dense = false,
   secondary,
   action,
-  bare = false,
+  card = false,
   children
 }) => {
   const safeTitle = title ?? href ?? '';
@@ -89,7 +89,7 @@ const RelatedLink: React.FC<
     </Stack>
   );
 
-  if (bare) {
+  if (!card) {
     return (
       <Tooltip title={tooltipContent}>
         <Box

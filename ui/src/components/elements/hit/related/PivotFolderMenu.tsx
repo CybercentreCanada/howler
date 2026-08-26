@@ -167,7 +167,14 @@ const PivotFolderTrigger: FC<PivotSubMenuItemProps> = ({ node, hit }) => {
   if (countPivots(node) === 1) {
     const only = findOnlyPivot(node);
     return (
-      <PivotLink pivot={only.pivot} hit={hit} dossier={only.dossier} resolvedUrl={resolvePivotUrl(only, hit)} compact />
+      <PivotLink
+        pivot={only.pivot}
+        hit={hit}
+        dossier={only.dossier}
+        resolvedUrl={resolvePivotUrl(only, hit)}
+        compact
+        card
+      />
     );
   }
 
@@ -194,7 +201,6 @@ const PivotFolderTrigger: FC<PivotSubMenuItemProps> = ({ node, hit }) => {
             dossier={main.dossier}
             resolvedUrl={resolvePivotUrl(main, hit)}
             compact
-            bare
           />
         ) : (
           <Typography variant="body2" noWrap>

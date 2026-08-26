@@ -77,7 +77,7 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
 
           return (
             <Grid item key={link.href}>
-              <RelatedLink compact title={safeTitle} href={link.href} target="_blank" rel="noopener noreferrer" />
+              <RelatedLink compact card title={safeTitle} href={link.href} target="_blank" rel="noopener noreferrer" />
             </Grid>
           );
         })}
@@ -85,7 +85,7 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
       {!pivotGroup.enabled &&
         flatPivots.map(({ pivot, dossier, resolvedUrl }) => (
           <Grid item key={`${dossier.dossier_id}-${pivot.value}`}>
-            <PivotLink pivot={pivot} hit={hit} dossier={dossier} resolvedUrl={resolvedUrl} compact />
+            <PivotLink pivot={pivot} hit={hit} dossier={dossier} resolvedUrl={resolvedUrl} compact card />
           </Grid>
         ))}
 
@@ -96,7 +96,7 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
 
           return (
             <Grid item key={`${dossier.dossier_id}-${pivot.value}`}>
-              <PivotLink pivot={pivot} hit={hit} dossier={dossier} resolvedUrl={resolvedUrl} compact />
+              <PivotLink pivot={pivot} hit={hit} dossier={dossier} resolvedUrl={resolvedUrl} compact card />
             </Grid>
           );
         })}
