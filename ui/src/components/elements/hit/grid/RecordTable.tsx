@@ -47,7 +47,7 @@ const RecordTable = ({
   const [analyticIds, setAnalyticIds] = useState<Record<string, string>>({});
   const { columns, columnWidths, columnSources, setColumnWidth, setColumns, isReady } = useContext(GridColumnsContext);
 
-  const resizingCol = useRef<{ col: string; width: number; element: HTMLElement }>();
+  const resizingCol = useRef<{ col: string; width: number; element: HTMLElement }>(undefined);
 
   useEffect(() => {
     items?.forEach(record => {

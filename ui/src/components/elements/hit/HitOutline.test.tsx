@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import { HitLayout } from './HitLayout';
 import HitOutline from './HitOutline';

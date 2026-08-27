@@ -1,12 +1,11 @@
 import { Alert, Box, Typography } from '@mui/material';
+import type { AppSearchService, AppSearchServiceState } from '@tui/core';
 import api from 'api';
-import type { AppSearchServiceState } from 'commons/components/app/AppContexts';
-import type { AppSearchService } from 'commons/components/app/AppSearchService';
 import HitPreview from 'components/elements/hit/HitPreview';
 import type { Hit } from 'models/entities/generated/Hit';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 import { StorageKey } from 'utils/constants';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 import { useMyLocalStorageItem } from './useMyLocalStorage';
@@ -15,6 +14,7 @@ const useMySearch = (): AppSearchService<Hit> => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
+  const [error, setError] = useState(false);
 
   return useMemo(
     () => ({
@@ -32,23 +32,24 @@ const useMySearch = (): AppSearchService<Hit> => {
               `howler.detection:*${sanitizedValue}* OR howler.status:*${sanitizedValue}*`
           });
 
+          setError(false);
           state.set({
             ...state,
             searching: false,
-            result: null,
             items: searchResult.items.map(r => ({ id: r.howler.id, item: r }))
           });
         } catch {
-          state.set({ ...state, searching: false, result: { error: true }, items: null });
+          setError(true);
+          state.set({ ...state, searching: false, items: null });
         }
       },
       onItemSelect: ({ item }) => {
-        navigate(`/hits/${item.howler.id}`);
+        void navigate(`/hits/${item.howler.id}`);
       },
       headerRenderer: (state: AppSearchServiceState<Hit>) =>
-        (state.result?.error || !state.items) && (
+        (error || !state.items) && (
           <Box sx={{ p: 1, pb: 0, textAlign: 'center' }}>
-            {state.result?.error ? (
+            {error ? (
               <Alert severity="error" color="error">
                 {t('hit.search.invalid')}
               </Alert>
@@ -70,7 +71,7 @@ const useMySearch = (): AppSearchService<Hit> => {
         );
       }
     }),
-    [navigate, pageCount, t]
+    [error, navigate, pageCount, t]
   );
 };
 

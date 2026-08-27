@@ -263,7 +263,7 @@ const HitSummary: FC<{
                 <Box sx={theme => ({ ml: `${theme.spacing(1)} !important`, alignSelf: 'start' })}>
                   <Grid container key={key + '-list'} sx={theme => ({ mr: 1, mt: theme.spacing(-1) })} spacing={1}>
                     {Object.keys(aggregateResults[key]).map(item => (
-                      <Grid key={item} item xs="auto">
+                      <Grid key={item} size={'auto'}>
                         <PluginChip
                           context="summary"
                           size="small"

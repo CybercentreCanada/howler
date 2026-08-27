@@ -23,7 +23,7 @@ import type { Case } from 'models/entities/generated/Case';
 import type { Rule } from 'models/entities/generated/Rule';
 import { useCallback, useContext, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext } from 'react-router';
 import useCase from '../hooks/useCase';
 import CreateRuleDialog from './CreateRuleDialog';
 

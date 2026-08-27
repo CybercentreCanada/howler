@@ -6,7 +6,7 @@ import merge from 'lodash-es/merge';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import { useEffect, useState, type Dispatch, type FC, type SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import LeadEditor from './LeadEditor';
 
 const LeadForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Partial<Dossier>>>; loading: boolean }> = ({

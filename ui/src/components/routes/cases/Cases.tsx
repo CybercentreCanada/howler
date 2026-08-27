@@ -15,7 +15,7 @@ import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
 import { useCallback, useContext, useEffect, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router';
 import { DATE_RANGE_LUCENE, StorageKey } from 'utils/constants';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 import CaseCard from '../../elements/case/CaseCard';

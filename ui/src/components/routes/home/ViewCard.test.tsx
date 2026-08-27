@@ -30,9 +30,9 @@ vi.mock('components/hooks/useMyApi', () => ({
   default: () => ({ dispatchApi: mockDispatchApi })
 }));
 
-vi.mock('react-router-dom', async () => {
+vi.mock('react-router', async () => {
   // oxlint-disable-next-line consistent-type-imports
-  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  const actual = await vi.importActual<typeof import('react-router')>('react-router');
   return {
     ...actual,
     Link: ({ children, to, ...props }: any) => (
@@ -82,10 +82,6 @@ vi.mock('components/elements/event/EventCard', () => ({
 
 vi.mock('components/elements/record/RecordContextMenu', () => ({
   default: ({ children }: PropsWithChildren) => <div>{children}</div>
-}));
-
-vi.mock('commons/components/display/AppListEmpty', () => ({
-  default: () => <div>No records</div>
 }));
 
 import { RecordContext } from 'components/app/providers/RecordProvider';
@@ -159,7 +155,7 @@ describe('ViewCard', () => {
 
     render(<ViewCard viewId="view-1" limit={3} />, { wrapper: Wrapper });
 
-    expect(await screen.findByText('No records')).toBeInTheDocument();
+    expect(await screen.findByText('No Results')).toBeInTheDocument();
   });
 
   it('renders hits and events returned by the search', async () => {

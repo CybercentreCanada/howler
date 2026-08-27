@@ -48,7 +48,7 @@ describe('SearchPagination', () => {
       render(<SearchPagination {...defaultProps} offset={50} />);
       // offset 50 with limit 25 = page 3
       const page3 = screen.getByText('3');
-      expect(page3.closest('button')).toHaveAttribute('aria-current', 'true');
+      expect(page3.closest('button')).toHaveAttribute('aria-current', 'page');
     });
   });
 

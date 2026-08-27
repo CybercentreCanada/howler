@@ -14,25 +14,21 @@ import {
   Tooltip,
   useTheme
 } from '@mui/material';
+import { AppInfoPanel, PageCenter, useAppTheme, useAppThemeBuilder } from '@tui/core';
 import api from 'api';
-import PageCenter from 'commons/components/pages/PageCenter';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Check, DarkMode, Delete, WbSunny } from '@mui/icons-material';
-import { useApp } from 'commons/components/app/hooks';
-import AppInfoPanel from 'commons/components/display/AppInfoPanel';
-import useThemeBuilder from 'commons/components/utils/hooks/useThemeBuilder';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import { OverviewContext } from 'components/app/providers/OverviewProvider';
 import HitOverview from 'components/elements/hit/HitOverview';
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
-import useMyTheme from 'components/hooks/useMyTheme';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Overview } from 'models/entities/generated/Overview';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import hitsData from 'utils/hit.json';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 import MarkdownEditor from '../../elements/MarkdownEditor';
@@ -40,8 +36,12 @@ import { useStartingTemplate } from './startingTemplate';
 
 const OverviewViewer = () => {
   const theme = useTheme();
-  const app = useApp();
-  const { lightTheme, darkTheme } = useThemeBuilder(useMyTheme());
+  const { current: currentTheme, optionsOverride, mode } = useAppTheme();
+  const themeBuilder = useAppThemeBuilder();
+  const { lightTheme, darkTheme } = useMemo(
+    () => themeBuilder(currentTheme, optionsOverride),
+    [themeBuilder, currentTheme, optionsOverride]
+  );
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const { getOverviews } = useContext(OverviewContext);
@@ -52,7 +52,7 @@ const OverviewViewer = () => {
   const [overviewList, setOverviewList] = useState<Overview[]>([]);
   const [selectedOverview, setSelectedOverview] = useState<Overview>(null);
   const [content, setContent] = useState<string>('');
-  const [chosenTheme, setChosenTheme] = useState(app.theme);
+  const [chosenTheme, setChosenTheme] = useState(mode);
 
   const [analytics, setAnalytics] = useState<Analytic[]>([]);
   const [detections, setDetections] = useState<string[]>([]);
@@ -64,7 +64,7 @@ const OverviewViewer = () => {
   const [exampleHit, setExampleHit] = useState<Hit>(null);
   const [x, setX] = useState(0);
 
-  const wrapper = useRef<HTMLDivElement>();
+  const wrapper = useRef<HTMLDivElement>(undefined);
 
   const startingTemplate = useStartingTemplate();
 

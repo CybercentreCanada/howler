@@ -1,4 +1,4 @@
-import PageCenter from 'commons/components/pages/PageCenter';
+import { PageCenter } from '@tui/core';
 import Markdown from 'components/elements/display/Markdown';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
 import howlerPluginStore from 'plugins/store';

@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
+import type * as TuiCore from '@tui/core';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import i18n from 'i18n';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -12,11 +13,15 @@ import RationaleModal from './RationaleModal';
 
 vi.mock('api', { spy: true });
 
-vi.mock('commons/components/app/hooks/useAppUser', () => ({
-  useAppUser: () => ({
-    user: { username: 'test-user' }
-  })
-}));
+vi.mock('@tui/core', async () => {
+  const actual = await vi.importActual<typeof TuiCore>('@tui/core');
+  return {
+    ...actual,
+    useAppUser: () => ({
+      user: { username: 'test-user' }
+    })
+  };
+});
 
 // Mock functions
 let mockGetMatchingAnalytic = vi.fn();

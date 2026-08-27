@@ -3,13 +3,9 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import i18n from 'i18n';
 import { I18nextProvider } from 'react-i18next';
-import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import ErrorBoundary from './ErrorBoundary';
-
-vi.mock('commons/components/pages/PageCenter', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div id="page-center">{children}</div>
-}));
 
 vi.mock('react-pluggable', () => ({
   usePluginStore: () => ({

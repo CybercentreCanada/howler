@@ -24,7 +24,7 @@ export const setupContextSelectorMock = () => {
 };
 
 /**
- * Sets up a mock for react-router-dom with common defaults
+ * Sets up a mock for react-router with common defaults
  * @param options - Override specific router behavior
  */
 export const setupReactRouterMock = () => {
@@ -34,8 +34,8 @@ export const setupReactRouterMock = () => {
   const mockSetParams = vi.hoisted(() => vi.fn());
 
   beforeAll(() => {
-    vi.mock('react-router-dom', async () => {
-      const actual = await vi.importActual('react-router-dom');
+    vi.mock('react-router', async () => {
+      const actual = await vi.importActual('react-router');
 
       return {
         ...actual,

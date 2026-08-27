@@ -2,7 +2,7 @@ import type { ButtonProps } from '@mui/material';
 import { alpha, Button, CircularProgress, darken, emphasize, Link as MuiLink, Tooltip, useTheme } from '@mui/material';
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import type { MuiButtonColorType } from '.';
 import { isMuiButtonColor } from '.';
 

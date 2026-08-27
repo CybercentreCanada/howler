@@ -4,7 +4,7 @@ import type { Event } from 'models/entities/generated/Event';
 import type { FC } from 'react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 type PreviewProps = {
   event: Event;

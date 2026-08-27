@@ -1,3 +1,4 @@
+import { AppListEmpty, PageCenter } from '@tui/core';
 import { ErrorOutline } from '@mui/icons-material';
 import {
   Alert,
@@ -11,8 +12,6 @@ import {
   useTheme
 } from '@mui/material';
 import { grey } from '@mui/material/colors';
-import AppListEmpty from 'commons/components/display/AppListEmpty';
-import PageCenter from 'commons/components/pages/PageCenter';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { RecordContext } from 'components/app/providers/RecordProvider';
 import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';

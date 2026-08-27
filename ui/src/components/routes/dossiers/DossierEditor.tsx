@@ -1,3 +1,4 @@
+import { PageCenter } from '@tui/core';
 import { iconExists } from '@iconify/react';
 import { Language, Person, Save } from '@mui/icons-material';
 import {
@@ -16,7 +17,6 @@ import {
   useMediaQuery
 } from '@mui/material';
 import api from 'api';
-import PageCenter from 'commons/components/pages/PageCenter';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
@@ -24,7 +24,7 @@ import { isEqual, omit, uniqBy } from 'lodash-es';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import { memo, useCallback, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import QueryResultText from '../../elements/display/QueryResultText';
 import RecordQuery from '../hits/search/RecordQuery';
@@ -174,7 +174,7 @@ const DossierEditor: FC = () => {
         const result = await dispatchApi(api.dossier.post(dossier));
 
         showSuccessMessage(t('route.dossiers.manager.create.success'));
-        navigate(`/dossiers/${result.dossier_id}/edit`);
+        void navigate(`/dossiers/${result.dossier_id}/edit`);
       } else {
         setDossier(await dispatchApi(api.dossier.put(dossier.dossier_id, omit(dossier, ['dossier_id', 'id']))));
         showSuccessMessage(t('route.dossiers.manager.edit.success'));

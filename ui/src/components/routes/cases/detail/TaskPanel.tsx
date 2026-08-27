@@ -6,7 +6,7 @@ import type { Case } from 'models/entities/generated/Case';
 import type { Task } from 'models/entities/generated/Task';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import CaseTask from './CaseTask';
 
 /** Maximum number of child cases auto-loaded for task aggregation. */
