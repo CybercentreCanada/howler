@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { createEvent, fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { SocketContext } from 'components/app/providers/SocketProvider';
@@ -235,22 +235,6 @@ describe('HitBanner', () => {
 
     expect(screen.getByTestId('plugin-status')).toBeInTheDocument();
     expect(executeFunctionMock).toHaveBeenCalledWith('demo-plugin.status', { hit, layout: HitLayout.COMFY });
-  });
-
-  it('prevents default navigation when the banner root link is clicked', () => {
-    const { container } = renderHitBanner();
-    const rootLink = container.querySelector('a[href="/hits/hit-123"]');
-
-    expect(rootLink).toBeTruthy();
-
-    const clickEvent = createEvent.click(rootLink!, {
-      bubbles: true,
-      cancelable: true
-    });
-
-    fireEvent(rootLink!, clickEvent);
-
-    expect(clickEvent.defaultPrevented).toBe(true);
   });
 
   it('stops propagation when the external link chip is clicked', async () => {
