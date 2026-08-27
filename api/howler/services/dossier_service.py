@@ -111,7 +111,7 @@ def validate_group(group: str) -> None:
         return
 
     # 1. Check for allowed characters
-    if not re.fullmatch(r"[1-9A-Za-zùûüÿàâæçéèêëïîôœÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ/]*", group):
+    if not re.fullmatch(r"[0-9A-Za-zùûüÿàâæçéèêëïîôœÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ/]*", group):
         raise InvalidDataException(
             "Group contains invalid characters. Only English, French alphabetical and / character are allowed"
         )
