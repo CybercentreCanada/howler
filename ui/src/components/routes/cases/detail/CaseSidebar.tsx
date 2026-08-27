@@ -44,7 +44,7 @@ import type { Case } from 'models/entities/generated/Case';
 import type { Item } from 'models/entities/generated/Item';
 import { useCallback, useContext, useReducer, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router';
 import { ESCALATION_COLOR_MAP } from '../constants';
 import CaseFolder from './sidebar/CaseFolder';
 import FolderEntry from './sidebar/FolderEntry';

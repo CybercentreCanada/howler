@@ -1,11 +1,13 @@
 import { QueryStats, SavedSearch } from '@mui/icons-material';
-import type { AppLeftNavElement, AppLeftNavGroup } from 'commons/components/app/AppConfigs';
-import { useAppLeftNav, useAppUser } from 'commons/components/app/hooks';
+import type { LeftNavMenuProps, LeftNavRouteProps } from '@tui/core';
+import { useAppLeftNav, useAppUser } from '@tui/core';
 import { sortBy, uniq } from 'lodash-es';
 import type { HowlerUser } from 'models/entities/HowlerUser';
+import type { MainMenuOperation } from 'plugins/store';
 import { createContext, useCallback, useContext, useEffect, type FC, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
+import { applyMainMenuOperations } from 'utils/menuUtils';
 import { buildViewUrl } from 'utils/viewUtils';
 import { AnalyticContext } from './AnalyticProvider';
 import { ViewContext } from './ViewProvider';
@@ -14,138 +16,108 @@ export const FavouriteContext = createContext<object>(null);
 
 const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation();
-  const leftNav = useAppLeftNav();
+  const { setMenus } = useAppLeftNav();
   const appUser = useAppUser<HowlerUser>();
   const analytics = useContext(AnalyticContext);
+  const userReady = appUser.isReady();
+  const favouriteViews = appUser.user?.favourite_views;
+  const favouriteAnalytics = appUser.user?.favourite_analytics;
 
   const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
 
-  const processViewElement = useCallback(async (): Promise<AppLeftNavElement> => {
-    const viewElement = leftNav.elements.find(el => el.element?.id === 'views');
-    const favourites = uniq(appUser.user?.favourite_views || []);
+  const processViewMenu = useCallback(async (): Promise<LeftNavMenuProps> => {
+    const favourites = uniq(favouriteViews || []);
 
-    // There are no favourites and no nav elements - return
-    if (favourites.length < 1 && !viewElement) {
-      return null;
-    }
-
-    // There are no favourites, but the nav element exists - remove it
     if (favourites.length < 1) {
       return null;
     }
 
     const savedViews = await fetchViews(favourites);
 
-    const items = sortBy(savedViews, 'title')
+    const items: LeftNavRouteProps[] = sortBy(savedViews, 'title')
       .filter(view => !!view)
       .map(view => ({
         id: view.view_id,
-        text: t(view.title),
-        route: buildViewUrl(view),
-        nested: true
+        type: 'route',
+        label: t(view.title),
+        route: buildViewUrl(view)
       }));
 
-    if (viewElement) {
-      const newViewElement: AppLeftNavElement = {
-        type: 'group',
-        element: {
-          ...viewElement.element,
-          items
-        }
-      };
+    return {
+      id: 'views',
+      type: 'menu',
+      i18nKey: 'route.views.saved',
+      icon: <SavedSearch />,
+      items
+    };
+  }, [favouriteViews, fetchViews, t]);
 
-      return newViewElement;
-    } else {
-      return {
-        type: 'group',
-        element: {
-          id: 'views',
-          i18nKey: 'route.views.saved',
-          icon: <SavedSearch />,
-          items
-        }
-      };
-    }
-  }, [appUser.user?.favourite_views, fetchViews, leftNav.elements, t]);
+  const processAnalyticMenu = useCallback((): LeftNavMenuProps => {
+    const favourites = favouriteAnalytics;
 
-  const processAnalyticElement = useCallback((): AppLeftNavElement => {
-    const analyticElement = leftNav.elements.find(el => el.element?.id === 'analytics');
-    const favourites = appUser.user?.favourite_analytics;
-
-    // There are no favourites and no nav elements - return
-    if (favourites.length < 1 && !analyticElement) {
-      return null;
-    }
-
-    // There are no favourites, but the nav element exists - remove it
     if (favourites.length < 1) {
       return null;
     }
 
-    // The favourite list is fully represented, skip
-    if (favourites.length === (analyticElement?.element as AppLeftNavGroup)?.items?.length) {
-      return analyticElement;
-    }
-
-    const items = favourites
+    const items: LeftNavRouteProps[] = favourites
       .map(aid => {
         const analytic = analytics.analytics.find(v => v.analytic_id === aid);
         return analytic
           ? {
               id: analytic.analytic_id,
-              text: t(analytic.name),
-              route: `/analytics/${analytic.analytic_id}`,
-              nested: true
+              type: 'route' as const,
+              label: t(analytic.name),
+              route: `/analytics/${analytic.analytic_id}`
             }
           : null;
       })
       .filter(v => !!v);
 
-    if (analyticElement) {
-      return {
-        type: 'group',
-        element: {
-          ...analyticElement.element,
-          items
-        }
-      };
-    } else {
-      return {
-        type: 'group',
-        element: {
-          id: 'analytics',
-          i18nKey: 'route.analytics.pinned',
-          icon: <QueryStats />,
-          items
-        }
-      };
-    }
-  }, [analytics.analytics, appUser.user?.favourite_analytics, leftNav, t]);
+    return {
+      id: 'analytics',
+      type: 'menu',
+      i18nKey: 'route.analytics.pinned',
+      icon: <QueryStats />,
+      items
+    };
+  }, [analytics.analytics, favouriteAnalytics, t]);
 
   useEffect(() => {
-    if (!appUser.isReady() || !analytics.ready) {
+    if (!userReady || !analytics.ready) {
       return;
     }
 
-    const newElements = leftNav.elements
-      .filter(el => !['views', 'analytics'].includes(el.element?.id as any))
-      .filter(el => !!el);
+    let cancelled = false;
 
     void (async () => {
-      const analyticElement = processAnalyticElement();
-      if (analyticElement) {
-        newElements.splice(2, 0, analyticElement);
+      const viewMenu = await processViewMenu();
+      if (cancelled) {
+        return;
       }
 
-      const viewElement = await processViewElement();
-      if (viewElement) {
-        newElements.splice(2, 0, viewElement);
+      const analyticMenu = processAnalyticMenu();
+      const operations: MainMenuOperation[] = [
+        { type: 'remove', targetId: 'views' },
+        { type: 'remove', targetId: 'analytics' }
+      ];
+      let anchorId = 'cases';
+
+      if (viewMenu) {
+        operations.push({ type: 'insertRelative', anchorId, position: 'after', item: viewMenu });
+        anchorId = viewMenu.id as string;
       }
 
-      leftNav.setElements(newElements);
+      if (analyticMenu) {
+        operations.push({ type: 'insertRelative', anchorId, position: 'after', item: analyticMenu });
+      }
+
+      setMenus(current => current.map(menu => (menu.id === 'root' ? applyMainMenuOperations(menu, operations) : menu)));
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analytics.ready, appUser]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [analytics.ready, processAnalyticMenu, processViewMenu, setMenus, userReady]);
 
   return <FavouriteContext.Provider value={{}}>{children}</FavouriteContext.Provider>;
 };

@@ -1,5 +1,5 @@
+import { useAppUser } from '@tui/core';
 import { avatarClasses, AvatarGroup, Chip, Divider, Stack } from '@mui/material';
-import { useAppUser } from 'commons/components/app/hooks';
 import { SocketContext } from 'components/app/providers/SocketProvider';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
 import { uniq } from 'lodash-es';

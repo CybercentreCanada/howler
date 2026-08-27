@@ -31,7 +31,7 @@ import {
   Typography,
   type Theme
 } from '@mui/material';
-import { useAppUser } from 'commons/components/app/hooks';
+import { useAppUser } from '@tui/core';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import useMyUtils from 'components/hooks/useMyUtils';
 import type { HowlerUser } from 'models/entities/HowlerUser';
@@ -277,7 +277,9 @@ const Comment: FC<{
             <TextField
               sx={{ mt: 1 }}
               inputProps={{ sx: (theme: Theme) => ({ fontSize: theme.typography.body2.fontSize }) }}
-              inputRef={(ref: React.RefObject<HTMLInputElement>) => setTimeout(() => ref?.current?.focus(), 100)}
+              inputRef={(ref: React.RefObject<HTMLInputElement>) => {
+                setTimeout(() => ref?.current?.focus(), 100);
+              }}
               defaultValue={comment.value}
               onChange={e => setEditValue(e.target.value)}
               onKeyDown={checkForActions}

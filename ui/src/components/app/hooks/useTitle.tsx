@@ -1,8 +1,8 @@
-import useMySitemap from 'components/hooks/useMySitemap';
+import { useAppRouter } from '@tui/core';
 import { capitalize } from 'lodash-es';
 import { useCallback, useContext, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useParams, useSearchParams } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { AnalyticContext } from '../providers/AnalyticProvider';
 import { RecordContext } from '../providers/RecordProvider';
@@ -12,7 +12,7 @@ const useTitle = () => {
   const location = useLocation();
   const params = useParams();
   const searchParams = useSearchParams()[0];
-  const sitemap = useMySitemap();
+  const { breadcrumbs } = useAppRouter();
 
   const { getAnalyticFromId } = useContext(AnalyticContext) ?? {};
 
@@ -65,13 +65,14 @@ const useTitle = () => {
 
       setTitle(title);
     } else {
-      const matchingRoute = sitemap.routes.find(_route => _route.path === location.pathname);
+      const items = breadcrumbs();
+      const currentCrumb = items[items.length - 1];
 
-      if (matchingRoute) {
-        setTitle(`Howler - ${t(matchingRoute.title)}`);
+      if (currentCrumb) {
+        setTitle(`Howler - ${currentCrumb.i18nKey ? t(currentCrumb.i18nKey) : currentCrumb.title}`);
       }
     }
-  }, [location.pathname, params.id, searchParams, getAnalyticFromId, setTitle, t, hits, getHit, sitemap.routes]);
+  }, [location.pathname, params.id, searchParams, getAnalyticFromId, setTitle, t, hits, getHit, breadcrumbs]);
 
   useEffect(() => {
     void runChecks();

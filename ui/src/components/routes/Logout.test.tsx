@@ -1,5 +1,6 @@
 /// <reference types="vitest" />
 import { render, screen } from '@testing-library/react';
+import type * as TuiCore from '@tui/core';
 import i18n from 'i18n';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -8,21 +9,21 @@ import Logout from './Logout';
 const mockHideMenus = vi.fn();
 const mockClear = vi.fn();
 
-vi.mock('commons/components/app/hooks', () => ({
-  useAppBanner: () => <div data-testid="app-banner">Banner</div>,
-  useAppLayout: () => ({
-    hideMenus: mockHideMenus
-  })
-}));
+vi.mock('@tui/core', async () => {
+  const actual = await vi.importActual<typeof TuiCore>('@tui/core');
+  return {
+    ...actual,
+    useAppLayout: () => ({
+      hideMenus: mockHideMenus
+    }),
+    PageCardCentered: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+  };
+});
 
 vi.mock('components/hooks/useMyLocalStorage', () => ({
   default: () => ({
     clear: mockClear
   })
-}));
-
-vi.mock('commons/components/pages/PageCardCentered', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
 }));
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -53,10 +54,10 @@ describe('Logout', () => {
     expect(screen.getByText(/Logging out current user/)).toBeInTheDocument();
   });
 
-  it('should render the app banner', () => {
+  it('should render the application brand', () => {
     render(<Logout />, { wrapper: Wrapper });
 
-    expect(screen.getByText('Banner')).toBeInTheDocument();
+    expect(screen.getByAltText('howler logo')).toBeInTheDocument();
   });
 
   it('should hide menus on mount', () => {

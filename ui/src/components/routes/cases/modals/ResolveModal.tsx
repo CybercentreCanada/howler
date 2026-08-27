@@ -32,7 +32,7 @@ import type { Case } from 'models/entities/generated/Case';
 import type { Hit } from 'models/entities/generated/Hit';
 import { useCallback, useContext, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import useCase from '../hooks/useCase';
 

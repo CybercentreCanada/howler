@@ -20,7 +20,7 @@ import Markdown from 'components/elements/display/Markdown';
 import type { ChangeEventHandler, FC } from 'react';
 import { memo, useCallback, useContext, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import Throttler from 'utils/Throttler';
 
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';

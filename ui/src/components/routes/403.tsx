@@ -1,6 +1,6 @@
+import { PageCenter } from '@tui/core';
 import { PersonOff } from '@mui/icons-material';
 import { Box, Typography } from '@mui/material';
-import PageCenter from 'commons/components/pages/PageCenter';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 

@@ -5,6 +5,7 @@ allowBuilds:
   msw: true
   protobufjs: true
   rxdb: true
+  unrs-resolver: true
 
 minimumReleaseAge: 1440
 

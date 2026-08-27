@@ -112,7 +112,7 @@ const TriageSettings: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => voi
                       const checked = selectedAssessments.includes(assessment) ?? true;
 
                       return (
-                        <Grid item key={assessment}>
+                        <Grid key={assessment}>
                           <Chip
                             variant="outlined"
                             icon={

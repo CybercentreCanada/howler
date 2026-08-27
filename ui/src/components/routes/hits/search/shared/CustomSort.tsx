@@ -67,7 +67,7 @@ const CustomSort: FC = () => {
       </Stack>
       <Grid container spacing={1} sx={theme => ({ marginLeft: `${theme.spacing(-1)} !important` })}>
         {sortFields.map(([key, direction]) => (
-          <Grid item key={key}>
+          <Grid key={key}>
             <Chip
               variant="outlined"
               label={key}

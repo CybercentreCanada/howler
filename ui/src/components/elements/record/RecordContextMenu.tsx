@@ -1,3 +1,4 @@
+import { useAppUser } from '@tui/core';
 import {
   AddCircleOutline,
   Assignment,
@@ -12,7 +13,6 @@ import {
   Terminal
 } from '@mui/icons-material';
 import api from 'api';
-import { useAppUser } from 'commons/components/app/hooks/useAppUser';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ModalContext } from 'components/app/providers/ModalProvider';
@@ -166,7 +166,11 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
       _actions = [
         ..._actions,
         ...VOTE_OPTIONS.map(
-          option => ({ ...option, actionFunction: () => vote(option.name.toLowerCase()) }) as ActionButton
+          option =>
+            ({
+              ...option,
+              actionFunction: () => vote(option.name.toLowerCase())
+            }) as ActionButton
         )
       ];
     }

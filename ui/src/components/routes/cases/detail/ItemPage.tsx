@@ -5,7 +5,7 @@ import InformationPane from 'components/routes/hits/search/InformationPane';
 import type { Case } from 'models/entities/generated/Case';
 import type { Item } from 'models/entities/generated/Item';
 import { useEffect, useMemo, useState, type FC } from 'react';
-import { useOutletContext, useParams } from 'react-router-dom';
+import { useOutletContext, useParams } from 'react-router';
 import useCase from '../hooks/useCase';
 import { buildPathFromID } from '../utils';
 import CaseDashboard from './CaseDashboard';

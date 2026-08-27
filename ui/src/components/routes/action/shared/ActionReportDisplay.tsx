@@ -14,7 +14,7 @@ import Markdown from 'components/elements/display/Markdown';
 import type { ActionOperation, ActionReport } from 'models/ActionTypes';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 const ActionReportDisplay: FC<{ report: ActionReport; operations: ActionOperation[] }> = ({ report, operations }) => {
   const { t } = useTranslation();

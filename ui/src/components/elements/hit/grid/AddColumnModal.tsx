@@ -67,7 +67,7 @@ const AddColumnModal: FC<{
             'used'
           ).map(({ key, used }) => {
             return (
-              <Grid item key={key}>
+              <Grid key={key}>
                 <Chip
                   size="small"
                   variant="outlined"

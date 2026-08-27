@@ -7,7 +7,7 @@ Howler plugins let you extend both UI behavior and rendering paths without modif
 ## How the plugin system works
 
 - `HowlerPlugin` is the base class that defines extension points.
-- `howlerPluginStore` keeps global plugin state (installed plugins, lead formats, pivot formats, operations, routes, menus, sitemap entries).
+- `howlerPluginStore` keeps global plugin state (installed plugins, lead formats, pivot formats, operations, routes, menus).
 - On activation, each plugin can register named functions in the runtime plugin store.
 - The app calls those functions via `pluginStore.executeFunction(...)` in specific locations.
 
@@ -32,7 +32,7 @@ From `HowlerPlugin.ts` and store usage, plugins can provide:
   - main menu insertions/dividers
 - **Routing/navigation**:
   - routes
-  - sitemap entries and breadcrumbs behavior
+  - breadcrumbs behavior via route `handle.breadcrumb`
 - **Global extension hooks**:
   - `provider()` wrapper for app-wide context
   - `setup()` startup logic

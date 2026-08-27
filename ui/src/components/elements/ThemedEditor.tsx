@@ -1,21 +1,23 @@
 import type { EditorProps, Monaco } from '@monaco-editor/react';
 import { Editor, useMonaco } from '@monaco-editor/react';
 import { useTheme } from '@mui/material';
-import type { AppThemeConfigs } from 'commons/components/app/AppConfigs';
-import useThemeBuilder from 'commons/components/utils/hooks/useThemeBuilder';
-import useMyTheme from 'components/hooks/useMyTheme';
+import { useAppTheme, useAppThemeBuilder } from '@tui/core';
 import type { editor } from 'monaco-editor';
 import { memo, useCallback, useEffect, useMemo, type FC } from 'react';
 
 const ThemedEditor: FC<EditorProps & { id?: string }> = ({ beforeMount, options = {}, id, ...otherProps }) => {
-  const myTheme: AppThemeConfigs = useMyTheme();
-  const themeBuilder = useThemeBuilder(myTheme);
+  const { current: currentTheme, optionsOverride } = useAppTheme();
+  const themeBuilder = useAppThemeBuilder();
+  const { lightTheme, darkTheme } = useMemo(
+    () => themeBuilder(currentTheme, optionsOverride),
+    [themeBuilder, currentTheme, optionsOverride]
+  );
   const theme = useTheme();
   const monaco = useMonaco();
 
   const _beforeMount = useCallback(
     (_monaco: Monaco) => {
-      let lightBackground = themeBuilder.lightTheme.palette.background.paper;
+      let lightBackground = lightTheme.palette.background.paper;
       // monaco doesn't like colours in the form #fff, with only three digits.
       if (lightBackground.startsWith('#') && lightBackground.length < 7) {
         lightBackground = lightBackground.replace(/(\w)/g, '$1$1');
@@ -27,23 +29,23 @@ const ThemedEditor: FC<EditorProps & { id?: string }> = ({ beforeMount, options 
         rules: [
           {
             token: 'handlebars',
-            foreground: themeBuilder.lightTheme.palette.warning.dark.toUpperCase().replaceAll('#', '')
+            foreground: lightTheme.palette.warning.dark.toUpperCase().replaceAll('#', '')
           },
           {
             token: 'operator',
-            foreground: themeBuilder.lightTheme.palette.warning.light.toUpperCase().replaceAll('#', '')
+            foreground: lightTheme.palette.warning.light.toUpperCase().replaceAll('#', '')
           },
           {
             token: 'string.invalid',
-            foreground: themeBuilder.lightTheme.palette.error.main.toUpperCase().replaceAll('#', '')
+            foreground: lightTheme.palette.error.main.toUpperCase().replaceAll('#', '')
           },
           {
             token: 'invalid',
-            foreground: themeBuilder.lightTheme.palette.error.main.toUpperCase().replaceAll('#', '')
+            foreground: lightTheme.palette.error.main.toUpperCase().replaceAll('#', '')
           },
           {
             token: 'boolean',
-            foreground: themeBuilder.lightTheme.palette.success.main.toUpperCase().replaceAll('#', '')
+            foreground: lightTheme.palette.success.main.toUpperCase().replaceAll('#', '')
           }
         ],
         colors: {
@@ -51,7 +53,7 @@ const ThemedEditor: FC<EditorProps & { id?: string }> = ({ beforeMount, options 
         }
       });
 
-      let darkBackground = themeBuilder.darkTheme.palette.background.paper;
+      let darkBackground = darkTheme.palette.background.paper;
       // monaco doesn't like colours in the form #fff, with only three digits.
       if (darkBackground.startsWith('#') && darkBackground.length < 7) {
         darkBackground = darkBackground.replace(/(\w)/g, '$1$1');
@@ -62,23 +64,23 @@ const ThemedEditor: FC<EditorProps & { id?: string }> = ({ beforeMount, options 
         rules: [
           {
             token: 'handlebars',
-            foreground: themeBuilder.darkTheme.palette.warning.dark.toUpperCase().replaceAll('#', '')
+            foreground: darkTheme.palette.warning.dark.toUpperCase().replaceAll('#', '')
           },
           {
             token: 'operator',
-            foreground: themeBuilder.darkTheme.palette.warning.light.toUpperCase().replaceAll('#', '')
+            foreground: darkTheme.palette.warning.light.toUpperCase().replaceAll('#', '')
           },
           {
             token: 'string.invalid',
-            foreground: themeBuilder.darkTheme.palette.error.main.toUpperCase().replaceAll('#', '')
+            foreground: darkTheme.palette.error.main.toUpperCase().replaceAll('#', '')
           },
           {
             token: 'invalid',
-            foreground: themeBuilder.darkTheme.palette.error.main.toUpperCase().replaceAll('#', '')
+            foreground: darkTheme.palette.error.main.toUpperCase().replaceAll('#', '')
           },
           {
             token: 'boolean',
-            foreground: themeBuilder.darkTheme.palette.success.main.toUpperCase().replaceAll('#', '')
+            foreground: darkTheme.palette.success.main.toUpperCase().replaceAll('#', '')
           }
         ],
         colors: {
@@ -91,7 +93,7 @@ const ThemedEditor: FC<EditorProps & { id?: string }> = ({ beforeMount, options 
 
       beforeMount?.(_monaco);
     },
-    [beforeMount, themeBuilder]
+    [beforeMount, lightTheme, darkTheme]
   );
 
   useEffect(() => {

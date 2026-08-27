@@ -127,7 +127,7 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
   }, [fetchViews]);
 
   return (
-    <Grid item xs={12} md={6}>
+    <Grid size={{ xs: 12, md: 6 }}>
       <Card variant="outlined" sx={{ height: '100%' }}>
         <CardHeader
           title={t('route.home.add')}

@@ -9,7 +9,7 @@ type VSBoxHeaderProps = Omit<BoxProps, 'children'>;
 
 const VSBoxHeader: FC<PropsWithChildren<VSBoxHeaderProps>> = ({ children, ...boxProps }) => {
   const theme = useTheme();
-  const heightRef = useRef<number>();
+  const heightRef = useRef<number>(undefined);
   const { height, ref } = useResizeDetector({ handleWidth: false });
   const { state, setState } = useContext(VSBoxContext);
 

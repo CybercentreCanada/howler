@@ -1,4 +1,4 @@
-import { useAppUser } from 'commons/components/app/hooks';
+import { useAppUser } from '@tui/core';
 import UserPageWrapper from 'components/elements/display/UserPageWrapper';
 import useMyLocalStorage from 'components/hooks/useMyLocalStorage';
 import useMyUserFunctions from 'components/hooks/useMyUserFunctions';

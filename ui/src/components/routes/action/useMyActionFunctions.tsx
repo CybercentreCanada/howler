@@ -12,7 +12,7 @@ import type { Operation } from 'models/entities/generated/Operation';
 import { useSnackbar, type SnackbarKey } from 'notistack';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router';
 import { v4 as uuid } from 'uuid';
 
 const useMyActionFunctions = () => {
@@ -93,7 +93,7 @@ const useMyActionFunctions = () => {
             );
 
             if (result) {
-              navigate(`/action/${params.id}`);
+              void navigate(`/action/${params.id}`);
             }
           } else {
             setLoading(true);
@@ -108,7 +108,7 @@ const useMyActionFunctions = () => {
             );
 
             if (newAction) {
-              navigate(`/action/${newAction.action_id}`);
+              void navigate(`/action/${newAction.action_id}`);
             }
           }
         } finally {
@@ -248,7 +248,7 @@ const useMyActionFunctions = () => {
           });
 
           if (detailedActionView) {
-            navigate('/action');
+            void navigate('/action');
           }
         } finally {
           setLoading(false);

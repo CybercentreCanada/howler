@@ -7,7 +7,7 @@ vi.mock('react-i18next', () => ({
 // Hoist the mutable location object so the mock factory can reference it
 const mockLocation = vi.hoisted(() => ({ pathname: '/' }));
 
-vi.mock('react-router-dom', async () => {
+vi.mock('react-router', async () => {
   const { forwardRef } = await import('react');
   return {
     useLocation: () => ({ ...mockLocation }),

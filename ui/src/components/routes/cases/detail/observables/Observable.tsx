@@ -2,7 +2,7 @@ import { Card, CardContent, Chip, Stack, Typography } from '@mui/material';
 import type { Case } from 'models/entities/generated/Case';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import type { ObservableEntry } from '../types';
 
 const Observable: FC<{ observable: ObservableEntry; case: Case }> = ({ observable, case: _case }) => {

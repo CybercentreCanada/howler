@@ -11,8 +11,8 @@ import {
   TextField,
   Typography
 } from '@mui/material';
+import { useAppUser } from '@tui/core';
 import api from 'api';
-import { useAppUser } from 'commons/components/app/hooks';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { SocketContext, type RecievedDataType } from 'components/app/providers/SocketProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
@@ -33,7 +33,7 @@ import {
   type KeyboardEventHandler
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { isHit } from 'utils/typeUtils';
 import { compareTimestamp, sortByTimestamp } from 'utils/utils';
 import Comment from '../Comment';
@@ -63,7 +63,7 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
   const [analyticComments, setAnalyticComments] = useState<AnalyticComment[]>([]);
   const [comments, setComments] = useState(sortByTimestamp(record?.howler?.comment));
 
-  const input = useRef<HTMLTextAreaElement>();
+  const input = useRef<HTMLTextAreaElement>(undefined);
 
   /**
    * Set the list of typers based on updates from the websocket

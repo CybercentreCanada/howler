@@ -1,5 +1,5 @@
+import { parseEvent } from '@tui/core';
 import { Button, Stack, TextField, Typography } from '@mui/material';
-import { parseEvent } from 'commons/components/utils/keyboard';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import type { FC, KeyboardEvent } from 'react';

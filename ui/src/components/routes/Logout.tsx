@@ -1,6 +1,6 @@
 import { Box, Container, Stack, Typography, styled } from '@mui/material';
-import { useAppBanner, useAppLayout } from 'commons/components/app/hooks';
-import PageCardCentered from 'commons/components/pages/PageCardCentered';
+import { PageCardCentered, useAppLayout } from '@tui/core';
+import { AppBrand } from 'branding/AppBrand';
 import useMyLocalStorage from 'components/hooks/useMyLocalStorage';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,7 +25,6 @@ const InjectCss = styled(Stack)(({ theme }) => ({
 
 const Logout: FC = () => {
   const { t } = useTranslation();
-  const banner = useAppBanner();
   const layout = useAppLayout();
   const localStorage = useMyLocalStorage();
 
@@ -43,7 +42,7 @@ const Logout: FC = () => {
       <InjectCss direction="column" alignItems="center">
         <PageCardCentered>
           <LogWrap>
-            {banner}
+            <AppBrand application="howler" variant="banner-vertical" size="large" />
             <Box m={2} />
             <Typography>{t('page.logout')}</Typography>
           </LogWrap>

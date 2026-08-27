@@ -1,4 +1,4 @@
-import { isArrowDown, isArrowUp, isEnter } from 'commons/components/utils/keyboard';
+import { isArrowDown, isArrowUp, isEnter } from '@tui/core';
 import { useCallback, useContext, useMemo } from 'react';
 import Throttler from 'utils/Throttler';
 import type { TuiListItemOnSelect } from '..';
