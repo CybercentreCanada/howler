@@ -193,6 +193,10 @@ def _collection_contract(name: str, model_class: type[Model] | None, ilm_enabled
     collection.name = f"howler-{name}"
     collection.shards = 1
     collection.replicas = 0
+    # This contract is exclusively about the legacy ODM's mapping/settings generation, so the
+    # new schema-model path (Step 6) must stay off here regardless of what is registered on the
+    # real datastore.
+    collection.schema_model = None
 
     settings = collection._get_index_settings()
     mappings = collection._get_index_mappings()

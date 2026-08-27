@@ -131707,19 +131707,19 @@
         "receiver": "ds.user"
       },
       {
-        "line": 289,
+        "line": 306,
         "method": "get",
         "path": "api/howler/datastore/collection.py",
         "receiver": "self.datastore.client.indices"
       },
       {
-        "line": 3194,
+        "line": 3529,
         "method": "keys",
         "path": "api/howler/datastore/collection.py",
         "receiver": "self.with_retries(self.datastore.client.indices.get, index=f'{self.name}-0*', ignore_unavailable=True)"
       },
       {
-        "line": 63,
+        "line": 109,
         "method": "get",
         "path": "api/howler/datastore/howler_store.py",
         "receiver": "config.datastore.ilm.indices"
@@ -137755,6 +137755,36 @@
         "receiver": "datastore.migration"
       },
       {
+        "line": 61,
+        "method": "delete",
+        "path": "api/test/integration/test_schema_collection.py",
+        "receiver": "collection.datastore.client.indices"
+      },
+      {
+        "line": 107,
+        "method": "save",
+        "path": "api/test/integration/test_schema_collection.py",
+        "receiver": "schema_collection"
+      },
+      {
+        "line": 108,
+        "method": "commit",
+        "path": "api/test/integration/test_schema_collection.py",
+        "receiver": "schema_collection"
+      },
+      {
+        "line": 110,
+        "method": "fields",
+        "path": "api/test/integration/test_schema_collection.py",
+        "receiver": "schema_collection"
+      },
+      {
+        "line": 147,
+        "method": "fields",
+        "path": "api/test/integration/test_schema_collection.py",
+        "receiver": "collection"
+      },
+      {
         "line": 19,
         "method": "commit",
         "path": "api/test/unit/actions/test_add_to_case.py",
@@ -138169,73 +138199,73 @@
         "receiver": "datastore().user"
       },
       {
-        "line": 217,
+        "line": 225,
         "method": "exists",
         "path": "api/test/unit/test_ilm_collection.py",
         "receiver": "col"
       },
       {
-        "line": 235,
+        "line": 243,
         "method": "exists",
         "path": "api/test/unit/test_ilm_collection.py",
         "receiver": "col"
       },
       {
-        "line": 250,
+        "line": 258,
         "method": "exists",
         "path": "api/test/unit/test_ilm_collection.py",
         "receiver": "col"
       },
       {
-        "line": 284,
+        "line": 292,
         "method": "get_if_exists",
         "path": "api/test/unit/test_ilm_collection.py",
         "receiver": "col"
       },
       {
-        "line": 300,
+        "line": 308,
         "method": "get_if_exists",
         "path": "api/test/unit/test_ilm_collection.py",
         "receiver": "col"
       },
       {
-        "line": 316,
+        "line": 324,
         "method": "save",
         "path": "api/test/unit/test_ilm_collection.py",
         "receiver": "col"
       },
       {
-        "line": 317,
+        "line": 325,
         "method": "update",
         "path": "api/test/unit/test_ilm_collection.py",
         "receiver": "col"
       },
       {
-        "line": 342,
+        "line": 350,
         "method": "save",
         "path": "api/test/unit/test_ilm_collection.py",
         "receiver": "col"
       },
       {
-        "line": 352,
+        "line": 360,
         "method": "save",
         "path": "api/test/unit/test_ilm_collection.py",
         "receiver": "col"
       },
       {
-        "line": 361,
+        "line": 369,
         "method": "delete",
         "path": "api/test/unit/test_ilm_collection.py",
         "receiver": "col"
       },
       {
-        "line": 576,
+        "line": 600,
         "method": "reindex",
         "path": "api/test/unit/test_ilm_collection.py",
         "receiver": "col"
       },
       {
-        "line": 803,
+        "line": 843,
         "method": "reindex_cleanup",
         "path": "api/test/unit/test_ilm_collection.py",
         "receiver": "col"
@@ -138245,6 +138275,36 @@
         "method": "update",
         "path": "api/test/unit/test_migrations.py",
         "receiver": "datastore.migration.records[key]"
+      },
+      {
+        "line": 103,
+        "method": "fields",
+        "path": "api/test/unit/test_schema_collection.py",
+        "receiver": "col"
+      },
+      {
+        "line": 151,
+        "method": "fields",
+        "path": "api/test/unit/test_schema_collection.py",
+        "receiver": "col"
+      },
+      {
+        "line": 175,
+        "method": "fields",
+        "path": "api/test/unit/test_schema_collection.py",
+        "receiver": "col"
+      },
+      {
+        "line": 189,
+        "method": "fields",
+        "path": "api/test/unit/test_schema_collection.py",
+        "receiver": "col"
+      },
+      {
+        "line": 206,
+        "method": "fields",
+        "path": "api/test/unit/test_schema_collection.py",
+        "receiver": "col"
       },
       {
         "line": 92,
@@ -138855,7 +138915,7 @@
     ],
     "extension_hooks": [
       {
-        "line": 57,
+        "line": 82,
         "method": "add_namespace",
         "path": "api/howler/datastore/howler_store.py",
         "receiver": "Hit"
@@ -139621,7 +139681,7 @@
         "path": "api/howler/datastore/collection.py"
       },
       {
-        "line": 47,
+        "line": 49,
         "module": "howler.odm.base",
         "names": [
           "ClassificationObject",
@@ -139638,7 +139698,7 @@
         "path": "api/howler/datastore/collection.py"
       },
       {
-        "line": 59,
+        "line": 61,
         "module": "howler.odm.constants",
         "names": [
           "BANNED_FIELDS"
@@ -139646,7 +139706,7 @@
         "path": "api/howler/datastore/collection.py"
       },
       {
-        "line": 3182,
+        "line": 3516,
         "module": "howler.odm.models.config",
         "names": [
           "config"
@@ -139654,7 +139714,7 @@
         "path": "api/howler/datastore/collection.py"
       },
       {
-        "line": 3400,
+        "line": 3748,
         "module": "howler.odm.models.config",
         "names": [
           "config"
@@ -139701,7 +139761,7 @@
         "path": "api/howler/datastore/constants.py"
       },
       {
-        "line": 6,
+        "line": 19,
         "module": "howler.odm.base",
         "names": [
           "Compound"
@@ -139709,7 +139769,7 @@
         "path": "api/howler/datastore/howler_store.py"
       },
       {
-        "line": 7,
+        "line": 20,
         "module": "howler.odm.models.action",
         "names": [
           "Action"
@@ -139717,7 +139777,7 @@
         "path": "api/howler/datastore/howler_store.py"
       },
       {
-        "line": 8,
+        "line": 21,
         "module": "howler.odm.models.analytic",
         "names": [
           "Analytic"
@@ -139725,7 +139785,7 @@
         "path": "api/howler/datastore/howler_store.py"
       },
       {
-        "line": 9,
+        "line": 22,
         "module": "howler.odm.models.case",
         "names": [
           "Case"
@@ -139733,7 +139793,7 @@
         "path": "api/howler/datastore/howler_store.py"
       },
       {
-        "line": 10,
+        "line": 23,
         "module": "howler.odm.models.clue",
         "names": [
           "Clue"
@@ -139741,7 +139801,7 @@
         "path": "api/howler/datastore/howler_store.py"
       },
       {
-        "line": 11,
+        "line": 24,
         "module": "howler.odm.models.config",
         "names": [
           "ILMIndexConfig"
@@ -139749,7 +139809,7 @@
         "path": "api/howler/datastore/howler_store.py"
       },
       {
-        "line": 12,
+        "line": 25,
         "module": "howler.odm.models.dossier",
         "names": [
           "Dossier"
@@ -139757,7 +139817,7 @@
         "path": "api/howler/datastore/howler_store.py"
       },
       {
-        "line": 13,
+        "line": 26,
         "module": "howler.odm.models.event",
         "names": [
           "Event"
@@ -139765,7 +139825,7 @@
         "path": "api/howler/datastore/howler_store.py"
       },
       {
-        "line": 14,
+        "line": 27,
         "module": "howler.odm.models.hit",
         "names": [
           "Hit"
@@ -139773,7 +139833,7 @@
         "path": "api/howler/datastore/howler_store.py"
       },
       {
-        "line": 15,
+        "line": 28,
         "module": "howler.odm.models.migration",
         "names": [
           "MigrationRecord"
@@ -139781,7 +139841,7 @@
         "path": "api/howler/datastore/howler_store.py"
       },
       {
-        "line": 16,
+        "line": 29,
         "module": "howler.odm.models.overview",
         "names": [
           "Overview"
@@ -139789,7 +139849,7 @@
         "path": "api/howler/datastore/howler_store.py"
       },
       {
-        "line": 17,
+        "line": 30,
         "module": "howler.odm.models.template",
         "names": [
           "Template"
@@ -139797,7 +139857,7 @@
         "path": "api/howler/datastore/howler_store.py"
       },
       {
-        "line": 18,
+        "line": 31,
         "module": "howler.odm.models.user",
         "names": [
           "User"
@@ -139805,7 +139865,7 @@
         "path": "api/howler/datastore/howler_store.py"
       },
       {
-        "line": 19,
+        "line": 32,
         "module": "howler.odm.models.view",
         "names": [
           "View"
@@ -143177,6 +143237,14 @@
         "path": "api/test/unit/models/test_record_hit_event_differential.py"
       },
       {
+        "line": 22,
+        "module": "howler",
+        "names": [
+          "odm"
+        ],
+        "path": "api/test/unit/models/test_schema.py"
+      },
+      {
         "line": 17,
         "module": "howler.odm.models.action",
         "names": [
@@ -143631,7 +143699,7 @@
         "path": "api/test/unit/test_expand_fl.py"
       },
       {
-        "line": 16,
+        "line": 18,
         "module": "howler.odm.models.config",
         "names": [
           "ILMConfig",

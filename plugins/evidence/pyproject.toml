@@ -55,6 +55,10 @@ module = "howler.odm.models.*"
 disable_error_code = "assignment"
 
 [[tool.mypy.overrides]]
+module = ["evidence.models", "evidence.models.*"]
+disable_error_code = ["valid-type", "var-annotated", "metaclass"]
+
+[[tool.mypy.overrides]]
 module = ["howler.odm.base", "test", "test.*"]
 ignore_errors = true
 

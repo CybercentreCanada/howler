@@ -88,6 +88,19 @@ class ModelExtensionRegistry:
             return self._finalized[target]
 
         extensions = sorted(self._pending.get(target, {}).values(), key=lambda item: (item.plugin, item.name))
+        no_overrides = description is None and id_field is None and index is None and store is None
+        if not extensions and no_overrides:
+            # Nothing to add and no explicit metadata override requested: return the target
+            # completely unmodified, without re-registering it. Re-registering unconditionally
+            # here would resubmit the target's own *auto-derived* id_field (always a non-None
+            # string) to ``model_registry.register``, which only validates an id_field against
+            # the model's declared fields when it is not ``None`` - so a target that was
+            # originally decorated without an explicit ``id_field`` (and therefore never had its
+            # auto-derived guess validated) could suddenly fail finalization even though nothing
+            # about it actually changed.
+            self._finalized[target] = target
+            return target
+
         if not extensions:
             derived = target
         else:
@@ -100,14 +113,13 @@ class ModelExtensionRegistry:
             # mutation: this creates a brand-new class, it never modifies `target` itself.
             derived = type(target)(target.__name__, (target,), namespace)  # type: ignore[misc]
 
-        base_metadata = model_registry.metadata(target)
-        model_registry.register(
+        model_registry.register_derived(
             derived,
-            description=description if description is not None else base_metadata.description,
-            id_field=id_field if id_field is not None else base_metadata.id_field,
-            index=index if index is not None else base_metadata.index,
-            store=store if store is not None else base_metadata.store,
-            embedded=base_metadata.embedded,
+            target,
+            description=description,
+            id_field=id_field,
+            index=index,
+            store=store,
         )
         self._finalized[target] = derived
         return derived
