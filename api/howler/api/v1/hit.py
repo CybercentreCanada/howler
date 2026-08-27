@@ -403,7 +403,7 @@ def update_hit(id: str, user: User, server_version: str, **kwargs):
                     "timestamp": "NOW",
                     "previous_version": server_version,
                     "key": "howler.log",
-                    "explanation": f"Hit updated by {kwargs['user']['uname']}\n\n" + "\n".join(explanation),
+                    "explanation": f"Hit updated by {user.uname}\n\n" + "\n".join(explanation),
                     "new_value": "N/A",
                     "previous_value": "None",
                     "type": HitOperationType.APPENDED,
