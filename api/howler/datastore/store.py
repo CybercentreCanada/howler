@@ -129,6 +129,7 @@ class ESStore(object):
         self._closed = False
         self._collections: dict[str, ESCollection] = {}
         self._models: dict[str, Any] = {}
+        self._schema_models: dict[str, Any] = {}
         self.validate = True
 
         tracer = logging.getLogger("elasticsearch")
@@ -167,12 +168,24 @@ class ESStore(object):
         """
         if not self.validate:
             ilm_cfg = self.__dict__.get("_ilm_configs", {}).get(name)
-            return ESCollection(self, name, model_class=self._models[name], validate=self.validate, ilm_config=ilm_cfg)
+            return ESCollection(
+                self,
+                name,
+                model_class=self._models[name],
+                validate=self.validate,
+                ilm_config=ilm_cfg,
+                schema_model=self._schema_models.get(name),
+            )
 
         if name not in self._collections:
             ilm_cfg = self.__dict__.get("_ilm_configs", {}).get(name)
             self._collections[name] = ESCollection(
-                self, name, model_class=self._models[name], validate=self.validate, ilm_config=ilm_cfg
+                self,
+                name,
+                model_class=self._models[name],
+                validate=self.validate,
+                ilm_config=ilm_cfg,
+                schema_model=self._schema_models.get(name),
             )
 
         return self._collections[name]
@@ -299,6 +312,10 @@ class ESStore(object):
         """Return the mapping of registered collection names to model classes."""
         return self._models
 
+    def get_schema_models(self):
+        """Return the mapping of registered collection names to new-model schema classes."""
+        return self._schema_models
+
     def is_closed(self):
         """Return ``True`` if the store has been closed."""
         return self._closed
@@ -311,7 +328,7 @@ class ESStore(object):
         """
         return self.client.ping()
 
-    def register(self, name: str, model_class=None, ilm_config=None):
+    def register(self, name: str, model_class=None, ilm_config=None, schema_model=None):
         """Register a collection (index) name and its optional ODM model class.
 
         Args:
@@ -320,6 +337,11 @@ class ESStore(object):
             model_class: ODM model class used for validation and serialisation.
                 ``None`` disables model-level validation for this collection.
             ilm_config: Optional per-index ILM configuration (ILMIndexConfig).
+            schema_model: Optional finalized Pydantic/DSL schema model (from
+                ``howler.models``) used for index settings/mappings/field-introspection
+                generation. Kept separate from ``model_class``, which remains the legacy
+                runtime/persistence model until Step 7/8. ``None`` preserves schema-less
+                collection behavior (e.g. ``user_avatar``).
 
         Raises:
             DataStoreException: If *name* contains invalid characters.
@@ -331,6 +353,7 @@ class ESStore(object):
             )
 
         self._models[name] = model_class
+        self._schema_models[name] = schema_model
         if ilm_config is not None:
             if "_ilm_configs" not in self.__dict__:
                 self._ilm_configs: dict = {}
