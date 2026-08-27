@@ -177,7 +177,7 @@ const ViewComposer: FC = () => {
       try {
         const normalizedIndexes = (searchIndexes?.length ?? 0) > 0 ? searchIndexes! : ['hit' as const];
         const _response = await dispatchApi(
-          api.v2.search.post(normalizedIndexes, {
+          api.v2.search.post<Hit | Event>(normalizedIndexes, {
             rows: pageCount,
             query: searchQuery,
             sort: searchSort,

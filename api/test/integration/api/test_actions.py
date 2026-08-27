@@ -41,6 +41,16 @@ def datastore(datastore_connection):
         wipe_actions(ds)
 
 
+def test_get_action(datastore: HowlerDatastore, login_session):
+    session, host = login_session
+
+    action_id = datastore.action.search("*:*", rows=1)["items"][0]["action_id"]
+
+    resp = get_api_data(session, f"{host}/api/v1/action/{action_id}")
+
+    assert resp["action_id"] == action_id
+
+
 # noinspection PyUnusedLocal
 def test_get_operations(datastore: HowlerDatastore, login_session):
     session, host = login_session

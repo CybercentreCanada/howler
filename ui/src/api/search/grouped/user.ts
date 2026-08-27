@@ -17,9 +17,11 @@ export const post = async (
     ...body,
     query: body?.query || 'uname:*'
   });
+
   if (!response) {
     throw new Error('Grouped search response was empty.');
   }
+
   return {
     ...response,
     items: response.items.map(i => ({

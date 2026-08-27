@@ -1,7 +1,7 @@
 import json
 from collections import defaultdict
 from importlib.util import find_spec
-from typing import Any, Optional, TypedDict
+from typing import Any, Literal, Optional, TypedDict, overload
 
 from flask import Response, has_request_context, request
 
@@ -32,6 +32,39 @@ class TriggeredAction(TypedDict):
 
 # Per-trigger persistent queues for buffering action execution requests.
 _action_queues: dict[str, NamedQueue[TriggeredAction]] = {}
+
+
+@overload
+def get_action(id: str, as_odm: Literal[True], version: Literal[True]) -> tuple[Action, str]: ...
+
+
+@overload
+def get_action(id: str, as_odm: Literal[True], version: Literal[False]) -> Action: ...
+
+
+@overload
+def get_action(id: str, as_odm: Literal[True]) -> Action: ...
+
+
+@overload
+def get_action(id: str) -> Action: ...
+
+
+@overload
+def get_action(id: str, as_odm: Literal[False], version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+
+
+@overload
+def get_action(id: str, as_odm: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+
+
+@overload
+def get_action(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
+
+
+def get_action(id: str, as_odm=False, version=False):
+    """Retrieve an action from the datastore as an ODM object or dictionary."""
+    return datastore().action.get_if_exists(key=id, as_obj=as_odm, version=version)
 
 
 def _is_builtin_operation(operation_id: str) -> bool:

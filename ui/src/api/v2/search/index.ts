@@ -11,7 +11,7 @@ export const uri = (indexes: string[]) => {
   return joinAllUri(parentUri(), 'search', indexes.join(','));
 };
 
-export const post = <T = any>(indexes: SearchIndex | SearchIndex[], request?: HowlerSearchRequest) => {
+export const post = <T>(indexes: SearchIndex | SearchIndex[], request?: HowlerSearchRequest) => {
   if (isNil(indexes)) {
     throw new Error('Indexes cannot be null or undefined.');
   }

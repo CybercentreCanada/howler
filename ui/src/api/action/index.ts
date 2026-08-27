@@ -1,25 +1,28 @@
-import { hdelete, hpatch, hpost, hput, joinAllUri, joinUri, uri as parentUri, type HowlerRefreshParam } from 'api';
+import {
+  hdelete,
+  hget,
+  hpatch,
+  hpost,
+  hput,
+  joinAllUri,
+  joinUri,
+  uri as parentUri,
+  type HowlerRefreshParam
+} from 'api';
 import * as execute from 'api/action/execute';
 import * as operations from 'api/action/operations';
-import { action } from 'api/search';
 import type { Action } from 'models/entities/generated/Action';
 
 export const uri = (id?: string) => {
   return id ? joinAllUri(parentUri(), 'action', id) : joinUri(parentUri(), 'action');
 };
 
-export const get = (id: string): Promise<Action> => {
-  return action
-    .post({
-      query: `action_id:${id}`,
-      rows: 1
-    })
-    .then(res => {
-      if (!res) {
-        throw new Error('Action search response was empty.');
-      }
-      return res.items[0];
-    });
+export const get = async (id: string): Promise<Action> => {
+  const action = await hget<Action>(uri(id));
+  if (!action) {
+    throw new Error('Action response was empty.');
+  }
+  return action;
 };
 
 export const post = (data: Action, refresh?: HowlerRefreshParam) => {

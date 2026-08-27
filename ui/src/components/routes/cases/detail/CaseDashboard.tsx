@@ -5,6 +5,8 @@ import useMyApi from 'components/hooks/useMyApi';
 import dayjs from 'dayjs';
 import { difference, get, isNil } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
+import type { Event } from 'models/entities/generated/Event';
+import type { Hit } from 'models/entities/generated/Hit';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOutletContext } from 'react-router';
@@ -66,7 +68,7 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
     }
 
     void dispatchApi(
-      api.v2.search.post(['hit', 'event'], {
+      api.v2.search.post<Hit | Event>(['hit', 'event'], {
         query: `howler.id:(${missingIds.join(' OR ')})`,
         metadata: ['template', 'analytic']
       })

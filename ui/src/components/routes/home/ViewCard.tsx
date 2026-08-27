@@ -1,10 +1,10 @@
-import { AppListEmpty } from '@tui/core';
 import { OpenInNew } from '@mui/icons-material';
 import { Card, CardContent, IconButton, Skeleton, Stack, Typography } from '@mui/material';
+import { AppListEmpty } from '@tui/core';
 import api from 'api';
 import type { SearchIndex } from 'api/v2/search';
-import { useRecordContextSelector } from 'components/app/providers/RecordProvider';
 import type { RecordContextType } from 'components/app/providers/RecordProvider';
+import { useRecordContextSelector } from 'components/app/providers/RecordProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import EventCard from 'components/elements/event/EventCard';
 import HitBanner from 'components/elements/hit/HitBanner';
@@ -119,7 +119,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
 
     try {
       const res = await dispatchApi(
-        api.v2.search.post((view.indexes ?? ['hit']) as SearchIndex[], {
+        api.v2.search.post<Hit | Event>((view.indexes ?? ['hit']) as SearchIndex[], {
           query: view.query,
           rows: limit,
           sort: view.sort,
