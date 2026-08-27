@@ -282,6 +282,8 @@ README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
 
 - In `ui/`, `@fontsource/roboto` may fail TypeScript side-effect import resolution at the package root even when the dependency is installed; prefer importing the explicit CSS entry `@fontsource/roboto/index.css` from the app entrypoint.
 - When ILM indices coexist with a legacy `_hot` index, alias existence alone is insufficient: remove the legacy alias and ensure the latest ILM index is the only write index. Maintenance commands that skip collection bootstrap must resolve the latest ILM index before reindexing; recovery must restore only aliases actually present on its source index.
+- API and plugin datastore tests share the development Elasticsearch instance and must run sequentially. For plugin tests against checkout code, set `HWL_PLUGIN_DIRECTORY` to the repository's `plugins/` directory because `howler.app` otherwise prepends `/etc/howler/plugins` and loads installed plugin manifests.
+- Elasticsearch dynamic-template order is part of the mapping contract because the first matching template wins. Reconciliation must reject missing, changed, or reordered active templates on every rollover index, while obsolete templates from disabled plugins can remain with a warning.
 
 ---
 

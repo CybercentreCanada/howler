@@ -1,8 +1,21 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from howler.common.exceptions import HowlerAttributeError
 from howler.config import config
 from howler.datastore.collection import ESCollection, logger
+from howler.models import model_extensions
+from howler.models import schema as new_schema
+from howler.models.action import Action as SchemaAction
+from howler.models.analytic import Analytic as SchemaAnalytic
+from howler.models.case import Case as SchemaCase
+from howler.models.clue import declare_hit_extension as declare_clue_hit_extension
+from howler.models.dossier import Dossier as SchemaDossier
+from howler.models.event import Event as SchemaEvent
+from howler.models.hit import Hit as SchemaHit
+from howler.models.overview import Overview as SchemaOverview
+from howler.models.template import Template as SchemaTemplate
+from howler.models.user import User as SchemaUser
+from howler.models.view import View as SchemaView
 from howler.odm.base import Compound
 from howler.odm.models.action import Action
 from howler.odm.models.analytic import Analytic
@@ -21,19 +34,24 @@ from howler.plugins import get_plugins
 if TYPE_CHECKING:
     from howler.datastore.store import ESStore
 
-INDEXES = {
-    "hit": Hit,
-    "event": Event,
-    "case": Case,
-    "template": Template,
-    "overview": Overview,
-    "analytic": Analytic,
-    "action": Action,
-    "user": User,
-    "view": View,
-    "dossier": Dossier,
-    "user_avatar": None,
+INDEX_MODELS = {
+    "hit": (Hit, SchemaHit),
+    "event": (Event, SchemaEvent),
+    "case": (Case, SchemaCase),
+    "template": (Template, SchemaTemplate),
+    "overview": (Overview, SchemaOverview),
+    "analytic": (Analytic, SchemaAnalytic),
+    "action": (Action, SchemaAction),
+    "user": (User, SchemaUser),
+    "view": (View, SchemaView),
+    "dossier": (Dossier, SchemaDossier),
+    "user_avatar": (None, None),
 }
+
+# The first model remains the legacy runtime/persistence model exposed to existing consumers.
+# The second is the Pydantic/DSL model used only for index schema generation until Step 7/8.
+INDEXES = {name: models[0] for name, models in INDEX_MODELS.items()}
+SCHEMA_INDEXES = {name: models[1] for name, models in INDEX_MODELS.items()}
 
 ILM_ENABLED_INDEXES = {"hit", "event", "case"}
 
@@ -41,6 +59,13 @@ ILM_ENABLED_INDEXES = {"hit", "event", "case"}
 class HowlerDatastore(object):
     def __init__(self, datastore_object: "ESStore"):
         self.ds: "ESStore" = datastore_object
+
+        # Reset/compose new-model plugin extension state deterministically on every datastore
+        # startup. ``model_extensions`` is a process-wide singleton; without this reset, a prior
+        # ``HowlerDatastore``/test instance's declared or finalized extensions (e.g. Clue applied
+        # in one test but not another) would silently leak into this one, purely depending on
+        # import/construction order.
+        model_extensions.clear()
 
         for plugin in get_plugins():
             for _index, _odm in INDEXES.items():
@@ -56,6 +81,27 @@ class HowlerDatastore(object):
                 "clue",
                 Compound(Clue, description="Clue-specific overrides for this alert", default=None, optional=True),
             )
+            declare_clue_hit_extension()
+
+        for plugin in get_plugins():
+            for _index in SCHEMA_INDEXES:
+                if declare_extension := plugin.modules.models.declare_extensions.get(_index):
+                    logger.info("Declaring %s model extension with function from plugin %s", _index, plugin.name)
+                    declare_extension()
+
+        finalized_schema_models: dict[str, Any] = {}
+        for _index, _schema in SCHEMA_INDEXES.items():
+            if _schema is None:
+                finalized_schema_models[_index] = None
+                continue
+
+            finalized = model_extensions.finalize(_schema)
+            # Validate every finalized top-level schema by building its complete mapping (settings
+            # + properties + dynamic templates) before registration, so a broken plugin extension
+            # or schema regression fails loudly at datastore startup rather than at first index
+            # access/reconciliation.
+            new_schema.document_mapping(finalized)
+            finalized_schema_models[_index] = finalized
 
         for _index, _odm in INDEXES.items():
             ilm_index_config = config.datastore.ilm.indices.get(_index)
@@ -64,7 +110,12 @@ class HowlerDatastore(object):
             if not (config.datastore.ilm.enabled and ilm_index_config.enabled):
                 ilm_index_config = None
 
-            self.ds.register(_index, _odm, ilm_config=ilm_index_config)
+            self.ds.register(
+                _index,
+                _odm,
+                ilm_config=ilm_index_config,
+                schema_model=finalized_schema_models[_index],
+            )
 
     def __enter__(self):
         return self

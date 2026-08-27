@@ -5,6 +5,9 @@ modules:
       hit: true
     generation:
       hit: true
+  models:
+    declare_extensions:
+      hit: true
   operations:
     - azure_emit_hash
     - send_to_sentinel

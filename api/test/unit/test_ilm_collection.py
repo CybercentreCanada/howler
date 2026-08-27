@@ -11,6 +11,8 @@ import pytest
 from elastic_transport import ApiResponseMeta
 
 from howler.datastore.collection import ESCollection
+from howler.models import schema as new_schema
+from howler.models.action import Action as SchemaAction
 from howler.odm.models.config import ILMConfig, ILMIndexConfig
 
 
@@ -44,10 +46,16 @@ def ilm_global():
     )
 
 
-def _make_collection(mock_datastore, ilm_config=None):
+def _make_collection(mock_datastore, ilm_config=None, schema_model=None):
     """Helper to create an ESCollection with the given ILM config."""
     mock_datastore._models = {"testcol": None}
-    col = ESCollection(mock_datastore, "testcol", model_class=None, ilm_config=ilm_config)
+    col = ESCollection(
+        mock_datastore,
+        "testcol",
+        model_class=None,
+        ilm_config=ilm_config,
+        schema_model=schema_model,
+    )
     return col
 
 
@@ -353,6 +361,22 @@ class TestCreateIndexTemplate:
         assert "mappings" in template
         assert "id" in template["mappings"]["properties"]
 
+    def test_schema_template_uses_canonical_builder(self, mock_datastore, ilm_global):
+        """The production ILM path uploads the schema builder's tested payload."""
+        ilm_index = ILMIndexConfig(warm="30d")
+        col = _make_collection(mock_datastore, ilm_config=ilm_index, schema_model=SchemaAction)
+
+        col._create_index_template(ilm_global)
+
+        template = mock_datastore.client.indices.put_index_template.call_args.kwargs["template"]
+        assert template == new_schema.ilm_template_body(
+            SchemaAction,
+            shards=col.shards,
+            replicas=col.replicas,
+            policy_name=f"{col.name}_policy",
+            rollover_alias=col.name,
+        )
+
 
 class TestEnsureCollectionILM:
     """Tests for _ensure_collection_ilm bootstrap logic."""
@@ -468,6 +492,22 @@ class TestEnsureCollectionILM:
 
         # index_name should be updated to the latest ILM index
         assert col.index_name == f"{col.name}-000002"
+
+    def test_existing_ilm_template_updates_only_after_reconciliation(self, mock_datastore, ilm_global):
+        """A refused mapping check cannot update the composable template first."""
+        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
+        mock_datastore.client.indices.get.return_value = {f"{col.name}-000001": {}}
+        mock_datastore.client.indices.exists_alias.return_value = False
+        calls = []
+
+        with (
+            patch.object(col, "_create_ilm_policy"),
+            patch.object(col, "_check_fields", side_effect=lambda: calls.append("check")),
+            patch.object(col, "_create_index_template", side_effect=lambda _config: calls.append("template")),
+        ):
+            col._ensure_collection_ilm()
+
+        assert calls == ["check", "template"]
 
     def test_existing_ilm_indices_without_alias_creates_alias(self, mock_datastore, ilm_global):
         """When ILM indices exist but alias is missing, creates the alias."""

@@ -21,6 +21,19 @@ class ODMModules(BaseModel):
     generation: dict[str, ImportString] = {}
 
 
+class ModelModules(BaseModel):
+    """A set of fields for declaring new Pydantic/DSL model extensions for this plugin.
+
+    This is the typed declaration hook for the new ``howler.models.extensions`` startup
+    registry, replacing the removed post-definition ``add_namespace``/``remove_namespace``
+    mutation pattern. Each entry names a target model (e.g. ``hit``) whose declaration hook
+    (conventionally ``declare_{target}_extension``) is called once during datastore startup,
+    before the target model is finalized.
+    """
+
+    declare_extensions: dict[str, ImportString] = {}
+
+
 class Modules(BaseModel):
     "A list of components exposed for use in Howler by this plugin."
 
@@ -29,6 +42,7 @@ class Modules(BaseModel):
     token_functions: dict[str, ImportString] = {}
 
     odm: ODMModules = ODMModules()
+    models: ModelModules = ModelModules()
 
 
 class BasePluginConfig(BaseSettings):
@@ -84,32 +98,46 @@ class BasePluginConfig(BaseSettings):
 
             data["modules"]["token_functions"] = new_token_functions_dict
 
-        if "odm" not in data["modules"] or not isinstance(data["modules"]["odm"], dict):
-            return data
+        if "odm" in data["modules"] and isinstance(data["modules"]["odm"], dict):
+            if "modify_odm" in data["modules"]["odm"] and isinstance(data["modules"]["odm"]["modify_odm"], dict):
+                new_modify_odm_dict: dict[str, str] = {}
+                for odm_name, value in data["modules"]["odm"]["modify_odm"].items():
+                    if value is True:
+                        new_modify_odm_dict[odm_name] = f"{plugin_name}.odm.{odm_name}:modify_odm"
+                    elif value is False:
+                        continue
+                    else:
+                        new_modify_odm_dict[odm_name] = value
 
-        if "modify_odm" in data["modules"]["odm"] and isinstance(data["modules"]["odm"]["modify_odm"], dict):
-            new_modify_odm_dict: dict[str, str] = {}
-            for odm_name, value in data["modules"]["odm"]["modify_odm"].items():
-                if value is True:
-                    new_modify_odm_dict[odm_name] = f"{plugin_name}.odm.{odm_name}:modify_odm"
-                elif value is False:
-                    continue
-                else:
-                    new_modify_odm_dict[odm_name] = value
+                data["modules"]["odm"]["modify_odm"] = new_modify_odm_dict
 
-            data["modules"]["odm"]["modify_odm"] = new_modify_odm_dict
+            if "generation" in data["modules"]["odm"] and isinstance(data["modules"]["odm"]["generation"], dict):
+                new_generation_dict: dict[str, str] = {}
+                for odm_name, value in data["modules"]["odm"]["generation"].items():
+                    if value is True:
+                        new_generation_dict[odm_name] = f"{plugin_name}.odm.{odm_name}:generate"
+                    elif value is False:
+                        continue
+                    else:
+                        new_generation_dict[odm_name] = value
 
-        if "generation" in data["modules"]["odm"] and isinstance(data["modules"]["odm"]["generation"], dict):
-            new_generation_dict: dict[str, str] = {}
-            for odm_name, value in data["modules"]["odm"]["generation"].items():
-                if value is True:
-                    new_generation_dict[odm_name] = f"{plugin_name}.odm.{odm_name}:generate"
-                elif value is False:
-                    continue
-                else:
-                    new_generation_dict[odm_name] = value
+                data["modules"]["odm"]["generation"] = new_generation_dict
 
-            data["modules"]["odm"]["generation"] = new_generation_dict
+        if "models" in data["modules"] and isinstance(data["modules"]["models"], dict):
+            models_data = data["modules"]["models"]
+            if "declare_extensions" in models_data and isinstance(models_data["declare_extensions"], dict):
+                new_declare_extensions_dict: dict[str, str] = {}
+                for target_name, value in models_data["declare_extensions"].items():
+                    if value is True:
+                        new_declare_extensions_dict[target_name] = (
+                            f"{plugin_name}.models.{target_name}:declare_{target_name}_extension"
+                        )
+                    elif value is False:
+                        continue
+                    else:
+                        new_declare_extensions_dict[target_name] = value
+
+                models_data["declare_extensions"] = new_declare_extensions_dict
 
         return data
 

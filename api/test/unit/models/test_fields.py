@@ -48,6 +48,7 @@ from howler.models import (
     uuid,
     validated_keyword,
 )
+from howler.models.registry import field_metadata
 
 CLASSIFICATION_CONFIG = str(Path(__file__).parents[2] / "classification.yml")
 TYPE_ADAPTER_CONFIG = ConfigDict(arbitrary_types_allowed=True)
@@ -64,6 +65,12 @@ def _normalize(value: Any) -> Any:
     if isinstance(value, (odm.ClassificationObject, ClassificationValue)):
         return str(value)
     return value
+
+
+def test_ip_validation_regex_metadata_matches_legacy() -> None:
+    metadata = field_metadata(ip())
+    assert metadata is not None
+    assert dict(metadata.options)["validation_regex"] == odm.IP().validation_regex.pattern
 
 
 @pytest.mark.parametrize(

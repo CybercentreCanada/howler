@@ -17,6 +17,7 @@ from howler.models import (
     optional,
     register_model,
 )
+from howler.models.user import User
 
 
 @register_model(index=True, store=True, embedded=True)
@@ -171,3 +172,14 @@ def test_mapping_only_reflects_finalized_extensions() -> None:
     finalized = registry.finalize(ExtensionTarget)
     finalized_mapping = model_registry.mapping(finalized)
     assert "pending_field" in finalized_mapping["properties"]
+
+
+def test_extension_preserves_auto_derived_id_field() -> None:
+    """Extending a model keeps an inherited auto-derived ID that is not a declared field."""
+    registry = ModelExtensionRegistry()
+    registry.declare(User, "plugin_data", optional(keyword()), plugin="plugin_one")
+
+    finalized = registry.finalize(User)
+
+    assert "plugin_data" in finalized.model_fields
+    assert model_registry.metadata(finalized).id_field == model_registry.metadata(User).id_field == "user_id"
