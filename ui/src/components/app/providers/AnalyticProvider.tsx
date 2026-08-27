@@ -34,7 +34,9 @@ const AnalyticProvider: FC<PropsWithChildren> = ({ children }) => {
       setFetching(true);
 
       const result = await api.analytic.get();
-      setAnalytics(Array.isArray(result) ? result : []);
+      if (result) {
+        setAnalytics(result);
+      }
       setReady(true);
     } finally {
       setFetching(false);
