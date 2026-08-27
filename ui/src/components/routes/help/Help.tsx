@@ -36,13 +36,10 @@ const HelpDashboard = () => {
     []
   );
 
-  const links = useMemo(
-    () => {
-      const helpMenu = leftnav?.menus?.find(menu => menu.id === 'help') as LeftNavMenuProps | undefined;
-      return (helpMenu?.items?.filter(_item => _item.id !== 'help.main') ?? []) as LeftNavRouteProps[];
-    },
-    [leftnav?.menus]
-  );
+  const links = useMemo(() => {
+    const helpMenu = leftnav?.menus?.find(menu => menu.id === 'help') as LeftNavMenuProps | undefined;
+    return (helpMenu?.items?.filter(_item => _item.id !== 'help.main') ?? []) as LeftNavRouteProps[];
+  }, [leftnav?.menus]);
 
   return (
     <PageCenter margin={4} width="100%" maxWidth="1750px" textAlign="left">

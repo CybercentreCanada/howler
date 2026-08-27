@@ -38,10 +38,10 @@ interface ClueCell {
 const MarkdownTypography: FC<EnrichedTypographyProps & TypographyProps> = ({ type, value, ...props }) => {
   const { t } = useTranslation();
 
-  try {
-    const guessType = useClueEnrichSelector(ctx => ctx.guessType);
+  const guessType = useClueEnrichSelector(ctx => ctx?.guessType);
 
-    if (!type || type?.toString().toLowerCase() === 'guess') {
+  try {
+    if (guessType && (!type || type?.toString().toLowerCase() === 'guess')) {
       type = guessType(value!.toString()) ?? undefined;
     }
 

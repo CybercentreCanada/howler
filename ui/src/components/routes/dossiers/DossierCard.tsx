@@ -66,7 +66,11 @@ const DossierCard: FC<{
 
         <HowlerAvatar sx={{ height: '28px', width: '28px' }} userId={dossier.owner!} />
         <Tooltip title={t('route.dossiers.manager.openinsearch')}>
-          <IconButton component={Link} to={`/search?query=${dossier.query}`} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+          <IconButton
+            component={Link}
+            to={`/search?query=${dossier.query}`}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          >
             <ManageSearch />
           </IconButton>
         </Tooltip>
