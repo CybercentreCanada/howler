@@ -259,7 +259,7 @@ def validate_hits(**kwargs):
 @hit_api.route("/<id>", methods=["GET"])
 @api_login(audit=True, required_priv=["R"])
 @add_etag(getter=hit_service.get_hit)
-def get_hit(id: str, server_version: str, **kwargs):
+def get_hit(id: str, server_version: str, user: User, **kwargs):
     """Get a hit.
 
     Variables:
@@ -273,7 +273,7 @@ def get_hit(id: str, server_version: str, **kwargs):
     """
     hit = cast(Any | None, kwargs.get("cached_hit"))
 
-    if not (hit and is_classification_accessible(kwargs["user"], hit.classification)):
+    if not (hit and is_classification_accessible(user, hit.classification)):
         return not_found(err=f"Hit {id} does not exist")
 
     if "metadata" in request.args:
@@ -282,7 +282,7 @@ def get_hit(id: str, server_version: str, **kwargs):
         hit = hit.as_primitives()
 
         if len(metadata) > 0:
-            hit_service.augment_metadata(hit, metadata, kwargs["user"])
+            hit_service.augment_metadata(hit, metadata, user)
 
     return ok(hit), server_version
 
@@ -292,7 +292,7 @@ def get_hit(id: str, server_version: str, **kwargs):
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
 @parse_parameters(refresh=parse_refresh)
-def overwrite_hit(id: str, server_version: str, **kwargs):
+def overwrite_hit(id: str, user: User, server_version: str, **kwargs):
     """Overwrite a hit.
 
     Instead of providing a list of operations to run, provide a partial hit object to overwrite many fields at once.
@@ -318,7 +318,7 @@ def overwrite_hit(id: str, server_version: str, **kwargs):
     hit = cast(Hit | None, kwargs.get("cached_hit"))
     refresh = kwargs.get("refresh")
 
-    if not (hit and is_classification_accessible(kwargs["user"], hit.classification)):
+    if not (hit and is_classification_accessible(user, hit.classification)):
         return not_found(err=f"Hit {id} does not exist")
 
     new_fields = request.json
@@ -338,7 +338,7 @@ def overwrite_hit(id: str, server_version: str, **kwargs):
             ),
         )
 
-        if not is_classification_accessible(kwargs["user"], new_hit.get("classification")):
+        if not is_classification_accessible(user, new_hit.get("classification")):
             return bad_request(err=f"Cannot set classification to {new_hit.get('classification')}")
 
         new_hit, new_version = hit_service.save_hit(Hit(new_hit), server_version, refresh=refresh)
@@ -353,7 +353,7 @@ def overwrite_hit(id: str, server_version: str, **kwargs):
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
 @parse_parameters(refresh=parse_refresh)
-def update_hit(id: str, server_version: str, **kwargs):
+def update_hit(id: str, user: User, server_version: str, **kwargs):
     """Update a hit.
 
     Variables:
@@ -378,7 +378,7 @@ def update_hit(id: str, server_version: str, **kwargs):
     hit = cast(Hit | None, kwargs.get("cached_hit"))
     refresh = kwargs.get("refresh")
 
-    if not (hit and is_classification_accessible(kwargs["user"], hit.classification)):
+    if not (hit and is_classification_accessible(user, hit.classification)):
         return not_found(err=f"Hit {id} does not exist")
 
     try:
@@ -389,7 +389,7 @@ def update_hit(id: str, server_version: str, **kwargs):
         explanation: list[str] = []
 
         for operation, key, value in attempted_operations:
-            if key == "classification" and not is_classification_accessible(kwargs["user"], value):
+            if key == "classification" and not is_classification_accessible(user, value):
                 return bad_request(err=f"Cannot set classification to {value}")
 
             operations.append(OdmUpdateOperation(operation, key, value, silent=True))
@@ -407,14 +407,14 @@ def update_hit(id: str, server_version: str, **kwargs):
                     "new_value": "N/A",
                     "previous_value": "None",
                     "type": HitOperationType.APPENDED,
-                    "user": kwargs["user"]["uname"],
+                    "user": user.uname,
                 },
                 silent=True,
             )
         )
 
         new_hit, new_version = hit_service.update_hit(
-            hit.howler.id, operations, kwargs["user"]["uname"], server_version, refresh=refresh
+            hit.howler.id, operations, user.uname, server_version, refresh=refresh
         )
 
         comms_service.emit("hits", {"hit": new_hit, "version": new_version})
@@ -428,7 +428,7 @@ def update_hit(id: str, server_version: str, **kwargs):
 @hit_api.route("/update", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def update_by_query(**kwargs):
+def update_by_query(user: User, **kwargs):
     """Update a set of hits using a query.
 
     Variables:
@@ -482,8 +482,8 @@ def update_by_query(**kwargs):
                 "howler.log",
                 {
                     "timestamp": "NOW",
-                    "explanation": f"Hit updated by {kwargs['user']['uname']}\n\n" + "\n".join(explanation),
-                    "user": kwargs["user"]["uname"],
+                    "explanation": f"Hit updated by {user.uname}\n\n" + "\n".join(explanation),
+                    "user": user.uname,
                 },
             )
         )
@@ -491,7 +491,7 @@ def update_by_query(**kwargs):
         datastore().hit.update_by_query(
             query,
             operations,
-            access_control=kwargs["user"]["access_control"] or None,
+            access_control=user.access_control or None,
             refresh=refresh,
         )
 
@@ -575,7 +575,7 @@ def add_label(id: str, label_set: str, user: User, server_version: str | None = 
     refresh = kwargs.get("refresh")
 
     existing_hit: Hit | None = hit_service.get_hit(id, as_odm=True)
-    if not (existing_hit and is_classification_accessible(kwargs["user"], existing_hit.classification)):
+    if not (existing_hit and is_classification_accessible(user, existing_hit.classification)):
         return not_found(err=f"Hit {id} does not exist")
 
     if f"howler.labels.{label_set}" not in existing_hit.flat_fields():
@@ -639,7 +639,7 @@ def remove_labels(id: str, label_set: str, user: User, server_version: str | Non
     refresh = kwargs.get("refresh")
 
     existing_hit = hit_service.get_hit(id, as_odm=True)
-    if not (existing_hit and is_classification_accessible(kwargs["user"], existing_hit.classification)):
+    if not (existing_hit and is_classification_accessible(user, existing_hit.classification)):
         return not_found(err=f"Hit {id} does not exist")
 
     if f"howler.labels.{label_set}" not in existing_hit.flat_fields():
@@ -698,7 +698,7 @@ def transition(id: str, user: User, server_version: str | None = None, **kwargs)
     refresh = kwargs.pop("refresh")
 
     hit = kwargs.get("cached_hit")
-    if not (hit and is_classification_accessible(kwargs["user"], hit.classification)):
+    if not (hit and is_classification_accessible(user, hit.classification)):
         return not_found(err=f"Hit {id} does not exist")
 
     transition_data = request.json
@@ -753,7 +753,7 @@ def get_comment(id: str, comment_id: str, user: User, server_version: str | None
     See: https://github.com/CybercentreCanada/howler-api/blob/main/howler/odm/models/howler_data.py#L17
     """
     hit: Hit | None = kwargs.get("cached_hit")
-    if not (hit and is_classification_accessible(kwargs["user"], hit.classification)):
+    if not (hit and is_classification_accessible(user, hit.classification)):
         return not_found(err=f"Hit {id} does not exist")
 
     comment: Comment | None = next((c for c in hit.howler.comment if c.id == comment_id), None)
@@ -829,7 +829,7 @@ def add_comment(id: str, user: User, server_version: str | None = None, **kwargs
 @hit_api.route("/<id>/comments/<comment_id>", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
-def edit_comment(id: str, comment_id: str, user: dict[str, Any], server_version: str | None = None, **kwargs):
+def edit_comment(id: str, comment_id: str, user: User, server_version: str | None = None, **kwargs):
     """Edit a comment
 
     Variables:
@@ -862,7 +862,7 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], server_version:
         return bad_request(err="Comment is too long.")
 
     hit: Hit = kwargs["cached_hit"]
-    if not (hit and is_classification_accessible(kwargs["user"], hit.classification)):
+    if not (hit and is_classification_accessible(user, hit.classification)):
         return not_found(err=f"Hit {id} does not exist")
 
     comment: Comment | None = next((c for c in hit.howler.comment if c.id == comment_id), None)
@@ -892,7 +892,7 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], server_version:
                 explanation="Edited a comment. Changes:\n\n````diff\n" + "\n".join(diff) + "\n````",
             ),
         ],
-        user["uname"],
+        user.uname,
         version=server_version,
     )
 
@@ -1117,7 +1117,7 @@ def create_bundle(user: User, **kwargs):
 @hit_api.route("/bundle/<id>", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def update_bundle(id, **kwargs):
+def update_bundle(id: str, user: User, **kwargs):
     """Add hits to a bundle (deprecated — adds items to the underlying case).
 
     Variables:
@@ -1142,7 +1142,6 @@ def update_bundle(id, **kwargs):
     """
     from howler.services import bundle_compat_service
 
-    user = kwargs["user"]
     refresh = kwargs.get("refresh")
 
     hit_ids = request.json
@@ -1170,7 +1169,7 @@ def update_bundle(id, **kwargs):
 @hit_api.route("/bundle/<id>", methods=["DELETE"])
 @api_login(audit=False, required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def remove_bundle_children(id, **kwargs):
+def remove_bundle_children(id: str, user: User, **kwargs):
     """Remove hits from a bundle (deprecated — removes items from the underlying case).
 
     Variables:
@@ -1195,7 +1194,6 @@ def remove_bundle_children(id, **kwargs):
     """
     from howler.services import bundle_compat_service
 
-    user = kwargs["user"]
     refresh = kwargs.get("refresh")
 
     hit_ids = request.json
