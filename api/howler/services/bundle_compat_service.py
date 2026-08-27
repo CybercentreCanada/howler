@@ -79,9 +79,6 @@ def create_bundle(
         bundle_hit_data["howler"].pop("bundle_size", None)
         bundle_hit_data["howler"].pop("bundles", None)
 
-    if not child_hit_ids:
-        raise InvalidDataException("You did not provide any child hits.")
-
     # Validate children before creating anything
     for child_id in child_hit_ids:
         child_hit = hit_service.get_hit(child_id, as_odm=True)

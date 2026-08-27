@@ -31,6 +31,7 @@ from howler.odm.models.ecs.event import ECSEvent
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import HitOperationType, HitStatusTransition, Log, Status
 from howler.odm.models.user import User
+from howler.security.utils import is_classification_accessible
 from howler.services import action_service, analytic_service, dossier_service, overview_service, template_service
 from howler.utils.dict_utils import extra_keys, flatten
 from howler.utils.uid import get_random_id
@@ -964,3 +965,16 @@ def augment_metadata(data: list[dict[str, Any]] | dict[str, Any] | None, metadat
 
         for hit in hits:
             hit["__dossiers"] = dossier_service.get_matching_dossiers(hit, dossiers, username=user.uname)
+
+
+def filter_accessible_hits(user: Union[User, dict[str, Any]], hit_ids: list[str]) -> list[str]:
+    """Drop hit ids that are missing or inaccessible to the given user.
+
+    Used by the deprecated bundle endpoints, where inaccessible children are
+    silently dropped, mirroring the handling of nonexistent hits.
+    """
+    return [
+        hit_id
+        for hit_id in hit_ids
+        if (hit := get_hit(hit_id, as_odm=True)) is not None and is_classification_accessible(user, hit.classification)
+    ]

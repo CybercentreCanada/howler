@@ -677,11 +677,11 @@ class TestBundleEndpointClassification:
                 assert result.get_json()["api_error_message"] == "Bundle hit root-001 does not exist"
                 mock_add.assert_not_called()
 
-    @patch("howler.api.v1.hit.hit_service")
+    @patch("howler.services.hit_service.get_hit")
     @patch("howler.services.bundle_compat_service.add_to_bundle")
     @patch("howler.security.login.auth_service")
     def test_update_bundle_drops_inaccessible_children(
-        self, mock_auth_service, mock_add_to_bundle, mock_hit_service, stub_classification, request_context: Flask
+        self, mock_auth_service, mock_add_to_bundle, mock_get_hit, stub_classification, request_context: Flask
     ):
         """Children above the user's clearance are silently dropped, like missing ones."""
         user = _build_user(classification="UNRESTRICTED")
@@ -699,7 +699,7 @@ class TestBundleEndpointClassification:
             "child-001": accessible_child,
             "child-002": restricted_child,
         }
-        mock_hit_service.get_hit.side_effect = lambda hit_id, **kwargs: hits_by_id[hit_id]
+        mock_get_hit.side_effect = lambda hit_id, **kwargs: hits_by_id[hit_id]
         mock_add_to_bundle.return_value = {"howler": {"id": "root-001"}}
 
         with request_context.test_request_context(
