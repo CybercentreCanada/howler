@@ -1,3 +1,5 @@
+import { AppAccessibilityProvider } from '@tui/a11y';
+import { AppSwitcherProvider, useAppSwitcher } from '@tui/apps';
 import {
   AppProvider,
   AppRoot,
@@ -7,8 +9,6 @@ import {
   useAppLayout,
   useAppUser
 } from '@tui/core';
-import { AppAccessibilityProvider } from '@tui/a11y';
-import { AppSwitcherProvider, useAppSwitcher } from '@tui/apps';
 import { AppDrawerProvider as TuiAppDrawerProvider } from '@tui/drawer';
 
 import type {
@@ -49,8 +49,8 @@ import {
 } from '@mui/icons-material';
 import api from 'api';
 import Modal from 'components/elements/display/Modal';
-import useMyApi from 'components/hooks/useMyApi';
 import { useMyAccessibility } from 'components/hooks/useMyAccessibility';
+import useMyApi from 'components/hooks/useMyApi';
 import { APP_COOKIES_DEFAULTS } from 'components/hooks/useMyCookies';
 import useMyLocalStorage from 'components/hooks/useMyLocalStorage';
 import useMyPreferences from 'components/hooks/useMyPreferences';
@@ -150,7 +150,7 @@ dayjs.locale(i18n.language === 'en' ? 'en' : 'fr-ca');
 
 loader.config({ monaco });
 
-const RoleRoute = ({ roles }: { roles: string[] }) => {
+const RoleRoute: FC<{ roles: string[] }> = ({ roles }) => {
   const appUser = useAppUser<HowlerUser>();
 
   if (roles.some((role: string) => appUser.user?.roles?.includes(role))) {

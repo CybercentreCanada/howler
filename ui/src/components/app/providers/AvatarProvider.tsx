@@ -18,7 +18,7 @@ export const AvatarContext = createContext<AvatarContextType>(DEFAULT_AVATAR_CON
  * Because of the nature of requesting avatars, there's often LOTS of requests firing off in rapid succession,
  * too quickly for React to react (pardon the pun). To circumvent this, we just use a global object to remove race conditions.
  */
-const promises: { [index: string]: Promise<string> | undefined } = {};
+const promises: { [index: string]: Promise<string> } = {};
 
 const AvatarProvider: FC<PropsWithChildren> = ({ children }) => {
   const { dispatchApi } = useMyApi();
