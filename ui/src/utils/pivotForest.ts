@@ -69,12 +69,12 @@ const getGroupPivot = (dossiers: Dossier[]) => {
       }
 
       // Add the pivot section, this(pivot) is reserved inside of the PivotGroupValidation check and the back end.
-      if (!('pivot' in current)) {
-        current['pivot'] = [];
+      if (!current.pivot) {
+        current.pivot = [];
       }
 
       // Add the pivot to its location
-      current['pivot'].push({ pivot: pivot, dossier: dossier });
+      current.pivot.push({ pivot: pivot, dossier: dossier });
     }
   }
   return groupPivot;
@@ -101,7 +101,7 @@ const buildPathMap = (tree: PivotTree, language = 'en'): menuPathNode[] => {
     let current = tree[key] as PivotTree;
     // squash a chain as long as it neither branches nor carries pivots of its own; that's a pure "pass-through"
     // segment, so its name is folded into the path instead of forcing its own empty menu level
-    while (Object.keys(current).length === 1 && !('pivot' in current)) {
+    while (Object.keys(current).length === 1 && !current.pivot) {
       const newKey = Object.keys(current)[0];
       path = path + `/${newKey}`;
       current = current[newKey] as PivotTree;
@@ -109,7 +109,7 @@ const buildPathMap = (tree: PivotTree, language = 'en'): menuPathNode[] => {
 
     nodes.push({
       path: path,
-      pivots: sortBy(current['pivot'] ?? [], item => item.pivot.label?.[language]),
+      pivots: sortBy(current.pivot ?? [], item => item.pivot.label?.[language]),
       children: buildPathMap(current, language)
     });
   }
@@ -131,8 +131,12 @@ const pivotForest = (dossiers: Dossier[], language = 'en'): menuPathNode[] => {
   const group = getGroupPivot(dossiers);
   const nodes: menuPathNode[] = [];
 
-  if ('pivot' in group) {
-    nodes.push({ path: '', pivots: group['pivot'] as dossierPivot[], children: [] });
+  if (group.pivot) {
+    nodes.push({
+      path: '',
+      pivots: sortBy(group.pivot, item => item.pivot.label?.[language]),
+      children: []
+    });
   }
 
   nodes.push(...buildPathMap(group, language));

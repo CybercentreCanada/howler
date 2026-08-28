@@ -281,7 +281,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
           onChange={ev => update({ group: ev.target.value })}
           fullWidth
           error={Boolean(groupError)}
-          helperText={t(groupError) || ' '}
+          helperText={groupError ? t(groupError) : ' '}
         />
         <Stack spacing={2}>
           <Stack direction="row" alignItems="center" position="relative">

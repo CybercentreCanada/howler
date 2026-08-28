@@ -92,7 +92,7 @@ def get_dossier(
     return datastore().dossier.get_if_exists(key=id, as_obj=as_odm, version=version)
 
 
-def validate_group(group: str) -> None:
+def validate_group(group: str | Any) -> None:
     """Validate a slash-separated dossier group path.
 
     Args:
@@ -111,7 +111,7 @@ def validate_group(group: str) -> None:
         return
 
     # 1. Check for allowed characters
-    if not re.fullmatch(r"[1-9A-Za-zùûüÿàâæçéèêëïîôœÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ/]*", group):
+    if not re.fullmatch(r"[0-9A-Za-zùûüÿàâæçéèêëïîôœÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ/]*", group):
         raise InvalidDataException(
             "Group contains invalid characters. Only English, French alphabetical and / character are allowed"
         )
@@ -121,7 +121,7 @@ def validate_group(group: str) -> None:
         raise InvalidDataException('Every section of a group path needs characters between the "/"')
 
     # 3. Check for the word pivot as it is use to classify them in the front end
-    if re.match(r"(^|/)pivot(/|$)", group):
+    if re.search(r"(^|/)pivot(/|$)", group):
         raise InvalidDataException('The word "pivot" can not be use as a group section.')
 
     return
@@ -182,7 +182,7 @@ def create_dossier(  # noqa: C901
             if len(pivot.mappings) != len(set(mapping.key for mapping in pivot.mappings)):
                 raise InvalidDataException("One of your pivots has duplicate keys set.")
             # verify the pivot group is valid format
-            if hasattr(pivot, "group") and isinstance(pivot.group, str):
+            if hasattr(pivot, "group"):
                 validate_group(pivot.group)
 
         # Ensure the owner is set to the current user (security measure)
@@ -258,8 +258,7 @@ def update_dossier(  # noqa: C901
             if len(mappings) != len(set(mapping.get("key") for mapping in mappings)):
                 raise InvalidDataException("One of your pivots has duplicate keys set.")
             group = pivot.get("group") if isinstance(pivot, dict) else getattr(pivot, "group", None)
-            if isinstance(group, str):
-                validate_group(group)
+            validate_group(group)
 
     try:
         # Validate the Lucene query if it's being updated

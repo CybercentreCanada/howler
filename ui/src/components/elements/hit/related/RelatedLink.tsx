@@ -44,7 +44,7 @@ const RelatedLink: React.FC<
         direction="row"
         spacing={1}
         alignItems="center"
-        onClick={() => href && window.open(href, target)}
+        onClick={() => href && window.open(href, target, 'noopener,noreferrer')}
         sx={theme => ({
           cursor: 'pointer',
           width: '100%',
@@ -93,7 +93,7 @@ const RelatedLink: React.FC<
     return (
       <Tooltip title={tooltipContent}>
         <Box
-          onClick={() => href && window.open(href, target)}
+          onClick={() => href && window.open(href, target, 'noopener,noreferrer')}
           sx={{
             display: 'flex',
             cursor: 'pointer',
@@ -112,7 +112,7 @@ const RelatedLink: React.FC<
         <HowlerCard
           variant={compact ? 'outlined' : 'elevation'}
           key={href}
-          onClick={() => href && window.open(href, target)}
+          onClick={() => href && window.open(href, target, 'noopener,noreferrer')}
           sx={[
             theme => ({
               cursor: 'pointer',

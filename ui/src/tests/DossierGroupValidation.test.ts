@@ -24,6 +24,7 @@ describe('pivotGroupValidation', () => {
   });
 
   it('accepts digits but still rejects other disallowed characters', () => {
+    expect(pivotGroupValidation('0')).toBeNull();
     expect(pivotGroupValidation('network1')).toBeNull();
     expect(pivotGroupValidation('net2work')).toBeNull();
     expect(pivotGroupValidation('network/zone2')).toBeNull();

@@ -35,6 +35,23 @@ describe('pivotForest', () => {
     expect(pivotForest([dossier])).toEqual([{ path: '', pivots: [{ pivot, dossier }], children: [] }]);
   });
 
+  it('sorts root pivots by their label in the requested language', () => {
+    const pivotZ = makePivot({ label: { en: 'Zulu', fr: 'Alpha' } });
+    const pivotA = makePivot({ label: { en: 'Alpha', fr: 'Zulu' } });
+    const dossier = makeDossier([pivotZ, pivotA]);
+
+    expect(pivotForest([dossier], 'en')).toEqual([
+      {
+        path: '',
+        pivots: [
+          { pivot: pivotA, dossier },
+          { pivot: pivotZ, dossier }
+        ],
+        children: []
+      }
+    ]);
+  });
+
   it('returns a node for a single-level group', () => {
     const pivot = makePivot({ group: 'network' });
     const dossier = makeDossier([pivot]);
