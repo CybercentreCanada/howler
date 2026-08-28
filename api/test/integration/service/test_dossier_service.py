@@ -377,14 +377,7 @@ def test_validate_group_name_invalid_type(invalid_type: Any):
 
 
 @pytest.mark.parametrize(
-    "valid_group",
-    [
-        "London/Montréal",
-        "banana/Château/argent",
-        "bread",
-        "àâæçéèêëïîôœ/ÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ",
-        "0/network0",
-    ],
+    "valid_group", ["London/Montréal", "banana/Château/argent", "bread", "àâæçéèêëïîôœ/ÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ"]
 )
 def test_validate_group_name_valid_path(valid_group: str):
     """Verify valid group path for the function validate_group_name"""

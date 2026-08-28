@@ -14,7 +14,7 @@ const pivotGroupValidation = (group: string): string | null => {
   if (!group || group === '') return null;
 
   // Only contain, French, English, numeral character as well as /.
-  if (!/^[0-9A-Za-zùûüÿàâæçéèêëïîôœÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ/]*$/.test(group)) {
+  if (!/^[1-9A-Za-zùûüÿàâæçéèêëïîôœÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ/]*$/.test(group)) {
     return 'route.dossiers.pivots.invalid.character';
   }
 
