@@ -14,7 +14,7 @@ import ResolvePivotUrl from 'components/elements/hit/ResolvePivotUrl';
 import PivotFolderMenu from 'components/elements/hit/related/PivotFolderMenu';
 import PivotLink from 'components/elements/hit/related/PivotLink';
 import RelatedLink from 'components/elements/hit/related/RelatedLink';
-import pivotForest from 'utils/pivotForest';
+import pivotForest, { getDossierPivotKey } from 'utils/pivotForest';
 
 interface HitLinksProps {
   hit?: Hit;
@@ -84,7 +84,7 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
 
       {!pivotGroup.enabled &&
         flatPivots.map(({ pivot, dossier, resolvedUrl }) => (
-          <Grid key={`${dossier.dossier_id}-${pivot.value}`}>
+          <Grid key={getDossierPivotKey({ pivot, dossier })}>
             <PivotLink pivot={pivot} hit={hit} dossier={dossier} resolvedUrl={resolvedUrl} compact />
           </Grid>
         ))}
@@ -95,7 +95,7 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
           const resolvedUrl = pivotUrl || `/dossier/${dossier.dossier_id}`;
 
           return (
-            <Grid key={`${dossier.dossier_id}-${pivot.value}`}>
+            <Grid key={getDossierPivotKey({ pivot, dossier })}>
               <PivotLink pivot={pivot} hit={hit} dossier={dossier} resolvedUrl={resolvedUrl} compact />
             </Grid>
           );

@@ -16,7 +16,7 @@ import ResolvePivotUrl from 'components/elements/hit/ResolvePivotUrl';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { FC, MouseEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { dossierPivot, menuPathNode } from 'utils/pivotForest';
+import { getDossierPivotKey, type dossierPivot, type menuPathNode } from 'utils/pivotForest';
 
 /**
  * Renders grouped pivot navigation with nested hover flyouts.
@@ -111,7 +111,7 @@ const resolvePivotUrl = (item: dossierPivot, hit?: Hit) => {
 const PivotFlyoutContent: FC<PivotFlyoutContentProps> = ({ pivots, groups, hit, onNavigate }) => (
   <>
     {pivots.map(({ pivot, dossier }) => (
-      <MenuItem key={`${dossier.dossier_id}-${pivot.value}`} onClick={() => onNavigate?.()} sx={{ p: 0 }}>
+      <MenuItem key={getDossierPivotKey({ pivot, dossier })} onClick={() => onNavigate?.()} sx={{ p: 0 }}>
         <PivotLink
           pivot={pivot}
           hit={hit}

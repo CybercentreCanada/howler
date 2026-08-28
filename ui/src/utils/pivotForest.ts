@@ -29,6 +29,8 @@ export type dossierPivot = {
   dossier: Dossier;
 };
 
+const getDossierPivotKey = ({ pivot, dossier }: dossierPivot): string => JSON.stringify([dossier.dossier_id, pivot]);
+
 type PivotTree = {
   pivot?: dossierPivot[];
   [key: string]: PivotTree | dossierPivot[];
@@ -144,4 +146,5 @@ const pivotForest = (dossiers: Dossier[], language = 'en'): menuPathNode[] => {
   return nodes;
 };
 
+export { getDossierPivotKey };
 export default pivotForest;
