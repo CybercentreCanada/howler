@@ -92,11 +92,13 @@ const PivotLink: FC<PivotLinkProps> = ({
 
   // Removed from the if statement bellow for readability. This was extremly nested.
   if (dense && href) {
-    const dossierUrl = `/dossiers/${dossier.dossier_id}/edit?tab=leads&query=${encodeURIComponent(dossier.query)}`;
+    const dossierUrl = `/dossiers/${dossier.dossier_id}/edit?tab=leads${
+      dossier.query ? `&query=${encodeURIComponent(dossier.query)}` : ''
+    }`;
 
     return (
       <RelatedLink
-        title={pivot.label[i18n.language]}
+        title={pivot.label?.[i18n.language] ?? pivot.value ?? ''}
         href={href}
         icon={pivot.icon}
         target="_blank"
@@ -132,7 +134,7 @@ const PivotLink: FC<PivotLinkProps> = ({
   if (href) {
     return (
       <RelatedLink
-        title={pivot.label[i18n.language]}
+        title={pivot.label?.[i18n.language] ?? pivot.value ?? ''}
         href={href}
         compact={compact}
         icon={pivot.icon}

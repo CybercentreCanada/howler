@@ -385,7 +385,9 @@ def test_validate_group_name_valid_path(valid_group: str):
     dossier_service.validate_group(valid_group)
 
 
-@pytest.mark.parametrize("invalid_path", ["/////", "London//Montréal", "/London", "London/"])
+@pytest.mark.parametrize(
+    "invalid_path", ["/////", "London//Montréal", "/London", "London/", "London/pivot/Something", "pivot"]
+)
 def test_validate_group_name_invalid_paths(invalid_path):
     with pytest.raises(InvalidDataException):
         dossier_service.validate_group(invalid_path)

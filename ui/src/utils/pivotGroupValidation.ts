@@ -1,5 +1,5 @@
 /**
- * Validates a dossier group path using the same rules as the backend service.
+ * Validates a pivot group path using the same rules as the backend service.
  *
  * Rules:
  * - Allows alphabetic characters (including supported accented letters), digits, and '/'.
