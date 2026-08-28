@@ -20,7 +20,7 @@ const PivotGroupMenuItem: FC = () => {
   };
 
   return (
-    <ListItemButton onClick={pivotGroup.toggle} sx={{ width: '100%' }}>
+    <ListItemButton id="personalization-pivot-group" onClick={pivotGroup.toggle} sx={{ width: '100%' }}>
       <ListItemText>{t('personalization.pivotGroup')}</ListItemText>
       <Switch checked={pivotGroup.enabled} edge="end" onChange={pivotGroup.toggle} onClick={onSwitchClick} />
     </ListItemButton>
