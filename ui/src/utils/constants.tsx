@@ -70,6 +70,7 @@ export enum StorageKey {
   GRID_COLUMN_WIDTHS = 'grid_column_widths',
   QUERY_HISTORY = 'query_history',
   LOGIN_NONCE = 'login_nonce',
+  PIVOT_GROUP = 'pivot_group',
   DISPLAY_TYPE = 'display_type'
 }
 

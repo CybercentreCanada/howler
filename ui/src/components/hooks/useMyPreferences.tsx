@@ -28,6 +28,7 @@ import type { AppPreferenceConfigs, LeftNavMenuProps } from '@tui/core';
 import { AppBarContext } from 'components/app/providers/AppBarProvider';
 import Classification from 'components/elements/display/Classification';
 import DocumentationButton from 'components/elements/display/DocumentationButton';
+import PivotGroupMenuItem from 'components/elements/hit/PivotGroupMenuItem';
 import howlerPluginStore from 'plugins/store';
 import { Fragment, useContext, useMemo } from 'react';
 import { applyMainMenuOperations } from 'utils/menuUtils';
@@ -220,6 +221,9 @@ const useMyPreferences = (): AppPreferenceConfigs => {
     // appear at the end of user menus.
     return [
       ...howlerPluginStore.userMenuItems,
+      {
+        element: <PivotGroupMenuItem />
+      },
       {
         i18nKey: 'usermenu.settings',
         route: '/settings',

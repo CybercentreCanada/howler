@@ -8,7 +8,7 @@ import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Hit } from 'models/entities/generated/Hit';
 
-import { useAppPivotGroup } from 'commons/components/app/hooks';
+import { usePivotGroup } from 'components/app/providers/PivotGroupProvider';
 import HitNotebooks from 'components/elements/hit/HitNotebooks';
 import ResolvePivotUrl from 'components/elements/hit/ResolvePivotUrl';
 import PivotFolderMenu from 'components/elements/hit/related/PivotFolderMenu';
@@ -24,7 +24,7 @@ interface HitLinksProps {
 
 const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
   const { i18n } = useTranslation();
-  const pivotGroup = useAppPivotGroup();
+  const pivotGroup = usePivotGroup();
 
   const displayLinks = useMemo(() => uniqBy(hit?.howler?.links ?? [], 'href').slice(0, 3), [hit?.howler?.links]);
 

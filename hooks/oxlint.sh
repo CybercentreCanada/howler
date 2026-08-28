@@ -20,4 +20,4 @@ if [[ ${#lintable_files[@]} -eq 0 ]]; then
 	exit 0
 fi
 
-pnpx oxlint --fix --no-error-on-unmatched-pattern "${lintable_files[@]}"
+pnpx oxlint --fix "${lintable_files[@]}"
