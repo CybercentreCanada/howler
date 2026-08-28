@@ -108,9 +108,7 @@ def get_pivot_groups(user: User, **kwargs):
         "network/dns"   # Up to 10 matching group paths, used to autocomplete the pivot group field
     ]
     """
-    prefix = request.args.get("prefix", "", type=str)
-
-    return ok(dossier_service.get_pivot_groups(prefix, username=user.uname))
+    return ok(dossier_service.get_pivot_groups(request.args.get("prefix", "", type=str), username=user.uname))
 
 
 @generate_swagger_docs()
