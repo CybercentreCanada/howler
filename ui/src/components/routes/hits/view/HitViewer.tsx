@@ -14,7 +14,7 @@ import {
   useMediaQuery,
   useTheme
 } from '@mui/material';
-import PageCenter from 'commons/components/pages/PageCenter';
+import { PageCenter } from '@tui/core';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { RecordContext } from 'components/app/providers/RecordProvider';
 import { SocketContext } from 'components/app/providers/SocketProvider';

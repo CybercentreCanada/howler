@@ -88,11 +88,11 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
 
   return (
     <Grid container spacing={5} width="100%" px={2}>
-      <Grid item xs={12}>
+      <Grid size={12}>
         <CaseOverview case={_case} updateCase={updateCase} />
       </Grid>
       {AGGREGATE_FIELDS.map(([field, icon, iconColor, subtitle]) => (
-        <Grid key={field} item xs={12} md={6} xl={3}>
+        <Grid key={field} size={{ xs: 12, md: 6, xl: 3 }}>
           <CaseAggregate
             icon={icon}
             iconColor={iconColor && get(theme.palette, iconColor)}
@@ -102,7 +102,7 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
           />
         </Grid>
       ))}
-      <Grid item xs={12} md={6} xl={3}>
+      <Grid size={{ xs: 12, md: 6, xl: 3 }}>
         <CaseAggregate
           icon="mingcute:heartbeat-line"
           iconColor={theme.palette.error.light}
@@ -110,13 +110,13 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
           subtitle={t('page.cases.dashboard.duration')}
         />
       </Grid>
-      <Grid item xs={12}>
+      <Grid size={12}>
         <TaskPanel case={_case} updateCase={updateCase} />
       </Grid>
-      <Grid item xs={12}>
+      <Grid size={12}>
         <AlertPanel case={_case} />
       </Grid>
-      <Grid item xs={12}>
+      <Grid size={12}>
         <RelatedCasePanel case={_case} />
       </Grid>
     </Grid>

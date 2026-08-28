@@ -1,5 +1,5 @@
+import { useAppUser } from '@tui/core';
 import api from 'api';
-import { useAppUser } from 'commons/components/app/hooks';
 import UserPageWrapper from 'components/elements/display/UserPageWrapper';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyUserFunctions from 'components/hooks/useMyUserFunctions';

@@ -1,3 +1,4 @@
+import { useAppTheme } from '@tui/core';
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
 import {
   Alert,
@@ -12,7 +13,6 @@ import {
   TableRow,
   useTheme
 } from '@mui/material';
-import { useAppTheme } from 'commons/components/app/hooks';
 import mermaid from 'mermaid';
 import { memo, useEffect, type FC, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';

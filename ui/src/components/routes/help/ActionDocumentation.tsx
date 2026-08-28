@@ -1,5 +1,5 @@
+import { PageCenter } from '@tui/core';
 import { Box, Stack, Tab, Typography, useMediaQuery, useTheme } from '@mui/material';
-import PageCenter from 'commons/components/pages/PageCenter';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
 import howlerPluginStore from 'plugins/store';
 import type { FC } from 'react';

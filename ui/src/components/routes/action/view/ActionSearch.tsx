@@ -1,3 +1,4 @@
+import { useAppUser } from '@tui/core';
 import { Delete, Engineering, Terminal } from '@mui/icons-material';
 import {
   Autocomplete,
@@ -13,7 +14,6 @@ import {
   Typography
 } from '@mui/material';
 import api from 'api';
-import { useAppUser } from 'commons/components/app/hooks';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import SearchResponseProvider, {
   SearchResponseContext,
@@ -204,7 +204,7 @@ const ActionSearch: FC = () => {
           <CardContent sx={{ paddingTop: 0 }}>
             <Grid container spacing={1}>
               {item.item.operations.map(d => (
-                <Grid item key={d.operation_id}>
+                <Grid key={d.operation_id}>
                   <Chip label={t(`operations.${d.operation_id}`)} />
                 </Grid>
               ))}

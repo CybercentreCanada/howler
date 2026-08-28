@@ -141,7 +141,7 @@ const CaseObservables: FC<{ case?: Case; caseId?: string }> = ({ case: providedC
 
   return (
     <Grid container spacing={2} px={2}>
-      <Grid item xs={12}>
+      <Grid size={12}>
         <Stack spacing={1.5}>
           <TextField
             size="small"
@@ -265,16 +265,16 @@ const CaseObservables: FC<{ case?: Case; caseId?: string }> = ({ case: providedC
       </Grid>
       {records === null ? (
         Array.from({ length: 6 }, (_, i) => (
-          <Grid key={`skeleton-${i}`} item xs={12}>
+          <Grid key={`skeleton-${i}`} size={12}>
             <Skeleton height={40} />
           </Grid>
         ))
       ) : filteredObservables.length === 0 ? (
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Typography color="text.secondary">{t('page.cases.observables.empty')}</Typography>
         </Grid>
       ) : (
-        <Grid item xs={12}>
+        <Grid size={12}>
           <ObservableTable observables={filteredObservables} case={_case} />
         </Grid>
       )}

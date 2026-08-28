@@ -1,7 +1,7 @@
 import { Clear, Send } from '@mui/icons-material';
 import { Chip, Divider, IconButton, Stack, TextField, Typography } from '@mui/material';
+import { useAppUser } from '@tui/core';
 import api from 'api';
-import { useAppUser } from 'commons/components/app/hooks';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import Comment from 'components/elements/Comment';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
@@ -29,7 +29,7 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
   const [length, setLength] = useState(0);
   const [loading, setLoading] = useState(false);
   const [showClear, setShowClear] = useState(false);
-  const input = useRef<HTMLTextAreaElement>();
+  const input = useRef<HTMLTextAreaElement>(undefined);
 
   const onSubmit = useCallback(async () => {
     if (!input.current?.value || !analytic || input.current.value.length > MAX_LENGTH) return;

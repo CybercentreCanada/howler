@@ -105,7 +105,7 @@ const ProfileSection: FC<{
         <TableCell width="100%" colSpan={2}>
           <Grid container direction="row" spacing={1}>
             {config?.lookups?.roles?.map((r: string) => (
-              <Grid item key={r}>
+              <Grid key={r}>
                 <Chip
                   label={r.toLocaleLowerCase()}
                   color={user?.roles?.includes(r) ? 'primary' : 'default'}

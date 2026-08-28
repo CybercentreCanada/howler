@@ -10,10 +10,9 @@ import {
 import { SortableContext, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { Cancel, Check, Close, OpenInNew } from '@mui/icons-material';
 import { Alert, AlertTitle, CircularProgress, Grid, IconButton, Stack, Typography } from '@mui/material';
+import { PageCenter, useAppUser } from '@tui/core';
 import api from 'api';
 import { AppBrand } from 'branding/AppBrand';
-import { useAppUser } from 'commons/components/app/hooks';
-import PageCenter from 'commons/components/pages/PageCenter';
 import { AppBarContext } from 'components/app/providers/AppBarProvider';
 import CustomButton from 'components/elements/addons/buttons/CustomButton';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
@@ -89,10 +88,10 @@ const Home: FC = () => {
   const handleRefreshRateChange = useCallback(
     (newRate: number) => {
       setRefreshRate(newRate);
-      setUser(prev => ({
-        ...prev,
+      setUser({
+        ...user,
         refresh_rate: newRate
-      }));
+      });
 
       // Debounce the backend API call
       if (debounceTimerRef.current) {
@@ -103,7 +102,7 @@ const Home: FC = () => {
         void setRefreshRateBackend(newRate);
       }, 500);
     },
-    [setRefreshRateBackend, setUser]
+    [setRefreshRateBackend, setUser, user]
   );
 
   const handleRefresh = useCallback(() => {
@@ -319,7 +318,7 @@ const Home: FC = () => {
                   />
                 )}
                 {!dashboard?.length && !isEditing && (
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Stack
                       direction="column"
                       spacing={2}

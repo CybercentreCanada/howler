@@ -1,3 +1,4 @@
+import { PageCenter, parseEvent } from '@tui/core';
 /* eslint-disable no-useless-escape */
 import { useMonaco } from '@monaco-editor/react';
 import { OpenInNew, PlayArrowOutlined } from '@mui/icons-material';
@@ -26,8 +27,6 @@ import api from 'api';
 import type { HowlerEQLSearchResponse, HowlerExplainSearchResponse, HowlerSearchResponse } from 'api/search';
 import type { HowlerFacetSearchResponse } from 'api/search/facet';
 import type { HowlerGroupedSearchResponse } from 'api/search/grouped';
-import PageCenter from 'commons/components/pages/PageCenter';
-import { parseEvent } from 'commons/components/utils/keyboard';
 import { FieldContext } from 'components/app/providers/FieldProvider';
 import CustomButton from 'components/elements/addons/buttons/CustomButton';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
@@ -131,7 +130,7 @@ const QueryBuilder: FC = () => {
   const [rows, setRows] = useState(1);
   const [x, setX] = useState(0);
 
-  const wrapper = useRef<HTMLDivElement>();
+  const wrapper = useRef<HTMLDivElement>(undefined);
 
   const fieldOptions = useMemo(() => hitFields.map(_field => _field.key), [hitFields]);
 

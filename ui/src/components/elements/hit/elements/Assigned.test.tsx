@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
-vi.mock('commons/components/app/hooks', () => ({
+vi.mock('@tui/core', () => ({
   useAppUser: () => ({ user: { username: 'current-user' } })
 }));
 

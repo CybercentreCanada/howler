@@ -12,12 +12,17 @@ describe('useMyTheme', () => {
 
   it('contains a dark palette entry', () => {
     const { result } = renderHook(() => useMyTheme());
-    expect(result.current.palette?.dark).toBeDefined();
+    expect(result.current.dark?.palette).toBeDefined();
+  });
+
+  it('sets the dark palette mode', () => {
+    const { result } = renderHook(() => useMyTheme());
+    expect(result.current.dark?.palette?.mode).toBe('dark');
   });
 
   it('contains a light palette entry', () => {
     const { result } = renderHook(() => useMyTheme());
-    expect(result.current.palette?.light).toBeDefined();
+    expect(result.current.light?.palette).toBeDefined();
   });
 
   it('returns the same reference on re-render (stable return value)', () => {
@@ -29,13 +34,13 @@ describe('useMyTheme', () => {
 
   it('dark palette includes primary and secondary colours', () => {
     const { result } = renderHook(() => useMyTheme());
-    expect(result.current.palette.dark.primary).toHaveProperty('main');
-    expect(result.current.palette.dark.secondary).toHaveProperty('main');
+    expect(result.current.dark.palette.primary).toHaveProperty('main');
+    expect(result.current.dark.palette.secondary).toHaveProperty('main');
   });
 
   it('light palette includes primary and secondary colours', () => {
     const { result } = renderHook(() => useMyTheme());
-    expect(result.current.palette.light.primary).toHaveProperty('main');
-    expect(result.current.palette.light.secondary).toHaveProperty('main');
+    expect(result.current.light.palette.primary).toHaveProperty('main');
+    expect(result.current.light.palette.secondary).toHaveProperty('main');
   });
 });

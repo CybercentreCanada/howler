@@ -1,5 +1,5 @@
+import { PageCenter } from '@tui/core';
 import { Stack, Tab, Tabs } from '@mui/material';
-import PageCenter from 'commons/components/pages/PageCenter';
 import Markdown from 'components/elements/display/Markdown';
 import { isEmpty } from 'lodash-es';
 import howlerPluginStore from 'plugins/store';

@@ -1,6 +1,6 @@
+import { useAppUser } from '@tui/core';
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
-import { useAppUser } from 'commons/components/app/hooks';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import { createContext, useCallback, useEffect, useState, type FC, type PropsWithChildren } from 'react';

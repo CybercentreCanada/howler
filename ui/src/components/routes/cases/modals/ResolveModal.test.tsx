@@ -57,10 +57,6 @@ vi.mock('api', () => ({
   }
 }));
 
-vi.mock('commons/components/app/hooks/useAppUser', () => ({
-  useAppUser: () => ({ user: { username: 'test-user' } })
-}));
-
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
@@ -84,7 +80,13 @@ const HIT_RESOLVED = makeResolvedHit('hit-resolved');
 const caseWithHits = (hitIds: string[]) =>
   createMockCase({
     case_id: 'case-1',
-    items: hitIds.map(id => ({ type: 'hit', value: id }) as any)
+    items: hitIds.map(
+      id =>
+        ({
+          type: 'hit',
+          value: id
+        }) as any
+    )
   });
 
 // ---------------------------------------------------------------------------

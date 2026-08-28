@@ -1,16 +1,60 @@
+import {
+  AppProvider,
+  AppRoot,
+  LayoutSkeleton,
+  parseTuiClientCookies,
+  TUI_THEMES,
+  useAppLayout,
+  useAppUser
+} from '@tui/core';
+import { AppAccessibilityProvider } from '@tui/a11y';
+import { AppSwitcherProvider, useAppSwitcher } from '@tui/apps';
+import { AppDrawerProvider as TuiAppDrawerProvider } from '@tui/drawer';
+
+import type {
+  AppBreadcrumbItem,
+  AppPreferenceConfigs,
+  AppRouterAdapter,
+  AppSearchService,
+  AppTheme,
+  AppUserService
+} from '@tui/core';
+
 import { loader } from '@monaco-editor/react';
+import {
+  Article,
+  Book,
+  BookRounded,
+  Code,
+  CreateNewFolder,
+  Dashboard,
+  Description,
+  Edit,
+  EditNote,
+  FormatListBulleted,
+  Help,
+  Info,
+  Key,
+  Person,
+  PersonSearch,
+  QueryStats,
+  SavedSearch,
+  Search,
+  Settings as SettingsIcon,
+  SettingsSuggest,
+  Shield,
+  Storage,
+  Terminal,
+  Topic
+} from '@mui/icons-material';
 import api from 'api';
-import type { AppPreferenceConfigs, AppSiteMapConfigs, AppThemeConfigs } from 'commons/components/app/AppConfigs';
-import AppProvider from 'commons/components/app/AppProvider';
-import type { AppSearchService } from 'commons/components/app/AppSearchService';
-import LayoutSkeleton from 'commons/components/app/AppSkeleton';
-import type { AppUserService } from 'commons/components/app/AppUserService';
-import { useAppLayout, useAppSwitcher, useAppUser } from 'commons/components/app/hooks';
 import Modal from 'components/elements/display/Modal';
 import useMyApi from 'components/hooks/useMyApi';
+import { useMyAccessibility } from 'components/hooks/useMyAccessibility';
+import { APP_COOKIES_DEFAULTS } from 'components/hooks/useMyCookies';
 import useMyLocalStorage from 'components/hooks/useMyLocalStorage';
 import useMyPreferences from 'components/hooks/useMyPreferences';
-import useMySitemap from 'components/hooks/useMySitemap';
+import { useMyRouter } from 'components/hooks/useMyRouter';
 import useMyTheme from 'components/hooks/useMyTheme';
 import useMyUser from 'components/hooks/useMyUser';
 import LoginScreen from 'components/logins/Login';
@@ -72,10 +116,10 @@ import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Hit } from 'models/entities/generated/Hit';
 import * as monaco from 'monaco-editor';
 import howlerPluginStore from 'plugins/store';
-import { useCallback, useContext, useEffect, useMemo, type FC, type PropsWithChildren } from 'react';
+import { useCallback, useContext, useEffect, useMemo, type FC, type PropsWithChildren, type ReactElement } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { PluginProvider, usePluginStore } from 'react-pluggable';
-import { createBrowserRouter, Outlet, RouterProvider, useLocation, useNavigate } from 'react-router';
+import { createBrowserRouter, Outlet, RouterProvider, useLocation, useNavigate, type UIMatch } from 'react-router';
 import { StorageKey } from 'utils/constants';
 import useMySearch from '../hooks/useMySearch';
 import AppContainer from './AppContainer';
@@ -168,7 +212,7 @@ const MyApp: FC = () => {
       if (location.pathname !== '/login') {
         set(StorageKey.NEXT_LOCATION, location.pathname);
         set(StorageKey.NEXT_SEARCH, location.search);
-        navigate('/login');
+        void navigate('/login');
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -190,14 +234,13 @@ const MyApp: FC = () => {
 
 const MyAppProvider: FC<PropsWithChildren> = ({ children }) => {
   const myPreferences: AppPreferenceConfigs = useMyPreferences();
-  const myTheme: AppThemeConfigs = useMyTheme();
-  const mySitemap: AppSiteMapConfigs = useMySitemap();
   const myUser: AppUserService<HowlerUser> = useMyUser();
   const mySearch: AppSearchService<Hit> = useMySearch();
+  const myRouter: AppRouterAdapter = useMyRouter();
 
   return (
     <ErrorBoundary>
-      <AppProvider preferences={myPreferences} theme={myTheme} sitemap={mySitemap} user={myUser} search={mySearch}>
+      <AppProvider preferences={myPreferences} user={myUser} search={mySearch} router={myRouter}>
         <CustomPluginProvider>
           <ErrorBoundary>
             <ErrorBoundary>
@@ -231,21 +274,56 @@ const MyAppProvider: FC<PropsWithChildren> = ({ children }) => {
 };
 
 const AppProviderWrapper = () => {
+  const myTheme = useMyTheme();
+  const myAccessibility = useMyAccessibility();
+  const myThemes: AppTheme[] = useMemo(
+    () => [
+      { id: 'howler', i18nKey: 'route.home.title', configs: myTheme, default: true },
+      ...TUI_THEMES.filter(theme => theme.id !== 'howler')
+    ],
+    [myTheme]
+  );
+  const tuiCookies = useMemo(() => parseTuiClientCookies(APP_COOKIES_DEFAULTS), []);
+
   return (
     <I18nextProvider i18n={i18n as any} defaultNS="translation">
       <ApiConfigProvider>
         <PluginProvider pluginStore={howlerPluginStore.pluginStore}>
           <AppBarProvider>
-            <MyAppProvider>
-              <MyApp />
-              <Modal />
-            </MyAppProvider>
+            <AppRoot i18n={i18n} cookies={tuiCookies} themes={myThemes}>
+              <TuiAppDrawerProvider>
+                <AppAccessibilityProvider preferences={myAccessibility.preferences} features={myAccessibility.features}>
+                  <AppSwitcherProvider>
+                    <MyAppProvider>
+                      <MyApp />
+                      <Modal />
+                    </MyAppProvider>
+                  </AppSwitcherProvider>
+                </AppAccessibilityProvider>
+              </TuiAppDrawerProvider>
+            </AppRoot>
           </AppBarProvider>
         </PluginProvider>
       </ApiConfigProvider>
     </I18nextProvider>
   );
 };
+
+// Static breadcrumb entry for a known route.
+const crumb = (path: string, i18nKey: string, icon?: ReactElement): AppBreadcrumbItem => ({
+  route: path,
+  path,
+  i18nKey,
+  icon
+});
+
+// Breadcrumb entry for the currently matched (possibly dynamic) route.
+const selfCrumb = (match: UIMatch, i18nKey: string, icon?: ReactElement): AppBreadcrumbItem => ({
+  route: match.pathname,
+  path: match.pathname,
+  i18nKey,
+  icon
+});
 
 const createRouter = () =>
   createBrowserRouter([
@@ -263,24 +341,34 @@ const createRouter = () =>
         },
         {
           index: true,
-          element: <Home />
+          element: <Home />,
+          handle: { breadcrumb: (): AppBreadcrumbItem[] => [crumb('/', 'route.home', <Dashboard />)] }
         },
         {
           path: 'hits',
-          element: <RecordBrowser />
+          element: <RecordBrowser />,
+          handle: { breadcrumb: (): AppBreadcrumbItem[] => [crumb('/hits', 'route.hits', <Search />)] }
         },
         {
           path: 'search',
-          element: <RecordBrowser />
+          element: <RecordBrowser />,
+          handle: { breadcrumb: (): AppBreadcrumbItem[] => [crumb('/search', 'route.search', <Search />)] }
         },
         {
           path: 'hits/:id',
-          element: <HitViewer />
+          element: <HitViewer />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/hits', 'route.hits', <Search />),
+              selfCrumb(match, 'route.hits.view', <Info />)
+            ]
+          }
         },
 
         {
           path: 'cases',
-          element: <Cases />
+          element: <Cases />,
+          handle: { breadcrumb: (): AppBreadcrumbItem[] => [crumb('/cases', 'route.cases', <BookRounded />)] }
         },
         {
           path: 'cases/:id',
@@ -289,6 +377,12 @@ const createRouter = () =>
               <CaseViewer />
             </ParameterProvider>
           ),
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/cases', 'route.cases', <BookRounded />),
+              selfCrumb(match, 'route.cases.view')
+            ]
+          },
           children: [
             {
               index: true,
@@ -318,23 +412,40 @@ const createRouter = () =>
         },
         {
           path: 'templates',
-          element: <Templates />
+          element: <Templates />,
+          handle: {
+            breadcrumb: (): AppBreadcrumbItem[] => [crumb('/templates', 'route.templates', <FormatListBulleted />)]
+          }
         },
         {
           path: 'templates/view',
-          element: <TemplateViewer />
+          element: <TemplateViewer />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/templates', 'route.templates', <FormatListBulleted />),
+              selfCrumb(match, 'route.templates.view', <FormatListBulleted />)
+            ]
+          }
         },
         {
           path: 'overviews',
-          element: <Overviews />
+          element: <Overviews />,
+          handle: { breadcrumb: (): AppBreadcrumbItem[] => [crumb('/overviews', 'route.overviews', <Article />)] }
         },
         {
           path: 'overviews/view',
-          element: <OverviewViewer />
+          element: <OverviewViewer />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/overviews', 'route.overviews', <Article />),
+              selfCrumb(match, 'route.overviews.view', <Article />)
+            ]
+          }
         },
         {
           path: 'dossiers',
-          element: <Dossiers />
+          element: <Dossiers />,
+          handle: { breadcrumb: (): AppBreadcrumbItem[] => [crumb('/dossiers', 'route.dossiers', <Topic />)] }
         },
         {
           path: 'dossiers/create',
@@ -342,7 +453,13 @@ const createRouter = () =>
             <ParameterProvider>
               <DossierEditor />
             </ParameterProvider>
-          )
+          ),
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/dossiers', 'route.dossiers', <Topic />),
+              selfCrumb(match, 'route.dossiers.create', <CreateNewFolder />)
+            ]
+          }
         },
         {
           path: 'dossiers/:id/edit',
@@ -350,11 +467,18 @@ const createRouter = () =>
             <ParameterProvider>
               <DossierEditor />
             </ParameterProvider>
-          )
+          ),
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/dossiers', 'route.dossiers', <Topic />),
+              selfCrumb(match, 'route.dossiers.edit', <Edit />)
+            ]
+          }
         },
         {
           path: 'views',
-          element: <Views />
+          element: <Views />,
+          handle: { breadcrumb: (): AppBreadcrumbItem[] => [crumb('/views', 'route.views', <SavedSearch />)] }
         },
         {
           path: 'views/create',
@@ -366,11 +490,17 @@ const createRouter = () =>
                 </GridColumnsProvider>
               </RecordSearchProvider>
             </ParameterProvider>
-          )
+          ),
+          handle: {
+            breadcrumb: (): AppBreadcrumbItem[] => [crumb('/views/create', 'route.views.create', <SavedSearch />)]
+          }
         },
         {
           path: 'views/:id',
-          element: <RecordBrowser />
+          element: <RecordBrowser />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [selfCrumb(match, 'route.views.show', <SavedSearch />)]
+          }
         },
         {
           path: 'views/:id/edit',
@@ -382,79 +512,172 @@ const createRouter = () =>
                 </GridColumnsProvider>
               </RecordSearchProvider>
             </ParameterProvider>
-          )
+          ),
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/views', 'route.views', <SavedSearch />),
+              selfCrumb(match, 'route.views.edit', <Edit />)
+            ]
+          }
         },
         {
           path: 'admin/users',
-          element: <UserSearchProvider />
+          element: <UserSearchProvider />,
+          handle: {
+            breadcrumb: (): AppBreadcrumbItem[] => [crumb('/admin/users', 'route.admin.user.search', <PersonSearch />)]
+          }
         },
         {
           path: 'admin/users/:id',
-          element: <UserEditor />
+          element: <UserEditor />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/admin/users', 'route.admin.user.search', <PersonSearch />),
+              selfCrumb(match, 'route.admin.user.details', <Person />)
+            ]
+          }
         },
         {
           path: 'analytics',
-          element: <AnalyticSearch />
+          element: <AnalyticSearch />,
+          handle: { breadcrumb: (): AppBreadcrumbItem[] => [crumb('/analytics', 'route.analytics', <QueryStats />)] }
         },
         {
           path: 'analytics/:id',
-          element: <AnalyticDetails />
+          element: <AnalyticDetails />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/analytics', 'route.analytics', <QueryStats />),
+              selfCrumb(match, 'route.analytics.view', <Info />)
+            ]
+          }
         },
         {
           path: 'help',
-          element: <HelpDashboard />
+          element: <HelpDashboard />,
+          handle: { breadcrumb: (): AppBreadcrumbItem[] => [crumb('/help', 'route.help', <Help />)] }
         },
         {
           path: 'help/search',
-          element: <SearchDocumentation />
+          element: <SearchDocumentation />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/help', 'route.help', <Help />),
+              selfCrumb(match, 'route.help.search', <Search />)
+            ]
+          }
         },
         {
           path: 'help/api',
-          element: <ApiDocumentation />
+          element: <ApiDocumentation />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/help', 'route.help', <Help />),
+              selfCrumb(match, 'route.help.api', <Storage />)
+            ]
+          }
         },
         {
           path: 'help/auth',
-          element: <AuthDocumentation />
+          element: <AuthDocumentation />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/help', 'route.help', <Help />),
+              selfCrumb(match, 'route.help.auth', <Key />)
+            ]
+          }
         },
         {
           path: 'help/client',
-          element: <ClientDocumentation />
+          element: <ClientDocumentation />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/help', 'route.help', <Help />),
+              selfCrumb(match, 'route.help.client', <Terminal />)
+            ]
+          }
         },
         {
           path: 'help/hit',
-          element: <HitDocumentation />
+          element: <HitDocumentation />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/help', 'route.help', <Help />),
+              selfCrumb(match, 'route.help.hit', <Shield />)
+            ]
+          }
         },
         {
           path: 'help/retention',
-          element: <RetentionDocumentation />
+          element: <RetentionDocumentation />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/help', 'route.help', <Help />),
+              selfCrumb(match, 'route.help.retention', <Book />)
+            ]
+          }
         },
         {
           path: 'help/templates',
-          element: <TemplateDocumentation />
+          element: <TemplateDocumentation />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/help', 'route.help', <Help />),
+              selfCrumb(match, 'route.help.templates', <FormatListBulleted />)
+            ]
+          }
         },
         {
           path: 'help/actions',
-          element: <ActionDocumentation />
+          element: <ActionDocumentation />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/help', 'route.help', <Help />),
+              selfCrumb(match, 'route.help.actions', <SettingsSuggest />)
+            ]
+          }
         },
         {
           path: 'help/notebook',
-          element: <NotebookDocumentation />
+          element: <NotebookDocumentation />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/help', 'route.help', <Help />),
+              selfCrumb(match, 'route.help.notebook', <Description />)
+            ]
+          }
         },
         {
           path: 'help/overviews',
-          element: <OverviewDocumentation />
+          element: <OverviewDocumentation />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/help', 'route.help', <Help />),
+              selfCrumb(match, 'route.help.overviews', <Article />)
+            ]
+          }
         },
         {
           path: 'help/views',
-          element: <ViewDocumentation />
+          element: <ViewDocumentation />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/help', 'route.help', <Help />),
+              selfCrumb(match, 'route.help.views', <SavedSearch />)
+            ]
+          }
         },
         {
           path: 'settings',
-          element: <Settings />
+          element: <Settings />,
+          handle: {
+            breadcrumb: (): AppBreadcrumbItem[] => [crumb('/settings', 'page.settings.sitemap', <SettingsIcon />)]
+          }
         },
         {
           path: 'advanced',
-          element: <QueryBuilder />
+          element: <QueryBuilder />,
+          handle: { breadcrumb: (): AppBreadcrumbItem[] => [crumb('/advanced', 'route.advanced', <Code />)] }
         },
         {
           path: 'action',
@@ -472,11 +695,18 @@ const createRouter = () =>
           children: [
             {
               index: true,
-              element: <ActionSearchProvider />
+              element: <ActionSearchProvider />,
+              handle: { breadcrumb: (): AppBreadcrumbItem[] => [crumb('/action', 'route.actions', <Terminal />)] }
             },
             {
               path: 'integrations',
-              element: <Integrations />
+              element: <Integrations />,
+              handle: {
+                breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+                  crumb('/action', 'route.actions', <Terminal />),
+                  selfCrumb(match, 'route.integrations')
+                ]
+              }
             },
             {
               path: 'execute',
@@ -484,14 +714,26 @@ const createRouter = () =>
                 <ParameterProvider>
                   <ActionEditor />
                 </ParameterProvider>
-              )
+              ),
+              handle: {
+                breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+                  crumb('/action', 'route.actions', <Terminal />),
+                  selfCrumb(match, 'route.actions.create', <EditNote />)
+                ]
+              }
             },
             {
               path: ':id',
               children: [
                 {
                   index: true,
-                  element: <ActionDetails />
+                  element: <ActionDetails />,
+                  handle: {
+                    breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+                      crumb('/action', 'route.actions', <Terminal />),
+                      selfCrumb(match, 'route.actions.view')
+                    ]
+                  }
                 },
                 {
                   path: 'edit',
@@ -499,7 +741,13 @@ const createRouter = () =>
                     <ParameterProvider>
                       <ActionEditor />
                     </ParameterProvider>
-                  )
+                  ),
+                  handle: {
+                    breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+                      crumb('/action', 'route.actions', <Terminal />),
+                      selfCrumb(match, 'route.actions.edit', <Edit />)
+                    ]
+                  }
                 }
               ]
             }

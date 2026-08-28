@@ -1,6 +1,6 @@
+import { useAppUser } from '@tui/core';
 import { SNACKBAR_EVENT_ID, type SnackbarEvents } from '@cccsaurora/clue-ui/data/event';
 import useClue from '@cccsaurora/clue-ui/hooks/useClue';
-import { useAppUser } from 'commons/components/app/hooks/useAppUser';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import type { HowlerUser } from 'models/entities/HowlerUser';

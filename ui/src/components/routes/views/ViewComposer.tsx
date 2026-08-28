@@ -1,3 +1,4 @@
+import { AppListEmpty, PageCenter } from '@tui/core';
 import type { FC } from 'react';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,8 +20,6 @@ import {
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
 import type { SearchIndex } from 'api/v2/search';
-import AppListEmpty from 'commons/components/display/AppListEmpty';
-import PageCenter from 'commons/components/pages/PageCenter';
 import { GridColumnsContext } from 'components/app/providers/GridColumnsProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { RecordContext } from 'components/app/providers/RecordProvider';
@@ -122,7 +121,7 @@ const ViewComposer: FC = () => {
           }
         });
 
-        navigate(buildViewUrl(newView));
+        void navigate(buildViewUrl(newView));
       } else {
         await editView(routeParams.id, {
           title,

@@ -1,4 +1,4 @@
-import PageCenter from 'commons/components/pages/PageCenter';
+import { PageCenter } from '@tui/core';
 import Markdown from 'components/elements/display/Markdown';
 import type { FC } from 'react';
 import { useMemo } from 'react';

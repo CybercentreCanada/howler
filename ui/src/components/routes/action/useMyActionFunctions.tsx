@@ -93,7 +93,7 @@ const useMyActionFunctions = () => {
             );
 
             if (result) {
-              navigate(`/action/${params.id}`);
+              void navigate(`/action/${params.id}`);
             }
           } else {
             setLoading(true);
@@ -108,7 +108,7 @@ const useMyActionFunctions = () => {
             );
 
             if (newAction) {
-              navigate(`/action/${newAction.action_id}`);
+              void navigate(`/action/${newAction.action_id}`);
             }
           }
         } finally {
@@ -248,7 +248,7 @@ const useMyActionFunctions = () => {
           });
 
           if (detailedActionView) {
-            navigate('/action');
+            void navigate('/action');
           }
         } finally {
           setLoading(false);

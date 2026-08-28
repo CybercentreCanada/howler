@@ -1,3 +1,4 @@
+import { PageCenter, AppInfoPanel } from '@tui/core';
 import {
   Autocomplete,
   Button,
@@ -12,13 +13,11 @@ import {
   Tooltip
 } from '@mui/material';
 import api from 'api';
-import PageCenter from 'commons/components/pages/PageCenter';
 import TemplateEditor from 'components/routes/templates/TemplateEditor';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Check, Delete, SsidChart } from '@mui/icons-material';
-import AppInfoPanel from 'commons/components/display/AppInfoPanel';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import { DEFAULT_FIELDS } from 'components/elements/hit/HitOutline';
 import useMyApi from 'components/hooks/useMyApi';

@@ -1,7 +1,7 @@
+import { AppListEmpty } from '@tui/core';
 import { Article } from '@mui/icons-material';
 import { Box, Fab, Skeleton, Stack, Typography, useMediaQuery } from '@mui/material';
 import 'chartjs-adapter-dayjs-4';
-import AppListEmpty from 'commons/components/display/AppListEmpty';
 import { OverviewContext } from 'components/app/providers/OverviewProvider';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import { useContext, useEffect, useMemo, useState, type FC } from 'react';

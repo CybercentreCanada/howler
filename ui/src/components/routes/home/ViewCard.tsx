@@ -1,8 +1,8 @@
+import { AppListEmpty } from '@tui/core';
 import { OpenInNew } from '@mui/icons-material';
 import { Card, CardContent, IconButton, Skeleton, Stack, Typography } from '@mui/material';
 import api from 'api';
 import type { SearchIndex } from 'api/v2/search';
-import AppListEmpty from 'commons/components/display/AppListEmpty';
 import { useRecordContextSelector } from 'components/app/providers/RecordProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import EventCard from 'components/elements/event/EventCard';

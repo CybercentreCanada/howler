@@ -1,4 +1,4 @@
-import PageCenter from 'commons/components/pages/PageCenter';
+import { PageCenter } from '@tui/core';
 import HandlebarsMarkdown from 'components/elements/display/HandlebarsMarkdown';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
 import type { FC } from 'react';

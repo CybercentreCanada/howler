@@ -1,3 +1,5 @@
+import { useAppBar, useAppLayout, useAppUser, PageCenter } from '@tui/core';
+import type { AppTocItem } from '@tui/core';
 import { ExpandMore } from '@mui/icons-material';
 import {
   Accordion,
@@ -19,9 +21,6 @@ import {
   useMediaQuery,
   useTheme
 } from '@mui/material';
-import { useAppBar, useAppLayout, useAppUser } from 'commons/components/app/hooks';
-import type { AppTocItem } from 'commons/components/display/AppToc';
-import PageCenter from 'commons/components/pages/PageCenter';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
 import type { HowlerUser } from 'models/entities/HowlerUser';

@@ -1,3 +1,5 @@
+import { addTranslations as addA11yTranslations } from '@tui/a11y';
+import { addTranslations as addCoreTranslations } from '@tui/core';
 import { createInstance, type i18n } from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import helpMainEN from 'locales/en/help/main.json';
@@ -46,5 +48,8 @@ void i18nInstance
     },
     resources
   });
+
+addCoreTranslations(i18nInstance);
+addA11yTranslations(i18nInstance);
 
 export default i18nInstance;

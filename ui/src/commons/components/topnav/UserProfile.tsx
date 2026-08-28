@@ -41,7 +41,7 @@ const UserProfile = () => {
   const { t } = useTranslation();
   const configs = useAppConfigs();
   const { user } = useAppUser();
-  const anchorRef = useRef();
+  const anchorRef = useRef<HTMLButtonElement>(null);
   const location = useLocation();
 
   const [open, setOpen] = useState<boolean>(false);

@@ -1,5 +1,5 @@
+import { PageCenter } from '@tui/core';
 import { Search } from '@mui/icons-material';
-import PageCenter from 'commons/components/pages/PageCenter';
 import Markdown from 'components/elements/display/Markdown';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
 import howlerPluginStore from 'plugins/store';

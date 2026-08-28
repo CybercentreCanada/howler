@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
+import type * as TuiCore from '@tui/core';
 import { omit } from 'lodash-es';
 import { act, type PropsWithChildren } from 'react';
 import { setupContextSelectorMock } from 'tests/mocks';
@@ -19,9 +20,10 @@ const mockUseAppUser = vi.hoisted(() =>
     }
   }))
 );
-vi.mock('commons/components/app/hooks/useAppUser', () => ({
-  useAppUser: mockUseAppUser
-}));
+vi.mock('@tui/core', async () => {
+  const actual = await vi.importActual<typeof TuiCore>('@tui/core');
+  return { ...actual, useAppUser: mockUseAppUser };
+});
 
 // Mock react-router
 const mockNavigate = vi.fn();

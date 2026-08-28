@@ -84,10 +84,6 @@ vi.mock('components/elements/record/RecordContextMenu', () => ({
   default: ({ children }: PropsWithChildren) => <div>{children}</div>
 }));
 
-vi.mock('commons/components/display/AppListEmpty', () => ({
-  default: () => <div>No records</div>
-}));
-
 import { RecordContext } from 'components/app/providers/RecordProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 
@@ -159,7 +155,7 @@ describe('ViewCard', () => {
 
     render(<ViewCard viewId="view-1" limit={3} />, { wrapper: Wrapper });
 
-    expect(await screen.findByText('No records')).toBeInTheDocument();
+    expect(await screen.findByText('No Results')).toBeInTheDocument();
   });
 
   it('renders hits and events returned by the search', async () => {

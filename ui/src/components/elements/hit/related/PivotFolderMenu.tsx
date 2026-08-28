@@ -47,7 +47,7 @@ interface PivotFlyoutContentProps extends PivotSharedProps {
 // Popper (no modal/backdrop/focus-trap) is used instead of Menu so nested flyouts never fight each other for focus
 const useHoverMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const closeTimer = useRef<ReturnType<typeof setTimeout>>();
+  const closeTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => () => clearTimeout(closeTimer.current), []);
 

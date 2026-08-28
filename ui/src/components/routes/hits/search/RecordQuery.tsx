@@ -49,7 +49,7 @@ const RecordQuery: FC<RecordQueryProps> = ({
   const [multiline, setMultiline] = useState(false);
   const [y, setY] = useState(0);
 
-  const wrapper = useRef<HTMLDivElement>();
+  const wrapper = useRef<HTMLDivElement>(undefined);
 
   const search = useCallback(() => triggerSearch(sanitizeMultilineLucene(query)), [query, triggerSearch]);
 

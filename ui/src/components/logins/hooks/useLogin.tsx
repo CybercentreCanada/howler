@@ -1,6 +1,6 @@
+import { useAppUser } from '@tui/core';
 import api, { type HowlerResponse } from 'api';
 import type { PostLoginBody } from 'api/auth/login';
-import { useAppUser } from 'commons/components/app/hooks';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import LoginErrorModal from 'components/elements/display/modals/LoginErrorModal';
 import useMyApi from 'components/hooks/useMyApi';
@@ -39,11 +39,11 @@ const useLogin = () => {
 
         // Either navigate to the original URL, or just the home page
         if (get(StorageKey.NEXT_LOCATION)) {
-          navigate(get<string>(StorageKey.NEXT_LOCATION) + (get<string>(StorageKey.NEXT_SEARCH) ?? ''));
+          void navigate(get<string>(StorageKey.NEXT_LOCATION) + (get<string>(StorageKey.NEXT_SEARCH) ?? ''));
           remove(StorageKey.NEXT_LOCATION);
           remove(StorageKey.NEXT_SEARCH);
         } else if (location.pathname === '/login') {
-          navigate('/');
+          void navigate('/');
         }
         // If the user is null but there's no exception?
       } else {
@@ -54,7 +54,7 @@ const useLogin = () => {
       // There's some sort of error with the getting of the user - log them out or throw an error
       if (e instanceof Error) {
         if ((e.cause as HowlerResponse<any>)?.api_status_code === 403) {
-          navigate('/logout');
+          void navigate('/logout');
         } else {
           showModal(<LoginErrorModal error={e} />, {
             disableClose: true

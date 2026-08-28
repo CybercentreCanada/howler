@@ -24,7 +24,7 @@ const AnalyticCard: FC<AnalyticSettings> = ({ analyticId, type }) => {
   const [analytic, setAnalytic] = useState<Analytic>(null);
   const { getAnalyticFromId } = useContext(AnalyticContext);
 
-  const chartRef = useRef<Chart>();
+  const chartRef = useRef<Chart>(undefined);
 
   useEffect(() => {
     void getAnalyticFromId(analyticId).then(setAnalytic);

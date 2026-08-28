@@ -17,7 +17,7 @@ import { memo, useCallback, useRef, useState } from 'react';
 
 const AppSwitcher = () => {
   const theme = useTheme();
-  const anchorRef = useRef();
+  const anchorRef = useRef<HTMLButtonElement>(null);
   const appSwitcher = useAppSwitcher();
   const [open, setOpen] = useState<boolean>(false);
   const isDarkTheme = theme.palette.mode === 'dark';

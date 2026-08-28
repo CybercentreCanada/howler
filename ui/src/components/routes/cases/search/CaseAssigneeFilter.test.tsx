@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
+import type * as TuiCore from '@tui/core';
 import { UserListContext } from 'components/app/providers/UserListProvider';
 import i18n from 'i18n';
 import type { HowlerUser } from 'models/entities/HowlerUser';
@@ -15,9 +16,13 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
-vi.mock('commons/components/app/hooks/useAppUser', () => ({
-  useAppUser: () => ({ user: { username: 'alice', name: 'Alice Smith' } as HowlerUser })
-}));
+vi.mock('@tui/core', async () => {
+  const actual = await vi.importActual<typeof TuiCore>('@tui/core');
+  return {
+    ...actual,
+    useAppUser: () => ({ user: { username: 'alice', name: 'Alice Smith' } as HowlerUser })
+  };
+});
 
 // Stub HowlerAvatar to avoid avatar API calls
 vi.mock('components/elements/display/HowlerAvatar', () => ({

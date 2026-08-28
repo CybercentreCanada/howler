@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type * as TuiCore from '@tui/core';
 import omit from 'lodash-es/omit';
 import { act, type PropsWithChildren } from 'react';
 import { setupContextSelectorMock, setupReactRouterMock } from 'tests/mocks';
@@ -68,13 +69,17 @@ vi.mock('@mui/material', async () => {
 });
 
 // Mock child components
-vi.mock('commons/components/pages/PageCenter', () => ({
-  default: ({ children, ...props }) => (
-    <div id="page-center" {...omit(props, ['textAlign', 'maxWidth'])}>
-      {children}
-    </div>
-  )
-}));
+vi.mock('@tui/core', async () => {
+  const actual = await vi.importActual<typeof TuiCore>('@tui/core');
+  return {
+    ...actual,
+    PageCenter: ({ children, ...props }) => (
+      <div id="page-center" {...omit(props, ['textAlign', 'maxWidth'])}>
+        {children}
+      </div>
+    )
+  };
+});
 
 vi.mock('../../elements/display/QueryResultText', () => ({
   default: ({ count, query }) => (
@@ -174,12 +179,13 @@ const Wrapper = ({ children }: PropsWithChildren) => {
 
 describe('DossierEditor', () => {
   beforeEach(() => {
-    mockApiSearchHitPost.mockClear();
-    mockApiDossierGet.mockClear();
-    mockApiDossierPost.mockClear();
-    mockApiDossierPut.mockClear();
+    mockApiSearchHitPost.mockReset();
+    mockApiDossierGet.mockReset();
+    mockApiDossierPost.mockReset();
+    mockApiDossierPut.mockReset();
     mockNavigate.mockClear();
     mockSetQuery.mockClear();
+    mockUseParams.mockReturnValue({ id: undefined });
 
     // Reset mock context
     mockParameterContext.setQuery = mockSetQuery;

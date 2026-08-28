@@ -1,3 +1,4 @@
+import { useAppUser } from '@tui/core';
 import { Star, StarBorder } from '@mui/icons-material';
 import {
   AvatarGroup,
@@ -14,7 +15,6 @@ import {
   useTheme
 } from '@mui/material';
 import api from 'api';
-import { useAppUser } from 'commons/components/app/hooks';
 import SearchResponseProvider, {
   SearchResponseContext,
   type SearchResponseContextType
@@ -202,12 +202,12 @@ const AnalyticSearchBase: FC = () => {
             <CardContent sx={{ paddingTop: 0 }}>
               <Grid container spacing={0.5} sx={{ marginTop: `${theme.spacing(-0.5)} !important` }}>
                 {item.item.detections.slice(0, 5).map(d => (
-                  <Grid item key={d}>
+                  <Grid key={d}>
                     <Chip variant="outlined" label={d} />
                   </Grid>
                 ))}
                 {item.item.detections.length > 5 && (
-                  <Grid item>
+                  <Grid>
                     <Tooltip
                       title={
                         <Stack>

@@ -84,7 +84,7 @@ const SocketProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const { dispatchApi } = useMyApi();
 
   // In order to persist the connection through state changes, we use a ref
-  const socket = useRef<WebSocket>();
+  const socket = useRef<WebSocket>(undefined);
 
   // Due to react setState race conditions, listeners are also stored in a ref
   const listeners = useRef<{ [index: string]: ListenerType<'message'> }>({});

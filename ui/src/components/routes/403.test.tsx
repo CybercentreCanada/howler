@@ -1,13 +1,18 @@
 /// <reference types="vitest" />
 import { render, screen } from '@testing-library/react';
+import type * as TuiCore from '@tui/core';
 import i18n from 'i18n';
 import { I18nextProvider } from 'react-i18next';
 import { describe, expect, it, vi } from 'vitest';
 import PermissionDeniedPage from './403';
 
-vi.mock('commons/components/pages/PageCenter', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div id="page-center">{children}</div>
-}));
+vi.mock('@tui/core', async () => {
+  const actual = await vi.importActual<typeof TuiCore>('@tui/core');
+  return {
+    ...actual,
+    PageCenter: ({ children }: { children: React.ReactNode }) => <div id="page-center">{children}</div>
+  };
+});
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
   <I18nextProvider i18n={i18n as any}>{children}</I18nextProvider>

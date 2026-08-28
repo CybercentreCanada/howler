@@ -1,5 +1,5 @@
+import { useAppUser } from '@tui/core';
 import api from 'api';
-import { useAppUser } from 'commons/components/app/hooks';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import { has, omit, uniq } from 'lodash-es';

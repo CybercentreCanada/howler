@@ -30,7 +30,7 @@ function useOnScreen(ref: RefObject<Element>, rootMargin = '0px') {
 
 export const NotificationEndOfPage: FC<{ endOfPage?: boolean; onLoading?: () => void }> = memo(
   ({ endOfPage = true, onLoading = () => null }) => {
-    const ref = useRef();
+    const ref = useRef<HTMLDivElement>(null);
     const onScreen = useOnScreen(ref);
 
     useEffect(() => {

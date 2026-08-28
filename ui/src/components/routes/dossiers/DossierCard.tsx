@@ -31,7 +31,7 @@ const DossierCard: FC<{
           </Typography>
           <Grid container spacing={1} sx={{ mt: 1 }}>
             {dossier.leads?.map((lead, index) => (
-              <Grid item key={lead.format + lead.label?.en}>
+              <Grid key={lead.format + lead.label?.en}>
                 <Chip
                   sx={{ maxWidth: '300px' }}
                   clickable
@@ -44,12 +44,12 @@ const DossierCard: FC<{
               </Grid>
             ))}
             {!isEmpty(dossier.leads) && !isEmpty(dossier.pivots) && (
-              <Grid item>
+              <Grid>
                 <Divider orientation="vertical" />
               </Grid>
             )}
             {dossier.pivots?.map((pivot, index) => (
-              <Grid item key={pivot.format + pivot.label?.en}>
+              <Grid key={pivot.format + pivot.label?.en}>
                 <Chip
                   sx={{ maxWidth: '300px' }}
                   clickable

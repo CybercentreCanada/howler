@@ -1,4 +1,4 @@
-import type { AppUser } from 'commons/components/app/AppUserService';
+import type { AppUser } from '@tui/core';
 
 export interface HowlerUser extends AppUser {
   name: string;
