@@ -30,6 +30,9 @@ PERMITTED_KEYS = {
     "owner",
 }
 
+# Cap the number of group suggestions returned, so the endpoint can't be used to dump the entire group list
+MAX_GROUP_SUGGESTIONS = 10
+
 
 def exists(dossier_id: str) -> bool:
     """Check if a dossier exists in the datastore.
@@ -280,6 +283,31 @@ def update_dossier(  # noqa: C901
         logger.exception("Error when updating dossier.")
         # Provide a user-friendly error message while preserving the original exception
         raise InvalidDataException("We were unable to update the dossier.", cause=e) from e
+
+
+def get_pivot_groups(prefix: str, username: str) -> list[str]:
+    """Suggest existing pivot group paths matching a prefix, so users can reuse groups already in use.
+
+    Args:
+        prefix: Case-insensitive prefix to filter suggestions by.
+        username: The requesting user, used to scope which dossiers are visible.
+
+    Returns:
+        Up to MAX_GROUP_SUGGESTIONS unique group paths, sorted alphabetically.
+    """
+    dossiers = datastore().dossier.search(
+        f"type:global OR owner:({username} OR none)",
+        as_obj=False,
+        rows=1000,
+        fl="pivots.group",
+    )["items"]
+
+    groups = {pivot.get("group") for dossier in dossiers for pivot in dossier.get("pivots", []) if pivot.get("group")}
+
+    lowered_prefix = (prefix or "").lower()
+    matches = sorted(group for group in groups if group.lower().startswith(lowered_prefix))
+
+    return matches[:MAX_GROUP_SUGGESTIONS]
 
 
 def get_matching_dossiers(
