@@ -111,7 +111,16 @@ const resolvePivotUrl = (item: dossierPivot, hit?: Hit) => {
 const PivotFlyoutContent: FC<PivotFlyoutContentProps> = ({ pivots, groups, hit, onNavigate }) => (
   <>
     {pivots.map(({ pivot, dossier }) => (
-      <MenuItem key={getDossierPivotKey({ pivot, dossier })} onClick={() => onNavigate?.()} sx={{ p: 0 }}>
+      <MenuItem
+        key={getDossierPivotKey({ pivot, dossier })}
+        onClick={event => {
+          if (event.target === event.currentTarget) {
+            window.open(resolvePivotUrl({ pivot, dossier }, hit), '_blank', 'noopener,noreferrer');
+          }
+          onNavigate?.();
+        }}
+        sx={{ p: 0 }}
+      >
         <PivotLink
           pivot={pivot}
           hit={hit}

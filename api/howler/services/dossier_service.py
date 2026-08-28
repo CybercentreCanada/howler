@@ -106,12 +106,10 @@ def validate_group(group: str | Any) -> None:
         InvalidDataException: If ``group`` contains unsupported characters
             or empty path sections.
     """
+    if group == "" or group is None:
+        return
     if not isinstance(group, str):
         raise TypeError('Data "group" should be a slash-separated string.')
-
-    # Empty string is accepted as no group
-    if group == "":
-        return
 
     # 1. Check for allowed characters
     if not re.fullmatch(r"[0-9A-Za-zùûüÿàâæçéèêëïîôœÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ/]*", group):
