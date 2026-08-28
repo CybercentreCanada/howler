@@ -2,7 +2,7 @@
  * Displays the user preference toggle for grouping similar pivots together.
  * The switch reads and updates the shared pivot-grouping state from the provider.
  */
-import { ListItemButton, ListItemText, Switch } from '@mui/material';
+import { List, ListItem, ListItemButton, ListItemText, Switch } from '@mui/material';
 import { usePivotGroup } from 'components/app/providers/PivotGroupProvider';
 import type { FC, MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,10 +20,18 @@ const PivotGroupMenuItem: FC = () => {
   };
 
   return (
-    <ListItemButton id="personalization-pivot-group" onClick={pivotGroup.toggle} sx={{ width: '100%' }}>
-      <ListItemText>{t('personalization.pivotGroup')}</ListItemText>
-      <Switch checked={pivotGroup.enabled} edge="end" onChange={pivotGroup.toggle} onClick={onSwitchClick} />
-    </ListItemButton>
+    <List dense>
+      <ListItem
+        disablePadding
+        secondaryAction={
+          <Switch checked={pivotGroup.enabled} edge="end" onChange={pivotGroup.toggle} onClick={onSwitchClick} />
+        }
+      >
+        <ListItemButton id="personalization-pivot-group" onClick={pivotGroup.toggle}>
+          <ListItemText>{t('personalization.pivotGroup')}</ListItemText>
+        </ListItemButton>
+      </ListItem>
+    </List>
   );
 };
 
