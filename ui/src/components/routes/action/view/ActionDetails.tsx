@@ -26,7 +26,7 @@ import howlerPluginStore from 'plugins/store';
 import { useCallback, useContext, useEffect, useState, type ChangeEventHandler } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router';
 import QueryResultText from '../../../elements/display/QueryResultText';
 import type { CustomActionProps } from '../edit/ActionEditor';
 import ActionReportDisplay from '../shared/ActionReportDisplay';

@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { omit } from 'lodash-es';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import MockLocalStorage from 'tests/MockLocalStorage';
 import { MY_LOCAL_STORAGE_PREFIX, StorageKey } from 'utils/constants';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
@@ -80,10 +80,10 @@ vi.mock('utils/utils', () => ({
   compareTimestamp: (a: string, b: string) => new Date(b).getTime() - new Date(a).getTime()
 }));
 
-// Mock react-router-dom
+// Mock react-router
 const mockNavigate = vi.fn();
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
+vi.mock('react-router', async () => {
+  const actual = await vi.importActual('react-router');
   return {
     ...actual,
     useNavigate: () => mockNavigate

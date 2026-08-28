@@ -14,7 +14,7 @@ import {
 } from '@mui/material';
 import type { ElementType, FC, MouseEventHandler, PropsWithChildren, ReactNode } from 'react';
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 /**
  * The margin at the bottom of the screen by which a submenu should be inverted.

@@ -19,7 +19,7 @@ import howlerPluginStore from 'plugins/store';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 const HelpDashboard = () => {
   const { t } = useTranslation(['translation', 'helpMain']);

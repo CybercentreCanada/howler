@@ -2,7 +2,7 @@ import { Menu } from '@mui/icons-material';
 import { IconButton, styled, useMediaQuery, useTheme } from '@mui/material';
 import { useAppConfigs, useAppLeftNav, useAppLogo } from 'commons/components/app/hooks';
 import { memo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 const StyledTitle = styled('div')({
   display: 'flex',

@@ -4,7 +4,7 @@ import { useAppLayout } from 'commons/components/app/hooks/useAppLayout';
 import { useAppUser } from 'commons/components/app/hooks/useAppUser';
 import React, { memo, useEffect, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router';
 
 const TocRoot = styled('div')(({ theme }) => ({
   display: 'flex',

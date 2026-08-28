@@ -10,7 +10,7 @@ import { RecordSearchContext } from 'components/app/providers/RecordSearchProvid
 import type { FC } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY } from 'utils/constants';
 import { sanitizeMultilineLucene } from 'utils/stringUtils';

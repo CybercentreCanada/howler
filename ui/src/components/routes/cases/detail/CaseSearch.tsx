@@ -15,7 +15,7 @@ import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import type { Case } from 'models/entities/generated/Case';
 import type { FC } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 import { isCase, isEvent, isHit } from 'utils/typeUtils';

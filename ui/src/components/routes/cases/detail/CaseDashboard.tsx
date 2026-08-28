@@ -7,7 +7,7 @@ import { difference, get, isNil } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import useCase from '../hooks/useCase';
 import CaseAggregate from './aggregates/CaseAggregate';

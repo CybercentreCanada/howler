@@ -23,7 +23,7 @@ import AppAvatar, { type AppAvatarProps } from 'commons/components/display/AppAv
 import ThemeSelection from 'commons/components/topnav/ThemeSelection';
 import { memo, useCallback, useEffect, useRef, useState, type MouseEventHandler } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router';
 
 export const AppUserAvatar: StyledComponent<AppAvatarProps> = styled(AppAvatar)(({ theme }) => ({
   width: theme.spacing(5),

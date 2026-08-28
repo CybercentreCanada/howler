@@ -1,7 +1,7 @@
 import { Box, Stack } from '@mui/material';
 import { SocketContext } from 'components/app/providers/SocketProvider';
 import { memo, useContext, useEffect, type FC } from 'react';
-import { Outlet, useParams } from 'react-router-dom';
+import { Outlet, useParams } from 'react-router';
 import NotFoundPage from '../404';
 import ErrorBoundary from '../ErrorBoundary';
 import CaseDetails from './detail/CaseDetails';

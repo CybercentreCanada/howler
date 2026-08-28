@@ -2,7 +2,7 @@ import { AppStorageKeys } from 'commons/components/app/AppConstants';
 import { getRoute, useAppSitemap, type BreadcrumbItem } from 'commons/components/app/hooks/useAppSitemap';
 import useLocalStorageItem from 'commons/components/utils/hooks/useLocalStorageItem';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 
 import { AppBreadcrumbsContext } from 'commons/components/app/AppContexts';
 import { useAppConfigs, useAppUser } from 'commons/components/app/hooks';

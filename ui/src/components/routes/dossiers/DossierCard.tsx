@@ -5,7 +5,7 @@ import { isEmpty } from 'lodash-es';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 const DossierCard: FC<{
   dossier: Dossier;

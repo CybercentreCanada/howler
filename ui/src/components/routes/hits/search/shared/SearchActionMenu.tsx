@@ -1,7 +1,7 @@
 import { SavedSearch, Terminal } from '@mui/icons-material';
 import { IconButton, Stack, Tooltip } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import LayoutSettings from './LayoutSettings';
 
 const SearchActionMenu = ({ query }: { query: string }) => {

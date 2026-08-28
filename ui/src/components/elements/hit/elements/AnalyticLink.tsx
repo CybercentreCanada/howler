@@ -3,7 +3,7 @@ import { IconButton, Stack, Typography } from '@mui/material';
 import useMatchers from 'components/app/hooks/useMatchers';
 import type { Hit } from 'models/entities/generated/Hit';
 import { useEffect, useState, type FC } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 const AnalyticLink: FC<{ hit: Hit; lazy?: boolean; compressed?: boolean; alignSelf?: string }> = ({
   hit,

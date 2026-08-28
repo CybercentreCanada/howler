@@ -30,7 +30,7 @@ import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Action } from 'models/entities/generated/Action';
 import { useCallback, useContext, useEffect, useState, type FC, type MouseEvent } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router';
 import { StorageKey, VALID_ACTION_TRIGGERS } from 'utils/constants';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 import useMyActionFunctions from '../useMyActionFunctions';

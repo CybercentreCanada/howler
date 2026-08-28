@@ -15,7 +15,7 @@ import type { SvgIconProps } from '@mui/material';
 import { alpha, Box, Stack, Typography, useTheme } from '@mui/material';
 import type { Item } from 'models/entities/generated/Item';
 import type { ComponentType, FC } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router';
 
 // Static map: item type → MUI icon component (avoids re-creating closures on each render)
 const ICON_FOR_TYPE: Record<string, ComponentType<SvgIconProps>> = {

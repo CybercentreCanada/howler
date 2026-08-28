@@ -33,7 +33,7 @@ import {
   type KeyboardEventHandler
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { isHit } from 'utils/typeUtils';
 import { compareTimestamp, sortByTimestamp } from 'utils/utils';
 import Comment from '../Comment';

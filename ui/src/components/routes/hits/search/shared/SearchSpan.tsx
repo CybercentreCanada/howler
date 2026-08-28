@@ -7,7 +7,7 @@ import dayjs from 'dayjs';
 import type { FC } from 'react';
 import { memo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { convertLuceneToDate } from 'utils/utils';
 import CustomSpan from './CustomSpan';

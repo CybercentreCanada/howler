@@ -17,7 +17,7 @@ import mermaid from 'mermaid';
 import { memo, useEffect, type FC, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import SyntaxHighlighter from 'react-syntax-highlighter/dist/esm/prism-async-light';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import rehypeRaw from 'rehype-raw';

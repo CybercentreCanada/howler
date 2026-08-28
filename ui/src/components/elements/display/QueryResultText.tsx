@@ -1,7 +1,7 @@
 import { Typography } from '@mui/material';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 const QueryResultText: FC<{ count: number; query: string; mb?: number }> = ({ count, query, mb = 0.5 }) => {
   const { t } = useTranslation();

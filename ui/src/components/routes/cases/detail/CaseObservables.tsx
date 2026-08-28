@@ -9,7 +9,7 @@ import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
 import { memo, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext } from 'react-router';
 import useCase from '../hooks/useCase';
 import ObservableTable from './observables/ObservableTable';
 import type { ObservableRole, ObservableType, OriginType } from './types';

@@ -33,7 +33,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import pivotGroupValidation from '../../../utils/pivotGroupValidation';
 
 export interface PivotFormProps {

@@ -10,7 +10,7 @@ import useMyUserList from 'components/hooks/useMyUserList';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import { useCallback, useEffect, useMemo, useRef, useState, type FC, type KeyboardEventHandler } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import { compareTimestamp } from 'utils/utils';
 
 const MAX_LENGTH = 5000;

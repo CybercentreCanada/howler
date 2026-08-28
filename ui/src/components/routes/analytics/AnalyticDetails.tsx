@@ -22,7 +22,7 @@ import useMyApi from 'components/hooks/useMyApi';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router';
 import AnalyticComments from './AnalyticComments';
 import AnalyticHitComments from './AnalyticHitComments';
 import AnalyticNotebooks from './AnalyticNotebooks';

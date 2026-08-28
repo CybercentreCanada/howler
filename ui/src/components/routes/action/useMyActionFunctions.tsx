@@ -12,7 +12,7 @@ import type { Operation } from 'models/entities/generated/Operation';
 import { useSnackbar, type SnackbarKey } from 'notistack';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router';
 import { v4 as uuid } from 'uuid';
 
 const useMyActionFunctions = () => {

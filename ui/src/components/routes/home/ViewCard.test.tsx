@@ -30,9 +30,9 @@ vi.mock('components/hooks/useMyApi', () => ({
   default: () => ({ dispatchApi: mockDispatchApi })
 }));
 
-vi.mock('react-router-dom', async () => {
+vi.mock('react-router', async () => {
   // oxlint-disable-next-line consistent-type-imports
-  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  const actual = await vi.importActual<typeof import('react-router')>('react-router');
   return {
     ...actual,
     Link: ({ children, to, ...props }: any) => (

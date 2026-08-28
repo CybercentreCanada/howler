@@ -32,7 +32,7 @@ import useMyTheme from 'components/hooks/useMyTheme';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Overview } from 'models/entities/generated/Overview';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import hitsData from 'utils/hit.json';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 import MarkdownEditor from '../../elements/MarkdownEditor';

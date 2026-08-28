@@ -30,7 +30,7 @@ import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import { useCallback, useContext, useEffect, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router';
 import { StorageKey } from 'utils/constants';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 

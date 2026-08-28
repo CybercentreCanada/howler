@@ -27,7 +27,7 @@ import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import { memo, useContext, useMemo, type FC, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 import HelpTabs from './components/HelpTabs';
 
 const TableRoot = styled('div')(({ theme }) => ({

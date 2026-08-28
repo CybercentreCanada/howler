@@ -4,7 +4,7 @@ import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
 import type { FC } from 'react';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import HelpTabs from './components/HelpTabs';
 import HitBannerDocumentation from './HitBannerDocumentation';
 import HitLabelsDocumentation from './HitLabelsDocumentation';

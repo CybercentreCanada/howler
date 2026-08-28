@@ -24,7 +24,7 @@ import { isEqual, omit, uniqBy } from 'lodash-es';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import { memo, useCallback, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import pivotGroupValidation from '../../../utils/pivotGroupValidation';
 import QueryResultText from '../../elements/display/QueryResultText';

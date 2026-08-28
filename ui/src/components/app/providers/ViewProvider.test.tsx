@@ -14,7 +14,7 @@ let mockUser = {
 setupReactRouterMock();
 const mockLocalStorage = setupLocalStorageMock();
 
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 
 vi.mocked(useSearchParams).mockReturnValue([new URLSearchParams('?view=searched_view_id')] as any);
 

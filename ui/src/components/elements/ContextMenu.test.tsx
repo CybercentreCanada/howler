@@ -3,8 +3,8 @@ import { omit } from 'lodash-es';
 import { act } from 'react';
 import { vi } from 'vitest';
 
-// Mock react-router-dom Link
-vi.mock('react-router-dom', () => ({
+// Mock react-router Link
+vi.mock('react-router', () => ({
   Link: ({ to, children, ...props }: any) => (
     <a href={to} {...props}>
       {children}

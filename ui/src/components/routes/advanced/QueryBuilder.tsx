@@ -45,7 +45,7 @@ import {
   type KeyboardEventHandler
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { sanitizeMultilineLucene } from 'utils/stringUtils';
 import { v4 as uuid } from 'uuid';
 import QueryEditor from './QueryEditor';

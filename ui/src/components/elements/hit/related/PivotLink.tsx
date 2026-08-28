@@ -1,6 +1,6 @@
 import { Icon } from '@iconify/react';
 import { ErrorOutline } from '@mui/icons-material';
-import { IconButton, Tooltip, Typography } from '@mui/material';
+import { Box, IconButton, Tooltip, Typography } from '@mui/material';
 import { useHelpers } from 'components/elements/display/handlebars/helpers';
 import HowlerCard from 'components/elements/display/HowlerCard';
 import PivotTooltip from 'components/elements/hit/PivotTooltip';
@@ -12,7 +12,7 @@ import type { Pivot } from 'models/entities/generated/Pivot';
 import React, { useMemo, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { flattenDeep } from 'utils/utils';
 import RelatedLink from './RelatedLink';
 
@@ -160,7 +160,13 @@ const PivotLink: FC<PivotLinkProps> = ({
   }
 
   if (pluginPivot) {
-    return pluginPivot;
+    return (
+      <Tooltip title={<PivotTooltip dossier={dossier} resolvedUrl={resolvedUrl} />}>
+        <Box component="span" sx={{ display: 'inline-flex' }}>
+          {pluginPivot}
+        </Box>
+      </Tooltip>
+    );
   }
 
   return (

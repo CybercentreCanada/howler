@@ -23,7 +23,7 @@ import isEqual from 'lodash-es/isEqual';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { StorageKey } from 'utils/constants';
 import ErrorBoundary from '../ErrorBoundary';
 import AddNewCard from './AddNewCard';

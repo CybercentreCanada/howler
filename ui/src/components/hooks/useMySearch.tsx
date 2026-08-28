@@ -6,7 +6,7 @@ import HitPreview from 'components/elements/hit/HitPreview';
 import type { Hit } from 'models/entities/generated/Hit';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 import { StorageKey } from 'utils/constants';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 import { useMyLocalStorageItem } from './useMyLocalStorage';

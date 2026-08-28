@@ -112,7 +112,7 @@ import ApiConfigProvider from 'components/app/providers/ApiConfigProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import i18n from 'i18n';
 import { I18nextProvider } from 'react-i18next';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import DossierEditor from './DossierEditor';
 
 const mockUseParams = vi.mocked(useParams);

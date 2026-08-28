@@ -7,7 +7,7 @@ import ProfileSection from 'components/routes/settings/ProfileSection';
 import SecuritySection from 'components/routes/settings/SecuritySection';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import { useCallback, useEffect, useState, type FC } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams } from 'react-router';
 
 const UserEditor: FC = () => {
   const { dispatchApi } = useMyApi();

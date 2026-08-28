@@ -6,7 +6,7 @@ import { OverviewContext } from 'components/app/providers/OverviewProvider';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import { useContext, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import OverviewCard from '../overviews/OverviewCard';
 
 const AnalyticOverviews: FC<{ analytic: Analytic }> = ({ analytic }) => {

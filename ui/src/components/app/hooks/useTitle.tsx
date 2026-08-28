@@ -2,7 +2,7 @@ import useMySitemap from 'components/hooks/useMySitemap';
 import { capitalize } from 'lodash-es';
 import { useCallback, useContext, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useParams, useSearchParams } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { AnalyticContext } from '../providers/AnalyticProvider';
 import { RecordContext } from '../providers/RecordProvider';

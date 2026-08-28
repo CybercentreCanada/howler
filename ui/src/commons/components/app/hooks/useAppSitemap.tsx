@@ -2,7 +2,7 @@ import type { AppSiteMapRoute } from 'commons/components/app/AppConfigs';
 import { useAppConfigs } from 'commons/components/app/hooks';
 import i18n from 'i18n';
 import { useMemo } from 'react';
-import { matchPath, type PathMatch } from 'react-router-dom';
+import { matchPath, type PathMatch } from 'react-router';
 
 const TITLE_404 = i18n.t('breadcrumb.404');
 

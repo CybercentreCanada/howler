@@ -5,7 +5,7 @@ import { chunk, uniq } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
 import { useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { buildPathFromID } from '../utils';
 
 const AlertPanel: FC<{ case: Case }> = ({ case: _case }) => {

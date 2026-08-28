@@ -75,7 +75,7 @@ import howlerPluginStore from 'plugins/store';
 import { useCallback, useContext, useEffect, useMemo, type FC, type PropsWithChildren } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { PluginProvider, usePluginStore } from 'react-pluggable';
-import { createBrowserRouter, Outlet, RouterProvider, useLocation, useNavigate } from 'react-router-dom';
+import { createBrowserRouter, Outlet, RouterProvider, useLocation, useNavigate } from 'react-router';
 import { StorageKey } from 'utils/constants';
 import useMySearch from '../hooks/useMySearch';
 import AppContainer from './AppContainer';

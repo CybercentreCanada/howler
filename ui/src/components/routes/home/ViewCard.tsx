@@ -14,7 +14,7 @@ import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
 import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { isEvent } from 'utils/typeUtils';
 import { convertDateToLucene } from 'utils/utils';

@@ -3,7 +3,7 @@ import type { AppLeftNavItem } from 'commons/components/app/AppConfigs';
 import { useAppLeftNav, useAppUser } from 'commons/components/app/hooks';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 type LeftNavItemProps = {
   item: AppLeftNavItem;

@@ -8,7 +8,7 @@ import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Template } from 'models/entities/generated/Template';
 import { useEffect, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import TemplateCard from '../templates/TemplateCard';
 
 const AnalyticTemplates: FC<{ analytic: Analytic }> = ({ analytic }) => {
