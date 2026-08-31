@@ -37,8 +37,12 @@ def is_classification_accessible(
     Returns:
         True if the user can access the document, False otherwise.
     """
-    if not classification:
+    if classification is None:
         return True
+    if not isinstance(classification, str):
+        return False
+    if not classification:
+        return False
 
     if isinstance(user, dict):
         user_type = user.get("type", [])

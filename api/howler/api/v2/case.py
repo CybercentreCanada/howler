@@ -45,7 +45,12 @@ def check_case_access(case_id: str, user: User):
     return None
 
 
-def check_item_access(item_type: str | None, item_value: str | None, user: User):
+def check_item_access(
+    item_type: str | None,
+    item_value: str | None,
+    user: User,
+    parent_classification: str | None = None,
+):
     """Verify that a backing object referenced by a case item is accessible to the user.
 
     Prevents users from attaching hits/events/cases classified above their
@@ -62,6 +67,11 @@ def check_item_access(item_type: str | None, item_value: str | None, user: User)
     if not obj or not is_classification_accessible(user, obj.get("classification")):
         # Generic 404 so classified objects are indistinguishable from nonexistent ones
         return not_found(err=f"{item_type} {item_value} does not exist")
+
+    if parent_classification is not None and not is_classification_accessible(
+        {"type": [], "classification": parent_classification}, obj.get("classification")
+    ):
+        return bad_request(err=f"Cannot add {item_type} {item_value} to a lower-classified case")
 
     return None
 
@@ -320,7 +330,11 @@ def append_item(id: str, user: User, refresh: Literal["true", "false", "wait_for
     if err := check_case_access(id, user):
         return err
 
-    if err := check_item_access(body["type"], body["value"], user):
+    parent_case = datastore().case.get(id, as_obj=False)
+    if not parent_case:
+        return not_found(err=f"Case {id} does not exist")
+
+    if err := check_item_access(body["type"], body["value"], user, parent_case.get("classification")):
         return err
 
     try:

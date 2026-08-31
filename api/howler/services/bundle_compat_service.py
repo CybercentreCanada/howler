@@ -99,7 +99,12 @@ def create_bundle(
     case_title = f"{analytic} - {detection}"
 
     case = case_service.create_case(
-        {"title": case_title, "summary": f"Auto-created case for bundle {odm.howler.id}"}, user=user
+        {
+            "title": case_title,
+            "summary": f"Auto-created case for bundle {odm.howler.id}",
+            "classification": odm.classification,
+        },
+        user=user,
     )
 
     # Root hit
@@ -160,7 +165,11 @@ def add_to_bundle(
         analytic = root_hit.howler.analytic or "Unknown"
         detection = root_hit.howler.detection or "Alert"
         case = case_service.create_case(
-            {"title": f"{analytic} - {detection}", "summary": f"Auto-created case for bundle {bundle_id}"},
+            {
+                "title": f"{analytic} - {detection}",
+                "summary": f"Auto-created case for bundle {bundle_id}",
+                "classification": root_hit.classification,
+            },
         )
         case_service.append_case_item(case.case_id, item_type="hit", item_value=bundle_id, refresh=refresh)
 

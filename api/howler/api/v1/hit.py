@@ -1150,6 +1150,10 @@ def update_bundle(id: str, user: User, **kwargs):
     if not root_hit or not is_classification_accessible(user, root_hit.classification):
         return not_found(err=f"Bundle hit {id} does not exist")
 
+    backing_case = bundle_compat_service.find_case_for_bundle(id)
+    if backing_case and not is_classification_accessible(user, backing_case.classification):
+        return not_found(err=f"Bundle hit {id} does not exist")
+
     hit_ids = hit_service.filter_accessible_hits(user, hit_ids)
 
     try:
@@ -1200,6 +1204,10 @@ def remove_bundle_children(id: str, user: User, **kwargs):
 
     root_hit = hit_service.get_hit(id, as_odm=True)
     if not root_hit or not is_classification_accessible(user, root_hit.classification):
+        return not_found(err=f"Bundle hit {id} does not exist")
+
+    backing_case = bundle_compat_service.find_case_for_bundle(id)
+    if backing_case and not is_classification_accessible(user, backing_case.classification):
         return not_found(err=f"Bundle hit {id} does not exist")
 
     try:

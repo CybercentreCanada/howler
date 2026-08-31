@@ -197,6 +197,13 @@ class TestIsClassificationAccessible:
         user = {"type": ["user"], "classification": "UNRESTRICTED"}
         assert is_classification_accessible(user, None) is True
 
+    def test_rejects_non_string_document_classification(self, stub_classification):
+        from howler.security.utils import is_classification_accessible
+
+        user = {"type": ["admin"], "classification": "RESTRICTED"}
+        assert is_classification_accessible(user, "") is False
+        assert is_classification_accessible(user, 1) is False
+
     def test_missing_user_classification_defaults_to_unrestricted(self, stub_classification):
         from howler.security.utils import is_classification_accessible
 
@@ -408,7 +415,7 @@ class TestCaseMutationClassification:
 
         mock_datastore.return_value.case.get.return_value = {
             "case_id": "case-001",
-            "classification": "UNRESTRICTED",
+            "classification": "RESTRICTED",
         }
         mock_datastore.return_value.__getitem__.return_value.get.return_value = {
             "classification": "RESTRICTED",
@@ -426,6 +433,36 @@ class TestCaseMutationClassification:
 
             assert result.status_code == 200
             mock_case_service.append_case_item.assert_called_once()
+
+    @patch("howler.api.v2.case.datastore")
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.login.auth_service")
+    def test_append_to_lower_classified_case_is_rejected(
+        self, mock_auth_service, mock_case_service, mock_datastore, stub_classification, request_context: Flask
+    ):
+        """A high-clearance user cannot leak a classified hit through lower-classified case metadata."""
+        user = _build_user(classification="RESTRICTED")
+        _mock_auth(mock_auth_service, user)
+
+        mock_datastore.return_value.case.get.return_value = {
+            "case_id": "case-001",
+            "classification": "UNRESTRICTED",
+        }
+        mock_datastore.return_value.__getitem__.return_value.get.return_value = {
+            "classification": "RESTRICTED",
+        }
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"type": "hit", "value": "hit-001", "name": "Hit 001"},
+            headers={"Authorization": "******"},
+        ):
+            from howler.api.v2.case import append_item
+
+            result: Response = append_item("case-001", user=user)
+
+        assert result.status_code == 400
+        mock_case_service.append_case_item.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -716,10 +753,17 @@ class TestBundleEndpointClassification:
                 mock_add.assert_not_called()
 
     @patch("howler.services.hit_service.get_hit")
+    @patch("howler.services.bundle_compat_service.find_case_for_bundle", return_value=None)
     @patch("howler.services.bundle_compat_service.add_to_bundle")
     @patch("howler.security.login.auth_service")
     def test_update_bundle_drops_inaccessible_children(
-        self, mock_auth_service, mock_add_to_bundle, mock_get_hit, stub_classification, request_context: Flask
+        self,
+        mock_auth_service,
+        mock_add_to_bundle,
+        mock_find_case_for_bundle,
+        mock_get_hit,
+        stub_classification,
+        request_context: Flask,
     ):
         """Children above the user's clearance are silently dropped, like missing ones."""
         user = _build_user(classification="UNRESTRICTED")

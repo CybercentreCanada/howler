@@ -13,6 +13,15 @@ from flask import Response, request
 from howler.api import not_modified
 
 
+def _get_with_optional_user(getter, resource_id, user):
+    """Call an ETag getter without changing its existing optional-user contract."""
+    getter_kwargs = {"as_odm": True, "version": True}
+    if user is not None:
+        getter_kwargs["user"] = user
+
+    return getter(resource_id, **getter_kwargs)
+
+
 def add_etag(getter=None, check_if_match=True):
     """Decorator to add ETag handling to a Flask response.
 
@@ -49,11 +58,10 @@ def add_etag(getter=None, check_if_match=True):
             if getter is not None:
                 # Retrieve the object and its version using the provided getter function
                 # The getter should return (object, version) tuple
-                obj, version = getter(
+                obj, version = _get_with_optional_user(
+                    getter,
                     kwargs.get("id", kwargs.get("username", None)),
-                    as_odm=True,
-                    version=True,
-                    user=kwargs.get("user"),
+                    kwargs.get("user"),
                 )
 
                 # Handle conditional requests with If-Match header
@@ -61,6 +69,7 @@ def add_etag(getter=None, check_if_match=True):
                 # without metadata parameter, return 304 Not Modified to save bandwidth
                 if (
                     check_if_match
+                    and obj is not None
                     and "If-Match" in request.headers
                     and request.headers["If-Match"] == version
                     and request.method == "GET"

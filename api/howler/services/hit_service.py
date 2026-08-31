@@ -13,7 +13,7 @@ from howler.actions.promote import Escalation
 from howler.common.exceptions import HowlerTypeError, HowlerValueError, NotFoundException, ResourceExists
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
-from howler.datastore.collection import ESCollection
+from howler.datastore.collection import CREATE_TOKEN, ESCollection
 from howler.datastore.operations import OdmHelper, OdmUpdateOperation
 from howler.datastore.types import SearchResult
 from howler.helper.hit import (
@@ -417,6 +417,7 @@ def get_hit(id: str, as_odm=False, version=False, user: User | None = None):
 
     if obj is not None and not is_classification_accessible(user, classification):
         obj = None
+        hit_version = CREATE_TOKEN
 
     if version:
         return obj, hit_version

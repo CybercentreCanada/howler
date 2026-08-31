@@ -20,6 +20,7 @@ import pytest
 from howler.common import loader
 from howler.common.classification import Classification
 from howler.common.exceptions import InvalidClassification
+from howler.datastore.collection import CREATE_TOKEN
 from howler.helper import oauth as oauth_module
 from howler.odm.models.config import OAuthProvider
 from howler.services import hit_service, user_service
@@ -185,7 +186,7 @@ class TestHitGetterAccessControl:
         with patch("howler.services.hit_service.is_classification_accessible", return_value=False):
             result = hit_service.get_hit("hit-001", as_odm=True, version=True, user={"type": ["user"]})
 
-        assert result == (None, "version-1")
+        assert result == (None, CREATE_TOKEN)
 
     @patch("howler.services.hit_service.datastore")
     def test_get_hit_returns_accessible_hit(self, mock_datastore):
