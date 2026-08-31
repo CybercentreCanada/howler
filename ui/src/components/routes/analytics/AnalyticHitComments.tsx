@@ -30,6 +30,7 @@ const AnalyticHitComments: FC<{ analytic: Analytic }> = ({ analytic }) => {
   const users = useMyUserList(userIds);
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect
     setUserIds(new Set(comments.map(c => c.comment.user!)));
   }, [comments]);
 
@@ -38,6 +39,7 @@ const AnalyticHitComments: FC<{ analytic: Analytic }> = ({ analytic }) => {
       return;
     }
 
+    // oxlint-disable-next-line react/set-state-in-effect
     setLoading(true);
     void api.search.hit
       .post({

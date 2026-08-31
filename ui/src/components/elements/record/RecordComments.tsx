@@ -18,11 +18,11 @@ import useMatchers from 'components/app/hooks/useMatchers';
 import { SocketContext, type RecievedDataType } from 'components/app/providers/SocketProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import useMyApi from 'components/hooks/useMyApi';
+import { omit } from 'lodash-es';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Comment as AnalyticComment } from 'models/entities/generated/Comment';
 import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { HowlerComment } from 'models/entities/generated/HowlerComment';
 import type { SocketEvent } from 'models/socket/HitUpdate';
 import {
   useCallback,
@@ -220,16 +220,14 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
 
         setComments(
           comments.map(cmt =>
-            cmt.id !== commentId ? cmt : { ...cmt, reactions: { ...cmt?.reactions, [user.username]: type } }
+            cmt.id !== commentId ? cmt : { ...cmt, reactions: { ...cmt.reactions, [user.username]: type } }
           )
         );
       } else {
         await dispatchApi(api.hit.comments.react.del(record.howler.id, commentId));
 
         setComments(
-          comments.map(cmt =>
-            cmt.id !== commentId ? cmt : { ...cmt, reactions: { ...cmt?.reactions, [user.username]: undefined } }
-          ) as HowlerComment[]
+          comments.map(cmt => (cmt.id !== commentId ? cmt : { ...cmt, reactions: omit(cmt.reactions, user.username) }))
         );
       }
     },

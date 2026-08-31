@@ -24,7 +24,7 @@ const AvatarProvider: FC<PropsWithChildren> = ({ children }) => {
   const { dispatchApi } = useMyApi();
 
   const getAvatar = useCallback(
-    (id: string): Promise<string> => {
+    (id: string) => {
       if (!id) {
         return Promise.resolve('');
       }
