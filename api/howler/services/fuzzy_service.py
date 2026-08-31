@@ -11,6 +11,7 @@ from howler import odm
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import SearchException, SearchRetryException
+from howler.datastore.support.elastic import error_message, response_body, total_hits_value
 from howler.datastore.types import SearchResult
 from howler.odm.base import (
     DOMAIN_ONLY_REGEX,
@@ -378,25 +379,27 @@ def fuzzy_search(
         params["track_total_hits"] = True
 
     try:
-        result = client.search(
-            index=parsed_indexes,
-            sort=[{"_score": "desc"}],
-            from_=offset,
-            size=rows,
-            **params,
-            **query_body,
+        result = response_body(
+            client.search(
+                index=parsed_indexes,
+                sort=[{"_score": "desc"}],
+                from_=offset,
+                size=rows,
+                **params,
+                **query_body,
+            )
         )
     except (elasticsearch.exceptions.ConnectionError, elasticsearch.exceptions.ConnectionTimeout) as error:
         logger.exception("Fuzzy search retryable failure indexes=%s", parsed_indexes)
         raise SearchRetryException(f"indexes: {parsed_indexes}, query: {query}, error: {str(error)}") from error
     except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.RequestError) as error:
         logger.exception("Fuzzy search request failure indexes=%s", parsed_indexes)
-        raise SearchException(str(error)) from error
+        raise SearchException(error_message(error)) from error
     except Exception as error:
         logger.exception("Fuzzy search unexpected failure indexes=%s", parsed_indexes)
         raise SearchException(f"indexes: {parsed_indexes}, query: {query}, error: {str(error)}") from error
 
-    total = result.get("hits", {}).get("total", {}).get("value", 0)
+    total = total_hits_value(result.get("hits", {}).get("total", 0))
     hits = result.get("hits", {}).get("hits", [])
 
     items = _format_items_with_score(hits)

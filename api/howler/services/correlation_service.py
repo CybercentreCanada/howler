@@ -9,15 +9,18 @@ The public API consists of three functions:
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Literal
+from typing import Any, Literal, cast
 
 import chevron
 from opentelemetry import trace
+from pydantic import BaseModel
 
 from howler.common.exceptions import HowlerRuntimeError, InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.config import CORRELATION_QUEUE_NAME
+from howler.models.case import Case as SchemaCase
+from howler.models.case import CaseItem as SchemaCaseItem
 from howler.odm.models.case import Case, CaseItem, CaseRule, RuleIndexTypes
 from howler.odm.models.config import config
 from howler.odm.models.event import Event
@@ -87,7 +90,7 @@ def _resolve_backing_object(
 
 
 def _add_record_to_case(
-    case: Case,
+    case: Case | SchemaCase,
     case_id: str,
     record: dict,
     rule: CaseRule,
@@ -114,21 +117,30 @@ def _add_record_to_case(
 
     try:
         backing_obj = _resolve_backing_object(item_type, record_id, backing_cache)
+        runtime_case = cast(Any, case)
 
-        parent = case_service.get_parent_from_path(case, path, create_if_missing=True, persist=False)
+        parent = case_service.get_parent_from_path(runtime_case, path, create_if_missing=True, persist=False)
 
-        item = CaseItem({"type": item_type, "value": record_id, "parent": parent.id if parent else None, "name": name})
+        item_data = {
+            "type": item_type,
+            "value": record_id,
+            "parent": parent.id if parent else None,
+            "name": name,
+        }
+        item = (
+            cast(Any, SchemaCaseItem).validate_howler(item_data) if isinstance(case, BaseModel) else CaseItem(item_data)
+        )
         if item.name is None:
             item.name = item.value
 
-        if case_service.check_conflicts(case, item):
+        if case_service.check_conflicts(runtime_case, cast(Any, item)):
             item.name = f"{item.name} ({item.value})" if item.name else item.value
 
-            if case_service.check_conflicts(case, item):
+            if case_service.check_conflicts(runtime_case, cast(Any, item)):
                 return None
 
         item.classification = backing_obj.classification
-        case.items.append(item)
+        runtime_case.items.append(item)
 
         if case_service.add_backreference(backing_obj, case_id):
             return (item_type, record_id)

@@ -55,7 +55,7 @@ def execute():
         # If the length of valid entries is less than the current dashboard, one or more pins are invalid
         if len(valid_entries) < len(user["dashboard"]):
             # set the user dashboard to valid entries
-            user["dashboard"] = valid_entries
+            user.dashboard = valid_entries
             # update the user
             ds.user.save(user["uname"], user)
 

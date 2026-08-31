@@ -1,14 +1,14 @@
-"""Shared helpers for building field-scoped Elasticsearch operations from ODM models."""
+"""Shared helpers for building field-scoped Elasticsearch operations."""
 
 import re
-from typing import Iterable, Optional
+from typing import Any, Iterable, Optional, cast
 
-from howler import odm
+from pydantic import BaseModel
+
+from howler.models.registry import model_registry
 
 
-def expand_field_patterns(
-    model: Optional[type[odm.Model]], patterns: Iterable[str], preserve_all: bool = False
-) -> set[str]:
+def expand_field_patterns(model: Optional[type], patterns: Iterable[str], preserve_all: bool = False) -> set[str]:
     """Expand `*`-wildcard field patterns against a model's known dotted field paths.
 
     Entries without a `*` are kept as-is (even if the model doesn't recognize them, so
@@ -18,7 +18,11 @@ def expand_field_patterns(
     if model is None:
         return set(patterns)
 
-    known_paths = list(model.flat_fields().keys())
+    known_paths = (
+        list(model_registry.flat_fields(model).keys())
+        if issubclass(model, BaseModel)
+        else list(cast(Any, model).flat_fields().keys())
+    )
     expanded: set[str] = set()
     for pattern in patterns:
         if "*" not in pattern:
@@ -35,7 +39,7 @@ def expand_field_patterns(
     return expanded
 
 
-def prune_to_paths(value, allowed: set[str], prefix: str = ""):
+def prune_to_paths(value: Any, allowed: set[str], prefix: str = "") -> Any:
     """Recursively keep only the parts of `value` selected by dotted paths in `allowed`.
 
     A key is kept wholesale (subtree included as-is) if its own path is in `allowed`;

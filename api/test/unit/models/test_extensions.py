@@ -102,6 +102,9 @@ def test_invalid_extension_field_name_is_rejected() -> None:
     with pytest.raises(HowlerValueError, match="Illegal extension field name"):
         registry.declare(ExtensionTarget, "__access_lvl__", optional(keyword()), plugin="plugin_one")
 
+    with pytest.raises(HowlerValueError, match="Illegal extension field name"):
+        registry.declare(ExtensionTarget, "id", optional(keyword()), plugin="plugin_one")
+
 
 def test_declaration_after_finalization_is_rejected() -> None:
     """Once a target has been finalized, no further extensions may be declared for it."""

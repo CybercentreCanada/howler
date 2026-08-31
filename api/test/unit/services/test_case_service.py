@@ -1,10 +1,16 @@
+import json
 from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from howler.common.exceptions import HowlerValueError, InvalidDataException, NotFoundException, ResourceExists
 from howler.config import CLASSIFICATION
+from howler.models.case import Case as SchemaCase
+from howler.models.case import CaseItem as SchemaCaseItem
+from howler.models.case import CaseLog as SchemaCaseLog
+from howler.models.case import CaseRule as SchemaCaseRule
 from howler.odm.models.case import Case, CaseItem, CaseRule
 from howler.odm.models.ecs.related import Related
 from howler.services import case_service
@@ -25,6 +31,120 @@ def _make_user(uname: str = "admin", classification: str = CLASSIFICATION.UNREST
     user.uname = uname
     user.classification = classification
     return user
+
+
+def _make_schema_case() -> SchemaCase:
+    return SchemaCase.model_validate(
+        {
+            "case_id": "case-001",
+            "title": "Pydantic Case",
+            "summary": "Summary",
+        }
+    )
+
+
+class TestPydanticCaseMutationCompatibility:
+    """Step 7 legacy service inputs are coerced to the Pydantic parent types."""
+
+    @patch("howler.services.case_service._save_case", return_value=True)
+    @patch("howler.services.case_service.datastore")
+    def test_folder_item_is_coerced_before_append(self, mock_ds_fn, _mock_save):
+        case = _make_schema_case()
+        mock_ds_fn.return_value.case.get.return_value = case
+
+        result = case_service.append_case_item(
+            "case-001",
+            item=CaseItem({"type": "folder", "name": "Evidence", "value": ""}),
+        )
+
+        assert isinstance(result.items[-1], SchemaCaseItem)
+        assert result.items[-1].value == "Evidence"
+        SchemaCase.model_validate(result.model_dump())
+        json.dumps(result.as_primitives())
+
+    @pytest.mark.parametrize("item_type", ["hit", "event"])
+    @patch("howler.services.case_service.recompute_case_metadata")
+    @patch("howler.services.case_service._save_record", return_value=True)
+    @patch("howler.services.case_service._save_case", return_value=True)
+    @patch("howler.services.case_service.datastore")
+    def test_hit_and_event_items_are_coerced_before_append(
+        self,
+        mock_ds_fn,
+        _mock_save_case,
+        _mock_save_record,
+        _mock_recompute,
+        item_type,
+    ):
+        case = _make_schema_case()
+        record = SimpleNamespace(
+            classification=CLASSIFICATION.UNRESTRICTED,
+            howler=SimpleNamespace(related=[]),
+        )
+        mock_ds = mock_ds_fn.return_value
+        mock_ds.case.get.return_value = case
+        if item_type == "hit":
+            mock_ds.hit.get.return_value = (record, "1---1")
+        else:
+            mock_ds.event.get.return_value = (record, "1---1")
+
+        result = case_service.append_case_item(
+            "case-001",
+            item=CaseItem({"type": item_type, "name": item_type.title(), "value": f"{item_type}-1"}),
+        )
+
+        assert isinstance(result.items[-1], SchemaCaseItem)
+        assert result.items[-1].type == item_type
+        SchemaCase.model_validate(result.model_dump())
+        json.dumps(result.as_primitives())
+
+    @patch("howler.services.case_service._save_case", return_value=True)
+    @patch("howler.services.case_service.datastore")
+    def test_rule_and_log_are_coerced_before_append(self, mock_ds_fn, _mock_save):
+        case = _make_schema_case()
+        mock_ds_fn.return_value.case.get.return_value = case
+
+        result = case_service.add_case_rule(
+            "case-001",
+            {"query": "event.kind:alert", "destination": "/alerts"},
+            _make_user(),
+        )
+
+        assert isinstance(result.rules[-1], SchemaCaseRule)
+        assert isinstance(result.log[-1], SchemaCaseLog)
+        SchemaCase.model_validate(result.model_dump())
+        json.dumps(result.as_primitives())
+
+    @patch("howler.services.case_service.datastore")
+    def test_invalid_rule_on_pydantic_case_remains_a_client_validation_error(self, mock_ds_fn):
+        mock_ds_fn.return_value.case.get.return_value = _make_schema_case()
+
+        with pytest.raises(InvalidDataException):
+            case_service.add_case_rule(
+                "case-001",
+                {"query": "event.kind:alert", "destination": "/alerts", "timeframe": "invalid"},
+                _make_user(),
+            )
+
+    @patch("howler.services.case_service.datastore")
+    def test_invalid_pydantic_rule_update_remains_a_client_validation_error(self, mock_ds_fn):
+        case = _make_schema_case()
+        rule = SchemaCaseRule.model_validate(
+            {
+                "destination": "/alerts",
+                "query": "event.kind:alert",
+                "author": "analyst",
+            }
+        )
+        case.rules.append(rule)
+        mock_ds_fn.return_value.case.get.return_value = case
+
+        with pytest.raises(InvalidDataException):
+            case_service.update_case_rule(
+                "case-001",
+                rule.rule_id,
+                {"expire_after_resolved": True},
+                _make_user(),
+            )
 
 
 # ---------------------------------------------------------------------------

@@ -7,6 +7,7 @@ from typing import Any, Literal, Optional, Union, cast, overload
 
 from opentelemetry import trace
 from prometheus_client import Counter
+from pydantic import BaseModel
 
 import howler.services.comms_service as comms_service
 from howler.actions.promote import Escalation
@@ -27,6 +28,7 @@ from howler.helper.hit import (
     vote_hit,
 )
 from howler.helper.workflow import Transition, Workflow
+from howler.models.registry import model_registry
 from howler.odm.models.ecs.event import ECSEvent
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import HitOperationType, HitStatusTransition, Log, Status
@@ -579,19 +581,24 @@ def _update_hit(
     else:
         current_hit = cast(Hit, get_hit(hit_id, as_odm=True))
 
+    hit_fields = (
+        model_registry.flat_fields(type(current_hit))
+        if isinstance(current_hit, BaseModel)
+        else current_hit.flat_fields()
+    )
     for operation in operations:
         if not operation:
             continue
 
         try:
-            is_list = current_hit.flat_fields()[operation.key].multivalued
+            is_list = hit_fields[operation.key].multivalued
             try:
                 previous_value = current_hit[operation.key]
             except (TypeError, KeyError):
                 previous_value = None
         except KeyError:
-            key = next(key for key in current_hit.flat_fields().keys() if key.startswith(operation.key))
-            is_list = current_hit.flat_fields()[key].multivalued
+            key = next(key for key in hit_fields if key.startswith(operation.key))
+            is_list = hit_fields[key].multivalued
             previous_value = "list"
 
         if is_list:

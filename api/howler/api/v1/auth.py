@@ -1,11 +1,12 @@
 import typing
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any, Optional, cast
 from urllib.parse import urlparse
 
 from authlib.integrations.base_client import OAuthError
 from flask import current_app, request
 from passlib.hash import bcrypt
+from pydantic import BaseModel
 
 import howler.services.auth_service as auth_service
 import howler.services.user_service as user_service
@@ -30,6 +31,7 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.config import config
+from howler.models.user import ApiKey as SchemaApiKey
 from howler.odm.models.user import ApiKey, User
 from howler.security import api_login
 from howler.security.utils import generate_random_secret
@@ -140,7 +142,9 @@ def add_apikey(**kwargs):  # noqa: C901
         if expiry:
             new_key["expiry_date"] = expiry.isoformat()
 
-        user_data.apikeys[key_name] = ApiKey(new_key)
+        cast(Any, user_data).apikeys[key_name] = (
+            cast(Any, SchemaApiKey).validate_howler(new_key) if isinstance(user_data, BaseModel) else ApiKey(new_key)
+        )
     except HowlerException as e:
         return bad_request(err=e.message)
 

@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import elasticsearch
-from elasticsearch import Elasticsearch
+from elasticsearch import Elasticsearch, dsl
 
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.collection import parse_sort
 from howler.datastore.exceptions import SearchException, SearchRetryException
+from howler.datastore.support.elastic import error_message, response_body, total_hits_value
 from howler.datastore.types import SearchResult
 from howler.helper.search import get_collection, get_default_sort, has_access_control
 from howler.odm.models.user import User
@@ -160,34 +161,35 @@ def search(  # noqa: C901
     if timeout is not None:
         params["timeout"] = f"{timeout}ms"
 
-    query_body: dict[str, Any] = {
-        "query": {
-            "bool": {
-                "must": {"query_string": {"query": query, "default_field": DEFAULT_SEARCH_FIELD}},
-                "filter": [{"query_string": {"query": filter_query}} for filter_query in parsed_filters],
-            }
-        },
-        "from_": offset,
-        "size": rows,
-        "sort": parse_sort(sort),
-    }
-
+    search_request = dsl.Search().sort(*cast(Any, parse_sort(sort) or [])).extra(from_=offset, size=rows)
     if source_fields is not None:
-        query_body["_source"] = source_fields
+        search_request = search_request.source(cast(list[Any], source_fields))
+    query_body = search_request.to_dict()
+    query_body["from_"] = query_body.pop("from")
+    query_body["query"] = {
+        "bool": {
+            "must": dsl.Q(
+                "query_string",
+                query=query,
+                default_field=DEFAULT_SEARCH_FIELD,
+            ).to_dict(),
+            "filter": [dsl.Q("query_string", query=filter_query).to_dict() for filter_query in parsed_filters],
+        }
+    }
 
     try:
         if deep_paging_id is not None and deep_paging_id != "*":
-            result = client.scroll(scroll_id=deep_paging_id, **params)
+            result = response_body(client.scroll(scroll_id=deep_paging_id, **params))
         else:
-            result = client.search(index=parsed_indexes, **params, **query_body)
+            result = response_body(client.search(index=parsed_indexes, **params, **query_body))
     except (elasticsearch.exceptions.ConnectionError, elasticsearch.exceptions.ConnectionTimeout) as error:
         raise SearchRetryException(f"indexes: {parsed_indexes}, query: {query}, error: {str(error)}") from error
     except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.RequestError) as error:
-        raise SearchException(str(error)) from error
+        raise SearchException(error_message(error)) from error
     except Exception as error:
         raise SearchException(f"indexes: {parsed_indexes}, query: {query}, error: {str(error)}") from error
 
-    total = result.get("hits", {}).get("total", {}).get("value", 0)
+    total = total_hits_value(result.get("hits", {}).get("total", 0))
     hits = result.get("hits", {}).get("hits", [])
 
     response: SearchResult[dict[str, Any]] = {
@@ -251,28 +253,14 @@ def _resolve_facet_context(index_list: list[str], user: User | None) -> tuple[li
 def _build_facet_aggregations(
     valid_fields: list[str], rows: int, mincount: int
 ) -> dict[str, dict[str, dict[str, Any]]]:
-    return {
-        field: {
-            "terms": {
-                "field": field,
-                "size": rows,
-                "min_doc_count": mincount,
-            }
-        }
-        for field in valid_fields
-    }
+    return {field: dsl.A("terms", field=field, size=rows, min_doc_count=mincount).to_dict() for field in valid_fields}
 
 
 def _build_facet_query(query: str, parsed_filters: list[str]) -> dict[str, dict[str, Any]]:
     return {
         "bool": {
-            "must": {
-                "query_string": {
-                    "query": query,
-                    "default_field": DEFAULT_SEARCH_FIELD,
-                }
-            },
-            "filter": [{"query_string": {"query": filter_query}} for filter_query in parsed_filters],
+            "must": dsl.Q("query_string", query=query, default_field=DEFAULT_SEARCH_FIELD).to_dict(),
+            "filter": [dsl.Q("query_string", query=filter_query).to_dict() for filter_query in parsed_filters],
         }
     }
 
@@ -342,13 +330,15 @@ def facet(
     client: Elasticsearch = datastore().ds.client
 
     try:
-        result: Any = client.search(index=",".join(normalized_indexes), query=facet_query, aggs=aggregations, size=0)
+        result = response_body(
+            client.search(index=",".join(normalized_indexes), query=facet_query, aggs=aggregations, size=0)
+        )
     except (elasticsearch.exceptions.ConnectionError, elasticsearch.exceptions.ConnectionTimeout) as error:
         raise SearchRetryException(
             f"indexes: {','.join(normalized_indexes)}, query: {effective_query}, error: {str(error)}"
         ) from error
     except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.RequestError) as error:
-        raise SearchException(str(error)) from error
+        raise SearchException(error_message(error)) from error
     except Exception as error:
         raise SearchException(
             f"indexes: {','.join(normalized_indexes)}, query: {effective_query}, error: {str(error)}"

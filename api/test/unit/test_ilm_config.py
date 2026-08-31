@@ -6,6 +6,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
+from howler.common.exceptions import HowlerAttributeError
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.config import Config, Datastore, ILMConfig, ILMIndexConfig
 
@@ -92,6 +93,8 @@ class TestILMConfig:
             HowlerDatastore(datastore)
 
         registered_configs = {call.args[0]: call.kwargs["ilm_config"] for call in datastore.register.call_args_list}
+        for call in datastore.register.call_args_list:
+            assert call.args[1] is call.kwargs["schema_model"]
         for name in ("hit", "event", "case"):
             assert registered_configs[name] is not None
             assert registered_configs[name].enabled is True
@@ -115,6 +118,16 @@ class TestILMConfig:
             assert registered_configs[name].enabled is True
         for name in ("event", "template", "overview", "analytic", "action", "user", "view", "dossier", "user_avatar"):
             assert registered_configs[name] is None
+
+    def test_registration_rejects_legacy_only_plugin_model_extensions(self):
+        plugin = MagicMock()
+        plugin.name = "legacy-plugin"
+        plugin.modules.odm.modify_odm = {"hit": MagicMock()}
+        plugin.modules.models.declare_extensions = {}
+
+        with patch("howler.datastore.howler_store.get_plugins", return_value=[plugin]):
+            with pytest.raises(HowlerAttributeError, match="without matching typed model extensions"):
+                HowlerDatastore(MagicMock())
 
 
 class TestDatastoreILMIntegration:

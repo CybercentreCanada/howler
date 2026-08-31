@@ -10,11 +10,270 @@ The implementation can be developed in incremental workstreams, but it will ship
 
 - Use a single coordinated Elasticsearch 9/Pydantic application cutover.
 - Rewrite runtime consumers and remove `api/howler/odm` at cutover.
+- Internal Python ODM compatibility is not required. Preserve HTTP endpoint contracts, stored
+  documents, Elasticsearch mappings, query behavior, and generated/public schemas, but freely
+  rewrite internal model and persistence APIs.
 - Use the Pydantic integration introduced in `elasticsearch-py` 9.2.0 despite its Technical Preview status, but isolate it behind Howler-owned base classes and adapters.
 - Preserve current external and persistence behavior. An ECS schema upgrade, API redesign, search relevance changes, and unrelated datastore refactoring are out of scope.
 - Keep direct `elasticsearch-py` client calls for cluster administration features that the DSL does not improve, such as ILM policy management, rollover, shrink/split, reindex task handling, and low-level optimistic concurrency.
 
-## Current state
+## Implementation status and handoff
+
+**Branch:** `elasticsearch-dsl`
+
+**Completed:** Steps 1–7
+
+**Next:** Step 8, rewriting remaining application consumers
+
+**Working tree at this handoff:** Step 7 is implemented but uncommitted. The prior Step 6 handoff
+update was preserved and extended with the Step 7 result and validation notes.
+
+| Step | Status | Commit | Result |
+| ---- | ------ | ------ | ------ |
+| 1. Compatibility baselines | Complete | `62fa1c1f` | Added deterministic ODM contract inventories and compatibility fixtures. |
+| 2. Elasticsearch 8.19 readiness | Complete | `8a9bcaf4` | Aligned and checked the pre-upgrade 8.19 baseline. |
+| 3. Elasticsearch 9 stack | Complete | `3f32fe6c` | Pinned Elasticsearch/Kibana 9.5.2 and `elasticsearch-py` 9.5.0 across the repository. |
+| 4. Pydantic/DSL foundation | Complete | `ae78105c` | Added Howler model bases, annotated fields, registry, serializers, safe construction, and differential tests. |
+| 5. Rewrite every model | Complete | `67f46f5d` | Rewrote the domain/ECS/provider/plugin model surface with Pydantic and Elasticsearch DSL metadata. |
+| 6. Mapping and index registration | Complete | `a293c452` | Switched index schemas, templates, introspection, and reconciliation to finalized Pydantic models. |
+| 7. Persistence, updates, and searches | Complete | Uncommitted | Switched registered collection CRUD, bulk/update validation, projections, searches, EQL, and Lucene normalization to finalized models and Elasticsearch 9 response semantics. |
+
+### Work completed in Steps 1–3
+
+- Added a machine-readable inventory of legacy fields, models, mappings, settings, extension
+  hooks, serialization surfaces, and datastore call sites. The frozen inventory is
+  `api/test/unit/odm/fixtures/odm_contract_inventory.json`.
+- Added generation/check tooling in `api/build_scripts/generate_odm_contract.py` and kept the
+  legacy contract collector in `api/howler/odm/contract.py`.
+- Prepared the 8.19 upgrade baseline, then pinned the target stack to Elasticsearch/Kibana
+  `9.5.2` and the Python client `9.5.0`. Pydantic v2 and the integrated
+  `elasticsearch.dsl` implementation are now the selected model foundation.
+
+### Work completed in Step 4
+
+- Added `api/howler/models` with:
+  - `HowlerESModel`, embedded model bases, adapters, stable `to_doc`/`from_doc` conversion,
+    aliases, Elasticsearch metadata, immutability, equality, and error translation.
+  - Annotated field builders and validators for all legacy scalar/container categories,
+    including dates, IPs, domains, URIs, hashes, enums, classification, JSON, optional/list,
+    compound, mapping, and flattened fields.
+  - A canonical model/field registry with deterministic flat-field traversal and mapping
+    metadata.
+  - Classification serialization and generation of `__access_lvl__`, `__access_req__`,
+    `__access_grp1__`, and `__access_grp2__`.
+  - A Pydantic implementation of lenient `construct_safe()` behavior.
+- Added differential tests against legacy validation, coercion, serialization, mappings,
+  metadata, round trips, and rejected-field paths.
+
+### Work completed in Step 5
+
+- Rewrote all shared, ECS, provider, embedded, and top-level document models under
+  `api/howler/models`.
+- Preserved stored aliases, defaults, validators, descriptions, ECS metadata, mapping options,
+  `howler.id`, Case cross-field rules, classification behavior, and round-trip output.
+- Added a typed startup extension registry in `api/howler/models/extensions.py`.
+  - Plugins declare fields before finalization instead of mutating Pydantic classes after
+    definition.
+  - Extension ordering is deterministic, conflicts and illegal names fail explicitly, and
+    registry state is isolated between datastore instances.
+  - Clue, Evidence, and Sentinel expose typed Hit extensions.
+- Legacy plugin `modify_odm` hooks remain active because persistence still uses legacy ODM
+  objects until Step 7.
+- The model registry deliberately preserves auto-derived model IDs when creating extension
+  subclasses; this matters for models such as `User`, whose resolved `user_id` is not a declared
+  field.
+
+### Work completed in Step 6
+
+- Added `api/howler/models/schema.py`, the canonical Pydantic/DSL index-contract builder, and
+  `api/howler/models/schema_defaults.py`, the neutral home for shared analyzers, normalizers, and
+  default templates. `api/howler/datastore/support/schemas.py` is now only a legacy re-export
+  path.
+- Collection registration now retains a deliberate dual-model boundary:
+  - `model_class`: legacy ODM model used for persistence, deserialization, searches, and updates.
+  - `schema_model`: finalized Pydantic model used for index settings, mappings, templates,
+    field metadata, and reconciliation.
+- `HowlerDatastore` registers both models from one `INDEX_MODELS` table, applies legacy plugin
+  mutation for runtime compatibility, declares typed Pydantic extensions, finalizes each schema,
+  validates its complete mapping, and registers it with `ESStore`.
+- Generated contracts include:
+  - Explicit flattened properties and synthetic `id`/`__text__` fields.
+  - Classification access fields.
+  - Exact analyzers, normalizers, keyword limits, date formats, `copy_to`, index/store/doc-values
+    behavior, shard/replica settings, and total-field limits.
+  - Deterministic dynamic templates in canonical field-registry order.
+  - ILM composable templates and lifecycle settings.
+- `ESCollection.fields()` now uses live mapping GET plus `field_caps`, with the Pydantic registry
+  supplying descriptions, list/storage status, regexes, enum values, and deprecation metadata.
+  It rejects conflicting field types/mappings across rollover indices.
+- Reconciliation now:
+  - Verifies existing field type, indexing, analyzer, normalizer, date format, `ignore_above`,
+    `copy_to`, `enabled`, and doc-values behavior.
+  - Adds only safe missing explicit properties to every physical backing index.
+  - Scopes total-field-limit increases to the affected collection instead of the whole cluster.
+  - Requires every active dynamic template to exist, match, and retain precedence order on every
+    rollover index.
+  - Retains obsolete templates from disabled/removed plugins with a warning because removing
+    them is unnecessary and would otherwise prevent startup.
+  - Validates mappings before updating the ILM composable template, avoiding partially-applied
+    migrations on refusal.
+- The production ILM path now uploads the same `schema.ilm_template_body()` payload covered by
+  contract tests. Existing `_hot` migration, alias, rollover, clone, recovery, and administration
+  behavior remains intact.
+
+### Step 6 compatibility conclusion
+
+- All 11 collection contracts created from the frozen legacy generator and the new schema
+  generator produced identical canonical mappings and relevant settings on a disposable
+  Elasticsearch `8.19.11` node.
+- Mapping/settings/template parity was also verified for the finalized Hit schema with Clue,
+  Evidence, and Sentinel extensions.
+- Existing 8.x-created Howler indices therefore do **not** require a reindex or alias swap for
+  this migration. Reindex only if a later, explicitly approved mapping change introduces an
+  incompatible contract.
+- Final validation included:
+  - `1308` API unit tests.
+  - Live schema reconciliation and ILM integration tests.
+  - Evidence (`1`), Sentinel (`10`), and Sync (`28`) plugin tests, run sequentially.
+  - Ruff formatting/linting, Mypy, CI-equivalent Pyright, contract freshness, and diff checks.
+  - Two independent review passes; all reported correctness and structural findings were fixed.
+
+### Work completed in Step 7
+
+- Registered Howler collections now use finalized Pydantic/DSL models for persistence and
+  deserialization while the exported legacy `INDEXES` table remains available for differential
+  tooling and Step 8 consumers.
+- Converted CRUD and normalization paths:
+  - Full writes validate complete models; stored reads ignore removed/plugin fields while still
+    rejecting invalid declared values.
+  - Synthetic stored `id`, classification access fields, aliases, raw schema-less values, and
+    Elasticsearch metadata are normalized without dropping legitimate nested `id` fields.
+  - Search projections create validated partial models, preserve legacy `None` defaults without
+    invoking unrelated/default-factory values, and retain the existing dictionary projection
+    shapes.
+  - ILM alias-safe reads, concrete-index version tokens, `CREATE_TOKEN`, refresh options, retries,
+    and conflict behavior are preserved.
+- Converted `ElasticBulkPlan`, field expansion/pruning, update validation, operation helpers, and
+  update/update-by-query inputs to registry/Pydantic validation:
+  - Full index/create/upsert operations require complete models.
+  - Partial merges validate only selected fields, including compound/list/mapping values supplied
+    by remaining legacy callers.
+  - NDJSON action/body shapes, Painless scripts, stored date/IP/classification/model primitives,
+    access helpers, and per-batch retry behavior remain stable.
+- Consolidated exact-parity search request components on public `elasticsearch.dsl` `Search`,
+  `Q`, and `A` APIs for collection and cross-index search/faceting. Fuzzy query generation remains
+  behavior-sensitive raw construction, with only response/error normalization changed.
+- Kept EQL on public `client.eql.search`, explicitly setting
+  `allow_partial_search_results=True` and `allow_partial_sequence_results=False`; Elasticsearch 9
+  response wrappers and total-hit forms are normalized, and incomplete/running EQL results are
+  rejected instead of being presented as complete.
+- Added shared Elasticsearch 9 response/error helpers and removed application imports from private
+  Elasticsearch client namespaces in this scope. Task polling now retries structured timeout error
+  types correctly.
+- Reworked Lucene explain normalization for Lucene 10 wrappers using balanced parsing while
+  preserving phrase, wildcard, exists, range, boolean, and endpoint response behavior.
+- Added narrow Step 7 compatibility edits for remaining legacy consumers that immediately receive
+  new datastore models (field introspection, model item assignment/membership, case/record saves,
+  API response coercion, comments, and related indicators). The broad consumer rewrite remains
+  Step 8.
+- Post-review hardening now validates every model-backed Painless path (including typed mapping
+  children and mapping-key DELETE operations), fully revalidates Pydantic instances before full
+  save/create/index/upsert writes, coerces embedded Case values to the parent model family, resolves
+  ILM multiget/delete IDs to concrete rollover indices, rejects timed-out/failed-shard EQL results,
+  propagates Lucene validation transport failures, and fails startup for legacy-only plugin model
+  extensions that would otherwise be dropped. Typed extensions also reject the synthetic top-level
+  `id` field so it cannot be silently stripped or conflict with Elasticsearch metadata.
+- The Step 1 ODM contract inventory remains byte-for-byte frozen. Its check verifies the frozen
+  baseline hash, while live inventory generation requires an explicit alternate output path.
+
+### Step 7 validation and handoff
+
+- Post-review focused regressions: `291` passed, covering collection persistence/update/EQL/ILM,
+  bulk full-vs-partial writes, Case service compatibility, Lucene validation, ILM configuration,
+  and the frozen ODM contract.
+- Focused Step 7 unit suites: `328` passed.
+- Full API unit collection: `1201` passed, `12` skipped, and `133` failed only during shared
+  datastore setup because the local node is Elasticsearch `8.19.11` while the repository client is
+  `9.5.0`; no distinct code assertion failure was observed. Contract/schema suites passed
+  separately (`47` passed).
+- Search service integration: `38` passed, `24` skipped. Lucene live integration was unavailable
+  (`3` skipped). Datastore suites requiring the incompatible local node were skipped; ETag tests
+  passed (`17` passed, `2` skipped).
+- Plugin tests were run sequentially with the checkout plugin directory:
+  - Evidence: `1` passed.
+  - Sentinel: `10` skipped because the external Defender/Sentinel connection was unavailable.
+  - Sync: `16` passed, `12` skipped because the external Howler service was unavailable.
+- Ruff format/lint, full Mypy, changed-file Pyright, frozen ODM contract, and diff checks passed.
+  Multiple read-only correctness reviews were run; all high-confidence Step 7 findings were fixed.
+- Step 8 should remove the temporary legacy consumer typing/imports and localized compatibility
+  branches, migrate constructors/helpers/services to `howler.models`, and leave the frozen legacy
+  contract/reference implementation intact until Step 9.
+
+### Important implementation details to preserve
+
+- `api/howler/odm/contract.py` intentionally forces `schema_model=None` while collecting the
+  frozen legacy contract. Do not switch that collector to the new generator before the legacy
+  implementation is deleted and the fixtures become permanent goldens.
+- Keep `api/howler/datastore/support/build.py` and the legacy ODM models available as differential
+  references until Step 9. They are no longer authoritative for registered index schemas.
+- Dynamic-template order is part of the mapping contract because Elasticsearch applies the first
+  matching template. Do not sort templates in comparisons or treat reordered active templates as
+  equivalent.
+- When plugins add Evidence + Sentinel + Clue to Hit, the finalized schema has `1656` flattened
+  fields and receives a `2156` total-field limit. Always calculate the limit after extension
+  finalization.
+- `model_extensions.clear()` at datastore startup is intentional. The extension registry is a
+  process singleton, while tests and some tools construct more than one datastore.
+- Registered collections pass the same finalized class as `model_class` and `schema_model`.
+  Legacy model registration remains only for deliberate differential/ad hoc compatibility paths
+  until the Step 8/9 cleanup.
+
+### Validation and environment pitfalls
+
+- API and plugin datastore suites share the same development Elasticsearch collections and wipe
+  or recreate them. **Never run datastore-mutating API/plugin suites concurrently.** Concurrent
+  runs caused field-limit, missing-shard, count, and pagination failures that disappeared when
+  rerun sequentially.
+- Plugin tests can silently import installed plugins from `/etc/howler/plugins` because
+  `howler.app` prepends `HWL_PLUGIN_DIRECTORY`. To test checkout manifests and typed extension
+  hooks, set:
+
+  ```bash
+  HWL_PLUGIN_DIRECTORY=/path/to/howler/plugins
+  ```
+
+- The 9.5 Python client sends REST compatibility headers that Elasticsearch 8.19 rejects.
+  Live 8.19 mapping comparisons must use raw JSON REST calls (`curl`/`urllib`) or an 8.x client,
+  not the repository's 9.x virtual environment.
+- Evidence's `poetry run test` wrapper currently references a missing `.coveragerc.pytest` and can
+  abort before test collection. Use the workflow's direct Pytest command or targeted
+  `poetry run pytest` unless that unrelated wrapper is repaired.
+- For API subsets, run direct Pytest from `api/`:
+
+  ```bash
+  poetry run pytest -q <paths>
+  ```
+
+  The full API wrapper is:
+
+  ```bash
+  poetry run test test/unit
+  ```
+
+### Workflow for the next agent
+
+- Continue one numbered plan step at a time and keep a commit boundary between steps.
+- Do not run `git commit` automatically. Commit signing prompts for a password, so stage the
+  completed step and ask the user to run the proposed commit command.
+- Start Step 8 from the finalized collection runtime. Do not revert registered persistence to the
+  legacy models.
+- Rewrite remaining application imports, constructors, annotations, helpers, plugin action
+  consumers, and service assumptions from `howler.odm.models` to `howler.models`.
+- Remove localized Step 7 compatibility branches only as their consumers are migrated and covered.
+- Preserve HTTP endpoints, stored primitives, mappings, queries, response shapes, and concurrency
+  behavior; keep legacy contract/reference code and fixtures until Step 9.
+
+## Original state before implementation
 
 ### Versions
 
@@ -114,14 +373,14 @@ While both implementations exist on the migration branch:
 
 ## Implementation todos
 
-### 1. Establish compatibility baselines
+### 1. Establish compatibility baselines — complete (`62fa1c1f`)
 
 - Inventory all ODM models, fields, imports, plugin hooks, generated artifacts, and datastore call sites.
 - Extend existing ODM tests rather than replacing them, especially `test_odm.py`, `test_as_primitives.py`, `test_case.py`, `test_clue.py`, `test_datastore_odm.py`, `test_datastore.py`, `test_access_control.py`, `test_bulk.py`, and Lucene service tests.
 - Add schema snapshot generation for model metadata, mappings, index settings/templates, and generated UI/documentation outputs.
 - Add representative valid/invalid input fixtures and API response fixtures before changing implementation.
 
-### 2. Make the existing 8.19 deployment upgrade-ready
+### 2. Make the existing 8.19 deployment upgrade-ready — complete (`8a9bcaf4`)
 
 - Align demo, API development/CI, client, MCP, and Kibana on the latest available 8.19 patch before starting the major upgrade.
 - Run the latest 8.19 Kibana Upgrade Assistant, `GET /_migration/deprecations`, deprecation logging/indexing, and system-feature checks against representative and production-like clusters.
@@ -129,7 +388,7 @@ While both implementations exist on the migration branch:
 - Reindex, delete, or explicitly archive any pre-8.0 indices; verify all Howler aliases and ILM rollover indices.
 - Add automated checks for unsupported 9.x settings/APIs and record a clean pre-upgrade baseline.
 
-### 3. Pin the target Elasticsearch 9 stack
+### 3. Pin the target Elasticsearch 9 stack — complete (`3f32fe6c`)
 
 - Select one exact, current, supported Elasticsearch/Kibana/client 9.x patch at implementation time, with `9.2.0` as the minimum client feature level. Do not pin bare `9.2.0`; if remaining on the 9.2 line, use at least a patch containing the 9.2.4 upgrade fix (9.2.5 or newer).
 - Pin matching Elasticsearch and Kibana server versions and a compatible `elasticsearch-py` version at or above 9.2.
@@ -137,7 +396,7 @@ While both implementations exist on the migration branch:
 - Update Poetry locks, Docker Compose images, Helm/default deployment values, CI services, client/MCP test stacks, and support documentation together.
 - Verify Python, OS/JDK, Docker, third-party Sigma/Lucene dependencies, and exact target-patch known issues before locking the release.
 
-### 4. Build the Pydantic/DSL foundation
+### 4. Build the Pydantic/DSL foundation — complete (`ae78105c`)
 
 - Add `HowlerESModel`, embedded model bases, common configuration, stable `to_doc`/`from_doc` wrappers, serializers, aliases, error translation, and Elasticsearch metadata handling.
 - Implement reusable annotated types/validators and explicit DSL mapping annotations for all legacy field categories.
@@ -145,7 +404,7 @@ While both implementations exist on the migration branch:
 - Implement classification serialization/access-field generation and `construct_safe` parity.
 - Add focused differential unit tests for each primitive/container field and model-level behavior before migrating domain models.
 
-### 5. Rewrite every model
+### 5. Rewrite every model — complete (`67f46f5d`)
 
 - Migrate shared enums, primitives, and embedded models first.
 - Rewrite the ECS field-set models and `Record`, preserving field names, aliases, mappings, descriptions, and ECS metadata.
@@ -154,7 +413,7 @@ While both implementations exist on the migration branch:
 - Rewrite plugin/Clue extension registration and validate every finalized top-level `Document`.
 - For each group, require differential validation, serialization, mapping, and round-trip tests before proceeding.
 
-### 6. Replace mapping and index registration
+### 6. Replace mapping and index registration — complete (`a293c452`)
 
 - Generate strict mappings, analyzers, normalizers, date formats, dynamic templates, classification fields, field limits, aliases, and composable templates from DSL/model metadata.
 - Compare normalized generated mappings with legacy snapshots and a live 8.19 mapping export; investigate every difference rather than accepting DSL defaults.
@@ -162,7 +421,7 @@ While both implementations exist on the migration branch:
 - Preserve both existing legacy `_hot` alias and ILM rollover lifecycle paths until stored collections are confirmed migrated; do not rewrite working administration logic solely for DSL style.
 - Determine whether any approved mapping change requires a new index/reindex/alias swap. Avoid reindexing 8.x-created indices when mappings remain compatible.
 
-### 7. Migrate persistence, updates, and searches
+### 7. Migrate persistence, updates, and searches — next
 
 - Convert get/require/multiget/exists/save/delete and object deserialization to Pydantic/DSL documents.
 - Convert bulk indexing and field-scoped partial updates, preserving refresh, retry, conflict, error, and optimistic-concurrency behavior.

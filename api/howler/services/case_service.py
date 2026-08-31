@@ -5,9 +5,10 @@ cases - collections of security alerts and investigation data organized by analy
 """
 
 from datetime import datetime, timezone
-from typing import Any, Literal, overload
+from typing import Any, Literal, cast, overload
 
 from prometheus_client import Counter
+from pydantic import BaseModel
 
 from howler.common.exceptions import (
     HowlerTypeError,
@@ -21,6 +22,11 @@ from howler.common.logging import get_logger
 from howler.config import CLASSIFICATION
 from howler.datastore.collection import CREATE_TOKEN
 from howler.datastore.exceptions import DataStoreException
+from howler.models.case import Case as SchemaCase
+from howler.models.case import CaseItem as SchemaCaseItem
+from howler.models.case import CaseLog as SchemaCaseLog
+from howler.models.case import CaseRule as SchemaCaseRule
+from howler.models.registry import model_registry
 from howler.odm.models.case import Case, CaseItem, CaseItemTypes, CaseLog, CaseRule
 from howler.odm.models.ecs.related import Related
 from howler.odm.models.event import Event
@@ -31,6 +37,78 @@ from howler.services import comms_service
 logger = get_logger(__file__)
 
 CREATED_CASES = Counter(f"{APP_NAME.replace('-', '_')}_created_cases_total", "The number of created cases")
+
+
+def _embedded_case_value(case: Case | SchemaCase, schema_type: type[BaseModel], legacy_type: type, value: Any) -> Any:
+    """Construct an embedded value matching the parent Case implementation."""
+    if isinstance(value, BaseModel):
+        raw = value.model_dump(by_alias=True)
+    elif hasattr(value, "as_primitives"):
+        raw = value.as_primitives()
+    else:
+        raw = value
+
+    if isinstance(case, BaseModel):
+        return value if isinstance(value, schema_type) else cast(Any, schema_type).validate_howler(raw)
+    return value if isinstance(value, legacy_type) else legacy_type(raw)
+
+
+def _case_item(case: Case | SchemaCase, value: Any) -> Any:
+    return _embedded_case_value(case, SchemaCaseItem, CaseItem, value)
+
+
+def _case_log(case: Case | SchemaCase, value: Any) -> Any:
+    return _embedded_case_value(case, SchemaCaseLog, CaseLog, value)
+
+
+def _case_rule(case: Case | SchemaCase, value: Any) -> Any:
+    return _embedded_case_value(case, SchemaCaseRule, CaseRule, value)
+
+
+def _apply_case_rule_patch(rule: Any, patch: dict[str, Any]) -> tuple[Any, list[str]]:
+    """Validate and apply a rule patch without partially mutating Pydantic rules."""
+    changes: list[str] = []
+    for key, value in patch.items():
+        if key == "timeframe" and value is not None and (not isinstance(value, int) or value <= 0):
+            raise HowlerValueError("Rule timeframe must be a positive integer or None")
+        changes.append(f"{key}: '{getattr(rule, key, None)}' → '{value}'")
+
+    if isinstance(rule, BaseModel):
+        try:
+            return (
+                cast(Any, type(rule)).validate_howler({**cast(Any, rule).as_primitives(), **patch}),
+                changes,
+            )
+        except HowlerValueError as ex:
+            raise InvalidDataException(str(ex)) from ex
+
+    for key, value in patch.items():
+        setattr(rule, key, value)
+    return rule, changes
+
+
+def _save_case(
+    case: Case | SchemaCase,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+    version: str | None = None,
+) -> bool:
+    if isinstance(case, BaseModel):
+        model_case = cast(Any, case)
+        refresh = refresh or "wait_for"
+        if version is None:
+            return datastore().case.save(model_case.case_id, case, refresh=refresh)
+        return datastore().case.save(model_case.case_id, case, refresh=refresh, version=version)
+    if version is None:
+        return case.save(refresh=refresh)
+    return case.save(refresh=refresh, version=version)
+
+
+def _save_record(record: Hit | Event | BaseModel, version: str) -> bool:
+    if isinstance(record, BaseModel):
+        model_record = cast(Any, record)
+        index = type(record).__name__.lower()
+        return datastore()[index].save(model_record.howler.id, record, version=version, refresh="wait_for")
+    return record.save(version=version)
 
 
 def create_case(
@@ -57,7 +135,7 @@ def create_case(
 
     case = Case(case_data)
     case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user.uname if user else "system"})]
-    case.save(refresh="wait_for", version=CREATE_TOKEN)
+    _save_case(case, refresh="wait_for", version=CREATE_TOKEN)
     CREATED_CASES.inc()
 
     for item in items:
@@ -108,15 +186,16 @@ def hide_cases(case_ids: set[str], user: str, refresh: Literal["true", "false", 
         # Only persist the related case if we actually changed something.
         if hidden_ids:
             related_case.log.append(
-                CaseLog(
+                _case_log(
+                    related_case,
                     {
                         "timestamp": "NOW",
                         "user": user,
                         "explanation": f"Referenced case(s) hidden: {', '.join(hidden_ids)}",
-                    }
+                    },
                 )
             )
-            related_case.save(refresh=refresh)
+            _save_case(related_case, refresh=refresh)
 
     # Second pass: mark each target case itself as not visible.
     for case_id in case_ids:
@@ -127,15 +206,16 @@ def hide_cases(case_ids: set[str], user: str, refresh: Literal["true", "false", 
 
         case.visible = False
         case.log.append(
-            CaseLog(
+            _case_log(
+                case,
                 {
                     "timestamp": "NOW",
                     "user": user,
                     "explanation": "Case hidden",
-                }
+                },
             )
         )
-        case.save(refresh=refresh)
+        _save_case(case, refresh=refresh)
 
 
 def delete_cases(case_ids: set[str], refresh: Literal["true", "false", "wait_for"] | None = None) -> bool:
@@ -159,7 +239,7 @@ def delete_cases(case_ids: set[str], refresh: Literal["true", "false", "wait_for
         related_case = ds.case.get(related_case_id)
         if related_case:
             related_case.items = [item for item in related_case.items if item.value not in case_ids]
-            related_case.save(refresh=refresh)
+            _save_case(related_case, refresh=refresh)
 
     return ds.case.delete_by_query(f"case_id:({' OR '.join(case_ids)})", refresh=refresh)
 
@@ -185,13 +265,14 @@ def filter_case_items_by_classification(case_data: dict | Case, user_classificat
             if item.get("classification") is None
             or CLASSIFICATION.is_accessible(user_classification, item["classification"])
         ]
-    elif isinstance(case_data, Case):
-        if not case_data.items:
+    elif isinstance(case_data, (Case, SchemaCase)):
+        model_case = cast(Any, case_data)
+        if not model_case.items:
             return
 
-        case_data.items = [
+        model_case.items = [
             item
-            for item in case_data.items
+            for item in model_case.items
             if item.classification is None or CLASSIFICATION.is_accessible(user_classification, item.classification)
         ]
     else:
@@ -312,7 +393,8 @@ def update_case(
         explanation, prev_str, new_str = _describe_field_change(key, previous_value, new_value, compound_fields)
 
         case.log.append(
-            CaseLog(
+            _case_log(
+                case,
                 {
                     "timestamp": "NOW",
                     "key": key,
@@ -320,13 +402,13 @@ def update_case(
                     "new_value": new_str,
                     "user": user.uname,
                     "explanation": explanation,
-                }
+                },
             )
         )
         setattr(case, key, new_value)
 
     case.updated = "NOW"
-    case.save(refresh=refresh)
+    _save_case(case, refresh=refresh)
 
     comms_service.emit("cases", {"case": case.as_primitives()})
 
@@ -388,14 +470,17 @@ def get_parent_from_path(
             if not create_if_missing:
                 return None
             # Create the folder
-            folder_item = CaseItem({"type": CaseItemTypes.FOLDER, "name": part, "parent": current_parent, "value": ""})
+            folder_item = _case_item(
+                case,
+                {"type": CaseItemTypes.FOLDER, "name": part, "parent": current_parent, "value": ""},
+            )
             case.items.append(folder_item)
             current_parent = folder_item.id
         else:
             current_parent = folder.id
 
     if persist:
-        case.save(refresh)
+        _save_case(case, refresh=refresh)
 
     # Find the final parent folder
     if current_parent is None:  # pragma: no cover
@@ -476,6 +561,8 @@ def append_case_item(  # noqa: C901
             data["name"] = item_name
         item = CaseItem(data)
 
+    item = cast(CaseItem, _case_item(case, item))
+
     if item.name is None:
         item.name = item.value
 
@@ -507,7 +594,7 @@ def append_case_item(  # noqa: C901
 
             case.items.append(item)
 
-            if not case.save(refresh):  # pragma: no cover
+            if not _save_case(case, refresh=refresh):  # pragma: no cover
                 raise DataStoreException(f"Failed to save {case.case_id} with new {item.type} {item.name}")
 
             comms_service.emit("cases", {"case": case.as_primitives()})
@@ -611,7 +698,7 @@ def move_case_item(
 
     item.parent = new_parent
 
-    if not case.save(refresh=refresh):  # pragma: no cover
+    if not _save_case(case, refresh=refresh):  # pragma: no cover
         raise DataStoreException("Failed to save case after item move")
 
     comms_service.emit("cases", {"case": case.as_primitives()})
@@ -705,11 +792,11 @@ def remove_case_items(  # noqa: C901
 
     for backing_obj, version in backing_objs:
         remove_backreference(backing_obj, case.case_id)
-        backing_obj.save(version=version)
+        _save_record(backing_obj, version)
 
     recompute_case_metadata(case)
 
-    if not case.save(refresh=refresh):  # pragma: no cover
+    if not _save_case(case, refresh=refresh):  # pragma: no cover
         raise DataStoreException("Failed to save case after item removal")
 
     comms_service.emit("cases", {"case": case.as_primitives()})
@@ -745,6 +832,7 @@ def append_hit(case: Case, item: CaseItem, refresh: Literal["true", "false", "wa
         DataStoreException: If saving the updated case fails.
     """
     ds = datastore()
+    item = _case_item(case, item)
 
     hit, version = ds.hit.get(item.value, as_obj=True, version=True)
     if hit is None:
@@ -755,10 +843,10 @@ def append_hit(case: Case, item: CaseItem, refresh: Literal["true", "false", "wa
     case.items.append(item)
 
     add_backreference(hit, case.case_id)
-    hit.save(version=version)
+    _save_record(hit, version)
 
     recompute_case_metadata(case)
-    if not case.save(refresh=refresh):  # pragma: no cover
+    if not _save_case(case, refresh=refresh):  # pragma: no cover
         raise DataStoreException(f"Failed to save {case.case_id} with new item {item.value}")
 
     comms_service.emit("cases", {"case": case.as_primitives()})
@@ -783,6 +871,7 @@ def append_event(case: Case, item: CaseItem, refresh: Literal["true", "false", "
         DataStoreException: If saving the updated case fails.
     """
     ds = datastore()
+    item = _case_item(case, item)
 
     event, version = ds.event.get(key=item.value, as_obj=True, version=True)
 
@@ -794,10 +883,10 @@ def append_event(case: Case, item: CaseItem, refresh: Literal["true", "false", "
     case.items.append(item)
 
     add_backreference(event, case.case_id)
-    event.save(version=version)
+    _save_record(event, version)
 
     recompute_case_metadata(case)
-    if not case.save(refresh=refresh):  # pragma: no cover
+    if not _save_case(case, refresh=refresh):  # pragma: no cover
         raise DataStoreException(f"Failed to save {case.case_id} with new item {item.value}")
 
     comms_service.emit("cases", {"case": case.as_primitives()})
@@ -825,6 +914,7 @@ def append_case(case: Case, item: CaseItem, refresh: Literal["true", "false", "w
         DataStoreException: If saving the updated case fails.
     """
     ds = datastore()
+    item = _case_item(case, item)
 
     if any(item.value == case_item["value"] for case_item in case.items):
         raise InvalidDataException(f"Item {item.value} already exists in case {case.case_id}")
@@ -836,7 +926,7 @@ def append_case(case: Case, item: CaseItem, refresh: Literal["true", "false", "w
 
     case.items.append(item)
 
-    if not case.save(refresh=refresh):  # pragma: no cover
+    if not _save_case(case, refresh=refresh):  # pragma: no cover
         raise DataStoreException(f"Failed to save {case.case_id} with new item {item.name}")
 
     comms_service.emit("cases", {"case": case.as_primitives()})
@@ -850,7 +940,8 @@ def _collect_indicators_from_related(related: Related | None) -> set[str]:
         return set()
 
     indicators: set[str] = set()
-    for key in related.fields().keys():
+    fields = model_registry.fields(type(related)) if isinstance(related, BaseModel) else related.fields()
+    for key in fields:
         value = related[key]
         if value:
             indicators.update(str(v) for v in value if v)
@@ -1001,7 +1092,7 @@ def rename_case_item(
     if item.type == CaseItemTypes.FOLDER:
         item.value = item.name
 
-    if not case.save(refresh=refresh):  # pragma: no cover
+    if not _save_case(case, refresh=refresh):  # pragma: no cover
         raise DataStoreException("Failed to save case after item rename")
 
     comms_service.emit("cases", {"case": case.as_primitives()})
@@ -1048,24 +1139,25 @@ def add_case_rule(
     rule_data.setdefault("expire_after_resolved", False)
 
     try:
-        rule = CaseRule(rule_data)
+        rule = _case_rule(case, rule_data)
     except HowlerValueError as ex:
         raise InvalidDataException(str(ex)) from ex
 
     case.rules.append(rule)
 
     case.log.append(
-        CaseLog(
+        _case_log(
+            case,
             {
                 "timestamp": "NOW",
                 "user": user.uname,
                 "explanation": f"Added correlation rule targeting '{rule.destination}'",
-            }
+            },
         )
     )
 
     case.updated = "NOW"
-    case.save(refresh=refresh)
+    _save_case(case, refresh=refresh)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case
 
@@ -1099,17 +1191,18 @@ def remove_case_rule(
         raise NotFoundException(f"Rule {rule_id} not found in case {case_id}")
 
     case.log.append(
-        CaseLog(
+        _case_log(
+            case,
             {
                 "timestamp": "NOW",
                 "user": user.uname,
                 "explanation": f"Removed correlation rule {rule_id}",
-            }
+            },
         )
     )
 
     case.updated = "NOW"
-    case.save(refresh)
+    _save_case(case, refresh=refresh)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case
 
@@ -1156,14 +1249,10 @@ def update_case_rule(
     if rule is None:
         raise NotFoundException(f"Rule {rule_id} not found in case {case_id}")
 
-    changes: list[str] = []
-    for key, value in patch.items():
-        if key == "timeframe" and value is not None and (not isinstance(value, int) or value <= 0):
-            raise HowlerValueError("Rule timeframe must be a positive integer or None")
-
-        old_value = getattr(rule, key, None)
-        setattr(rule, key, value)
-        changes.append(f"{key}: '{old_value}' → '{value}'")
+    updated_rule, changes = _apply_case_rule_patch(rule, patch)
+    if updated_rule is not rule:
+        case.rules[case.rules.index(rule)] = updated_rule
+        rule = updated_rule
 
     if rule.timeframe is not None and (not isinstance(rule.timeframe, int) or rule.timeframe <= 0):
         raise HowlerValueError("Rule timeframe must be a positive integer or None")
@@ -1171,16 +1260,17 @@ def update_case_rule(
         raise InvalidDataException("Rule cannot expire after resolved when no timeframe is set")
 
     case.log.append(
-        CaseLog(
+        _case_log(
+            case,
             {
                 "timestamp": "NOW",
                 "user": user.uname,
                 "explanation": f"Updated correlation rule {rule_id}: {'; '.join(changes)}",
-            }
+            },
         )
     )
 
     case.updated = "NOW"
-    case.save(refresh=refresh)
+    _save_case(case, refresh=refresh)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case

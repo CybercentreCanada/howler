@@ -10,6 +10,7 @@ from howler import odm
 from howler.common.loader import APP_NAME
 from howler.common.logging import get_logger, log_with_traceback
 from howler.config import QUOTA_TRACKER, get_version
+from howler.models.base import HowlerModelMixin
 from howler.utils.constants import TESTING
 from howler.utils.str_utils import safe_str
 
@@ -40,11 +41,11 @@ def _format_api_error_message(err: Exception) -> str:
 
 
 def _coerce_response_data(data: Any) -> Any:
-    """Convert ODM model responses into JSON-serializable primitives."""
-    if isinstance(data, odm.Model):
+    """Convert Howler model responses into JSON-serializable primitives."""
+    if isinstance(data, (odm.Model, HowlerModelMixin)):
         return data.as_primitives()
 
-    if isinstance(data, list) and len(data) > 0 and isinstance(data[0], odm.Model):
+    if isinstance(data, list) and data and isinstance(data[0], (odm.Model, HowlerModelMixin)):
         return [item.as_primitives() for item in data]
 
     return data

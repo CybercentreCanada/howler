@@ -1,4 +1,3 @@
-import re
 from collections.abc import Callable
 from copy import deepcopy
 from typing import Any
@@ -177,26 +176,24 @@ def explain_query(index, **kwargs):
 
     _audit_request(user, explain_query, index=index, query=query)
 
-    # This regex checks for lucene phrases (i.e. the "Example Analytic" part of howler.analytic:"Example Analytic")
-    # And then escapes them.
-    # https://regex101.com/r/8u5F6a/1
-    escaped_lucene = re.sub(r'((:\()?(".+?")(\)?))', lucene_service.replace_lucene_phrase, query)
+    # Protect Lucene phrases before asking Elasticsearch to explain the query.
+    escaped_lucene = lucene_service.prepare_lucene_query(query, protect_wildcards=False)
 
     try:
         result = deepcopy(
-            datastore()
-            .hit.datastore.client.indices.validate_query(
-                q=escaped_lucene,
-                explain=True,
-                index=collection().index_name,
+            lucene_service.response_body(
+                datastore().hit.datastore.client.indices.validate_query(
+                    q=escaped_lucene,
+                    explain=True,
+                    index=collection().index_name,
+                )
             )
-            .body
         )
 
-        del result["_shards"]
+        result.pop("_shards", None)
 
         for explanation in result["explanations"]:
-            del explanation["index"]
+            explanation.pop("index", None)
 
         return ok(result)
     except Exception as e:  # pragma: no cover

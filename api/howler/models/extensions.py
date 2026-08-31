@@ -45,7 +45,11 @@ class ModelExtensionRegistry:
         """
         if target in self._finalized:
             raise HowlerValueError(f"{target.__name__} has already been finalized; cannot declare {name!r}")
-        if not FIELD_SANITIZER.match(name) or name in BANNED_FIELDS:
+        if (
+            not FIELD_SANITIZER.match(name)
+            or name in BANNED_FIELDS
+            or (name == "id" and not model_registry.metadata(target).embedded)
+        ):
             raise HowlerValueError(f"Illegal extension field name: {name}")
         if name in target.model_fields:
             raise HowlerValueError(f"Extension field {name!r} conflicts with an existing field on {target.__name__}")

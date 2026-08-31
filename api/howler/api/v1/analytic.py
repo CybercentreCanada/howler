@@ -1,7 +1,8 @@
 import typing
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from flask import Response, request
+from pydantic import BaseModel
 
 from howler.api import (
     bad_request,
@@ -18,6 +19,9 @@ from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import DataStoreException
 from howler.datastore.operations import OdmHelper
+from howler.models.analytic import Comment as SchemaComment
+from howler.models.analytic import Notebook as SchemaNotebook
+from howler.models.analytic import TriageOptions as SchemaTriageOptions
 from howler.odm.models.analytic import Analytic, Comment, Notebook, TriageOptions
 from howler.odm.models.user import User
 from howler.security import api_login
@@ -124,8 +128,11 @@ def update_analytic(id: str, user: User, **kwargs):
         else:
             existing_triage_data = {}
 
-        existing_analytic.triage_settings = TriageOptions(
-            {**existing_triage_data, **new_data.get("triage_settings", {})}
+        triage_data = {**existing_triage_data, **new_data.get("triage_settings", {})}
+        cast(Any, existing_analytic).triage_settings = (
+            cast(Any, SchemaTriageOptions).validate_howler(triage_data)
+            if isinstance(existing_analytic, BaseModel)
+            else TriageOptions(triage_data)
         )
 
         storage.analytic.save(existing_analytic.analytic_id, existing_analytic, refresh=refresh)
@@ -175,14 +182,15 @@ def add_comment(id: str, user: dict[str, Any], **kwargs):
     analytic = analytic_service.get_analytic(id, as_odm=True)
 
     try:
-        analytic.comment.append(
-            Comment(
-                {
-                    "user": user["uname"],
-                    "value": comment_data,
-                    "detection": comment.get("detection", None),
-                }
-            )
+        comment_value = {
+            "user": user["uname"],
+            "value": comment_data,
+            "detection": comment.get("detection", None),
+        }
+        cast(Any, analytic).comment.append(
+            cast(Any, SchemaComment).validate_howler(comment_value)
+            if isinstance(analytic, BaseModel)
+            else Comment(comment_value)
         )
 
         datastore().analytic.save(analytic.analytic_id, analytic)
@@ -546,15 +554,16 @@ def add_notebook(id: str, user: dict[str, Any], **kwargs):
     analytic = analytic_service.get_analytic(id, as_odm=True)
 
     try:
-        analytic.notebooks.append(
-            Notebook(
-                {
-                    "user": user["uname"],
-                    "name": name,
-                    "value": link,
-                    "detection": detection if detection else None,
-                }
-            )
+        notebook_value = {
+            "user": user["uname"],
+            "name": name,
+            "value": link,
+            "detection": detection if detection else None,
+        }
+        cast(Any, analytic).notebooks.append(
+            cast(Any, SchemaNotebook).validate_howler(notebook_value)
+            if isinstance(analytic, BaseModel)
+            else Notebook(notebook_value)
         )
 
         datastore().analytic.save(analytic.analytic_id, analytic)

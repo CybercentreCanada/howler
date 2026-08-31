@@ -6,7 +6,9 @@ import pytest
 
 from howler.datastore.bulk import ElasticBulkPlan
 from howler.datastore.collection import ESCollection
-from howler.odm.models.case import Case, CaseItem
+from howler.models import construct_partial
+from howler.models.action import Action
+from howler.models.case import Case, CaseItem
 
 
 @pytest.fixture(scope="module")
@@ -70,14 +72,14 @@ def test_collection_bulk_returns_false_and_logs_errors():
 
 
 def _make_case() -> Case:
-    return Case(
+    return Case.model_validate(
         {
             "case_id": "case-001",
             "title": "Original Title",
             "summary": "Original Summary",
             "overview": "O",
             "escalation": "normal",
-            "items": [CaseItem({"type": "hit", "value": "hit-1", "name": "hit-1"})],
+            "items": [CaseItem.model_validate({"id": "item-1", "type": "hit", "value": "hit-1", "name": "hit-1"})],
         }
     )
 
@@ -109,6 +111,7 @@ def test_add_update_operation_exact_field_keeps_whole_subtree():
 
     doc = _get_update_body(plan)
     assert set(doc.keys()) == {"items"}
+    assert doc["items"][0]["id"] == "item-1"
     assert doc["items"][0]["value"] == "hit-1"
     assert doc["items"][0]["name"] == "hit-1"
 
@@ -144,3 +147,87 @@ def test_add_update_operation_drops_unselected_top_level_fields():
     doc = _get_update_body(plan)
     assert "title" not in doc
     assert "summary" not in doc
+
+
+def test_add_update_operation_validates_partial_dict_without_full_required_fields():
+    """A partial merge validates selected registry fields without requiring a full Case."""
+    plan = ElasticBulkPlan(indexes=["case"], model=Case)
+    plan.add_update_operation(
+        "case-001",
+        {"items": [{"type": "hit"}], "unselected_unknown": object()},
+        fields=["items.type"],
+    )
+
+    assert _get_update_body(plan) == {"items": [{"type": "hit"}]}
+
+
+def test_add_update_operation_fully_validates_exact_compound_field():
+    """Replacing a whole compound field runs nested model validators."""
+    plan = ElasticBulkPlan(indexes=["case"], model=Case)
+
+    with pytest.raises(Exception):
+        plan.add_update_operation(
+            "case-001",
+            {
+                "rules": [
+                    {
+                        "destination": "/alerts",
+                        "query": "event.kind:alert",
+                        "author": "analyst",
+                        "expire_after_resolved": True,
+                    }
+                ]
+            },
+            fields=["rules"],
+        )
+
+    plan.add_update_operation(
+        "case-001",
+        {"rules": [{"enabled": False}]},
+        fields=["rules.enabled"],
+    )
+    assert _get_update_body(plan) == {"rules": [{"enabled": False}]}
+
+
+def test_add_index_operation_requires_a_complete_model():
+    """Full index operations reject partial documents."""
+    plan = ElasticBulkPlan(indexes=["case"], model=Case)
+
+    with pytest.raises(Exception):
+        plan.add_index_operation("case-001", {"title": "Incomplete"})
+
+
+@pytest.mark.parametrize("operation", ["insert", "index", "upsert"])
+def test_full_bulk_operations_reject_projected_model_instances(operation):
+    """Projected models are valid only for partial updates, never full bulk writes."""
+    projected = construct_partial(Action, {"name": "Projected"})
+    plan = ElasticBulkPlan(indexes=["action"], model=Action)
+
+    with pytest.raises(Exception):
+        getattr(plan, f"add_{operation}_operation")("action-1", projected)
+
+    assert plan.empty
+
+
+def test_full_operation_helpers_preserve_exact_ndjson_actions_and_stored_id():
+    """Create/index/upsert helpers retain their public bulk action and body shapes."""
+    case = _make_case()
+    plan = ElasticBulkPlan(indexes=["case"], model=Case)
+
+    plan.add_insert_operation("case-001", case)
+    plan.add_index_operation("case-001", case, index="case-000001")
+    plan.add_upsert_operation("case-001", case)
+
+    create_header, create_body = plan.operations[0]  # pyright: ignore[reportAssignmentType]
+    index_header, index_body = plan.operations[1]  # pyright: ignore[reportAssignmentType]
+    upsert_header, upsert_body = plan.operations[2]  # pyright: ignore[reportAssignmentType]
+    assert json.loads(create_header) == {"create": {"_index": "case", "_id": "case-001"}}
+    assert json.loads(index_header) == {"index": {"_index": "case-000001", "_id": "case-001"}}
+    assert json.loads(upsert_header) == {"update": {"_index": "case", "_id": "case-001"}}
+    assert json.loads(create_body)["id"] == "case-001"
+    assert json.loads(index_body)["id"] == "case-001"
+    assert json.loads(upsert_body) == {
+        "doc": {**json.loads(create_body)},
+        "doc_as_upsert": True,
+    }
+    assert plan.get_plan_data().endswith("\n")

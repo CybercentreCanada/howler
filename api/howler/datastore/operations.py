@@ -1,15 +1,20 @@
-from typing import Any, Iterator, Optional, Type
+from typing import Any, Iterator, Optional, cast
+
+from pydantic import BaseModel
 
 from howler.common.exceptions import HowlerTypeError, HowlerValueError
 from howler.datastore.collection import ESCollection
-from howler.odm.base import Model
+from howler.models.registry import model_registry
 
 
 class OdmHelper:
-    def __init__(self, obj: Optional[Type[Model]] = None) -> None:
+    def __init__(self, obj: Optional[type] = None) -> None:
         self.model_name = obj.__name__ if obj else None
-        self.valid_fields = list(obj.flat_fields().keys()) if obj else None
-        self.fields = obj.flat_fields() if obj else {}
+        if obj and issubclass(obj, BaseModel):
+            self.fields = model_registry.flat_fields(obj)
+        else:
+            self.fields = cast(Any, obj).flat_fields() if obj else {}
+        self.valid_fields = list(self.fields) if obj else None
 
     def list_add(
         self,

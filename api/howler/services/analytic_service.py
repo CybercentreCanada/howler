@@ -1,9 +1,10 @@
-from typing import Any, Literal, Union, overload
+from typing import Any, Literal, Union, cast, overload
 
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import SearchException
 from howler.datastore.operations import OdmUpdateOperation
+from howler.models.hit import Hit as SchemaHit
 from howler.odm.models.analytic import Analytic
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import Assessment
@@ -108,8 +109,8 @@ def save_from_hits(
     """
     storage = datastore()
 
-    if isinstance(hits, Hit):
-        hits = [hits]
+    if isinstance(hits, (Hit, SchemaHit)):
+        hits = [cast(Hit, hits)]
 
     # group by analytics for bulk update
     hits_by_analytic: dict[str, list[Hit]] = {}

@@ -329,19 +329,18 @@ class ESStore(object):
         return self.client.ping()
 
     def register(self, name: str, model_class=None, ilm_config=None, schema_model=None):
-        """Register a collection (index) name and its optional ODM model class.
+        """Register a collection name and its optional finalized document model.
 
         Args:
             name: Collection name.  Must contain only lowercase letters, digits,
                 and underscores.
-            model_class: ODM model class used for validation and serialisation.
+            model_class: Pydantic/DSL model used for validation and serialisation.
                 ``None`` disables model-level validation for this collection.
             ilm_config: Optional per-index ILM configuration (ILMIndexConfig).
-            schema_model: Optional finalized Pydantic/DSL schema model (from
-                ``howler.models``) used for index settings/mappings/field-introspection
-                generation. Kept separate from ``model_class``, which remains the legacy
-                runtime/persistence model until Step 7/8. ``None`` preserves schema-less
-                collection behavior (e.g. ``user_avatar``).
+            schema_model: Optional finalized Pydantic/DSL schema model used for index
+                settings/mappings/field introspection. Registered Howler collections pass
+                the same finalized class as ``model_class``; ``None`` preserves raw
+                schema-less collections such as ``user_avatar``.
 
         Raises:
             DataStoreException: If *name* contains invalid characters.

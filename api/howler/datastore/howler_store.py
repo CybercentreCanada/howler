@@ -48,8 +48,8 @@ INDEX_MODELS = {
     "user_avatar": (None, None),
 }
 
-# The first model remains the legacy runtime/persistence model exposed to existing consumers.
-# The second is the Pydantic/DSL model used only for index schema generation until Step 7/8.
+# Keep the legacy table exported for differential tooling and the Step 8 consumer rewrite.
+# Registered collections use finalized Pydantic/DSL models for persistence starting in Step 7.
 INDEXES = {name: models[0] for name, models in INDEX_MODELS.items()}
 SCHEMA_INDEXES = {name: models[1] for name, models in INDEX_MODELS.items()}
 
@@ -67,7 +67,22 @@ class HowlerDatastore(object):
         # import/construction order.
         model_extensions.clear()
 
-        for plugin in get_plugins():
+        plugins = get_plugins()
+        for plugin in plugins:
+            legacy_only_targets = {
+                target
+                for target in plugin.modules.odm.modify_odm
+                if SCHEMA_INDEXES.get(target) is not None and target not in plugin.modules.models.declare_extensions
+            }
+            if legacy_only_targets:
+                targets = ", ".join(sorted(legacy_only_targets))
+                raise HowlerAttributeError(
+                    f"Plugin {plugin.name} defines legacy ODM extensions for {targets} without matching typed "
+                    "model extensions. Add modules.models.declare_extensions entries before using this plugin "
+                    "with Pydantic-backed collections."
+                )
+
+        for plugin in plugins:
             for _index, _odm in INDEXES.items():
                 if _odm is None:
                     continue
@@ -83,7 +98,7 @@ class HowlerDatastore(object):
             )
             declare_clue_hit_extension()
 
-        for plugin in get_plugins():
+        for plugin in plugins:
             for _index in SCHEMA_INDEXES:
                 if declare_extension := plugin.modules.models.declare_extensions.get(_index):
                     logger.info("Declaring %s model extension with function from plugin %s", _index, plugin.name)
@@ -103,7 +118,7 @@ class HowlerDatastore(object):
             new_schema.document_mapping(finalized)
             finalized_schema_models[_index] = finalized
 
-        for _index, _odm in INDEXES.items():
+        for _index in INDEXES:
             ilm_index_config = config.datastore.ilm.indices.get(_index)
             if ilm_index_config is None:
                 ilm_index_config = ILMIndexConfig(enabled=_index in ILM_ENABLED_INDEXES)
@@ -112,7 +127,7 @@ class HowlerDatastore(object):
 
             self.ds.register(
                 _index,
-                _odm,
+                finalized_schema_models[_index],
                 ilm_config=ilm_index_config,
                 schema_model=finalized_schema_models[_index],
             )

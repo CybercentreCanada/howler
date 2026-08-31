@@ -16,6 +16,16 @@ from howler.services import correlation_service
 # ---------------------------------------------------------------------------
 
 
+@pytest.fixture(autouse=True)
+def share_correlation_datastore_with_case_service(monkeypatch):
+    """Keep case metadata recomputation on the datastore mocked by each correlation test."""
+    monkeypatch.setattr(
+        correlation_service.case_service,
+        "datastore",
+        lambda: correlation_service.datastore(),
+    )
+
+
 def _make_rule(
     enabled: bool = True,
     timeframe: int | None = None,
