@@ -141,6 +141,9 @@ def update_action(id: str, user: User, **kwargs) -> Response:
     if not isinstance(updated_action, dict):
         return bad_request(err="Incorrect data structure!")
 
+    if set(updated_action) & {"owner", "admins", "members"}:
+        return bad_request(err="You cannot change permissions using this endpoint.")
+
     refresh = kwargs.get("refresh")
 
     ds = datastore()

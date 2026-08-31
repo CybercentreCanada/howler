@@ -179,6 +179,7 @@ def create_users(ds):
             "password": user_hash,
             "uname": "user",
             "favourite_views": [user_view.view_id],
+            "type": ["user", "automation_basic"],
         }
     )
 

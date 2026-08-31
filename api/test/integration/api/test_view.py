@@ -198,35 +198,32 @@ def test_give_remove_membership(
         method="POST",
         data=json.dumps({"title": "testremove", "type": "global", "query": "howler.hash:*"}),
     )
-    view: View = datastore.view.get(create_res["view_id"], as_obj=True)
+    for privilege in ("admins", "members"):
+        updated_view = get_api_data(
+            owner_session,
+            f"{host}/api/v1/view/{create_res['view_id']}/permission",
+            method="PUT",
+            data=json.dumps(
+                {
+                    "privilege": privilege,
+                    "user_ids": [member_uname],
+                }
+            ),
+        )
+        assert member_uname in updated_view[privilege]
 
-    # Give|Remove every possible membership
-    for request in ("PUT", "DELETE"):
-        for membership in view.get_priviledge_mapping().keys():
-            get_api_data(
-                owner_session,
-                f"{host}/api/v1/view/{create_res['view_id']}/permission",
-                method=request,
-                data=json.dumps(
-                    {
-                        "user_id": member_uname,
-                        "priviledge": membership,
-                    }
-                ),
-            )
-            # updating the view for testing
-            view: View = datastore.view.get(create_res["view_id"], as_obj=True)
-            if request == "PUT":
-                assert member_uname in view.get_priviledge_mapping()[membership]
-                continue
-            assert member_uname not in view.get_priviledge_mapping()[membership]
+        updated_view = get_api_data(
+            owner_session,
+            f"{host}/api/v1/view/{create_res['view_id']}/permission",
+            method="DELETE",
+            data=json.dumps(
+                {
+                    "privilege": privilege,
+                    "user_ids": [member_uname],
+                }
+            ),
+        )
+        assert member_uname not in updated_view[privilege]
 
     # Delete the view
     get_api_data(owner_session, f"{host}/api/v1/view/{create_res['view_id']}/", method="DELETE")
-
-
-def test_permission_membership_validation(
-    datastore: HowlerDatastore,
-    user_sessions,
-):
-    pass
