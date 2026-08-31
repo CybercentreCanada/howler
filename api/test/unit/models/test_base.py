@@ -16,6 +16,7 @@ from howler.models import (
     HowlerModelValidationError,
     classification,
     compound,
+    construct_partial,
     date,
     document_adapter,
     flattened_list_object,
@@ -27,7 +28,9 @@ from howler.models import (
     mapping,
     model_registry,
     optional,
+    partial_primitives,
     register_model,
+    strip_unknown_fields,
     text,
     uuid,
 )
@@ -122,6 +125,11 @@ def test_model_validation_aliases_and_defaults() -> None:
     with pytest.raises(ValidationError):
         FoundationDocument.model_validate({**_document_data(), "unknown": True})
 
+    model["from"] = "updated"  # pyright: ignore[reportIndexIssue]
+    model["child.count"] = "4"  # pyright: ignore[reportIndexIssue]
+    assert model.from_ == "updated"
+    assert model.child.count == 4
+
 
 def test_flattened_compound_list_input() -> None:
     """Dotted lists of compound fields reconstruct into aligned objects."""
@@ -186,6 +194,85 @@ def test_document_adapter_round_trip_preserves_metadata() -> None:
     assert restored.as_primitives() == model.as_primitives()
     assert restored.meta.id == "es-id"
     assert restored.meta.version == 4
+
+
+def test_document_adapter_ignores_synthetic_stored_fields() -> None:
+    """Stored access/id helpers aren't treated as strict model input."""
+    model = FoundationDocument.model_validate(_document_data())
+    document = document_adapter.to_doc(model)
+    document.id = "stored-id"
+    document.__access_lvl__ = 100
+
+    restored = document_adapter.from_doc(FoundationDocument, document)
+
+    assert restored.document_id == "document-1"
+
+
+def test_partial_construction_validates_selected_fields_without_defaults() -> None:
+    """Projected models validate present leaves without requiring unrelated fields."""
+    partial = construct_partial(
+        FoundationDocument,
+        {
+            "child": {"count": "2"},
+            "tags": [1, "two"],
+            "id": "stored-id",
+            "__access_lvl__": 100,
+        },
+        meta={"id": "stored-id", "index": "howler-foundation"},
+    )
+
+    assert partial.child.count == 2
+    assert partial.tags == ["1", "two"]
+    assert "document_id" not in partial.__dict__
+    assert partial.maybe is None
+    assert partial.meta.id == "stored-id"
+    assert partial.as_primitives() == {"child": {"count": 2}, "tags": ["1", "two"]}
+
+
+def test_partial_primitives_rejects_unknown_fields() -> None:
+    """Partial updates remain strict about registry field names."""
+    with pytest.raises(ValueError, match="Unknown field"):
+        partial_primitives(FoundationDocument, {"unknown": True})
+
+    with pytest.raises(HowlerModelValidationError):
+        construct_partial(FoundationDocument, {"child": None})
+
+
+def test_partial_primitives_preserve_storage_serialization_and_access_fields() -> None:
+    """Partial merges serialize dates, IPs, embedded values, and classification helpers."""
+    primitives = partial_primitives(
+        FoundationDocument,
+        {
+            "child": {
+                "address": "127.0.0.1",
+                "created": TIMESTAMP,
+            },
+            "classification": "UNRESTRICTED",
+        },
+    )
+
+    assert primitives["child"] == {
+        "address": "127.0.0.1",
+        "created": TIMESTAMP,
+    }
+    assert primitives["classification"] == "UNRESTRICTED"
+    assert primitives["__access_lvl__"] == 100
+    assert primitives["__access_grp1__"] == ["__EMPTY__"]
+
+
+def test_read_normalization_drops_unknown_fields_but_preserves_mapping_keys() -> None:
+    """Removed plugin fields are ignored on reads without pruning dynamic mappings."""
+    data = _document_data()
+    data["removed_plugin_field"] = "legacy"
+    data["child"]["removed_child_field"] = "legacy"
+    data["counters"]["dynamic_key"] = "2"
+
+    clean = strip_unknown_fields(FoundationDocument, data)
+    model = FoundationDocument.model_validate(clean)
+
+    assert "removed_plugin_field" not in clean
+    assert "removed_child_field" not in clean["child"]
+    assert model.counters["dynamic_key"] == 2
 
 
 def test_registry_fields_flattening_and_mapping() -> None:

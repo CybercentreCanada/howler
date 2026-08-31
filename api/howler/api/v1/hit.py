@@ -4,6 +4,7 @@ from typing import Any, Literal, cast
 
 from flask import request
 from mergedeep import Strategy, merge
+from pydantic import BaseModel
 
 from howler.api import (
     bad_request,
@@ -33,6 +34,7 @@ from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import DataStoreException, InvalidScrollTokenException, VersionConflictException
 from howler.datastore.operations import OdmHelper, OdmUpdateOperation
 from howler.helper.workflow import WorkflowException
+from howler.models.registry import model_registry
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import Comment, HitStatusTransition
 from howler.odm.models.log import LogOperationType
@@ -54,6 +56,12 @@ FIELDS = Hit.flat_fields()
 logger = get_logger(__file__)
 
 hit_helper = OdmHelper(Hit)
+
+
+def _runtime_hit_fields(hit: Any) -> dict[str, Any]:
+    if isinstance(hit, BaseModel):
+        return model_registry.flat_fields(type(hit))
+    return hit.flat_fields()
 
 
 @generate_swagger_docs()
@@ -610,7 +618,7 @@ def add_label(
     if not record:
         return not_found(err=f"Hit {id} does not exist")
 
-    if f"howler.labels.{label_set}" not in record.flat_fields():
+    if f"howler.labels.{label_set}" not in _runtime_hit_fields(record):
         return not_found(err=f"Label set {label_set} does not exist")
 
     label_data = request.json
@@ -679,7 +687,7 @@ def remove_labels(
     if not record:
         return not_found(err=f"Hit {id} does not exist")
 
-    if f"howler.labels.{label_set}" not in record.flat_fields():
+    if f"howler.labels.{label_set}" not in _runtime_hit_fields(record):
         return not_found(err=f"Label set {label_set} does not exist")
 
     label_data = request.json

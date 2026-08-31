@@ -4,6 +4,7 @@ import pytest
 from flask import Flask
 
 import howler.api as api
+from howler.models.action import Action as SchemaAction
 from howler.odm import Model
 from howler.odm.models.user import User
 from howler.odm.randomizer import random_model_obj
@@ -149,6 +150,21 @@ def test_coerce_response_data_handles_lists_of_models():
     coerced = api._coerce_response_data(users)
 
     assert coerced == [user.as_primitives() for user in users]
+
+
+def test_coerce_response_data_handles_pydantic_models():
+    """Finalized datastore models use the same public response conversion."""
+    action = SchemaAction.model_validate(
+        {
+            "action_id": "action-1",
+            "owner_id": "user-1",
+            "name": "Test",
+            "query": "id:*",
+        }
+    )
+
+    assert api._coerce_response_data(action) == action.as_primitives()
+    assert api._coerce_response_data([action]) == [action.as_primitives()]
 
 
 def test_coerce_response_data_passthrough_for_plain_values():
