@@ -9,6 +9,7 @@ from howler.common.exceptions import HowlerException, InvalidDataException, NotF
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
+from howler.config import CLASSIFICATION
 from howler.datastore.exceptions import DataStoreException
 from howler.odm.models.case import Case, CaseItem
 from howler.odm.models.user import User
@@ -68,8 +69,9 @@ def check_item_access(
         # Generic 404 so classified objects are indistinguishable from nonexistent ones
         return not_found(err=f"{item_type} {item_value} does not exist")
 
-    if parent_classification is not None and not is_classification_accessible(
-        {"type": [], "classification": parent_classification}, obj.get("classification")
+    if parent_classification is not None and not CLASSIFICATION.is_accessible(
+        parent_classification,
+        obj.get("classification"),
     ):
         return bad_request(err=f"Cannot add {item_type} {item_value} to a lower-classified case")
 

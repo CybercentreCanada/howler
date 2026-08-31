@@ -1,24 +1,27 @@
 import base64
 import os
 import re
-from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Iterable, List, Optional
 from urllib.parse import urlparse
 
 from opentelemetry import trace
 from passlib.hash import bcrypt
 
 from howler.common.exceptions import HowlerValueError, InvalidClassification
+from howler.common.logging import get_logger
 from howler.config import CLASSIFICATION, config
+from howler.odm.base import ClassificationObject
 
 if TYPE_CHECKING:
     from howler.odm.models.user import User
 
 tracer = trace.get_tracer(__name__)
+logger = get_logger(__file__)
 
 
 def is_classification_accessible(
-    user: Union["User", dict[str, Any]],
-    classification: Optional[str],
+    user: "User",
+    classification: str | ClassificationObject | None,
 ) -> bool:
     """Check whether a user can access a document at the given classification.
 
@@ -39,24 +42,20 @@ def is_classification_accessible(
     """
     if classification is None:
         return True
-    if not isinstance(classification, str):
+
+    if not (isinstance(classification, str) or isinstance(classification, ClassificationObject)):
+        logger.warning("Invalid classification type")
         return False
+
     if not classification:
         return False
 
-    if isinstance(user, dict):
-        user_type = user.get("type", [])
-        user_classification: Any = user.get("classification")
-    else:
-        user_type = user["type"]
-        user_classification = user["classification"]
-
-    if "admin" in user_type:
+    if "admin" in user.type:
         return True
 
     try:
         return CLASSIFICATION.is_accessible(
-            user_classification if user_classification is not None else CLASSIFICATION.UNRESTRICTED,
+            user.classification or CLASSIFICATION.UNRESTRICTED,
             classification,
         )
     except InvalidClassification:

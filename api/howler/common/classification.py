@@ -759,7 +759,10 @@ class Classification(object):
         )
 
     def is_accessible(
-        self, user_c12n: "str | ClassificationObject", c12n: "str | ClassificationObject", ignore_invalid: bool = False
+        self,
+        user_c12n: "str | ClassificationObject",
+        c12n: "str | ClassificationObject | None",
+        ignore_invalid: bool = False,
     ) -> bool:
         """
         Given a user classification, check if a user is allow to see a certain classification

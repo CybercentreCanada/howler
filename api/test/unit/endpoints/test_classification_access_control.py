@@ -125,7 +125,7 @@ def _build_user(
     return user
 
 
-def _mock_auth(mock_auth_service, user, priv=None):
+def _mock_auth(mock_auth_service, user: User, priv=None):
     """Configure auth mocks so api_login passes."""
     if priv is None:
         priv = ["R", "W", "E"]
@@ -170,44 +170,92 @@ class TestIsClassificationAccessible:
     def test_admin_bypasses_access_control(self, stub_classification):
         from howler.security.utils import is_classification_accessible
 
-        admin = {"type": ["admin", "user"], "classification": "UNRESTRICTED"}
+        admin = User(
+            {
+                "name": "admin",
+                "uname": "admin",
+                "password": "__NO_PASSWORD__",
+                "type": ["admin", "user"],
+                "classification": "UNRESTRICTED",
+            }
+        )
         assert is_classification_accessible(admin, "RESTRICTED") is True
 
     def test_user_can_access_at_own_level(self, stub_classification):
         from howler.security.utils import is_classification_accessible
 
-        user = {"type": ["user"], "classification": "RESTRICTED"}
+        user = User(
+            {
+                "name": "user",
+                "uname": "user",
+                "password": "__NO_PASSWORD__",
+                "type": ["user"],
+                "classification": "RESTRICTED",
+            }
+        )
         assert is_classification_accessible(user, "RESTRICTED") is True
 
     def test_user_can_access_below_own_level(self, stub_classification):
         from howler.security.utils import is_classification_accessible
 
-        user = {"type": ["user"], "classification": "RESTRICTED"}
+        user = User(
+            {
+                "name": "user",
+                "uname": "user",
+                "password": "__NO_PASSWORD__",
+                "type": ["user"],
+                "classification": "RESTRICTED",
+            }
+        )
         assert is_classification_accessible(user, "UNRESTRICTED") is True
 
     def test_denied_above_own_level(self, stub_classification):
         from howler.security.utils import is_classification_accessible
 
-        user = {"type": ["user"], "classification": "UNRESTRICTED"}
+        user = User(
+            {
+                "name": "user",
+                "uname": "user",
+                "password": "__NO_PASSWORD__",
+                "type": ["user"],
+                "classification": "UNRESTRICTED",
+            }
+        )
         assert is_classification_accessible(user, "RESTRICTED") is False
 
     def test_unclassified_document_is_accessible(self, stub_classification):
         from howler.security.utils import is_classification_accessible
 
-        user = {"type": ["user"], "classification": "UNRESTRICTED"}
+        user = User(
+            {
+                "name": "user",
+                "uname": "user",
+                "password": "__NO_PASSWORD__",
+                "type": ["user"],
+                "classification": "UNRESTRICTED",
+            }
+        )
         assert is_classification_accessible(user, None) is True
 
     def test_rejects_non_string_document_classification(self, stub_classification):
         from howler.security.utils import is_classification_accessible
 
-        user = {"type": ["admin"], "classification": "RESTRICTED"}
+        user = User(
+            {
+                "name": "user",
+                "uname": "user",
+                "password": "__NO_PASSWORD__",
+                "type": ["admin"],
+                "classification": "RESTRICTED",
+            }
+        )
         assert is_classification_accessible(user, "") is False
         assert is_classification_accessible(user, 1) is False
 
     def test_missing_user_classification_defaults_to_unrestricted(self, stub_classification):
         from howler.security.utils import is_classification_accessible
 
-        user = {"type": ["user"]}
+        user = User({"name": "user", "uname": "user", "password": "__NO_PASSWORD__", "type": ["user"]})
         assert is_classification_accessible(user, "UNRESTRICTED") is True
         assert is_classification_accessible(user, "RESTRICTED") is False
 
@@ -220,12 +268,29 @@ class TestIsClassificationAccessible:
         restricted_clearance_denied = _build_user(classification="UNRESTRICTED")
         assert is_classification_accessible(restricted_clearance_denied, "RESTRICTED") is False
 
+    def test_accepts_document_odm_classification(self, stub_classification):
+        from howler.odm.base import ClassificationObject
+        from howler.security.utils import is_classification_accessible
+
+        admin = _build_user(user_type=["admin"], classification="UNRESTRICTED")
+        document_classification = ClassificationObject(stub_classification, "RESTRICTED")
+
+        assert is_classification_accessible(admin, document_classification) is True
+
     def test_invalid_document_classification_is_inaccessible(self, stub_classification):
         from howler.common.exceptions import InvalidClassification
         from howler.security.utils import is_classification_accessible
 
         stub_classification.is_accessible = MagicMock(side_effect=InvalidClassification("invalid"))
-        user = {"type": ["user"], "classification": "UNRESTRICTED"}
+        user = User(
+            {
+                "name": "user",
+                "uname": "user",
+                "password": "__NO_PASSWORD__",
+                "type": ["user"],
+                "classification": "UNRESTRICTED",
+            }
+        )
 
         assert is_classification_accessible(user, "NOT-A-CLASSIFICATION") is False
 
