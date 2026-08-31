@@ -28,6 +28,7 @@ def mock_plugin():
     conf = HowlerTestPluginConfig(name="test-plugin")
 
     conf.modules.odm.modify_odm["hit"] = generate
+    conf.modules.models.declare_extensions["hit"] = lambda: None
 
     PLUGINS["test-plugin"] = conf
 

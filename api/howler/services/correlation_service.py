@@ -10,15 +10,18 @@ path, regardless of how an ID entered the queue.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Literal, TypedDict
+from typing import Any, Literal, TypedDict, cast
 
 import chevron
 from opentelemetry import trace
+from pydantic import BaseModel
 
 from howler.common.exceptions import HowlerRuntimeError, InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.config import CORRELATION_QUEUE_NAME
+from howler.models.case import Case as SchemaCase
+from howler.models.case import CaseItem as SchemaCaseItem
 from howler.odm.models.case import Case, CaseItem, CaseRule, RuleIndexTypes
 from howler.odm.models.config import config
 from howler.odm.models.event import Event
@@ -153,7 +156,7 @@ def _resolve_backing_object(
 
 
 def _add_record_to_case(
-    case: Case,
+    case: Case | SchemaCase,
     record: dict,
     rule: CaseRule,
     backing_cache: dict[tuple[Literal["hit", "event"], str], tuple[Hit | Event | None, str]],
@@ -181,38 +184,47 @@ def _add_record_to_case(
         path = None
         name = rendered_path
 
+    runtime_case = cast(Any, case)
     try:
         backing_obj, backing_obj_version = _resolve_backing_object(item_type, record_id, backing_cache)
 
-        parent = case_service.get_parent_from_path(case, path, create_if_missing=True)
+        parent = case_service.get_parent_from_path(runtime_case, path, create_if_missing=True)
 
-        item = CaseItem({"type": item_type, "value": record_id, "parent": parent.id if parent else None, "name": name})
+        item_data = {
+            "type": item_type,
+            "value": record_id,
+            "parent": parent.id if parent else None,
+            "name": name,
+        }
+        item = (
+            cast(Any, SchemaCaseItem).validate_howler(item_data) if isinstance(case, BaseModel) else CaseItem(item_data)
+        )
         if item.name is None:
             item.name = item.value
 
         # Preserve useful names where possible, but fall back to an ID-suffixed name
         # if another item already occupies the destination/name combination.
-        if case_service.check_conflicts(case, item):
+        if case_service.check_conflicts(runtime_case, cast(Any, item)):
             item.name = f"{item.name} ({item.value})" if item.name else item.value
 
-            if case_service.check_conflicts(case, item):
+            if case_service.check_conflicts(runtime_case, cast(Any, item)):
                 return None
 
         # Case items inherit the backing record's classification and the reverse
         # relation is maintained on that record for navigation from either side.
         item.classification = backing_obj.classification
-        case.items.append(item)
+        runtime_case.items.append(item)
 
-        if case_service.add_backreference(backing_obj, case.case_id):
+        if case_service.add_backreference(backing_obj, runtime_case.case_id):
             return (item_type, record_id)
 
         return None
     except InvalidDataException:
-        logger.info("Record %s already exists in case %s or is invalid, skipping", record_id, case.case_id)
+        logger.info("Record %s already exists in case %s or is invalid, skipping", record_id, runtime_case.case_id)
     except NotFoundException:
-        logger.warning("Case %s or record %s not found during correlation", case.case_id, record_id)
+        logger.warning("Case %s or record %s not found during correlation", runtime_case.case_id, record_id)
     except Exception:  # pragma: no cover
-        logger.exception("Failed to add record %s to case %s", record_id, case.case_id)
+        logger.exception("Failed to add record %s to case %s", record_id, runtime_case.case_id)
 
     return None
 
