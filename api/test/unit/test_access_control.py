@@ -13,7 +13,7 @@ Classification config under test (test/classification.yml):
 
 import os
 from copy import deepcopy
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -22,7 +22,7 @@ from howler.common.classification import Classification
 from howler.common.exceptions import InvalidClassification
 from howler.helper import oauth as oauth_module
 from howler.odm.models.config import OAuthProvider
-from howler.services import user_service
+from howler.services import hit_service, user_service
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -172,6 +172,30 @@ class TestClassificationEngine:
         assert "__access_req__" in parts
         assert "__access_grp1__" in parts
         assert "__access_grp2__" in parts
+
+
+class TestHitGetterAccessControl:
+    """ETag getters must hide inaccessible hits before conditional responses."""
+
+    @patch("howler.services.hit_service.datastore")
+    def test_get_hit_returns_none_for_inaccessible_user(self, mock_datastore):
+        hit = MagicMock(classification="RESTRICTED")
+        mock_datastore.return_value.hit.get_if_exists.return_value = (hit, "version-1")
+
+        with patch("howler.services.hit_service.is_classification_accessible", return_value=False):
+            result = hit_service.get_hit("hit-001", as_odm=True, version=True, user={"type": ["user"]})
+
+        assert result == (None, "version-1")
+
+    @patch("howler.services.hit_service.datastore")
+    def test_get_hit_returns_accessible_hit(self, mock_datastore):
+        hit = MagicMock(classification="UNRESTRICTED")
+        mock_datastore.return_value.hit.get_if_exists.return_value = (hit, "version-1")
+
+        with patch("howler.services.hit_service.is_classification_accessible", return_value=True):
+            result = hit_service.get_hit("hit-001", as_odm=True, version=True, user={"type": ["user"]})
+
+        assert result == (hit, "version-1")
 
 
 # ===================================================================

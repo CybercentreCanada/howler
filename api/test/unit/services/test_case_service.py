@@ -850,6 +850,7 @@ class TestAppendCase:
 
         mock_child = MagicMock()
         mock_child.case_id = "child-001"
+        mock_child.classification = CLASSIFICATION.UNRESTRICTED
 
         mock_ds.case.get.return_value = mock_child
         mock_parent.save.return_value = True
@@ -860,6 +861,7 @@ class TestAppendCase:
         mock_parent.save.assert_called_once()
         assert len(mock_parent.items) == 1
         assert item.value == "child-001"
+        assert item.classification.value == mock_child.classification
 
     @patch("howler.services.case_service.datastore")
     def test_append_case_missing_parent_raises(self, mock_ds_fn):
@@ -915,6 +917,7 @@ class TestAppendCase:
 
         mock_child = MagicMock()
         mock_child.case_id = "child-001"
+        mock_child.classification = CLASSIFICATION.UNRESTRICTED
 
         mock_ds.case.get.return_value = mock_child
         mock_parent.save.return_value = True
@@ -938,6 +941,7 @@ class TestAppendCase:
 
         mock_child = MagicMock()
         mock_child.case_id = "child-001"
+        mock_child.classification = CLASSIFICATION.UNRESTRICTED
 
         mock_ds.case.get.return_value = mock_child
         mock_parent.save.return_value = True
@@ -961,6 +965,7 @@ class TestAppendCase:
 
         mock_child = MagicMock()
         mock_child.case_id = "child-001"
+        mock_child.classification = CLASSIFICATION.UNRESTRICTED
 
         mock_ds.case.get.return_value = mock_child
         mock_parent.save.return_value = True
@@ -984,6 +989,7 @@ class TestAppendCase:
 
         mock_child = MagicMock()
         mock_child.case_id = "child-001"
+        mock_child.classification = CLASSIFICATION.UNRESTRICTED
 
         mock_ds.case.get.return_value = mock_child
         mock_parent.save.return_value = True

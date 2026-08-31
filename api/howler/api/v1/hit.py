@@ -390,9 +390,6 @@ def update_hit(id: str, user: User, server_version: str, **kwargs):
         explanation: list[str] = []
 
         for operation, key, value in attempted_operations:
-            if key == "classification" and not is_classification_accessible(user, value):
-                return bad_request(err=f"Cannot set classification to {value}")
-
             operations.append(OdmUpdateOperation(operation, key, value, silent=True))
             explanation.append(f"- `{operation}` - `{key}` - `{json.dumps(value)}`")
 

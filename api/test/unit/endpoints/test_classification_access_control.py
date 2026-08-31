@@ -213,6 +213,15 @@ class TestIsClassificationAccessible:
         restricted_clearance_denied = _build_user(classification="UNRESTRICTED")
         assert is_classification_accessible(restricted_clearance_denied, "RESTRICTED") is False
 
+    def test_invalid_document_classification_is_inaccessible(self, stub_classification):
+        from howler.common.exceptions import InvalidClassification
+        from howler.security.utils import is_classification_accessible
+
+        stub_classification.is_accessible = MagicMock(side_effect=InvalidClassification("invalid"))
+        user = {"type": ["user"], "classification": "UNRESTRICTED"}
+
+        assert is_classification_accessible(user, "NOT-A-CLASSIFICATION") is False
+
 
 # ---------------------------------------------------------------------------
 # GET /api/v2/case/<id> — generic 404 semantics
@@ -548,6 +557,35 @@ class TestCreateHitsClassification:
             mock_hit_service.create_hits.assert_called_once()
 
 
+class TestToolIngestionClassification:
+    """Deprecated tool ingestion must enforce the same classification boundary."""
+
+    @patch("howler.api.v1.tool.hit_service")
+    @patch("howler.security.login.auth_service")
+    def test_tool_ingestion_rejects_inaccessible_hit(
+        self, mock_auth_service, mock_hit_service, stub_classification, request_context: Flask
+    ):
+        user = _build_user(classification="UNRESTRICTED")
+        _mock_auth(mock_auth_service, user)
+
+        restricted_hit: Hit = random_model_obj(cast(Model, Hit))
+        restricted_hit.classification = "RESTRICTED"
+        mock_hit_service.convert_hit.return_value = (restricted_hit, [])
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"map": {}, "hits": [{}]},
+            headers={"Authorization": "******"},
+        ):
+            from howler.api.v1.tool import create_one_or_many_hits
+
+            result: Response = create_one_or_many_hits("tool", user=user)
+
+        assert result.status_code == 400
+        assert "User cannot create hits at classification RESTRICTED" in result.get_json()["api_error_message"]
+        mock_hit_service.create_hits.assert_not_called()
+
+
 class TestUpdateByQueryAccessControl:
     """PUT /api/v1/hit/update must scope bulk updates to the user's clearance."""
 
@@ -713,4 +751,4 @@ class TestBundleEndpointClassification:
 
             assert result.status_code == 200
             # Only the accessible child survives the filter
-            mock_add_to_bundle.assert_called_once_with("root-001", ["child-001"], refresh=None)
+            mock_add_to_bundle.assert_called_once_with("root-001", ["child-001"], refresh=None, user=user)
