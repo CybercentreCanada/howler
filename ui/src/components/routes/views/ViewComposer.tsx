@@ -45,7 +45,6 @@ import useMySnackbar from 'components/hooks/useMySnackbar';
 import { uniq } from 'lodash-es';
 import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { View } from 'models/entities/generated/View';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import { useNavigate, useParams } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
@@ -78,7 +77,7 @@ const ViewComposer: FC = () => {
   const loadRecords = useContextSelector(RecordContext, ctx => ctx.loadRecords);
 
   // view state
-  const [view, setView] = useState<View>();
+  const [canManageMembership, setCanManageMembership] = useState(false);
   const [title, setTitle] = useState('');
   const [type, setType] = useState('global');
   const [advanceOnTriage, setAdvanceOnTriage] = useState(false);
@@ -238,11 +237,15 @@ const ViewComposer: FC = () => {
         setError(null);
       }
 
-      setView(viewToEdit);
       setTitle(viewToEdit.title);
       setAdvanceOnTriage(viewToEdit.settings?.advance_on_triage ?? false);
       setDisplayType((viewToEdit.settings?.display ?? null) as HowlerViewLayoutType);
       setType(viewToEdit.type);
+      setCanManageMembership(
+        viewToEdit.owner === user.username ||
+          viewToEdit.admins?.includes(user.username) ||
+          user.roles?.includes('admin')
+      );
 
       const loadedQuery = viewToEdit.query || DEFAULT_QUERY;
       const loadedIndexes = (viewToEdit.indexes as SearchIndex[]) || indexes;
@@ -267,9 +270,6 @@ const ViewComposer: FC = () => {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeParams.id]);
-
-  const canManageMembership =
-    !!view && (view.owner === user.username || view.admins?.includes(user.username) || user.roles?.includes('admin'));
 
   return (
     <FlexPort>
@@ -317,7 +317,7 @@ const ViewComposer: FC = () => {
                   >
                     {t('save')}
                   </CustomButton>
-                  {routeParams.id && canManageMembership && (
+                  {canManageMembership && (
                     <CustomButton variant="outlined" startIcon={<PersonAdd />} onClick={() => setMemberModalOpen(true)}>
                       {t('route.actions.permission')}
                     </CustomButton>
@@ -424,7 +424,7 @@ const ViewComposer: FC = () => {
               )}
             </VSBoxContent>
           </VSBox>
-          {routeParams.id && <MembershipManagement open={memberModalOpen} onClose={() => setMemberModalOpen(false)} />}
+          <MembershipManagement open={memberModalOpen} onClose={() => setMemberModalOpen(false)} />
         </PageCenter>
       </ErrorBoundary>
     </FlexPort>

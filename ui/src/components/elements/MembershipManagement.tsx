@@ -1,6 +1,5 @@
 import { Delete } from '@mui/icons-material';
 import {
-  Alert,
   Box,
   Button,
   Dialog,
@@ -14,10 +13,11 @@ import {
   MenuItem,
   TextField
 } from '@mui/material';
-import api from 'api';
 import { useAppUser } from '@tui/core';
+import api from 'api';
 import { UserListContext } from 'components/app/providers/UserListProvider';
 import useMyApi from 'components/hooks/useMyApi';
+import useMySnackbar from 'components/hooks/useMySnackbar';
 import useMyUserList from 'components/hooks/useMyUserList';
 import type { Action } from 'models/entities/generated/Action';
 import type { Dossier } from 'models/entities/generated/Dossier';
@@ -50,22 +50,15 @@ export const MembershipManagement = ({ open, onClose }: MembershipManagementProp
   const { dispatchApi } = useMyApi();
   const appUser = useAppUser<HowlerUser>();
   const { searchUsers } = useContext(UserListContext);
+  const { showSuccessMessage, showWarningMessage, showErrorMessage } = useMySnackbar();
 
   const [members, setMembers] = useState<MemberItem[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
-  const [memberSearch, setMemberSearch] = useState('');
+  const [memberQuery, setMemberQuery] = useState('');
   const [privilege, setPrivilege] = useState('');
-  const [addResultMessage, setAddResultMessage] = useState<string>('');
-  const [addResultSeverity, setAddResultSeverity] = useState<'success' | 'warning'>('success');
-
-  const normalizeUserId = useCallback((value: string) => value.trim().toLowerCase(), []);
 
   const memberUserIds = useMemo(() => new Set(members.map(member => member.user_id)), [members]);
   const users = useMyUserList(memberUserIds);
-  const normalizedSelectedUserIds = useMemo(
-    () => Array.from(new Set(selectedUserIds.map(id => id.trim()).filter(Boolean))),
-    [selectedUserIds]
-  );
 
   const entityType = location.pathname.split('/')[1].replace(/s$/, '') as EntityType;
 
@@ -77,11 +70,7 @@ export const MembershipManagement = ({ open, onClose }: MembershipManagementProp
     ];
   }, []);
 
-  const refresh = useCallback(async (): Promise<MemberItem[]> => {
-    if (!params.id) {
-      return [];
-    }
-
+  const refresh = useCallback(async () => {
     const entity = (
       await dispatchApi(
         api.search[entityType].post({
@@ -93,83 +82,52 @@ export const MembershipManagement = ({ open, onClose }: MembershipManagementProp
     )?.items[0];
 
     if (!entity) {
-      return [];
+      return;
     }
 
-    const memberList = mapEntityToMembers(entity);
-
-    setMembers(memberList);
-
-    return memberList;
-  }, [dispatchApi, entityType, mapEntityToMembers]);
+    setMembers(mapEntityToMembers(entity));
+  }, [dispatchApi, entityType, mapEntityToMembers, params.id]);
 
   const handleAddMember = useCallback(async () => {
-    if (!params.id) {
+    if (selectedUserIds.length === 0) {
+      showWarningMessage('No users selected.');
       return;
     }
 
-    if (normalizedSelectedUserIds.length === 0) {
-      setAddResultSeverity('warning');
-      setAddResultMessage(t('members') + ': ' + t('add') + ' invalid selection');
-      return;
-    }
-
-    const updatedEntity = (await dispatchApi(
-      api[entityType].permission.put(params.id, {
-        privilege,
-        user_ids: normalizedSelectedUserIds
-      }),
-      { throwError: false }
-    )) as Entity | null;
-
-    const updatedMembers = updatedEntity ? mapEntityToMembers(updatedEntity) : await refresh();
-    if (updatedEntity) {
-      setMembers(updatedMembers);
-    }
-
-    const memberIdSet = new Set(updatedMembers.map(member => normalizeUserId(member.user_id)));
-    const addedUserIds = normalizedSelectedUserIds.filter(user_id => memberIdSet.has(normalizeUserId(user_id)));
-    const missingUserIds = normalizedSelectedUserIds.filter(user_id => !memberIdSet.has(normalizeUserId(user_id)));
-
-    if (missingUserIds.length === 0) {
-      setAddResultSeverity('success');
-      setAddResultMessage(t('members') + ': ' + t('add') + ' OK (' + addedUserIds.join(', ') + ')');
-    } else {
-      setAddResultSeverity('warning');
-      setAddResultMessage(
-        t('members') +
-          ': ' +
-          t('add') +
-          ' partial. Added [' +
-          addedUserIds.join(', ') +
-          '], missing [' +
-          missingUserIds.join(', ') +
-          ']'
+    try {
+      const updatedEntity: Entity = await dispatchApi(
+        api[entityType].permission.put(params.id, {
+          privilege,
+          user_ids: selectedUserIds
+        })
       );
-    }
 
-    setSelectedUserIds([]);
-    setMemberSearch('');
-    setPrivilege('');
+      showSuccessMessage('Permissions updated.');
+
+      setMembers(mapEntityToMembers(updatedEntity));
+
+      setSelectedUserIds([]);
+      setMemberQuery('');
+      setPrivilege('');
+    } catch {
+      showErrorMessage('There was an error when updating permissions.');
+    }
   }, [
     dispatchApi,
     params.id,
     entityType,
     mapEntityToMembers,
-    normalizeUserId,
-    normalizedSelectedUserIds,
+    selectedUserIds,
     privilege,
-    refresh,
-    t
+    t,
+    showSuccessMessage,
+    showErrorMessage,
+    showWarningMessage
   ]);
 
   // Keep the targeted privilege explicit so we remove the intended permission entry.
   const handleRemoveMember = useCallback(
     async (user_id: string, targetPrivilege: string) => {
-      if (!params.id) {
-        return;
-      }
-
       const updatedEntity = (await dispatchApi(
         api[entityType].permission.delete(params.id, {
           privilege: targetPrivilege,
@@ -195,9 +153,8 @@ export const MembershipManagement = ({ open, onClose }: MembershipManagementProp
       // Reset modal state each time it opens to avoid leaking stale UI state.
       void refresh();
       setSelectedUserIds([]);
-      setMemberSearch('');
+      setMemberQuery('');
       setPrivilege('');
-      setAddResultMessage('');
     }
   }, [open, refresh]);
 
@@ -222,40 +179,34 @@ export const MembershipManagement = ({ open, onClose }: MembershipManagementProp
     [t]
   );
 
-  const filteredMembers = members.filter(member => {
-    const query = normalizeUserId(memberSearch);
-    if (!query) {
-      return true;
-    }
+  const filteredMembers = useMemo(
+    () =>
+      members.filter(member => {
+        const normalizedQuery = memberQuery.trim().toLowerCase();
 
-    const roleMatches = normalizeUserId(getPrivilegeLabel(member.privilege)).includes(query);
+        if (!normalizedQuery) {
+          return true;
+        }
 
-    return (
-      normalizeUserId(member.user_id).includes(query) ||
-      normalizeUserId(member.privilege).includes(query) ||
-      roleMatches
-    );
-  });
+        return (
+          member.user_id.includes(normalizedQuery) ||
+          member.privilege.includes(normalizedQuery) ||
+          getPrivilegeLabel(member.privilege).includes(normalizedQuery)
+        );
+      }),
+    [members, getPrivilegeLabel, memberQuery]
+  );
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
       <DialogTitle>{t('route.actions.permission')}</DialogTitle>
       <DialogContent sx={{ minHeight: '280px', mt: 1 }}>
-        {!!addResultMessage && (
-          <Alert
-            severity={addResultSeverity}
-            variant={addResultSeverity === 'warning' ? 'outlined' : 'standard'}
-            sx={{ mb: 2 }}
-          >
-            {addResultMessage}
-          </Alert>
-        )}
         <TextField
           fullWidth
           size="small"
           label={t('search')}
-          value={memberSearch}
-          onChange={event => setMemberSearch(event.target.value)}
+          value={memberQuery}
+          onChange={event => setMemberQuery(event.target.value)}
           sx={{ mb: 2 }}
         />
         <List>
@@ -264,7 +215,7 @@ export const MembershipManagement = ({ open, onClose }: MembershipManagementProp
               key={`${m.user_id}-${m.privilege}`}
               secondaryAction={
                 m.privilege !== 'owner' && (
-                  <IconButton onClick={() => handleRemoveMember(m.user_id, m.privilege)}>
+                  <IconButton disabled={!params.id} onClick={() => handleRemoveMember(m.user_id, m.privilege)}>
                     <Delete color="error" />
                   </IconButton>
                 )
@@ -315,9 +266,10 @@ export const MembershipManagement = ({ open, onClose }: MembershipManagementProp
             variant="contained"
             fullWidth
             disabled={
-              normalizedSelectedUserIds.length === 0 ||
+              !params.id ||
+              selectedUserIds.length === 0 ||
               !privilege ||
-              (privilege === 'owner' && normalizedSelectedUserIds.length > 1)
+              (privilege === 'owner' && selectedUserIds.length > 1)
             }
           >
             {t('add')}

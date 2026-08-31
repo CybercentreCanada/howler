@@ -1,4 +1,3 @@
-import { PageCenter, useAppUser } from '@tui/core';
 import { iconExists } from '@iconify/react';
 import { Language, Person, PersonAdd, Save } from '@mui/icons-material';
 import {
@@ -17,6 +16,7 @@ import {
   Typography,
   useMediaQuery
 } from '@mui/material';
+import { PageCenter, useAppUser } from '@tui/core';
 import api from 'api';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { MembershipManagement } from 'components/elements/MembershipManagement';
@@ -334,7 +334,7 @@ const DossierEditor: FC = () => {
           {tab === 'pivots' && <PivotForm dossier={dossier} setDossier={setDossier} loading={loading} />}
         </Stack>
       </Box>
-      {dossier.dossier_id && <MembershipManagement open={memberModalOpen} onClose={() => setMemberModalOpen(false)} />}
+      <MembershipManagement open={memberModalOpen} onClose={() => setMemberModalOpen(false)} />
     </PageCenter>
   );
 };
