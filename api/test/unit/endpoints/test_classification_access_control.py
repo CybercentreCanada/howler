@@ -561,10 +561,12 @@ class TestCreateHitsClassification:
     @patch("howler.api.v1.hit.action_service")
     @patch("howler.api.v1.hit.analytic_service")
     @patch("howler.api.v1.hit.hit_service")
+    @patch("howler.api.v1.hit.is_classification_accessible", return_value=True)
     @patch("howler.security.login.auth_service")
     def test_create_hits_at_accessible_classification_succeeds(
         self,
         mock_auth_service,
+        mock_is_classification_accessible,
         mock_hit_service,
         mock_analytic_service,
         mock_action_service,
@@ -572,7 +574,7 @@ class TestCreateHitsClassification:
         stub_classification,
         request_context: Flask,
     ):
-        user = _build_user(classification="RESTRICTED")
+        user = _build_user(user_type=["admin", "user"], classification="RESTRICTED")
         _mock_auth(mock_auth_service, user)
 
         accessible_hit: Hit = random_model_obj(cast(Model, Hit))
@@ -612,14 +614,14 @@ class TestToolIngestionClassification:
         with request_context.test_request_context(
             method="POST",
             json={"map": {}, "hits": [{}]},
-            headers={"Authorization": "******"},
+            headers={"Authorization": "Bearer ******"},
         ):
             from howler.api.v1.tool import create_one_or_many_hits
 
             result: Response = create_one_or_many_hits("tool", user=user)
 
         assert result.status_code == 400
-        assert "User cannot create hits at classification RESTRICTED" in result.get_json()["api_error_message"]
+        assert "User cannot create hits at classification RESTRICTED" in result.get_json()["api_response"][0]["error"]
         mock_hit_service.create_hits.assert_not_called()
 
 
@@ -752,7 +754,8 @@ class TestBundleEndpointClassification:
                 assert result.get_json()["api_error_message"] == "Bundle hit root-001 does not exist"
                 mock_add.assert_not_called()
 
-    @patch("howler.services.hit_service.get_hit")
+    @patch("howler.api.v1.hit.hit_service")
+    @patch("howler.api.v1.hit.is_classification_accessible", return_value=True)
     @patch("howler.services.bundle_compat_service.find_case_for_bundle", return_value=None)
     @patch("howler.services.bundle_compat_service.add_to_bundle")
     @patch("howler.security.login.auth_service")
@@ -761,6 +764,7 @@ class TestBundleEndpointClassification:
         mock_auth_service,
         mock_add_to_bundle,
         mock_find_case_for_bundle,
+        mock_is_classification_accessible,
         mock_get_hit,
         stub_classification,
         request_context: Flask,
@@ -781,7 +785,8 @@ class TestBundleEndpointClassification:
             "child-001": accessible_child,
             "child-002": restricted_child,
         }
-        mock_get_hit.side_effect = lambda hit_id, **kwargs: hits_by_id[hit_id]
+        mock_get_hit.get_hit.side_effect = lambda hit_id, **kwargs: hits_by_id[hit_id]
+        mock_get_hit.filter_accessible_hits.return_value = ["child-001"]
         mock_add_to_bundle.return_value = {"howler": {"id": "root-001"}}
 
         with request_context.test_request_context(

@@ -187,6 +187,41 @@ class TestAddEtagWithGetter:
         assert resp.status_code == 200
         assert resp.headers["ETag"] == "v2"
 
+    def test_if_match_does_not_304_when_getter_returns_no_object(self, app):
+        """A matching ETag must not disclose an inaccessible or missing resource."""
+        mock_getter = lambda id, as_odm, version: (None, "create")  # noqa: E731
+
+        @add_etag(getter=mock_getter)
+        def endpoint(id, **kwargs):
+            return Response("not found", status=404)
+
+        with app.test_request_context(
+            "/api/v1/hit/123",
+            method="GET",
+            headers={"If-Match": "create"},
+        ):
+            resp = endpoint(id="123")
+
+        assert resp.status_code == 404
+
+    def test_passes_user_to_user_aware_getter(self, app):
+        """Getters that opt in to classification filtering receive the authenticated user."""
+        user = {"type": ["user"], "classification": "UNRESTRICTED"}
+        captured = {}
+
+        def mock_getter(id, as_odm, version, user):
+            captured["user"] = user
+            return {"id": id}, "v1"
+
+        @add_etag(getter=mock_getter)
+        def endpoint(id, **kwargs):
+            return Response("ok", status=200)
+
+        with app.test_request_context("/api/v1/hit/123", method="GET"):
+            endpoint(id="123", user=user)
+
+        assert captured["user"] is user
+
     def test_check_if_match_false_skips_304(self, app):
         """When check_if_match=False, matching If-Match does not return 304."""
         mock_getter = lambda id, as_odm, version: ({"id": id}, "v1")  # noqa: E731

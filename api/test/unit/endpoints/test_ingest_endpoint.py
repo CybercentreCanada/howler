@@ -77,6 +77,7 @@ class TestCreateEndpoint:
 
         mock_hit = MagicMock()
         mock_hit.howler.id = "hit-001"
+        mock_hit.classification = None
         mock_hit_svc.convert_hit.return_value = (mock_hit, [])
 
         with request_context.test_request_context(
@@ -107,6 +108,7 @@ class TestCreateEndpoint:
 
         mock_obs = MagicMock()
         mock_obs.howler.id = "event-001"
+        mock_obs.classification = None
         mock_obs_svc.convert_event.return_value = (mock_obs, [])
 
         with request_context.test_request_context(
@@ -190,6 +192,8 @@ class TestCreateEndpoint:
         hit1, hit2 = MagicMock(), MagicMock()
         hit1.howler.id = "hit-001"
         hit2.howler.id = "hit-002"
+        hit1.classification = None
+        hit2.classification = None
         mock_hit_svc.convert_hit.side_effect = [(hit1, []), (hit2, ["warning1"])]
 
         with request_context.test_request_context(
@@ -245,6 +249,7 @@ class TestCreateEndpoint:
 
         mock_hit = MagicMock()
         mock_hit.howler.id = "hit-001"
+        mock_hit.classification = None
         mock_hit_svc.convert_hit.return_value = (mock_hit, [])
         mock_queue_fn.return_value.push.side_effect = Exception("Redis down")
 
@@ -540,6 +545,8 @@ class TestIngestionQueueing:
         hit1, hit2 = MagicMock(), MagicMock()
         hit1.howler.id = "hit-a"
         hit2.howler.id = "hit-b"
+        hit1.classification = None
+        hit2.classification = None
         mock_hit_svc.convert_hit.side_effect = [(hit1, []), (hit2, [])]
 
         with request_context.test_request_context(
@@ -563,6 +570,7 @@ class TestIngestionQueueing:
 
         obs = MagicMock()
         obs.howler.id = "event-a"
+        obs.classification = None
         mock_obs_svc.convert_event.return_value = (obs, [])
 
         with request_context.test_request_context(
