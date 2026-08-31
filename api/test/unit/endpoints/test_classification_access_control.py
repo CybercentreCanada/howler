@@ -554,7 +554,10 @@ class TestCreateHitsClassification:
             assert result.status_code == 400
             body = result.get_json()
             assert len(body["api_response"]["invalid"]) == 1
-            assert "User cannot create hits at classification RESTRICTED" in body["api_response"]["invalid"][0]["error"]
+            assert (
+                f"User {user.uname} cannot create hits at classification RESTRICTED"
+                in body["api_response"]["invalid"][0]["error"]
+            )
             mock_hit_service.create_hits.assert_not_called()
 
     @patch("howler.api.v1.hit.correlation_service")
@@ -621,7 +624,10 @@ class TestToolIngestionClassification:
             result: Response = create_one_or_many_hits("tool", user=user)
 
         assert result.status_code == 400
-        assert "User cannot create hits at classification RESTRICTED" in result.get_json()["api_response"][0]["error"]
+        assert (
+            f"User {user.uname} cannot create hits at classification RESTRICTED"
+            in result.get_json()["api_response"][0]["error"]
+        )
         mock_hit_service.create_hits.assert_not_called()
 
 

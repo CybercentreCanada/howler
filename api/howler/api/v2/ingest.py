@@ -39,8 +39,8 @@ hit_helper = OdmHelper(Hit)
 
 def _validate_classification(user: User, odm: Hit | Event):
     """Ensure the user can create a record at the ODM's classification."""
-    if not is_classification_accessible(user, getattr(odm, "classification", None)):
-        raise HowlerException(f"User cannot create records at classification {getattr(odm, 'classification', None)}")
+    if not is_classification_accessible(user, odm.classification):
+        raise HowlerException(f"User {user.uname} cannot create records at classification {odm.classification}")
 
 
 @generate_swagger_docs()

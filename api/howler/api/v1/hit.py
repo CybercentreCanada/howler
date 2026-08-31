@@ -115,7 +115,7 @@ def create_hits(user: User, **kwargs):
         try:
             odm, _warnings = hit_service.convert_hit(hit, unique=True, ignore_extra_values=ignore_extra_values)
             if not is_classification_accessible(user, odm.classification):
-                raise HowlerValueError(f"User cannot create hits at classification {odm.classification}")
+                raise HowlerValueError(f"User {user.uname} cannot create hits at classification {odm.classification}")
             response_body["valid"].append(odm.as_primitives())
             odms.append(odm)
             warnings.extend(_warnings)

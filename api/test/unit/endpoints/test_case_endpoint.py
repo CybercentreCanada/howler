@@ -375,6 +375,7 @@ class TestAppendItemEndpoint:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
         mock_datastore.return_value.case.get.return_value = {"case_id": "case-001", "title": "T"}
+        mock_datastore.return_value.__getitem__.return_value.get.return_value = {"classification": "UNRESTRICTED"}
 
         mock_case_service.append_case_item.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
 
@@ -536,6 +537,7 @@ class TestAppendItemEndpoint:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
         mock_datastore.return_value.case.get.return_value = {"case_id": "case-001", "title": "T"}
+        mock_datastore.return_value.__getitem__.return_value.get.return_value = {"classification": "UNRESTRICTED"}
 
         mock_case_service.append_case_item.side_effect = DataStoreException("save failed")
 
@@ -560,6 +562,7 @@ class TestAppendItemEndpoint:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
         mock_datastore.return_value.case.get.return_value = {"case_id": "case-001", "title": "T"}
+        mock_datastore.return_value.__getitem__.return_value.get.return_value = {"classification": "UNRESTRICTED"}
 
         mock_case_service.append_case_item.side_effect = InvalidDataException("bad type")
 

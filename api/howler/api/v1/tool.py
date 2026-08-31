@@ -164,7 +164,7 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
                 out.append(
                     {
                         "id": None,
-                        "error": f"User cannot create hits at classification {odm.classification}",
+                        "error": f"User {user.uname} cannot create hits at classification {odm.classification}",
                     }
                 )
                 continue
