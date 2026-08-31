@@ -69,7 +69,10 @@ const HitViewer: FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isUnderLg = useMediaQuery(theme.breakpoints.down('lg'));
-  const [orientation, setOrientation] = useMyLocalStorageItem(StorageKey.VIEWER_ORIENTATION, Orientation.VERTICAL);
+  const [orientation, setOrientation] = useMyLocalStorageItem<Orientation>(
+    StorageKey.VIEWER_ORIENTATION,
+    Orientation.VERTICAL
+  );
   const { getMatchingOverview, getMatchingDossiers, getMatchingAnalytic } = useMatchers();
   const { emit, open } = useContext(SocketContext);
 

@@ -128,7 +128,7 @@ const RecordGrid: FC = () => {
           items={response?.items}
           refreshItems={search}
           ContextMenu={RecordContextMenu}
-          contextMenuProps={{ Component: TableBody, getSelectedId: getSelectedId }}
+          contextMenuProps={{ Component: TableBody, getSelectedId }}
           onItemClick={onClick}
         />
         {(response?.total ?? 0) < 1 && (

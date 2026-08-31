@@ -11,7 +11,7 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 
 export interface ViewContextType {
-  defaultView: string;
+  defaultView: string | null;
   setDefaultView: (viewId: string | undefined) => void;
   views: { [viewId: string]: View };
   addFavourite: (id: string) => Promise<void>;

@@ -13,6 +13,7 @@ import { IconButton, Stack, Table, TableBody, TableCell, TableHead, TableRow } f
 import useMatchers from 'components/app/hooks/useMatchers';
 import { GridColumnsContext } from 'components/app/providers/GridColumnsProvider';
 import ColumnHeader from 'components/elements/hit/grid/ColumnHeader';
+import type { RecordContextMenuProps } from 'components/elements/record/RecordContextMenu';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -33,8 +34,8 @@ const RecordTable = ({
   query: string;
   items?: WithMetadata<Hit | Event>[];
   refreshItems?: (query: string, append?: boolean) => void;
-  ContextMenu?: React.FC<PropsWithChildren<any>>;
-  contextMenuProps?: object;
+  ContextMenu?: React.FC<PropsWithChildren<RecordContextMenuProps>>;
+  contextMenuProps?: RecordContextMenuProps;
   onItemClick?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>, record: Hit | Event) => void;
 }) => {
   const sensors = useSensors(
@@ -43,7 +44,10 @@ const RecordTable = ({
   );
   const { getMatchingAnalytic } = useMatchers();
 
-  const [collapseMainColumn, setCollapseMainColumn] = useMyLocalStorageItem(StorageKey.GRID_COLLAPSE_COLUMN, false);
+  const [collapseMainColumn, setCollapseMainColumn] = useMyLocalStorageItem<boolean>(
+    StorageKey.GRID_COLLAPSE_COLUMN,
+    false
+  );
   const [analyticIds, setAnalyticIds] = useState<Record<string, string>>({});
   const { columns, columnWidths, columnSources, setColumnWidth, setColumns, isReady } = useContext(GridColumnsContext);
 
@@ -192,7 +196,7 @@ const RecordTable = ({
           <TableCell sx={{ width: '100%' }} />
         </TableRow>
       </TableHead>
-      {ContextMenu ? (
+      {ContextMenu && contextMenuProps ? (
         <ContextMenu {...contextMenuProps}>{tableContent}</ContextMenu>
       ) : (
         <TableBody>{tableContent}</TableBody>

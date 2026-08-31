@@ -465,3 +465,7 @@ Elasticsearch single-document `exists` requests cannot target an alias that reso
 ### Generic React Contexts
 
 React context instances cannot safely vary a generic item type between provider instances. For generic providers such as `SearchResponseProvider`, create a typed context per consumer and pass it to the provider rather than casting a shared context.
+
+### Local Storage Hook Overloads
+
+`useLocalStorageItem` and `useMyLocalStorageItem` use overloads so definitely non-nullish initializers return non-null values, while omitted, nullable, or possibly-null initializers retain nullability. Wrappers must forward the initializer without coalescing it to `null`.

@@ -21,7 +21,7 @@ interface CommentData {
 const AnalyticHitComments: FC<{ analytic: Analytic }> = ({ analytic }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
+  const [pageCount] = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25);
 
   const [comments, setComments] = useState<CommentData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -44,7 +44,7 @@ const AnalyticHitComments: FC<{ analytic: Analytic }> = ({ analytic }) => {
     void api.search.hit
       .post({
         query: `howler.analytic:"${sanitizeLuceneQuery(analytic.name!)}" AND _exists_:howler.comment`,
-        rows: pageCount
+        rows: pageCount ?? 25
       })
       .then(response => {
         if (!response) {

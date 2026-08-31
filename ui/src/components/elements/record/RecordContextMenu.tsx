@@ -1,4 +1,3 @@
-import { useAppUser } from '@tui/core';
 import {
   AddCircleOutline,
   Assignment,
@@ -12,6 +11,7 @@ import {
   SettingsSuggest,
   Terminal
 } from '@mui/icons-material';
+import { useAppUser } from '@tui/core';
 import api from 'api';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
@@ -44,11 +44,11 @@ import { isHit } from 'utils/typeUtils';
 /**
  * Props for the HitContextMenu component
  */
-interface RecordContextMenuProps {
+export interface RecordContextMenuProps {
   /**
    * Function to extract the hit ID from a mouse event
    */
-  getSelectedId: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => string;
+  getSelectedId: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => string | undefined;
 
   /**
    * Optional component to wrap the children, defaults to Box
@@ -127,6 +127,10 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
   const onOpen = useCallback(
     async (event: React.MouseEvent<HTMLElement, MouseEvent>) => {
       const _id = getSelectedId(event as React.MouseEvent<HTMLDivElement, MouseEvent>);
+      if (!_id) {
+        return;
+      }
+
       setId(_id);
 
       // TODO: Bumping the number of rows is a temporary fix - we'll need to improve this.

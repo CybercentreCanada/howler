@@ -1,4 +1,3 @@
-import { useAppUser } from '@tui/core';
 import { Clear, Edit, SavedSearch, Star, StarBorder } from '@mui/icons-material';
 import {
   Autocomplete,
@@ -13,6 +12,7 @@ import {
   Tooltip,
   Typography
 } from '@mui/material';
+import { useAppUser } from '@tui/core';
 import api from 'api';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import SearchResponseProvider, {

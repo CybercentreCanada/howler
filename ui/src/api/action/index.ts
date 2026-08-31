@@ -17,12 +17,8 @@ export const uri = (id?: string) => {
   return id ? joinAllUri(parentUri(), 'action', id) : joinUri(parentUri(), 'action');
 };
 
-export const get = async (id: string): Promise<Action> => {
-  const action = await hget<Action>(uri(id));
-  if (!action) {
-    throw new Error('Action response was empty.');
-  }
-  return action;
+export const get = (id: string) => {
+  return hget<Action>(uri(id));
 };
 
 export const post = (data: Action, refresh?: HowlerRefreshParam) => {

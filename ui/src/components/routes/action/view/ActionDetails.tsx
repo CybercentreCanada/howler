@@ -1,4 +1,3 @@
-import { useAppUser, PageCenter } from '@tui/core';
 import { Delete, Edit, PlayCircleOutline, Search } from '@mui/icons-material';
 import {
   Button,
@@ -10,6 +9,7 @@ import {
   Stack,
   Typography
 } from '@mui/material';
+import { PageCenter, useAppUser } from '@tui/core';
 import api from 'api';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
@@ -42,7 +42,7 @@ const ActionDetails = () => {
     useMyActionFunctions();
 
   const [operations, setOperations] = useState<ActionOperation[]>([]);
-  const [action, setAction] = useState<Action>();
+  const [action, setAction] = useState<Action | null>(null);
 
   const { withConfirmDeleteModal } = useContext(ModalContext);
   const { showSuccessMessage } = useMySnackbar();
