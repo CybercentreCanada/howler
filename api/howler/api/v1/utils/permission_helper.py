@@ -1,8 +1,8 @@
 from flask import Blueprint, Response
 
-from howler.api import bad_request, ok
+from howler.api import bad_request, forbidden, ok
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
-from howler.common.exceptions import InvalidDataException
+from howler.common.exceptions import ForbiddenException, InvalidDataException
 from howler.common.swagger import generate_swagger_docs
 from howler.odm.models.ownership import Ownership
 from howler.odm.models.user import User
@@ -20,6 +20,8 @@ def add_access_control_endpoints(api: Blueprint, odm: type[Ownership]):
     def give_privilege(id: str, user: User, **kwargs) -> Response:
         try:
             result = permission_service.give_privilege(id, user, odm, refresh=kwargs.get("refresh"))
+        except ForbiddenException as e:
+            return forbidden(err=e.message)
         except (ValueError, InvalidDataException) as e:
             return bad_request(err=str(e))
         return ok(result)
@@ -31,6 +33,8 @@ def add_access_control_endpoints(api: Blueprint, odm: type[Ownership]):
     def remove_privilege(id: str, user: User, **kwargs) -> Response:
         try:
             result = permission_service.remove_privilege(id, user, odm, refresh=kwargs.get("refresh"))
+        except ForbiddenException as e:
+            return forbidden(err=e.message)
         except (ValueError, InvalidDataException) as e:
             return bad_request(err=str(e))
         return ok(result)

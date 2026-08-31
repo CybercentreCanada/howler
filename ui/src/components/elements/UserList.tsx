@@ -116,7 +116,7 @@ const UserList: FC<{
               <Typography>{userId}</Typography>
             </Stack>
           ))}
-          <Button variant="outlined" onClick={e => setAnchorEl(e.currentTarget)}>
+          <Button variant="outlined" disabled={disabled} onClick={e => setAnchorEl(e.currentTarget)}>
             {t('add')}
           </Button>
         </Stack>

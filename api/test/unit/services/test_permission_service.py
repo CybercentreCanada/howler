@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 from flask import Flask
 
-from howler.common.exceptions import InvalidDataException
+from howler.common.exceptions import ForbiddenException, InvalidDataException
 from howler.services import permission_service
 
 
@@ -116,7 +116,7 @@ def test_give_privilege_rejects_unauthorized_requester(app, monkeypatch):
     collection, _ = mock_datastore(monkeypatch, ownership)
 
     with app.test_request_context(json={"privilege": "members", "user_ids": ["analyst"]}):
-        with pytest.raises(InvalidDataException, match="not allowed"):
+        with pytest.raises(ForbiddenException, match="not allowed"):
             permission_service.give_privilege("dummy-id", make_user("other"), DummyOwnership)
 
     collection.save.assert_not_called()
@@ -176,6 +176,18 @@ def test_give_privilege_adds_multiple_users_after_validating_batch(app, monkeypa
     collection.save.assert_called_once_with("dummy-id", ownership, refresh="true")
 
 
+def test_give_privilege_deduplicates_user_ids(app, monkeypatch):
+    ownership = DummyOwnership()
+    collection, user_collection = mock_datastore(monkeypatch, ownership)
+
+    with app.test_request_context(json={"privilege": "members", "user_ids": ["analyst", "analyst"]}):
+        result = permission_service.give_privilege("dummy-id", make_user(), DummyOwnership)
+
+    assert result["members"] == ["analyst"]
+    user_collection.exists.assert_called_once_with("analyst")
+    collection.save.assert_called_once_with("dummy-id", ownership, refresh=None)
+
+
 def test_remove_privilege_rejects_missing_object(app, monkeypatch):
     collection, _ = mock_datastore(monkeypatch, None)
 
@@ -191,7 +203,7 @@ def test_remove_privilege_rejects_unauthorized_requester(app, monkeypatch):
     collection, _ = mock_datastore(monkeypatch, ownership)
 
     with app.test_request_context(json={"privilege": "members", "user_ids": ["analyst"]}):
-        with pytest.raises(InvalidDataException, match="not allowed"):
+        with pytest.raises(ForbiddenException, match="not allowed"):
             permission_service.remove_privilege("dummy-id", make_user("other"), DummyOwnership)
 
     collection.save.assert_not_called()
@@ -262,3 +274,15 @@ def test_remove_privilege_removes_users_and_saves(app, monkeypatch, privilege):
 
     assert result[privilege] == []
     collection.save.assert_called_once_with("dummy-id", ownership, refresh="wait_for")
+
+
+def test_remove_privilege_deduplicates_user_ids(app, monkeypatch):
+    ownership = DummyOwnership(members=["analyst"])
+    collection, user_collection = mock_datastore(monkeypatch, ownership)
+
+    with app.test_request_context(json={"privilege": "members", "user_ids": ["analyst", "analyst"]}):
+        result = permission_service.remove_privilege("dummy-id", make_user(), DummyOwnership)
+
+    assert result["members"] == []
+    user_collection.exists.assert_called_once_with("analyst")
+    collection.save.assert_called_once_with("dummy-id", ownership, refresh=None)

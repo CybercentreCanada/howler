@@ -160,7 +160,7 @@ def login_session(host):
         session.headers.update({"Authorization": f"Basic {base64.b64encode(b'admin:devkey:admin').decode('utf-8')}"})
         return session, host
     except requests.ConnectionError as err:
-        pytest.skip(str(err))
+        raise pytest.skip.Exception(str(err))
 
 
 @pytest.fixture(scope="function")

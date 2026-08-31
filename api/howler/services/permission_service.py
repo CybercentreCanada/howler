@@ -2,7 +2,7 @@ from typing import Any, Literal, cast
 
 from flask import request
 
-from howler.common.exceptions import InvalidDataException
+from howler.common.exceptions import ForbiddenException, InvalidDataException
 from howler.common.loader import datastore
 from howler.odm.models.ownership import Ownership
 from howler.odm.models.permission_request import PermissionRequest
@@ -38,6 +38,7 @@ def give_privilege(
 ) -> dict[str, Any]:
     """Grant a privilege to one or more users on an ownership object."""
     permission_request = _build_permissions_request()
+    user_ids = list(dict.fromkeys(permission_request.user_ids))
 
     storage = datastore()
     index_name = object_type.__name__.lower()
@@ -48,13 +49,13 @@ def give_privilege(
         raise InvalidDataException(message=f"{index_name.capitalize()} {id} does not exist")
 
     if not _is_allowed_to_change(permission_request.privilege, user, result):
-        raise InvalidDataException("The user requesting the change is not allowed to make the change.")
+        raise ForbiddenException("The user requesting the change is not allowed to make the change.")
 
-    if permission_request.privilege == "owner" and len(permission_request.user_ids) != 1:
+    if permission_request.privilege == "owner" and len(user_ids) != 1:
         raise InvalidDataException("When setting the owner, user_ids must be a single entry long.")
 
     errors: list[tuple[str, str]] = []
-    for user_id in permission_request.user_ids:
+    for user_id in user_ids:
         if not storage.user.exists(user_id):
             errors.append((user_id, f"User {user_id} does not exist"))
             continue
@@ -67,9 +68,9 @@ def give_privilege(
         raise InvalidDataException(message=f"Failed to grant privileges for some users: {error_details}")
 
     if permission_request.privilege == "owner":
-        result.owner = permission_request.user_ids[0]
+        result.owner = user_ids[0]
     else:
-        for user_id in permission_request.user_ids:
+        for user_id in user_ids:
             cast(list[str], result[permission_request.privilege]).append(user_id)
 
     collection.save(id, result, refresh=refresh)
@@ -84,6 +85,7 @@ def remove_privilege(  # noqa: C901
 ) -> dict[str, Any]:
     """Revoke a privilege from one or more users on an ownership object."""
     permission_request = _build_permissions_request()
+    user_ids = list(dict.fromkeys(permission_request.user_ids))
 
     storage = datastore()
     index_name = object_type.__name__.lower()
@@ -94,20 +96,20 @@ def remove_privilege(  # noqa: C901
         raise InvalidDataException(message=f"{index_name.capitalize()} {id} does not exist")
 
     if not _is_allowed_to_change(permission_request.privilege, user, result):
-        raise InvalidDataException("The user requesting the change is not allowed to make the change.")
+        raise ForbiddenException("The user requesting the change is not allowed to make the change.")
 
     if permission_request.privilege == "owner":
         raise InvalidDataException(message="You cannot remove the owner privilege. Only transfer is allowed.")
 
     current_members = result.admins if permission_request.privilege == "admins" else result.members
-    for user_id in permission_request.user_ids:
+    for user_id in user_ids:
         if user_id not in current_members:
             raise InvalidDataException(
                 message=f"The user '{user_id}' does not have the '{permission_request.privilege}' privilege."
             )
 
     errors: list[tuple[str, str]] = []
-    for user_id in permission_request.user_ids:
+    for user_id in user_ids:
         if not storage.user.exists(user_id):
             errors.append((user_id, f"User {user_id} does not exist"))
             continue
@@ -119,7 +121,7 @@ def remove_privilege(  # noqa: C901
         error_details = "; ".join([f"{user_id}: {message}" for user_id, message in errors])
         raise InvalidDataException(message=f"Failed to revoke privileges for some users: {error_details}")
 
-    for user_id in permission_request.user_ids:
+    for user_id in user_ids:
         cast(list[str], result[permission_request.privilege]).remove(user_id)
 
     collection.save(id, result, refresh=refresh)

@@ -198,6 +198,23 @@ def test_give_remove_membership(
         method="POST",
         data=json.dumps({"title": "testremove", "type": "global", "query": "howler.hash:*"}),
     )
+
+    with pytest.raises(APIError) as err:
+        get_api_data(
+            member_session,
+            f"{host}/api/v1/view/{create_res['view_id']}/permission",
+            method="PUT",
+            data=json.dumps(
+                {
+                    "privilege": "members",
+                    "user_ids": [member_uname],
+                }
+            ),
+        )
+
+    assert "403" in str(err.value)
+    assert "not allowed" in str(err.value)
+
     for privilege in ("admins", "members"):
         updated_view = get_api_data(
             owner_session,
