@@ -43,6 +43,7 @@ def get_user(
     id: str,
     as_odm=False,
     version=False,
+    user: User | None = None,
 ):
     """Return hit object as either an ODM or Dict"""
     return datastore().user.get_if_exists(key=id, as_obj=as_odm, version=version)

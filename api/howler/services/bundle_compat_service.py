@@ -133,11 +133,14 @@ def create_bundle(
     if updated_case is None:  # pragma: no cover
         raise NotFoundException(f"Case {case.case_id} disappeared after creation")
 
-    return synthesize_bundle_response(updated_case, odm, warnings=warnings)
+    return synthesize_bundle_response(updated_case, odm, warnings=warnings, user=user)
 
 
 def add_to_bundle(
-    bundle_id: str, hit_ids: list[str], refresh: Literal["true", "false", "wait_for"] | None = "wait_for"
+    bundle_id: str,
+    hit_ids: list[str],
+    refresh: Literal["true", "false", "wait_for"] | None = "wait_for",
+    user: User | None = None,
 ) -> dict[str, Any]:
     """Add hits to an existing bundle (case).
 
@@ -190,11 +193,14 @@ def add_to_bundle(
     if updated_case is None:  # pragma: no cover
         raise NotFoundException(f"Case {case_id} not found")
 
-    return synthesize_bundle_response(updated_case, root_hit)
+    return synthesize_bundle_response(updated_case, root_hit, user=user)
 
 
 def remove_from_bundle(
-    bundle_id: str, hit_ids: list[str], refresh: Literal["true", "false", "wait_for"] | None = "wait_for"
+    bundle_id: str,
+    hit_ids: list[str],
+    refresh: Literal["true", "false", "wait_for"] | None = "wait_for",
+    user: User | None = None,
 ) -> dict[str, Any]:
     """Remove hits from an existing bundle (case).
 
@@ -219,6 +225,9 @@ def remove_from_bundle(
     else:
         values_to_remove = [hid for hid in hit_ids if hid != bundle_id]
 
+    if user is not None:
+        values_to_remove = hit_service.filter_accessible_hits(user, values_to_remove)
+
     if values_to_remove:
         # Filter to only values that actually exist in the case
         existing_values = [item.value for item in case.items]
@@ -235,13 +244,14 @@ def remove_from_bundle(
     if updated_case is None:  # pragma: no cover
         raise NotFoundException(f"Case {_case.case_id} not found")
 
-    return synthesize_bundle_response(updated_case, root_hit)
+    return synthesize_bundle_response(updated_case, root_hit, user=user)
 
 
 def synthesize_bundle_response(
     case: Case,
     root_hit: Hit,
     warnings: list[str] | None = None,
+    user: User | None = None,
 ) -> dict[str, Any]:
     """Build a legacy bundle-shaped response from a case and its root hit.
 
@@ -252,6 +262,8 @@ def synthesize_bundle_response(
     child_ids = [
         item.value for item in case.items if item.type == CaseItemTypes.HIT and item.value != root_hit.howler.id
     ]
+    if user is not None:
+        child_ids = hit_service.filter_accessible_hits(user, child_ids)
 
     hit_data = root_hit.as_primitives()
     hit_data["howler"]["is_bundle"] = len(child_ids) > 0

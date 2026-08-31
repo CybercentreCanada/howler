@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from opentelemetry import trace
 from passlib.hash import bcrypt
 
-from howler.common.exceptions import HowlerValueError
+from howler.common.exceptions import HowlerValueError, InvalidClassification
 from howler.config import CLASSIFICATION, config
 
 if TYPE_CHECKING:
@@ -50,10 +50,13 @@ def is_classification_accessible(
     if "admin" in user_type:
         return True
 
-    return CLASSIFICATION.is_accessible(
-        user_classification if user_classification is not None else CLASSIFICATION.UNRESTRICTED,
-        classification,
-    )
+    try:
+        return CLASSIFICATION.is_accessible(
+            user_classification if user_classification is not None else CLASSIFICATION.UNRESTRICTED,
+            classification,
+        )
+    except InvalidClassification:
+        return False
 
 
 # Fields that must never be modified through bulk/script-based update endpoints.

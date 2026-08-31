@@ -838,6 +838,7 @@ def append_case(case: Case, item: CaseItem, refresh: Literal["true", "false", "w
     if referenced_case is None:
         raise NotFoundException(f"Referenced case {item.name} not found, cannot be added to case")
 
+    item.classification = referenced_case.classification
     case.items.append(item)
 
     if not case.save(refresh=refresh):  # pragma: no cover

@@ -383,6 +383,7 @@ def update_hit(id: str, user: User, server_version: str, **kwargs):
 
     try:
         attempted_operations = cast(list[tuple[str, str, Any]], request.json)
+        validate_bulk_operation_targets(attempted_operations)
 
         operations: list[OdmUpdateOperation] = []
 
@@ -1155,7 +1156,7 @@ def update_bundle(id: str, user: User, **kwargs):
     hit_ids = hit_service.filter_accessible_hits(user, hit_ids)
 
     try:
-        result = bundle_compat_service.add_to_bundle(id, hit_ids, refresh=refresh)
+        result = bundle_compat_service.add_to_bundle(id, hit_ids, refresh=refresh, user=user)
         return _deprecation_headers(ok(result))
     except bundle_compat_service.BundleConflictException as e:
         return conflict(err=str(e))
@@ -1205,7 +1206,7 @@ def remove_bundle_children(id: str, user: User, **kwargs):
         return not_found(err=f"Bundle hit {id} does not exist")
 
     try:
-        result = bundle_compat_service.remove_from_bundle(id, hit_ids, refresh=refresh)
+        result = bundle_compat_service.remove_from_bundle(id, hit_ids, user=user, refresh=refresh)
         return _deprecation_headers(ok(result))
     except NotFoundException as e:
         return not_found(err=str(e))

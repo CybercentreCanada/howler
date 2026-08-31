@@ -13,6 +13,7 @@ from howler.odm.base import _Field
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
 from howler.security.login import api_login
+from howler.security.utils import is_classification_accessible
 from howler.services import action_service, analytic_service, correlation_service, hit_service
 from howler.utils.constants import DEBUG_FORCE_REFRESH
 from howler.utils.dict_utils import flatten
@@ -159,6 +160,14 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
             obj.pop("howler.bundles", None)
 
             odm, warns = hit_service.convert_hit(obj, unique=True, ignore_extra_values=ignore_extra_values)
+            if not is_classification_accessible(user, odm.classification):
+                out.append(
+                    {
+                        "id": None,
+                        "error": f"User cannot create hits at classification {odm.classification}",
+                    }
+                )
+                continue
 
             if is_bundle:
                 if bundle_id is not None:

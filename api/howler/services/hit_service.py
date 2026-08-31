@@ -385,7 +385,7 @@ def get_hit(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
 
 
 @tracer.start_as_current_span(f"{__name__}.get_hit")
-def get_hit(id: str, as_odm=False, version=False):
+def get_hit(id: str, as_odm=False, version=False, user: User | None = None):
     """Retrieve a hit from the datastore.
 
     Args:
@@ -397,7 +397,31 @@ def get_hit(id: str, as_odm=False, version=False):
         Hit object (if as_odm=True) or dictionary representation of the hit.
         Returns None if the hit doesn't exist.
     """
-    return datastore().hit.get_if_exists(key=id, as_obj=as_odm, version=version)
+    hit_version: str | None = None
+    obj: Hit | dict[str, Any] | None = None
+
+    hit = datastore().hit.get_if_exists(key=id, as_obj=as_odm, version=version)
+    if user is None:
+        return hit
+
+    if version:
+        obj, hit_version = cast(tuple[dict[str, Any] | Hit, str], hit)
+    else:
+        obj = cast(Hit | dict[str, Any], hit)
+
+    classification: str | None = None
+    if as_odm and obj:
+        classification = cast(Hit, obj).classification
+    elif obj:
+        classification = cast(dict[str, str], obj).get("classification")
+
+    if obj is not None and not is_classification_accessible(user, classification):
+        obj = None
+
+    if version:
+        return obj, hit_version
+
+    return obj
 
 
 CREATED_HITS = Counter(

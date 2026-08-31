@@ -59,7 +59,7 @@ def check_item_access(item_type: str | None, item_value: str | None, user: User)
         return None
 
     obj = datastore()[item_type].get(item_value, as_obj=False)
-    if obj and not is_classification_accessible(user, obj.get("classification")):
+    if not obj or not is_classification_accessible(user, obj.get("classification")):
         # Generic 404 so classified objects are indistinguishable from nonexistent ones
         return not_found(err=f"{item_type} {item_value} does not exist")
 

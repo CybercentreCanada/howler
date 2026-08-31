@@ -53,6 +53,7 @@ def add_etag(getter=None, check_if_match=True):
                     kwargs.get("id", kwargs.get("username", None)),
                     as_odm=True,
                     version=True,
+                    user=kwargs.get("user"),
                 )
 
                 # Handle conditional requests with If-Match header
