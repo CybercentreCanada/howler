@@ -1,4 +1,3 @@
-import { useAppUser, PageCenter } from '@tui/core';
 import { Delete, Edit, PersonAdd, PlayCircleOutline, Search } from '@mui/icons-material';
 import {
   Button,
@@ -10,6 +9,7 @@ import {
   Stack,
   Typography
 } from '@mui/material';
+import { PageCenter, useAppUser } from '@tui/core';
 import api from 'api';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
@@ -20,8 +20,8 @@ import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import OperationEntry from 'components/routes/action/shared/OperationEntry';
 import type { ActionOperation } from 'models/ActionTypes';
-import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Action } from 'models/entities/generated/Action';
+import type { HowlerUser } from 'models/entities/HowlerUser';
 import howlerPluginStore from 'plugins/store';
 import { useCallback, useContext, useEffect, useState, type ChangeEventHandler } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -163,7 +163,7 @@ const ActionDetails = () => {
           )}
           {(action?.owner === user.username || adminList.includes(user.username) || user.roles?.includes('admin')) && (
             <Button startIcon={<PersonAdd />} size="small" variant="outlined" onClick={() => setMemberModalOpen(true)}>
-              {t('route.actions.permission')}
+              {t('membership.manage')}
             </Button>
           )}
         </Stack>

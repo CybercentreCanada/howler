@@ -90,7 +90,7 @@ export const MembershipManagement = ({ open, onClose }: MembershipManagementProp
 
   const handleAddMember = useCallback(async () => {
     if (selectedUserIds.length === 0) {
-      showWarningMessage('No users selected.');
+      showWarningMessage(t('membership.message.warning'));
       return;
     }
 
@@ -102,7 +102,7 @@ export const MembershipManagement = ({ open, onClose }: MembershipManagementProp
         })
       );
 
-      showSuccessMessage('Permissions updated.');
+      showSuccessMessage(t('membership.message.success'));
 
       setMembers(mapEntityToMembers(updatedEntity));
 
@@ -110,7 +110,7 @@ export const MembershipManagement = ({ open, onClose }: MembershipManagementProp
       setMemberQuery('');
       setPrivilege('');
     } catch {
-      showErrorMessage('There was an error when updating permissions.');
+      showErrorMessage(t('membership.message.error'));
     }
   }, [
     dispatchApi,
@@ -174,7 +174,7 @@ export const MembershipManagement = ({ open, onClose }: MembershipManagementProp
 
   const getPrivilegeLabel = useCallback(
     (privilegeValue: MemberItem['privilege']) => {
-      return t(`route.actions.privilege.${privilegeValue}`);
+      return t(`membership.privilege.member.${privilegeValue}`);
     },
     [t]
   );
@@ -199,7 +199,7 @@ export const MembershipManagement = ({ open, onClose }: MembershipManagementProp
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>{t('route.actions.permission')}</DialogTitle>
+      <DialogTitle>{t('membership.manage')}</DialogTitle>
       <DialogContent sx={{ minHeight: '280px', mt: 1 }}>
         <TextField
           fullWidth

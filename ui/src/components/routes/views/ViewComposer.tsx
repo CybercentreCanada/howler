@@ -319,7 +319,7 @@ const ViewComposer: FC = () => {
                   </CustomButton>
                   {canManageMembership && (
                     <CustomButton variant="outlined" startIcon={<PersonAdd />} onClick={() => setMemberModalOpen(true)}>
-                      {t('route.actions.permission')}
+                      {t('membership.manage')}
                     </CustomButton>
                   )}
                 </Stack>

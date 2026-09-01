@@ -119,7 +119,7 @@ describe('MembershipManagement', () => {
     await user.click(screen.getByRole('combobox', { name: 'route.action.privilege.privilege' }));
     await user.click(
       within(await screen.findByRole('listbox')).getByRole('option', {
-        name: 'route.actions.privilege.members'
+        name: 'membership.privilege.member'
       })
     );
     await user.click(screen.getByRole('button', { name: 'add' }));
