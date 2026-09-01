@@ -51,6 +51,9 @@ class HOWLER_API:
     AUDIENCE = os.environ.get("HOWLER_API_AUDIENCE", "howler")
     SCOPE = os.environ.get("HOWLER_API_SCOPE", "howler")
     TIMEOUT = float(os.environ.get("HOWLER_API_TIMEOUT", "5.0"))
+    MAX_CONNECTIONS = int(os.environ.get("HOWLER_API_MAX_CONNECTIONS", "100"))
+    MAX_KEEPALIVE_CONNECTIONS = int(os.environ.get("HOWLER_API_MAX_KEEPALIVE_CONNECTIONS", "20"))
+    KEEPALIVE_EXPIRY = float(os.environ.get("HOWLER_API_KEEPALIVE_EXPIRY", "5.0"))
 
 
 class HOWLER_UI:

@@ -1,5 +1,10 @@
 # Howler Releases
 
+## Howler MCP `v0.1.1`
+
+- **HTTP Client Lifecycle** _(bugfix)_: Prevented an MCP session shutdown from closing the shared Howler API client while other sessions are still running.
+- **HTTPX Connection Pool Limits** _(new feature)_: Added configurable concurrent connection, keepalive pool, and idle expiry limits for the shared Howler API client.
+
 ## Howler API `v4.0.10`
 
 - **Queued Action Authorization** _(bugfix)_: Action workers now preserve request authorization tokens for plugin actions using encrypted Redis payloads: JWE for JWTs and AES-GCM for other token formats.

@@ -450,7 +450,7 @@ For legacy collections, pass the collection alias through the `aliases` argument
 
 ### MCP Async Client Lifecycle
 
-`mcp.server.fastmcp.FastMCP` accepts an `@asynccontextmanager` `lifespan` callback. Use it to close long-lived async resources, such as `httpx.AsyncClient`, so cleanup occurs on the server's event loop. `HowlerApiClient` accepts an injected client but only closes clients it creates itself.
+With Streamable HTTP, the `lifespan` callback passed to `mcp.server.fastmcp.FastMCP` runs per MCP session, not once for the server process. Initialize and close process-wide resources such as `httpx.AsyncClient` in the returned Starlette app lifespan instead, so startup and cleanup run once for the server process. `HowlerApiClient` accepts an injected client but only closes clients it creates itself.
 
 ---
 

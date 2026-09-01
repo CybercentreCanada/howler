@@ -2,9 +2,11 @@ import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+import httpx
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.fastmcp import FastMCP
 from pydantic import AnyHttpUrl
+from starlette.applications import Starlette
 
 from .api import HowlerApiClient
 from .auth import JSONWebTokenVerifier
@@ -24,30 +26,10 @@ try:
     port: int = int(MCPSettings.PORT)
 except ValueError:
     logger.error(f"server_config_error invalid_port={MCPSettings.PORT}")
-    port: int = 8000
+    port = 8000
 
 
 api_client = HowlerApiClient()
-
-
-@asynccontextmanager
-async def lifespan(_: FastMCP) -> AsyncGenerator[dict[str, None]]:
-    """Manage the lifespan of the MCP server.
-
-    Ensures that long-lived resources, such as the shared HTTP client, are
-    properly closed when the server shuts down.
-
-    Args:
-        _: The FastMCP application instance (unused).
-
-    Yields:
-        dict[str, None]: Empty context dictionary required by the lifespan
-        protocol.
-    """
-    try:
-        yield {}
-    finally:
-        await api_client.aclose()
 
 
 mcp = FastMCP(
@@ -66,16 +48,37 @@ mcp = FastMCP(
     ),
     host=MCPSettings.HOST,
     port=port,
-    lifespan=lifespan,
 )
+
+
+def _with_api_client_lifespan(app: Starlette, client: HowlerApiClient) -> Starlette:
+    original_lifespan = app.router.lifespan_context
+
+    @asynccontextmanager
+    async def lifespan(app: Starlette) -> AsyncGenerator[None, None]:
+        limits = httpx.Limits(
+            max_connections=HOWLER_API.MAX_CONNECTIONS,
+            max_keepalive_connections=HOWLER_API.MAX_KEEPALIVE_CONNECTIONS,
+            keepalive_expiry=HOWLER_API.KEEPALIVE_EXPIRY,
+        )
+        try:
+            await client.start(limits=limits)
+            async with original_lifespan(app):
+                yield
+        finally:
+            await client.aclose()
+
+    app.router.lifespan_context = lifespan
+    return app
+
 
 _streamable_http_app = mcp.streamable_http_app
 
 
-def streamable_http_app_with_request_logging():
+def streamable_http_app_with_request_logging() -> Starlette:
     app = _streamable_http_app()
     app.add_middleware(RequestLoggingMiddleware)
-    return app
+    return _with_api_client_lifespan(app, api_client)
 
 
 mcp.streamable_http_app = streamable_http_app_with_request_logging  # type: ignore[method-assign]
