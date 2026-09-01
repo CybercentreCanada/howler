@@ -65,7 +65,11 @@ const DossierEditor: FC = () => {
       return false;
     }
 
-    return dossier.owner === user.username || dossier.admins?.includes(user.username) || user.roles?.includes('admin');
+    return (
+      dossier.owner === user?.username ||
+      dossier.admins?.includes(user?.username ?? '') ||
+      user?.roles?.includes('admin')
+    );
   }, [dossier, user]);
   const validationError = useMemo(() => {
     if (!dossier) {

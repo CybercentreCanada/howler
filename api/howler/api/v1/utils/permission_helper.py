@@ -18,6 +18,28 @@ def add_access_control_endpoints(api: Blueprint, odm: type[Ownership]):
     @api_login(required_priv=["R", "W"])
     @parse_parameters(refresh=parse_refresh)
     def give_privilege(id: str, user: User, **kwargs) -> Response:
+        """Grant a permission on an action, dossier, or view.
+
+        Variables:
+        id => The identifier of the object whose permissions should be updated.
+
+        Arguments:
+        None
+
+        Optional Arguments:
+        refresh => ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+
+        Data Block:
+        {
+            "privilege": "members",       # The permission level: 'owner', 'admins', or 'members'
+            "user_ids": ["username"]       # The users receiving the permission
+        }
+
+        Result Example:
+        {
+            ...object   # The updated action, dossier, or view
+        }
+        """
         try:
             result = permission_service.give_privilege(id, user, odm, refresh=kwargs.get("refresh"))
         except ForbiddenException as e:
@@ -31,6 +53,22 @@ def add_access_control_endpoints(api: Blueprint, odm: type[Ownership]):
     @api_login(required_priv=["R", "W"])
     @parse_parameters(refresh=parse_refresh)
     def remove_privilege(id: str, user: User, **kwargs) -> Response:
+        """Revoke a permission on an action, dossier, or view.
+
+        Variables:
+        id => The identifier of the object whose permissions should be updated.
+
+        Arguments:
+        None
+
+        Optional Arguments:
+        refresh => ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+
+        Result Example:
+        {
+            ...object   # The updated action, dossier, or view
+        }
+        """
         try:
             result = permission_service.remove_privilege(id, user, odm, refresh=kwargs.get("refresh"))
         except ForbiddenException as e:

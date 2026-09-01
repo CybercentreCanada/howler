@@ -174,7 +174,7 @@ export const MembershipManagement = ({ open, onClose }: MembershipManagementProp
 
   const getPrivilegeLabel = useCallback(
     (privilegeValue: MemberItem['privilege']) => {
-      return t(`membership.privilege.member.${privilegeValue}`);
+      return t(`membership.privilege.${privilegeValue}`);
     },
     [t]
   );
