@@ -32,7 +32,7 @@ SENSITIVE_USER_FIELDS = ["password", "apikeys", "*"]
 @generate_swagger_docs()
 @search_api.route("/<index>", methods=["GET", "POST"])
 @api_login(required_priv=["R"])
-def search(index, **kwargs):
+def search(index: str, user: User, **kwargs):
     """Search through specified index for a given query. Uses lucene search syntax for query.
 
     Variables:
@@ -71,7 +71,6 @@ def search(index, **kwargs):
      "next_deep_paging_id": "asX3f...342",  # ID to pass back for the next page during deep paging
      "items": []}                           # List of results
     """
-    user: User = kwargs["user"]
     collection = get_collection(index, user)
     default_sort = get_default_sort(index, user)
 
@@ -92,7 +91,7 @@ def search(index, **kwargs):
     params, req_data = generate_params(request, fields, multi_fields)
 
     if has_access_control(index):
-        params.update({"access_control": user["access_control"]})
+        params.update({"access_control": user.access_control})
 
     params.update({"sort": (params.get("sort", None) or default_sort).split(",")})
 
@@ -122,7 +121,7 @@ def search(index, **kwargs):
 @generate_swagger_docs()
 @search_api.route("/<index>/explain", methods=["GET", "POST"])
 @api_login(required_priv=["R"])
-def explain_query(index, **kwargs):
+def explain_query(index: str, user: User, **kwargs):
     """Search through specified index for a given Lucene query. Uses Lucene search syntax for query.
 
     Variables:
@@ -149,7 +148,6 @@ def explain_query(index, **kwargs):
         ]
     }
     """
-    user = kwargs["user"]
     collection = get_collection(index, user)
 
     if collection is None:
@@ -192,7 +190,7 @@ def explain_query(index, **kwargs):
 @generate_swagger_docs()
 @search_api.route("/<index>/eql", methods=["GET", "POST"])
 @api_login(required_priv=["R"])
-def eql_search(index, **kwargs):
+def eql_search(index: str, user: User, **kwargs):
     """Search through specified index for a given EQL query. Uses EQL search syntax for query.
 
     Variables:
@@ -222,7 +220,6 @@ def eql_search(index, **kwargs):
      "rows": 100,                           # Number of results returned
      "items": []}                           # List of results
     """
-    user = kwargs["user"]
     collection = get_collection(index, user)
 
     if collection is None:
@@ -239,7 +236,7 @@ def eql_search(index, **kwargs):
     params, req_data = generate_params(request, fields, multi_fields)
 
     if has_access_control(index):
-        params.update({"access_control": user["access_control"]})
+        params.update({"access_control": user.access_control})
 
     params["as_obj"] = False
 
@@ -264,7 +261,7 @@ def eql_search(index, **kwargs):
 @generate_swagger_docs()
 @search_api.route("/<index>/sigma", methods=["GET", "POST"])
 @api_login(required_priv=["R"])
-def sigma_search(index, **kwargs):
+def sigma_search(index: str, user: User, **kwargs):
     """Search through specified index using a given sigma rule. Uses sigma rule syntax for query.
 
     Variables:
@@ -294,7 +291,6 @@ def sigma_search(index, **kwargs):
      "rows": 100,                           # Number of results returned
      "items": []}                           # List of results
     """
-    user = kwargs["user"]
     collection = get_collection(index, user)
     default_sort = get_default_sort(index, user)
 
@@ -315,7 +311,7 @@ def sigma_search(index, **kwargs):
     params, req_data = generate_params(request, fields, multi_fields)
 
     if has_access_control(index):
-        params.update({"access_control": user["access_control"]})
+        params.update({"access_control": user.access_control})
 
     params["as_obj"] = False
     params.update({"sort": (params.get("sort", None) or default_sort).split(",")})
@@ -350,7 +346,7 @@ def sigma_search(index, **kwargs):
 @generate_swagger_docs()
 @search_api.route("/grouped/<index>/<group_field>", methods=["GET", "POST"])
 @api_login(required_priv=["R"])
-def group_search(index, group_field, **kwargs):
+def group_search(index: str, group_field: str, user: User, **kwargs):
     """Search for a given query and groups the data based on a specific field. Uses lucene search syntax.
 
     Variables:
@@ -388,7 +384,6 @@ def group_search(index, group_field, **kwargs):
      "sequences": [],    # List of matching sequences
     }
     """
-    user = kwargs["user"]
     collection = get_collection(index, user)
     default_sort = get_default_sort(index, user)
     if collection is None or default_sort is None:
@@ -400,7 +395,7 @@ def group_search(index, group_field, **kwargs):
     params = generate_params(request, fields, multi_fields)[0]
 
     if has_access_control(index):
-        params.update({"access_control": user["access_control"]})
+        params.update({"access_control": user.access_control})
 
     params["as_obj"] = False
     params.setdefault("sort", default_sort)
@@ -426,7 +421,7 @@ def group_search(index, group_field, **kwargs):
 @generate_swagger_docs()
 @search_api.route("/fields/<index>", methods=["GET"])
 @api_login(required_priv=["R"])
-def list_index_fields(index, **kwargs):
+def list_index_fields(index: str, user: User, **kwargs):
     """List all available fields for a given index
 
     Variables:
@@ -447,7 +442,6 @@ def list_index_fields(index, **kwargs):
 
     }
     """
-    user = kwargs["user"]
     collection = get_collection(index, user)
     if collection is not None:
         return ok(collection().fields())
@@ -460,7 +454,7 @@ def list_index_fields(index, **kwargs):
 @generate_swagger_docs()
 @search_api.route("/count/<index>", methods=["GET", "POST"])
 @api_login(required_priv=["R"])
-def count(index, **kwargs):
+def count(index: str, user: User, **kwargs):
     """Returns number of documents matching a query. Uses lucene search syntax for query.
 
     Variables:
@@ -486,7 +480,6 @@ def count(index, **kwargs):
         "total": 201,                          # Total results found
     }
     """
-    user = kwargs["user"]
     collection = get_collection(index, user)
 
     if collection is None:
@@ -495,7 +488,7 @@ def count(index, **kwargs):
     params, req_data = generate_params(request, [], [])
 
     if has_access_control(index):
-        params.update({"access_control": user["access_control"]})
+        params.update({"access_control": user.access_control})
 
     query = req_data.get("query", None)
     filters = req_data.get("filters", [])
@@ -512,7 +505,7 @@ def count(index, **kwargs):
 @generate_swagger_docs()
 @search_api.route("/facet/<index>", methods=["GET", "POST"])
 @api_login(required_priv=["R"])
-def facet(index, **kwargs):
+def facet(index: str, user: User, **kwargs):
     """Perform field analysis on the selected fields. (Also known as facetting in lucene).
 
     This essentially counts the number of instances a field is seen with each specific
@@ -546,7 +539,6 @@ def facet(index, **kwargs):
         ...
     }
     """
-    user = kwargs["user"]
     collection = get_collection(index, user)
     if collection is None:
         return bad_request(err=f"Not a valid index to search in: {index}")
@@ -557,7 +549,7 @@ def facet(index, **kwargs):
     params = generate_params(request, fields, multi_fields)[0]
 
     if has_access_control(index):
-        params.update({"access_control": user["access_control"]})
+        params.update({"access_control": user.access_control})
 
     try:
         fields = params.pop("fields")
@@ -581,7 +573,7 @@ def facet(index, **kwargs):
 @generate_swagger_docs()
 @search_api.route("/facet/<index>/<field>", methods=["GET", "POST"])
 @api_login(required_priv=["R"])
-def facet_field(index, field, **kwargs):
+def facet_field(index: str, field: str, user: User, **kwargs):
     """Perform field analysis on the selected field. (Also known as facetting in lucene).
 
     This essentially counts the number of instances a field is seen with each specific
@@ -611,7 +603,6 @@ def facet_field(index, field, **kwargs):
      "value_N": 19,
     }
     """
-    user = kwargs["user"]
     collection = get_collection(index, user)
     if collection is None:
         return bad_request(err=f"Not a valid index to search in: {index}")
@@ -629,7 +620,7 @@ def facet_field(index, field, **kwargs):
     params = generate_params(request, fields, multi_fields)[0]
 
     if has_access_control(index):
-        params.update({"access_control": user["access_control"]})
+        params.update({"access_control": user.access_control})
 
     try:
         return ok(collection().facet(field, **params))
@@ -641,7 +632,7 @@ def facet_field(index, field, **kwargs):
 @generate_swagger_docs()
 @search_api.route("/histogram/<index>/<field>", methods=["GET", "POST"])
 @api_login(required_priv=["R"])
-def histogram(index, field, **kwargs):
+def histogram(index: str, field: str, user: User, **kwargs):
     """Generate an histogram based on a time or and int field using a specific gap size
 
     Variables:
@@ -675,7 +666,6 @@ def histogram(index, field, **kwargs):
     """
     fields = ["query", "mincount", "start", "end", "gap"]
     multi_fields = ["filters"]
-    user = kwargs["user"]
 
     collection = get_collection(index, user)
     if collection is None:
@@ -704,7 +694,7 @@ def histogram(index, field, **kwargs):
 
     # Make sure access control is enforced
     if has_access_control(index):
-        params.update({"access_control": user["access_control"]})
+        params.update({"access_control": user.access_control})
 
     try:
         return ok(collection().histogram(field, **params))
@@ -716,7 +706,7 @@ def histogram(index, field, **kwargs):
 @generate_swagger_docs()
 @search_api.route("/stats/<index>/<int_field>", methods=["GET", "POST"])
 @api_login(required_priv=["R"])
-def stats(index, int_field, **kwargs):
+def stats(index: str, int_field: str, user: User, **kwargs):
     """Perform statistical analysis of an integer field to get its min, max, average and count values
 
     Variables:
@@ -741,7 +731,6 @@ def stats(index, int_field, **kwargs):
      "sum": 1           # Sum of all values
     }
     """
-    user = kwargs["user"]
     collection = get_collection(index, user)
     if collection is None:
         return bad_request(err=f"Not a valid index to search in: {index}")
@@ -759,7 +748,7 @@ def stats(index, int_field, **kwargs):
     params = generate_params(request, fields, multi_fields)[0]
 
     if has_access_control(index):
-        params.update({"access_control": user["access_control"]})
+        params.update({"access_control": user.access_control})
 
     try:
         return ok(collection().stats(int_field, **params))

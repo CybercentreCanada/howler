@@ -82,7 +82,7 @@ def add_etag(
                     return not_modified()
 
                 # Call the original function with the cached object and version
-                values = f(*args, server_version=version, record=obj, **kwargs)
+                values = f(*args, user=user, server_version=version, record=obj, **kwargs)
 
                 # Handle different return value formats from the decorated function
                 # If there is only one return, it's just the response

@@ -536,7 +536,7 @@ def get_assigned_hits(user, **kwargs):
         sort=request.args.get("sort", None, type=str),
         fl=request.args.get("fl", None, type=str),
         timeout=request.args.get("timeout", None, type=int),
-        filters=[user["access_control"]] if user["access_control"] else None,
+        filters=[user.access_control] if user.access_control else None,
         as_obj=False,
     )["items"]
 
