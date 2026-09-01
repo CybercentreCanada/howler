@@ -1,5 +1,10 @@
 # Howler Releases
 
+## Howler MCP `v0.1.1`
+
+- **HTTP Client Lifecycle** _(bugfix)_: Prevented an MCP session shutdown from closing the shared Howler API client while other sessions are still running.
+- **HTTPX Connection Pool Limits** _(new feature)_: Added configurable concurrent connection, keepalive pool, and idle expiry limits for the shared Howler API client.
+
 ## Howler API `v4.0.11`
 
 - **Queued Token Key Mismatch Logging** _(bugfix)_: Action workers now clearly report when a queued authorization token was encrypted by a Howler instance using a different encryption key, including the configuration needed to resolve it.
