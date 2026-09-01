@@ -25,6 +25,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask, Response
 
+from howler.common.exceptions import CaseAccessException, InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.odm import Model
 from howler.odm.models.case import Case
@@ -303,7 +304,7 @@ class TestIsClassificationAccessible:
 class TestGetCaseClassification:
     """GET on a classified case must be indistinguishable from a missing one."""
 
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
     def test_classified_case_returns_generic_404(
@@ -317,6 +318,7 @@ class TestGetCaseClassification:
             "case_id": "case-001",
             "classification": "RESTRICTED",
         }
+        mock_case_service.get_case.side_effect = NotFoundException("Case case-001 does not exist")
 
         with request_context.test_request_context(headers={"Authorization": "Bearer ."}):
             from howler.api.v2.case import get_case
@@ -326,7 +328,7 @@ class TestGetCaseClassification:
             assert result.status_code == 404
             assert result.get_json()["api_error_message"] == "Case case-001 does not exist"
 
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
     def test_accessible_case_returns_200(
@@ -338,6 +340,7 @@ class TestGetCaseClassification:
 
         case_data = {"case_id": "case-001", "classification": "RESTRICTED"}
         mock_datastore.return_value.case.get.return_value = case_data
+        mock_case_service.get_case.return_value = case_data
 
         with request_context.test_request_context(headers={"Authorization": "Bearer ."}):
             from howler.api.v2.case import get_case
@@ -347,7 +350,7 @@ class TestGetCaseClassification:
             assert result.status_code == 200
             assert result.get_json()["api_response"]["case_id"] == "case-001"
 
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
     def test_admin_bypasses_case_classification(
@@ -358,6 +361,10 @@ class TestGetCaseClassification:
         _mock_auth(mock_auth_service, user)
 
         mock_datastore.return_value.case.get.return_value = {
+            "case_id": "case-001",
+            "classification": "RESTRICTED",
+        }
+        mock_case_service.get_case.return_value = {
             "case_id": "case-001",
             "classification": "RESTRICTED",
         }
@@ -378,7 +385,7 @@ class TestGetCaseClassification:
 class TestCaseMutationClassification:
     """Updates, hides, and item appends must not act on inaccessible cases."""
 
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
     def test_update_classified_case_returns_404_and_skips_service(
@@ -391,6 +398,7 @@ class TestCaseMutationClassification:
             "case_id": "case-001",
             "classification": "RESTRICTED",
         }
+        mock_case_service.update_case.side_effect = CaseAccessException("Case case-001 does not exist")
 
         with request_context.test_request_context(
             method="PUT",
@@ -402,9 +410,11 @@ class TestCaseMutationClassification:
             result: Response = update_case("case-001", user=user)
 
             assert result.status_code == 404
-            mock_case_service.update_case.assert_not_called()
+            mock_case_service.update_case.assert_called_once_with(
+                "case-001", {"title": "New Title"}, user, refresh=None
+            )
 
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
     def test_hide_cases_treats_inaccessible_as_nonexistent(
@@ -421,6 +431,8 @@ class TestCaseMutationClassification:
 
         mock_datastore.return_value.case.get.side_effect = fake_get
 
+        mock_case_service.hide_cases.side_effect = NotFoundException("Case id(s) case-002 do not exist.")
+
         with request_context.test_request_context(
             method="POST",
             json=["case-001", "case-002"],
@@ -435,9 +447,9 @@ class TestCaseMutationClassification:
             error_message = result.get_json()["api_error_message"]
             assert "case-001" not in error_message
             assert "case-002" in error_message
-            mock_case_service.hide_cases.assert_not_called()
+            mock_case_service.hide_cases.assert_called_once_with(["case-001", "case-002"], user=user, refresh=None)
 
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
     def test_append_inaccessible_hit_returns_generic_404(
@@ -455,6 +467,7 @@ class TestCaseMutationClassification:
             "howler": {"id": "hit-001"},
             "classification": "RESTRICTED",
         }
+        mock_case_service.append_case_item.side_effect = NotFoundException("hit hit-001 does not exist")
 
         with request_context.test_request_context(
             method="POST",
@@ -467,9 +480,9 @@ class TestCaseMutationClassification:
 
             assert result.status_code == 404
             assert result.get_json()["api_error_message"] == "hit hit-001 does not exist"
-            mock_case_service.append_case_item.assert_not_called()
+            mock_case_service.append_case_item.assert_called_once()
 
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
     def test_append_accessible_hit_succeeds(
@@ -499,7 +512,7 @@ class TestCaseMutationClassification:
             assert result.status_code == 200
             mock_case_service.append_case_item.assert_called_once()
 
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
     def test_append_to_lower_classified_case_is_rejected(
@@ -516,18 +529,21 @@ class TestCaseMutationClassification:
         mock_datastore.return_value.__getitem__.return_value.get.return_value = {
             "classification": "RESTRICTED",
         }
+        mock_case_service.append_case_item.side_effect = InvalidDataException(
+            "Cannot add hit hit-001 to a lower-classified case"
+        )
 
         with request_context.test_request_context(
             method="POST",
             json={"type": "hit", "value": "hit-001", "name": "Hit 001"},
-            headers={"Authorization": "******"},
+            headers={"Authorization": "Bearer ."},
         ):
             from howler.api.v2.case import append_item
 
             result: Response = append_item("case-001", user=user)
 
         assert result.status_code == 400
-        mock_case_service.append_case_item.assert_not_called()
+        mock_case_service.append_case_item.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -538,7 +554,7 @@ class TestCaseMutationClassification:
 class TestClassificationEscalation:
     """Creating/updating documents at classifications above clearance is invalid input."""
 
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
     def test_create_case_above_user_classification_returns_400(
@@ -546,6 +562,7 @@ class TestClassificationEscalation:
     ):
         user = _build_user(classification="UNRESTRICTED")
         _mock_auth(mock_auth_service, user)
+        mock_case_service.create_case.side_effect = InvalidDataException("Invalid case classification RESTRICTED")
 
         with request_context.test_request_context(
             method="POST",
@@ -557,9 +574,11 @@ class TestClassificationEscalation:
             result: Response = create_case(user=user)
 
             assert result.status_code == 400
-            mock_case_service.create_case.assert_not_called()
+            mock_case_service.create_case.assert_called_once_with(
+                {"title": "T", "summary": "S", "classification": "RESTRICTED"}, user
+            )
 
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
     def test_update_case_escalation_returns_400(
@@ -573,6 +592,7 @@ class TestClassificationEscalation:
             "case_id": "case-001",
             "classification": "UNRESTRICTED",
         }
+        mock_case_service.update_case.side_effect = InvalidDataException("Cannot set classification to RESTRICTED")
 
         with request_context.test_request_context(
             method="PUT",
@@ -584,7 +604,9 @@ class TestClassificationEscalation:
             result: Response = update_case("case-001", user=user)
 
             assert result.status_code == 400
-            mock_case_service.update_case.assert_not_called()
+            mock_case_service.update_case.assert_called_once_with(
+                "case-001", {"classification": "RESTRICTED"}, user, refresh=None
+            )
 
 
 # ---------------------------------------------------------------------------

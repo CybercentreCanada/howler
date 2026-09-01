@@ -51,14 +51,23 @@ const useCase: (args: CaseArguments) => CaseResult = ({ caseId, case: providedCa
     const listenerKey = `case-update-${activeCaseId}-${listenerId}`;
     addListener(listenerKey, data => {
       if (isCaseUpdate(data) && data.case.case_id === activeCaseId) {
-        setCase(data.case);
+        if (Object.keys(data.case).length > 1) {
+          setCase(data.case);
+          return;
+        }
+
+        void dispatchApi(api.v2.case.get(activeCaseId), { throwError: false }).then(fetchedCase => {
+          if (fetchedCase) {
+            setCase(fetchedCase);
+          }
+        });
       }
     });
 
     return () => {
       removeListener(listenerKey);
     };
-  }, [activeCaseId, addListener, listenerId, removeListener]);
+  }, [activeCaseId, addListener, dispatchApi, listenerId, removeListener]);
 
   const update = useCallback(
     async (_updatedCase: Partial<Case>, publish = true) => {

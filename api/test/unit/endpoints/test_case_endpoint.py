@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask, Response
 
-from howler.common.exceptions import InvalidDataException
+from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.odm import Model
 from howler.odm.models.user import User
@@ -48,7 +48,7 @@ def _mock_auth(mock_auth_service, user, priv=None):
 class TestGetCase:
     """Tests for the GET case endpoint."""
 
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
     def test_get_case_success(self, mock_auth_service, mock_case_service, mock_datastore, request_context: Flask):
@@ -63,7 +63,7 @@ class TestGetCase:
             "overview": "overview",
             "escalation": "crisis",
         }
-        mock_datastore.return_value.case.get.return_value = case_data
+        mock_case_service.get_case.return_value = case_data
 
         with request_context.test_request_context(
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
@@ -77,9 +77,9 @@ class TestGetCase:
             assert body["api_response"]["case_id"] == "case-001"
             assert body["api_response"]["title"] == "Test Case"
             assert body["api_response"]["escalation"] == "crisis"
-            mock_datastore.return_value.case.get.assert_called_once_with("case-001", as_obj=False)
+            mock_case_service.get_case.assert_called_once_with("case-001", user)
 
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
     def test_get_case_not_found(self, mock_auth_service, mock_case_service, mock_datastore, request_context: Flask):
@@ -87,7 +87,7 @@ class TestGetCase:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_datastore.return_value.case.get.return_value = None
+        mock_case_service.get_case.side_effect = NotFoundException("Case case-001 does not exist")
 
         with request_context.test_request_context(
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
@@ -97,7 +97,7 @@ class TestGetCase:
             result: Response = get_case(id="nonexistent")
 
             assert result.status_code == 404
-            mock_datastore.return_value.case.get.assert_called_once_with("nonexistent", as_obj=False)
+            mock_case_service.get_case.assert_called_once_with("nonexistent", user)
 
 
 # ---------------------------------------------------------------------------
@@ -128,7 +128,7 @@ class TestDeleteCases:
             assert result.status_code == 400
             mock_case_service.delete_cases.assert_not_called()
 
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
     def test_delete_cases_success_admin(
@@ -150,9 +150,9 @@ class TestDeleteCases:
             result: Response = delete_cases(user=user)
 
             assert result.status_code == 204
-            mock_case_service.delete_cases.assert_called_once_with(["case-del"], refresh=None)
+            mock_case_service.delete_cases.assert_called_once_with(["case-del"], refresh=None, user=user)
 
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
     def test_delete_cases_not_found(self, mock_auth_service, mock_case_service, mock_datastore, request_context: Flask):
@@ -161,6 +161,7 @@ class TestDeleteCases:
         _mock_auth(mock_auth_service, user, ["R", "W"])
 
         mock_datastore.return_value.case.exists.return_value = False
+        mock_case_service.delete_cases.side_effect = NotFoundException("Case id(s) nonexistent do not exist.")
 
         with request_context.test_request_context(
             method="DELETE",
@@ -172,7 +173,7 @@ class TestDeleteCases:
             result: Response = delete_cases(user=user)
 
             assert result.status_code == 404
-            mock_case_service.delete_cases.assert_not_called()
+            mock_case_service.delete_cases.assert_called_once_with(["nonexistent"], refresh=None, user=user)
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
@@ -279,7 +280,7 @@ class TestUpdateCaseEndpoint:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_update_case_success(self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask):
         """Returns 200 with updated case data when the update succeeds."""
         from howler.odm.models.case import Case
@@ -315,7 +316,7 @@ class TestUpdateCaseEndpoint:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_update_case_not_found(self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask):
         """Returns 404 when the case does not exist."""
         from howler.common.exceptions import NotFoundException
@@ -367,7 +368,7 @@ class TestAppendItemEndpoint:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_append_item_success(self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask):
         """Returns 200 when a valid item is appended."""
         from howler.odm.models.case import Case
@@ -393,7 +394,7 @@ class TestAppendItemEndpoint:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_append_item_with_path_resolves_parent(
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
@@ -420,15 +421,15 @@ class TestAppendItemEndpoint:
             result: Response = append_item("case-001", user=user)
 
             assert result.status_code == 200
-            mock_case_service.get_parent_from_path.assert_called_once_with("case-001", "refs/external")
-
+            mock_case_service.append_case_item.assert_called_once()
             appended_item = mock_case_service.append_case_item.call_args.kwargs["item"]
-            assert appended_item.parent == "folder-123"
+            assert appended_item.parent is None
             assert appended_item.name == "Example"
+            assert mock_case_service.append_case_item.call_args.kwargs["path"] == "refs/external"
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_append_item_with_parent_skips_path_resolution(
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
@@ -527,7 +528,7 @@ class TestAppendItemEndpoint:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_append_item_datastore_error_returns_500(
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
@@ -554,7 +555,7 @@ class TestAppendItemEndpoint:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_append_item_invalid_data_returns_400(
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
@@ -579,7 +580,7 @@ class TestAppendItemEndpoint:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_update_case_invalid_field_returns_400(
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
@@ -613,7 +614,7 @@ class TestAppendItemEndpoint:
 class TestHideCasesEndpoint:
     """Tests for the POST /hide case endpoint."""
 
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
     def test_hide_cases_success(self, mock_auth_service, mock_case_service, mock_datastore, request_context: Flask):
@@ -633,9 +634,7 @@ class TestHideCasesEndpoint:
             result: Response = hide_cases(user=user)
 
             assert result.status_code == 204
-            mock_case_service.hide_cases.assert_called_once_with(
-                ["case-001", "case-002"], user=user.uname, refresh=None
-            )
+            mock_case_service.hide_cases.assert_called_once_with(["case-001", "case-002"], user=user, refresh=None)
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
@@ -657,7 +656,7 @@ class TestHideCasesEndpoint:
             assert result.status_code == 400
             mock_case_service.hide_cases.assert_not_called()
 
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
     def test_hide_cases_nonexistent_id_returns_404(
@@ -672,6 +671,8 @@ class TestHideCasesEndpoint:
             {"case_id": case_id, "title": "T", "summary": "S"} if case_id == "case-001" else None
         )
 
+        mock_case_service.hide_cases.side_effect = NotFoundException("Case id(s) nonexistent do not exist.")
+
         with request_context.test_request_context(
             method="POST",
             json=["case-001", "nonexistent"],
@@ -682,9 +683,9 @@ class TestHideCasesEndpoint:
             result: Response = hide_cases(user=user)
 
             assert result.status_code == 404
-            mock_case_service.hide_cases.assert_not_called()
+            mock_case_service.hide_cases.assert_called_once_with(["case-001", "nonexistent"], user=user, refresh=None)
 
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
     def test_hide_cases_all_nonexistent_returns_404(
@@ -695,6 +696,7 @@ class TestHideCasesEndpoint:
         _mock_auth(mock_auth_service, user)
 
         mock_datastore.return_value.case.get.return_value = None
+        mock_case_service.hide_cases.side_effect = NotFoundException("Case id(s) ghost-1, ghost-2 do not exist.")
 
         with request_context.test_request_context(
             method="POST",
@@ -706,7 +708,7 @@ class TestHideCasesEndpoint:
             result: Response = hide_cases(user=user)
 
             assert result.status_code == 404
-            mock_case_service.hide_cases.assert_not_called()
+            mock_case_service.hide_cases.assert_called_once_with(["ghost-1", "ghost-2"], user=user, refresh=None)
 
 
 # ---------------------------------------------------------------------------
@@ -719,7 +721,7 @@ class TestDeleteItemEndpoint:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_delete_item_success(self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask):
         """Returns 200 with the updated case when a single item is removed successfully."""
         user = _build_user()
@@ -739,12 +741,12 @@ class TestDeleteItemEndpoint:
 
             assert result.status_code == 200
             mock_case_service.remove_case_items.assert_called_once_with(
-                "case-001", ["hit-001"], force=False, refresh=None
+                "case-001", ["hit-001"], force=False, refresh=None, user=user
             )
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_delete_item_multiple_values(
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
@@ -766,7 +768,7 @@ class TestDeleteItemEndpoint:
 
             assert result.status_code == 200
             mock_case_service.remove_case_items.assert_called_once_with(
-                "case-001", ["hit-001", "hit-002", "obs-003"], force=False, refresh=None
+                "case-001", ["hit-001", "hit-002", "obs-003"], force=False, refresh=None, user=user
             )
 
     @patch("howler.api.v2.case.case_service")
@@ -854,7 +856,7 @@ class TestDeleteItemEndpoint:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_delete_item_not_found_returns_400(
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
@@ -880,12 +882,12 @@ class TestDeleteItemEndpoint:
 
             assert result.status_code == 400
             mock_case_service.remove_case_items.assert_called_once_with(
-                "case-001", ["missing-item"], force=False, refresh=None
+                "case-001", ["missing-item"], force=False, refresh=None, user=user
             )
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_delete_item_invalid_data_returns_400(
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
@@ -911,7 +913,7 @@ class TestDeleteItemEndpoint:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_delete_item_datastore_error_returns_500(
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
@@ -986,7 +988,7 @@ class TestRenameItemEndpoint:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_rename_item_success(self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask):
         """Returns 200 with the updated case when the rename succeeds."""
         user = _build_user()
@@ -1006,7 +1008,7 @@ class TestRenameItemEndpoint:
 
             assert result.status_code == 200
             mock_case_service.rename_case_item.assert_called_once_with(
-                "case-001", "item-uuid", "Renamed Item", refresh=None
+                "case-001", "item-uuid", "Renamed Item", refresh=None, user=user
             )
 
     @patch("howler.api.v2.case.case_service")
@@ -1050,7 +1052,7 @@ class TestRenameItemEndpoint:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_move_item_missing_name_or_parent_returns_400(
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
@@ -1073,7 +1075,7 @@ class TestRenameItemEndpoint:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_rename_item_not_found_returns_400(
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
@@ -1099,7 +1101,7 @@ class TestRenameItemEndpoint:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_rename_item_path_conflict_returns_400(
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
@@ -1125,7 +1127,7 @@ class TestRenameItemEndpoint:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_rename_item_datastore_error_returns_500(
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
@@ -1151,7 +1153,7 @@ class TestRenameItemEndpoint:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_move_item_with_parent_calls_move_case_item(
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
@@ -1175,7 +1177,7 @@ class TestRenameItemEndpoint:
 
             assert result.status_code == 200
             mock_case_service.move_case_item.assert_called_once_with(
-                "case-001", "item-uuid", "folder-abc", refresh=None
+                "case-001", "item-uuid", "folder-abc", refresh=None, user=user
             )
             mock_case_service.rename_case_item.assert_not_called()
 
@@ -1210,7 +1212,7 @@ class TestAddRule:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_add_rule_success(self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask):
         """Returns 200 with the updated case when a valid rule is added."""
         user = _build_user()
@@ -1256,7 +1258,7 @@ class TestAddRule:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_add_rule_case_not_found_returns_404(
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
@@ -1282,7 +1284,7 @@ class TestAddRule:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_add_rule_invalid_data_returns_400(
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
@@ -1317,7 +1319,7 @@ class TestDeleteRule:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_delete_rule_success(self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask):
         """Returns 200 with the updated case when a rule is deleted."""
         user = _build_user()
@@ -1339,7 +1341,7 @@ class TestDeleteRule:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_delete_rule_not_found_returns_404(
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
@@ -1373,7 +1375,7 @@ class TestUpdateRule:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_update_rule_success(self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask):
         """Returns 200 with the updated case when a rule is updated."""
         user = _build_user()
@@ -1420,7 +1422,7 @@ class TestUpdateRule:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_update_rule_not_found_returns_404(
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
@@ -1446,7 +1448,7 @@ class TestUpdateRule:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
-    @patch("howler.api.v2.case.datastore")
+    @patch("howler.services.case_service.datastore")
     def test_update_rule_invalid_data_returns_400(
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):

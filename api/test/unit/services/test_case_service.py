@@ -3,10 +3,18 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from howler.common.exceptions import HowlerValueError, InvalidDataException, NotFoundException, ResourceExists
+from howler.common.exceptions import (
+    CaseAccessException,
+    HowlerValueError,
+    InvalidDataException,
+    NotFoundException,
+    ResourceExists,
+)
 from howler.config import CLASSIFICATION
+from howler.datastore.exceptions import DataStoreException
 from howler.odm.models.case import Case, CaseItem, CaseRule
 from howler.odm.models.ecs.related import Related
+from howler.odm.models.user import User
 from howler.services import case_service
 
 
@@ -28,12 +36,93 @@ def _make_user(uname: str = "admin", classification: str = CLASSIFICATION.UNREST
 
 
 # ---------------------------------------------------------------------------
+# Access validation
+# ---------------------------------------------------------------------------
+
+
+class TestAccessValidation:
+    """Tests for case and referenced-item access validation."""
+
+    @patch("howler.services.case_service.is_classification_accessible", return_value=False)
+    @patch("howler.services.case_service.datastore")
+    def test_get_case_raises_for_inaccessible_case(self, mock_ds_fn, _mock_accessible):
+        mock_ds_fn.return_value.case.get.return_value = Case(
+            {"case_id": "case-001", "title": "T", "summary": "S", "classification": "RESTRICTED"}
+        )
+
+        with pytest.raises(CaseAccessException, match="Case case-001 does not exist"):
+            case_service.get_case(
+                "case-001",
+                User(
+                    {
+                        "name": "analyst",
+                        "uname": "analyst",
+                        "password": "__NO_PASSWORD__",
+                        "type": ["user"],
+                        "classification": "UNRESTRICTED",
+                    }
+                ),
+            )
+
+    @patch("howler.services.case_service.datastore")
+    def test_get_case_raises_for_missing_case(self, mock_ds_fn):
+        mock_ds_fn.return_value.case.get.return_value = None
+
+        with pytest.raises(NotFoundException, match="Case case-001 does not exist"):
+            case_service.get_case(
+                "case-001",
+                User(
+                    {
+                        "name": "analyst",
+                        "uname": "analyst",
+                        "password": "__NO_PASSWORD__",
+                        "type": ["user"],
+                        "classification": "UNRESTRICTED",
+                    }
+                ),
+            )
+
+    @patch("howler.services.case_service.is_classification_accessible", return_value=False)
+    @patch("howler.services.case_service.datastore")
+    def test_resolve_backing_item_raises_for_inaccessible_item(self, mock_ds_fn, _mock_accessible):
+        mock_hit = MagicMock(classification="RESTRICTED")
+        mock_ds_fn.return_value["hit"].get.return_value = (mock_hit, "version")
+
+        with pytest.raises(NotFoundException, match="hit hit-001 does not exist"):
+            case_service._resolve_backing_item("hit", "hit-001", _make_user())
+
+    @patch("howler.services.case_service.is_classification_accessible", return_value=True)
+    @patch.object(CLASSIFICATION, "is_accessible", return_value=False)
+    @patch("howler.services.case_service.datastore")
+    def test_resolve_backing_item_rejects_item_above_parent_classification(
+        self, mock_ds_fn, _mock_classification, _mock_accessible
+    ):
+        mock_hit = MagicMock(classification="RESTRICTED")
+        mock_ds_fn.return_value["hit"].get.return_value = (mock_hit, "version")
+
+        with pytest.raises(InvalidDataException, match="lower-classified case"):
+            case_service._resolve_backing_item("hit", "hit-001", _make_user(), "UNRESTRICTED")
+
+
+# ---------------------------------------------------------------------------
 # create_case()
 # ---------------------------------------------------------------------------
 
 
 class TestCreateCase:
     """Tests for case_service.create_case."""
+
+    @patch("howler.services.case_service.is_classification_accessible", return_value=False)
+    @patch("howler.services.case_service.datastore")
+    def test_create_case_rejects_classification_above_user_clearance(self, mock_ds_fn, _mock_accessible):
+        """create_case raises before saving when the requested classification is inaccessible."""
+        with pytest.raises(InvalidDataException, match="Invalid case classification RESTRICTED"):
+            case_service.create_case(
+                {"title": "New Case", "summary": "A summary", "classification": "RESTRICTED"},
+                user=_make_user(classification=CLASSIFICATION.UNRESTRICTED),
+            )
+
+        mock_ds_fn.return_value.case.save.assert_not_called()
 
     @patch("howler.services.case_service.datastore")
     def test_create_case_saves_to_datastore(self, _mock_ds_fn):
@@ -118,6 +207,22 @@ class TestCreateCase:
 
 class TestUpdateCase:
     """Tests for case_service.update_case."""
+
+    @patch("howler.services.case_service.is_classification_accessible", return_value=False)
+    @patch("howler.services.case_service.datastore")
+    def test_update_case_rejects_classification_above_user_clearance(self, mock_ds_fn, _mock_accessible):
+        """update_case raises before saving when classification escalation is requested."""
+        mock_case = MagicMock()
+        mock_ds_fn.return_value.case.get.return_value = mock_case
+
+        with pytest.raises(InvalidDataException, match="Cannot set classification to RESTRICTED"):
+            case_service.update_case(
+                "case-001",
+                {"classification": "RESTRICTED"},
+                _make_user(classification=CLASSIFICATION.UNRESTRICTED),
+            )
+
+        mock_case.save.assert_not_called()
 
     @patch("howler.services.case_service.datastore")
     def test_update_case_raises_not_found(self, mock_ds_fn):
@@ -589,7 +694,7 @@ class TestAppendCaseItemRouting:
         item = CaseItem({"type": "event", "value": "obs-001"})
         result = case_service.append_case_item("case-001", item=item)
 
-        mock_append_event.assert_called_once_with(mock_case, item, None)
+        mock_append_event.assert_called_once_with(mock_case, item, None, backing_obj=None, version=None, emit=True)
         assert result is mock_case
 
     @patch("howler.services.case_service.append_case")
@@ -608,7 +713,7 @@ class TestAppendCaseItemRouting:
         item = CaseItem({"type": "case", "value": "child-001"})
         result = case_service.append_case_item("case-001", item=item)
 
-        mock_append_case.assert_called_once_with(mock_case, item, None)
+        mock_append_case.assert_called_once_with(mock_case, item, None, backing_obj=None, emit=True)
         assert result is mock_case
 
     @patch("howler.services.case_service.datastore")
@@ -619,7 +724,7 @@ class TestAppendCaseItemRouting:
         mock_ds.case.get.return_value = None
 
         item = CaseItem({"type": "hit", "value": "hit-001"})
-        with pytest.raises(NotFoundException, match="Case does not exist"):
+        with pytest.raises(NotFoundException, match="Case nonexistent does not exist"):
             case_service.append_case_item("nonexistent", item=item)
 
 
@@ -630,6 +735,84 @@ class TestAppendCaseItemRouting:
 
 class TestAppendHit:
     """Tests for case_service.append_hit."""
+
+    @patch("howler.services.case_service.recompute_case_metadata")
+    @patch("howler.services.case_service.datastore")
+    def test_append_hit_does_not_save_backing_object_when_case_save_fails(self, mock_ds_fn, _mock_sync):
+        """A failed case save leaves the hit relationship untouched."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.classification = "UNRESTRICTED"
+        mock_case.items = []
+        mock_case.save.return_value = False
+
+        mock_hit = MagicMock()
+        mock_hit.classification = "UNRESTRICTED"
+        mock_hit.howler.related = []
+        mock_ds.hit.get.return_value = (mock_hit, "version")
+
+        item = CaseItem({"type": "hit", "value": "hit-001"})
+        with pytest.raises(DataStoreException, match="Failed to save case"):
+            case_service.append_hit(mock_case, item)
+
+        assert mock_case.items == []
+        assert mock_hit.howler.related == []
+        mock_hit.save.assert_not_called()
+
+    @patch("howler.services.case_service.recompute_case_metadata")
+    @patch("howler.services.case_service.datastore")
+    def test_append_hit_rolls_back_when_backing_save_fails(self, mock_ds_fn, _mock_sync):
+        """A failed hit save restores the case and hit relationship."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.classification = "UNRESTRICTED"
+        mock_case.items = []
+        mock_case.save.side_effect = [True, True]
+
+        mock_hit = MagicMock()
+        mock_hit.classification = "UNRESTRICTED"
+        mock_hit.howler.related = []
+        mock_hit.save.side_effect = [False, True]
+        mock_ds.hit.get.return_value = (mock_hit, "version")
+
+        item = CaseItem({"type": "hit", "value": "hit-001"})
+        with pytest.raises(DataStoreException, match="backreference"):
+            case_service.append_hit(mock_case, item)
+
+        assert mock_case.items == []
+        assert mock_hit.howler.related == []
+        assert mock_case.save.call_count == 2
+        assert mock_hit.save.call_count == 2
+
+    @patch.object(CLASSIFICATION, "is_accessible", return_value=False)
+    @patch("howler.services.case_service.datastore")
+    def test_append_hit_rejects_item_above_case_classification(self, mock_ds_fn, _mock_classification):
+        """append_hit rejects classified metadata that would exceed the case clearance."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.classification = "UNRESTRICTED"
+        mock_case.items = []
+
+        mock_hit = MagicMock()
+        mock_hit.classification = "RESTRICTED"
+        mock_ds.hit.get.return_value = (mock_hit, "howler-hit-000001---5---2")
+
+        item = CaseItem({"type": "hit", "value": "hit-001"})
+        with pytest.raises(InvalidDataException, match="lower-classified case"):
+            case_service.append_hit(mock_case, item)
+
+        assert mock_case.items == []
+        mock_hit.save.assert_not_called()
+        mock_case.save.assert_not_called()
 
     @patch("howler.services.case_service.recompute_case_metadata")
     @patch("howler.services.case_service.add_backreference")
@@ -770,7 +953,6 @@ class TestAppendEvent:
         mock_obs.classification = CLASSIFICATION.UNRESTRICTED
         mock_obs.howler.id = "obs-001"
         mock_ds.event.get.return_value = (mock_obs, "howler-event-000001---5---2")
-
         item = CaseItem({"type": "event", "value": "obs-001"})
         case_service.append_event(mock_case, item)
 
@@ -2518,6 +2700,54 @@ class TestRemoveCaseItemsByIds:
 
     @patch("howler.services.case_service.recompute_case_metadata")
     @patch("howler.services.case_service.datastore")
+    def test_remove_item_does_not_save_backing_object_when_case_save_fails(self, mock_ds_fn, _mock_sync):
+        """A failed case save leaves the backing relationship unchanged."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        hit_item = CaseItem({"type": "hit", "value": "hit-001"})
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = [hit_item]
+        mock_case.save.return_value = False
+        mock_ds.case.get.return_value = mock_case
+        mock_ds.__getitem__.return_value.get.return_value = (MagicMock(), "version")
+
+        with pytest.raises(DataStoreException, match="Failed to save case"):
+            case_service.remove_case_items("case-001", [hit_item.id])
+
+        assert mock_case.items == [hit_item]
+        mock_ds.__getitem__.return_value.get.assert_called_once()
+
+    @patch("howler.services.case_service.recompute_case_metadata")
+    @patch("howler.services.case_service.datastore")
+    def test_remove_item_rolls_back_when_backing_save_fails(self, mock_ds_fn, _mock_sync):
+        """A failed backing save restores the case item and relationship."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        hit_item = CaseItem({"type": "hit", "value": "hit-001"})
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = [hit_item]
+        mock_case.save.side_effect = [True, True]
+        mock_ds.case.get.return_value = mock_case
+
+        mock_hit = MagicMock()
+        mock_hit.howler.related = ["case-001"]
+        mock_hit.save.side_effect = [False, True]
+        mock_ds.__getitem__.return_value.get.return_value = (mock_hit, "version")
+
+        with pytest.raises(DataStoreException, match="backreference"):
+            case_service.remove_case_items("case-001", [hit_item.id])
+
+        assert mock_case.items == [hit_item]
+        assert mock_hit.howler.related == ["case-001"]
+        assert mock_case.save.call_count == 2
+        assert mock_hit.save.call_count == 2
+
+    @patch("howler.services.case_service.recompute_case_metadata")
+    @patch("howler.services.case_service.datastore")
     def test_remove_item_by_id(self, mock_ds_fn, mock_sync):
         """remove_case_items removes a single item by its UUID."""
         mock_ds = MagicMock()
@@ -2648,6 +2878,50 @@ class TestIsDescendant:
 
 class TestCreateCaseWithItems:
     """Tests for create_case when the items list is non-empty."""
+
+    @patch(
+        "howler.services.case_service.append_case_item",
+        side_effect=DataStoreException("item save failed"),
+    )
+    @patch("howler.services.case_service.datastore")
+    def test_create_case_deletes_parent_when_item_append_fails(self, mock_ds_fn, _mock_append_item):
+        """A failed item append removes the partially created parent case."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        mock_ds.case.delete.return_value = True
+
+        with pytest.raises(DataStoreException, match="item save failed"):
+            case_service.create_case(
+                {
+                    "title": "T",
+                    "summary": "S",
+                    "items": [{"type": "reference", "value": "https://x.com", "name": "ref"}],
+                }
+            )
+
+        mock_ds.case.delete.assert_called_once()
+
+    @patch(
+        "howler.services.case_service._resolve_backing_item",
+        side_effect=NotFoundException("hit hit-001 does not exist"),
+    )
+    @patch("howler.services.case_service.datastore")
+    def test_create_case_validates_items_before_saving(self, mock_ds_fn, _mock_resolve_backing_item):
+        """create_case rejects inaccessible items before creating the parent case."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        with pytest.raises(NotFoundException, match="hit hit-001 does not exist"):
+            case_service.create_case(
+                {
+                    "title": "T",
+                    "summary": "S",
+                    "items": [{"type": "hit", "value": "hit-001", "name": "hit"}],
+                },
+                user=_make_user(),
+            )
+
+        mock_ds.case.save.assert_not_called()
 
     @patch("howler.services.case_service.append_case_item")
     @patch("howler.services.case_service.datastore")

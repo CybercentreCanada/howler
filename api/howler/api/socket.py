@@ -98,8 +98,14 @@ def connect(ws: Server, *args: Any, ws_id: str, **kwargs):  # noqa: C901
         ws.send(ws_response("action", data))
 
     def send_case(data: dict[str, Any]):  # pragma: no cover
-        logger.debug("Sending case update: %s", data.get("case", {}).get("case_id", "unknown"))
-        ws.send(ws_response("cases", data))
+        case_data = data.get("case", {})
+        case_id = case_data.get("case_id") if isinstance(case_data, dict) else None
+        if not case_id:
+            logger.warning("Ignoring case update without a case ID")
+            return
+
+        logger.debug("Sending case update: %s", case_id)
+        ws.send(ws_response("cases", {"case": {"case_id": case_id}}))
 
     def send_viewers_update(data: dict[str, Any]):  # pragma: no cover
         logger.debug("Sending viewers update: %s", data.get("id", "unknown"))
