@@ -24,6 +24,10 @@ def get_user(id: str, as_odm: Literal[True], version: Literal[True]) -> tuple[Us
 
 
 @overload
+def get_user(id: str, *, as_odm: Literal[True], version: Literal[True], user: User | None) -> tuple[User, str]: ...
+
+
+@overload
 def get_user(id: str, as_odm: Literal[True], version: Literal[False]) -> User: ...
 
 

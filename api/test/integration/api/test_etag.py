@@ -150,7 +150,7 @@ class TestAddEtagWithGetter:
         with app.test_request_context("/api/v1/hit/123", method="POST"):
             endpoint(id="123")
 
-        assert captured.get("cached_hit") is obj
+        assert captured.get("record") is obj
 
     def test_if_match_returns_304(self, app):
         """GET with If-Match matching the current version returns 304 Not Modified."""

@@ -231,7 +231,7 @@ def _modifies_prop(prop: str, operations: list[OdmUpdateOperation]) -> bool:
 
 
 def convert_hit(  # noqa: C901
-    data: dict[str, Any], unique: bool, ignore_extra_values: bool = False
+    data: dict[str, Any], unique: bool, user: User | None = None, ignore_extra_values: bool = False
 ) -> tuple[Hit, list[str]]:
     """Validate and convert a dictionary to a Hit ODM object.
 
@@ -337,6 +337,9 @@ def convert_hit(  # noqa: C901
     else:
         odm.event = ECSEvent({"created": "NOW", "id": odm.howler.id})
 
+    if user and not is_classification_accessible(user, odm.classification):
+        raise HowlerValueError(f"User {user.uname} cannot create hits at classification {odm.classification}")
+
     if unique and exists(odm.howler.id):
         raise ResourceExists("Resource with id %s already exists" % odm.howler.id)
 
@@ -357,7 +360,7 @@ def exists(id: str) -> bool:
 
 
 @overload
-def get_hit(id: str, as_odm: Literal[True], version: Literal[True]) -> tuple[Hit, str]: ...
+def get_hit(id: str, as_odm: Literal[True], version: Literal[True], user: User | None = None) -> tuple[Hit, str]: ...
 
 
 @overload
@@ -992,7 +995,7 @@ def augment_metadata(data: list[dict[str, Any]] | dict[str, Any] | None, metadat
             hit["__dossiers"] = dossier_service.get_matching_dossiers(hit, dossiers, username=user.uname)
 
 
-def filter_accessible_hits(user: Union[User, dict[str, Any]], hit_ids: list[str]) -> list[str]:
+def filter_accessible_hits(user: User, hit_ids: list[str]) -> list[str]:
     """Drop hit ids that are missing or inaccessible to the given user.
 
     Used by the deprecated bundle endpoints, where inaccessible children are
