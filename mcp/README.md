@@ -103,6 +103,9 @@ Primary runtime variables:
 - HOWLER_API_BASE_URL
 - HOWLER_UI_BASE_URL (defaults to `http://localhost:3000`)
 - HOWLER_API_TIMEOUT
+- HOWLER_API_MAX_CONNECTIONS
+- HOWLER_API_MAX_KEEPALIVE_CONNECTIONS
+- HOWLER_API_KEEPALIVE_EXPIRY
 - AUTH_ISSUER
 - AUTH_JWKS_URI
 - AUTH_TOKEN_URL
@@ -163,6 +166,8 @@ Container:
 - docker compose up -d
 
 Repository compose currently uses host networking for local simplicity. For production, use explicit container networking and ingress policy controls.
+
+The shared Howler API HTTP client is created when the streamable-HTTP application starts, using the configured connection limits, and is closed when the application shuts down.
 
 Kubernetes recommendations:
 

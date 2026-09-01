@@ -45,13 +45,27 @@ class HowlerApiClient:
         self.base_url = base_url.rstrip("/")
         self.auth_provider = auth_provider or AuthProvider()
         self.timeout = timeout
-        self._client = client or httpx.AsyncClient(timeout=timeout)
+        self._client = client
         self._owns_client = client is None
 
+    async def start(self, limits: httpx.Limits | None = None) -> None:
+        if self._client is not None:
+            return
+
+        if limits is None:
+            self._client = httpx.AsyncClient(timeout=self.timeout)
+        else:
+            self._client = httpx.AsyncClient(timeout=self.timeout, limits=limits)
+        self._owns_client = True
+
     async def aclose(self) -> None:
-        """Close the underlying HTTP client if it is owned by this instance."""
-        if self._owns_client:
-            await self._client.aclose()
+        client = self._client
+        owns_client = self._owns_client
+        self._client = None
+        self._owns_client = False
+
+        if owns_client and client is not None:
+            await client.aclose()
 
     async def call(
         self,
@@ -76,7 +90,6 @@ class HowlerApiClient:
         Returns:
             Any: The ``api_response`` value extracted from the Howler JSON
             envelope.
-
         Raises:
             ValueError: If a body is supplied for a ``GET`` or ``OPTIONS``
                 request, or if
@@ -94,10 +107,13 @@ class HowlerApiClient:
             if method in {"GET", "OPTIONS"} and body is not None:
                 outcome = "body_error"
                 raise ValueError("Request body is not allowed for GET or OPTIONS")
+            client = self._client
+            if client is None:
+                raise RuntimeError("Howler API client has not been started")
             exchanged_token = await self.auth_provider.get_howler_token(user_access_token.token)
             headers = {"Authorization": f"Bearer {exchanged_token}"}
             url = f"{self.base_url}/{route.lstrip('/')}"
-            response = await self._client.request(
+            response = await client.request(
                 method=method,
                 url=url,
                 headers=headers,
