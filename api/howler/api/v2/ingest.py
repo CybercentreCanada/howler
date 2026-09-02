@@ -357,20 +357,16 @@ def update_by_query(indexes: str, **kwargs):
 
     try:
         query = cast(str, data["query"])
-        operations = cast(list[tuple[str, str, Any]], data["operations"])
+        operations: list[OdmUpdateOperation] = []
 
         explanation: list[str] = []
-        for operation, key, value in operations:
+        for operation, key, value in cast(list[tuple[str, str, Any]], data["operations"]):
             # Just using this for validation
-            OdmUpdateOperation(operation, key, value)
+            operations.append(OdmUpdateOperation(operation, key, value))
             explanation.append(f"- `{operation}` - `{key}` - `{json.dumps(value)}`")
 
-        # Bulk updates run as datastore scripts and bypass ODM serialization, so
-        # operations on classification/access-control fields cannot be applied safely.
-        validate_bulk_operation_targets(operations)
-
         operations.append(
-            (
+            OdmUpdateOperation(
                 ESCollection.UPDATE_APPEND,
                 "howler.log",
                 {
@@ -380,6 +376,10 @@ def update_by_query(indexes: str, **kwargs):
                 },
             )
         )
+
+        # Bulk updates run as datastore scripts and bypass ODM serialization, so
+        # operations on classification/access-control fields cannot be applied safely.
+        validate_bulk_operation_targets(operations)
 
         ds = datastore()
         user = kwargs["user"]
