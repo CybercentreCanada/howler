@@ -1,5 +1,9 @@
 # Howler Releases
 
+## Howler API `v4.0.11`
+
+- **Queued Token Key Mismatch Logging** _(bugfix)_: Action workers now clearly report when a queued authorization token was encrypted by a Howler instance using a different encryption key, including the configuration needed to resolve it.
+
 ## Howler API `v4.0.10`
 
 - **Queued Action Authorization** _(bugfix)_: Action workers now preserve request authorization tokens for plugin actions using encrypted Redis payloads: JWE for JWTs and AES-GCM for other token formats.

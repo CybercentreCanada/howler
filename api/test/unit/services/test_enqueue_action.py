@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from cryptography.exceptions import InvalidTag
 from flask import Flask
 
 from howler.cronjobs import action_queue_worker
@@ -310,6 +311,22 @@ class TestProcessActionBatch:
 
         mock_decrypt.assert_called_once_with("invalid")
         assert mock_bulk.call_args.kwargs["auth_token"] is None
+
+    @patch.object(action_service.auth_service, "decrypt_token", side_effect=InvalidTag)
+    @patch.object(action_service, "datastore")
+    @patch.object(action_service, "bulk_execute_on_query")
+    def test_process_batch_logs_cross_instance_encryption_key_mismatch(
+        self, mock_bulk, mock_datastore, mock_decrypt, caplog
+    ):
+        """Tokens encrypted by another instance produce an actionable log message."""
+        action_service.process_action_batch(
+            "create",
+            [{"hit_ids": ["id1"], "uname": "admin", "auth_token": "invalid"}],
+        )
+
+        mock_decrypt.assert_called_once_with("invalid")
+        assert mock_bulk.call_args.kwargs["auth_token"] is None
+        assert "all Howler instances sharing persistent Redis use the same system.encryption_key" in caplog.text
 
 
 class TestBulkExecuteOnQuery:

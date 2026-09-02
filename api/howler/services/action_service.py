@@ -3,6 +3,7 @@ from collections import defaultdict
 from importlib.util import find_spec
 from typing import Any, Optional, TypedDict
 
+from cryptography.exceptions import InvalidTag
 from flask import Response, has_request_context, request
 
 from howler import actions
@@ -144,6 +145,13 @@ def process_action_batch(trigger: str, items: list[TriggeredAction]) -> None:
         uname = item.get("uname")
         try:
             auth_token = auth_service.decrypt_token(item.get("auth_token"))
+        except InvalidTag:
+            logger.exception(
+                "Queued authorization token for user=%s was encrypted with a different key. "
+                "Ensure all Howler instances sharing persistent Redis use the same system.encryption_key.",
+                uname,
+            )
+            auth_token = None
         except Exception:
             logger.exception("Unable to decrypt queued authorization token for user=%s", uname)
             auth_token = None
