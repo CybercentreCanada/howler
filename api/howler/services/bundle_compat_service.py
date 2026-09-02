@@ -113,7 +113,7 @@ def create_bundle(
         item_type="hit",
         item_value=odm.howler.id,
         item_name=f"{odm.howler.analytic} ({odm.howler.id})",
-        refresh=refresh,
+        user=user,
     )
 
     folder = case_service.get_parent_from_path(case, "hits", create_if_missing=True, refresh=refresh)
@@ -171,17 +171,9 @@ def add_to_bundle(
                 "classification": root_hit.classification,
             },
         )
-        case_service.append_case_item(case.case_id, item_type="hit", item_value=bundle_id, refresh=refresh)
+        case_service.append_case_item(case, item_type="hit", item_value=bundle_id)
 
-    case_id = case.case_id
-
-    # Check for duplicates and nested bundles before modifying
-    current_case: Case | None = datastore().case.get(case_id)
-    if current_case is None:  # pragma: no cover
-        raise NotFoundException(f"Case {case_id} not found")
-
-    existing_values = {item.value for item in current_case.items}
-
+    existing_values = {item.value for item in case.items}
     for hit_id in hit_ids:
         if hit_id in existing_values:
             raise BundleConflictException(f"The hit {hit_id} is already in the bundle {bundle_id}.")
@@ -196,13 +188,11 @@ def add_to_bundle(
             logger.warning("Hit %s does not exist, skipping", hit_id)
             continue
 
-        case_service.append_case_item(case_id, item_type="hit", item_value=hit_id, refresh=refresh)
+        case_service.append_case_item(case, item_type="hit", item_value=hit_id)
 
-    updated_case: Case | None = datastore().case.get(case_id)
-    if updated_case is None:  # pragma: no cover
-        raise NotFoundException(f"Case {case_id} not found")
+    case.save(refresh=refresh)
 
-    return synthesize_bundle_response(updated_case, root_hit, user=user)
+    return synthesize_bundle_response(case, root_hit, user=user)
 
 
 def remove_from_bundle(

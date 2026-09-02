@@ -1,10 +1,9 @@
-from typing import Optional
-
 import chevron
 
 from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.odm.models.action import VALID_TRIGGERS
+from howler.odm.models.user import User
 from howler.services import case_service
 
 OPERATION_ID = "add_to_case"
@@ -12,8 +11,9 @@ OPERATION_ID = "add_to_case"
 
 def execute(  # noqa: C901
     query: str,
-    case_id: Optional[str] = None,
+    case_id: str | None = None,
     destination: str = "related/{{howler.analytic}} ({{howler.id}})",
+    user: User | None = None,
     **kwargs,
 ):
     """Add matching alerts to a given case.
@@ -37,8 +37,8 @@ def execute(  # noqa: C901
 
     ds = datastore()
 
-    case = ds.case.get(case_id)
-    if case is None:
+    case, version = case_service.get_case(case_id, as_odm=True, version=True, user=user)
+    if not case:
         return [
             {
                 "query": query,
@@ -73,7 +73,9 @@ def execute(  # noqa: C901
             name = rendered_destination
 
         try:
-            parent = case_service.get_parent_from_path(case, item_path, create_if_missing=True)
+            parent = case_service.get_parent_from_path(
+                case, item_path, create_if_missing=True, persist=False, user=user
+            )
 
             case_service.append_case_item(
                 case,
@@ -81,6 +83,7 @@ def execute(  # noqa: C901
                 item_value=hit.howler.id,
                 item_name=name,
                 item_parent=parent.id if parent else None,
+                user=user,
             )
             added.append(hit.howler.id)
         except InvalidDataException as e:
@@ -89,6 +92,8 @@ def execute(  # noqa: C901
             skipped.append(f"{hit.howler.id}: {e}")
         except Exception as e:  # pragma: no cover
             skipped.append(f"{hit.howler.id}: {e}")
+
+    case.save(refresh="wait_for", version=version)
 
     if added:
         report.append(

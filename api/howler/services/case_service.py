@@ -134,6 +134,10 @@ def create_case(
 
     case = Case(case_data)
     case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user.uname if user else "system"})]
+
+    if not is_classification_accessible(user, case.classification):
+        raise ForbiddenException(f"User cannot create case at classification {case.classification}")
+
     case.save(refresh="wait_for", version=CREATE_TOKEN)
 
     for item in items:
@@ -142,9 +146,6 @@ def create_case(
     case.save(refresh=refresh, version=CREATE_TOKEN)
 
     comms_service.emit("cases", {"case": case.as_primitives()})
-
-    if user:
-        filter_case_items_by_classification(case, user.classification)
 
     return case
 
@@ -368,6 +369,9 @@ def update_case(
     if not case:
         raise NotFoundException(f"Case {case_id} does not exist")
 
+    if "items" in case_data:
+        raise InvalidDataException("You cannot modify the list of items via cae updates. Use the dedicated endpoints.")
+
     immutable_fields = {"case_id", "created", "updated"}
     compound_fields = {"items", "enrichments", "rules", "tasks"}
 
@@ -381,6 +385,17 @@ def update_case(
 
     if not is_classification_accessible(user, case_data.get("classification")):
         raise ForbiddenException(f"Cannot set case to invalid classification for user {user.uname}")
+
+    if "classification" in case_data:
+        max_item_classification: str | None = None
+        for item in case.items:
+            max_item_classification = CLASSIFICATION.max_classification(max_item_classification, item.classification)
+
+        if not CLASSIFICATION.is_accessible(case_data["classification"], max_item_classification):
+            raise ForbiddenException(
+                f"Cannot lower case classification to {case_data['classification']}. Case items have "
+                f"a maximum classification of {max_item_classification}."
+            )
 
     for key, new_value in updatable.items():
         previous_value = getattr(case, key, None)
@@ -668,8 +683,10 @@ def move_case_item(
     if not case:
         raise NotFoundException("Case does not exist")
 
-    item = next((i for i in case.items if i.id == item_id), None)
-    if item is None:
+    item = next(
+        (i for i in case.items if i.id == item_id and is_classification_accessible(user, i.classification)), None
+    )
+    if not item:
         raise NotFoundException(f"Item {item_id} does not exist in case {case.case_id}")
 
     # Case items must remain root-level
@@ -749,7 +766,7 @@ def remove_case_items(  # noqa: C901
     if not case:
         raise NotFoundException("Case does not exist")
 
-    items_by_id = {item.id: item for item in case.items}
+    items_by_id = {item.id: item for item in case.items if is_classification_accessible(user, item.classification)}
     missing = [iid for iid in item_ids if iid not in items_by_id]
     if missing:
         raise NotFoundException(f"Item(s) not found in case: {', '.join(missing)}")
@@ -935,6 +952,8 @@ def append_case(
             f"classification {case.classification}"
         )
 
+    item.classification = referenced_case.classification
+
     case.items.append(item)
 
     if not case.save(refresh=refresh, version=version):  # pragma: no cover
@@ -1089,8 +1108,10 @@ def rename_case_item(
     if not case:
         raise NotFoundException("Case does not exist")
 
-    item = next((i for i in case.items if i.id == item_id), None)
-    if item is None:
+    item = next(
+        (i for i in case.items if i.id == item_id and is_classification_accessible(user, i.classification)), None
+    )
+    if not item:
         raise NotFoundException(f"Item {item_id} does not exist in case {case.case_id}")
 
     # Guard: reject if the target name is already used by a sibling (item with the same parent).
