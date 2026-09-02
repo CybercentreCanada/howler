@@ -206,6 +206,22 @@ class TestProcessActionBatch:
 
         assert mock_bulk.call_args.kwargs["auth_token"] == "oauth-access-token"
 
+    @patch.object(action_service.auth_service, "decrypt_token", return_value="oauth-access-token")
+    @patch.object(action_service, "datastore")
+    @patch.object(action_service, "bulk_execute_on_query")
+    def test_process_batch_groups_by_encrypted_auth_token(self, mock_bulk, mock_datastore, mock_decrypt):
+        """The worker decrypts one shared ciphertext once after grouping the batch."""
+        items = [
+            {"hit_ids": ["id1"], "uname": "admin", "auth_token": "same-ciphertext"},
+            {"hit_ids": ["id2"], "uname": "admin", "auth_token": "same-ciphertext"},
+        ]
+
+        action_service.process_action_batch("create", items)
+
+        mock_decrypt.assert_called_once_with("same-ciphertext")
+        mock_bulk.assert_called_once()
+        assert mock_bulk.call_args.kwargs["auth_token"] == "oauth-access-token"
+
     @patch.object(action_service, "bulk_execute_on_query")
     def test_process_batch_empty(self, mock_bulk):
         """Empty batch should be a no-op."""

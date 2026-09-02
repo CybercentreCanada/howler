@@ -143,10 +143,17 @@ def process_action_batch(trigger: str, items: list[TriggeredAction]) -> None:
 
     for item in items:
         uname = item.get("uname")
+        groups[(uname, item.get("auth_token"))].extend(item["hit_ids"])
+
+    for (uname, encrypted_auth_token), hit_ids in groups.items():
+        # Deduplicate IDs within a batch group
+        unique_ids = list(dict.fromkeys(hit_ids))
+        query = f"howler.id:({' OR '.join(sanitize_lucene_query(h) for h in unique_ids)})"
+
         try:
-            auth_token = auth_service.decrypt_token(item.get("auth_token"))
+            auth_token = auth_service.decrypt_token(encrypted_auth_token)
         except InvalidTag:
-            logger.exception(
+            logger.error(  # noqa: TRY400
                 "Queued authorization token for user=%s was encrypted with a different key. "
                 "Ensure all Howler instances sharing persistent Redis use the same system.encryption_key.",
                 uname,
@@ -155,13 +162,6 @@ def process_action_batch(trigger: str, items: list[TriggeredAction]) -> None:
         except Exception:
             logger.exception("Unable to decrypt queued authorization token for user=%s", uname)
             auth_token = None
-
-        groups[(uname, auth_token)].extend(item["hit_ids"])
-
-    for (uname, auth_token), hit_ids in groups.items():
-        # Deduplicate IDs within a batch group
-        unique_ids = list(dict.fromkeys(hit_ids))
-        query = f"howler.id:({' OR '.join(sanitize_lucene_query(h) for h in unique_ids)})"
 
         try:
             user = datastore().user.get(uname)
