@@ -775,7 +775,7 @@ DELETED_HITS = Counter(f"{APP_NAME.replace('-', '_')}_deleted_hits_total", "The 
 
 
 @tracer.start_as_current_span(f"{__name__}.delete_hits")
-def delete_hits(hit_ids: set[str], refresh: str | None = None) -> bool:
+def delete_hits(hit_ids: set[str], refresh: Literal["true", "false", "wait_for"] | None = None) -> bool:
     """Delete a set of hits from the database
 
     Args:
