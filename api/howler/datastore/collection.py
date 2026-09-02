@@ -33,7 +33,6 @@ from howler.datastore.exceptions import (
     SearchRetryException,
     VersionConflictException,
 )
-from howler.datastore.operations import OdmUpdateOperation
 from howler.datastore.support.build import build_mapping
 from howler.datastore.support.schemas import (
     default_dynamic_strings,
@@ -60,6 +59,7 @@ from howler.utils.compat import Self
 from howler.utils.dict_utils import prune, recursive_update
 
 if typing.TYPE_CHECKING:
+    from .operations import OdmUpdateOperation
     from .store import ESStore
 
 
@@ -1556,7 +1556,7 @@ class ESCollection(Generic[ModelType]):
             "params": op_params,
         }
 
-    def _validate_operations(self: Self, operations: list[OdmUpdateOperation]):
+    def _validate_operations(self: Self, operations: "list[OdmUpdateOperation]"):
         """Validate the different operations received for a partial update
 
         TODO: When the field is of type Mapping, the validation/check only works for depth 1. A full recursive
@@ -1687,7 +1687,7 @@ class ESCollection(Generic[ModelType]):
     def update_by_query(
         self: Self,
         query: str,
-        operations: list[OdmUpdateOperation],
+        operations: "list[OdmUpdateOperation]",
         filters: list[str] | None = None,
         access_control: str | None = None,
         max_docs: int | None = None,
