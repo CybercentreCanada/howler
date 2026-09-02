@@ -6,7 +6,7 @@ new data when the resource has actually changed.
 """
 
 import functools
-from typing import Any, Literal, Protocol
+from typing import Any, Callable, Literal, Protocol, TypeAlias
 
 from flask import Response, request
 
@@ -24,6 +24,10 @@ class _Getter(Protocol):
         version: Literal[True],
         user: User | None,
     ) -> tuple[odm.Model | None, str | None]: ...
+
+
+_EtagResult: TypeAlias = Response | tuple[Response, str | None]
+_EtagFunction: TypeAlias = Callable[..., _EtagResult]
 
 
 def add_etag(
@@ -56,13 +60,13 @@ def add_etag(
         Decorated function with ETag support
     """
 
-    def wrapper(f):
+    def wrapper(f: _EtagFunction) -> Callable[..., Response]:
         """Inner wrapper function that applies ETag functionality to the decorated function."""
 
         @functools.wraps(f)
-        def generate_etag(*args: list[Any], user: User | None = None, **kwargs) -> Response:
+        def generate_etag(*args: Any, user: User | None = None, **kwargs: Any) -> Response:
             """Generate and handle ETags for the HTTP response."""
-            record_id: str | None = kwargs.get("id", kwargs.get("username", None))
+            record_id: str | None = kwargs.get("id", kwargs.get("case_id", kwargs.get("username", None)))
             if getter and record_id:
                 # Retrieve the object and its version using the provided getter function
                 # The getter should return (object, version) tuple

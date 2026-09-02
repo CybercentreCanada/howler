@@ -374,15 +374,17 @@ def _test_update_by_query(c: ESCollection):
 
 def _test_delete_by_query(c: ESCollection):
     """
-    Test delete_by_query to ensure matching documents are deleted and count is correct.
+    Test delete_by_query to ensure matching documents are filtered and deleted correctly.
 
     The delete_by_query() method should remove all documents matching a query.
-    Tests that exactly 4 documents with delete_b:true are removed and that
-    the final document count is correct. Includes retry logic for eventually
-    consistent databases.
+    Tests that filters and access control can prevent matching documents from being
+    deleted, then verifies that exactly 4 documents with delete_b:true are removed.
+    Includes retry logic for eventually consistent databases.
     """
     # Test Delete Matching
     key_len = len(list(c.keys()))
+    assert not c.delete_by_query("delete_b:true", filters=["delete_b:false"])
+    assert not c.delete_by_query("delete_b:true", access_control="delete_b:false")
     c.delete_by_query("delete_b:true")
     c.commit()
     retry_count = 0
@@ -870,9 +872,9 @@ def test_fix_replicas(es_connection: ESCollection, replicas: int):
         current_replica_count = int(
             current_settings[f"{test_index_name}_hot"]["settings"]["index"]["number_of_replicas"]
         )
-        assert (
-            current_replica_count == incorrect_replicas
-        ), f"Expected {incorrect_replicas} replicas, got {current_replica_count}"
+        assert current_replica_count == incorrect_replicas, (
+            f"Expected {incorrect_replicas} replicas, got {current_replica_count}"
+        )
 
         # Add some test data to ensure data preservation during replica fixing
         test_data = {"test_field": "test_value", "timestamp": time.time()}

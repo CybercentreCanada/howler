@@ -101,10 +101,6 @@ class NotFoundException(HowlerException):
     """Exception thrown when a resource cannot be found"""
 
 
-class CaseAccessException(NotFoundException):
-    """Exception used when a case must be hidden as if it does not exist."""
-
-
 class ForbiddenException(HowlerException):
     """Exception thrown when a user is not permitted to perform an action"""
 

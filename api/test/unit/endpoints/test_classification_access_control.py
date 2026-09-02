@@ -25,7 +25,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask, Response
 
-from howler.common.exceptions import CaseAccessException, InvalidDataException, NotFoundException
+from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.odm import Model
 from howler.odm.models.case import Case
@@ -398,7 +398,7 @@ class TestCaseMutationClassification:
             "case_id": "case-001",
             "classification": "RESTRICTED",
         }
-        mock_case_service.update_case.side_effect = CaseAccessException("Case case-001 does not exist")
+        mock_case_service.update_case.side_effect = NotFoundException("Case case-001 does not exist")
 
         with request_context.test_request_context(
             method="PUT",

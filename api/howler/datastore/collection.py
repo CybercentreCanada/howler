@@ -33,6 +33,7 @@ from howler.datastore.exceptions import (
     SearchRetryException,
     VersionConflictException,
 )
+from howler.datastore.operations import OdmUpdateOperation
 from howler.datastore.support.build import build_mapping
 from howler.datastore.support.schemas import (
     default_dynamic_strings,
@@ -55,6 +56,7 @@ from howler.odm.base import (
     ValidatedKeyword,
     _Field,
 )
+from howler.utils.compat import Self
 from howler.utils.dict_utils import prune, recursive_update
 
 if typing.TYPE_CHECKING:
@@ -221,7 +223,9 @@ class ESCollection(Generic[ModelType]):
     ENSURE_COLLECTION_WARNED: bool = False
     CUSTOM_AGG_PREFIX: str = "_custom_agg__"
 
-    def __init__(self, datastore: ESStore, name, model_class=None, validate=True, max_attempts=10, ilm_config=None):
+    def __init__(
+        self: Self, datastore: ESStore, name, model_class=None, validate=True, max_attempts=10, ilm_config=None
+    ):
         self.replicas = int(
             environ.get(
                 f"ELASTIC_{name.upper()}_REPLICAS",
@@ -299,7 +303,7 @@ class ESCollection(Generic[ModelType]):
             self.index_name = ilm_indices[-1]
 
     def scan_with_retry(
-        self,
+        self: Self,
         query,
         sort=None,
         source=None,
@@ -362,7 +366,9 @@ class ESCollection(Generic[ModelType]):
                 except elasticsearch.exceptions.NotFoundError:
                     pass
 
-    def with_retries(self, func: Callable[..., _R], *args: Any, raise_conflicts: bool = False, **kwargs: Any) -> _R:
+    def with_retries(
+        self: Self, func: Callable[..., _R], *args: Any, raise_conflicts: bool = False, **kwargs: Any
+    ) -> _R:
         """This function performs the passed function with the given args and kwargs and reconnect if it fails
 
         :return: return the output of the function passed
@@ -452,7 +458,7 @@ class ESCollection(Generic[ModelType]):
                 else:
                     raise
 
-    def _get_task_results(self, task):
+    def _get_task_results(self: Self, task):
         # This function is only used to wait for a asynchronous task to finish in a graceful manner without
         #  timing out the elastic client. You can create an async task for long running operation like:
         #   - update_by_query
@@ -484,7 +490,7 @@ class ESCollection(Generic[ModelType]):
 
         return result
 
-    def _get_current_alias(self, index: str) -> typing.Optional[str]:
+    def _get_current_alias(self: Self, index: str) -> typing.Optional[str]:
         if self.with_retries(self.datastore.client.indices.exists_alias, name=index):
             return next(
                 iter(self.with_retries(self.datastore.client.indices.get_alias, index=index)),
@@ -493,7 +499,7 @@ class ESCollection(Generic[ModelType]):
 
         return None
 
-    def _wait_for_status(self, index, min_status="yellow"):
+    def _wait_for_status(self: Self, index, min_status="yellow"):
         status_ok = False
         while not status_ok:
             try:
@@ -506,7 +512,9 @@ class ESCollection(Generic[ModelType]):
                 else:
                     raise
 
-    def _safe_index_copy(self, copy_function, src, target, settings=None, min_status="yellow", request_timeout=60):
+    def _safe_index_copy(
+        self: Self, copy_function, src, target, settings=None, min_status="yellow", request_timeout=60
+    ):
         options_client = self.datastore.client.options(request_timeout=request_timeout)
         timed_function = getattr(options_client.indices, copy_function.__name__)
         ret = timed_function(index=src, target=target, settings=settings)
@@ -515,7 +523,7 @@ class ESCollection(Generic[ModelType]):
 
         self._wait_for_status(target, min_status=min_status)
 
-    def _delete_async(self, index, query, max_docs=None, sort=None, refresh=None):
+    def _delete_async(self: Self, index, query, max_docs=None, sort=None, refresh=None):
         deleted = 0
         while True:
             task = self.with_retries(
@@ -536,7 +544,7 @@ class ESCollection(Generic[ModelType]):
             else:
                 deleted += res["deleted"]
 
-    def _update_async(self, index, script, query, max_docs=None, refresh=None):
+    def _update_async(self: Self, index, script, query, max_docs=None, refresh=None):
         updated = 0
         while True:
             task = self.with_retries(
@@ -557,7 +565,7 @@ class ESCollection(Generic[ModelType]):
             else:
                 updated += res["updated"]
 
-    def bulk(self, operations: ElasticBulkPlan, refresh: str | None = None):
+    def bulk(self: Self, operations: ElasticBulkPlan, refresh: str | None = None):
         """
         Execute a bulk plan.
 
@@ -758,7 +766,7 @@ class ESCollection(Generic[ModelType]):
             settings=clone_finish_settings,
         )
 
-    def _index_doc_count(self, index: str) -> int:
+    def _index_doc_count(self: Self, index: str) -> int:
         """Return the number of documents in a physical index.
 
         :param index: the name of the physical index to count documents in
@@ -767,7 +775,7 @@ class ESCollection(Generic[ModelType]):
         self.with_retries(self.datastore.client.indices.refresh, index=index)
         return self.with_retries(self.datastore.client.count, index=index)["count"]
 
-    def reindex(self, allow_failures: bool = False, request_timeout: int = 60):
+    def reindex(self: Self, allow_failures: bool = False, request_timeout: int = 60):
         """Reindex all the data of the collection into a freshly mapped index.
 
         For every physical index in ``self.index_list_full`` the data is copied into a temporary
@@ -919,7 +927,7 @@ class ESCollection(Generic[ModelType]):
 
         return True
 
-    def _get_reindex_settings(self, index_data: dict) -> dict:
+    def _get_reindex_settings(self: Self, index_data: dict) -> dict:
         """Build settings for a reindex target without dropping ILM lifecycle metadata."""
         settings = self._get_index_settings()
         lifecycle = index_data.get("settings", {}).get("index", {}).get("lifecycle")
@@ -927,7 +935,7 @@ class ESCollection(Generic[ModelType]):
             settings["index"]["lifecycle"] = deepcopy(lifecycle)
         return settings
 
-    def _validate_reindex_result(self, index, new_name, reindex_result, allow_failures):
+    def _validate_reindex_result(self: Self, index, new_name, reindex_result, allow_failures):
         """Validate the result of an Elasticsearch reindex task.
 
         :param index: the source index being reindexed
@@ -970,7 +978,7 @@ class ESCollection(Generic[ModelType]):
             f"un-convertible documents."
         )
 
-    def _validate_reindex_counts(self, index, new_name, source_count, target_count, allow_failures):
+    def _validate_reindex_counts(self: Self, index, new_name, source_count, target_count, allow_failures):
         """Validate that the reindexed index contains the same number of documents as the source.
 
         :param index: the source index being reindexed
@@ -1065,7 +1073,7 @@ class ESCollection(Generic[ModelType]):
 
         return True
 
-    def multiget(self, key_list, as_dictionary=True, as_obj=True, error_on_missing=True):
+    def multiget(self: Self, key_list, as_dictionary=True, as_obj=True, error_on_missing=True):
         """Get a list of documents from the datastore and make sure they are normalized using
         the model class
 
@@ -1114,15 +1122,15 @@ class ESCollection(Generic[ModelType]):
         return out
 
     @overload
-    def normalize(self, data) -> ModelType | None: ...
+    def normalize(self: Self, data) -> ModelType | None: ...
 
     @overload
-    def normalize(self, data, as_obj: Literal[True]) -> ModelType | None: ...
+    def normalize(self: Self, data, as_obj: Literal[True]) -> ModelType | None: ...
 
     @overload
-    def normalize(self, data, as_obj: Literal[False]) -> dict[str, Any] | None: ...
+    def normalize(self: Self, data, as_obj: Literal[False]) -> dict[str, Any] | None: ...
 
-    def normalize(self, data, as_obj=True):
+    def normalize(self: Self, data, as_obj=True):
         """Normalize the data using the model class
 
         :param as_obj: Return an object instead of a dictionary
@@ -1137,7 +1145,7 @@ class ESCollection(Generic[ModelType]):
 
         return data
 
-    def _search_exists(self, key) -> bool:
+    def _search_exists(self: Self, key) -> bool:
         """Check document existence with an alias-safe search query."""
         result = self.with_retries(
             self.datastore.client.search,
@@ -1149,7 +1157,7 @@ class ESCollection(Generic[ModelType]):
         total = result["hits"]["total"]
         return total["value"] > 0 if isinstance(total, dict) else total > 0
 
-    def exists(self, key) -> bool:
+    def exists(self: Self, key) -> bool:
         """Check if a document exists in the datastore.
 
         :param key: key of the document to get from the datastore
@@ -1167,7 +1175,7 @@ class ESCollection(Generic[ModelType]):
             )
             return self._search_exists(key)
 
-    def _raise_document_not_found(self, key: str, result: Any) -> typing.NoReturn:
+    def _raise_document_not_found(self: Self, key: str, result: Any) -> typing.NoReturn:
         """Raise the same error shape as an Elasticsearch document lookup for an empty search."""
         meta = ApiResponseMeta(
             status=404,
@@ -1179,12 +1187,12 @@ class ESCollection(Generic[ModelType]):
         raise elasticsearch.exceptions.NotFoundError(f"Document with id {key} not found", meta, result)
 
     @overload
-    def _get(self, key, retries, version: Literal[False]) -> dict[str, Any]: ...
+    def _get(self: Self, key, retries, version: Literal[False]) -> dict[str, Any]: ...
 
     @overload
-    def _get(self, key, retries, version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+    def _get(self: Self, key, retries, version: Literal[True]) -> tuple[dict[str, Any], str]: ...
 
-    def _get(self, key, retries, version=False):
+    def _get(self: Self, key, retries, version=False):
         """Versioned get-save for atomic update has two paths:
             1. Document doesn't exist at all. Create token will be returned for version.
                This way only the first query to try and create the document will succeed.
@@ -1248,7 +1256,7 @@ class ESCollection(Generic[ModelType]):
 
         return None
 
-    def _get_version_write_target(self, version: str) -> tuple[str, str, str]:
+    def _get_version_write_target(self: Self, version: str) -> tuple[str, str, str]:
         """Return the concrete write target and optimistic-concurrency values from a version token."""
         version_parts = version.split("---")
         if len(version_parts) == 3:
@@ -1262,27 +1270,27 @@ class ESCollection(Generic[ModelType]):
         raise DataStoreException(f"Invalid version token for {self.name}: {version!r}")
 
     @overload
-    def get(self, key, as_obj: Literal[True], version: Literal[True]) -> tuple[ModelType | None, str]: ...
+    def get(self: Self, key, as_obj: Literal[True], version: Literal[True]) -> tuple[ModelType | None, str]: ...
 
     @overload
-    def get(self, key, as_obj: Literal[True], version: Literal[False]) -> ModelType | None: ...
+    def get(self: Self, key, as_obj: Literal[True], version: Literal[False]) -> ModelType | None: ...
 
     @overload
-    def get(self, key, as_obj: Literal[True]) -> ModelType | None: ...
+    def get(self: Self, key, as_obj: Literal[True]) -> ModelType | None: ...
 
     @overload
-    def get(self, key) -> ModelType | None: ...
+    def get(self: Self, key) -> ModelType | None: ...
 
     @overload
-    def get(self, key, as_obj: Literal[False], version: Literal[True]) -> tuple[dict[str, Any] | None, str]: ...
+    def get(self: Self, key, as_obj: Literal[False], version: Literal[True]) -> tuple[dict[str, Any] | None, str]: ...
 
     @overload
-    def get(self, key, as_obj: Literal[False], version: Literal[False]) -> dict[str, Any] | None: ...
+    def get(self: Self, key, as_obj: Literal[False], version: Literal[False]) -> dict[str, Any] | None: ...
 
     @overload
-    def get(self, key, as_obj: Literal[False]) -> dict[str, Any] | None: ...
+    def get(self: Self, key, as_obj: Literal[False]) -> dict[str, Any] | None: ...
 
-    def get(self, key, as_obj=True, version=False):
+    def get(self: Self, key, as_obj=True, version=False):
         """Get a document from the datastore, retry a few times if not found and normalize the
         document with the model provided with the collection.
 
@@ -1301,27 +1309,29 @@ class ESCollection(Generic[ModelType]):
         return self.normalize(data, as_obj=as_obj)
 
     @overload
-    def get_if_exists(self, key: str, as_obj: Literal[True], version: Literal[True]) -> tuple[ModelType, str]: ...
+    def get_if_exists(self: Self, key: str, as_obj: Literal[True], version: Literal[True]) -> tuple[ModelType, str]: ...
 
     @overload
-    def get_if_exists(self, key: str, as_obj: Literal[True], version: Literal[False]) -> ModelType: ...
+    def get_if_exists(self: Self, key: str, as_obj: Literal[True], version: Literal[False]) -> ModelType: ...
 
     @overload
-    def get_if_exists(self, key: str, as_obj: Literal[True]) -> ModelType: ...
+    def get_if_exists(self: Self, key: str, as_obj: Literal[True]) -> ModelType: ...
 
     @overload
-    def get_if_exists(self, key: str) -> ModelType: ...
+    def get_if_exists(self: Self, key: str) -> ModelType: ...
 
     @overload
-    def get_if_exists(self, key: str, as_obj: Literal[False], version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+    def get_if_exists(
+        self: Self, key: str, as_obj: Literal[False], version: Literal[True]
+    ) -> tuple[dict[str, Any], str]: ...
 
     @overload
-    def get_if_exists(self, key: str, as_obj: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+    def get_if_exists(self: Self, key: str, as_obj: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
 
     @overload
-    def get_if_exists(self, key: str, as_obj: Literal[False]) -> dict[str, Any]: ...
+    def get_if_exists(self: Self, key: str, as_obj: Literal[False]) -> dict[str, Any]: ...
 
-    def get_if_exists(self, key: str, as_obj=True, version=False):
+    def get_if_exists(self: Self, key: str, as_obj=True, version=False):
         """Get a document from the datastore but do not retry if not found.
 
         Use this more in caching scenarios because eventually consistent database may lead
@@ -1341,7 +1351,7 @@ class ESCollection(Generic[ModelType]):
         return self.normalize(data, as_obj=as_obj)
 
     def require(
-        self, key, as_obj=True, version=False
+        self: Self, key, as_obj=True, version=False
     ) -> Union[
         tuple[Optional[Union[dict[str, Any], ModelType]], str],
         Optional[Union[dict[str, Any], ModelType]],
@@ -1362,7 +1372,7 @@ class ESCollection(Generic[ModelType]):
             return self.normalize(data, as_obj=as_obj), version
         return self.normalize(data, as_obj=as_obj)
 
-    def save(self, key, data, version=None, refresh: Literal["true", "false", "wait_for"] | None = None):
+    def save(self: Self, key, data, version=None, refresh: Literal["true", "false", "wait_for"] | None = None):
         """Save to document to the datastore using the key as its document id.
 
         The document data will be normalized before being saved in the datastore.
@@ -1427,7 +1437,7 @@ class ESCollection(Generic[ModelType]):
 
         return True
 
-    def delete(self, key, refresh=None):
+    def delete(self: Self, key, refresh=None):
         """This function should delete the underlying document referenced by the key.
         It should return true if the document was in fact properly deleted.
 
@@ -1440,18 +1450,39 @@ class ESCollection(Generic[ModelType]):
         except elasticsearch.NotFoundError:
             return False
 
-    def delete_by_query(self, query: str, sort=None, max_docs=None, refresh=None) -> bool:
+    def delete_by_query(
+        self: Self,
+        query: str,
+        sort: typing.Any = None,
+        max_docs: int | None = None,
+        refresh: Literal["true", "false", "wait_for"] | None = None,
+        filters: list[str] | None = None,
+        access_control: str | None = None,
+    ) -> bool:
         """This function should delete the underlying documents referenced by the query.
         It should return true if the documents were in fact properly deleted.
 
         :param query: Query of the documents to download
+        :param filters: Filter queries to reduce the data
+        :param access_control: Access control parameters to limit the scope of the query
         :return: True is delete successful
         """
-        query_obj = {"bool": {"must": {"query_string": {"query": query}}}}
+        if filters is None:
+            filters = []
+
+        if access_control:
+            filters.append(access_control)
+
+        query_obj = {
+            "bool": {
+                "must": {"query_string": {"query": query}},
+                "filter": [{"query_string": {"query": ff}} for ff in filters],
+            }
+        }
         success = self.delete_by_search_object(query=query_obj, sort=sort, max_docs=max_docs, refresh=refresh)
         return success
 
-    def delete_by_search_object(self, query: dict, sort=None, max_docs=None, refresh=None):
+    def delete_by_search_object(self: Self, query: dict, sort=None, max_docs=None, refresh=None):
         """Delete the underlying documents matching the query object.
         Returns true if the documents were in fact properly deleted.
 
@@ -1464,7 +1495,7 @@ class ESCollection(Generic[ModelType]):
         )
         return info.get("deleted", 0) != 0
 
-    def _create_scripts_from_operations(self, operations):
+    def _create_scripts_from_operations(self: Self, operations):
         op_sources = []
         op_params = {}
         val_id = 0
@@ -1525,7 +1556,7 @@ class ESCollection(Generic[ModelType]):
             "params": op_params,
         }
 
-    def _validate_operations(self, operations):
+    def _validate_operations(self: Self, operations: list[OdmUpdateOperation]):
         """Validate the different operations received for a partial update
 
         TODO: When the field is of type Mapping, the validation/check only works for depth 1. A full recursive
@@ -1595,7 +1626,7 @@ class ESCollection(Generic[ModelType]):
 
         return ret_ops
 
-    def update(self, key, operations, version=None, refresh=None):
+    def update(self: Self, key, operations, version=None, refresh=None):
         """This function performs an atomic update on some fields from the
         underlying documents referenced by the id using a list of operations.
 
@@ -1653,7 +1684,15 @@ class ESCollection(Generic[ModelType]):
 
         return False
 
-    def update_by_query(self, query, operations, filters=None, access_control=None, max_docs=None, refresh=None):
+    def update_by_query(
+        self: Self,
+        query: str,
+        operations: list[OdmUpdateOperation],
+        filters: list[str] | None = None,
+        access_control: str | None = None,
+        max_docs: int | None = None,
+        refresh: Literal["true", "false", "wait_for"] | None = None,
+    ) -> int:
         """This function performs an atomic update on some fields from the
         underlying documents matching the query and the filters using a list of operations.
 
@@ -1695,7 +1734,7 @@ class ESCollection(Generic[ModelType]):
 
         return res["updated"]
 
-    def _expand_fl(self, fl: str) -> str:
+    def _expand_fl(self: Self, fl: str) -> str:
         """Expand wildcard patterns in a field list string using the model's flat_fields.
 
         For each comma-separated entry in `fl`, if the entry contains a `*`, it is treated
@@ -1717,7 +1756,7 @@ class ESCollection(Generic[ModelType]):
         patterns = [p.strip() for p in fl.split(",") if p.strip()]
         return ",".join(sorted(expand_field_patterns(self.model_class, patterns, preserve_all=True)))
 
-    def _format_output(self, result, fields=None, as_obj=True):
+    def _format_output(self: Self, result, fields=None, as_obj=True):
         # Getting search document data
         extra_fields = result.get("fields", {})
         source_data = result.pop("_source", None)
@@ -1761,7 +1800,7 @@ class ESCollection(Generic[ModelType]):
 
         return prune(source_data, fields, self.stored_fields, mapping_class=Mapping)
 
-    def _search(self, args=None, deep_paging_id=None, track_total_hits=None):
+    def _search(self: Self, args=None, deep_paging_id=None, track_total_hits=None):
         if args is None:
             args = []
 
@@ -1927,7 +1966,7 @@ class ESCollection(Generic[ModelType]):
 
     @overload
     def search(
-        self,
+        self: Self,
         query: str | None,
         as_obj: Literal[True] = True,
         offset: int = 0,
@@ -1946,7 +1985,7 @@ class ESCollection(Generic[ModelType]):
 
     @overload
     def search(
-        self,
+        self: Self,
         query: str | None,
         as_obj: Literal[False],
         offset: int = 0,
@@ -1965,7 +2004,7 @@ class ESCollection(Generic[ModelType]):
 
     @overload
     def search(
-        self,
+        self: Self,
         query: str | None,
         as_obj: Literal[True] = True,
         offset: int = 0,
@@ -1984,7 +2023,7 @@ class ESCollection(Generic[ModelType]):
 
     @overload
     def search(
-        self,
+        self: Self,
         query: str | None,
         as_obj: Literal[False],
         offset: int = 0,
@@ -2002,7 +2041,7 @@ class ESCollection(Generic[ModelType]):
     ) -> AggSearchResult[dict[str, typing.Any]]: ...
 
     def search(
-        self,
+        self: Self,
         query,
         as_obj=True,
         offset=0,
@@ -2155,11 +2194,11 @@ class ESCollection(Generic[ModelType]):
 
     @overload
     def stream_search(
-        self,
+        self: Self,
         query: str,
         fl: str | None = None,
         filters: list[str] | str | None = None,
-        access_control: typing.Any = None,
+        access_control: str | None = None,
         item_buffer_size: int = 200,
         *,
         as_obj: Literal[True] = True,
@@ -2167,24 +2206,24 @@ class ESCollection(Generic[ModelType]):
 
     @overload
     def stream_search(
-        self,
+        self: Self,
         query: str,
         fl: str | None = None,
         filters: list[str] | str | None = None,
-        access_control: typing.Any = None,
+        access_control: str | None = None,
         item_buffer_size: int = 200,
         *,
         as_obj: Literal[False],
     ) -> typing.Generator[dict[str, typing.Any], None, None]: ...
 
     def stream_search(
-        self,
-        query,
-        fl=None,
-        filters=None,
-        access_control=None,
-        item_buffer_size=200,
-        as_obj=True,
+        self: Self,
+        query: str,
+        fl: str | None = None,
+        filters: list[str] | str | None = None,
+        access_control: str | None = None,
+        item_buffer_size: int = 200,
+        as_obj: bool = True,
     ):
         """This function should perform a search through the datastore and stream
         all related results as a dictionary of key value pair where each keys
@@ -2216,9 +2255,10 @@ class ESCollection(Generic[ModelType]):
         if access_control:
             filters.append(access_control)
 
+        source = list(self.stored_fields.keys())
         if fl:
             fl = self._expand_fl(fl)
-            fl = fl.split(",")
+            source = fl.split(",")
 
         query_expression = {
             "bool": {
@@ -2232,7 +2272,6 @@ class ESCollection(Generic[ModelType]):
             }
         }
         sort = parse_sort(self.datastore.DEFAULT_SORT)
-        source = fl or list(self.stored_fields.keys())
 
         for value in self.scan_with_retry(
             query=query_expression,
@@ -2245,7 +2284,7 @@ class ESCollection(Generic[ModelType]):
             yield self._format_output(value, fl, as_obj=as_obj)
 
     def raw_eql_search(
-        self,
+        self: Self,
         eql_query: str,
         fl: Optional[str] = None,
         filters: Optional[Union[list[str], str]] = None,
@@ -2311,7 +2350,7 @@ class ESCollection(Generic[ModelType]):
         except Exception as error:
             raise SearchException(f"collection: {self.name}, error: {str(error)}")
 
-    def keys(self, access_control=None):
+    def keys(self: Self, access_control=None):
         """This function streams the keys of all the documents of this collection.
 
         :param access_control: access control parameter to limit the scope of the key scan
@@ -2331,7 +2370,7 @@ class ESCollection(Generic[ModelType]):
                 else:
                     yield value
 
-    def _validate_steps_count(self, start, end, gap):
+    def _validate_steps_count(self: Self, start, end, gap):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
 
@@ -2375,7 +2414,7 @@ class ESCollection(Generic[ModelType]):
             return ret_type
 
     def count(
-        self,
+        self: Self,
         query,
         filters,
         access_control=None,
@@ -2414,7 +2453,7 @@ class ESCollection(Generic[ModelType]):
         return ret_data
 
     def histogram(
-        self,
+        self: Self,
         field,
         start,
         end,
@@ -2470,7 +2509,7 @@ class ESCollection(Generic[ModelType]):
         }
 
     def facet(
-        self,
+        self: Self,
         field,
         query=None,
         prefix=None,
@@ -2521,7 +2560,7 @@ class ESCollection(Generic[ModelType]):
         }
 
     def stats(
-        self,
+        self: Self,
         field,
         query="id:*",
         filters=None,
@@ -2553,7 +2592,7 @@ class ESCollection(Generic[ModelType]):
         return result["aggregations"][f"{field}_stats"]
 
     def grouped_search(
-        self,
+        self: Self,
         group_field,
         query="id:*",
         offset=0,
@@ -2633,7 +2672,7 @@ class ESCollection(Generic[ModelType]):
         except KeyError:
             return ds_type.lower()
 
-    def fields(self, skip_mapping_children=False):
+    def fields(self: Self, skip_mapping_children=False):
         """
         This function should return all the fields in the index with their types
         """
@@ -2743,7 +2782,7 @@ class ESCollection(Generic[ModelType]):
         else:
             return True
 
-    def _create_ilm_policy(self, ilm_config):
+    def _create_ilm_policy(self: Self, ilm_config):
         """Create or update the ILM policy for this collection.
 
         Builds an ILM policy with hot (rollover), optional warm (forcemerge),
@@ -2795,7 +2834,7 @@ class ESCollection(Generic[ModelType]):
         )
         logger.info("ILM policy %s_policy created/updated", self.name)
 
-    def _create_index_template(self, ilm_config):
+    def _create_index_template(self: Self, ilm_config):
         """Create or update a composable index template for ILM-managed rollover.
 
         The template matches '{name}-*' and includes the full ODM mappings
@@ -2869,7 +2908,7 @@ class ESCollection(Generic[ModelType]):
 
         return mappings
 
-    def __get_possible_fields(self, field):
+    def __get_possible_fields(self: Self, field):
         field_types = [field.__name__.lower()]
         if field.__bases__[0] != _Field:
             field_types.extend(self.__get_possible_fields(field.__bases__[0]))
@@ -2879,7 +2918,7 @@ class ESCollection(Generic[ModelType]):
 
         return field_types
 
-    def _check_fields(self, model=None):
+    def _check_fields(self: Self, model=None):
         if not self.validate:
             return
 
@@ -3169,7 +3208,7 @@ class ESCollection(Generic[ModelType]):
 
         self._check_fields()
 
-    def _add_fields(self, missing_fields: Dict):
+    def _add_fields(self: Self, missing_fields: Dict):
         no_fix = []
         properties = {}
         for name, field in missing_fields.items():

@@ -10,6 +10,7 @@ from passlib.hash import bcrypt
 from howler.common.exceptions import HowlerValueError, InvalidClassification
 from howler.common.logging import get_logger
 from howler.config import CLASSIFICATION, config
+from howler.datastore.operations import OdmUpdateOperation
 from howler.odm.base import ClassificationObject
 
 if TYPE_CHECKING:
@@ -20,7 +21,7 @@ logger = get_logger(__file__)
 
 
 def is_classification_accessible(
-    user: "User",
+    user: "User | None",
     classification: str | ClassificationObject | None,
 ) -> bool:
     """Check whether a user can access a document at the given classification.
@@ -40,6 +41,9 @@ def is_classification_accessible(
     Returns:
         True if the user can access the document, False otherwise.
     """
+    if user is None:
+        return True
+
     if classification is None:
         return True
 
@@ -80,7 +84,7 @@ PROTECTED_UPDATE_FIELDS = frozenset(
 )
 
 
-def validate_bulk_operation_targets(operations: Iterable[tuple[str, str, Any]]) -> None:
+def validate_bulk_operation_targets(operations: Iterable[tuple[str, str, Any] | OdmUpdateOperation]) -> None:
     """Reject bulk update operations that target protected fields.
 
     Bulk update endpoints execute operations as datastore scripts, which bypass

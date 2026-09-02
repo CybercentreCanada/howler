@@ -4,7 +4,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from howler.common.exceptions import (
-    CaseAccessException,
     HowlerValueError,
     InvalidDataException,
     NotFoundException,
@@ -50,7 +49,7 @@ class TestAccessValidation:
             {"case_id": "case-001", "title": "T", "summary": "S", "classification": "RESTRICTED"}
         )
 
-        with pytest.raises(CaseAccessException, match="Case case-001 does not exist"):
+        with pytest.raises(NotFoundException, match="Case case-001 does not exist"):
             case_service.get_case(
                 "case-001",
                 User(
