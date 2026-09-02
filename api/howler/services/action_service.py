@@ -3,6 +3,7 @@ from collections import defaultdict
 from importlib.util import find_spec
 from typing import Any, Optional, TypedDict
 
+from cryptography.exceptions import InvalidTag
 from flask import Response, has_request_context, request
 
 from howler import actions
@@ -142,18 +143,25 @@ def process_action_batch(trigger: str, items: list[TriggeredAction]) -> None:
 
     for item in items:
         uname = item.get("uname")
-        try:
-            auth_token = auth_service.decrypt_token(item.get("auth_token"))
-        except Exception:
-            logger.exception("Unable to decrypt queued authorization token for user=%s", uname)
-            auth_token = None
+        groups[(uname, item.get("auth_token"))].extend(item["hit_ids"])
 
-        groups[(uname, auth_token)].extend(item["hit_ids"])
-
-    for (uname, auth_token), hit_ids in groups.items():
+    for (uname, encrypted_auth_token), hit_ids in groups.items():
         # Deduplicate IDs within a batch group
         unique_ids = list(dict.fromkeys(hit_ids))
         query = f"howler.id:({' OR '.join(sanitize_lucene_query(h) for h in unique_ids)})"
+
+        try:
+            auth_token = auth_service.decrypt_token(encrypted_auth_token)
+        except InvalidTag:
+            logger.error(  # noqa: TRY400
+                "Queued authorization token for user=%s was encrypted with a different key. "
+                "Ensure all Howler instances sharing persistent Redis use the same system.encryption_key.",
+                uname,
+            )
+            auth_token = None
+        except Exception:
+            logger.exception("Unable to decrypt queued authorization token for user=%s", uname)
+            auth_token = None
 
         try:
             user = datastore().user.get(uname)
