@@ -1790,7 +1790,7 @@ class ESCollection(Generic[ModelType]):
                     source_data["_index"] = result["_index"]
 
         if isinstance(fields, str):
-            fields = [fields]
+            fields = fields.split(",")
 
         if source_data is not None and (fields is None or "*" in fields or "id" in fields):
             source_data["id"] = [item_id]

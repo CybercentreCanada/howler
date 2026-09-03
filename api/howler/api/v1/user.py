@@ -179,7 +179,7 @@ def get_user_account(username: str, user: User, record: User | None, server_vers
     if not record:
         return not_found(err=f"User {username} does not exist")
 
-    user_dict: dict[str, Any] = user.as_primitives()
+    user_dict: dict[str, Any] = record.as_primitives()
     user_dict["apikeys"] = [(k, []) for k in user_dict.get("apikeys", {}).keys()]
     user_dict["has_password"] = user_dict.pop("password", "") != ""
     user_dict["roles"] = user_dict.pop("type", [])

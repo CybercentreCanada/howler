@@ -158,7 +158,7 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
             obj.pop("howler.bundle_size", None)
             obj.pop("howler.bundles", None)
 
-            odm, warns = hit_service.convert_hit(obj, unique=True, ignore_extra_values=ignore_extra_values)
+            odm, warns = hit_service.convert_hit(obj, unique=True, user=user, ignore_extra_values=ignore_extra_values)
 
             if is_bundle:
                 if bundle_id is not None:

@@ -8,6 +8,7 @@ from flask import Flask, Response
 from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.odm import Model
+from howler.odm.models.case import Case
 from howler.odm.models.user import User
 from howler.odm.randomizer import random_model_obj
 
@@ -30,6 +31,12 @@ def _build_user(user_type: list[str] | None = None) -> User:
     user_data.api_quota = 1000
 
     return user_data
+
+
+def _build_case(case_id: str = "case-001") -> Case:
+    case = Case({"case_id": case_id, "title": "Test Case", "summary": "S"})
+    object.__setattr__(case, "save", MagicMock())
+    return case
 
 
 def _mock_auth(mock_auth_service, user, priv=None):
@@ -70,14 +77,16 @@ class TestGetCase:
         ):
             from howler.api.v2.case import get_case
 
-            result: Response = get_case("case-001")
+            result: Response = get_case("case-001", record=case_data, user=user)
 
             assert result.status_code == 200
             body = result.get_json()
             assert body["api_response"]["case_id"] == "case-001"
             assert body["api_response"]["title"] == "Test Case"
             assert body["api_response"]["escalation"] == "crisis"
-            mock_case_service.get_case.assert_called_once_with("case-001", user)
+            mock_case_service.filter_case_items_by_classification.assert_called_once_with(
+                case_data, user.classification
+            )
 
     @patch("howler.services.case_service.datastore")
     @patch("howler.api.v2.case.case_service")
@@ -94,10 +103,10 @@ class TestGetCase:
         ):
             from howler.api.v2.case import get_case
 
-            result: Response = get_case(id="nonexistent")
+            result: Response = get_case("nonexistent", record=None, user=user)
 
             assert result.status_code == 404
-            mock_case_service.get_case.assert_called_once_with("nonexistent", user)
+            mock_case_service.filter_case_items_by_classification.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -161,7 +170,7 @@ class TestDeleteCases:
         _mock_auth(mock_auth_service, user, ["R", "W"])
 
         mock_datastore.return_value.case.exists.return_value = False
-        mock_case_service.delete_cases.side_effect = NotFoundException("Case id(s) nonexistent do not exist.")
+        mock_case_service.delete_cases.return_value = False
 
         with request_context.test_request_context(
             method="DELETE",
@@ -172,7 +181,7 @@ class TestDeleteCases:
 
             result: Response = delete_cases(user=user)
 
-            assert result.status_code == 404
+            assert result.status_code == 204
             mock_case_service.delete_cases.assert_called_once_with(["nonexistent"], refresh=None, user=user)
 
     @patch("howler.api.v2.case.case_service")
@@ -225,7 +234,9 @@ class TestCreateCaseEndpoint:
             assert result.status_code == 201
             body = result.get_json()
             assert body["api_response"]["case_id"] == "case-new-case"
-            mock_case_service.create_case.assert_called_once_with({"title": "New Case", "summary": "S"}, user)
+            mock_case_service.create_case.assert_called_once_with(
+                {"title": "New Case", "summary": "S"}, refresh=None, user=user
+            )
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
@@ -379,6 +390,7 @@ class TestAppendItemEndpoint:
         mock_datastore.return_value.__getitem__.return_value.get.return_value = {"classification": "UNRESTRICTED"}
 
         mock_case_service.append_case_item.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
+        record = _build_case()
 
         with request_context.test_request_context(
             method="POST",
@@ -387,10 +399,11 @@ class TestAppendItemEndpoint:
         ):
             from howler.api.v2.case import append_item
 
-            result: Response = append_item("case-001", user=user)
+            result: Response = append_item("case-001", user=user, record=record)
 
             assert result.status_code == 200
             mock_case_service.append_case_item.assert_called_once()
+            record.save.assert_not_called()
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
@@ -410,6 +423,7 @@ class TestAppendItemEndpoint:
 
         mock_case_service.get_parent_from_path.return_value = resolved_parent
         mock_case_service.append_case_item.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
+        record = _build_case()
 
         with request_context.test_request_context(
             method="POST",
@@ -418,14 +432,15 @@ class TestAppendItemEndpoint:
         ):
             from howler.api.v2.case import append_item
 
-            result: Response = append_item("case-001", user=user)
+            result: Response = append_item("case-001", user=user, record=record)
 
             assert result.status_code == 200
             mock_case_service.append_case_item.assert_called_once()
-            appended_item = mock_case_service.append_case_item.call_args.kwargs["item"]
-            assert appended_item.parent is None
+            appended_item = mock_case_service.append_case_item.call_args.args[1]
+            assert appended_item.parent == "folder-123"
             assert appended_item.name == "Example"
-            assert mock_case_service.append_case_item.call_args.kwargs["path"] == "refs/external"
+            assert "path" not in mock_case_service.append_case_item.call_args.kwargs
+            record.save.assert_called_once_with(refresh=None, version=None)
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
@@ -449,12 +464,12 @@ class TestAppendItemEndpoint:
         ):
             from howler.api.v2.case import append_item
 
-            result: Response = append_item("case-001", user=user)
+            result: Response = append_item("case-001", user=user, record=_build_case())
 
             assert result.status_code == 200
             mock_case_service.get_parent_from_path.assert_not_called()
 
-            appended_item = mock_case_service.append_case_item.call_args.kwargs["item"]
+            appended_item = mock_case_service.append_case_item.call_args.args[1]
             assert appended_item.parent == "folder-456"
             assert appended_item.name == "Example"
 
@@ -473,7 +488,7 @@ class TestAppendItemEndpoint:
         ):
             from howler.api.v2.case import append_item
 
-            result: Response = append_item("case-001", user=user)
+            result: Response = append_item("case-001", user=user, record=_build_case())
 
             assert result.status_code == 400
             mock_case_service.append_case_item.assert_not_called()
@@ -498,7 +513,7 @@ class TestAppendItemEndpoint:
         ):
             from howler.api.v2.case import append_item
 
-            result: Response = append_item("case-001", user=user)
+            result: Response = append_item("case-001", user=user, record=_build_case())
 
             assert result.status_code == 400
             assert missing_field in result.get_json()["api_error_message"]
@@ -520,10 +535,10 @@ class TestAppendItemEndpoint:
         ):
             from howler.api.v2.case import append_item
 
-            result: Response = append_item("case-001", user=user)
+            result: Response = append_item("case-001", user=user, record=_build_case())
 
             assert result.status_code == 400
-            assert result.get_json()["api_error_message"] == "CaseItem 'name' is required"
+            assert result.get_json()["api_error_message"] == "Field 'name' is required"
             mock_case_service.append_case_item.assert_not_called()
 
     @patch("howler.api.v2.case.case_service")
@@ -549,7 +564,7 @@ class TestAppendItemEndpoint:
         ):
             from howler.api.v2.case import append_item
 
-            result: Response = append_item("case-001", user=user)
+            result: Response = append_item("case-001", user=user, record=_build_case())
 
             assert result.status_code == 500
 
@@ -574,7 +589,7 @@ class TestAppendItemEndpoint:
         ):
             from howler.api.v2.case import append_item
 
-            result: Response = append_item("case-001", user=user)
+            result: Response = append_item("case-001", user=user, record=_build_case())
 
             assert result.status_code == 400
 
@@ -671,7 +686,7 @@ class TestHideCasesEndpoint:
             {"case_id": case_id, "title": "T", "summary": "S"} if case_id == "case-001" else None
         )
 
-        mock_case_service.hide_cases.side_effect = NotFoundException("Case id(s) nonexistent do not exist.")
+        mock_case_service.hide_cases.return_value = None
 
         with request_context.test_request_context(
             method="POST",
@@ -682,7 +697,7 @@ class TestHideCasesEndpoint:
 
             result: Response = hide_cases(user=user)
 
-            assert result.status_code == 404
+            assert result.status_code == 204
             mock_case_service.hide_cases.assert_called_once_with(["case-001", "nonexistent"], user=user, refresh=None)
 
     @patch("howler.services.case_service.datastore")
@@ -696,7 +711,7 @@ class TestHideCasesEndpoint:
         _mock_auth(mock_auth_service, user)
 
         mock_datastore.return_value.case.get.return_value = None
-        mock_case_service.hide_cases.side_effect = NotFoundException("Case id(s) ghost-1, ghost-2 do not exist.")
+        mock_case_service.hide_cases.return_value = None
 
         with request_context.test_request_context(
             method="POST",
@@ -707,7 +722,7 @@ class TestHideCasesEndpoint:
 
             result: Response = hide_cases(user=user)
 
-            assert result.status_code == 404
+            assert result.status_code == 204
             mock_case_service.hide_cases.assert_called_once_with(["ghost-1", "ghost-2"], user=user, refresh=None)
 
 
@@ -737,12 +752,13 @@ class TestDeleteItemEndpoint:
         ):
             from howler.api.v2.case import delete_item
 
-            result: Response = delete_item("case-001")
+            result: Response = delete_item("case-001", record=_build_case())
 
             assert result.status_code == 200
-            mock_case_service.remove_case_items.assert_called_once_with(
-                "case-001", ["hit-001"], force=False, refresh=None, user=user
-            )
+            call = mock_case_service.remove_case_items.call_args
+            assert call.args[0].case_id == "case-001"
+            assert call.args[1] == ["hit-001"]
+            assert call.kwargs == {"force": False, "refresh": None, "version": None, "user": user}
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
@@ -764,12 +780,13 @@ class TestDeleteItemEndpoint:
         ):
             from howler.api.v2.case import delete_item
 
-            result: Response = delete_item("case-001")
+            result: Response = delete_item("case-001", record=_build_case())
 
             assert result.status_code == 200
-            mock_case_service.remove_case_items.assert_called_once_with(
-                "case-001", ["hit-001", "hit-002", "obs-003"], force=False, refresh=None, user=user
-            )
+            call = mock_case_service.remove_case_items.call_args
+            assert call.args[0].case_id == "case-001"
+            assert call.args[1] == ["hit-001", "hit-002", "obs-003"]
+            assert call.kwargs == {"force": False, "refresh": None, "version": None, "user": user}
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
@@ -786,7 +803,7 @@ class TestDeleteItemEndpoint:
         ):
             from howler.api.v2.case import delete_item
 
-            result: Response = delete_item("case-001")
+            result: Response = delete_item("case-001", record=_build_case())
 
             assert result.status_code == 400
             mock_case_service.remove_case_items.assert_not_called()
@@ -807,7 +824,7 @@ class TestDeleteItemEndpoint:
         ):
             from howler.api.v2.case import delete_item
 
-            result: Response = delete_item("case-001")
+            result: Response = delete_item("case-001", record=_build_case())
 
             assert result.status_code == 400
             mock_case_service.remove_case_items.assert_not_called()
@@ -828,7 +845,7 @@ class TestDeleteItemEndpoint:
         ):
             from howler.api.v2.case import delete_item
 
-            result: Response = delete_item("case-001")
+            result: Response = delete_item("case-001", record=_build_case())
 
             assert result.status_code == 400
             mock_case_service.remove_case_items.assert_not_called()
@@ -849,7 +866,7 @@ class TestDeleteItemEndpoint:
         ):
             from howler.api.v2.case import delete_item
 
-            result: Response = delete_item("case-001")
+            result: Response = delete_item("case-001", record=_build_case())
 
             assert result.status_code == 400
             mock_case_service.remove_case_items.assert_not_called()
@@ -878,12 +895,13 @@ class TestDeleteItemEndpoint:
         ):
             from howler.api.v2.case import delete_item
 
-            result: Response = delete_item("case-001")
+            result: Response = delete_item("case-001", record=_build_case())
 
-            assert result.status_code == 400
-            mock_case_service.remove_case_items.assert_called_once_with(
-                "case-001", ["missing-item"], force=False, refresh=None, user=user
-            )
+            assert result.status_code == 404
+            call = mock_case_service.remove_case_items.call_args
+            assert call.args[0].case_id == "case-001"
+            assert call.args[1] == ["missing-item"]
+            assert call.kwargs == {"force": False, "refresh": None, "version": None, "user": user}
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
@@ -907,7 +925,7 @@ class TestDeleteItemEndpoint:
         ):
             from howler.api.v2.case import delete_item
 
-            result: Response = delete_item("case-001")
+            result: Response = delete_item("case-001", record=_build_case())
 
             assert result.status_code == 400
 
@@ -933,7 +951,7 @@ class TestDeleteItemEndpoint:
         ):
             from howler.api.v2.case import delete_item
 
-            result: Response = delete_item("case-001")
+            result: Response = delete_item("case-001", record=_build_case())
 
             assert result.status_code == 500
 
@@ -951,7 +969,7 @@ class TestDeleteItemEndpoint:
         ):
             from howler.api.v2.case import delete_item
 
-            result: Response = delete_item("case-001")
+            result: Response = delete_item("case-001", record=_build_case())
 
             assert result.status_code == 400
             assert "force" in result.get_json()["api_error_message"]
@@ -971,7 +989,7 @@ class TestDeleteItemEndpoint:
         ):
             from howler.api.v2.case import delete_item
 
-            result: Response = delete_item("case-001")
+            result: Response = delete_item("case-001", record=_build_case())
 
             assert result.status_code == 400
             assert "strings" in result.get_json()["api_error_message"]
@@ -995,7 +1013,8 @@ class TestRenameItemEndpoint:
         _mock_auth(mock_auth_service, user)
         mock_datastore.return_value.case.get.return_value = {"case_id": "case-001", "title": "T"}
 
-        mock_case_service.rename_case_item.return_value = {"case_id": "case-001", "title": "Test"}
+        record = _build_case()
+        mock_case_service.rename_case_item.return_value = _build_case()
 
         with request_context.test_request_context(
             method="PUT",
@@ -1004,12 +1023,10 @@ class TestRenameItemEndpoint:
         ):
             from howler.api.v2.case import rename_item
 
-            result: Response = rename_item(case_id="case-001")
+            result: Response = rename_item("case-001", record=record)
 
             assert result.status_code == 200
-            mock_case_service.rename_case_item.assert_called_once_with(
-                "case-001", "item-uuid", "Renamed Item", refresh=None, user=user
-            )
+            mock_case_service.rename_case_item.assert_called_once_with(record, "item-uuid", "Renamed Item", user=user)
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
@@ -1026,7 +1043,7 @@ class TestRenameItemEndpoint:
         ):
             from howler.api.v2.case import rename_item
 
-            result: Response = rename_item(case_id="case-001")
+            result: Response = rename_item("case-001", record=_build_case())
 
             assert result.status_code == 400
             mock_case_service.rename_case_item.assert_not_called()
@@ -1045,7 +1062,7 @@ class TestRenameItemEndpoint:
         ):
             from howler.api.v2.case import rename_item
 
-            result: Response = rename_item(case_id="case-001")
+            result: Response = rename_item("case-001", record=_build_case())
 
             assert result.status_code == 400
             mock_case_service.rename_case_item.assert_not_called()
@@ -1068,7 +1085,7 @@ class TestRenameItemEndpoint:
         ):
             from howler.api.v2.case import rename_item
 
-            result: Response = rename_item(case_id="case-001")
+            result: Response = rename_item("case-001", record=_build_case())
 
             assert result.status_code == 400
             mock_case_service.rename_case_item.assert_not_called()
@@ -1095,9 +1112,9 @@ class TestRenameItemEndpoint:
         ):
             from howler.api.v2.case import rename_item
 
-            result: Response = rename_item(case_id="case-001")
+            result: Response = rename_item("case-001", record=_build_case())
 
-            assert result.status_code == 400
+            assert result.status_code == 404
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
@@ -1121,7 +1138,7 @@ class TestRenameItemEndpoint:
         ):
             from howler.api.v2.case import rename_item
 
-            result: Response = rename_item(case_id="case-001")
+            result: Response = rename_item("case-001", record=_build_case())
 
             assert result.status_code == 400
 
@@ -1147,7 +1164,7 @@ class TestRenameItemEndpoint:
         ):
             from howler.api.v2.case import rename_item
 
-            result: Response = rename_item(case_id="case-001")
+            result: Response = rename_item("case-001", record=_build_case())
 
             assert result.status_code == 500
 
@@ -1158,13 +1175,12 @@ class TestRenameItemEndpoint:
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
         """When 'parent' is present in the body, move_case_item is called."""
-        from howler.odm.models.case import Case
-
         user = _build_user()
         _mock_auth(mock_auth_service, user)
         mock_datastore.return_value.case.get.return_value = {"case_id": "case-001", "title": "T"}
+        record = _build_case()
 
-        mock_case_service.move_case_item.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
+        mock_case_service.move_case_item.return_value = _build_case()
 
         with request_context.test_request_context(
             method="PUT",
@@ -1173,12 +1189,10 @@ class TestRenameItemEndpoint:
         ):
             from howler.api.v2.case import rename_item
 
-            result: Response = rename_item(case_id="case-001")
+            result: Response = rename_item("case-001", record=record)
 
             assert result.status_code == 200
-            mock_case_service.move_case_item.assert_called_once_with(
-                "case-001", "item-uuid", "folder-abc", refresh=None, user=user
-            )
+            mock_case_service.move_case_item.assert_called_once_with(record, "item-uuid", "folder-abc", user=user)
             mock_case_service.rename_case_item.assert_not_called()
 
     @patch("howler.api.v2.case.case_service")
@@ -1196,7 +1210,7 @@ class TestRenameItemEndpoint:
         ):
             from howler.api.v2.case import append_item
 
-            result: Response = append_item("case-001", user=user)
+            result: Response = append_item("case-001", user=user, record=_build_case())
 
             assert result.status_code == 400
             mock_case_service.append_case_item.assert_not_called()

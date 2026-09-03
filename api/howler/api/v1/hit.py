@@ -111,7 +111,10 @@ def create_hits(user: User, refresh: Literal["true", "false", "wait_for"] | None
     warnings = []
     for hit in hits:
         try:
-            odm, _warnings = hit_service.convert_hit(hit, unique=True, ignore_extra_values=ignore_extra_values)
+            odm, _warnings = hit_service.convert_hit(
+                hit, unique=True, user=user, ignore_extra_values=ignore_extra_values
+            )
+
             response_body["valid"].append(odm.as_primitives())
             odms.append(odm)
             warnings.extend(_warnings)

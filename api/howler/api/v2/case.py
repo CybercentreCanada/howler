@@ -16,7 +16,7 @@ from howler.common.exceptions import (
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import DataStoreException
-from howler.odm.models.case import Case, CaseItem
+from howler.odm.models.case import Case, CaseItem, CaseItemTypes
 from howler.odm.models.user import User
 from howler.security.login import api_login
 from howler.services import case_service
@@ -262,6 +262,7 @@ def append_item(  # noqa: C901
             return bad_request(err=f"Field '{field}' is required")
 
     try:
+        item_type = body["type"]
         if path := body.pop("path", None):
             parent = case_service.get_parent_from_path(record, path, user=user)
 
@@ -269,7 +270,8 @@ def append_item(  # noqa: C901
 
         case_service.append_case_item(record, CaseItem(body), user=user)
 
-        record.save(refresh=refresh, version=server_version)
+        if item_type in (CaseItemTypes.REFERENCE, CaseItemTypes.MARKDOWN, CaseItemTypes.FOLDER):
+            record.save(refresh=refresh, version=server_version)
 
         case_service.filter_case_items_by_classification(record, user.classification)
 

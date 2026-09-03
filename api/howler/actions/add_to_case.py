@@ -93,8 +93,6 @@ def execute(  # noqa: C901
         except Exception as e:  # pragma: no cover
             skipped.append(f"{hit.howler.id}: {e}")
 
-    case.save(refresh="wait_for", version=version)
-
     if added:
         report.append(
             {

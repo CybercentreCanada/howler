@@ -95,7 +95,7 @@ class TestAddEtagWithGetter:
 
     def test_sets_etag_header_on_single_response(self, app):
         """When the wrapped function returns a single Response, the getter's version is used as ETag."""
-        mock_getter = lambda id, as_odm, version: ({"id": id}, "v1")  # noqa: E731
+        mock_getter = lambda id, as_odm, version, user=None: ({"id": id}, "v1")  # noqa: E731
 
         @add_etag(getter=mock_getter)
         def endpoint(id, **kwargs):
@@ -109,7 +109,7 @@ class TestAddEtagWithGetter:
 
     def test_sets_etag_from_tuple_with_new_version(self, app):
         """When the wrapped function returns (Response, new_version), the new_version is used as ETag."""
-        mock_getter = lambda id, as_odm, version: ({"id": id}, "v1")  # noqa: E731
+        mock_getter = lambda id, as_odm, version, user=None: ({"id": id}, "v1")  # noqa: E731
 
         @add_etag(getter=mock_getter)
         def endpoint(id, **kwargs):
@@ -123,7 +123,7 @@ class TestAddEtagWithGetter:
 
     def test_injects_server_version_kwarg(self, app):
         """The decorator passes server_version from the getter into the wrapped function."""
-        mock_getter = lambda id, as_odm, version: ({"id": id}, "v42")  # noqa: E731
+        mock_getter = lambda id, as_odm, version, user=None: ({"id": id}, "v42")  # noqa: E731
         captured = {}
 
         @add_etag(getter=mock_getter)
@@ -139,7 +139,7 @@ class TestAddEtagWithGetter:
     def test_caches_object_in_kwargs(self, app):
         """The decorator caches the fetched object under a key derived from the URL path."""
         obj = {"id": "123", "name": "test"}
-        mock_getter = lambda id, as_odm, version: (obj, "v1")  # noqa: E731
+        mock_getter = lambda id, as_odm, version, user=None: (obj, "v1")  # noqa: E731
         captured = {}
 
         @add_etag(getter=mock_getter)
@@ -154,7 +154,7 @@ class TestAddEtagWithGetter:
 
     def test_if_match_returns_304(self, app):
         """GET with If-Match matching the current version returns 304 Not Modified."""
-        mock_getter = lambda id, as_odm, version: ({"id": id}, "v1")  # noqa: E731
+        mock_getter = lambda id, as_odm, version, user=None: ({"id": id}, "v1")  # noqa: E731
 
         @add_etag(getter=mock_getter)
         def endpoint(id, **kwargs):
@@ -171,7 +171,7 @@ class TestAddEtagWithGetter:
 
     def test_if_match_mismatch_does_not_304(self, app):
         """GET with If-Match not matching the current version proceeds normally."""
-        mock_getter = lambda id, as_odm, version: ({"id": id}, "v2")  # noqa: E731
+        mock_getter = lambda id, as_odm, version, user=None: ({"id": id}, "v2")  # noqa: E731
 
         @add_etag(getter=mock_getter)
         def endpoint(id, **kwargs):
@@ -189,7 +189,7 @@ class TestAddEtagWithGetter:
 
     def test_if_match_does_not_304_when_getter_returns_no_object(self, app):
         """A matching ETag must not disclose an inaccessible or missing resource."""
-        mock_getter = lambda id, as_odm, version: (None, "create")  # noqa: E731
+        mock_getter = lambda id, as_odm, version, user=None: (None, "create")  # noqa: E731
 
         @add_etag(getter=mock_getter)
         def endpoint(id, **kwargs):
@@ -224,7 +224,7 @@ class TestAddEtagWithGetter:
 
     def test_check_if_match_false_skips_304(self, app):
         """When check_if_match=False, matching If-Match does not return 304."""
-        mock_getter = lambda id, as_odm, version: ({"id": id}, "v1")  # noqa: E731
+        mock_getter = lambda id, as_odm, version, user=None: ({"id": id}, "v1")  # noqa: E731
 
         @add_etag(getter=mock_getter, check_if_match=False)
         def endpoint(id, **kwargs):
@@ -241,7 +241,7 @@ class TestAddEtagWithGetter:
 
     def test_no_etag_on_409_response(self, app):
         """ETag header is not set on 409 Conflict responses."""
-        mock_getter = lambda id, as_odm, version: ({"id": id}, "v1")  # noqa: E731
+        mock_getter = lambda id, as_odm, version, user=None: ({"id": id}, "v1")  # noqa: E731
 
         @add_etag(getter=mock_getter)
         def endpoint(id, **kwargs):
@@ -254,7 +254,7 @@ class TestAddEtagWithGetter:
 
     def test_no_etag_on_400_response(self, app):
         """ETag header is not set on 400 Bad Request responses."""
-        mock_getter = lambda id, as_odm, version: ({"id": id}, "v1")  # noqa: E731
+        mock_getter = lambda id, as_odm, version, user=None: ({"id": id}, "v1")  # noqa: E731
 
         @add_etag(getter=mock_getter)
         def endpoint(id, **kwargs):
@@ -267,7 +267,7 @@ class TestAddEtagWithGetter:
 
     def test_no_etag_on_409_tuple_response(self, app):
         """ETag header is not set on 409 tuple responses."""
-        mock_getter = lambda id, as_odm, version: ({"id": id}, "v1")  # noqa: E731
+        mock_getter = lambda id, as_odm, version, user=None: ({"id": id}, "v1")  # noqa: E731
 
         @add_etag(getter=mock_getter)
         def endpoint(id, **kwargs):

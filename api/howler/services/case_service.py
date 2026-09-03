@@ -143,7 +143,8 @@ def create_case(
     for item in items:
         append_case_item(case, item=CaseItem(item), user=user)
 
-    case.save(refresh=refresh, version=CREATE_TOKEN)
+    if items:
+        case.save(refresh=refresh)
 
     comms_service.emit("cases", {"case": case.as_primitives()})
 

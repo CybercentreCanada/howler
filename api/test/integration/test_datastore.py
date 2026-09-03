@@ -502,7 +502,7 @@ def _test_streamsearch(c: ESCollection):
     processing large result sets efficiently. Tests that the stream returns
     expected documents with proper filtering and field selection.
     """
-    items = list(c.stream_search("classification_s:*", filters="lvl_i:400", fl="id,classification_s"))
+    items = list(c.stream_search("classification_s:*", filters="lvl_i:400", fl="id,classification_s", as_obj=False))
     assert len(items) > 0
     for item in items:
         assert item["id"][0] in test_map
