@@ -14,6 +14,7 @@ from howler.datastore.exceptions import SearchException
 from howler.odm.models.user import User
 from howler.odm.models.view import View
 from howler.security.login import api_login
+from howler.services import permission_service
 
 SUB_API = "view"
 view_api = make_subapi_blueprint(SUB_API, api_version=1)
@@ -209,6 +210,9 @@ def update_view(view_id: str, user: User, **kwargs):  # noqa: C901
     is_member = user.uname in [existing_view.owner, *existing_view.admins, *existing_view.members]
     if existing_view.type == "global" and not is_member and "admin" not in user.type:
         return forbidden(err="Only members of a view or global administrators can edit a global view.")
+
+    if "type" in new_data and not permission_service.can_change_visibility(existing_view, new_data["type"]):
+        return forbidden(err="You cannot change the visibility of a view while it is shared with other users.")
 
     try:
         if "query" in new_data:

@@ -99,6 +99,32 @@ def test_update_dossier(datastore: HowlerDatastore):
     assert dossier_service.update_dossier(existing_dossier_id, {"title": "test"}, user).title == "test"
 
 
+def test_update_dossier_rejects_visibility_change_for_shared_dossier(datastore: HowlerDatastore):
+    owner = datastore.user.search("uname:user")["items"][0]
+    dossier = Dossier(
+        {
+            "title": "Shared visibility test",
+            "query": "howler.hash:*",
+            "type": "global",
+            "owner": owner.uname,
+            "admins": ["huey"],
+            "leads": [],
+            "pivots": [],
+        }
+    )
+    datastore.dossier.save(dossier.dossier_id, dossier)
+    datastore.dossier.commit()
+
+    try:
+        with pytest.raises(ForbiddenException, match="visibility"):
+            dossier_service.update_dossier(dossier.dossier_id, {"type": "personal"}, owner)
+
+        assert datastore.dossier.get(dossier.dossier_id, as_obj=True).type == "global"
+    finally:
+        datastore.dossier.delete(dossier.dossier_id)
+        datastore.dossier.commit()
+
+
 def test_pivot_with_duplicates(datastore: HowlerDatastore):
     users = datastore.user.search("uname:*")["items"]
 

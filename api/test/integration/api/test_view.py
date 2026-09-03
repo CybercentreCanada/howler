@@ -134,6 +134,44 @@ def test_set_view(datastore: HowlerDatastore, login_session):
     assert updated_view.title == "new title thing"
 
 
+def test_visibility_change_rejected_for_shared_view(datastore: HowlerDatastore, user_sessions):
+    owner_session, host = user_sessions["user"]
+    member_session, _ = user_sessions["huey"]
+
+    member_uname = get_api_data(member_session, f"{host}/api/v1/user/whoami")["username"]
+    create_res = get_api_data(
+        owner_session,
+        f"{host}/api/v1/view/",
+        method="POST",
+        data=json.dumps({"title": "shared visibility test", "type": "global", "query": "howler.hash:*"}),
+    )
+    view_id = create_res["view_id"]
+
+    try:
+        get_api_data(
+            owner_session,
+            f"{host}/api/v1/view/{view_id}/permission",
+            method="PUT",
+            data=json.dumps({"privilege": "members", "user_ids": [member_uname]}),
+        )
+
+        for session in (owner_session, member_session):
+            with pytest.raises(APIError) as err:
+                get_api_data(
+                    session,
+                    f"{host}/api/v1/view/{view_id}/",
+                    method="PUT",
+                    data=json.dumps({"type": "personal"}),
+                )
+
+            assert "visibility" in str(err.value)
+
+        assert datastore.view.get(view_id, as_obj=True).type == "global"
+    finally:
+        datastore.view.delete(view_id)
+        datastore.view.commit()
+
+
 def test_set_view_error(datastore: HowlerDatastore, login_session):
     session, host = login_session
 

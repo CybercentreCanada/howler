@@ -15,7 +15,7 @@ from howler.common.logging import get_logger
 from howler.datastore.exceptions import SearchException
 from howler.odm.models.dossier import Dossier
 from howler.odm.models.user import User
-from howler.services import lucene_service
+from howler.services import lucene_service, permission_service
 
 logger = get_logger(__file__)
 
@@ -211,6 +211,9 @@ def update_dossier(  # noqa: C901
     is_member = user.uname in [existing_dossier.owner, *existing_dossier.admins, *existing_dossier.members]
     if existing_dossier.type == "global" and not is_member and "admin" not in user.type:
         raise ForbiddenException("Only the members of a dossier and administrators can edit a global dossier.")
+
+    if "type" in dossier_data and not permission_service.can_change_visibility(existing_dossier, dossier_data["type"]):
+        raise ForbiddenException("You cannot change the visibility of a dossier while it is shared with other users.")
 
     # Validate pivot configurations if they're being updated
     # Ensure no duplicate mapping keys exist within any pivot

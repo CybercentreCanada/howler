@@ -1,4 +1,5 @@
-from typing import Any, Literal, cast
+from collections.abc import Sequence
+from typing import Any, Literal, Protocol, cast
 
 from flask import request
 
@@ -7,6 +8,28 @@ from howler.common.loader import datastore
 from howler.odm.models.ownership import Ownership
 from howler.odm.models.permission_request import PermissionRequest
 from howler.odm.models.user import User
+
+
+class _VisibilityItem(Protocol):
+    @property
+    def owner(self) -> str: ...
+
+    @property
+    def type(self) -> str: ...
+
+    @property
+    def admins(self) -> Sequence[str]: ...
+
+    @property
+    def members(self) -> Sequence[str]: ...
+
+
+def can_change_visibility(existing_item: _VisibilityItem, requested_type: str) -> bool:
+    """Return whether a shared record can change its visibility."""
+    shared_users = set(existing_item.admins).union(existing_item.members)
+    shared_users.discard(existing_item.owner)
+
+    return requested_type == existing_item.type or not shared_users
 
 
 def _is_allowed_to_change(level_requested: str, user: User, existing_item: Ownership) -> bool:
@@ -25,9 +48,14 @@ def _build_permissions_request() -> PermissionRequest:
         raise InvalidDataException("Request body must be a JSON object.")
 
     try:
-        return PermissionRequest(payload)
+        permission_request = PermissionRequest(payload)
     except ValueError as e:
         raise InvalidDataException(message=str(e))
+
+    if not permission_request.user_ids:
+        raise InvalidDataException("user_ids must contain at least one user.")
+
+    return permission_request
 
 
 def give_privilege(

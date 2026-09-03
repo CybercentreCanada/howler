@@ -76,6 +76,27 @@ def test_is_allowed_to_change_allows_owner_and_local_admin_updates():
     assert permission_service._is_allowed_to_change("members", make_user("admin"), ownership)
 
 
+@pytest.mark.parametrize("privilege", ["admins", "members"])
+def test_can_change_visibility_rejects_shared_records(privilege):
+    record = SimpleNamespace(owner="owner", type="global", admins=[], members=[])
+    getattr(record, privilege).append("shared-user")
+
+    assert not permission_service.can_change_visibility(record, "personal")
+
+
+def test_can_change_visibility_allows_unshared_records():
+    record = SimpleNamespace(owner="owner", type="global", admins=[], members=[])
+
+    assert permission_service.can_change_visibility(record, "personal")
+    assert permission_service.can_change_visibility(record, "global")
+
+
+def test_can_change_visibility_allows_owner_only_permissions():
+    record = SimpleNamespace(owner="owner", type="global", admins=["owner"], members=["owner"])
+
+    assert permission_service.can_change_visibility(record, "personal")
+
+
 def test_build_permissions_request_returns_valid_payload(app):
     with app.test_request_context(json={"privilege": "members", "user_ids": ["analyst"]}):
         permission_request = permission_service._build_permissions_request()
@@ -99,6 +120,30 @@ def test_build_permissions_request_maps_model_validation_errors(app, monkeypatch
     with app.test_request_context(json={"privilege": "members", "user_ids": ["analyst"]}):
         with pytest.raises(InvalidDataException, match="invalid payload"):
             permission_service._build_permissions_request()
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"privilege": "members", "user_ids": []},
+        {"privilege": "members"},
+    ],
+)
+def test_build_permissions_request_rejects_empty_user_ids(app, payload):
+    with app.test_request_context(json=payload):
+        with pytest.raises(InvalidDataException, match="at least one user"):
+            permission_service._build_permissions_request()
+
+
+@pytest.mark.parametrize("operation", [permission_service.give_privilege, permission_service.remove_privilege])
+def test_permission_operations_reject_empty_user_ids(app, monkeypatch, operation):
+    collection, _ = mock_datastore(monkeypatch, DummyOwnership(members=["analyst"]))
+
+    with app.test_request_context(json={"privilege": "members", "user_ids": []}):
+        with pytest.raises(InvalidDataException, match="at least one user"):
+            operation("dummy-id", make_user(), DummyOwnership)
+
+    collection.save.assert_not_called()
 
 
 def test_give_privilege_rejects_missing_object(app, monkeypatch):
