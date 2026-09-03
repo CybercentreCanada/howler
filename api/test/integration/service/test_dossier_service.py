@@ -89,6 +89,23 @@ def test_update_dossier_fails(datastore: HowlerDatastore):
     with pytest.raises(InvalidDataException) as exc:
         dossier_service.update_dossier(existing_dossier.dossier_id, {"test": "TEST"}, user)
 
+    with pytest.raises(InvalidDataException):
+        dossier_service.update_dossier(
+            existing_dossier.dossier_id,
+            {
+                "pivots": [
+                    {
+                        "label": {"en": "Bad Pivot", "fr": "Pivot invalide"},
+                        "format": "link",
+                        "value": "pivot.value",
+                        "mappings": [],
+                        "group": "//",
+                    }
+                ]
+            },
+            user,
+        )
+
     assert exc.match("can be updated")
 
 
@@ -344,6 +361,36 @@ def test_get_matching_dossiers_with_lucene_service_mock(datastore: HowlerDatasto
         assert mock_match.call_count == 2  # Should be called for mock_1 and mock_2
         mock_match.assert_any_call("always_match_query", test_hit)
         mock_match.assert_any_call("never_match_query", test_hit)
+
+
+@pytest.mark.parametrize("invalid_char", ["{", "}", '"', "\\", "@", "#", "$", "%", "^", "&", "*", "(", ")", "//"])
+def test_validate_group_name_invalid_characters(invalid_char):
+    test_path = f"Lond{invalid_char}on/Montréal"
+    with pytest.raises(InvalidDataException):
+        dossier_service.validate_group(test_path)
+
+
+@pytest.mark.parametrize("invalid_type", [1, ["s"], {"test": "test"}, True])
+def test_validate_group_name_invalid_type(invalid_type: Any):
+    with pytest.raises(TypeError):
+        dossier_service.validate_group(invalid_type)
+
+
+@pytest.mark.parametrize(
+    "valid_group",
+    ["0", "London/Montréal", "banana/Château/argent", "bread", "àâæçéèêëïîôœ/ÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ"],
+)
+def test_validate_group_name_valid_path(valid_group: str):
+    """Verify valid group path for the function validate_group_name"""
+    dossier_service.validate_group(valid_group)
+
+
+@pytest.mark.parametrize(
+    "invalid_path", ["/////", "London//Montréal", "/London", "London/", "London/pivot/Something", "pivot"]
+)
+def test_validate_group_name_invalid_paths(invalid_path):
+    with pytest.raises(InvalidDataException):
+        dossier_service.validate_group(invalid_path)
 
 
 @patch("howler.services.dossier_service.datastore")

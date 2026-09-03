@@ -1,9 +1,8 @@
 import json
-import random
 from datetime import datetime, timedelta
 from hashlib import md5
 from math import ceil
-from random import choice, randint, sample
+from random import choice, choices, gauss, randint, random, sample
 from typing import Any, cast
 
 from howler.common.logging import get_logger
@@ -55,13 +54,13 @@ def generate_useful_hit(  # noqa: C901
     if CLASSIFICATION.enforce:
         hit.classification = CLASSIFICATION.UNRESTRICTED
 
-    rand_seed = random.random()
+    rand_seed = random()
 
     timestamp = datetime.now() - timedelta(
         days=round(rand_seed * 30),
-        hours=min(max(round(random.gauss(14, 3)), 0), 23),
-        minutes=random.randint(0, 59),
-        seconds=random.randint(0, 59),
+        hours=min(max(round(gauss(14, 3)), 0), 23),
+        minutes=randint(0, 59),
+        seconds=randint(0, 59),
     )
 
     hit.event.created = timestamp.isoformat() + "Z"
@@ -251,7 +250,7 @@ def generate_useful_hit(  # noqa: C901
                     "icon": app["name"],
                 }
             )
-            for app in random.choices(APPS, k=5)
+            for app in choices(APPS, k=5)
         )
     except IndexError:
         pass
@@ -362,13 +361,13 @@ def generate_useful_event(  # noqa: C901
     "Create a random, useful/cogent event for synthetic data"
     event: Event = random_model_obj(cast(Model, Event))
 
-    rand_seed = random.random()
+    rand_seed = random()
 
     timestamp = datetime.now() - timedelta(
         days=round(rand_seed * 30),
-        hours=min(max(round(random.gauss(14, 3)), 0), 23),
-        minutes=random.randint(0, 59),
-        seconds=random.randint(0, 59),
+        hours=min(max(round(gauss(14, 3)), 0), 23),
+        minutes=randint(0, 59),
+        seconds=randint(0, 59),
     )
 
     event.event.created = timestamp.isoformat() + "Z"
@@ -518,6 +517,7 @@ def generate_useful_dossier(users: list[User]) -> Dossier:
                     "label": {"en": get_random_word(), "fr": get_random_word()},
                     "value": f"https://google.com/search?q={{{{test{i}}}}} and {{{{custom_value}}}}",
                     "format": "link",
+                    "group": choice(["", "parent/child", "test/group"]),
                     "mappings": [
                         {"key": f"test{i}", "field": choice(list(Hit.flat_fields().keys()))},
                         {"key": "custom_value", "field": "custom", "custom_value": get_random_word()},

@@ -1,3 +1,5 @@
+import { AppAccessibilityProvider } from '@tui/a11y';
+import { AppSwitcherProvider, useAppSwitcher } from '@tui/apps';
 import {
   AppProvider,
   AppRoot,
@@ -7,8 +9,6 @@ import {
   useAppLayout,
   useAppUser
 } from '@tui/core';
-import { AppAccessibilityProvider } from '@tui/a11y';
-import { AppSwitcherProvider, useAppSwitcher } from '@tui/apps';
 import { AppDrawerProvider as TuiAppDrawerProvider } from '@tui/drawer';
 
 import type {
@@ -49,8 +49,8 @@ import {
 } from '@mui/icons-material';
 import api from 'api';
 import Modal from 'components/elements/display/Modal';
-import useMyApi from 'components/hooks/useMyApi';
 import { useMyAccessibility } from 'components/hooks/useMyAccessibility';
+import useMyApi from 'components/hooks/useMyApi';
 import { APP_COOKIES_DEFAULTS } from 'components/hooks/useMyCookies';
 import useMyLocalStorage from 'components/hooks/useMyLocalStorage';
 import useMyPreferences from 'components/hooks/useMyPreferences';
@@ -135,6 +135,7 @@ import LocalStorageProvider from './providers/LocalStorageProvider';
 import ModalProvider from './providers/ModalProvider';
 import OverviewProvider from './providers/OverviewProvider';
 import ParameterProvider from './providers/ParameterProvider';
+import PivotGroupProvider from './providers/PivotGroupProvider';
 import RecordProvider from './providers/RecordProvider';
 import RecordSearchProvider from './providers/RecordSearchProvider';
 import SocketProvider from './providers/SocketProvider';
@@ -294,10 +295,12 @@ const AppProviderWrapper = () => {
               <TuiAppDrawerProvider>
                 <AppAccessibilityProvider preferences={myAccessibility.preferences} features={myAccessibility.features}>
                   <AppSwitcherProvider>
-                    <MyAppProvider>
-                      <MyApp />
-                      <Modal />
-                    </MyAppProvider>
+                    <PivotGroupProvider>
+                      <MyAppProvider>
+                        <MyApp />
+                        <Modal />
+                      </MyAppProvider>
+                    </PivotGroupProvider>
                   </AppSwitcherProvider>
                 </AppAccessibilityProvider>
               </TuiAppDrawerProvider>
