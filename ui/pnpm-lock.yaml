@@ -48,8 +48,8 @@ importers:
         specifier: ^3.8.0
         version: 3.8.0(@jsonforms/core@3.8.0)(react@19.2.8)
       '@microlink/react-json-view':
-        specifier: ^1.31.30
-        version: 1.31.30(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: ^1.31.31
+        version: 1.31.31(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@monaco-editor/react':
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.49.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -1029,8 +1029,8 @@ packages:
   '@mermaid-js/parser@1.2.1':
     resolution: {integrity: sha512-n12NohV3mrUyUL2o93IgG/ifeW9FTyeJn3zDxkhwa8MJ9Fxg3HQMlA3RiGmD/3UnJvheztkjjQAjA2T4LmUcpw==}
 
-  '@microlink/react-json-view@1.31.30':
-    resolution: {integrity: sha512-nSuAgthraCkorZfEi9LFop2cmb4CeHPGSyOJEh7Uc58ihvvzrOImesfw+CZ/YDDtjwDNzAZSFfxFOo/RBTWYCg==}
+  '@microlink/react-json-view@1.31.31':
+    resolution: {integrity: sha512-3nezZich418AXPZgbOHkhWcHvE8F9y8RGoFV6x4FX/DU3KGMxm1j9olmkaRcKlLcc38jWMbb/p53nDD7isX13g==}
     engines: {node: '>=17'}
     peerDependencies:
       react: '>= 15'
@@ -5198,7 +5198,7 @@ snapshots:
       '@jsonforms/core': 3.8.0
       '@jsonforms/material-renderers': 3.8.0(566d409d07fa142e246dd0ce8574a111)
       '@jsonforms/react': 3.8.0(@jsonforms/core@3.8.0)(react@19.2.8)
-      '@microlink/react-json-view': 1.31.30(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@microlink/react-json-view': 1.31.31(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@mui/lab': 5.0.0-alpha.177(@emotion/react@11.14.0(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@mui/material': 7.3.11(@emotion/react@11.14.0(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@testing-library/user-event': 14.6.6(@testing-library/dom@10.4.1)
@@ -5933,7 +5933,7 @@ snapshots:
     dependencies:
       '@chevrotain/types': 11.1.2
 
-  '@microlink/react-json-view@1.31.30(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@microlink/react-json-view@1.31.31(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       react: 19.2.8
       react-base16-styling: 0.10.0
