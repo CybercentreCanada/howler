@@ -596,8 +596,6 @@ def append_case_item(  # noqa: C901
 
             case.items.append(item)
 
-            comms_service.emit("cases", {"case": case.as_primitives()})
-
             return case
         case _:
             raise InvalidDataException(f"Unsupported item type: {item.type}")

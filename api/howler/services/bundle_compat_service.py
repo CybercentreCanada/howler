@@ -18,7 +18,7 @@ from howler.datastore.exceptions import DataStoreException
 from howler.odm.models.case import Case, CaseItemTypes
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
-from howler.services import analytic_service, case_service, hit_service
+from howler.services import analytic_service, case_service, comms_service, hit_service
 
 
 class BundleConflictException(HowlerException):
@@ -135,6 +135,7 @@ def create_bundle(
             logger.warning("Could not add child hit %s to case: %s", child_id, exc)
 
     case.save()
+    comms_service.emit("cases", {"case": case.as_primitives()})
 
     return synthesize_bundle_response(case, odm, warnings=warnings, user=user)
 
@@ -189,6 +190,7 @@ def add_to_bundle(
         case_service.append_case_item(case, item_type="hit", item_value=hit_id)
 
     case.save(refresh=refresh)
+    comms_service.emit("cases", {"case": case.as_primitives()})
 
     return synthesize_bundle_response(case, root_hit, user=user)
 

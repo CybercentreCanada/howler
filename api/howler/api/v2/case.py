@@ -19,7 +19,7 @@ from howler.datastore.exceptions import DataStoreException
 from howler.odm.models.case import Case, CaseItem
 from howler.odm.models.user import User
 from howler.security.login import api_login
-from howler.services import case_service
+from howler.services import case_service, comms_service
 
 SUB_API = "case"
 case_api = make_subapi_blueprint(SUB_API, api_version=2)
@@ -270,6 +270,7 @@ def append_item(  # noqa: C901
         case_service.append_case_item(record, CaseItem(body), user=user)
 
         record.save(refresh=refresh, version=server_version)
+        comms_service.emit("cases", {"case": record.as_primitives()})
 
         case_service.filter_case_items_by_classification(record, user.classification)
 

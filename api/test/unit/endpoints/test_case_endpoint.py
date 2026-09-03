@@ -547,7 +547,7 @@ class TestAppendItemEndpoint:
     def test_append_item_datastore_error_returns_500(
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
-        """Returns 500 when case_service raises DataStoreException."""
+        """Returns 500 when the final case save raises DataStoreException."""
         from howler.datastore.exceptions import DataStoreException
 
         user = _build_user()
@@ -555,7 +555,8 @@ class TestAppendItemEndpoint:
         mock_datastore.return_value.case.get.return_value = {"case_id": "case-001", "title": "T"}
         mock_datastore.return_value.__getitem__.return_value.get.return_value = {"classification": "UNRESTRICTED"}
 
-        mock_case_service.append_case_item.side_effect = DataStoreException("save failed")
+        record = _build_case()
+        record.save.side_effect = DataStoreException("save failed")
 
         with request_context.test_request_context(
             method="POST",
@@ -564,7 +565,7 @@ class TestAppendItemEndpoint:
         ):
             from howler.api.v2.case import append_item
 
-            result: Response = append_item("case-001", user=user, record=_build_case())
+            result: Response = append_item("case-001", user=user, record=record)
 
             assert result.status_code == 500
 

@@ -794,8 +794,8 @@ class TestAppendHit:
     @patch("howler.services.case_service.hit_service.get_hit")
     @patch("howler.services.case_service.recompute_case_metadata")
     @patch("howler.services.case_service.datastore")
-    def test_append_hit_persists_backreference_before_case_save_failure(self, mock_ds_fn, _mock_sync, mock_get_hit):
-        """A later case-save failure is reported after the backing relationship is persisted."""
+    def test_append_hit_leaves_case_persistence_to_caller(self, mock_ds_fn, _mock_sync, mock_get_hit):
+        """append_hit persists the backing relationship while leaving case persistence to its caller."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -803,7 +803,6 @@ class TestAppendHit:
         mock_case.case_id = "case-001"
         mock_case.classification = "UNRESTRICTED"
         mock_case.items = []
-        mock_case.save.return_value = False
 
         mock_hit = MagicMock()
         mock_hit.classification = "UNRESTRICTED"
@@ -811,13 +810,12 @@ class TestAppendHit:
         mock_get_hit.return_value = (mock_hit, "hit-version")
 
         item = CaseItem({"type": "hit", "value": "hit-001"})
-        with pytest.raises(DataStoreException, match="Failed to save case"):
-            case_service.append_hit(mock_case, item)
+        case_service.append_hit(mock_case, item)
 
         assert mock_case.items == [item]
         assert mock_hit.howler.related == ["case-001"]
         mock_hit.save.assert_called_once_with(version="hit-version")
-        mock_case.save.assert_called_once_with(refresh=None, version=None)
+        mock_case.save.assert_not_called()
 
     @patch("howler.services.case_service.hit_service.get_hit")
     @patch("howler.services.case_service.recompute_case_metadata")
@@ -1007,7 +1005,7 @@ class TestAppendEvent:
     @patch("howler.services.case_service.event_service.get_event")
     @patch("howler.services.case_service.datastore")
     def test_append_event_adds_item(self, mock_ds_fn, mock_get_event, mock_backref, mock_sync):
-        """append_event appends the item to the case and saves."""
+        """append_event appends the item and leaves case persistence to its caller."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -1024,7 +1022,7 @@ class TestAppendEvent:
         item = CaseItem({"type": "event", "value": "obs-001"})
         case_service.append_event(mock_case, item)
 
-        mock_case.save.assert_called_once()
+        mock_case.save.assert_not_called()
         assert len(mock_case.items) == 1
         mock_backref.assert_called_once_with(mock_obs, "case-001")
         mock_sync.assert_called_once_with(mock_case)
@@ -1094,7 +1092,7 @@ class TestAppendCase:
 
     @patch("howler.services.case_service.datastore")
     def test_append_case_adds_item(self, mock_ds_fn):
-        """append_case appends a case reference item and saves the parent case."""
+        """append_case appends a case reference and leaves parent persistence to its caller."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -1113,7 +1111,7 @@ class TestAppendCase:
         item = CaseItem({"type": "case", "value": "child-001"})
         case_service.append_case(mock_parent, item)
 
-        mock_parent.save.assert_called_once()
+        mock_parent.save.assert_not_called()
         assert len(mock_parent.items) == 1
         assert item.value == "child-001"
         assert item.classification.value == mock_child.classification
@@ -1820,8 +1818,8 @@ class TestCaseEventEmission:
     @patch("howler.services.case_service.recompute_case_metadata")
     @patch("howler.services.case_service.comms_service")
     @patch("howler.services.case_service.datastore")
-    def test_append_hit_emits_event(self, mock_ds_fn, mock_events, mock_sync, mock_get_hit):
-        """append_hit emits a 'cases' event after adding a hit."""
+    def test_append_hit_leaves_event_emission_to_caller(self, mock_ds_fn, mock_events, mock_sync, mock_get_hit):
+        """append_hit leaves case event emission to the caller that persists the case."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -1836,10 +1834,7 @@ class TestCaseEventEmission:
         item = CaseItem({"type": "hit", "value": "hit-001", "name": "test"})
         case_service.append_hit(mock_case, item)
 
-        mock_events.emit.assert_called_once()
-        args = mock_events.emit.call_args
-        assert args[0][0] == "cases"
-        assert "case" in args[0][1]
+        mock_events.emit.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

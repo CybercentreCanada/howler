@@ -6,7 +6,7 @@ from howler.common.logging import get_logger
 from howler.datastore.exceptions import DataStoreException, VersionConflictException
 from howler.odm.models.action import VALID_TRIGGERS
 from howler.odm.models.user import User
-from howler.services import case_service
+from howler.services import case_service, comms_service
 
 logger = get_logger(__file__)
 
@@ -67,6 +67,7 @@ def execute(  # noqa: C901
     report = []
     skipped = []
     added = []
+    original_item_count = len(case.items)
 
     for hit in hits:
         rendered_destination = chevron.render(destination, hit.as_primitives())
@@ -95,18 +96,20 @@ def execute(  # noqa: C901
         except Exception as e:  # pragma: no cover
             skipped.append(f"{hit.howler.id}: {e}")
 
-    try:
-        case.save(refresh="wait_for", version=version)
-    except (DataStoreException, VersionConflictException):
-        logger.exception("Exception on save:")
-        return [
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "Case update failed",
-                "message": "There was a datastore error or version conflict when updating the case.",
-            }
-        ]
+    if len(case.items) != original_item_count:
+        try:
+            case.save(refresh="wait_for", version=version)
+        except (DataStoreException, VersionConflictException):
+            logger.exception("Exception on save:")
+            return [
+                {
+                    "query": query,
+                    "outcome": "error",
+                    "title": "Case update failed",
+                    "message": "There was a datastore error or version conflict when updating the case.",
+                }
+            ]
+        comms_service.emit("cases", {"case": case.as_primitives()})
 
     if added:
         report.append(

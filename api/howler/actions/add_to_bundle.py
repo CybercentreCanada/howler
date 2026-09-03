@@ -8,7 +8,7 @@ from howler.common.loader import datastore
 from howler.odm.models.action import VALID_TRIGGERS
 from howler.odm.models.case import CaseItemTypes
 from howler.odm.models.user import User
-from howler.services import bundle_compat_service, case_service
+from howler.services import bundle_compat_service, case_service, comms_service
 from howler.utils.str_utils import sanitize_lucene_query
 
 OPERATION_ID = "add_to_bundle"
@@ -70,7 +70,8 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
             )
             return report
 
-        folder = case_service.get_parent_from_path(case, "hits", create_if_missing=True)
+        original_item_count = len(case.items)
+        folder = case_service.get_parent_from_path(case, "hits", create_if_missing=True, user=user)
 
         added = []
         skipped = []
@@ -83,10 +84,15 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
                     item_name=name,
                     item_value=hit.howler.id,
                     item_parent=folder.id if folder else None,
+                    user=user,
                 )
                 added.append(hit.howler.id)
             except Exception:  # pragma: no cover
                 skipped.append(hit.howler.id)
+
+        if len(case.items) != original_item_count:
+            case.save(refresh="wait_for")
+            comms_service.emit("cases", {"case": case.as_primitives()})
 
         if skipped:
             report.append(
