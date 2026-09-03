@@ -138,13 +138,10 @@ def create_case(
     if not is_classification_accessible(user, case.classification):
         raise ForbiddenException(f"User cannot create case at classification {case.classification}")
 
-    case.save(refresh="wait_for", version=CREATE_TOKEN)
-
     for item in items:
         append_case_item(case, item=CaseItem(item), user=user)
 
-    if items:
-        case.save(refresh=refresh)
+    case.save(refresh=refresh, version=CREATE_TOKEN)
 
     comms_service.emit("cases", {"case": case.as_primitives()})
 
@@ -426,13 +423,10 @@ def update_case(
 
 
 def get_parent_from_path(
-    case: str | Case | None,
+    case: Case | None,
     path: str | None,
     create_if_missing: bool = False,
-    persist: bool = True,
-    refresh: Literal["true", "false", "wait_for"] | None = None,
     user: User | None = None,
-    version: str | None = None,
 ) -> CaseItem | None:
     """Given a path, return the lowest parent of the path in the case.
 
@@ -449,9 +443,6 @@ def get_parent_from_path(
     Raises:
         InvalidDataException: If the path is invalid.
     """
-    if isinstance(case, str):
-        case, version = get_case(case, as_odm=True, version=True, user=user)
-
     if not case:
         raise NotFoundException("Case does not exist")
 
@@ -486,9 +477,6 @@ def get_parent_from_path(
             current_parent = folder_item.id
         else:
             current_parent = folder.id
-
-    if persist:
-        case.save(refresh, version=version)
 
     # Find the final parent folder
     if current_parent is None:  # pragma: no cover
@@ -825,8 +813,6 @@ def _collect_descendant_ids(items: list[CaseItem], parent_id: str) -> set[str]:
 def append_hit(
     case: Case,
     item: CaseItem,
-    refresh: Literal["true", "false", "wait_for"] | None = None,
-    version: str | None = None,
     user: User | None = None,
 ) -> Case:
     """Append a hit item to a case and create a back-reference on the hit.
@@ -862,10 +848,6 @@ def append_hit(
     hit.save(version=hit_version)
 
     recompute_case_metadata(case)
-    if not case.save(refresh=refresh, version=version):  # pragma: no cover
-        raise DataStoreException(f"Failed to save {case.case_id} with new item {item.value}")
-
-    comms_service.emit("cases", {"case": case.as_primitives()})
 
     return case
 
@@ -873,8 +855,6 @@ def append_hit(
 def append_event(
     case: Case,
     item: CaseItem,
-    refresh: Literal["true", "false", "wait_for"] | None = None,
-    version: str | None = None,
     user: User | None = None,
 ) -> Case:
     """Append an event item to a case and create a back-reference on the event.
@@ -910,10 +890,6 @@ def append_event(
     event.save(version=event_version)
 
     recompute_case_metadata(case)
-    if not case.save(refresh=refresh, version=version):  # pragma: no cover
-        raise DataStoreException(f"Failed to save {case.case_id} with new item {item.value}")
-
-    comms_service.emit("cases", {"case": case.as_primitives()})
 
     return case
 
@@ -921,8 +897,6 @@ def append_event(
 def append_case(
     case: Case,
     item: CaseItem,
-    refresh: Literal["true", "false", "wait_for"] | None = None,
-    version: str | None = None,
     user: User | None = None,
 ) -> Case:
     """Append a case reference item to a case.
@@ -956,11 +930,6 @@ def append_case(
     item.classification = referenced_case.classification
 
     case.items.append(item)
-
-    if not case.save(refresh=refresh, version=version):  # pragma: no cover
-        raise DataStoreException(f"Failed to save {case.case_id} with new item {item.name}")
-
-    comms_service.emit("cases", {"case": case.as_primitives()})
 
     return case
 

@@ -116,7 +116,7 @@ def create_bundle(
         user=user,
     )
 
-    folder = case_service.get_parent_from_path(case, "hits", create_if_missing=True, refresh=refresh)
+    folder = case_service.get_parent_from_path(case, "hits", create_if_missing=True)
 
     for child_id in child_hit_ids:
         child_hit = hit_service.get_hit(child_id, as_odm=True)
@@ -134,11 +134,9 @@ def create_bundle(
         except (InvalidDataException, NotFoundException, DataStoreException) as exc:  # pragma: no cover
             logger.warning("Could not add child hit %s to case: %s", child_id, exc)
 
-    updated_case: Case | None = datastore().case.get(case.case_id)
-    if updated_case is None:  # pragma: no cover
-        raise NotFoundException(f"Case {case.case_id} disappeared after creation")
+    case.save()
 
-    return synthesize_bundle_response(updated_case, odm, warnings=warnings, user=user)
+    return synthesize_bundle_response(case, odm, warnings=warnings, user=user)
 
 
 def add_to_bundle(
