@@ -120,7 +120,7 @@
       "tables": false
     }
   },
-  "python-envs.defaultEnvManager": "ms-python.python:poetry",
+  "python-envs.defaultEnvManager": "ms-python.python:system",
   "editor.autoIndentOnPaste": true,
   "python-envs.pythonProjects": [
     {
@@ -130,8 +130,8 @@
     },
     {
       "path": "api",
-      "envManager": "ms-python.python:poetry",
-      "packageManager": "ms-python.python:poetry"
+      "envManager": "ms-python.python:system",
+      "packageManager": "ms-python.python:pip"
     },
     {
       "path": "client",
@@ -139,11 +139,11 @@
       "packageManager": "ms-python.python:poetry"
     }
   ],
-  "python-envs.defaultPackageManager": "ms-python.python:poetry",
   "oxc.configPath": "./ui/.oxlintrc.json",
   "oxc.enable": true,
   "oxc.fixKind": "all",
   "oxc.path.oxlint": "./ui/node_modules/.bin/oxlint",
   "oxc.path.oxfmt": "./ui/node_modules/.bin/oxfmt",
-  "oxc.path.tsgolint": "./ui/node_modules/.bin/tsgolint"
+  "oxc.path.tsgolint": "./ui/node_modules/.bin/tsgolint",
+  "python-envs.defaultPackageManager": "ms-python.python:pip"
 }
