@@ -105,7 +105,7 @@ def add_etag(
                     return values[0]
 
             # No getter: just call the function and handle (Response, version) tuples
-            values = f(*args, **kwargs)
+            values = f(*args, user=user, **kwargs)
 
             if isinstance(values, Response):
                 return values

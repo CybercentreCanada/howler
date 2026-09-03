@@ -121,7 +121,12 @@ def create(index: str, user: User, *, refresh: Literal["true", "false", "wait_fo
 @ingest_api.route("/<indexes>", methods=["DELETE"])
 @api_login(required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def delete(indexes: str, user: User, **kwargs):
+def delete(
+    indexes: str,
+    user: User,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+    **kwargs,
+):
     """Delete records, optionally across multiple indexes.
 
     Variables:
@@ -151,7 +156,6 @@ def delete(indexes: str, user: User, **kwargs):
         return forbidden(err="Cannot delete hit, only administrators are permitted to delete.")
 
     index_list = indexes.split(",")
-    refresh = kwargs.get("refresh")
 
     ds = datastore()
 
@@ -251,7 +255,13 @@ def validate(index: str, **kwargs):
 @api_login(audit=False, required_priv=["W"])
 @add_etag()
 @parse_parameters(refresh=parse_refresh)
-def overwrite(index: str, id: str, **kwargs):
+def overwrite(
+    index: str,
+    id: str,
+    user: User,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+    **kwargs,
+):
     """Overwrite a record.
 
     Variables:
@@ -274,7 +284,6 @@ def overwrite(index: str, id: str, **kwargs):
         return bad_request(err="You cannot overwrite across multiple indexes.")
 
     ds = datastore()
-    user = kwargs["user"]
 
     record, server_version = ds[index].get(id, as_obj=False, version=True)
     if not record:
@@ -290,7 +299,6 @@ def overwrite(index: str, id: str, **kwargs):
 
     try:
         odm = INDEXES[index]
-        refresh = kwargs.get("refresh")
 
         # TODO: This is inefficient. We can use elastic's `update` command to just directly patch the document
         new_record = cast(
@@ -323,9 +331,14 @@ def overwrite(index: str, id: str, **kwargs):
 
 @generate_swagger_docs()
 @ingest_api.route("/<indexes>/update", methods=["PUT"])
-@api_login(audit=False, required_priv=["W"])
+@api_login(audit=True, required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def update_by_query(indexes: str, **kwargs):
+def update_by_query(
+    indexes: str,
+    user: User,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+    **kwargs,
+):
     """Update a set of records using a query.
 
     Variables:
@@ -353,7 +366,6 @@ def update_by_query(indexes: str, **kwargs):
     }
     """
     data = cast(dict[str, Any], request.json)
-    refresh = kwargs.get("refresh")
 
     try:
         query = cast(str, data["query"])
@@ -371,8 +383,8 @@ def update_by_query(indexes: str, **kwargs):
                 "howler.log",
                 {
                     "timestamp": "NOW",
-                    "explanation": f"Hit updated by {kwargs['user']['uname']}\n\n" + "\n".join(explanation),
-                    "user": kwargs["user"]["uname"],
+                    "explanation": f"Hit updated by {user.uname}\n\n" + "\n".join(explanation),
+                    "user": user.uname,
                 },
             )
         )
@@ -382,7 +394,6 @@ def update_by_query(indexes: str, **kwargs):
         validate_bulk_operation_targets(operations)
 
         ds = datastore()
-        user = kwargs["user"]
 
         results = []
         for index in indexes.split(","):
@@ -390,7 +401,7 @@ def update_by_query(indexes: str, **kwargs):
                 ds[index].update_by_query(
                     query,
                     operations,
-                    access_control=user["access_control"] if has_access_control(index) else None,
+                    access_control=user.access_control if has_access_control(index) else None,
                     refresh=refresh,
                 )
             )
