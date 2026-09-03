@@ -62,8 +62,8 @@ def _get_ingestion_queue() -> NamedQueue[str]:
 def _resolve_backing_object(
     item_type: Literal["hit", "event"],
     record_id: str,
-    backing_cache: dict[tuple[Literal["hit", "event"], str], Hit | Event | None],
-) -> Hit | Event:
+    backing_cache: dict[tuple[Literal["hit", "event"], str], tuple[Hit | Event | None, str]],
+) -> tuple[Hit | Event, str]:
     """Fetch (and cache) the hit/event backing a correlation match, across the whole batch.
 
     Raises:
@@ -73,25 +73,24 @@ def _resolve_backing_object(
     if key not in backing_cache:
         ds = datastore()
         if item_type == RuleIndexTypes.EVENT:
-            backing_cache[key] = ds.event.get(key=record_id)
+            backing_cache[key] = ds.event.get(key=record_id, as_obj=True, version=True)
         elif item_type == RuleIndexTypes.HIT:
-            backing_cache[key] = ds.hit.get(record_id)
+            backing_cache[key] = ds.hit.get(record_id, as_obj=True, version=True)
         else:
             raise InvalidDataException(f"Invalid index type {item_type} provided. Must be one of hit,event")
 
-    backing_obj = backing_cache[key]
-    if backing_obj is None:
+    backing_obj, backing_obj_version = backing_cache[key]
+    if not backing_obj:
         raise NotFoundException(f"{item_type.capitalize()} {record_id} not found, cannot be added to case")
 
-    return backing_obj
+    return backing_obj, backing_obj_version
 
 
 def _add_record_to_case(
     case: Case,
-    case_id: str,
     record: dict,
     rule: CaseRule,
-    backing_cache: dict[tuple[Literal["hit", "event"], str], Hit | Event | None],
+    backing_cache: dict[tuple[Literal["hit", "event"], str], tuple[Hit | Event | None, str]],
 ) -> tuple[Literal["hit", "event"], str] | None:
     """Append a single matching record to a case, in memory only (no datastore writes).
 
@@ -113,9 +112,9 @@ def _add_record_to_case(
         name = rendered_path
 
     try:
-        backing_obj = _resolve_backing_object(item_type, record_id, backing_cache)
+        backing_obj, backing_obj_version = _resolve_backing_object(item_type, record_id, backing_cache)
 
-        parent = case_service.get_parent_from_path(case, path, create_if_missing=True, persist=False)
+        parent = case_service.get_parent_from_path(case, path, create_if_missing=True)
 
         item = CaseItem({"type": item_type, "value": record_id, "parent": parent.id if parent else None, "name": name})
         if item.name is None:
@@ -130,16 +129,16 @@ def _add_record_to_case(
         item.classification = backing_obj.classification
         case.items.append(item)
 
-        if case_service.add_backreference(backing_obj, case_id):
+        if case_service.add_backreference(backing_obj, case.case_id):
             return (item_type, record_id)
 
         return None
     except InvalidDataException:
-        logger.info("Record %s already exists in case %s or is invalid, skipping", record_id, case_id)
+        logger.info("Record %s already exists in case %s or is invalid, skipping", record_id, case.case_id)
     except NotFoundException:
-        logger.warning("Case %s or record %s not found during correlation", case_id, record_id)
+        logger.warning("Case %s or record %s not found during correlation", case.case_id, record_id)
     except Exception:  # pragma: no cover
-        logger.exception("Failed to add record %s to case %s", record_id, case_id)
+        logger.exception("Failed to add record %s to case %s", record_id, case.case_id)
 
     return None
 
@@ -253,7 +252,7 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
     # memory; they're only written to the datastore after every rule has been evaluated.
     case_cache: dict[str, Case | None] = {}
     case_original_item_counts: dict[str, int] = {}
-    backing_cache: dict[tuple[Literal["hit", "event"], str], Hit | Event | None] = {}
+    backing_cache: dict[tuple[Literal["hit", "event"], str], tuple[Hit | Event | None, str]] = {}
     dirty_backing_keys: set[tuple[Literal["hit", "event"], str]] = set()
 
     for case_id, rule in rules:
@@ -273,25 +272,22 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
 
         try:
             results = search_service.search(
-                indexes=indexes,
-                query=rule.query,
-                filters=[id_filter],
-                rows=len(record_ids),
+                indexes=indexes, query=rule.query, filters=[id_filter], rows=len(record_ids)
             )
         except Exception:
             logger.exception("ES query failed for rule %s (case %s): %s", rule.rule_id, case_id, rule.query)
             continue
 
         for record in results["items"]:
-            if result := _add_record_to_case(case, case_id, record, rule, backing_cache):
+            if result := _add_record_to_case(case, record, rule, backing_cache):
                 dirty_backing_keys.add(result)
                 added += 1
 
     backing_bulk_plans = {item_type: ds[item_type].get_bulk_plan() for item_type, _ in dirty_backing_keys}
 
     for item_type, record_id in dirty_backing_keys:
-        backing_obj = backing_cache[(item_type, record_id)]
-        if backing_obj is not None:
+        backing_obj = backing_cache[(item_type, record_id)][0]
+        if backing_obj:
             backing_bulk_plans[item_type].add_update_operation(record_id, backing_obj, fields=["howler.related"])
 
     for item_type, bulk_plan in backing_bulk_plans.items():
