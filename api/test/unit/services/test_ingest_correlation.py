@@ -63,13 +63,13 @@ def _setup_ds(
     mock_ds = MagicMock()
     mock_ds_fn.return_value = mock_ds
 
-    def event_get(*args, **kwargs):
+    def backing_get(records: dict[str, MagicMock] | None, *args, **kwargs):
         key = args[0] if args else kwargs.get("key")
-        return (events or {}).get(key)
+        return (records or {}).get(key), "backing-version"
 
     mock_ds.case.get.side_effect = lambda cid: cases.get(cid)
-    mock_ds.hit.get.side_effect = lambda hid: (hits or {}).get(hid)
-    mock_ds.event.get.side_effect = event_get
+    mock_ds.hit.get.side_effect = lambda *args, **kwargs: backing_get(hits, *args, **kwargs)
+    mock_ds.event.get.side_effect = lambda *args, **kwargs: backing_get(events, *args, **kwargs)
 
     # Mirror ElasticBulkPlan.empty: starts empty, flips once an operation is queued.
     bulk_plan = mock_ds.case.get_bulk_plan.return_value

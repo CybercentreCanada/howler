@@ -403,7 +403,7 @@ class TestAppendItemEndpoint:
 
             assert result.status_code == 200
             mock_case_service.append_case_item.assert_called_once()
-            record.save.assert_not_called()
+            record.save.assert_called_once_with(refresh=None, version=None)
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
