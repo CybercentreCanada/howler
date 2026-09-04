@@ -157,7 +157,12 @@ def connect(ws: Server, *args: Any, ws_id: str, user: User | None = None, **kwar
                     return
 
                 outstanding_actions = check_action(
-                    obj["id"], obj["action"], obj["broadcast"], outstanding_actions=outstanding_actions, **kwargs
+                    obj["id"],
+                    obj["action"],
+                    obj["broadcast"],
+                    outstanding_actions=outstanding_actions,
+                    user=user,
+                    **kwargs,
                 )
                 logger.debug("%s: Outstanding actions count=%s", ws_id, len(outstanding_actions))
             else:
@@ -176,5 +181,12 @@ def connect(ws: Server, *args: Any, ws_id: str, user: User | None = None, **kwar
         comms_service.off("viewers_update", send_viewers_update)
 
         for id, action, broadcast in outstanding_actions:
-            outstanding_actions = check_action(id, action, broadcast, outstanding_actions=outstanding_actions, **kwargs)
+            outstanding_actions = check_action(
+                id,
+                action,
+                broadcast,
+                outstanding_actions=outstanding_actions,
+                user=user,
+                **kwargs,
+            )
         logger.info("%s: WS connect handler finished", ws_id)

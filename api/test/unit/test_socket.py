@@ -1,5 +1,7 @@
 from unittest.mock import patch
 
+from howler.odm.models.user import User
+from howler.odm.randomizer import random_model_obj
 from howler.utils.socket_utils import check_action
 
 
@@ -11,7 +13,7 @@ def test_socket(emit, mock_viewer_service, exists, update_hit):
     _id = "test_id"
 
     exists.return_value = True
-    kwargs = {"username": "test_user"}
+    kwargs = {"user": random_model_obj(User)}
 
     actions = [
         ("typing", True),
@@ -37,9 +39,9 @@ def test_socket(emit, mock_viewer_service, exists, update_hit):
             emit.assert_not_called()
 
         if action == "viewing":
-            mock_viewer_service.add_viewer.assert_called_once_with(_id, kwargs["username"])
+            mock_viewer_service.add_viewer.assert_called_once_with(_id, kwargs["user"]["uname"])
         elif action == "stop_viewing":
-            mock_viewer_service.remove_viewer.assert_called_once_with(_id, kwargs["username"])
+            mock_viewer_service.remove_viewer.assert_called_once_with(_id, kwargs["user"]["uname"])
 
         if action in ["typing", "viewing"]:
             assert len(new_outstanding_actions) == 1
