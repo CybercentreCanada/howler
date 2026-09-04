@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import re
 import sys
 import time
 import typing
 import warnings
+from collections.abc import Mapping as ABCMapping
 from copy import deepcopy
 from datetime import datetime
 from os import environ
@@ -168,6 +170,9 @@ class ESCollection(Generic[ModelType]):
     RETRY_NONE = 0
     RETRY_INFINITY = -1
     SCROLL_TIMEOUT = "5m"
+    TASK_POLL_TIMEOUT = 3600.0
+    TASK_POLL_INTERVAL = 0.5
+    MAX_VERSION_CONFLICT_ATTEMPTS = 3
     UPDATE_SET = "SET"
     UPDATE_INC = "INC"
     UPDATE_DEC = "DEC"
@@ -452,37 +457,138 @@ class ESCollection(Generic[ModelType]):
                 else:
                     raise
 
-    def _get_task_results(self, task):
-        # This function is only used to wait for a asynchronous task to finish in a graceful manner without
-        #  timing out the elastic client. You can create an async task for long running operation like:
-        #   - update_by_query
-        #   - delete_by_query
-        #   - reindex ...
-        attempt = 0
-        res = None
-        while res is None:
-            attempt = attempt + 1
-            try:
-                res = self.with_retries(
+    @staticmethod
+    def _task_response_mapping(response, description: str) -> ABCMapping:
+        """Return an Elasticsearch response body as a mapping."""
+        if isinstance(response, ABCMapping):
+            return response
+
+        body = getattr(response, "body", None)
+        if isinstance(body, ABCMapping):
+            return body
+
+        raise DataStoreException(f"Elasticsearch {description} returned a malformed response.")
+
+    @staticmethod
+    def _task_duration(name: str, default: float) -> float:
+        value = environ.get(name, str(default))
+        try:
+            duration = float(value)
+        except ValueError as error:
+            raise DataStoreException(f"{name} must be a non-negative number, got {value!r}") from error
+        if not math.isfinite(duration) or duration < 0:
+            raise DataStoreException(f"{name} must be a non-negative number, got {value!r}")
+        return duration
+
+    def _get_task_results(self, task, strict=True):
+        """Wait for an asynchronous Elasticsearch task to return a final response."""
+        task_response = self._task_response_mapping(task, "task submission")
+        if not isinstance(task_response.get("task"), str) or not task_response["task"]:
+            raise DataStoreException("Elasticsearch did not return a valid task identifier.")
+
+        task_id = task_response["task"]
+        poll_timeout = self._task_duration("HWL_DATASTORE_TASK_POLL_TIMEOUT", self.TASK_POLL_TIMEOUT)
+        poll_interval = self._task_duration("HWL_DATASTORE_TASK_POLL_INTERVAL", self.TASK_POLL_INTERVAL)
+        deadline = time.monotonic() + poll_timeout
+        while True:
+            if time.monotonic() >= deadline:
+                raise HowlerRuntimeError(f"Timed out waiting for Elasticsearch task {task_id} to complete.")
+
+            result = self._task_response_mapping(
+                self.with_retries(
                     self.datastore.client.tasks.get,
-                    task_id=task["task"],
-                    wait_for_completion=True,
-                    timeout="10s",
-                )
-            except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.ApiError) as e:
-                err_code, msg, _ = e.args
-                if (err_code == 500 or err_code == "500") and msg in [
-                    "timeout_exception",
-                    "receive_timeout_transport_exception",
-                ]:
-                    pass
-                else:
-                    logger.exception("Unexpected error on task check")
-                    raise
+                    task_id=task_id,
+                    wait_for_completion=False,
+                ),
+                f"task {task_id}",
+            )
+            if "error" in result and result["error"] is not None:
+                raise DataStoreException(f"Elasticsearch task {task_id} failed: {result['error']!r}")
+            if result.get("completed") is False:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise HowlerRuntimeError(f"Timed out waiting for Elasticsearch task {task_id} to complete.")
+                time.sleep(min(poll_interval, remaining))
+                continue
+            if result.get("completed") is not True:
+                raise DataStoreException(f"Elasticsearch task {task_id} did not report a completion state.")
 
-        result = res.get("response", res["task"]["status"])
+            response = result.get("response")
+            if not isinstance(response, ABCMapping):
+                raise DataStoreException(f"Elasticsearch task {task_id} completed without a valid response.")
+            response = dict(response)
+            if strict:
+                if response.get("timed_out") is not False:
+                    raise DataStoreException(f"Elasticsearch task {task_id} returned a timeout result.")
+                failures = response.get("failures")
+                if not isinstance(failures, list):
+                    raise DataStoreException(f"Elasticsearch task {task_id} returned an invalid failures list.")
+                if failures:
+                    raise DataStoreException(f"Elasticsearch task {task_id} reported failures: {failures!r}")
+            return response
 
-        return result
+    @staticmethod
+    def _normalize_query_refresh(refresh):
+        if refresh is None or isinstance(refresh, bool):
+            return refresh
+        if isinstance(refresh, str):
+            normalized = refresh.lower()
+            if normalized == "true":
+                return True
+            if normalized == "false":
+                return False
+            if normalized == "wait_for":
+                return True
+        raise DataStoreException(f"Invalid refresh value for an Elasticsearch query operation: {refresh!r}")
+
+    @staticmethod
+    def _validate_async_query_result(result, count_field: str) -> dict[str, Any]:
+        result = ESCollection._task_response_mapping(result, "query task")
+        if result.get("error") is not None:
+            raise DataStoreException(f"Elasticsearch query task failed: {result['error']!r}")
+        if result.get("timed_out") is not False:
+            if result.get("timed_out") is True:
+                raise DataStoreException("Elasticsearch query task timed out.")
+            raise DataStoreException("Elasticsearch query task did not report whether it timed out.")
+
+        failures = result.get("failures")
+        if not isinstance(failures, list):
+            raise DataStoreException("Elasticsearch query task did not return a valid failures list.")
+        if failures:
+            raise DataStoreException(f"Elasticsearch query task reported failures: {failures!r}")
+
+        validated_result = dict(result)
+        for field_name in (count_field, "version_conflicts"):
+            value = validated_result.get(field_name)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise DataStoreException(f"Elasticsearch query task returned an invalid {field_name} value.")
+
+        return validated_result
+
+    def _run_async_query(self, operation, operation_name: str, count_field: str, **kwargs):
+        refresh = self._normalize_query_refresh(kwargs.pop("refresh", None))
+        if self.MAX_VERSION_CONFLICT_ATTEMPTS < 1:
+            raise DataStoreException("MAX_VERSION_CONFLICT_ATTEMPTS must be at least one.")
+
+        affected_documents = 0
+        for _ in range(self.MAX_VERSION_CONFLICT_ATTEMPTS):
+            task = self.with_retries(
+                operation,
+                **kwargs,
+                wait_for_completion=False,
+                conflicts="proceed",
+                refresh=refresh,
+            )
+            result = self._validate_async_query_result(self._get_task_results(task, strict=True), count_field)
+            affected_documents += result[count_field]
+            if result["version_conflicts"] == 0:
+                result[count_field] = affected_documents
+                return result
+
+        raise DataStoreException(
+            f"Elasticsearch {operation_name} did not complete after "
+            f"{self.MAX_VERSION_CONFLICT_ATTEMPTS} version-conflict attempt(s)."
+        )
 
     def _get_current_alias(self, index: str) -> typing.Optional[str]:
         if self.with_retries(self.datastore.client.indices.exists_alias, name=index):
@@ -516,46 +622,28 @@ class ESCollection(Generic[ModelType]):
         self._wait_for_status(target, min_status=min_status)
 
     def _delete_async(self, index, query, max_docs=None, sort=None, refresh=None):
-        deleted = 0
-        while True:
-            task = self.with_retries(
-                self.datastore.client.delete_by_query,
-                index=index,
-                query=query,
-                wait_for_completion=False,
-                conflicts="proceed",
-                sort=sort,
-                max_docs=max_docs,
-                refresh=refresh,
-            )
-            res = self._get_task_results(task)
-
-            if res["version_conflicts"] == 0:
-                res["deleted"] += deleted
-                return res
-            else:
-                deleted += res["deleted"]
+        return self._run_async_query(
+            self.datastore.client.delete_by_query,
+            "delete-by-query",
+            "deleted",
+            index=index,
+            query=query,
+            sort=sort,
+            max_docs=max_docs,
+            refresh=refresh,
+        )
 
     def _update_async(self, index, script, query, max_docs=None, refresh=None):
-        updated = 0
-        while True:
-            task = self.with_retries(
-                self.datastore.client.update_by_query,
-                index=index,
-                script=script,
-                query=query,
-                wait_for_completion=False,
-                conflicts="proceed",
-                max_docs=max_docs,
-                refresh=refresh,
-            )
-            res = self._get_task_results(task)
-
-            if res["version_conflicts"] == 0:
-                res["updated"] += updated
-                return res
-            else:
-                updated += res["updated"]
+        return self._run_async_query(
+            self.datastore.client.update_by_query,
+            "update-by-query",
+            "updated",
+            index=index,
+            script=script,
+            query=query,
+            max_docs=max_docs,
+            refresh=refresh,
+        )
 
     def bulk(self, operations: ElasticBulkPlan, refresh: str | None = None):
         """
@@ -851,7 +939,7 @@ class ESCollection(Generic[ModelType]):
                     wait_for_completion=False,
                 )
                 logger.warning("Reindex taskId: %s", r_task["task"])
-                reindex_result = self._get_task_results(r_task)
+                reindex_result = self._get_task_results(r_task, strict=False)
 
                 # Validate the reindex did not silently drop or conflict on documents before
                 # we commit to deleting the source index further down.
@@ -1427,15 +1515,28 @@ class ESCollection(Generic[ModelType]):
 
         return True
 
-    def delete(self, key, refresh=None):
+    def delete(self, key, refresh=None, version=None):
         """This function should delete the underlying document referenced by the key.
         It should return true if the document was in fact properly deleted.
 
         :param key: id of the document to delete
+        :param version: version token returned by ``get_if_exists(..., version=True)`` for an atomic delete
         :return: True is delete successful
         """
+        index = self.name
+        kwargs = {"id": key, "index": index, "refresh": refresh}
+        if version:
+            if version == CREATE_TOKEN:
+                raise DataStoreException("Cannot delete a document using the create version token.")
+            index, seq_no, primary_term = self._get_version_write_target(version)
+            kwargs.update({"index": index, "if_seq_no": seq_no, "if_primary_term": primary_term})
+
         try:
-            info = self.with_retries(self.datastore.client.delete, id=key, index=self.name, refresh=refresh)
+            info = self.with_retries(
+                self.datastore.client.delete,
+                raise_conflicts=bool(version),
+                **kwargs,
+            )
             return info["result"] == "deleted"
         except elasticsearch.NotFoundError:
             return False

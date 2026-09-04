@@ -1,3 +1,4 @@
+from howler.datastore.exceptions import DataStoreException
 from howler.datastore.migrations.base import Migration
 
 
@@ -13,9 +14,9 @@ class ActionOwnerMigration(Migration):
             script={
                 "lang": "painless",
                 "source": (
-                    "if (ctx._source.containsKey('owner_id') && ctx._source.owner_id != null && "
-                    "(!ctx._source.containsKey('owner') || ctx._source.owner == null)) { "
-                    "ctx._source.owner = ctx._source.owner_id; "
+                    "if (ctx._source.containsKey('owner_id') && ctx._source.owner_id != null) { "
+                    "if (!ctx._source.containsKey('owner') || ctx._source.owner == null) { "
+                    "ctx._source.owner = ctx._source.owner_id; } "
                     "ctx._source.remove('owner_id'); "
                     "} else { ctx.op = 'noop'; }"
                 ),
@@ -23,9 +24,17 @@ class ActionOwnerMigration(Migration):
             query={
                 "bool": {
                     "filter": [{"exists": {"field": "owner_id"}}],
-                    "must_not": [{"exists": {"field": "owner"}}],
                 }
             },
-            refresh="wait_for",
+            refresh=True,
         )
-        return int(result.get("updated", 0))
+        updated = result.get("updated")
+        if isinstance(updated, bool) or not isinstance(updated, int) or updated < 0:
+            raise DataStoreException("Action-owner migration received an invalid update count from Elasticsearch.")
+        return updated
+
+
+class ActionOwnerLegacyFieldCleanupMigration(ActionOwnerMigration):
+    """Clean legacy owner fields in deployments where the original migration already ran."""
+
+    migration_id = "action-owner-id-legacy-field-cleanup"

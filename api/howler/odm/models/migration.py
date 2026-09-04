@@ -13,6 +13,10 @@ class MigrationRecord(odm.Model):
     migration_id: str = odm.Keyword(description="The stable identifier of the migration.")
     status: str = odm.Enum({"running", "applied"}, description="The current migration execution status.")
     started_at: datetime = odm.Date(description="When execution of the migration started.")
+    claim_id: str | None = odm.Keyword(
+        optional=True,
+        description="Opaque identifier for the execution that owns a running migration claim.",
+    )
     applied_at: datetime | None = odm.Date(
         optional=True,
         description="When the migration completed successfully.",

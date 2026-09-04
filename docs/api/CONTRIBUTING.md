@@ -94,6 +94,21 @@ cd ~/repos/howler/api
 poetry run server
 ```
 
+### Running datastore migrations locally
+
+Datastore migrations are explicit and must not be added to application startup code. Use the command-line entry point
+with the same configuration and `HWL_DATASTORE_INDEX_PREFIX` as the target API:
+
+```bash
+poetry run howler-migrate --list
+poetry run howler-migrate --all
+poetry run howler-migrate --migration-id action-owner-id-to-owner
+```
+
+Use `--timeout` when the Elasticsearch transport needs a longer timeout. The command has no generic `--force` option;
+claim ownership and stale-claim recovery are part of the migration runner. Do not run it against a shared development
+cluster without a backup or a deliberate maintenance window.
+
 ## Running Tests
 
 In order to run the tests, you can use a convenience script:
@@ -107,4 +122,12 @@ poetry run mitre /etc/howler/lookups
 
 # run the server and the pytest command, along with coverage results
 poetry run test
+```
+
+Focused migration checks can be run without starting the Flask application:
+
+```bash
+poetry run pytest -q test/unit/test_migrations.py test/unit/test_ilm_collection.py
+poetry run pytest -q test/unit/test_migration_cli.py
+poetry run pytest -q test/integration/test_migrations.py
 ```
