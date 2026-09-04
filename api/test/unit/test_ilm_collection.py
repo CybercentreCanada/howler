@@ -8,9 +8,11 @@ from unittest.mock import MagicMock, patch
 
 import elasticsearch
 import pytest
-from elastic_transport import ApiResponseMeta
+from elastic_transport import ApiResponseMeta, ObjectApiResponse
 
+from howler.common.exceptions import HowlerRuntimeError
 from howler.datastore.collection import ESCollection
+from howler.datastore.exceptions import DataStoreException
 from howler.odm.models.config import ILMConfig, ILMIndexConfig
 
 
@@ -49,6 +51,159 @@ def _make_collection(mock_datastore, ilm_config=None):
     mock_datastore._models = {"testcol": None}
     col = ESCollection(mock_datastore, "testcol", model_class=None, ilm_config=ilm_config)
     return col
+
+
+class TestAsyncTaskOperations:
+    """Tests for asynchronous Elasticsearch query task handling."""
+
+    @staticmethod
+    def _query_result(updated=1, version_conflicts=0, **kwargs):
+        return {
+            "timed_out": False,
+            "failures": [],
+            "updated": updated,
+            "version_conflicts": version_conflicts,
+            **kwargs,
+        }
+
+    def test_get_task_results_polls_until_completed(self, mock_datastore, monkeypatch):
+        col = _make_collection(mock_datastore)
+        mock_datastore.client.tasks.get.side_effect = [
+            {"completed": False},
+            {"completed": True, "response": self._query_result()},
+        ]
+        monkeypatch.setattr("howler.datastore.collection.time.sleep", lambda _: None)
+
+        assert col._get_task_results({"task": "node:1"}) == self._query_result()
+
+        assert mock_datastore.client.tasks.get.call_count == 2
+        assert mock_datastore.client.tasks.get.call_args.kwargs == {
+            "task_id": "node:1",
+            "wait_for_completion": False,
+        }
+
+    def test_get_task_results_accepts_elasticsearch_response_wrapper(self, mock_datastore):
+        col = _make_collection(mock_datastore)
+        meta = ApiResponseMeta(status=200, http_version="1.1", headers={}, duration=0.0, node=None)
+        mock_datastore.client.tasks.get.return_value = ObjectApiResponse(
+            meta=meta,
+            body={"completed": True, "response": self._query_result()},
+        )
+
+        assert col._get_task_results({"task": "node:1"}) == self._query_result()
+
+    def test_get_task_results_rejects_task_error(self, mock_datastore):
+        col = _make_collection(mock_datastore)
+        mock_datastore.client.tasks.get.return_value = {"completed": True, "error": {"reason": "failed"}}
+
+        with pytest.raises(DataStoreException, match="task node:1 failed"):
+            col._get_task_results({"task": "node:1"})
+
+    @pytest.mark.parametrize(
+        "response",
+        [
+            {"completed": True, "response": {"timed_out": True, "failures": []}},
+            {"completed": True, "response": {"timed_out": False, "failures": [{"reason": "failed"}]}},
+        ],
+    )
+    def test_get_task_results_rejects_strict_query_failures(self, mock_datastore, response):
+        col = _make_collection(mock_datastore)
+        mock_datastore.client.tasks.get.return_value = response
+
+        with pytest.raises(DataStoreException):
+            col._get_task_results({"task": "node:1"})
+
+    def test_get_task_results_can_preserve_reindex_failures(self, mock_datastore):
+        col = _make_collection(mock_datastore)
+        response = {"completed": True, "response": {"failures": [{"reason": "bad document"}]}}
+        mock_datastore.client.tasks.get.return_value = response
+
+        assert col._get_task_results({"task": "node:1"}, strict=False) == response["response"]
+
+    def test_get_task_results_times_out(self, mock_datastore, monkeypatch):
+        col = _make_collection(mock_datastore)
+        col.TASK_POLL_TIMEOUT = 1
+        mock_datastore.client.tasks.get.return_value = {"completed": False}
+        monotonic_values = iter([0, 0, 1])
+        monkeypatch.setattr("howler.datastore.collection.time.monotonic", lambda: next(monotonic_values))
+        monkeypatch.setattr("howler.datastore.collection.time.sleep", lambda _: None)
+
+        with pytest.raises(HowlerRuntimeError, match="Timed out waiting"):
+            col._get_task_results({"task": "node:1"})
+
+    @pytest.mark.parametrize(
+        "task,response",
+        [
+            ({}, None),
+            ({"task": "node:1"}, {"completed": True}),
+            ({"task": "node:1"}, {"completed": None, "response": {}}),
+            ({"task": "node:1"}, {"completed": True, "response": []}),
+        ],
+    )
+    def test_get_task_results_rejects_malformed_responses(self, mock_datastore, task, response):
+        col = _make_collection(mock_datastore)
+        mock_datastore.client.tasks.get.return_value = response
+
+        with pytest.raises(DataStoreException):
+            col._get_task_results(task)
+
+    @pytest.mark.parametrize(
+        ("refresh", "expected"),
+        [(None, None), (True, True), (False, False), ("true", True), ("false", False), ("wait_for", True)],
+    )
+    def test_update_async_normalizes_refresh(self, mock_datastore, refresh, expected):
+        col = _make_collection(mock_datastore)
+        monkeypatch_result = self._query_result()
+        with patch.object(col, "_get_task_results", return_value=monkeypatch_result):
+            col._update_async("test-index", {"source": ""}, {"match_all": {}}, refresh=refresh)
+
+        assert mock_datastore.client.update_by_query.call_args.kwargs["refresh"] is expected
+
+    def test_delete_async_normalizes_wait_for_refresh(self, mock_datastore):
+        col = _make_collection(mock_datastore)
+        result = {"timed_out": False, "failures": [], "deleted": 1, "version_conflicts": 0}
+        with patch.object(col, "_get_task_results", return_value=result):
+            col._delete_async("test-index", {"match_all": {}}, refresh="wait_for")
+
+        assert mock_datastore.client.delete_by_query.call_args.kwargs["refresh"] is True
+
+    def test_delete_async_rejects_partial_results(self, mock_datastore):
+        col = _make_collection(mock_datastore)
+        result = {"timed_out": False, "failures": [{"reason": "failed"}], "deleted": 1, "version_conflicts": 0}
+        with patch.object(col, "_get_task_results", return_value=result):
+            with pytest.raises(DataStoreException):
+                col._delete_async("test-index", {"match_all": {}})
+
+    @pytest.mark.parametrize(
+        "result",
+        [
+            {"timed_out": True, "failures": [], "updated": 1, "version_conflicts": 0},
+            {"timed_out": False, "failures": [{"reason": "failed"}], "updated": 1, "version_conflicts": 0},
+        ],
+    )
+    def test_update_async_rejects_partial_results(self, mock_datastore, result):
+        col = _make_collection(mock_datastore)
+        with patch.object(col, "_get_task_results", return_value=result):
+            with pytest.raises(DataStoreException):
+                col._update_async("test-index", {"source": ""}, {"match_all": {}})
+
+    def test_update_async_preserves_counts_across_conflict_retry(self, mock_datastore):
+        col = _make_collection(mock_datastore)
+        results = [self._query_result(updated=2, version_conflicts=1), self._query_result(updated=3)]
+        with patch.object(col, "_get_task_results", side_effect=results):
+            result = col._update_async("test-index", {"source": ""}, {"match_all": {}})
+
+        assert result["updated"] == 5
+        assert mock_datastore.client.update_by_query.call_count == 2
+
+    def test_update_async_bounds_conflict_retries(self, mock_datastore):
+        col = _make_collection(mock_datastore)
+        col.MAX_VERSION_CONFLICT_ATTEMPTS = 2
+        with patch.object(col, "_get_task_results", return_value=self._query_result(version_conflicts=1)):
+            with pytest.raises(DataStoreException, match="2 version-conflict"):
+                col._update_async("test-index", {"source": ""}, {"match_all": {}})
+
+        assert mock_datastore.client.update_by_query.call_count == 2
 
 
 class TestExists:
@@ -179,6 +334,17 @@ class TestILMVersionedOperations:
 
         assert mock_datastore.client.index.call_args.kwargs["index"] == col.name
         assert mock_datastore.client.index.call_args.kwargs["op_type"] == "create"
+
+    def test_versioned_delete_uses_optimistic_concurrency(self, mock_datastore):
+        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
+        concrete_index = f"{col.name}-000001"
+
+        assert col.delete("document-id", version=f"{concrete_index}---5---2") is False
+
+        delete_kwargs = mock_datastore.client.delete.call_args.kwargs
+        assert delete_kwargs["index"] == concrete_index
+        assert delete_kwargs["if_seq_no"] == "5"
+        assert delete_kwargs["if_primary_term"] == "2"
 
 
 class TestCreateILMPolicy:

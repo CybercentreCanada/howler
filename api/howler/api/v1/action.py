@@ -4,6 +4,7 @@ from flask import Response, request
 
 import howler.actions as actions
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
+from howler.api.v1.utils import permission_helper
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
@@ -20,6 +21,7 @@ classification_definition = CLASSIFICATION.get_parsed_classification_definition(
 
 action_api = make_subapi_blueprint(SUB_API, api_version=1)
 action_api._doc = "Endpoints relating to bulk actions and automation"  # type: ignore
+permission_helper.add_access_control_endpoints(action_api, Action)
 
 
 @generate_swagger_docs()
@@ -88,7 +90,7 @@ def add_action(user: User, **kwargs) -> Response:
         return error
 
     try:
-        new_action["owner_id"] = user.uname
+        new_action["owner"] = user.uname
 
         action_obj = Action(new_action)
 
@@ -139,6 +141,9 @@ def update_action(id: str, user: User, **kwargs) -> Response:
     if not isinstance(updated_action, dict):
         return bad_request(err="Incorrect data structure!")
 
+    if set(updated_action) & {"owner", "admins", "members"}:
+        return bad_request(err="You cannot change permissions using this endpoint.")
+
     refresh = kwargs.get("refresh")
 
     ds = datastore()
@@ -152,6 +157,14 @@ def update_action(id: str, user: User, **kwargs) -> Response:
         "triggers", []
     ):
         return forbidden(err="Updating triggers requires the role 'automation_advanced'.")
+
+    allowed_list = [
+        existing_action.get("owner"),
+        *existing_action.get("admins", []),
+        *existing_action.get("members", []),
+    ]
+    if user.uname not in allowed_list and "admin" not in user.type:
+        return forbidden(err="You do not have the permission to update this action")
 
     updated_action = {
         **existing_action,
@@ -201,7 +214,7 @@ def delete_action(id: str, user: User, **kwargs) -> Response:
 
     action: Action = result["items"][0]
 
-    if action.owner_id != user.uname and "admin" not in user.type:
+    if action.owner != user.uname and "admin" not in user.type:
         return forbidden(err="You do not have the permissions necessary to delete this action.")
 
     try:

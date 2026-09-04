@@ -59,7 +59,7 @@ def test_execute_action(datastore_connection: HowlerDatastore):
         {
             "triggers": ["demote"],
             "name": "Test demote on triage",
-            "owner_id": "admin",
+            "owner": "admin",
             "query": "howler.id:*",
             "operations": [
                 {
@@ -77,7 +77,7 @@ def test_execute_action(datastore_connection: HowlerDatastore):
         {
             "triggers": ["promote"],
             "name": "Test promote on triage",
-            "owner_id": "admin",
+            "owner": "admin",
             "query": "howler.id:*",
             "operations": [
                 {
@@ -141,7 +141,7 @@ def test_execute_action_no_results(datastore_connection: HowlerDatastore):
         {
             "triggers": ["promote"],
             "name": "Test promote on triage",
-            "owner_id": "admin",
+            "owner": "admin",
             "query": "howler.id:jiksdfrhhbjnksdcfhbjnk",
             "operations": [
                 {
@@ -196,7 +196,7 @@ def test_process_action_batch_create_trigger(datastore_connection: HowlerDatasto
         {
             "triggers": ["create"],
             "name": "Test batch create action",
-            "owner_id": "admin",
+            "owner": "admin",
             "query": "howler.id:*",
             "operations": [
                 {
@@ -245,7 +245,7 @@ def test_process_action_batch_no_matching_action(datastore_connection: HowlerDat
         {
             "triggers": ["promote"],
             "name": "Test batch no match",
-            "owner_id": "admin",
+            "owner": "admin",
             "query": "howler.id:nonexistent_id_12345",
             "operations": [
                 {
@@ -305,7 +305,7 @@ def test_process_action_batch_coalesces_duplicates(datastore_connection: HowlerD
         {
             "triggers": ["create"],
             "name": "Test coalesce action",
-            "owner_id": "admin",
+            "owner": "admin",
             "query": "howler.id:*",
             "operations": [
                 {

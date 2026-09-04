@@ -4,6 +4,7 @@ from flask import request
 from mergedeep.mergedeep import merge
 
 from howler.api import bad_request, created, forbidden, make_subapi_blueprint, no_content, not_found, ok
+from howler.api.v1.utils import permission_helper
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
@@ -13,10 +14,12 @@ from howler.datastore.exceptions import SearchException
 from howler.odm.models.user import User
 from howler.odm.models.view import View
 from howler.security.login import api_login
+from howler.services import permission_service
 
 SUB_API = "view"
 view_api = make_subapi_blueprint(SUB_API, api_version=1)
 view_api._doc = "Manage the different views created for filtering hits"  # type: ignore
+permission_helper.add_access_control_endpoints(view_api, View)
 
 logger = get_logger(__file__)
 
@@ -41,7 +44,10 @@ def get_views(user: User, **kwargs):
     try:
         return ok(
             datastore().view.search(
-                f"type:global OR owner:({user['uname']} OR none)", as_obj=False, rows=1000, sort="title asc"
+                f"type:global OR owner:({user['uname']} OR none) OR admins:{user['uname']} OR members:{user['uname']}",
+                as_obj=False,
+                rows=1000,
+                sort="title asc",
             )["items"]
         )
     except ValueError as e:
@@ -145,7 +151,7 @@ def delete_view(view_id: str, user: User, **kwargs):
         return not_found(err="This view does not exist")
 
     if existing_view.owner != user.uname and "admin" not in user.type:
-        return forbidden(err="You cannot delete a view unless you are an administrator, or the owner.")
+        return forbidden(err="You cannot delete a view unless you are an owner or a global admin.")
 
     if existing_view.type == "readonly":
         return forbidden(err="You cannot delete built-in views.")
@@ -159,7 +165,7 @@ def delete_view(view_id: str, user: User, **kwargs):
 @view_api.route("/<view_id>", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
 @parse_parameters(refresh=parse_refresh)
-def update_view(view_id: str, user: User, **kwargs):
+def update_view(view_id: str, user: User, **kwargs):  # noqa: C901
     """Update a view
 
     Variables:
@@ -188,8 +194,11 @@ def update_view(view_id: str, user: User, **kwargs):
     if not isinstance(new_data, dict):
         return bad_request(err="Invalid data format")
 
-    if set(new_data.keys()) & {"view_id", "owner"}:
-        return bad_request(err="You cannot change the owner or id of a view.")
+    if "view_id" in new_data:
+        return bad_request(err="You cannot change the view ID.")
+
+    if set(new_data) & {"owner", "admins", "members"}:
+        return bad_request(err="You cannot change permissions using this endpoint.")
 
     existing_view: View = storage.view.get_if_exists(view_id)
     if not existing_view:
@@ -198,26 +207,25 @@ def update_view(view_id: str, user: User, **kwargs):
     if existing_view.type == "readonly":
         return forbidden(err="You cannot edit a built-in view.")
 
-    if existing_view.type == "personal" and existing_view.owner != user.uname:
-        return forbidden(err="You cannot update a personal view that is not owned by you.")
+    is_member = user.uname in [existing_view.owner, *existing_view.admins, *existing_view.members]
+    if existing_view.type == "global" and not is_member and "admin" not in user.type:
+        return forbidden(err="Only members of a view or global administrators can edit a view.")
 
-    if existing_view.type == "global" and existing_view.owner != user.uname and "admin" not in user.type:
-        return forbidden(err="Only the owner of a view and administrators can edit a global view.")
-
-    new_view = View(cast(dict, merge({}, existing_view.as_primitives(), new_data)))
-
-    storage.view.save(new_view.view_id, new_view, refresh=refresh)
+    if "type" in new_data and not permission_service.can_change_visibility(existing_view, new_data["type"]):
+        return forbidden(err="You cannot change the visibility of a view while it is shared with other users.")
 
     try:
         if "query" in new_data:
-            # Make sure the query is valid
             storage.hit.search(new_data["query"])
-
-        return ok(storage.view.get_if_exists(existing_view.view_id, as_obj=False))
     except SearchException:
         return bad_request(err="You must use a valid query when updating a view.")
     except HowlerException as e:
         return bad_request(err=str(e))
+
+    new_view = View(cast(dict, merge({}, existing_view.as_primitives(), new_data)))
+    storage.view.save(new_view.view_id, new_view, refresh=refresh)
+
+    return ok(new_view.as_primitives())
 
 
 @generate_swagger_docs()
@@ -246,10 +254,12 @@ def set_as_favourite(view_id: str, **kwargs):
     if not existing_view:
         return not_found(err="This view does not exist")
 
-    if existing_view.type != "global" and (
-        existing_view.owner != kwargs["user"]["uname"] and existing_view.owner != "none"
+    if (
+        existing_view.type == "personal"
+        and kwargs["user"]["uname"] not in [existing_view.owner, *existing_view.admins, *existing_view.members]
+        and existing_view.owner != "none"
     ):
-        return forbidden(err="You can only favourite global views, or views owned by you.")
+        return forbidden(err="You can only favourite global views, or views you have permission to use.")
 
     try:
         current_user = storage.user.get_if_exists(kwargs["user"]["uname"])

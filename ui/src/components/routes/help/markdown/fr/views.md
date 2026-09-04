@@ -4,7 +4,7 @@ Les vues sont une fonctionnalité de Howler qui permet aux utilisateurs de crée
 
 ## Utilisation d'une vue
 
-Vous pouvez utiliser les vues en accédant au gestionnaire de vues sous [Manage > Views](/views). En cliquant sur une vue, vous l'ouvrirez dans la page de recherche. Vous pouvez également utiliser l'icône `recherche` pour ouvrir la vue dans la page de recherche. Vous pouvez également modifier les vues qui vous appartiennent et les marquer comme favorites. Cela les affichera dans le menu déroulant `t(route.views.saved)` dans la barre latérale. En haut à droite, vous pouvez également choisir votre `t(route.views.manager.default)`, qui sera sélectionné par défaut lors de l'ouverture de la page d'alertes.
+Vous pouvez utiliser les vues en accédant au gestionnaire de vues sous [Manage > Views](/views). En cliquant sur une vue, vous l'ouvrirez dans la page de recherche. Vous pouvez également utiliser l'icône `recherche` pour ouvrir la vue dans la page de recherche. Vous pouvez également modifier les vues qui vous appartiennent ou qui ont été partagées avec vous, et les marquer comme favorites. Cela les affichera dans le menu déroulant `t(route.views.saved)` dans la barre latérale. En haut à droite, vous pouvez également choisir votre `t(route.views.manager.default)`, qui sera sélectionné par défaut lors de l'ouverture de la page d'alertes.
 
 ## Créer des vues
 

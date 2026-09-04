@@ -134,6 +134,114 @@ def test_set_view(datastore: HowlerDatastore, login_session):
     assert updated_view.title == "new title thing"
 
 
+def test_personal_view_members_can_edit(datastore: HowlerDatastore, user_sessions):
+    owner_session, host = user_sessions["user"]
+    member_session, _ = user_sessions["huey"]
+
+    member_uname = get_api_data(member_session, f"{host}/api/v1/user/whoami")["username"]
+    create_res = get_api_data(
+        owner_session,
+        f"{host}/api/v1/view/",
+        method="POST",
+        data=json.dumps({"title": "shared personal view", "type": "personal", "query": "howler.hash:*"}),
+    )
+    view_id = create_res["view_id"]
+
+    try:
+        owner_update = get_api_data(
+            owner_session,
+            f"{host}/api/v1/view/{view_id}/",
+            method="PUT",
+            data=json.dumps({"title": "owner updated personal view"}),
+        )
+        assert owner_update["title"] == "owner updated personal view"
+
+        with pytest.raises(APIError):
+            get_api_data(
+                member_session,
+                f"{host}/api/v1/view/{view_id}/",
+                method="PUT",
+                data=json.dumps({"title": "unauthorized update"}),
+            )
+
+        get_api_data(
+            owner_session,
+            f"{host}/api/v1/view/{view_id}/permission",
+            method="PUT",
+            data=json.dumps({"privilege": "admins", "user_ids": [member_uname]}),
+        )
+
+        admin_update = get_api_data(
+            member_session,
+            f"{host}/api/v1/view/{view_id}/",
+            method="PUT",
+            data=json.dumps({"title": "local admin updated personal view"}),
+        )
+        assert admin_update["title"] == "local admin updated personal view"
+
+        get_api_data(
+            owner_session,
+            f"{host}/api/v1/view/{view_id}/permission",
+            method="DELETE",
+            data=json.dumps({"privilege": "admins", "user_ids": [member_uname]}),
+        )
+        get_api_data(
+            owner_session,
+            f"{host}/api/v1/view/{view_id}/permission",
+            method="PUT",
+            data=json.dumps({"privilege": "members", "user_ids": [member_uname]}),
+        )
+
+        member_update = get_api_data(
+            member_session,
+            f"{host}/api/v1/view/{view_id}/",
+            method="PUT",
+            data=json.dumps({"title": "member updated personal view"}),
+        )
+        assert member_update["title"] == "member updated personal view"
+    finally:
+        datastore.view.delete(view_id)
+        datastore.view.commit()
+
+
+def test_visibility_change_rejected_for_shared_view(datastore: HowlerDatastore, user_sessions):
+    owner_session, host = user_sessions["user"]
+    member_session, _ = user_sessions["huey"]
+
+    member_uname = get_api_data(member_session, f"{host}/api/v1/user/whoami")["username"]
+    create_res = get_api_data(
+        owner_session,
+        f"{host}/api/v1/view/",
+        method="POST",
+        data=json.dumps({"title": "shared visibility test", "type": "global", "query": "howler.hash:*"}),
+    )
+    view_id = create_res["view_id"]
+
+    try:
+        get_api_data(
+            owner_session,
+            f"{host}/api/v1/view/{view_id}/permission",
+            method="PUT",
+            data=json.dumps({"privilege": "members", "user_ids": [member_uname]}),
+        )
+
+        for session in (owner_session, member_session):
+            with pytest.raises(APIError) as err:
+                get_api_data(
+                    session,
+                    f"{host}/api/v1/view/{view_id}/",
+                    method="PUT",
+                    data=json.dumps({"type": "personal"}),
+                )
+
+            assert "visibility" in str(err.value)
+
+        assert datastore.view.get(view_id, as_obj=True).type == "global"
+    finally:
+        datastore.view.delete(view_id)
+        datastore.view.commit()
+
+
 def test_set_view_error(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
@@ -178,3 +286,69 @@ def test_favourite(datastore: HowlerDatastore, login_session):
     datastore.user.commit()
 
     assert view.view_id not in datastore.user.search(f"uname:{uname}")["items"][0]["favourite_views"]
+
+
+def test_give_remove_membership(
+    datastore: HowlerDatastore,
+    user_sessions,
+):
+    """
+    Test adding a user and removing a user from a view
+    """
+    owner_session, host = user_sessions["user"]
+    member_session, _ = user_sessions["huey"]
+
+    member_uname = get_api_data(member_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
+    # Create the view
+    create_res = get_api_data(
+        owner_session,
+        f"{host}/api/v1/view/",
+        method="POST",
+        data=json.dumps({"title": "testremove", "type": "global", "query": "howler.hash:*"}),
+    )
+
+    with pytest.raises(APIError) as err:
+        get_api_data(
+            member_session,
+            f"{host}/api/v1/view/{create_res['view_id']}/permission",
+            method="PUT",
+            data=json.dumps(
+                {
+                    "privilege": "members",
+                    "user_ids": [member_uname],
+                }
+            ),
+        )
+
+    assert "403" in str(err.value)
+    assert "not allowed" in str(err.value)
+
+    for privilege in ("admins", "members"):
+        updated_view = get_api_data(
+            owner_session,
+            f"{host}/api/v1/view/{create_res['view_id']}/permission",
+            method="PUT",
+            data=json.dumps(
+                {
+                    "privilege": privilege,
+                    "user_ids": [member_uname],
+                }
+            ),
+        )
+        assert member_uname in updated_view[privilege]
+
+        updated_view = get_api_data(
+            owner_session,
+            f"{host}/api/v1/view/{create_res['view_id']}/permission",
+            method="DELETE",
+            data=json.dumps(
+                {
+                    "privilege": privilege,
+                    "user_ids": [member_uname],
+                }
+            ),
+        )
+        assert member_uname not in updated_view[privilege]
+
+    # Delete the view
+    get_api_data(owner_session, f"{host}/api/v1/view/{create_res['view_id']}/", method="DELETE")

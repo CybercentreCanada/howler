@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type * as TuiCore from '@tui/core';
+import { UserListContext } from 'components/app/providers/UserListProvider';
 import omit from 'lodash-es/omit';
 import { act, type PropsWithChildren } from 'react';
 import { setupContextSelectorMock, setupReactRouterMock } from 'tests/mocks';
@@ -171,7 +172,11 @@ const Wrapper = ({ children }: PropsWithChildren) => {
           } as any
         }
       >
-        <ParameterContext.Provider value={mockParameterContext as any}>{children}</ParameterContext.Provider>
+        <ParameterContext.Provider value={mockParameterContext as any}>
+          <UserListContext.Provider value={{ users: {}, fetchUsers: vi.fn(), searchUsers: vi.fn() }}>
+            {children}
+          </UserListContext.Provider>
+        </ParameterContext.Provider>
       </ApiConfigProvider>
     </I18nextProvider>
   );

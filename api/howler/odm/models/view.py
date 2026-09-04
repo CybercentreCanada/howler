@@ -2,6 +2,7 @@
 from typing import Literal, Optional, Union
 
 from howler import odm
+from howler.odm.models.ownership import Ownership
 
 
 @odm.model(index=True, store=True, description="The field and width of a column to display in a grid view.")
@@ -30,7 +31,7 @@ DEFAULT_INDEXES = ["hit"]
 
 
 @odm.model(index=True, store=True, description="Model of views")
-class View(odm.Model):
+class View(Ownership):
     view_id: str = odm.UUID(description="A UUID for this view")
     indexes: list[str] = odm.List(
         odm.Keyword(),
@@ -48,10 +49,7 @@ class View(odm.Model):
         values=["personal", "global", "readonly"],
         description="The type of view",
     )
-    owner: str = odm.Keyword(
-        description="The person to whom this view belongs.",
-        optional=True,
-    )
+
     settings: Settings = odm.Compound(
         Settings, description="Additional View Settings", default={"advance_on_triage": False}
     )
