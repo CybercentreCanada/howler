@@ -13,7 +13,7 @@ from howler.actions.promote import Escalation
 from howler.common.exceptions import HowlerTypeError, HowlerValueError, NotFoundException, ResourceExists
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
-from howler.datastore.collection import ESCollection
+from howler.datastore.collection import CREATE_TOKEN, ESCollection
 from howler.datastore.operations import OdmHelper, OdmUpdateOperation
 from howler.datastore.types import SearchResult
 from howler.helper.hit import (
@@ -31,6 +31,7 @@ from howler.odm.models.ecs.event import ECSEvent
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import HitOperationType, HitStatusTransition, Log, Status
 from howler.odm.models.user import User
+from howler.security.utils import is_classification_accessible
 from howler.services import action_service, analytic_service, dossier_service, overview_service, template_service
 from howler.utils.dict_utils import extra_keys, flatten
 from howler.utils.uid import get_random_id
@@ -230,7 +231,7 @@ def _modifies_prop(prop: str, operations: list[OdmUpdateOperation]) -> bool:
 
 
 def convert_hit(  # noqa: C901
-    data: dict[str, Any], unique: bool, ignore_extra_values: bool = False
+    data: dict[str, Any], unique: bool, user: User | None = None, ignore_extra_values: bool = False
 ) -> tuple[Hit, list[str]]:
     """Validate and convert a dictionary to a Hit ODM object.
 
@@ -336,6 +337,9 @@ def convert_hit(  # noqa: C901
     else:
         odm.event = ECSEvent({"created": "NOW", "id": odm.howler.id})
 
+    if user and not is_classification_accessible(user, odm.classification):
+        raise HowlerValueError(f"User {user.uname} cannot create hits at classification {odm.classification}")
+
     if unique and exists(odm.howler.id):
         raise ResourceExists("Resource with id %s already exists" % odm.howler.id)
 
@@ -356,7 +360,7 @@ def exists(id: str) -> bool:
 
 
 @overload
-def get_hit(id: str, as_odm: Literal[True], version: Literal[True]) -> tuple[Hit, str]: ...
+def get_hit(id: str, as_odm: Literal[True], version: Literal[True], user: User | None = None) -> tuple[Hit, str]: ...
 
 
 @overload
@@ -384,7 +388,7 @@ def get_hit(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
 
 
 @tracer.start_as_current_span(f"{__name__}.get_hit")
-def get_hit(id: str, as_odm=False, version=False):
+def get_hit(id: str, as_odm=False, version=False, user: User | None = None):
     """Retrieve a hit from the datastore.
 
     Args:
@@ -396,7 +400,32 @@ def get_hit(id: str, as_odm=False, version=False):
         Hit object (if as_odm=True) or dictionary representation of the hit.
         Returns None if the hit doesn't exist.
     """
-    return datastore().hit.get_if_exists(key=id, as_obj=as_odm, version=version)
+    hit_version: str | None = None
+    obj: Hit | dict[str, Any] | None = None
+
+    hit = datastore().hit.get_if_exists(key=id, as_obj=as_odm, version=version)
+    if user is None:
+        return hit
+
+    if version:
+        obj, hit_version = cast(tuple[dict[str, Any] | Hit, str], hit)
+    else:
+        obj = cast(Hit | dict[str, Any], hit)
+
+    classification: str | None = None
+    if as_odm and obj:
+        classification = cast(Hit, obj).classification
+    elif obj:
+        classification = cast(dict[str, str], obj).get("classification")
+
+    if obj is not None and not is_classification_accessible(user, classification):
+        obj = None
+        hit_version = CREATE_TOKEN
+
+    if version:
+        return obj, hit_version
+
+    return obj
 
 
 CREATED_HITS = Counter(
@@ -746,7 +775,7 @@ DELETED_HITS = Counter(f"{APP_NAME.replace('-', '_')}_deleted_hits_total", "The 
 
 
 @tracer.start_as_current_span(f"{__name__}.delete_hits")
-def delete_hits(hit_ids: set[str], refresh: str | None = None) -> bool:
+def delete_hits(hit_ids: set[str], refresh: Literal["true", "false", "wait_for"] | None = None) -> bool:
     """Delete a set of hits from the database
 
     Args:
@@ -781,6 +810,7 @@ def search(
     timeout: int | None = None,
     deep_paging_id: str | None = None,
     track_total_hits: bool = False,
+    filters: list[str] | None = None,
 ) -> SearchResult[Hit]: ...
 
 
@@ -795,6 +825,7 @@ def search(
     timeout: int | None = None,
     deep_paging_id: str | None = None,
     track_total_hits: bool = False,
+    filters: list[str] | None = None,
 ) -> SearchResult[dict[str, Any]]: ...
 
 
@@ -809,6 +840,7 @@ def search(
     timeout=None,
     deep_paging_id=None,
     track_total_hits=False,
+    filters=None,
 ):
     """Search for hits in the datastore using a query.
 
@@ -839,6 +871,7 @@ def search(
         timeout=timeout,
         deep_paging_id=deep_paging_id,
         track_total_hits=track_total_hits,
+        filters=filters,
         as_obj=as_obj,
     )
 
@@ -960,3 +993,16 @@ def augment_metadata(data: list[dict[str, Any]] | dict[str, Any] | None, metadat
 
         for hit in hits:
             hit["__dossiers"] = dossier_service.get_matching_dossiers(hit, dossiers, username=user.uname)
+
+
+def filter_accessible_hits(user: User, hit_ids: list[str]) -> list[str]:
+    """Drop hit ids that are missing or inaccessible to the given user.
+
+    Used by the deprecated bundle endpoints, where inaccessible children are
+    silently dropped, mirroring the handling of nonexistent hits.
+    """
+    return [
+        hit_id
+        for hit_id in hit_ids
+        if (hit := get_hit(hit_id, as_odm=True)) is not None and is_classification_accessible(user, hit.classification)
+    ]

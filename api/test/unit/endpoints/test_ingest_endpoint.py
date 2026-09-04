@@ -77,6 +77,7 @@ class TestCreateEndpoint:
 
         mock_hit = MagicMock()
         mock_hit.howler.id = "hit-001"
+        mock_hit.classification = None
         mock_hit_svc.convert_hit.return_value = (mock_hit, [])
 
         with request_context.test_request_context(
@@ -107,6 +108,7 @@ class TestCreateEndpoint:
 
         mock_obs = MagicMock()
         mock_obs.howler.id = "event-001"
+        mock_obs.classification = None
         mock_obs_svc.convert_event.return_value = (mock_obs, [])
 
         with request_context.test_request_context(
@@ -190,6 +192,8 @@ class TestCreateEndpoint:
         hit1, hit2 = MagicMock(), MagicMock()
         hit1.howler.id = "hit-001"
         hit2.howler.id = "hit-002"
+        hit1.classification = None
+        hit2.classification = None
         mock_hit_svc.convert_hit.side_effect = [(hit1, []), (hit2, ["warning1"])]
 
         with request_context.test_request_context(
@@ -245,6 +249,7 @@ class TestCreateEndpoint:
 
         mock_hit = MagicMock()
         mock_hit.howler.id = "hit-001"
+        mock_hit.classification = None
         mock_hit_svc.convert_hit.return_value = (mock_hit, [])
         mock_queue_fn.return_value.push.side_effect = Exception("Redis down")
 
@@ -350,6 +355,69 @@ class TestDeleteEndpoint:
             result: Response = delete(indexes="hit", user=user)
 
             assert result.status_code == 404
+
+    @patch("howler.api.v2.ingest.datastore")
+    @patch("howler.security.login.auth_service")
+    def test_delete_inaccessible_record_returns_404_without_deleting(
+        self, mock_auth_service, mock_datastore, request_context: Flask
+    ):
+        """Records hidden by access control are treated as unavailable for deletion."""
+        user = _build_user(["admin", "user"])
+        user.access_control = "__access_lvl__:[0 TO 100]"
+        _mock_auth(mock_auth_service, user)
+
+        mock_ds = MagicMock()
+        mock_datastore.return_value = mock_ds
+        mock_index = MagicMock()
+        mock_index.exists.return_value = False
+        mock_ds.__getitem__ = MagicMock(return_value=mock_index)
+
+        with request_context.test_request_context(
+            method="DELETE",
+            json=["restricted"],
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.ingest import delete
+
+            result: Response = delete(indexes="hit", user=user)
+
+            assert result.status_code == 404
+            mock_index.exists.assert_called_once_with(
+                "restricted",
+                access_control="__access_lvl__:[0 TO 100]",
+            )
+            mock_index.delete.assert_not_called()
+
+    @patch("howler.api.v2.ingest.datastore")
+    @patch("howler.security.login.auth_service")
+    def test_delete_uses_access_control_only_for_protected_indexes(
+        self, mock_auth_service, mock_datastore, request_context: Flask
+    ):
+        """Unprotected indexes are checked without the user's classification filter."""
+        user = _build_user(["admin", "user"])
+        user.access_control = "__access_lvl__:[0 TO 100]"
+        _mock_auth(mock_auth_service, user)
+
+        mock_ds = MagicMock()
+        mock_datastore.return_value = mock_ds
+        mock_index = MagicMock()
+        mock_index.exists.return_value = True
+        mock_ds.__getitem__ = MagicMock(return_value=mock_index)
+
+        with request_context.test_request_context(
+            method="DELETE",
+            json=["record-001"],
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.ingest import delete
+
+            result: Response = delete(indexes="template", user=user)
+
+            assert result.status_code == 204
+            assert mock_index.exists.call_args_list == [
+                (("record-001",), {"access_control": None}),
+                (("record-001",), {"access_control": None}),
+            ]
 
     @patch("howler.api.v2.ingest.datastore")
     @patch("howler.security.login.auth_service")
@@ -540,6 +608,8 @@ class TestIngestionQueueing:
         hit1, hit2 = MagicMock(), MagicMock()
         hit1.howler.id = "hit-a"
         hit2.howler.id = "hit-b"
+        hit1.classification = None
+        hit2.classification = None
         mock_hit_svc.convert_hit.side_effect = [(hit1, []), (hit2, [])]
 
         with request_context.test_request_context(
@@ -563,6 +633,7 @@ class TestIngestionQueueing:
 
         obs = MagicMock()
         obs.howler.id = "event-a"
+        obs.classification = None
         mock_obs_svc.convert_event.return_value = (obs, [])
 
         with request_context.test_request_context(
@@ -736,6 +807,31 @@ class TestUpdateByQuery:
             assert result.status_code == 200
             body = result.get_json()
             assert body["api_response"]["success"] is True
+
+    @patch("howler.api.v2.ingest.datastore")
+    @patch("howler.security.login.auth_service")
+    def test_update_by_query_rejects_protected_field(self, mock_auth_service, mock_ds, request_context: Flask):
+        """Returns 400 when an operation targets classification or its derived
+        access-control fields — script updates bypass ODM serialization and
+        would corrupt classification enforcement."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        for field in ("classification", "__access_lvl__", "__access_grp1__"):
+            with request_context.test_request_context(
+                method="PUT",
+                json={
+                    "query": "howler.id:*",
+                    "operations": [["SET", field, "anything"]],
+                },
+                headers={"Authorization": "Bearer ."},
+            ):
+                from howler.api.v2.ingest import update_by_query
+
+                result: Response = update_by_query(indexes="hit", user=user)
+
+                assert result.status_code == 400, field
+                assert f"protected field {field}" in result.get_json()["api_error_message"]
 
     @patch("howler.api.v2.ingest.datastore")
     @patch("howler.security.login.auth_service")

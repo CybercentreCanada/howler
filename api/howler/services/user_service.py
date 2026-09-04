@@ -24,6 +24,10 @@ def get_user(id: str, as_odm: Literal[True], version: Literal[True]) -> tuple[Us
 
 
 @overload
+def get_user(id: str, *, as_odm: Literal[True], version: Literal[True], user: User | None) -> tuple[User, str]: ...
+
+
+@overload
 def get_user(id: str, as_odm: Literal[True], version: Literal[False]) -> User: ...
 
 
@@ -43,6 +47,7 @@ def get_user(
     id: str,
     as_odm=False,
     version=False,
+    user: User | None = None,
 ):
     """Return hit object as either an ODM or Dict"""
     return datastore().user.get_if_exists(key=id, as_obj=as_odm, version=version)

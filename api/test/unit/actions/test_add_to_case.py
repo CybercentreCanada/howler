@@ -271,6 +271,7 @@ def test_execute_mixed_results():
         item_name=f"{hit_existing.howler.analytic} ({hit_existing.howler.id})",
         item_parent=related_folder.id if related_folder else None,
     )
+    _case.save(refresh="wait_for")
 
     result = execute("howler.analytic:TestingMixed", case_id=_case.case_id)
 

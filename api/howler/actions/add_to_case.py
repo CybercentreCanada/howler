@@ -1,19 +1,23 @@
-from typing import Optional
-
 import chevron
 
 from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.loader import datastore
+from howler.common.logging import get_logger
+from howler.datastore.exceptions import DataStoreException, VersionConflictException
 from howler.odm.models.action import VALID_TRIGGERS
-from howler.services import case_service
+from howler.odm.models.user import User
+from howler.services import case_service, comms_service
+
+logger = get_logger(__file__)
 
 OPERATION_ID = "add_to_case"
 
 
 def execute(  # noqa: C901
     query: str,
-    case_id: Optional[str] = None,
+    case_id: str | None = None,
     destination: str = "related/{{howler.analytic}} ({{howler.id}})",
+    user: User | None = None,
     **kwargs,
 ):
     """Add matching alerts to a given case.
@@ -37,8 +41,8 @@ def execute(  # noqa: C901
 
     ds = datastore()
 
-    case = ds.case.get(case_id)
-    if case is None:
+    case, version = case_service.get_case(case_id, as_odm=True, version=True, user=user)
+    if not case:
         return [
             {
                 "query": query,
@@ -63,6 +67,7 @@ def execute(  # noqa: C901
     report = []
     skipped = []
     added = []
+    original_item_count = len(case.items)
 
     for hit in hits:
         rendered_destination = chevron.render(destination, hit.as_primitives())
@@ -73,7 +78,7 @@ def execute(  # noqa: C901
             name = rendered_destination
 
         try:
-            parent = case_service.get_parent_from_path(case, item_path, create_if_missing=True)
+            parent = case_service.get_parent_from_path(case, item_path, create_if_missing=True, user=user)
 
             case_service.append_case_item(
                 case,
@@ -81,6 +86,7 @@ def execute(  # noqa: C901
                 item_value=hit.howler.id,
                 item_name=name,
                 item_parent=parent.id if parent else None,
+                user=user,
             )
             added.append(hit.howler.id)
         except InvalidDataException as e:
@@ -89,6 +95,21 @@ def execute(  # noqa: C901
             skipped.append(f"{hit.howler.id}: {e}")
         except Exception as e:  # pragma: no cover
             skipped.append(f"{hit.howler.id}: {e}")
+
+    if len(case.items) != original_item_count:
+        try:
+            case.save(refresh="wait_for", version=version)
+        except (DataStoreException, VersionConflictException):
+            logger.exception("Exception on save:")
+            return [
+                {
+                    "query": query,
+                    "outcome": "error",
+                    "title": "Case update failed",
+                    "message": "There was a datastore error or version conflict when updating the case.",
+                }
+            ]
+        comms_service.emit("cases", {"case": case.as_primitives()})
 
     if added:
         report.append(

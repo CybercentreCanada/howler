@@ -107,6 +107,7 @@ def test_execute_not_found_exception(mock_compat, mock_ds_fn, mock_case_svc):
 def test_execute_adds_hits_successfully(mock_compat, mock_ds_fn, mock_case_svc):
     """Returns a success report when all matching hits are added."""
     mock_case = MagicMock()
+    mock_case.items = []
     mock_compat.find_case_for_bundle.return_value = mock_case
 
     mock_ds = MagicMock()
@@ -122,10 +123,22 @@ def test_execute_adds_hits_successfully(mock_compat, mock_ds_fn, mock_case_svc):
     folder.id = "folder-uuid"
     mock_case_svc.get_parent_from_path.return_value = folder
 
+    def append_item(case, **kwargs):
+        case.items.append(MagicMock())
+
+    mock_case_svc.append_case_item.side_effect = append_item
+
     result = execute("howler.analytic:TestAnalytic", bundle_id="bundle-001")
 
     assert any(r["outcome"] == "success" for r in result)
+    mock_case_svc.get_parent_from_path.assert_called_once_with(
+        mock_case,
+        "hits",
+        create_if_missing=True,
+        user=None,
+    )
     mock_case_svc.append_case_item.assert_called_once()
+    mock_case.save.assert_called_once_with(refresh="wait_for")
 
 
 def test_specification():

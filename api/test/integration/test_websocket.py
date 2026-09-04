@@ -31,7 +31,7 @@ def ws_client(host, datastore_connection):
 
 @pytest.fixture(scope="module")
 def timeout():
-    def timeout():
+    def timeout(_signum, _frame):
         raise TimeoutError("Timeout!")
 
     signal.signal(signal.SIGALRM, timeout)

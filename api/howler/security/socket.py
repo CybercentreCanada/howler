@@ -86,20 +86,20 @@ def websocket_auth(required_type: Optional[list[str]] = None, required_priv: Opt
                     )
                     return forbidden()
 
-                logger.info("%s authenticated as %s", ws_id, user["uname"])
+                logger.info("%s authenticated as %s", ws_id, user.uname)
                 ws.send(
                     ws_response(
                         "info",
                         {
-                            "message": f"Listener authenticated as {user['uname']}",
+                            "message": f"Listener authenticated as {user.uname}",
                             "id": ws_id,
-                            "username": user["uname"],
+                            "username": user.uname,
                         },
                     )
                 )
                 logger.debug("%s: Privileges: %s", ws_id, privs)
 
-                f(ws, *args, ws_id=ws_id, username=user["uname"], privs=privs, **kwargs)
+                f(ws, *args, ws_id=ws_id, user=user, privs=privs, **kwargs)
             except ConnectionClosed:
                 logger.info("%s: Client closed connection", ws_id)
             except (

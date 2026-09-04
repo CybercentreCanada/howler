@@ -1,6 +1,6 @@
 import re
 from hashlib import sha256
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 from flask import request
 
@@ -153,7 +153,7 @@ def add_user_account(username, **kwargs):
 @user_api.route("/<username>", methods=["GET"])
 @api_login(audit=False, required_priv=["R"])
 @add_etag(getter=user_service.get_user, check_if_match=True)
-def get_user_account(username: str, server_version: Optional[str] = None, **kwargs):
+def get_user_account(username: str, user: User, record: User | None, server_version: Optional[str] = None, **kwargs):
     """Load the user account information.
 
     Variables:
@@ -173,14 +173,13 @@ def get_user_account(username: str, server_version: Optional[str] = None, **kwar
      "groups": ["TEST"]          # Groups the user is member of
     }
     """
-    if username != kwargs["user"]["uname"] and "admin" not in kwargs["user"]["type"]:
+    if username != user.uname and "admin" not in user.type:
         return forbidden(err="You are not allow to view other users then yourself.")
 
-    user = cast(User, kwargs.get("cached_user"))
-    if not user:
+    if not record:
         return not_found(err=f"User {username} does not exist")
 
-    user_dict: dict[str, Any] = user.as_primitives()
+    user_dict: dict[str, Any] = record.as_primitives()
     user_dict["apikeys"] = [(k, []) for k in user_dict.get("apikeys", {}).keys()]
     user_dict["has_password"] = user_dict.pop("password", "") != ""
     user_dict["roles"] = user_dict.pop("type", [])

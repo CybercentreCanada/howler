@@ -253,17 +253,15 @@ def _create_new_incident(
             )
 
             case_service.append_case_item(
-                case.case_id,
+                case,
                 item_type="hit",
                 item_value=bundle_odm.howler.id,
                 item_name=analytic,
             )
 
-            # Re-fetch the case to get the latest saved state, then create the
-            # "hits" folder so children can be nested inside it.
-            case = datastore().case.get(case.case_id) or case
+            # Create the "hits" folder before adding children beneath it.
             hits_folder = case_service.get_parent_from_path(case, "hits", create_if_missing=True)
-            datastore().case.save(case.case_id, case)
+            case.save()
 
             for child_id in child_hit_ids:
                 child_hit = hit_service.get_hit(child_id, as_odm=True)
@@ -271,7 +269,7 @@ def _create_new_incident(
                     child_name = f"{child_hit.howler.analytic} ({child_id})"
                     try:
                         case_service.append_case_item(
-                            case.case_id,
+                            case,
                             item_type="hit",
                             item_value=child_id,
                             item_parent=hits_folder.id if hits_folder else None,
@@ -280,6 +278,7 @@ def _create_new_incident(
                     except Exception:
                         logger.exception("Failed to add child hit %s to case", child_id)
 
+            case.save()
             datastore().case.commit()
 
         datastore().hit.commit()

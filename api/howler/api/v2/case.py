@@ -3,17 +3,23 @@ from typing import Literal
 from flask import request
 from werkzeug.exceptions import UnsupportedMediaType
 
-from howler.api import bad_request, created, internal_error, make_subapi_blueprint, no_content, not_found, ok
+from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
+from howler.api.v1.utils.etag import add_etag
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
-from howler.common.exceptions import HowlerException, InvalidDataException, NotFoundException, ResourceExists
-from howler.common.loader import datastore
+from howler.common.exceptions import (
+    ForbiddenException,
+    HowlerException,
+    InvalidDataException,
+    NotFoundException,
+    ResourceExists,
+)
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import DataStoreException
 from howler.odm.models.case import Case, CaseItem
 from howler.odm.models.user import User
 from howler.security.login import api_login
-from howler.services import case_service
+from howler.services import case_service, comms_service
 
 SUB_API = "case"
 case_api = make_subapi_blueprint(SUB_API, api_version=2)
@@ -25,7 +31,8 @@ logger = get_logger(__file__)
 @generate_swagger_docs()
 @case_api.route("/", methods=["POST"])
 @api_login(required_priv=["R", "W"])
-def create_case(user: User, **kwargs):
+@parse_parameters(refresh=parse_refresh)
+def create_case(user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
     """Create a case.
 
     Variables:
@@ -52,7 +59,11 @@ def create_case(user: User, **kwargs):
         return bad_request(err="Request body must be a JSON object with case data.")
 
     try:
-        return created(case_service.create_case(case_data, user))
+        return created(case_service.create_case(case_data, refresh=refresh, user=user))
+    except NotFoundException as e:
+        return not_found(err=str(e))
+    except ForbiddenException as e:
+        return forbidden(err=str(e))
     except InvalidDataException as e:
         return bad_request(err=str(e))
     except ResourceExists as e:
@@ -64,7 +75,8 @@ def create_case(user: User, **kwargs):
 @generate_swagger_docs()
 @case_api.route("/<id>", methods=["GET"])
 @api_login(audit=True, required_priv=["R"])
-def get_case(id: str, user: User, **kwargs):
+@add_etag(getter=case_service.get_case)
+def get_case(id: str, user: User, record: Case | None = None, server_version: str | None = None, **kwargs):
     """Get a case.
 
     Variables:
@@ -78,14 +90,12 @@ def get_case(id: str, user: User, **kwargs):
         ...case    # The requested case, if it exists
     }
     """
-    case = datastore().case.get(id, as_obj=False)
+    if not record:
+        return not_found(err="Case does not exist")
 
-    if not case:
-        return not_found(err="Case %s does not exist" % id)
+    case_service.filter_case_items_by_classification(record, user.classification)
 
-    case_service.filter_case_items_by_classification(case, user.classification)
-
-    return ok(case)
+    return ok(record)
 
 
 @generate_swagger_docs()
@@ -116,14 +126,7 @@ def delete_cases(user: User, refresh: Literal["true", "false", "wait_for"] | Non
     if case_ids is None:
         return bad_request(err="No case ids were sent.")
 
-    ds = datastore()
-
-    non_existing_case_ids = set([case_id for case_id in case_ids if not ds.case.exists(case_id)])
-
-    if non_existing_case_ids:
-        return not_found(err=f"Case id(s) {', '.join(non_existing_case_ids)} do not exist.")
-
-    case_service.delete_cases(case_ids, refresh=refresh)
+    case_service.delete_cases(case_ids, refresh=refresh, user=user)
 
     return no_content()
 
@@ -156,14 +159,7 @@ def hide_cases(user: User, refresh: Literal["true", "false", "wait_for"] | None 
     if case_ids is None:
         return bad_request(err="No case ids were sent.")
 
-    ds = datastore()
-
-    non_existing_case_ids = set([case_id for case_id in case_ids if not ds.case.exists(case_id)])
-
-    if non_existing_case_ids:
-        return not_found(err=f"Case id(s) {', '.join(non_existing_case_ids)} do not exist.")
-
-    case_service.hide_cases(case_ids, user=user.uname, refresh=refresh)
+    case_service.hide_cases(case_ids, user=user, refresh=refresh)
 
     return no_content()
 
@@ -205,15 +201,25 @@ def update_case(id: str, user: User, refresh: Literal["true", "false", "wait_for
         return ok(updated_case)
     except NotFoundException as e:
         return not_found(err=str(e))
+    except ForbiddenException as e:
+        return forbidden(err=str(e))
     except InvalidDataException as e:
         return bad_request(err=str(e))
 
 
 @generate_swagger_docs()
-@case_api.route("/<id>/items", methods=["POST"])
+@case_api.route("/<case_id>/items", methods=["POST"])
 @api_login(required_priv=["R", "W"])
+@add_etag(getter=case_service.get_case, check_if_match=False)
 @parse_parameters(refresh=parse_refresh)
-def append_item(id: str, user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):  # noqa: C901
+def append_item(  # noqa: C901
+    case_id: str,
+    user: User,
+    record: Case | None = None,
+    server_version: str | None = None,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+    **kwargs,
+):  # noqa: C901
     """Append an item to a case
 
     This endpoint adds a new item to a case's items list. The item can reference
@@ -240,6 +246,9 @@ def append_item(id: str, user: User, refresh: Literal["true", "false", "wait_for
         "success": true     # Did the operation succeed?
     }
     """
+    if not record:
+        return not_found(f"Case {case_id} does not exist")
+
     try:
         body = request.json
     except UnsupportedMediaType:
@@ -250,22 +259,27 @@ def append_item(id: str, user: User, refresh: Literal["true", "false", "wait_for
 
     for field in ["value", "type", "name"]:
         if field not in body:
-            return bad_request(err=f"CaseItem '{field}' is required")
+            return bad_request(err=f"Field '{field}' is required")
 
     try:
         if path := body.pop("path", None):
-            parent = case_service.get_parent_from_path(id, path)
+            parent = case_service.get_parent_from_path(record, path, user=user)
 
             body["parent"] = parent.id if parent else None
 
-        updated_case = case_service.append_case_item(id, item=CaseItem(body), refresh=refresh)
+        case_service.append_case_item(record, CaseItem(body), user=user)
 
-        case_service.filter_case_items_by_classification(updated_case, user.classification)
+        record.save(refresh=refresh, version=server_version)
+        comms_service.emit("cases", {"case": record.as_primitives()})
 
-        return ok(updated_case)
+        case_service.filter_case_items_by_classification(record, user.classification)
+
+        return ok(record)
     except DataStoreException as e:
         logger.exception("Save Error")
         return internal_error(err=str(e))
+    except ForbiddenException as e:
+        return forbidden(err=str(e))
     except NotFoundException as e:  # pragma: no cover
         return not_found(err=str(e))
     except InvalidDataException as e:
@@ -275,8 +289,16 @@ def append_item(id: str, user: User, refresh: Literal["true", "false", "wait_for
 @generate_swagger_docs()
 @case_api.route("/<case_id>/items", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
+@add_etag(getter=case_service.get_case, check_if_match=False)
 @parse_parameters(refresh=parse_refresh)
-def delete_item(case_id: str, user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
+def delete_item(
+    case_id: str,
+    user: User,
+    record: Case | None = None,
+    server_version: str | None = None,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+    **kwargs,
+):
     """Delete one or more items from a case
 
     This endpoint removes items from a case's items list. If an item is a hit or
@@ -300,6 +322,9 @@ def delete_item(case_id: str, user: User, refresh: Literal["true", "false", "wai
         ...case     # The updated case data
     }
     """
+    if not record:
+        return not_found(err=f"Case {case_id} not found")
+
     body = request.json
 
     if not body or not isinstance(body, dict):
@@ -316,7 +341,9 @@ def delete_item(case_id: str, user: User, refresh: Literal["true", "false", "wai
         return bad_request(err="All items in 'ids' must be strings.")
 
     try:
-        updated_case = case_service.remove_case_items(case_id, ids, force=force, refresh=refresh)
+        updated_case = case_service.remove_case_items(
+            record, ids, force=force, refresh=refresh, version=server_version, user=user
+        )
 
         case_service.filter_case_items_by_classification(updated_case, user.classification)
 
@@ -324,15 +351,27 @@ def delete_item(case_id: str, user: User, refresh: Literal["true", "false", "wai
     except DataStoreException as e:
         logger.exception("Save Error")
         return internal_error(err=str(e))
-    except (InvalidDataException, NotFoundException) as e:
+    except ForbiddenException as e:
+        return forbidden(err=str(e))
+    except NotFoundException as e:
+        return not_found(err=str(e))
+    except InvalidDataException as e:
         return bad_request(err=str(e))
 
 
 @generate_swagger_docs()
 @case_api.route("/<case_id>/items", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
+@add_etag(getter=case_service.get_case, check_if_match=False)
 @parse_parameters(refresh=parse_refresh)
-def rename_item(case_id: str, user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
+def rename_item(
+    case_id: str,
+    user: User,
+    record: Case | None = None,
+    server_version: str | None = None,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+    **kwargs,
+):
     """Move an item within a case
 
     Updates the parent of a single item identified by its id.
@@ -355,6 +394,9 @@ def rename_item(case_id: str, user: User, refresh: Literal["true", "false", "wai
         ...case     # The updated case data
     }
     """
+    if not record:
+        return not_found(err=f"Case {case_id} does not exist")
+
     body = request.json
 
     if not body or not isinstance(body, dict):
@@ -364,18 +406,29 @@ def rename_item(case_id: str, user: User, refresh: Literal["true", "false", "wai
         return bad_request(err="'id' is required.")
 
     item_id = body["id"]
+
     try:
         result: Case | None = None
         if "name" in body:
             result = case_service.rename_case_item(
-                case_id, item_id, body["name"], refresh="wait_for" if "parent" in body else refresh
+                record,
+                item_id,
+                body["name"],
+                user=user,
             )
 
         if "parent" in body:
-            result = case_service.move_case_item(case_id, item_id, body["parent"], refresh=refresh)
+            result = case_service.move_case_item(
+                result or record,
+                item_id,
+                body["parent"],
+                user=user,
+            )
 
         if not result:
             return bad_request(err="At least one of 'name' or 'parent' is required.")
+
+        result.save(refresh=refresh, version=server_version)
 
         case_service.filter_case_items_by_classification(result, user.classification)
 
@@ -383,7 +436,9 @@ def rename_item(case_id: str, user: User, refresh: Literal["true", "false", "wai
     except DataStoreException as e:
         logger.exception("Save Error")
         return internal_error(err=str(e))
-    except (InvalidDataException, NotFoundException) as e:
+    except NotFoundException as e:
+        return not_found(err=str(e))
+    except InvalidDataException as e:
         return bad_request(err=str(e))
 
 

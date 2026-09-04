@@ -23,6 +23,11 @@ auth:
         role_map:
           user: howler_user
           admin: howler_admin
+        auto_properties:
+          - field: groups
+            pattern: howler_admin
+            type: classification
+            value: "R//SU/ADM//REL TO D1, D2//G2"
 
 datastore:
   ilm:

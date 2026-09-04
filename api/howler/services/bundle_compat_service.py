@@ -18,7 +18,7 @@ from howler.datastore.exceptions import DataStoreException
 from howler.odm.models.case import Case, CaseItemTypes
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
-from howler.services import analytic_service, case_service, hit_service
+from howler.services import analytic_service, case_service, comms_service, hit_service
 
 
 class BundleConflictException(HowlerException):
@@ -79,9 +79,6 @@ def create_bundle(
         bundle_hit_data["howler"].pop("bundle_size", None)
         bundle_hit_data["howler"].pop("bundles", None)
 
-    if not child_hit_ids:
-        raise InvalidDataException("You did not provide any child hits.")
-
     # Validate children before creating anything
     for child_id in child_hit_ids:
         child_hit = hit_service.get_hit(child_id, as_odm=True)
@@ -102,7 +99,12 @@ def create_bundle(
     case_title = f"{analytic} - {detection}"
 
     case = case_service.create_case(
-        {"title": case_title, "summary": f"Auto-created case for bundle {odm.howler.id}"}, user=user
+        {
+            "title": case_title,
+            "summary": f"Auto-created case for bundle {odm.howler.id}",
+            "classification": odm.classification,
+        },
+        user=user,
     )
 
     # Root hit
@@ -111,10 +113,10 @@ def create_bundle(
         item_type="hit",
         item_value=odm.howler.id,
         item_name=f"{odm.howler.analytic} ({odm.howler.id})",
-        refresh=refresh,
+        user=user,
     )
 
-    folder = case_service.get_parent_from_path(case, "hits", create_if_missing=True, refresh=refresh)
+    folder = case_service.get_parent_from_path(case, "hits", create_if_missing=True)
 
     for child_id in child_hit_ids:
         child_hit = hit_service.get_hit(child_id, as_odm=True)
@@ -132,15 +134,17 @@ def create_bundle(
         except (InvalidDataException, NotFoundException, DataStoreException) as exc:  # pragma: no cover
             logger.warning("Could not add child hit %s to case: %s", child_id, exc)
 
-    updated_case: Case | None = datastore().case.get(case.case_id)
-    if updated_case is None:  # pragma: no cover
-        raise NotFoundException(f"Case {case.case_id} disappeared after creation")
+    case.save()
+    comms_service.emit("cases", {"case": case.as_primitives()})
 
-    return synthesize_bundle_response(updated_case, odm, warnings=warnings)
+    return synthesize_bundle_response(case, odm, warnings=warnings, user=user)
 
 
 def add_to_bundle(
-    bundle_id: str, hit_ids: list[str], refresh: Literal["true", "false", "wait_for"] | None = "wait_for"
+    bundle_id: str,
+    hit_ids: list[str],
+    refresh: Literal["true", "false", "wait_for"] | None = "wait_for",
+    user: User | None = None,
 ) -> dict[str, Any]:
     """Add hits to an existing bundle (case).
 
@@ -160,19 +164,15 @@ def add_to_bundle(
         analytic = root_hit.howler.analytic or "Unknown"
         detection = root_hit.howler.detection or "Alert"
         case = case_service.create_case(
-            {"title": f"{analytic} - {detection}", "summary": f"Auto-created case for bundle {bundle_id}"},
+            {
+                "title": f"{analytic} - {detection}",
+                "summary": f"Auto-created case for bundle {bundle_id}",
+                "classification": root_hit.classification,
+            },
         )
-        case_service.append_case_item(case.case_id, item_type="hit", item_value=bundle_id, refresh=refresh)
+        case_service.append_case_item(case, item_type="hit", item_value=bundle_id)
 
-    case_id = case.case_id
-
-    # Check for duplicates and nested bundles before modifying
-    current_case: Case | None = datastore().case.get(case_id)
-    if current_case is None:  # pragma: no cover
-        raise NotFoundException(f"Case {case_id} not found")
-
-    existing_values = {item.value for item in current_case.items}
-
+    existing_values = {item.value for item in case.items}
     for hit_id in hit_ids:
         if hit_id in existing_values:
             raise BundleConflictException(f"The hit {hit_id} is already in the bundle {bundle_id}.")
@@ -187,17 +187,19 @@ def add_to_bundle(
             logger.warning("Hit %s does not exist, skipping", hit_id)
             continue
 
-        case_service.append_case_item(case_id, item_type="hit", item_value=hit_id, refresh=refresh)
+        case_service.append_case_item(case, item_type="hit", item_value=hit_id)
 
-    updated_case: Case | None = datastore().case.get(case_id)
-    if updated_case is None:  # pragma: no cover
-        raise NotFoundException(f"Case {case_id} not found")
+    case.save(refresh=refresh)
+    comms_service.emit("cases", {"case": case.as_primitives()})
 
-    return synthesize_bundle_response(updated_case, root_hit)
+    return synthesize_bundle_response(case, root_hit, user=user)
 
 
 def remove_from_bundle(
-    bundle_id: str, hit_ids: list[str], refresh: Literal["true", "false", "wait_for"] | None = "wait_for"
+    bundle_id: str,
+    hit_ids: list[str],
+    refresh: Literal["true", "false", "wait_for"] | None = "wait_for",
+    user: User | None = None,
 ) -> dict[str, Any]:
     """Remove hits from an existing bundle (case).
 
@@ -222,6 +224,9 @@ def remove_from_bundle(
     else:
         values_to_remove = [hid for hid in hit_ids if hid != bundle_id]
 
+    if user is not None:
+        values_to_remove = hit_service.filter_accessible_hits(user, values_to_remove)
+
     if values_to_remove:
         # Filter to only values that actually exist in the case
         existing_values = [item.value for item in case.items]
@@ -238,13 +243,14 @@ def remove_from_bundle(
     if updated_case is None:  # pragma: no cover
         raise NotFoundException(f"Case {_case.case_id} not found")
 
-    return synthesize_bundle_response(updated_case, root_hit)
+    return synthesize_bundle_response(updated_case, root_hit, user=user)
 
 
 def synthesize_bundle_response(
     case: Case,
     root_hit: Hit,
     warnings: list[str] | None = None,
+    user: User | None = None,
 ) -> dict[str, Any]:
     """Build a legacy bundle-shaped response from a case and its root hit.
 
@@ -255,6 +261,8 @@ def synthesize_bundle_response(
     child_ids = [
         item.value for item in case.items if item.type == CaseItemTypes.HIT and item.value != root_hit.howler.id
     ]
+    if user is not None:
+        child_ids = hit_service.filter_accessible_hits(user, child_ids)
 
     hit_data = root_hit.as_primitives()
     hit_data["howler"]["is_bundle"] = len(child_ids) > 0

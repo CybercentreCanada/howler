@@ -1,11 +1,17 @@
 from howler.common.logging import get_logger
+from howler.odm.models.user import User
 from howler.services import comms_service, viewer_service
 
 logger = get_logger(__file__)
 
 
 def check_action(
-    id: str, action: str, broadcast: bool, outstanding_actions: list[tuple[str, str, bool]] | None = None, **kwargs
+    id: str,
+    action: str,
+    broadcast: bool,
+    outstanding_actions: list[tuple[str, str, bool]] | None = None,
+    user: User | None = None,
+    **kwargs,
 ) -> list[tuple[str, str, bool]]:
     """Emit an event based on the specified action for use by websocket clients
 
@@ -24,10 +30,10 @@ def check_action(
     else:
         outstanding_actions = outstanding_actions.copy()
 
-    if broadcast:
+    if broadcast and user:
         comms_service.emit(
             "broadcast",
-            {"id": id, "action": action, "username": kwargs["username"]},
+            {"id": id, "action": action, "username": user.uname},
         )
 
     if action == "typing":
@@ -37,9 +43,12 @@ def check_action(
 
     elif action == "viewing":
         outstanding_actions.append((id, "stop_viewing", False))
-        viewer_service.add_viewer(id, kwargs["username"])
+        if user:
+            viewer_service.add_viewer(id, user.uname)
+
     elif action == "stop_viewing":
-        viewer_service.remove_viewer(id, kwargs["username"])
+        if user:
+            viewer_service.remove_viewer(id, user.uname)
         outstanding_actions = [a for a in outstanding_actions if a[1] != "stop_viewing"]
 
     return outstanding_actions

@@ -6,14 +6,34 @@ new data when the resource has actually changed.
 """
 
 import functools
-import re
+from typing import Any, Callable, Literal, Protocol, TypeAlias
 
 from flask import Response, request
 
+from howler import odm
 from howler.api import not_modified
+from howler.odm.models.user import User
 
 
-def add_etag(getter=None, check_if_match=True):
+class _Getter(Protocol):
+    def __call__(
+        self,
+        id: str,
+        *,
+        as_odm: Literal[True],
+        version: Literal[True],
+        user: User | None,
+    ) -> tuple[odm.Model | None, str | None]: ...
+
+
+_EtagResult: TypeAlias = Response | tuple[Response, str | None]
+_EtagFunction: TypeAlias = Callable[..., _EtagResult]
+
+
+def add_etag(
+    getter: _Getter | None = None,
+    check_if_match: bool = True,
+):
     """Decorator to add ETag handling to a Flask response.
 
     This decorator implements HTTP ETag functionality for API endpoints, enabling:
@@ -40,26 +60,24 @@ def add_etag(getter=None, check_if_match=True):
         Decorated function with ETag support
     """
 
-    def wrapper(f):
+    def wrapper(f: _EtagFunction) -> Callable[..., Response]:
         """Inner wrapper function that applies ETag functionality to the decorated function."""
 
         @functools.wraps(f)
-        def generate_etag(*args, **kwargs):
+        def generate_etag(*args: Any, user: User | None = None, **kwargs: Any) -> Response:
             """Generate and handle ETags for the HTTP response."""
-            if getter is not None:
+            record_id: str | None = kwargs.get("id", kwargs.get("case_id", kwargs.get("username", None)))
+            if getter and record_id:
                 # Retrieve the object and its version using the provided getter function
                 # The getter should return (object, version) tuple
-                obj, version = getter(
-                    kwargs.get("id", kwargs.get("username", None)),
-                    as_odm=True,
-                    version=True,
-                )
+                obj, version = getter(record_id, user=user, as_odm=True, version=True)
 
                 # Handle conditional requests with If-Match header
                 # If the client's version matches the current version and it's a GET request
                 # without metadata parameter, return 304 Not Modified to save bandwidth
                 if (
                     check_if_match
+                    and obj is not None
                     and "If-Match" in request.headers
                     and request.headers["If-Match"] == version
                     and request.method == "GET"
@@ -67,13 +85,8 @@ def add_etag(getter=None, check_if_match=True):
                 ):
                     return not_modified()
 
-                # Extract the resource type from the API path and create a cache key
-                # e.g., "/api/v1/users/123" becomes "cached_users"
-                key = re.sub(r"^\/api\/v\d+\/(\w+)\/.+$", r"cached_\1", request.path)
-                kwargs[key] = obj
-
                 # Call the original function with the cached object and version
-                values = f(*args, server_version=version, **kwargs)
+                values = f(*args, user=user, server_version=version, record=obj, **kwargs)
 
                 # Handle different return value formats from the decorated function
                 # If there is only one return, it's just the response
@@ -92,7 +105,7 @@ def add_etag(getter=None, check_if_match=True):
                     return values[0]
 
             # No getter: just call the function and handle (Response, version) tuples
-            values = f(*args, **kwargs)
+            values = f(*args, user=user, **kwargs)
 
             if isinstance(values, Response):
                 return values

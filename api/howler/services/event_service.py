@@ -1,6 +1,6 @@
 import json
 from hashlib import sha256
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, cast, overload
 
 from opentelemetry import trace
 from prometheus_client import Counter
@@ -8,9 +8,12 @@ from prometheus_client import Counter
 from howler.common.exceptions import HowlerTypeError, HowlerValueError, ResourceExists
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
+from howler.datastore.collection import CREATE_TOKEN
 from howler.odm.models.ecs.event import ECSEvent
 from howler.odm.models.event import Event
 from howler.odm.models.event import Log as EventLog
+from howler.odm.models.user import User
+from howler.security.utils import is_classification_accessible
 from howler.utils.dict_utils import extra_keys, flatten
 from howler.utils.uid import get_random_id
 
@@ -31,7 +34,80 @@ def exists(id: str) -> bool:
     return datastore().event.exists(id)
 
 
-def convert_event(data: dict[str, Any], unique: bool, ignore_extra_values: bool = False) -> tuple[Event, list[str]]:
+@overload
+def get_event(
+    id: str, as_odm: Literal[True], version: Literal[True], user: User | None = None
+) -> tuple[Event, str]: ...
+
+
+@overload
+def get_event(id: str, as_odm: Literal[True], version: Literal[False]) -> Event: ...
+
+
+@overload
+def get_event(id: str, as_odm: Literal[True]) -> Event: ...
+
+
+@overload
+def get_event(id: str) -> Event: ...
+
+
+@overload
+def get_event(id: str, as_odm: Literal[False], version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+
+
+@overload
+def get_event(id: str, as_odm: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+
+
+@overload
+def get_event(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
+
+
+@tracer.start_as_current_span(f"{__name__}.get_event")
+def get_event(id: str, as_odm=False, version=False, user: User | None = None):
+    """Retrieve an event from the datastore.
+
+    Args:
+        id: The unique identifier of the event to retrieve
+        as_odm: Whether to return the event as an ODM object (True) or dictionary (False)
+        version: Whether to include version information in the response
+
+    Returns:
+        Event object (if as_odm=True) or dictionary representation of the event.
+        Returns None if the event doesn't exist.
+    """
+    hit_version: str | None = None
+    obj: Event | dict[str, Any] | None = None
+
+    hit = datastore().hit.get_if_exists(key=id, as_obj=as_odm, version=version)
+    if user is None:
+        return hit
+
+    if version:
+        obj, hit_version = cast(tuple[dict[str, Any] | Event, str], hit)
+    else:
+        obj = cast(Event | dict[str, Any], hit)
+
+    classification: str | None = None
+    if as_odm and obj:
+        classification = cast(Event, obj).classification
+    elif obj:
+        classification = cast(dict[str, str], obj).get("classification")
+
+    if obj is not None and not is_classification_accessible(user, classification):
+        obj = None
+        hit_version = CREATE_TOKEN
+
+    if version:
+        return obj, hit_version
+
+    return obj
+
+
+def convert_event(  # noqa: C901
+    data: dict[str, Any], unique: bool, user: User | None = None, ignore_extra_values: bool = False
+) -> tuple[Event, list[str]]:
     """Validate and convert a dictionary to an Event ODM object.
 
     This function performs validation on input data to ensure it can be safely
@@ -99,6 +175,9 @@ def convert_event(data: dict[str, Any], unique: bool, ignore_extra_values: bool 
             odm.event.created = "NOW"
     else:
         odm.event = ECSEvent({"created": "NOW", "id": odm.howler.id})
+
+    if user and not is_classification_accessible(user, odm.classification):
+        raise HowlerValueError(f"User {user.uname} cannot create hits at classification {odm.classification}")
 
     if unique and exists(odm.howler.id):
         raise ResourceExists("Resource with id %s already exists" % odm.howler.id)

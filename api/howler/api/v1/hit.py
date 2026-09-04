@@ -1,6 +1,6 @@
 import difflib
 import json
-from typing import Any, Optional, cast
+from typing import Any, Literal, cast
 
 from flask import request
 from mergedeep import Strategy, merge
@@ -30,6 +30,7 @@ from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import Comment, HitOperationType, HitStatusTransition
 from howler.odm.models.user import User
 from howler.security.login import api_login
+from howler.security.utils import is_classification_accessible, validate_bulk_operation_targets
 from howler.services import action_service, analytic_service, comms_service, correlation_service, hit_service
 from howler.utils.constants import DEBUG_FORCE_REFRESH
 from howler.utils.str_utils import sanitize_lucene_query
@@ -51,7 +52,7 @@ hit_helper = OdmHelper(Hit)
 @hit_api.route("/", methods=["POST"])
 @api_login(required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def create_hits(user: User, **kwargs):
+def create_hits(user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
     """Create hits.
 
     Variables:
@@ -100,8 +101,6 @@ def create_hits(user: User, **kwargs):
     """
     hits = request.json
 
-    refresh = kwargs.get("refresh")
-
     if hits is None:
         return bad_request(err="No hits were sent.")
 
@@ -112,7 +111,10 @@ def create_hits(user: User, **kwargs):
     warnings = []
     for hit in hits:
         try:
-            odm, _warnings = hit_service.convert_hit(hit, unique=True, ignore_extra_values=ignore_extra_values)
+            odm, _warnings = hit_service.convert_hit(
+                hit, unique=True, user=user, ignore_extra_values=ignore_extra_values
+            )
+
             response_body["valid"].append(odm.as_primitives())
             odms.append(odm)
             warnings.extend(_warnings)
@@ -147,7 +149,7 @@ def create_hits(user: User, **kwargs):
 @hit_api.route("/", methods=["DELETE"])
 @api_login(required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def delete_hits(user: User, **kwargs):
+def delete_hits(user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
     """Delete hits.
 
     Variables:
@@ -171,7 +173,6 @@ def delete_hits(user: User, **kwargs):
     }
     """
     hit_ids = request.json
-    refresh = kwargs.get("refresh")
 
     if hit_ids is None:
         return bad_request(err="No hit ids were sent.")
@@ -256,7 +257,7 @@ def validate_hits(**kwargs):
 @hit_api.route("/<id>", methods=["GET"])
 @api_login(audit=True, required_priv=["R"])
 @add_etag(getter=hit_service.get_hit)
-def get_hit(id: str, server_version: str, **kwargs):
+def get_hit(id: str, server_version: str, record: Hit | None, user: User, **kwargs):
     """Get a hit.
 
     Variables:
@@ -268,18 +269,15 @@ def get_hit(id: str, server_version: str, **kwargs):
     Result Example:
     https://github.com/CybercentreCanada/howler-api/blob/main/howler/odm/models/hit.py
     """
-    hit = cast(Optional[Any], kwargs.get("cached_hit"))
+    if not record:
+        return not_found(err=f"Hit {id} does not exist")
 
-    if not hit:
-        return not_found(err="Hit %s does not exist" % id)
-
+    hit = record.as_primitives()
     if "metadata" in request.args:
         metadata = (request.args.get("metadata", type=str) or "").split(",")
 
-        hit = hit.as_primitives()
-
         if len(metadata) > 0:
-            hit_service.augment_metadata(hit, metadata, kwargs["user"])
+            hit_service.augment_metadata(hit, metadata, user)
 
     return ok(hit), server_version
 
@@ -289,7 +287,14 @@ def get_hit(id: str, server_version: str, **kwargs):
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
 @parse_parameters(refresh=parse_refresh)
-def overwrite_hit(id: str, server_version: str, **kwargs):
+def overwrite_hit(
+    id: str,
+    user: User,
+    record: Hit | None,
+    server_version: str,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+    **kwargs,
+):
     """Overwrite a hit.
 
     Instead of providing a list of operations to run, provide a partial hit object to overwrite many fields at once.
@@ -312,11 +317,8 @@ def overwrite_hit(id: str, server_version: str, **kwargs):
     Result Example:
     https://github.com/CybercentreCanada/howler-api/blob/main/howler/odm/models/hit.py
     """
-    hit = cast(Optional[Hit], kwargs.get("cached_hit"))
-    refresh = kwargs.get("refresh")
-
-    if not hit:
-        return not_found(err="Hit %s does not exist" % id)
+    if not record:
+        return not_found(err=f"Hit {id} does not exist")
 
     new_fields = request.json
 
@@ -327,13 +329,16 @@ def overwrite_hit(id: str, server_version: str, **kwargs):
         new_hit = cast(
             dict[str, Any],
             merge(
-                hit_service.flatten(hit.as_primitives(), odm=Hit),
+                hit_service.flatten(record.as_primitives(), odm=Hit),
                 hit_service.flatten(new_fields),
                 strategy=Strategy.REPLACE
                 if bool(request.args.get("replace", False, type=lambda v: v.lower() == "true"))
                 else Strategy.ADDITIVE,
             ),
         )
+
+        if not is_classification_accessible(user, new_hit.get("classification")):
+            return bad_request(err=f"Cannot set classification to {new_hit.get('classification')}")
 
         new_hit, new_version = hit_service.save_hit(Hit(new_hit), server_version, refresh=refresh)
 
@@ -347,7 +352,14 @@ def overwrite_hit(id: str, server_version: str, **kwargs):
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
 @parse_parameters(refresh=parse_refresh)
-def update_hit(id: str, server_version: str, **kwargs):
+def update_hit(
+    id: str,
+    user: User,
+    record: Hit | None,
+    server_version: str,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+    **kwargs,
+):
     """Update a hit.
 
     Variables:
@@ -369,14 +381,12 @@ def update_hit(id: str, server_version: str, **kwargs):
     Result Example:
     https://github.com/CybercentreCanada/howler-api/blob/main/howler/odm/models/hit.py
     """
-    hit = cast(Optional[Hit], kwargs.get("cached_hit"))
-    refresh = kwargs.get("refresh")
-
-    if not hit:
-        return not_found(err="Hit %s does not exist" % id)
+    if not (record and is_classification_accessible(user, record.classification)):
+        return not_found(err=f"Hit {id} does not exist")
 
     try:
         attempted_operations = cast(list[tuple[str, str, Any]], request.json)
+        validate_bulk_operation_targets(attempted_operations)
 
         operations: list[OdmUpdateOperation] = []
 
@@ -394,18 +404,18 @@ def update_hit(id: str, server_version: str, **kwargs):
                     "timestamp": "NOW",
                     "previous_version": server_version,
                     "key": "howler.log",
-                    "explanation": f"Hit updated by {kwargs['user']['uname']}\n\n" + "\n".join(explanation),
+                    "explanation": f"Hit updated by {user.uname}\n\n" + "\n".join(explanation),
                     "new_value": "N/A",
                     "previous_value": "None",
                     "type": HitOperationType.APPENDED,
-                    "user": kwargs["user"]["uname"],
+                    "user": user.uname,
                 },
                 silent=True,
             )
         )
 
         new_hit, new_version = hit_service.update_hit(
-            hit.howler.id, operations, kwargs["user"]["uname"], server_version, refresh=refresh
+            record.howler.id, operations, user.uname, server_version, refresh=refresh
         )
 
         comms_service.emit("hits", {"hit": new_hit, "version": new_version})
@@ -419,7 +429,7 @@ def update_hit(id: str, server_version: str, **kwargs):
 @hit_api.route("/update", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def update_by_query(**kwargs):
+def update_by_query(user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
     """Update a set of hits using a query.
 
     Variables:
@@ -441,37 +451,48 @@ def update_by_query(**kwargs):
         ]
     }
 
+    Operations targeting ``classification`` or its derived ``__access_*``
+    fields are rejected: bulk updates run as datastore scripts and cannot keep
+    the access-control bookkeeping fields consistent.
+
     Result Example:
     {
         "success": True
     }
     """
     data = cast(dict[str, Any], request.json)
-    refresh = kwargs.get("refresh")
 
     try:
         query = cast(str, data["query"])
-        operations = cast(list[tuple[str, str, Any]], data["operations"])
+        operations: list[OdmUpdateOperation] = []
 
         explanation: list[str] = []
-        for operation, key, value in operations:
-            # Just using this for validation
-            OdmUpdateOperation(operation, key, value)
+        for operation, key, value in cast(list[tuple[str, str, Any]], data["operations"]):
+            operations.append(OdmUpdateOperation(operation, key, value))
             explanation.append(f"- `{operation}` - `{key}` - `{json.dumps(value)}`")
 
         operations.append(
-            (
+            OdmUpdateOperation(
                 ESCollection.UPDATE_APPEND,
                 "howler.log",
                 {
                     "timestamp": "NOW",
-                    "explanation": f"Hit updated by {kwargs['user']['uname']}\n\n" + "\n".join(explanation),
-                    "user": kwargs["user"]["uname"],
+                    "explanation": f"Hit updated by {user.uname}\n\n" + "\n".join(explanation),
+                    "user": user.uname,
                 },
             )
         )
 
-        datastore().hit.update_by_query(query, operations, refresh=refresh)
+        # Bulk updates run as datastore scripts and bypass ODM serialization, so
+        # operations on classification/access-control fields cannot be applied safely.
+        validate_bulk_operation_targets(operations)
+
+        datastore().hit.update_by_query(
+            query,
+            operations,
+            access_control=user.access_control or None,
+            refresh=refresh,
+        )
 
         return ok({"success": True})
     except (HowlerValueError, KeyError, DataStoreException) as e:
@@ -517,6 +538,7 @@ def get_assigned_hits(user, **kwargs):
         sort=request.args.get("sort", None, type=str),
         fl=request.args.get("fl", None, type=str),
         timeout=request.args.get("timeout", None, type=int),
+        filters=[user.access_control] if user.access_control else None,
         as_obj=False,
     )["items"]
 
@@ -528,7 +550,15 @@ def get_assigned_hits(user, **kwargs):
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
 @parse_parameters(refresh=parse_refresh)
-def add_label(id: str, label_set: str, user: User, server_version: str | None = None, **kwargs):
+def add_label(
+    id: str,
+    label_set: str,
+    user: User,
+    record: Hit | None,
+    server_version: str | None = None,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+    **kwargs,
+):
     """Add labels to a hit.
 
     Variables:
@@ -549,13 +579,10 @@ def add_label(id: str, label_set: str, user: User, server_version: str | None = 
         "success": True             # Adding the label succeeded
     }
     """
-    refresh = kwargs.get("refresh")
-
-    if not hit_service.exists(id):
+    if not record:
         return not_found(err=f"Hit {id} does not exist")
 
-    existing_hit: Hit = hit_service.get_hit(id, as_odm=True)
-    if f"howler.labels.{label_set}" not in existing_hit.flat_fields():
+    if f"howler.labels.{label_set}" not in record.flat_fields():
         return not_found(err=f"Label set {label_set} does not exist")
 
     label_data = request.json
@@ -567,7 +594,7 @@ def add_label(id: str, label_set: str, user: User, server_version: str | None = 
     if not labels or len(labels) == 0:
         return bad_request(err="Labels were not provided")
 
-    existing_labels = existing_hit[f"howler.labels.{label_set}"]
+    existing_labels = record[f"howler.labels.{label_set}"]
 
     if not set(labels).isdisjoint(set(existing_labels)):
         return bad_request(err=f"Cannot add duplicate labels: {set(labels) & set(existing_labels)}")
@@ -592,7 +619,15 @@ def add_label(id: str, label_set: str, user: User, server_version: str | None = 
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
 @parse_parameters(refresh=parse_refresh)
-def remove_labels(id: str, label_set: str, user: User, server_version: str | None = None, **kwargs):
+def remove_labels(
+    id: str,
+    label_set: str,
+    user: User,
+    record: Hit | None,
+    server_version: str | None = None,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+    **kwargs,
+):
     """Remove labels from a hit.
 
     Variables:
@@ -613,12 +648,10 @@ def remove_labels(id: str, label_set: str, user: User, server_version: str | Non
         "success": True             # Removing the labels succeeded
     }
     """
-    refresh = kwargs.get("refresh")
-
-    if not hit_service.exists(id):
+    if not record:
         return not_found(err=f"Hit {id} does not exist")
 
-    if f"howler.labels.{label_set}" not in hit_service.get_hit(id, as_odm=True).flat_fields():
+    if f"howler.labels.{label_set}" not in record.flat_fields():
         return not_found(err=f"Label set {label_set} does not exist")
 
     label_data = request.json
@@ -650,7 +683,14 @@ def remove_labels(id: str, label_set: str, user: User, server_version: str | Non
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=True)
 @parse_parameters(refresh=parse_refresh)
-def transition(id: str, user: User, server_version: str | None = None, **kwargs):
+def transition(
+    id: str,
+    user: User,
+    record: Hit | None,
+    server_version: str,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+    **kwargs,
+):
     """Transition a hit
 
     Variables:
@@ -671,10 +711,8 @@ def transition(id: str, user: User, server_version: str | None = None, **kwargs)
         ...hit            # The new data for the hit
     }
     """
-    refresh = kwargs.pop("refresh")
-
-    if not kwargs.get("cached_hit"):
-        return not_found(err="Hit %s does not exist" % id)
+    if not record:
+        return not_found(err=f"Hit {id} does not exist")
 
     transition_data = request.json
     if not isinstance(transition_data, dict):
@@ -698,7 +736,7 @@ def transition(id: str, user: User, server_version: str | None = None, **kwargs)
             )
 
         hit, version = hit_service.transition_hit(
-            id, transition, user, version, refresh=refresh, **kwargs, **transition_data.get("data", {})
+            id, transition, **kwargs, **transition_data.get("data", {}), user=user, version=version, refresh=refresh
         )
     except (WorkflowException, DataStoreException, InvalidDataException) as e:
         return bad_request(err=str(e))
@@ -714,7 +752,13 @@ def transition(id: str, user: User, server_version: str | None = None, **kwargs)
 @hit_api.route("/<id>/comments/<comment_id>", methods=["GET"])
 @api_login(audit=False, required_priv=["R"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
-def get_comment(id: str, comment_id: str, user: User, server_version: str | None = None, **kwargs):
+def get_comment(
+    id: str,
+    comment_id: str,
+    record: Hit | None,
+    server_version: str,
+    **kwargs,
+):
     """Get a comment associated with a particular hit
 
     Variables:
@@ -727,11 +771,10 @@ def get_comment(id: str, comment_id: str, user: User, server_version: str | None
     Result Example:
     See: https://github.com/CybercentreCanada/howler-api/blob/main/howler/odm/models/howler_data.py#L17
     """
-    hit: Optional[Hit] = kwargs.get("cached_hit")
-    if not hit:
+    if not record:
         return not_found(err=f"Hit {id} does not exist")
 
-    comment: Optional[Comment] = next((c for c in hit.howler.comment if c.id == comment_id), None)
+    comment: Comment | None = next((c for c in record.howler.comment if c.id == comment_id), None)
 
     if not comment:
         return not_found(err=f"Comment {comment_id} does not exist")
@@ -743,7 +786,7 @@ def get_comment(id: str, comment_id: str, user: User, server_version: str | None
 @hit_api.route("/<id>/comments", methods=["POST"])
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
-def add_comment(id: str, user: User, server_version: str | None = None, **kwargs):
+def add_comment(id: str, user: User, record: Hit | None, server_version: str | None = None, **kwargs):
     """Add a comment
 
     Variables:
@@ -774,8 +817,8 @@ def add_comment(id: str, user: User, server_version: str | None = None, **kwargs
     if len(comment_value) > MAX_COMMENT_LEN:
         return bad_request(err="Comment is too long.")
 
-    if not kwargs.get("cached_hit"):
-        return not_found(err="Hit %s does not exist" % id)
+    if not record:
+        return not_found(err=f"Hit {id} does not exist")
 
     try:
         hit_service.update_hit(
@@ -794,7 +837,7 @@ def add_comment(id: str, user: User, server_version: str | None = None, **kwargs
     except DataStoreException as e:
         return bad_request(err=str(e))
 
-    hit, version = hit_service.get_hit(id, as_odm=False, version=True)
+    hit, version = hit_service.get_hit(id, as_odm=True, version=True)
 
     return ok(hit), version
 
@@ -803,7 +846,7 @@ def add_comment(id: str, user: User, server_version: str | None = None, **kwargs
 @hit_api.route("/<id>/comments/<comment_id>", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
-def edit_comment(id: str, comment_id: str, user: dict[str, Any], server_version: str | None = None, **kwargs):
+def edit_comment(id: str, comment_id: str, user: User, record: Hit | None, server_version: str | None = None, **kwargs):
     """Edit a comment
 
     Variables:
@@ -835,12 +878,10 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], server_version:
     if len(comment_value) > MAX_COMMENT_LEN:
         return bad_request(err="Comment is too long.")
 
-    if not hit_service.exists(id):
+    if not record:
         return not_found(err=f"Hit {id} does not exist")
 
-    hit: Hit = kwargs["cached_hit"]
-
-    comment: Optional[Comment] = next((c for c in hit.howler.comment if c.id == comment_id), None)
+    comment: Comment | None = next((c for c in record.howler.comment if c.id == comment_id), None)
 
     if not comment:
         return not_found(err=f"Comment {comment_id} does not exist")
@@ -867,7 +908,7 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], server_version:
                 explanation="Edited a comment. Changes:\n\n````diff\n" + "\n".join(diff) + "\n````",
             ),
         ],
-        user["uname"],
+        user.uname,
         version=server_version,
     )
 
@@ -878,7 +919,7 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], server_version:
 @hit_api.route("/<id>/comments", methods=["DELETE"])
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
-def delete_comments(id: str, user: User, server_version: str | None = None, **kwargs):
+def delete_comments(id: str, user: User, record: Hit | None, server_version: str | None = None, **kwargs):
     """Delete a set of comments
 
     Variables:
@@ -897,16 +938,14 @@ def delete_comments(id: str, user: User, server_version: str | None = None, **kw
         ...hit            # The new data for the hit
     }
     """
-    if not hit_service.exists(id):
+    if not record:
         return not_found(err=f"Hit {id} does not exist")
 
     comment_ids: list[str] = request.json or []
 
     if len(comment_ids) == 0:
         return bad_request(err="Supply at least one comment to delete.")
-
-    hit: Hit = kwargs["cached_hit"]
-    comments = [comment for comment in hit.howler.comment if comment.id in comment_ids]
+    comments = [comment for comment in record.howler.comment if comment.id in comment_ids]
 
     if ("admin" not in user["type"]) and any(comment for comment in comments if comment.user != user["uname"]):
         return forbidden(err="You cannot delete the comment of someone else.")
@@ -941,7 +980,7 @@ def delete_comments(id: str, user: User, server_version: str | None = None, **kw
 @hit_api.route("/<id>/comments/<comment_id>/react", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
-def react_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
+def react_comment(id: str, comment_id: str, user: User, record: Hit | None, server_version: str, **kwargs):
     """React to a comment
 
     Variables:
@@ -961,7 +1000,7 @@ def react_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
         ...hit            # The new data for the hit
     }
     """
-    react_data: Optional[str] = request.json
+    react_data: str | None = request.json
     if not isinstance(react_data, dict):
         return bad_request(err="Invalid data format")
 
@@ -970,18 +1009,17 @@ def react_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
     if not react_value:
         return bad_request(err="Type cannot be empty.")
 
-    hit: Optional[Hit] = kwargs.get("cached_hit")
-    if not hit:
+    if not record:
         return not_found(err=f"Hit {id} does not exist")
 
-    for comment in hit.howler.comment:
+    for comment in record.howler.comment:
         if comment.id == comment_id:
             comment["reactions"] = {
-                **comment.get("reactions", {}),
-                user["uname"]: react_value,
+                **(comment.get("reactions") or {}),
+                user.uname: react_value,
             }
 
-    new_hit, version = hit_service.save_hit(hit, version=kwargs.get("server_version"))
+    new_hit, version = hit_service.save_hit(record, version=server_version)
 
     return ok(new_hit), version
 
@@ -990,7 +1028,7 @@ def react_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
 @hit_api.route("/<id>/comments/<comment_id>/react", methods=["DELETE"])
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
-def remove_react_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
+def remove_react_comment(id: str, comment_id: str, user: User, record: Hit | None, server_version: str, **kwargs):
     """React to a comment
 
     Variables:
@@ -1005,17 +1043,16 @@ def remove_react_comment(id: str, comment_id: str, user: dict[str, Any], **kwarg
         ...hit            # The new data for the hit
     }
     """
-    hit: Optional[Hit] = kwargs.get("cached_hit")
-    if not hit:
+    if not record:
         return not_found(err=f"Hit {id} does not exist")
 
-    for comment in hit.howler.comment:
+    for comment in record.howler.comment:
         if comment.id == comment_id:
-            reactions = comment.get("reactions", {})
+            reactions = comment.get("reactions") or {}
             reactions.pop(user["uname"], None)
             comment["reactions"] = {**reactions}
 
-    new_hit, version = hit_service.save_hit(hit, version=kwargs.get("server_version"))
+    new_hit, version = hit_service.save_hit(record, version=server_version)
 
     return ok(new_hit), version
 
@@ -1036,7 +1073,7 @@ def _deprecation_headers(response):
 @hit_api.route("/bundle", methods=["POST"])
 @api_login(audit=False, required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def create_bundle(user: User, **kwargs):
+def create_bundle(user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
     """Create a new bundle (deprecated — creates a case instead).
 
     Variables:
@@ -1065,15 +1102,21 @@ def create_bundle(user: User, **kwargs):
     from howler.services import bundle_compat_service
 
     data = request.json
-    refresh = kwargs.get("refresh")
     if not isinstance(data, dict):
         return bad_request(err="Invalid data format")
 
-    bundle_hit: Optional[dict[str, Any]] = data.get("bundle")
+    bundle_hit: dict[str, Any] | None = data.get("bundle")
     if bundle_hit is None:
         return bad_request(err="You did not provide a bundle hit.")
 
+    if not is_classification_accessible(user, bundle_hit.get("classification")):
+        return bad_request(err=f"Invalid bundle classification {bundle_hit.get('classification')}")
+
     child_hits: list[str] = data.get("hits", [])
+    if not child_hits:
+        return bad_request(err="You did not provide any child hits.")
+
+    child_hits = hit_service.filter_accessible_hits(user, child_hits)
 
     try:
         result = bundle_compat_service.create_bundle(bundle_hit, child_hits, user=user, refresh=refresh)
@@ -1086,7 +1129,7 @@ def create_bundle(user: User, **kwargs):
 @hit_api.route("/bundle/<id>", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def update_bundle(id, **kwargs):
+def update_bundle(id: str, user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
     """Add hits to a bundle (deprecated — adds items to the underlying case).
 
     Variables:
@@ -1111,14 +1154,22 @@ def update_bundle(id, **kwargs):
     """
     from howler.services import bundle_compat_service
 
-    refresh = kwargs.get("refresh")
-
     hit_ids = request.json
     if not isinstance(hit_ids, list):
         return bad_request(err="Invalid data format")
 
+    root_hit = hit_service.get_hit(id, as_odm=True)
+    if not root_hit or not is_classification_accessible(user, root_hit.classification):
+        return not_found(err=f"Bundle hit {id} does not exist")
+
+    backing_case = bundle_compat_service.find_case_for_bundle(id)
+    if backing_case and not is_classification_accessible(user, backing_case.classification):
+        return not_found(err=f"Bundle hit {id} does not exist")
+
+    hit_ids = hit_service.filter_accessible_hits(user, hit_ids)
+
     try:
-        result = bundle_compat_service.add_to_bundle(id, hit_ids, refresh=refresh)
+        result = bundle_compat_service.add_to_bundle(id, hit_ids, refresh=refresh, user=user)
         return _deprecation_headers(ok(result))
     except bundle_compat_service.BundleConflictException as e:
         return conflict(err=str(e))
@@ -1132,7 +1183,7 @@ def update_bundle(id, **kwargs):
 @hit_api.route("/bundle/<id>", methods=["DELETE"])
 @api_login(audit=False, required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def remove_bundle_children(id, **kwargs):
+def remove_bundle_children(id: str, user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
     """Remove hits from a bundle (deprecated — removes items from the underlying case).
 
     Variables:
@@ -1157,14 +1208,20 @@ def remove_bundle_children(id, **kwargs):
     """
     from howler.services import bundle_compat_service
 
-    refresh = kwargs.get("refresh")
-
     hit_ids = request.json
     if not isinstance(hit_ids, list):
         return bad_request(err="Invalid data format")
 
+    root_hit = hit_service.get_hit(id, as_odm=True)
+    if not root_hit or not is_classification_accessible(user, root_hit.classification):
+        return not_found(err=f"Bundle hit {id} does not exist")
+
+    backing_case = bundle_compat_service.find_case_for_bundle(id)
+    if backing_case and not is_classification_accessible(user, backing_case.classification):
+        return not_found(err=f"Bundle hit {id} does not exist")
+
     try:
-        result = bundle_compat_service.remove_from_bundle(id, hit_ids, refresh=refresh)
+        result = bundle_compat_service.remove_from_bundle(id, hit_ids, user=user, refresh=refresh)
         return _deprecation_headers(ok(result))
     except NotFoundException as e:
         return not_found(err=str(e))

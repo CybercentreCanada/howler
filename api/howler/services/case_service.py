@@ -5,11 +5,12 @@ cases - collections of security alerts and investigation data organized by analy
 """
 
 from datetime import datetime, timezone
-from typing import Any, Literal, overload
+from typing import Any, Literal, cast, overload
 
 from prometheus_client import Counter
 
 from howler.common.exceptions import (
+    ForbiddenException,
     HowlerTypeError,
     HowlerValueError,
     InvalidDataException,
@@ -26,15 +27,91 @@ from howler.odm.models.ecs.related import Related
 from howler.odm.models.event import Event
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
-from howler.services import comms_service
+from howler.security.utils import is_classification_accessible
+from howler.services import comms_service, event_service, hit_service
 
 logger = get_logger(__file__)
 
 CREATED_CASES = Counter(f"{APP_NAME.replace('-', '_')}_created_cases_total", "The number of created cases")
 
 
+@overload
+def get_case(
+    id: str, as_odm: Literal[True], version: Literal[True], user: User | None = None
+) -> tuple[Case | None, str]: ...
+
+
+@overload
+def get_case(id: str, as_odm: Literal[True], version: Literal[False]) -> Case | None: ...
+
+
+@overload
+def get_case(id: str, as_odm: Literal[True], version: Literal[False], user: User | None = None) -> Case | None: ...
+
+
+@overload
+def get_case(id: str, as_odm: Literal[True]) -> Case | None: ...
+
+
+@overload
+def get_case(id: str) -> Case | None: ...
+
+
+@overload
+def get_case(id: str, as_odm: Literal[False], version: Literal[True]) -> tuple[dict[str, Any] | None, str]: ...
+
+
+@overload
+def get_case(id: str, as_odm: Literal[False], version: Literal[False]) -> dict[str, Any] | None: ...
+
+
+@overload
+def get_case(id: str, as_odm: Literal[False]) -> dict[str, Any] | None: ...
+
+
+def get_case(id: str, as_odm=False, version=False, user: User | None = None):
+    """Retrieve a case from the datastore.
+
+    Args:
+        id: The unique identifier of the case to retrieve
+        as_odm: Whether to return the case as an ODM object (True) or dictionary (False)
+        version: Whether to include version information in the response
+
+    Returns:
+        Case object (if as_odm=True) or dictionary representation of the case.
+        Returns None if the case doesn't exist.
+    """
+    case_version: str | None = None
+    obj: Case | dict[str, Any] | None = None
+
+    case = datastore().case.get(key=id, as_obj=as_odm, version=version)
+    if user is None:
+        return case
+
+    if version:
+        obj, case_version = cast(tuple[dict[str, Any] | Case, str], case)
+    else:
+        obj = cast(Case | dict[str, Any], case)
+
+    classification: str | None = None
+    if as_odm and obj:
+        classification = cast(Case, obj).classification
+    elif obj:
+        classification = cast(dict[str, str], obj).get("classification")
+
+    if obj is not None and not is_classification_accessible(user, classification):
+        obj = None
+        case_version = CREATE_TOKEN
+
+    if version:
+        return obj, case_version
+
+    return obj
+
+
 def create_case(
     case_data: dict,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
     user: User | None = None,
 ) -> Case:  # type: ignore
     """Create a new case in the datastore.
@@ -57,29 +134,22 @@ def create_case(
 
     case = Case(case_data)
     case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user.uname if user else "system"})]
-    case.save(refresh="wait_for", version=CREATE_TOKEN)
-    CREATED_CASES.inc()
 
+    if not is_classification_accessible(user, case.classification):
+        raise ForbiddenException(f"User cannot create case at classification {case.classification}")
+
+    # Accumulate initial case items in memory and write the case once after validation.
     for item in items:
-        append_case_item(case.case_id, item=CaseItem(item), refresh="wait_for")
+        append_case_item(case, item=CaseItem(item), user=user)
 
-    if items:
-        updated_case = datastore().case.get(case.case_id)
-
-        if not updated_case:
-            raise HowlerValueError("Error occurred when creating case")
-
-        case = updated_case
+    case.save(refresh=refresh, version=CREATE_TOKEN)
 
     comms_service.emit("cases", {"case": case.as_primitives()})
-
-    if user:
-        filter_case_items_by_classification(case, user.classification)
 
     return case
 
 
-def hide_cases(case_ids: set[str], user: str, refresh: Literal["true", "false", "wait_for"] | None = None) -> None:
+def hide_cases(case_ids: set[str], user: User, refresh: Literal["true", "false", "wait_for"] | None = None) -> None:
     """Hide a set of cases by marking them and their references as not visible.
 
     Sets visible=False on all matching cases, and also sets visible=False on any
@@ -90,10 +160,11 @@ def hide_cases(case_ids: set[str], user: str, refresh: Literal["true", "false", 
         user (str): The username performing the hide action
     """
     ds = datastore()
+    access_control = user.access_control if user else None
 
     # First pass: find other cases that reference any of the cases being hidden
     # and mark those reference items as not visible.
-    for related_case in ds.case.stream_search(f"items.value:({' OR '.join(case_ids)})"):
+    for related_case in ds.case.stream_search(f"items.value:({' OR '.join(case_ids)})", access_control=access_control):
         # Skip cases that are themselves being hidden — they're handled below.
         if related_case.case_id in case_ids:
             continue
@@ -111,7 +182,7 @@ def hide_cases(case_ids: set[str], user: str, refresh: Literal["true", "false", 
                 CaseLog(
                     {
                         "timestamp": "NOW",
-                        "user": user,
+                        "user": user.uname,
                         "explanation": f"Referenced case(s) hidden: {', '.join(hidden_ids)}",
                     }
                 )
@@ -120,8 +191,8 @@ def hide_cases(case_ids: set[str], user: str, refresh: Literal["true", "false", 
 
     # Second pass: mark each target case itself as not visible.
     for case_id in case_ids:
-        case = ds.case.get(case_id)
-        if case is None:
+        case, version = get_case(case_id, as_odm=True, version=True, user=user)
+        if not case:
             logger.warning("Case %s not found, skipping hide", case_id)
             continue
 
@@ -130,15 +201,17 @@ def hide_cases(case_ids: set[str], user: str, refresh: Literal["true", "false", 
             CaseLog(
                 {
                     "timestamp": "NOW",
-                    "user": user,
+                    "user": user.uname,
                     "explanation": "Case hidden",
                 }
             )
         )
-        case.save(refresh=refresh)
+        case.save(refresh=refresh, version=version)
 
 
-def delete_cases(case_ids: set[str], refresh: Literal["true", "false", "wait_for"] | None = None) -> bool:
+def delete_cases(
+    case_ids: set[str], refresh: Literal["true", "false", "wait_for"] | None = None, user: User | None = None
+) -> bool:
     """Delete a set of cases from the datastore.
 
     Also removes any CaseItem references to the deleted cases from other cases.
@@ -151,17 +224,19 @@ def delete_cases(case_ids: set[str], refresh: Literal["true", "false", "wait_for
     """
     ds = datastore()
 
-    for case in ds.case.stream_search(f"items.value:({' OR '.join(case_ids)})"):
+    access_control = user.access_control if user else None
+
+    for case in ds.case.stream_search(f"items.value:({' OR '.join(case_ids)})", access_control=access_control):
         related_case_id = case.case_id
         if related_case_id in case_ids:
             continue
 
-        related_case = ds.case.get(related_case_id)
+        related_case, related_case_version = ds.case.get(related_case_id, as_obj=True, version=True)
         if related_case:
             related_case.items = [item for item in related_case.items if item.value not in case_ids]
-            related_case.save(refresh=refresh)
+            related_case.save(refresh=refresh, version=related_case_version)
 
-    return ds.case.delete_by_query(f"case_id:({' OR '.join(case_ids)})", refresh=refresh)
+    return ds.case.delete_by_query(f"case_id:({' OR '.join(case_ids)})", access_control=access_control, refresh=refresh)
 
 
 def filter_case_items_by_classification(case_data: dict | Case, user_classification: str):
@@ -289,11 +364,12 @@ def update_case(
         NotFoundException: If the case doesn't exist
         InvalidDataException: If invalid or immutable fields are provided
     """
-    ds = datastore()
-
-    case = ds.case.get(case_id)
-    if case is None:
+    case, version = get_case(case_id, as_odm=True, version=True, user=user)
+    if not case:
         raise NotFoundException(f"Case {case_id} does not exist")
+
+    if "items" in case_data:
+        raise InvalidDataException("You cannot modify the list of items via cae updates. Use the dedicated endpoints.")
 
     immutable_fields = {"case_id", "created", "updated"}
     compound_fields = {"items", "enrichments", "rules", "tasks"}
@@ -305,6 +381,20 @@ def update_case(
     updatable = {k: v for k, v in case_data.items() if k not in immutable_fields}
     if not updatable:
         raise InvalidDataException("No valid fields provided for update")
+
+    if not is_classification_accessible(user, case_data.get("classification")):
+        raise ForbiddenException(f"Cannot set case to invalid classification for user {user.uname}")
+
+    if "classification" in case_data:
+        max_item_classification: str | None = None
+        for item in case.items:
+            max_item_classification = CLASSIFICATION.max_classification(max_item_classification, item.classification)
+
+        if not CLASSIFICATION.is_accessible(case_data["classification"], max_item_classification):
+            raise ForbiddenException(
+                f"Cannot lower case classification to {case_data['classification']}. Case items have "
+                f"a maximum classification of {max_item_classification}."
+            )
 
     for key, new_value in updatable.items():
         previous_value = getattr(case, key, None)
@@ -326,7 +416,7 @@ def update_case(
         setattr(case, key, new_value)
 
     case.updated = "NOW"
-    case.save(refresh=refresh)
+    case.save(refresh=refresh, version=version)
 
     comms_service.emit("cases", {"case": case.as_primitives()})
 
@@ -337,8 +427,7 @@ def get_parent_from_path(
     case: str | Case | None,
     path: str | None,
     create_if_missing: bool = False,
-    refresh: Literal["true", "false", "wait_for"] | None = None,
-    persist: bool = True,
+    user: User | None = None,
 ) -> CaseItem | None:
     """Given a path, return the lowest parent of the path in the case.
 
@@ -348,18 +437,15 @@ def get_parent_from_path(
         case: The case to search for.
         path: The path to return the lowest parent for.
         create_if_missing: Whether to create the path if it's missing or return None.
-        persist: Whether to save the case immediately when a folder is created. Callers that
-            are accumulating multiple in-memory changes before a single bulk save should pass
-            False.
+        user: User whose case classification access should be enforced when loading by ID.
 
     Raises:
         InvalidDataException: If the path is invalid.
     """
     if isinstance(case, str):
-        logger.debug("Attempting to fetch case %s", case)
-        case = datastore().case.get(case)
+        case = get_case(case, as_odm=True, version=False, user=user)
 
-    if case is None:
+    if not case:
         raise NotFoundException("Case does not exist")
 
     if not path or path == "/":
@@ -372,7 +458,6 @@ def get_parent_from_path(
         return None
 
     current_parent: str | None = None
-
     for part in path_parts:
         # Find folder matching this part with current parent
         folder = next(
@@ -394,9 +479,6 @@ def get_parent_from_path(
         else:
             current_parent = folder.id
 
-    if persist:
-        case.save(refresh)
-
     # Find the final parent folder
     if current_parent is None:  # pragma: no cover
         return None  # pragma: no cover
@@ -412,7 +494,8 @@ def append_case_item(
     item_value: str | None = None,
     item_parent: str | None = None,
     item_name: str | None = None,
-    refresh: Literal["true", "false", "wait_for"] | None = None,
+    *,
+    user: User | None = None,
 ) -> Case: ...
 
 
@@ -424,7 +507,8 @@ def append_case_item(
     item_value: str = ...,
     item_parent: str | None = ...,
     item_name: str | None = ...,
-    refresh: Literal["true", "false", "wait_for"] | None = None,
+    *,
+    user: User | None = None,
 ) -> Case: ...
 
 
@@ -435,7 +519,7 @@ def append_case_item(  # noqa: C901
     item_value: str | None = None,
     item_parent: str | None = None,
     item_name: str | None = None,
-    refresh: Literal["true", "false", "wait_for"] | None = None,
+    user: User | None = None,
 ) -> Case:
     """Append an item to a case, dispatching to the appropriate handler based on item type.
 
@@ -455,13 +539,10 @@ def append_case_item(  # noqa: C901
         InvalidDataException: If item is not provided and item_type or item_value
             are missing, or if item_type is not a valid CaseItemTypes value.
     """
-    ds = datastore()
-
     if isinstance(case, str):
-        logger.debug("Attempting to fetch case %s", case)
-        case = ds.case.get(case)
+        case = get_case(case, as_odm=True, version=False, user=user)
 
-    if case is None:
+    if not case:
         raise NotFoundException("Case does not exist")
 
     if item is None:
@@ -479,6 +560,15 @@ def append_case_item(  # noqa: C901
     if item.name is None:
         item.name = item.value
 
+    if not is_classification_accessible(user, item.classification):
+        raise ForbiddenException(f"User cannot add item at classification {item.classification}.")
+
+    if not CLASSIFICATION.is_accessible(case.classification, item.classification):
+        raise ForbiddenException(
+            f"User cannot add item at classification {item.classification} to "
+            f"case at classification {case.classification}"
+        )
+
     # If a parent is specified, ensure it references an existing folder item.
     if item.parent is not None:
         _ensure_parent_exists(case, item.parent)
@@ -490,27 +580,22 @@ def append_case_item(  # noqa: C901
             if conflict:
                 item.name = f"{item.name} ({item.value})" if item.name else item.value
 
-            return append_hit(case, item, refresh)
+            return append_hit(case, item, user=user)
         case CaseItemTypes.EVENT:
             if conflict:
                 item.name = f"{item.name} ({item.value})" if item.name else item.value
 
-            return append_event(case, item, refresh)
+            return append_event(case, item, user=user)
         case CaseItemTypes.CASE:
             if conflict:
                 item.name = f"{item.name} ({item.value})" if item.name else item.value
 
-            return append_case(case, item, refresh)
+            return append_case(case, item, user=user)
         case CaseItemTypes.REFERENCE | CaseItemTypes.MARKDOWN | CaseItemTypes.FOLDER:
             if conflict:
                 raise ResourceExists("An item with the same name already exists in this location.")
 
             case.items.append(item)
-
-            if not case.save(refresh):  # pragma: no cover
-                raise DataStoreException(f"Failed to save {case.case_id} with new {item.type} {item.name}")
-
-            comms_service.emit("cases", {"case": case.as_primitives()})
 
             return case
         case _:
@@ -563,9 +648,11 @@ def move_case_item(
     case: str | Case | None,
     item_id: str,
     new_parent: str | None,
-    refresh: Literal["true", "false", "wait_for"] | None = None,
+    user: User | None = None,
 ) -> Case:
     """Move an item to a different parent folder (or to root).
+
+    Updates the item in memory; the caller is responsible for persisting the case.
 
     Args:
         case: Case object or unique identifier of the case.
@@ -578,19 +665,18 @@ def move_case_item(
     Raises:
         NotFoundException: If the case or item does not exist.
         InvalidDataException: If the target parent is invalid or would create a cycle.
-        DataStoreException: If saving the case fails.
+        DataStoreException: If loading the case from the datastore fails.
     """
-    ds = datastore()
-
     if isinstance(case, str):
-        logger.debug("Attempting to fetch case %s", case)
-        case = ds.case.get(case)
+        case = get_case(case, as_odm=True, version=False, user=user)
 
-    if case is None:
+    if not case:
         raise NotFoundException("Case does not exist")
 
-    item = next((i for i in case.items if i.id == item_id), None)
-    if item is None:
+    item = next(
+        (i for i in case.items if i.id == item_id and is_classification_accessible(user, i.classification)), None
+    )
+    if not item:
         raise NotFoundException(f"Item {item_id} does not exist in case {case.case_id}")
 
     # Case items must remain root-level
@@ -610,9 +696,6 @@ def move_case_item(
         raise InvalidDataException(f"An item with name '{item.name}' already exists in destination.")
 
     item.parent = new_parent
-
-    if not case.save(refresh=refresh):  # pragma: no cover
-        raise DataStoreException("Failed to save case after item move")
 
     comms_service.emit("cases", {"case": case.as_primitives()})
 
@@ -646,6 +729,8 @@ def remove_case_items(  # noqa: C901
     item_ids: list[str],
     force: bool = False,
     refresh: Literal["true", "false", "wait_for"] | None = None,
+    version: str | None = None,
+    user: User | None = None,
 ) -> Case:  # noqa: C901
     """Remove items from a case by their IDs.
 
@@ -666,13 +751,12 @@ def remove_case_items(  # noqa: C901
     ds = datastore()
 
     if isinstance(case, str):
-        logger.debug("Attempting to fetch case %s", case)
-        case = ds.case.get(case)
+        case, version = get_case(case, as_odm=True, version=True, user=user)
 
-    if case is None:
+    if not case:
         raise NotFoundException("Case does not exist")
 
-    items_by_id = {item.id: item for item in case.items}
+    items_by_id = {item.id: item for item in case.items if is_classification_accessible(user, item.classification)}
     missing = [iid for iid in item_ids if iid not in items_by_id]
     if missing:
         raise NotFoundException(f"Item(s) not found in case: {', '.join(missing)}")
@@ -697,19 +781,19 @@ def remove_case_items(  # noqa: C901
     backing_objs: list[tuple[Hit | Event, str]] = []
     for item in items_to_remove:
         if item.type in [CaseItemTypes.HIT, CaseItemTypes.EVENT]:
-            obj, version = ds[item.type].get(item.value, as_obj=True, version=True)
+            obj, obj_version = ds[item.type].get(item.value, as_obj=True, version=True)
             if obj:
-                backing_objs.append((obj, version))
+                backing_objs.append((obj, obj_version))
 
     case.items = [item for item in case.items if item.id not in ids_to_remove]
 
-    for backing_obj, version in backing_objs:
+    for backing_obj, backing_obj_version in backing_objs:
         remove_backreference(backing_obj, case.case_id)
-        backing_obj.save(version=version)
+        backing_obj.save(version=backing_obj_version)
 
     recompute_case_metadata(case)
 
-    if not case.save(refresh=refresh):  # pragma: no cover
+    if not case.save(refresh=refresh, version=version):  # pragma: no cover
         raise DataStoreException("Failed to save case after item removal")
 
     comms_service.emit("cases", {"case": case.as_primitives()})
@@ -727,7 +811,11 @@ def _collect_descendant_ids(items: list[CaseItem], parent_id: str) -> set[str]:
     return result
 
 
-def append_hit(case: Case, item: CaseItem, refresh: Literal["true", "false", "wait_for"] | None = None) -> Case:
+def append_hit(
+    case: Case,
+    item: CaseItem,
+    user: User | None = None,
+) -> Case:
     """Append a hit item to a case and create a back-reference on the hit.
 
     Validates that the case and hit both exist and that the hit is not already
@@ -744,102 +832,109 @@ def append_hit(case: Case, item: CaseItem, refresh: Literal["true", "false", "wa
         InvalidDataException: If the hit is already present in the case.
         DataStoreException: If saving the updated case fails.
     """
-    ds = datastore()
-
-    hit, version = ds.hit.get(item.value, as_obj=True, version=True)
+    hit, hit_version = hit_service.get_hit(item.value, as_odm=True, version=True, user=user)
     if hit is None:
         raise NotFoundException(f"Hit {item.value} not found, cannot be added to case")
+
+    if not CLASSIFICATION.is_accessible(case.classification, hit.classification):
+        raise ForbiddenException(
+            f"Cannot add hit at classification {hit.classification} to case at classification {case.classification}"
+        )
 
     item.classification = hit.classification
 
     case.items.append(item)
 
     add_backreference(hit, case.case_id)
-    hit.save(version=version)
+    hit.save(version=hit_version)
 
     recompute_case_metadata(case)
-    if not case.save(refresh=refresh):  # pragma: no cover
-        raise DataStoreException(f"Failed to save {case.case_id} with new item {item.value}")
-
-    comms_service.emit("cases", {"case": case.as_primitives()})
 
     return case
 
 
-def append_event(case: Case, item: CaseItem, refresh: Literal["true", "false", "wait_for"] | None = None) -> Case:
+def append_event(
+    case: Case,
+    item: CaseItem,
+    user: User | None = None,
+) -> Case:
     """Append an event item to a case and create a back-reference on the event.
 
-    Validates that the case and event both exist and that the event is
-    not already present in the case. It then persists the updated case and adds a back-reference
-    from the event to the case.
+    Validates that the case and event both exist and that the event is not already
+    present in the case. It adds the item to the case in memory, persists the
+    back-reference on the event, and recomputes the case metadata. The caller is
+    responsible for persisting the updated case.
 
     Args:
-        case_id: Unique identifier of the case to append the event to.
+        case: Case to append the event to.
         item: A CaseItem whose ``value`` is the ID of an existing event.
 
     Raises:
         NotFoundException: If the case or event does not exist.
         InvalidDataException: If the event is already present in the case.
-        DataStoreException: If saving the updated case fails.
+        DataStoreException: If loading or saving the event fails.
+        ForbiddenException: If the event classification cannot be added to the case.
     """
-    ds = datastore()
-
-    event, version = ds.event.get(key=item.value, as_obj=True, version=True)
+    event, event_version = event_service.get_event(item.value, as_odm=True, version=True, user=user)
 
     if event is None:
         raise NotFoundException(f"Event {item.value} not found, cannot be added to case")
+
+    if not CLASSIFICATION.is_accessible(case.classification, event.classification):
+        raise ForbiddenException(
+            f"Cannot add event at classification {event.classification} to case at classification {case.classification}"
+        )
 
     item.classification = event.classification
 
     case.items.append(item)
 
     add_backreference(event, case.case_id)
-    event.save(version=version)
+    event.save(version=event_version)
 
     recompute_case_metadata(case)
-    if not case.save(refresh=refresh):  # pragma: no cover
-        raise DataStoreException(f"Failed to save {case.case_id} with new item {item.value}")
-
-    comms_service.emit("cases", {"case": case.as_primitives()})
 
     return case
 
 
-def append_case(case: Case, item: CaseItem, refresh: Literal["true", "false", "wait_for"] | None = None) -> Case:
+def append_case(
+    case: Case,
+    item: CaseItem,
+    user: User | None = None,
+) -> Case:
     """Append a case reference item to a case.
 
     Validates that both the parent case and the referenced case exist, and that
-    the referenced case is not already present in the parent case. It then persists the updated
-    parent case.
+    the referenced case is not already present in the parent case. It adds the
+    reference to the parent case in memory; the caller is responsible for
+    persisting the updated parent case.
 
     Case items must always be root-level; the ``CaseItem.__init__`` guard rejects
     construction with a non-null ``parent`` for ``type == "case"``.
 
     Args:
-        case_id: Unique identifier of the parent case to append the reference to.
+        case: Parent case to append the reference to.
         item: A CaseItem whose ``value`` is the ID of an existing case to reference.
 
     Raises:
         NotFoundException: If the parent case or referenced case does not exist.
         InvalidDataException: If the referenced case is already present in the parent case.
-        DataStoreException: If saving the updated case fails.
+        DataStoreException: If loading the referenced case fails.
+        ForbiddenException: If the referenced case classification cannot be added to the parent case.
     """
-    ds = datastore()
-
-    if any(item.value == case_item["value"] for case_item in case.items):
-        raise InvalidDataException(f"Item {item.value} already exists in case {case.case_id}")
-
-    referenced_case = ds.case.get(item.value)
-
+    referenced_case = get_case(item.value, as_odm=True, version=False, user=user)
     if referenced_case is None:
         raise NotFoundException(f"Referenced case {item.name} not found, cannot be added to case")
 
+    if not CLASSIFICATION.is_accessible(case.classification, referenced_case.classification):
+        raise ForbiddenException(
+            f"Cannot add case at classification {referenced_case.classification} to case at "
+            f"classification {case.classification}"
+        )
+
+    item.classification = referenced_case.classification
+
     case.items.append(item)
-
-    if not case.save(refresh=refresh):  # pragma: no cover
-        raise DataStoreException(f"Failed to save {case.case_id} with new item {item.name}")
-
-    comms_service.emit("cases", {"case": case.as_primitives()})
 
     return case
 
@@ -959,10 +1054,10 @@ def remove_backreference(
 
 
 def rename_case_item(
-    case_id: str,
+    case: str | Case | None,
     item_id: str,
     new_name: str,
-    refresh: Literal["true", "false", "wait_for"] | None = None,
+    user: User | None = None,
 ) -> Case:
     """Rename a single item within a case by updating its display name.
 
@@ -977,20 +1072,22 @@ def rename_case_item(
     Raises:
         NotFoundException: If the case or item does not exist.
         InvalidDataException: If new_name is empty.
-        DataStoreException: If persisting the updated case fails.
+        DataStoreException: If loading the case from the datastore fails.
     """
     if not new_name or not new_name.strip():
         raise InvalidDataException("new_name must be a non-empty string")
 
-    ds = datastore()
+    if isinstance(case, str):
+        case = get_case(case, as_odm=True, version=False, user=user)
 
-    case = ds.case.get(case_id)
-    if case is None:
-        raise NotFoundException(f"Case {case_id} does not exist")
+    if not case:
+        raise NotFoundException("Case does not exist")
 
-    item = next((i for i in case.items if i.id == item_id), None)
-    if item is None:
-        raise NotFoundException(f"Item {item_id} does not exist in case {case_id}")
+    item = next(
+        (i for i in case.items if i.id == item_id and is_classification_accessible(user, i.classification)), None
+    )
+    if not item:
+        raise NotFoundException(f"Item {item_id} does not exist in case {case.case_id}")
 
     # Guard: reject if the target name is already used by a sibling (item with the same parent).
     if any(i.name == new_name.strip() and i.id != item_id and i.parent == item.parent for i in case.items):
@@ -1000,9 +1097,6 @@ def rename_case_item(
 
     if item.type == CaseItemTypes.FOLDER:
         item.value = item.name
-
-    if not case.save(refresh=refresh):  # pragma: no cover
-        raise DataStoreException("Failed to save case after item rename")
 
     comms_service.emit("cases", {"case": case.as_primitives()})
 
@@ -1029,10 +1123,8 @@ def add_case_rule(
         NotFoundException: If the case does not exist.
         InvalidDataException: If required rule fields are missing.
     """
-    ds = datastore()
-
-    case = ds.case.get(case_id)
-    if case is None:
+    case, version = get_case(case_id, as_odm=True, version=True, user=user)
+    if not case:
         raise NotFoundException(f"Case {case_id} does not exist")
 
     if not rule_data.get("query"):
@@ -1065,7 +1157,7 @@ def add_case_rule(
     )
 
     case.updated = "NOW"
-    case.save(refresh=refresh)
+    case.save(refresh=refresh, version=version)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case
 
@@ -1085,11 +1177,10 @@ def remove_case_rule(
 
     Raises:
         NotFoundException: If the case or rule does not exist.
+        DataStoreException: If loading or saving the case fails.
     """
-    ds = datastore()
-
-    case = ds.case.get(case_id)
-    if case is None:
+    case, version = get_case(case_id, as_odm=True, version=True, user=user)
+    if not case:
         raise NotFoundException(f"Case {case_id} does not exist")
 
     original_len = len(case.rules)
@@ -1109,7 +1200,7 @@ def remove_case_rule(
     )
 
     case.updated = "NOW"
-    case.save(refresh)
+    case.save(refresh=refresh, version=version)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case
 
@@ -1138,11 +1229,10 @@ def update_case_rule(
     Raises:
         NotFoundException: If the case or rule does not exist.
         InvalidDataException: If no valid fields are provided.
+        DataStoreException: If loading or saving the case fails.
     """
-    ds = datastore()
-
-    case = ds.case.get(case_id)
-    if case is None:
+    case, version = get_case(case_id, as_odm=True, version=True, user=user)
+    if not case:
         raise NotFoundException(f"Case {case_id} does not exist")
 
     allowed_fields = {"enabled", "query", "destination", "timeframe", "expire_after_resolved"}
@@ -1181,6 +1271,6 @@ def update_case_rule(
     )
 
     case.updated = "NOW"
-    case.save(refresh=refresh)
+    case.save(refresh=refresh, version=version)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case

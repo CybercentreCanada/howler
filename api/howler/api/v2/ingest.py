@@ -15,10 +15,12 @@ from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import DataStoreException
 from howler.datastore.howler_store import INDEXES
 from howler.datastore.operations import OdmHelper, OdmUpdateOperation
+from howler.helper.search import has_access_control
 from howler.odm.models.event import Event
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
 from howler.security.login import api_login
+from howler.security.utils import is_classification_accessible, validate_bulk_operation_targets
 from howler.services import correlation_service, event_service, hit_service
 from howler.utils.dict_utils import flatten
 
@@ -83,10 +85,12 @@ def create(index: str, user: User, *, refresh: Literal["true", "false", "wait_fo
             odm: Hit | Event
             if index == "event":
                 odm, _warnings = event_service.convert_event(
-                    record, unique=True, ignore_extra_values=ignore_extra_values
+                    record, unique=True, user=user, ignore_extra_values=ignore_extra_values
                 )
             else:
-                odm, _warnings = hit_service.convert_hit(record, unique=True, ignore_extra_values=ignore_extra_values)
+                odm, _warnings = hit_service.convert_hit(
+                    record, unique=True, user=user, ignore_extra_values=ignore_extra_values
+                )
 
             odms.append(odm)
             warnings.extend(_warnings)
@@ -111,7 +115,12 @@ def create(index: str, user: User, *, refresh: Literal["true", "false", "wait_fo
 @ingest_api.route("/<indexes>", methods=["DELETE"])
 @api_login(required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def delete(indexes: str, user: User, **kwargs):
+def delete(
+    indexes: str,
+    user: User,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+    **kwargs,
+):
     """Delete records, optionally across multiple indexes.
 
     Variables:
@@ -141,11 +150,13 @@ def delete(indexes: str, user: User, **kwargs):
         return forbidden(err="Cannot delete hit, only administrators are permitted to delete.")
 
     index_list = indexes.split(",")
-    refresh = kwargs.get("refresh")
+    access_controls = {index: user.access_control if has_access_control(index) else None for index in index_list}
 
     ds = datastore()
 
-    if non_existing_hit_ids := [id for id in ids if all(not ds[index].exists(id) for index in index_list)]:
+    if non_existing_hit_ids := [
+        id for id in ids if all(not ds[index].exists(id, access_control=access_controls[index]) for index in index_list)
+    ]:
         return not_found(err=f"Record ids [{','.join(non_existing_hit_ids)}] do not exist.")
 
     try:
@@ -154,7 +165,11 @@ def delete(indexes: str, user: User, **kwargs):
             if not remaining:
                 break
 
-            existing = [record_id for record_id in remaining if ds[index].exists(record_id)]
+            existing = [
+                record_id
+                for record_id in remaining
+                if ds[index].exists(record_id, access_control=access_controls[index])
+            ]
             if not existing:
                 continue
 
@@ -238,10 +253,16 @@ def validate(index: str, **kwargs):
 
 @generate_swagger_docs()
 @ingest_api.route("/<index>/<id>/overwrite", methods=["PATCH"])
-@api_login(audit=False, required_priv=["W"])
+@api_login(audit=True, required_priv=["W"])
 @add_etag()
 @parse_parameters(refresh=parse_refresh)
-def overwrite(index: str, id: str, **kwargs):
+def overwrite(
+    index: str,
+    id: str,
+    user: User,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+    **kwargs,
+):
     """Overwrite a record.
 
     Variables:
@@ -269,13 +290,16 @@ def overwrite(index: str, id: str, **kwargs):
     if not record:
         return not_found(err="Record %s does not exist" % id)
 
+    if has_access_control(index) and not is_classification_accessible(user, record.get("classification")):
+        # Generic 404 so classified records are indistinguishable from nonexistent ones
+        return not_found(err="Record %s does not exist" % id)
+
     new_fields = request.json
     if not isinstance(new_fields, dict):
         return bad_request(err="The JSON payload must be a subset of a valid record.")
 
     try:
         odm = INDEXES[index]
-        refresh = kwargs.get("refresh")
 
         # TODO: This is inefficient. We can use elastic's `update` command to just directly patch the document
         new_record = cast(
@@ -288,6 +312,9 @@ def overwrite(index: str, id: str, **kwargs):
                 else Strategy.ADDITIVE,
             ),
         )
+
+        if has_access_control(index) and not is_classification_accessible(user, new_record.get("classification")):
+            return bad_request(err=f"Cannot set classification to {new_record.get('classification')}")
 
         ds[index].save(
             id,
@@ -305,9 +332,14 @@ def overwrite(index: str, id: str, **kwargs):
 
 @generate_swagger_docs()
 @ingest_api.route("/<indexes>/update", methods=["PUT"])
-@api_login(audit=False, required_priv=["W"])
+@api_login(audit=True, required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def update_by_query(indexes: str, **kwargs):
+def update_by_query(
+    indexes: str,
+    user: User,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+    **kwargs,
+):
     """Update a set of records using a query.
 
     Variables:
@@ -325,41 +357,57 @@ def update_by_query(indexes: str, **kwargs):
         ]
     }
 
+    Operations targeting ``classification`` or its derived ``__access_*``
+    fields are rejected: bulk updates run as datastore scripts and cannot keep
+    the access-control bookkeeping fields consistent.
+
     Result Example:
     {
         "success": True
     }
     """
     data = cast(dict[str, Any], request.json)
-    refresh = kwargs.get("refresh")
 
     try:
         query = cast(str, data["query"])
-        operations = cast(list[tuple[str, str, Any]], data["operations"])
+        operations: list[OdmUpdateOperation] = []
 
         explanation: list[str] = []
-        for operation, key, value in operations:
+        for operation, key, value in cast(list[tuple[str, str, Any]], data["operations"]):
             # Just using this for validation
-            OdmUpdateOperation(operation, key, value)
+            operations.append(OdmUpdateOperation(operation, key, value))
             explanation.append(f"- `{operation}` - `{key}` - `{json.dumps(value)}`")
 
         operations.append(
-            (
+            OdmUpdateOperation(
                 ESCollection.UPDATE_APPEND,
                 "howler.log",
                 {
                     "timestamp": "NOW",
-                    "explanation": f"Hit updated by {kwargs['user']['uname']}\n\n" + "\n".join(explanation),
-                    "user": kwargs["user"]["uname"],
+                    "explanation": f"Hit updated by {user.uname}\n\n" + "\n".join(explanation),
+                    "user": user.uname,
                 },
             )
         )
 
+        # Bulk updates run as datastore scripts and bypass ODM serialization, so
+        # operations on classification/access-control fields cannot be applied safely.
+        validate_bulk_operation_targets(operations)
+
         ds = datastore()
 
-        success = all(ds[index].update_by_query(query, operations, refresh=refresh) for index in indexes.split(","))
+        results = []
+        for index in indexes.split(","):
+            results.append(
+                ds[index].update_by_query(
+                    query,
+                    operations,
+                    access_control=user.access_control if has_access_control(index) else None,
+                    refresh=refresh,
+                )
+            )
 
-        return ok({"success": success})
+        return ok({"success": all(results)})
     except (HowlerValueError, KeyError, DataStoreException) as e:
         return bad_request(err=str(e))
     except Exception as e:  # pragma: no cover

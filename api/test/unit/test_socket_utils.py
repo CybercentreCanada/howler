@@ -1,10 +1,12 @@
 from unittest.mock import patch
 
+from howler.odm.models.user import User
+from howler.odm.randomizer import random_model_obj
 from howler.utils.socket_utils import check_action
 
 _ID = "test_id"
-_USER = "test_user"
-_KWARGS = {"username": _USER}
+_USER = random_model_obj(User)
+_KWARGS = {"user": _USER}
 
 
 class TestCheckActionBroadcast:
@@ -19,7 +21,7 @@ class TestCheckActionBroadcast:
 
         emit.assert_called_once_with(
             "broadcast",
-            {"id": _ID, "action": "typing", "username": _USER},
+            {"id": _ID, "action": "typing", "username": _USER.uname},
         )
 
     @patch("howler.services.viewer_service.remove_viewer")
@@ -66,7 +68,7 @@ class TestCheckActionViewing:
         """viewing action calls viewer_service.add_viewer."""
         check_action(_ID, "viewing", False, outstanding_actions=[], **_KWARGS)
 
-        add_viewer.assert_called_once_with(_ID, _USER)
+        add_viewer.assert_called_once_with(_ID, _USER.uname)
 
     @patch("howler.services.viewer_service.remove_viewer")
     @patch("howler.services.viewer_service.add_viewer")
@@ -85,7 +87,7 @@ class TestCheckActionViewing:
         """stop_viewing action calls viewer_service.remove_viewer."""
         check_action(_ID, "stop_viewing", False, outstanding_actions=[], **_KWARGS)
 
-        remove_viewer.assert_called_once_with(_ID, _USER)
+        remove_viewer.assert_called_once_with(_ID, _USER.uname)
 
     @patch("howler.services.viewer_service.remove_viewer")
     @patch("howler.services.viewer_service.add_viewer")

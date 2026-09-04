@@ -158,7 +158,7 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
             obj.pop("howler.bundle_size", None)
             obj.pop("howler.bundles", None)
 
-            odm, warns = hit_service.convert_hit(obj, unique=True, ignore_extra_values=ignore_extra_values)
+            odm, warns = hit_service.convert_hit(obj, unique=True, user=user, ignore_extra_values=ignore_extra_values)
 
             if is_bundle:
                 if bundle_id is not None:
@@ -175,10 +175,9 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
                 }
             )
         except HowlerException as e:
-            logger.warning("%s when saving %s!", type(e).__name__, cur_id)
-            logger.warning(e)
+            logger.exception("%s when saving %s!", type(e).__name__, cur_id)
 
-            out.append({"id": None, "error": str(e)})
+            out.append({"id": None, "error": e.message or str(e)})
 
     # Deduplicate by hash: skip hits whose hash already exists in the datastore
     if odms:

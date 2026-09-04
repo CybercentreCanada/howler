@@ -64,9 +64,9 @@ class SpyCollection:
         self._record_write("bulk", refresh)
         return self.wrapped_collection.bulk(operations, refresh)
 
-    def delete_by_query(self, query: str, sort=None, max_docs=None, refresh=None):
+    def delete_by_query(self, query: str, sort=None, max_docs=None, refresh=None, filters=None, access_control=None):
         self._record_write("delete_by_query", refresh)
-        return self.wrapped_collection.delete_by_query(query, sort, max_docs, refresh)
+        return self.wrapped_collection.delete_by_query(query, sort, max_docs, refresh, filters, access_control)
 
     def delete_by_search_object(self, query: dict, sort=None, max_docs=None, refresh=None):
         self._record_write("delete_by_search_object", refresh)

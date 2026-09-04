@@ -283,6 +283,7 @@ README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
 - In `ui/`, `@fontsource/roboto` may fail TypeScript side-effect import resolution at the package root even when the dependency is installed; prefer importing the explicit CSS entry `@fontsource/roboto/index.css` from the app entrypoint.
 - When ILM indices coexist with a legacy `_hot` index, alias existence alone is insufficient: remove the legacy alias and ensure the latest ILM index is the only write index. Maintenance commands that skip collection bootstrap must resolve the latest ILM index before reindexing; recovery must restore only aliases actually present on its source index.
 - UI tests must mock the router package imported by the component (`react-router` versus `react-router-dom`); mocking the other package does not intercept hooks such as `useNavigate`.
+- Unit tests that call ETag-decorated endpoints directly should inject `record` when testing endpoint logic; positional route IDs intentionally bypass decorator prefetch, while keyword IDs exercise the getter contract.
 
 ---
 

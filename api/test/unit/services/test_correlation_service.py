@@ -276,13 +276,14 @@ def _setup_ds(
     mock_ds = MagicMock()
     mock_ds_fn.return_value = mock_ds
 
-    def event_get(*args, **kwargs):
+    def versioned_get(records: dict[str, MagicMock] | None, *args, **kwargs):
         key = args[0] if args else kwargs.get("key")
-        return (events or {}).get(key)
+        record = (records or {}).get(key)
+        return record, f"{key}-version" if record else "create"
 
     mock_ds.case.get.side_effect = lambda cid: cases.get(cid)
-    mock_ds.hit.get.side_effect = lambda hid: (hits or {}).get(hid)
-    mock_ds.event.get.side_effect = event_get
+    mock_ds.hit.get.side_effect = lambda *args, **kwargs: versioned_get(hits, *args, **kwargs)
+    mock_ds.event.get.side_effect = lambda *args, **kwargs: versioned_get(events, *args, **kwargs)
     mock_ds.__getitem__.side_effect = lambda item_type: getattr(mock_ds, item_type)
 
     # Mirror ElasticBulkPlan.empty: starts empty, flips once an operation is queued.
@@ -707,12 +708,16 @@ class TestCorrelationUnreachableBranches:
 
         with (
             patch.object(correlation_service, "CaseItem", return_value=item),
-            patch.object(correlation_service, "_resolve_backing_object", return_value=backing_obj),
+            patch.object(
+                correlation_service,
+                "_resolve_backing_object",
+                return_value=(backing_obj, "hit-version"),
+            ),
             patch.object(correlation_service.case_service, "get_parent_from_path", return_value=None),
             patch.object(correlation_service.case_service, "check_conflicts", return_value=False),
             patch.object(correlation_service.case_service, "add_backreference", return_value=True),
         ):
-            added = correlation_service._add_record_to_case(case, "case-1", {"howler": {"id": "hit-1"}}, rule, {})
+            added = correlation_service._add_record_to_case(case, {"howler": {"id": "hit-1"}}, rule, {})
 
         assert added is not None
         assert added[0] == "hit"

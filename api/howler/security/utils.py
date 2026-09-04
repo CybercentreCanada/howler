@@ -1,16 +1,107 @@
 import base64
 import os
 import re
-from typing import List, Optional
+from typing import TYPE_CHECKING, Any, Iterable, List, Optional
 from urllib.parse import urlparse
 
 from opentelemetry import trace
 from passlib.hash import bcrypt
 
-from howler.common.exceptions import HowlerValueError
-from howler.config import config
+from howler.common.exceptions import HowlerValueError, InvalidClassification
+from howler.common.logging import get_logger
+from howler.config import CLASSIFICATION, config
+from howler.datastore.operations import OdmUpdateOperation
+from howler.odm.base import ClassificationObject
+
+if TYPE_CHECKING:
+    from howler.odm.models.user import User
 
 tracer = trace.get_tracer(__name__)
+logger = get_logger(__file__)
+
+
+def is_classification_accessible(
+    user: "User | None",
+    classification: str | ClassificationObject | None,
+) -> bool:
+    """Check whether a user can access a document at the given classification.
+
+    This is the per-document counterpart of the ``access_control`` Lucene filter
+    applied by search endpoints: documents on access-controlled indexes (hit,
+    event, case) must have their classification checked against the requesting
+    user's clearance whenever they are fetched or modified directly by ID.
+
+    Admin-type users bypass classification access control entirely, mirroring
+    the behaviour of the search filtering path.
+
+    Args:
+        user: The requesting user (User ODM object or its primitive dict).
+        classification: The classification of the document being accessed.
+
+    Returns:
+        True if the user can access the document, False otherwise.
+    """
+    if user is None:
+        return True
+
+    if classification is None:
+        return True
+
+    if not (isinstance(classification, str) or isinstance(classification, ClassificationObject)):
+        logger.warning("Invalid classification type")
+        return False
+
+    if not classification:
+        return False
+
+    if "admin" in user.type:
+        return True
+
+    try:
+        return CLASSIFICATION.is_accessible(
+            user.classification or CLASSIFICATION.UNRESTRICTED,
+            classification,
+        )
+    except InvalidClassification:
+        return False
+
+
+# Fields that must never be modified through bulk/script-based update endpoints.
+# ``classification`` is protected because script updates bypass ODM serialization,
+# so the derived access-control bookkeeping fields (``__access_lvl__``, etc.) would
+# silently diverge from the new classification string. The bookkeeping fields
+# themselves are protected because the search-time access filter is built directly
+# on them (``__access_lvl__:[0 TO <user_lvl>]``); rewriting them rewrites who can
+# see a document.
+PROTECTED_UPDATE_FIELDS = frozenset(
+    {
+        "classification",
+        "__access_lvl__",
+        "__access_req__",
+        "__access_grp1__",
+        "__access_grp2__",
+    }
+)
+
+
+def validate_bulk_operation_targets(operations: Iterable[tuple[str, str, Any] | OdmUpdateOperation]) -> None:
+    """Reject bulk update operations that target protected fields.
+
+    Bulk update endpoints execute operations as datastore scripts, which bypass
+    ODM serialization. Operations on ``classification`` or its derived
+    ``__access_*`` bookkeeping fields cannot be applied safely through this path
+    and would allow users to alter document visibility (their own or others').
+
+    Args:
+        operations: List of ``(operation, key, value)`` tuples from the request.
+
+    Raises:
+        HowlerValueError: If any operation targets a protected field.
+    """
+    for _, key, _ in operations:
+        if key in PROTECTED_UPDATE_FIELDS:
+            raise HowlerValueError(f"Cannot modify protected field {key} through bulk updates")
+
 
 UPPERCASE = r"[A-Z]"
 LOWERCASE = r"[a-z]"
