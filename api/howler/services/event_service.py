@@ -105,7 +105,9 @@ def get_event(id: str, as_odm=False, version=False, user: User | None = None):
     return obj
 
 
-def convert_event(data: dict[str, Any], unique: bool, ignore_extra_values: bool = False) -> tuple[Event, list[str]]:
+def convert_event(  # noqa: C901
+    data: dict[str, Any], unique: bool, user: User | None = None, ignore_extra_values: bool = False
+) -> tuple[Event, list[str]]:
     """Validate and convert a dictionary to an Event ODM object.
 
     This function performs validation on input data to ensure it can be safely
@@ -173,6 +175,9 @@ def convert_event(data: dict[str, Any], unique: bool, ignore_extra_values: bool 
             odm.event.created = "NOW"
     else:
         odm.event = ECSEvent({"created": "NOW", "id": odm.howler.id})
+
+    if user and not is_classification_accessible(user, odm.classification):
+        raise HowlerValueError(f"User {user.uname} cannot create hits at classification {odm.classification}")
 
     if unique and exists(odm.howler.id):
         raise ResourceExists("Resource with id %s already exists" % odm.howler.id)

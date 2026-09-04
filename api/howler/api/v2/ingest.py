@@ -37,12 +37,6 @@ logger = get_logger(__file__)
 hit_helper = OdmHelper(Hit)
 
 
-def _validate_classification(user: User, odm: Hit | Event):
-    """Ensure the user can create a record at the ODM's classification."""
-    if not is_classification_accessible(user, odm.classification):
-        raise HowlerException(f"User {user.uname} cannot create records at classification {odm.classification}")
-
-
 @generate_swagger_docs()
 @ingest_api.route("/<index>", methods=["POST"])
 @api_login(required_priv=["W"])
@@ -91,12 +85,12 @@ def create(index: str, user: User, *, refresh: Literal["true", "false", "wait_fo
             odm: Hit | Event
             if index == "event":
                 odm, _warnings = event_service.convert_event(
-                    record, unique=True, ignore_extra_values=ignore_extra_values
+                    record, unique=True, user=user, ignore_extra_values=ignore_extra_values
                 )
             else:
-                odm, _warnings = hit_service.convert_hit(record, unique=True, ignore_extra_values=ignore_extra_values)
-
-            _validate_classification(user, odm)
+                odm, _warnings = hit_service.convert_hit(
+                    record, unique=True, user=user, ignore_extra_values=ignore_extra_values
+                )
 
             odms.append(odm)
             warnings.extend(_warnings)
@@ -156,10 +150,13 @@ def delete(
         return forbidden(err="Cannot delete hit, only administrators are permitted to delete.")
 
     index_list = indexes.split(",")
+    access_controls = {index: user.access_control if has_access_control(index) else None for index in index_list}
 
     ds = datastore()
 
-    if non_existing_hit_ids := [id for id in ids if all(not ds[index].exists(id) for index in index_list)]:
+    if non_existing_hit_ids := [
+        id for id in ids if all(not ds[index].exists(id, access_control=access_controls[index]) for index in index_list)
+    ]:
         return not_found(err=f"Record ids [{','.join(non_existing_hit_ids)}] do not exist.")
 
     try:
@@ -168,7 +165,11 @@ def delete(
             if not remaining:
                 break
 
-            existing = [record_id for record_id in remaining if ds[index].exists(record_id)]
+            existing = [
+                record_id
+                for record_id in remaining
+                if ds[index].exists(record_id, access_control=access_controls[index])
+            ]
             if not existing:
                 continue
 

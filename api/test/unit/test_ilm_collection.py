@@ -87,6 +87,25 @@ class TestExists:
             track_total_hits=True,
         )
 
+    def test_exists_applies_access_control_filter(self, mock_datastore):
+        """ACL-filtered existence checks only match documents visible to the user."""
+        col = _make_collection(mock_datastore)
+        mock_datastore.client.search.return_value = {"hits": {"total": {"value": 0, "relation": "eq"}}}
+
+        assert col.exists("document-id", access_control="__access_lvl__:[0 TO 100]") is False
+
+        mock_datastore.client.search.assert_called_once_with(
+            index=col.name,
+            query={
+                "bool": {
+                    "must": {"ids": {"values": ["document-id"]}},
+                    "filter": [{"query_string": {"query": "__access_lvl__:[0 TO 100]"}}],
+                }
+            },
+            size=0,
+            track_total_hits=True,
+        )
+
 
 class TestILMVersionedOperations:
     """Tests for alias-safe ILM reads followed by optimistic-concurrency writes."""
