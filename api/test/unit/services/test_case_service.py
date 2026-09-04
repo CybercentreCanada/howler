@@ -2919,8 +2919,8 @@ class TestCreateCaseWithItems:
         "howler.services.case_service.append_case_item",
         side_effect=DataStoreException("item save failed"),
     )
-    def test_create_case_keeps_initial_parent_when_item_append_fails(self, _mock_append_item, mock_save):
-        """The initial parent save precedes item processing; this service does not roll it back."""
+    def test_create_case_does_not_save_parent_when_item_append_fails(self, _mock_append_item, mock_save):
+        """A failed initial item append prevents the single case save."""
 
         with pytest.raises(DataStoreException, match="item save failed"):
             case_service.create_case(
@@ -2931,15 +2931,15 @@ class TestCreateCaseWithItems:
                 }
             )
 
-        mock_save.assert_called_once_with(refresh="wait_for", version=CREATE_TOKEN)
+        mock_save.assert_not_called()
 
     @patch.object(Case, "save", return_value=True)
     @patch(
         "howler.services.case_service.append_case_item",
         side_effect=NotFoundException("hit hit-001 does not exist"),
     )
-    def test_create_case_delegates_item_access_validation_after_parent_save(self, _mock_append_item, mock_save):
-        """Item access is checked by append_case_item after the parent exists."""
+    def test_create_case_delegates_item_access_validation_before_case_save(self, _mock_append_item, mock_save):
+        """Item access is checked by append_case_item before the single case save."""
 
         with pytest.raises(NotFoundException, match="hit hit-001 does not exist"):
             case_service.create_case(
@@ -2951,7 +2951,7 @@ class TestCreateCaseWithItems:
                 user=_make_user(),
             )
 
-        mock_save.assert_called_once_with(refresh="wait_for", version=CREATE_TOKEN)
+        mock_save.assert_not_called()
 
     @patch.object(Case, "save", return_value=True)
     @patch("howler.services.case_service.append_case_item")
@@ -2972,8 +2972,7 @@ class TestCreateCaseWithItems:
         assert delegated_item.value == "https://x.com"
         assert delegated_item.name == "ref"
         assert mock_append_item.call_args.kwargs["user"] is user
-        assert mock_save.call_args_list[0].kwargs == {"refresh": "wait_for", "version": CREATE_TOKEN}
-        assert mock_save.call_args_list[1].kwargs == {"refresh": "true", "version": CREATE_TOKEN}
+        mock_save.assert_called_once_with(refresh="true", version=CREATE_TOKEN)
 
     @patch.object(Case, "save", return_value=True)
     @patch("howler.services.case_service.append_case_item")
@@ -2995,7 +2994,7 @@ class TestCreateCaseWithItems:
         assert isinstance(result, Case)
         mock_append_item.assert_called_once()
         mock_ds.case.get.assert_not_called()
-        assert mock_save.call_count == 2
+        mock_save.assert_called_once_with(refresh=None, version=CREATE_TOKEN)
 
     @patch.object(Case, "save", return_value=True)
     @patch("howler.services.case_service.append_case_item")
@@ -3082,12 +3081,35 @@ class TestGetParentFromPath:
         mock_ds_fn.return_value = mock_ds
 
         case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
-        mock_ds.case.get.return_value = _versioned(case)
+        mock_ds.case.get.return_value = case
 
         result = case_service.get_parent_from_path("case-001", "/")
 
-        mock_ds.case.get.assert_called_once_with(key="case-001", as_obj=True, version=True)
+        mock_ds.case.get.assert_called_once_with(key="case-001", as_obj=True, version=False)
         assert result is None  # "/" returns None (root path)
+
+    @patch.object(Case, "save")
+    @patch("howler.services.case_service.datastore")
+    def test_string_case_id_creates_path_in_memory(self, mock_ds_fn, mock_save):
+        """A string case ID creates missing folders without persisting the case."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "classification": "UNRESTRICTED"})
+        mock_ds.case.get.return_value = case
+        user = _make_user()
+
+        result = case_service.get_parent_from_path(
+            "case-001",
+            "parent/child",
+            create_if_missing=True,
+            user=user,
+        )
+
+        assert result is not None
+        assert result.name == "child"
+        mock_ds.case.get.assert_called_once_with(key="case-001", as_obj=True, version=False)
+        mock_save.assert_not_called()
 
     def test_slash_only_path_returns_none(self):
         """get_parent_from_path returns None for a path consisting entirely of slashes."""
@@ -3114,12 +3136,12 @@ class TestGetParentFromPath:
 
     @patch("howler.odm.models.case.Case.save")
     def test_deeply_nested_path_creates_all_folders_without_persisting(self, mock_save):
-        """With persist=False, every folder in a deep path is created in memory without saving."""
+        """Every folder in a deep path is created in memory without saving."""
         case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         case.items = []
 
         parts = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
-        result = case_service.get_parent_from_path(case, "/".join(parts), create_if_missing=True, persist=False)
+        result = case_service.get_parent_from_path(case, "/".join(parts), create_if_missing=True)
 
         mock_save.assert_not_called()
 

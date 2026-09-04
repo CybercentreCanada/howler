@@ -138,6 +138,7 @@ def create_case(
     if not is_classification_accessible(user, case.classification):
         raise ForbiddenException(f"User cannot create case at classification {case.classification}")
 
+    # Accumulate initial case items in memory and write the case once after validation.
     for item in items:
         append_case_item(case, item=CaseItem(item), user=user)
 
@@ -423,7 +424,7 @@ def update_case(
 
 
 def get_parent_from_path(
-    case: Case | None,
+    case: str | Case | None,
     path: str | None,
     create_if_missing: bool = False,
     user: User | None = None,
@@ -436,13 +437,14 @@ def get_parent_from_path(
         case: The case to search for.
         path: The path to return the lowest parent for.
         create_if_missing: Whether to create the path if it's missing or return None.
-        persist: Whether to save the case immediately when a folder is created. Callers that
-            are accumulating multiple in-memory changes before a single bulk save should pass
-            False.
+        user: User whose case classification access should be enforced when loading by ID.
 
     Raises:
         InvalidDataException: If the path is invalid.
     """
+    if isinstance(case, str):
+        case = get_case(case, as_odm=True, version=False, user=user)
+
     if not case:
         raise NotFoundException("Case does not exist")
 
@@ -456,7 +458,6 @@ def get_parent_from_path(
         return None
 
     current_parent: str | None = None
-
     for part in path_parts:
         # Find folder matching this part with current parent
         folder = next(
