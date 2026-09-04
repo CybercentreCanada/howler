@@ -736,7 +736,7 @@ def transition(
             )
 
         hit, version = hit_service.transition_hit(
-            id, transition, user, version, refresh=refresh, **kwargs, **transition_data.get("data", {})
+            id, transition, **kwargs, **transition_data.get("data", {}), user=user, version=version, refresh=refresh
         )
     except (WorkflowException, DataStoreException, InvalidDataException) as e:
         return bad_request(err=str(e))
