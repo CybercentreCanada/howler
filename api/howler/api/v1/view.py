@@ -44,7 +44,10 @@ def get_views(user: User, **kwargs):
     try:
         return ok(
             datastore().view.search(
-                f"type:global OR owner:({user['uname']} OR none)", as_obj=False, rows=1000, sort="title asc"
+                f"type:global OR owner:({user['uname']} OR none) OR admins:{user['uname']} OR members:{user['uname']}",
+                as_obj=False,
+                rows=1000,
+                sort="title asc",
             )["items"]
         )
     except ValueError as e:
@@ -204,12 +207,9 @@ def update_view(view_id: str, user: User, **kwargs):  # noqa: C901
     if existing_view.type == "readonly":
         return forbidden(err="You cannot edit a built-in view.")
 
-    if existing_view.type == "personal" and existing_view.owner != user.uname:
-        return forbidden(err="You cannot update a personal view that is not owned by you.")
-
     is_member = user.uname in [existing_view.owner, *existing_view.admins, *existing_view.members]
     if existing_view.type == "global" and not is_member and "admin" not in user.type:
-        return forbidden(err="Only members of a view or global administrators can edit a global view.")
+        return forbidden(err="Only members of a view or global administrators can edit a view.")
 
     if "type" in new_data and not permission_service.can_change_visibility(existing_view, new_data["type"]):
         return forbidden(err="You cannot change the visibility of a view while it is shared with other users.")
@@ -255,11 +255,11 @@ def set_as_favourite(view_id: str, **kwargs):
         return not_found(err="This view does not exist")
 
     if (
-        existing_view.type != "global"
-        and kwargs["user"]["uname"] != existing_view.owner
+        existing_view.type == "personal"
+        and kwargs["user"]["uname"] not in [existing_view.owner, *existing_view.admins, *existing_view.members]
         and existing_view.owner != "none"
     ):
-        return forbidden(err="You can only favourite global views, or views owned by you.")
+        return forbidden(err="You can only favourite global views, or views you have permission to use.")
 
     try:
         current_user = storage.user.get_if_exists(kwargs["user"]["uname"])

@@ -85,7 +85,7 @@ const ViewsBase: FC = () => {
 
       const searchTerm = phrase ? `*${sanitizeLuceneQuery(phrase)}*` : '*';
       const phraseQuery = FIELDS_TO_SEARCH.map(_field => `${_field}:${searchTerm}`).join(' OR ');
-      const typeQuery = `(type:global OR owner:(${user.username} OR none)) AND type:(${type ?? '*'}${
+      const typeQuery = `(type:global OR owner:(${user.username} OR none) OR admins:${user.username} OR members:${user.username}) AND type:(${type ?? '*'}${
         type === 'personal' ? ' OR readonly' : ''
       })`;
       const favouritesQuery =
@@ -332,14 +332,17 @@ const ViewsBase: FC = () => {
           >
             <ViewTitle {...item.item} />
             <FlexOne />
-            {((item.item.owner === user.username && item.item.type !== 'readonly') ||
-              (item.item.type === 'global' && user.is_admin)) && (
-              <Tooltip title={t('button.edit')}>
-                <IconButton component={Link} to={`/views/${item.item.view_id}/edit?query=${item.item.query}`}>
-                  <Edit />
-                </IconButton>
-              </Tooltip>
-            )}
+            {item.item.type !== 'readonly' &&
+              (item.item.owner === user.username ||
+                item.item.admins?.includes(user.username) ||
+                item.item.members?.includes(user.username) ||
+                (item.item.type === 'global' && user.is_admin)) && (
+                <Tooltip title={t('button.edit')}>
+                  <IconButton component={Link} to={`/views/${item.item.view_id}/edit?query=${item.item.query}`}>
+                    <Edit />
+                  </IconButton>
+                </Tooltip>
+              )}
             {item.item.owner === user.username && item.item.type !== 'readonly' && (
               <Tooltip title={t('button.delete')}>
                 <IconButton onClick={event => onDelete(event, item.item.view_id)}>
