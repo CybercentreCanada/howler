@@ -20,7 +20,7 @@ const IndexPicker: FC<{
   const setIndexes = useContextSelector(ParameterContext, ctx => ctx.setIndexes);
 
   const allOptions = [...FILTER_OPTIONS, ...additionalOptions];
-  const selectedOptions = allOptions.filter(opt => indexes.includes(opt.value));
+  const selectedOptions = allOptions.filter(opt => indexes?.includes(opt.value));
 
   return (
     <ChipPopper

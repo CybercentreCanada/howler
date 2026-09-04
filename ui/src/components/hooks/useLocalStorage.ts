@@ -8,9 +8,9 @@ const useLocalStorage = (prefix?: string) => {
   // Get an item from local storage.
   // If a 'prefix' was specified, the 'key' will be appended to the 'prefix' automatically.
   const get = useCallback(
-    <T>(key: string): T => {
+    <T>(key: string): T | null => {
       try {
-        return JSON.parse(localStorage.getItem(_buildKey(key)));
+        return JSON.parse(localStorage.getItem(_buildKey(key)) ?? 'null');
       } catch {
         return null;
       }

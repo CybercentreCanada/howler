@@ -5,6 +5,33 @@ import { setupLocalStorageMock } from 'tests/mocks';
 import { vi } from 'vitest';
 import useLocalStorageItem from './useLocalStorageItem';
 
+enum TestLayout {
+  NORMAL = 'normal',
+  DENSE = 'dense'
+}
+
+enum TestPriority {
+  LOW = 1,
+  HIGH = 2
+}
+
+const TypeCheckedUsage = () => {
+  const [layout, setLayout] = useLocalStorageItem<TestLayout>('layout', TestLayout.NORMAL);
+  const [pageCount, setPageCount] = useLocalStorageItem('page-count', 25);
+  const [priority, setPriority] = useLocalStorageItem<TestPriority>('priority', TestPriority.LOW);
+
+  const typedLayout: TestLayout = layout;
+  const typedPageCount: number = pageCount;
+  const typedPriority: TestPriority = priority;
+  setLayout(TestLayout.DENSE);
+  setPageCount(50);
+  setPriority(TestPriority.HIGH);
+
+  return [typedLayout, typedPageCount, typedPriority];
+};
+
+void TypeCheckedUsage;
+
 const mockLocalStorage = setupLocalStorageMock();
 
 beforeEach(() => {

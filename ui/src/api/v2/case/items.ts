@@ -9,20 +9,20 @@ export const uri = (id: string) => {
   return joinUri(parentUri(id), 'items');
 };
 
-export const post = (id: string, newData: Item): Promise<Case> => {
-  return hpost(uri(id), newData);
+export const post = (id: string, newData: Item) => {
+  return hpost<Case>(uri(id), newData);
 };
 
-export const del = (id: string, ids: string | string[], force = false): Promise<Case> => {
+export const del = (id: string, ids: string | string[], force = false) => {
   if (!Array.isArray(ids)) {
     ids = [ids];
   }
 
-  return hdelete(uri(id), { ids, force });
+  return hdelete<Case>(uri(id), { ids, force });
 };
 
-export const put = (caseId: string, id: string, payload: { name?: string; parent?: string } = {}): Promise<Case> => {
+export const put = (caseId: string, id: string, payload: { name?: string; parent?: string } = {}) => {
   (payload as Record<string, string>).id = id;
 
-  return hput(uri(caseId), payload);
+  return hput<Case>(uri(caseId), payload);
 };

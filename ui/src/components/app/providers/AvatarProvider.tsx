@@ -2,12 +2,17 @@ import api from 'api';
 import useMyApi from 'components/hooks/useMyApi';
 import type { FC, PropsWithChildren } from 'react';
 import { createContext, useCallback } from 'react';
+import { missingContext } from './contextUtils';
 
 interface AvatarContextType {
   getAvatar: (id: string) => Promise<string>;
 }
 
-export const AvatarContext = createContext<AvatarContextType>(null);
+const DEFAULT_AVATAR_CONTEXT: AvatarContextType = {
+  getAvatar: () => missingContext('AvatarContext')
+};
+
+export const AvatarContext = createContext<AvatarContextType>(DEFAULT_AVATAR_CONTEXT);
 
 /**
  * Because of the nature of requesting avatars, there's often LOTS of requests firing off in rapid succession,
@@ -24,19 +29,22 @@ const AvatarProvider: FC<PropsWithChildren> = ({ children }) => {
         return Promise.resolve('');
       }
 
-      if (promises[id]) {
-        return promises[id];
+      const cachedAvatar = promises[id];
+      if (cachedAvatar) {
+        return cachedAvatar;
       }
 
-      try {
-        promises[id] = dispatchApi(api.user.avatar.get(id), { logError: false, showError: false, throwError: false });
+      const fallback = async () => (await api.user.get(id))?.name ?? id;
+      const avatarRequest = dispatchApi(api.user.avatar.get(id), {
+        logError: false,
+        showError: false,
+        throwError: false
+      })
+        .then(avatar => avatar ?? fallback())
+        .catch(() => fallback());
+      promises[id] = avatarRequest;
 
-        return promises[id];
-      } catch {
-        promises[id] = api.user.get(id).then(user => user.name);
-
-        return promises[id];
-      }
+      return avatarRequest;
     },
     [dispatchApi]
   );

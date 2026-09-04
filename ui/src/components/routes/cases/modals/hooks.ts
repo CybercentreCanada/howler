@@ -35,7 +35,7 @@ export const useFolderOptions = (selectedCase: Case | null): FolderOption[] => {
 
 export const useRecordEntries = (records: (Hit | Event)[]) => {
   const [entries, setEntries] = useState<RecordEntry[]>(() =>
-    (records ?? []).map(record => ({
+    (records ?? []).map((record): RecordEntry => ({
       record,
       parent: null,
       name: defaultTitle(record)

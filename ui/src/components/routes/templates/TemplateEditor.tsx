@@ -50,18 +50,20 @@ const TemplateEditor = ({
   );
 
   useEffect(() => {
-    void getHitFields().then(suggestionFields => setSuggestions(suggestionFields.map(f => f.key)));
+    void getHitFields().then(suggestionFields =>
+      setSuggestions(suggestionFields.map(f => f.key).filter(key => key !== undefined))
+    );
   }, [getHitFields]);
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
 
-      if (active.id !== over.id) {
+      if (over && active.id !== over.id) {
         const oldIndex = (fields ?? []).findIndex(entry => entry === active.id);
         const newIndex = (fields ?? []).findIndex(entry => entry === over.id);
 
-        setFields(arrayMove(fields, oldIndex, newIndex));
+        setFields(arrayMove(fields ?? [], oldIndex, newIndex));
       }
     },
     [fields, setFields]

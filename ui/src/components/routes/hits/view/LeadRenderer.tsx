@@ -17,7 +17,7 @@ const LeadRenderer: FC<{ lead: Lead; hit?: Hit }> = ({ lead, hit }) => {
           mt: -2
         }}
       >
-        <HandlebarsMarkdown disableLinks md={lead.content} object={hit ?? lead} />
+        <HandlebarsMarkdown disableLinks md={lead.content!} object={hit ?? lead} />
       </Box>
     );
   }

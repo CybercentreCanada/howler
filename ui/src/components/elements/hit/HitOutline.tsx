@@ -43,16 +43,16 @@ const HitOutline: FC<{
   const addFilter = useContextSelector(ParameterContext, ctx => ctx?.addFilter);
   const { getMatchingTemplate } = useMatchers(lazy);
 
-  const [templateFieldCount] = useMyLocalStorageItem(StorageKey.TEMPLATE_FIELD_COUNT, null);
-  const [template, setTemplate] = useState<Template>(null);
+  const [templateFieldCount] = useMyLocalStorageItem<number>(StorageKey.TEMPLATE_FIELD_COUNT, null);
+  const [template, setTemplate] = useState<Template | null>(null);
 
   const providerColor = useMemo(() => {
-    if (!hit?.event.provider) {
+    if (!hit?.event?.provider) {
       return PROVIDER_COLORS.unknown;
     }
 
-    return PROVIDER_COLORS[hit?.event.provider] ?? stringToColor(hit?.event.provider);
-  }, [hit?.event.provider]);
+    return PROVIDER_COLORS[hit.event.provider as keyof typeof PROVIDER_COLORS] ?? stringToColor(hit.event.provider);
+  }, [hit?.event?.provider]);
 
   const fields = useMemo(() => {
     const keys = template?.keys;
@@ -84,7 +84,7 @@ const HitOutline: FC<{
   }, [template, hit]);
 
   useEffect(() => {
-    void getMatchingTemplate(hit, providedTemplate).then(setTemplate);
+    void getMatchingTemplate(hit, providedTemplate ?? undefined).then(value => setTemplate(value ?? null));
   }, [getMatchingTemplate, hit, providedTemplate]);
 
   if (fields.length < 1) {

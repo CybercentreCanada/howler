@@ -31,15 +31,15 @@ const DossierCard: FC<{
           </Typography>
           <Grid container spacing={1} sx={{ mt: 1 }}>
             {dossier.leads?.map((lead, index) => (
-              <Grid key={lead.format + lead.label?.en}>
+              <Grid key={(lead.format ?? '') + (lead.label?.en ?? '')}>
                 <Chip
                   sx={{ maxWidth: '300px' }}
                   clickable
-                  label={`${lead.label?.[i18n.language] ?? t('unknown')} (${lead.format})`}
+                  label={`${lead.label?.[i18n.language as 'en' | 'fr'] ?? t('unknown')} (${lead.format})`}
                   size="small"
                   component={Link}
                   to={`/dossiers/${dossier.dossier_id}/edit?tab=leads&lead=${index}`}
-                  onClick={e => e.stopPropagation()}
+                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
                 />
               </Grid>
             ))}
@@ -49,30 +49,34 @@ const DossierCard: FC<{
               </Grid>
             )}
             {dossier.pivots?.map((pivot, index) => (
-              <Grid key={pivot.format + pivot.label?.en}>
+              <Grid key={(pivot.format ?? '') + (pivot.label?.en ?? '')}>
                 <Chip
                   sx={{ maxWidth: '300px' }}
                   clickable
-                  label={`${pivot.label?.[i18n.language] ?? t('unknown')} (${pivot.format})`}
+                  label={`${pivot.label?.[i18n.language as 'en' | 'fr'] ?? t('unknown')} (${pivot.format})`}
                   size="small"
                   component={Link}
                   to={`/dossiers/${dossier.dossier_id}/edit?tab=pivots&pivot=${index}`}
-                  onClick={e => e.stopPropagation()}
+                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
                 />
               </Grid>
             ))}
           </Grid>
         </Stack>
 
-        <HowlerAvatar sx={{ height: '28px', width: '28px' }} userId={dossier.owner} />
+        <HowlerAvatar sx={{ height: '28px', width: '28px' }} userId={dossier.owner!} />
         <Tooltip title={t('route.dossiers.manager.openinsearch')}>
-          <IconButton component={Link} to={`/search?query=${dossier.query}`} onClick={e => e.stopPropagation()}>
+          <IconButton
+            component={Link}
+            to={`/search?query=${dossier.query}`}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          >
             <ManageSearch />
           </IconButton>
         </Tooltip>
         {onDelete && (
           <Tooltip title={t('route.dossiers.manager.delete')}>
-            <IconButton onClick={e => onDelete(e, dossier.dossier_id)}>
+            <IconButton onClick={e => onDelete(e, dossier.dossier_id!)}>
               <Delete />
             </IconButton>
           </Tooltip>

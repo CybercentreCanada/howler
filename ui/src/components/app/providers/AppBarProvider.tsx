@@ -13,7 +13,7 @@ export interface AppBarContextType {
   removeFromAppBar: (id: string) => void;
 }
 
-export const AppBarContext = createContext<AppBarContextType>(null);
+export const AppBarContext = createContext<AppBarContextType>(null!);
 
 const AppBarProvider: FC<PropsWithChildren> = ({ children }) => {
   const [leftItems, setLeftItems] = useState<AppBarItem[]>([]);

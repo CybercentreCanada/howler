@@ -6,12 +6,12 @@ import { MY_LOCAL_STORAGE_PREFIX, StorageKey } from 'utils/constants';
 type ValuesType = { [K in StorageKey]?: any };
 
 export interface LocalStorageContextType {
-  set: <T>(key: string, value: T) => void;
+  set: <T>(key: StorageKey, value: T) => void;
   values: ValuesType;
-  remove: (key: string) => void;
+  remove: (key: StorageKey) => void;
 }
 
-export const LocalStorageContext = createContext<LocalStorageContextType>(null);
+export const LocalStorageContext = createContext<LocalStorageContextType>(null!);
 
 const LocalStorageProvider: FC<PropsWithChildren> = ({ children }) => {
   const { get: getStored, set: setStored, remove: removeStored } = useLocalStorage(MY_LOCAL_STORAGE_PREFIX);
@@ -22,8 +22,10 @@ const LocalStorageProvider: FC<PropsWithChildren> = ({ children }) => {
     const newData: ValuesType = {};
 
     for (const key in StorageKey) {
-      if (!values[StorageKey[key]]) {
-        newData[StorageKey[key]] = getStored(StorageKey[key]);
+      const storageKey = StorageKey[key as keyof typeof StorageKey];
+
+      if (!values[storageKey]) {
+        newData[storageKey] = getStored(storageKey);
       }
     }
 
@@ -48,7 +50,7 @@ const LocalStorageProvider: FC<PropsWithChildren> = ({ children }) => {
   );
 
   const remove: LocalStorageContextType['remove'] = useCallback(
-    (key: string) => {
+    key => {
       removeStored(key);
       setValues(current => {
         const copy = { ...current };

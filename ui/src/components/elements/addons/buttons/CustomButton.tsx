@@ -42,7 +42,7 @@ const CustomButton = ({ solid, color, route, href, progress, tooltip, variant, .
   }, [_solid, requestedColor, variant, props.sx, isMuiColor, theme]);
 
   const progressColor = useMemo(() => {
-    const _color = isMuiColor ? theme.palette[requestedColor].main : requestedColor;
+    const _color = isMuiColor && requestedColor !== 'inherit' ? theme.palette[requestedColor].main : requestedColor;
     return _solid ? emphasize(_color, 0.5) : _color;
   }, [_solid, requestedColor, isMuiColor, theme]);
 

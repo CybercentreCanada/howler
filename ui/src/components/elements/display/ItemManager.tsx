@@ -1,5 +1,5 @@
-import { PageCenter } from '@tui/core';
 import { Box, Fab, IconButton, LinearProgress, Stack, Tooltip, Typography, useMediaQuery } from '@mui/material';
+import { PageCenter } from '@tui/core';
 import { useTranslation } from 'react-i18next';
 
 import { Add, Search } from '@mui/icons-material';
@@ -9,10 +9,10 @@ import { TuiList } from 'components/elements/addons/lists';
 import SearchPagination from 'components/elements/addons/search/SearchPagination';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
 import ErrorBoundary from 'components/routes/ErrorBoundary';
-import type { FC, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import Phrase from '../addons/search/phrase/Phrase';
 
-interface ItemManagerProps {
+interface ItemManagerProps<T = unknown> {
   aboveSearch?: ReactNode;
   afterSearch?: ReactNode;
   belowSearch?: ReactNode;
@@ -21,10 +21,10 @@ interface ItemManagerProps {
   onPageChange: (nextOffset: number) => void;
   onSearch: () => void;
   onCreate?: () => void;
-  onSelect?: TuiListItemOnSelect<unknown>;
+  onSelect?: TuiListItemOnSelect<T>;
   phrase: string;
-  renderer: TuiListItemRenderer<unknown>;
-  response: SearchResponseState<unknown>;
+  renderer: TuiListItemRenderer<T>;
+  response: SearchResponseState<T> | null;
   searchAdornment?: ReactNode;
   searching: boolean;
   createPrompt?: string;
@@ -34,7 +34,7 @@ interface ItemManagerProps {
 }
 
 // eslint-disable-next-line comma-spacing
-const ItemManager: FC<ItemManagerProps> = ({
+const ItemManager = <T = unknown,>({
   aboveSearch,
   afterSearch,
   belowSearch,
@@ -53,7 +53,7 @@ const ItemManager: FC<ItemManagerProps> = ({
   searchPrompt,
   setPhrase,
   createIcon
-}) => {
+}: ItemManagerProps<T>) => {
   const { t } = useTranslation();
   const isNarrow = useMediaQuery('(max-width: 1800px)');
 

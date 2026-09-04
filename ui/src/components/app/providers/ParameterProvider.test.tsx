@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { setupReactRouterMock } from 'tests/mocks';
 import { useContextSelector } from 'use-context-selector';

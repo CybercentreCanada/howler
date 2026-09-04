@@ -31,7 +31,10 @@ import type { FC } from 'react';
 import { useCallback, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-const TriageSettings: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => void }> = ({ analytic, setAnalytic }) => {
+const TriageSettings: FC<{ analytic: Analytic; setAnalytic: (a: Analytic | null) => void }> = ({
+  analytic,
+  setAnalytic
+}) => {
   const { dispatchApi } = useMyApi();
   const { t } = useTranslation();
   const { config } = useContext(ApiConfigContext);
@@ -44,7 +47,7 @@ const TriageSettings: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => voi
       try {
         setLoading(true);
 
-        const result = await dispatchApi(api.analytic.put(analytic.analytic_id, changes), {
+        const result = await dispatchApi(api.analytic.put(analytic.analytic_id!, changes), {
           throwError: true,
           showError: true
         });
@@ -88,7 +91,7 @@ const TriageSettings: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => voi
               type="checkbox"
               onEdit={async value =>
                 updateAnalytic({
-                  triage_settings: { skip_rationale: JSON.parse(value) }
+                  triage_settings: { skip_rationale: JSON.parse(value!) }
                 })
               }
             />

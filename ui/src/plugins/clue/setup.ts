@@ -32,10 +32,10 @@ const useSetup = () => {
       }
     };
 
-    window.addEventListener(SNACKBAR_EVENT_ID, handleMessage);
+    window.addEventListener(SNACKBAR_EVENT_ID, handleMessage as EventListener);
 
     return () => {
-      window.removeEventListener(SNACKBAR_EVENT_ID, handleMessage);
+      window.removeEventListener(SNACKBAR_EVENT_ID, handleMessage as EventListener);
     };
   }, [showErrorMessage, showInfoMessage, showSuccessMessage, showWarningMessage]);
 

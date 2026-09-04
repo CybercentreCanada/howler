@@ -4,8 +4,8 @@ import { Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/materia
 import api from 'api';
 import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
 import SearchResponseProvider, {
-  SearchResponseContext,
-  type SearchResponseContextType
+  createSearchResponseContext,
+  useSearchResponseContext
 } from 'components/app/providers/SearchResponseProvider';
 import { TuiListProvider, type TuiListItem, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext, type TuiListMethodsState } from 'components/elements/addons/lists/TuiListProvider';
@@ -21,6 +21,8 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { StorageKey } from 'utils/constants';
 import TemplateCard from './TemplateCard';
 
+const SearchResponseContext = createSearchResponseContext<Template>();
+
 const TemplatesBase: FC = () => {
   const { t } = useTranslation();
   const { user } = useAppUser<HowlerUser>();
@@ -32,11 +34,10 @@ const TemplatesBase: FC = () => {
   const { showSuccessMessage } = useMySnackbar();
 
   const { analytics } = useContext(AnalyticContext);
-  const { response, request, remove, getSearchRequestData } =
-    useContext<SearchResponseContextType<Template>>(SearchResponseContext);
+  const { response, request, remove, getSearchRequestData } = useSearchResponseContext(SearchResponseContext);
 
   const [phrase, setPhrase] = useState<string>('');
-  const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
+  const [offset, setOffset] = useState(parseInt(searchParams.get('offset')!) || 0);
   const [types, setTypes] = useState<('personal' | 'global')[]>([]);
   const [hasError, setHasError] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -77,16 +78,17 @@ const TemplatesBase: FC = () => {
     if (response) {
       load(
         response.items.map((item: Template) => ({
-          id: item.template_id,
+          id: item.template_id!,
           item,
           selected: false,
           cursor: false,
-          disabled:
+          disabled: !!(
             item.detection &&
             !analytics
               .find(v => v.name === item.analytic)
               ?.detections?.map((s: string) => s.toLowerCase())
               ?.includes(item.detection?.toLowerCase())
+          )
         }))
       );
     }
@@ -96,9 +98,9 @@ const TemplatesBase: FC = () => {
     (_offset: number) => {
       if (_offset !== offset) {
         const modifiedRequest = getSearchRequestData({ offset: _offset });
-        searchParams.set('offset', modifiedRequest.offset.toString());
+        searchParams.set('offset', modifiedRequest.offset!.toString());
         setSearchParams(searchParams, { replace: true });
-        setOffset(modifiedRequest.offset);
+        setOffset(modifiedRequest.offset!);
       }
     },
     [offset, searchParams, setSearchParams, getSearchRequestData]
@@ -115,7 +117,7 @@ const TemplatesBase: FC = () => {
   }, [dispatchApi, types]);
 
   useEffect(() => {
-    if (response?.total <= offset) {
+    if ((response?.total ?? 0) <= offset) {
       setOffset(0);
       searchParams.set('offset', '0');
       setSearchParams(searchParams, { replace: true });
@@ -190,7 +192,7 @@ const TemplatesBase: FC = () => {
       renderer={({ item }: TuiListItemProps<Template>, classRenderer) =>
         renderer(item.item, !!item.disabled, classRenderer())
       }
-      response={response}
+      response={response!}
       onSelect={(item: TuiListItem<Template>) => {
         void navigate(
           `/templates/view?type=${item.item.type}&analytic=${item.item.analytic}${
@@ -209,7 +211,7 @@ const TemplatesBase: FC = () => {
 const Templates = () => {
   return (
     <TuiListProvider>
-      <SearchResponseProvider idField="template_id">
+      <SearchResponseProvider context={SearchResponseContext} idField="template_id">
         <TemplatesBase />
       </SearchResponseProvider>
     </TuiListProvider>

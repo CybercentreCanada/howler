@@ -30,7 +30,7 @@ import useMyUserList from 'components/hooks/useMyUserList';
 import ErrorBoundary from 'components/routes/ErrorBoundary';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Dossier } from 'models/entities/generated/Dossier';
-import type { FC } from 'react';
+import type { FC, ReactElement } from 'react';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router';
@@ -65,7 +65,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
 
   const users = useMyUserList(userIds);
 
-  const record = useContextSelector(RecordContext, ctx => ctx.records[selected]);
+  const record = useContextSelector(RecordContext, ctx => ctx.records[selected!]);
 
   useEffect(() => {
     if (!selected) {
@@ -85,7 +85,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
 
   useEffect(() => {
     if (selected) {
-      setAnalytic(null);
+      setAnalytic(undefined);
       setDossiers(null);
       setHasOverview(false);
     }
@@ -93,13 +93,13 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
 
   useEffect(() => {
     if (isHit(record) && !analytic) {
-      void getMatchingAnalytic(record).then(setAnalytic);
+      void getMatchingAnalytic(record).then(analytic => setAnalytic(analytic ?? undefined));
     }
   }, [analytic, getMatchingAnalytic, record]);
 
   useEffect(() => {
     if (isHit(record) && !_dossiers) {
-      void getMatchingDossiers(record).then(setDossiers);
+      void getMatchingDossiers(record).then(dossiers => setDossiers(dossiers ?? null));
     }
   }, [_dossiers, getMatchingDossiers, record]);
 
@@ -143,46 +143,48 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
     const defaultContent = {
       details: () => (
         <Box pr={2}>
-          <ObjectDetails obj={record} />
+          <ObjectDetails obj={record ?? {}} />
         </Box>
       ),
-      comments: () => <RecordComments record={record} users={users} />,
-      raw: () => <JSONViewer data={!loading && record} hideSearch filter={filter} />,
+      comments: () => (record ? <RecordComments record={record} users={users} /> : <></>),
+      raw: () => <JSONViewer data={!loading && record ? record : {}} hideSearch filter={filter} />,
       data: () => (
         <JSONViewer
-          data={!loading && record?.howler?.data?.map(entry => tryParse(entry))}
+          data={!loading ? (record?.howler?.data?.map(entry => tryParse(entry)) ?? []) : []}
           collapse={false}
           hideSearch
           filter={filter}
         />
       ),
-      related: () => <RecordRelated record={record} />,
-      worklog: () => <RecordWorklog record={!loading && record} users={users} />
+      related: () => (record ? <RecordRelated record={record} /> : <></>),
+      worklog: () => (record && !loading ? <RecordWorklog record={record} users={users} /> : <></>)
     };
 
     if (!isHit(record)) {
-      return defaultContent[tab]?.();
+      return (defaultContent as Record<string, () => ReactElement | undefined>)[tab]?.();
     }
 
-    return {
-      ...defaultContent,
-      overview: () => <HitOverview hit={record} />,
-      hit_aggregate: () => <HitSummary />,
-      ...Object.fromEntries(
-        (record?.howler.dossier ?? []).map((lead, index) => [
-          'lead:' + index,
-          () => <LeadRenderer lead={lead} hit={record} />
-        ])
-      ),
-      ...Object.fromEntries(
-        dossiers.flatMap((_dossier, dossierIndex) =>
-          (_dossier.leads ?? []).map((_lead, leadIndex) => [
-            `external-lead:${dossierIndex}:${leadIndex}`,
-            () => <LeadRenderer lead={_lead} hit={record} />
+    return (
+      {
+        ...defaultContent,
+        overview: () => <HitOverview hit={record} />,
+        hit_aggregate: () => <HitSummary />,
+        ...Object.fromEntries(
+          (record?.howler.dossier ?? []).map((lead, index) => [
+            'lead:' + index,
+            () => <LeadRenderer lead={lead} hit={record} />
           ])
+        ),
+        ...Object.fromEntries(
+          dossiers.flatMap((_dossier, dossierIndex) =>
+            (_dossier.leads ?? []).map((_lead, leadIndex) => [
+              `external-lead:${dossierIndex}:${leadIndex}`,
+              () => <LeadRenderer lead={_lead} hit={record} />
+            ])
+          )
         )
-      )
-    }[tab]?.();
+      } as Record<string, () => ReactElement | undefined>
+    )[tab]?.();
   }, [dossiers, filter, record, loading, tab, users]);
 
   const hasError = useMemo(() => !validateRegex(filter), [filter]);
@@ -303,7 +305,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
                   label={
                     <Stack direction="row" spacing={0.5}>
                       {lead.icon && <Icon icon={lead.icon} />}
-                      <span>{i18n.language === 'en' ? lead.label.en : lead.label.fr}</span>
+                      <span>{i18n.language === 'en' ? lead.label!.en : lead.label!.fr}</span>
                     </Stack>
                   }
                   value={'lead:' + index}
@@ -318,7 +320,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
                   label={
                     <Stack direction="row" spacing={0.5}>
                       {_lead.icon && <Icon icon={_lead.icon} />}
-                      <span>{i18n.language === 'en' ? _lead.label.en : _lead.label.fr}</span>
+                      <span>{i18n.language === 'en' ? _lead.label!.en : _lead.label!.fr}</span>
                     </Stack>
                   }
                   value={`external-lead:${dossierIndex}:${leadIndex}`}

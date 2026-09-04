@@ -7,7 +7,7 @@ export default class WordConsumer extends PhraseConsumer<PhraseLexer> {
     return !lexer.bufferValue().match(/\s/) && (lexer.ahead(1) === ' ' || lexer.ahead(1) === '');
   }
 
-  public consume(lexer: PhraseLexer): PhraseToken {
+  public consume(lexer: PhraseLexer): PhraseToken | null {
     if (lexer.ahead(1) === ' ' || lexer.aheadIsEmpty(true)) {
       return {
         type: 'word',

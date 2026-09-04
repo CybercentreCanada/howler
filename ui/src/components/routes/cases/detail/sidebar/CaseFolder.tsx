@@ -78,12 +78,16 @@ const CaseFolder: FC<CaseFolderProps> = ({
   const getEscalationColor = (itemType: string, leaf: Item) => {
     if (itemType === 'hit' && leaf.value) {
       const color = ESCALATION_COLORS[records[leaf.value]?.howler?.escalation as keyof typeof ESCALATION_COLORS];
-      if (color) return color;
+      if (color) {
+        return color;
+      }
     }
 
     if (itemType === 'case' && leaf.value) {
       const color = ESCALATION_COLORS[caseStates[leaf.value]?.data?.escalation as keyof typeof ESCALATION_COLORS];
-      if (color) return color;
+      if (color) {
+        return color;
+      }
     }
 
     return null;
@@ -91,21 +95,25 @@ const CaseFolder: FC<CaseFolderProps> = ({
 
   const toggleCase = useCallback(
     (item: Item) => {
-      const prev = caseStates[item.value] ?? { open: false, loading: false, data: null };
+      const prev = caseStates[item.value!] ?? { open: false, loading: false, data: null };
       const shouldOpen = !prev.open;
       const shouldFetch = shouldOpen && !!item.value && !prev.data && !prev.loading;
 
-      setCaseStates(current => ({ ...current, [item.value]: { ...prev, open: shouldOpen, loading: shouldFetch } }));
+      setCaseStates(current => ({ ...current, [item.value!]: { ...prev, open: shouldOpen, loading: shouldFetch } }));
 
-      if (!shouldFetch) return;
+      if (!shouldFetch) {
+        return;
+      }
 
       void dispatchApi(api.v2.case.get(item.value!), { throwError: false })
         .then(caseResponse => {
-          if (!caseResponse) return;
-          setCaseStates(current => ({ ...current, [item.value]: { ...current[item.value], data: caseResponse } }));
+          if (!caseResponse) {
+            return;
+          }
+          setCaseStates(current => ({ ...current, [item.value!]: { ...current[item.value!], data: caseResponse } }));
         })
         .finally(() => {
-          setCaseStates(current => ({ ...current, [item.value]: { ...current[item.value], loading: false } }));
+          setCaseStates(current => ({ ...current, [item.value!]: { ...current[item.value!], loading: false } }));
         });
     },
     [caseStates, dispatchApi]
@@ -113,7 +121,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
 
   return (
     <Stack sx={{ overflow: 'visible' }}>
-      {name && (
+      {name && folder?.item && (
         <CaseFolderContextMenu case={_case} item={folder.item} onUpdate={onItemUpdated}>
           <Box
             sx={{
@@ -148,7 +156,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
               const fullItemPath = [...parentCaseNames, leaf.name].filter(Boolean).join('/');
               const itemTo = `/cases/${rootCaseId}${fullItemPath ? `/${fullItemPath}` : ''}`;
 
-              const escalationColor = getEscalationColor(itemType, leaf);
+              const escalationColor = getEscalationColor(itemType!, leaf);
               const iconColor = escalationColor ?? ('inherit' as const);
               const leafColor = escalationColor ? `${escalationColor}.light` : 'text.secondary';
 
@@ -190,7 +198,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
                       <CaseFolder
                         case={nestedCase}
                         step={step + 1}
-                        parentCaseNames={[...parentCaseNames, leaf.name].filter(Boolean)}
+                        parentCaseNames={[...parentCaseNames, leaf.name].filter((_name): _name is string => !!_name)}
                         onItemUpdated={onItemUpdated}
                         collapseKey={collapseKey}
                       />
@@ -204,7 +212,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
           {Object.entries(tree.folders ?? {}).map(([folderName, subfolder]) => {
             return (
               <CaseFolder
-                key={subfolder.item.id}
+                key={subfolder.item?.id ?? folderName}
                 name={folderName}
                 case={_case}
                 folder={subfolder}
@@ -221,11 +229,13 @@ const CaseFolder: FC<CaseFolderProps> = ({
             ?.filter(leaf => leaf.type?.toLowerCase() !== 'case')
             .map(leaf => {
               const itemType = leaf.type?.toLowerCase();
-              const fullItemPath = [...parentCaseNames, buildPathFromID(_case, leaf.id)].filter(Boolean).join('/');
+              const fullItemPath = [...parentCaseNames, buildPathFromID(_case, leaf.id!)].filter(Boolean).join('/');
               const itemTo =
-                itemType !== 'reference' ? `/cases/${rootCaseId}${fullItemPath ? `/${fullItemPath}` : ''}` : leaf.value;
+                itemType !== 'reference'
+                  ? `/cases/${rootCaseId}${fullItemPath ? `/${fullItemPath}` : ''}`
+                  : (leaf.value ?? '');
 
-              const escalationColor = getEscalationColor(itemType, leaf);
+              const escalationColor = getEscalationColor(itemType!, leaf);
               const iconColor = escalationColor ?? ('inherit' as const);
               const leafColor = escalationColor ? `${escalationColor}.light` : 'text.secondary';
 

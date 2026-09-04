@@ -31,7 +31,7 @@ const HitTimestamp: FC<{ hit: Hit; layout: HitLayout }> = ({ hit, layout }) => {
     const validFieldValues = [hit.howler?.expiry, hit.event?.created, hit.timestamp];
 
     const earliestDate = validFieldValues
-      .filter(entry => !!entry)
+      .filter((entry): entry is string => !!entry)
       .reduce((earliest, current) => {
         return dayjs(earliest).isBefore(current) ? earliest : current;
       });
@@ -71,7 +71,7 @@ const HitTimestamp: FC<{ hit: Hit; layout: HitLayout }> = ({ hit, layout }) => {
       <Chip
         variant="outlined"
         color={color}
-        label={formatDate(timestamp)}
+        label={formatDate(timestamp!)}
         size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
       />
     </Tooltip>

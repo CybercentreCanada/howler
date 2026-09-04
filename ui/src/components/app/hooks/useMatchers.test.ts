@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { renderHook } from '@testing-library/react';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Hit } from 'models/entities/generated/Hit';

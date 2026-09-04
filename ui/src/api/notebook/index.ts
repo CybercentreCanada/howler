@@ -13,8 +13,8 @@ export const uri = () => {
   return joinUri(parentUri(), 'notebook');
 };
 
-export const post = (body: { link: string; analytic: Analytic; hit?: Hit }): Promise<NotebookResponse> => {
-  return hpost(joinUri(uri(), 'notebook'), body);
+export const post = (body: { link: string; analytic: Analytic; hit?: Hit }) => {
+  return hpost<NotebookResponse>(joinUri(uri(), 'notebook'), body);
 };
 
 export { environments };

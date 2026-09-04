@@ -40,12 +40,12 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
   const displayType = useContextSelector(RecordSearchContext, ctx => ctx.displayType);
 
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<View>(null);
+  const [view, setView] = useState<View | null>(null);
 
   useEffect(() => {
     setLoading(true);
     void getCurrentViews({ views: [viewId], ignoreParams: true })
-      .then(result => setView(result[0]))
+      .then(result => setView(result[0] ?? null))
       .finally(() => setLoading(false));
   }, [getCurrentViews, viewId]);
 
@@ -71,7 +71,7 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
   }, [query, sort, span, view]);
 
   const options = useMemo(
-    () => Object.values(views).filter(_view => !!_view && !currentViews?.includes(_view.view_id)),
+    () => Object.values(views).filter((_view): _view is View => !!_view && !currentViews?.includes(_view.view_id!)),
     [currentViews, views]
   );
 
@@ -93,11 +93,11 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
             fullWidth
             size="small"
             options={options}
-            getOptionLabel={_view => t(_view.title)}
+            getOptionLabel={_view => t(_view.title!)}
             renderOption={({ key, ...props }, o) => (
               <li {...props} key={key}>
                 <Stack>
-                  <Typography variant="body1">{t(o.title)}</Typography>
+                  <Typography variant="body1">{t(o.title!)}</Typography>
                   <Typography variant="caption">
                     <code style={{ wordBreak: 'break-all' }}>{o.query}</code>
                   </Typography>
@@ -107,7 +107,7 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
             renderInput={_params => (
               <TextField {..._params} label={t('hit.search.view.select')} sx={{ minWidth: '210px' }} />
             )}
-            onChange={(_event, _view) => setParamView(id, _view.view_id)}
+            onChange={(_event, _view) => setParamView(id, _view!.view_id!)}
             sx={{ minWidth: '300px' }}
           />
           <Tooltip title={t('hit.search.view.remove')}>
@@ -139,13 +139,11 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
       slotProps={{ chip: { size: 'small' } }}
       icon={
         <Tooltip title={t(`route.views.manager.${view.type}`)}>
-          {
-            {
-              readonly: <Lock fontSize="small" aria-label={t(`route.views.manager.${view.type}`)} />,
-              global: <Language fontSize="small" aria-label={t(`route.views.manager.${view.type}`)} />,
-              personal: <Person fontSize="small" aria-label={t(`route.views.manager.${view.type}`)} />
-            }[view.type]
-          }
+          {{
+            readonly: <Lock fontSize="small" aria-label={t(`route.views.manager.${view.type}`)} />,
+            global: <Language fontSize="small" aria-label={t(`route.views.manager.${view.type}`)} />,
+            personal: <Person fontSize="small" aria-label={t(`route.views.manager.${view.type}`)} />
+          }[view.type!] ?? <span />}
         </Tooltip>
       }
       label={
@@ -157,9 +155,9 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
               variant="body2"
               component={Link}
               to={`/views/${view.view_id}/edit`}
-              aria-label={`${t(view.title)} - ${view.query ?? t('unknown')}`}
+              aria-label={`${t(view.title!)} - ${view.query ?? t('unknown')}`}
             >
-              {t(view.title)}
+              {t(view.title!)}
             </Typography>
           </Tooltip>
           {view.settings?.display === 'grid' && displayType !== 'grid' && (
@@ -185,7 +183,7 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
           </IconButton>
         </Tooltip>
         <Tooltip title={t('view.refresh')}>
-          <IconButton size="small" onClick={() => search(query)} aria-label={t('view.refresh')}>
+          <IconButton size="small" onClick={() => search(query!)} aria-label={t('view.refresh')}>
             <Refresh fontSize="small" />
           </IconButton>
         </Tooltip>

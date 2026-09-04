@@ -4,7 +4,7 @@ import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const PivotTooltip: FC<{ dossier: Dossier; resolvedUrl: string }> = ({ dossier, resolvedUrl }) => {
-  const dossierUrl = `/dossiers/${dossier.dossier_id}/edit?tab=leads&query=${encodeURIComponent(dossier.query)}`;
+  const dossierUrl = `/dossiers/${dossier.dossier_id}/edit?tab=leads&query=${encodeURIComponent(dossier.query ?? '')}`;
   const { t } = useTranslation();
 
   return (

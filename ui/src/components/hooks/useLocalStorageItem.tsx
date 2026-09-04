@@ -1,4 +1,5 @@
 import useLocalStorage from 'components/hooks/useLocalStorage';
+import { isNil } from 'lodash-es';
 import { useEffect, useMemo, useState } from 'react';
 
 // Module-level subscriber map for same-page cross-component synchronization.
@@ -7,6 +8,34 @@ const SUBSCRIBERS = new Map<string, Set<(v: unknown) => void>>();
 
 const notify = (key: string, value: unknown) => {
   SUBSCRIBERS.get(key)?.forEach(setter => setter(value));
+};
+
+export type LocalStorageItemResult<T> = [T, (value: T) => void, () => void];
+
+export type NonNullish = object | string | number | bigint | boolean | symbol;
+
+type WidenStringLiteral<T extends string> = T extends `${infer Underlying}` ? (Underlying extends T ? string : T) : T;
+
+type WidenNumberLiteral<T extends number> = `${T}` extends `${infer Underlying extends number}`
+  ? Underlying extends T
+    ? number
+    : T
+  : T;
+
+export type WidenLiteral<T> = T extends string
+  ? WidenStringLiteral<T>
+  : T extends number
+    ? WidenNumberLiteral<T>
+    : T extends boolean
+      ? boolean
+      : T extends bigint
+        ? bigint
+        : T;
+
+type UseLocalStorageItem = {
+  <T extends string | number | boolean | bigint>(key: string, initialValue: T): LocalStorageItemResult<WidenLiteral<T>>;
+  <T extends NonNullish>(key: string, initialValue: T): LocalStorageItemResult<T>;
+  <T>(key: string, initialValue?: T | null): LocalStorageItemResult<T | null>;
 };
 
 /**
@@ -25,9 +54,12 @@ const notify = (key: string, value: unknown) => {
  * @param initialValue - local storage initialization value.
  * @returns a stateful value, a function to update it, and a function to remove it.
  */
-const useLocalStorageItem = <T,>(key: string, initialValue?: T): [T, (value: T) => void, () => void] => {
+const useLocalStorageItem: UseLocalStorageItem = <T,>(
+  key: string,
+  initialValue?: T | null
+): LocalStorageItemResult<T | null> => {
   const { get, set, has, remove } = useLocalStorage();
-  const [value, setValue] = useState<T>(get(key) ?? initialValue);
+  const [value, setValue] = useState<T | null>(get(key) ?? initialValue ?? null);
 
   useEffect(() => {
     if (initialValue !== null && initialValue !== undefined && !has(key)) {
@@ -41,7 +73,7 @@ const useLocalStorageItem = <T,>(key: string, initialValue?: T): [T, (value: T) 
       SUBSCRIBERS.set(key, new Set());
     }
     const setter = (v: unknown) => setValue(v as T);
-    SUBSCRIBERS.get(key).add(setter);
+    SUBSCRIBERS.get(key)!.add(setter);
     return () => {
       SUBSCRIBERS.get(key)?.delete(setter);
       if (SUBSCRIBERS.get(key)?.size === 0) {
@@ -53,8 +85,10 @@ const useLocalStorageItem = <T,>(key: string, initialValue?: T): [T, (value: T) 
   // React to cross-tab storage changes via the native 'storage' event.
   useEffect(() => {
     const handler = (event: StorageEvent) => {
-      if (event.key !== key) return;
-      const next: T = event.newValue !== null ? JSON.parse(event.newValue) : initialValue;
+      if (event.key !== key) {
+        return;
+      }
+      const next: T | null = (event.newValue !== null ? JSON.parse(event.newValue) : initialValue) ?? null;
       notify(key, next);
     };
     window.addEventListener('storage', handler);
@@ -66,7 +100,7 @@ const useLocalStorageItem = <T,>(key: string, initialValue?: T): [T, (value: T) 
       value,
       (newValue, save = true) => {
         if (save) {
-          if (newValue !== undefined) {
+          if (!isNil(newValue)) {
             set(key, newValue);
           } else {
             remove(key);

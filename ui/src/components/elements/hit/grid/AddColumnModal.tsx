@@ -19,7 +19,7 @@ const AddColumnModal: FC<{
   const response = useContextSelector(RecordSearchContext, ctx => ctx.response);
   const { getMatchingTemplate } = useMatchers();
 
-  const [columnToAdd, setColumnToAdd] = useState<string>(null);
+  const [columnToAdd, setColumnToAdd] = useState<string | null>(null);
 
   const options = useMemo(() => hitFields.map(field => field.key), [hitFields]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -47,13 +47,13 @@ const AddColumnModal: FC<{
             size="small"
             options={options}
             value={columnToAdd}
-            renderInput={params => <TextField fullWidth placeholder={t('hit.fields')} {...params} />}
-            onChange={(_ev, value) => setColumnToAdd(value)}
+            renderInput={params => <TextField {...params} fullWidth placeholder={t('hit.fields')} />}
+            onChange={(_ev, value) => setColumnToAdd(value ?? null)}
           />
           <IconButton
             disabled={!columnToAdd}
             onClick={() => {
-              addColumn(columnToAdd);
+              addColumn(columnToAdd!);
               setColumnToAdd(null);
             }}
           >

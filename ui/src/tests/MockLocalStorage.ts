@@ -1,3 +1,4 @@
+// @ts-nocheck
 export default class MockLocalStorage {
   constructor() {
     Object.defineProperty(this, 'getItem', {

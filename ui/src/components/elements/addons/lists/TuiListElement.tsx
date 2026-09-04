@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef } from 'react';
+import { memo, useCallback, useRef, type MouseEvent } from 'react';
 import type { TuiListItem, TuiListItemOnSelect, TuiListItemRenderer } from '.';
 import VSBoxElement from '../layout/vsbox/VSBoxElement';
 
@@ -10,10 +10,10 @@ type TuiListElementProps<T> = {
 };
 
 const TuiListElement = <T,>({ position, item, onSelect: onClick, children }: TuiListElementProps<T>) => {
-  const elementEl = useRef<HTMLDivElement>(undefined);
+  const elementEl = useRef<HTMLDivElement>(null);
 
   const onItemClick = useCallback(
-    _event => {
+    (_event: MouseEvent<HTMLDivElement>) => {
       if (onClick && !item.disabled) {
         onClick(item, position);
       }
@@ -53,4 +53,4 @@ const TuiListElement = <T,>({ position, item, onSelect: onClick, children }: Tui
   );
 };
 
-export default memo(TuiListElement);
+export default memo(TuiListElement) as typeof TuiListElement;

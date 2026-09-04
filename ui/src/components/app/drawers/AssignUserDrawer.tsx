@@ -28,12 +28,20 @@ const AssignUserDrawer: FC<AssignUserDrawerProps> = ({ assignment, ids, onAssign
   const [loading, setLoading] = useState(false);
 
   const onSubmit = useCallback(async () => {
+    if (!assignedUserId) {
+      return;
+    }
+
     if (!skipSubmit) {
       setLoading(true);
       try {
         await Promise.all(
           ids.map(id =>
-            dispatchApi(api.hit.assign.put(id, { value: assignedUserId !== 'unassigned' ? assignedUserId : null }))
+            dispatchApi(
+              api.hit.assign.put(id, {
+                value: assignedUserId === 'unassigned' ? null : assignedUserId
+              })
+            )
           )
         );
 
@@ -60,7 +68,7 @@ const AssignUserDrawer: FC<AssignUserDrawerProps> = ({ assignment, ids, onAssign
             email: t('app.drawer.hit.assignment.unassigned.email'),
             name: t('app.drawer.hit.assignment.unassigned.name'),
             username: 'unassigned'
-          }
+          } as HowlerUser
         ]}
         filterOptions={(_users, { inputValue }) =>
           _users.filter(
@@ -74,7 +82,7 @@ const AssignUserDrawer: FC<AssignUserDrawerProps> = ({ assignment, ids, onAssign
         isOptionEqualToValue={(u, u2) => u.username === u2.username}
         renderOption={(props, u) => {
           return (
-            <li key={u.email} {...props}>
+            <li {...props} key={u.email}>
               <Box
                 sx={{
                   display: 'grid',
@@ -107,8 +115,8 @@ const AssignUserDrawer: FC<AssignUserDrawerProps> = ({ assignment, ids, onAssign
         renderInput={params => (
           <TextField {...params} label={<Trans i18nKey="app.drawer.hit.assignment.autocomplete.label" />} />
         )}
-        value={users[assignedUserId] ?? null}
-        onChange={(_, value: HowlerUser) => setAssignedUserId(value?.username)}
+        value={assignedUserId ? (users[assignedUserId] ?? null) : null}
+        onChange={(_, value: HowlerUser | null) => setAssignedUserId(value?.username ?? null)}
       />
       <Button
         disabled={!assignedUserId || assignedUserId === assignment || loading}

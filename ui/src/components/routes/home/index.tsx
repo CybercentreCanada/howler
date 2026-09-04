@@ -15,6 +15,7 @@ import api from 'api';
 import { AppBrand } from 'branding/AppBrand';
 import { AppBarContext } from 'components/app/providers/AppBarProvider';
 import CustomButton from 'components/elements/addons/buttons/CustomButton';
+import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMyUserFunctions from 'components/hooks/useMyUserFunctions';
 import dayjs from 'dayjs';
@@ -36,6 +37,7 @@ const LUCENE_DATE_FMT = 'YYYY-MM-DD[T]HH:mm:ss';
 
 const Home: FC = () => {
   const { t } = useTranslation();
+  const { dispatchApi } = useMyApi();
   const { user, setUser } = useAppUser<HowlerUser>();
   const { addToAppBar, removeFromAppBar } = useContext(AppBarContext);
 
@@ -53,9 +55,9 @@ const Home: FC = () => {
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [updatedHitTotal, setUpdatedHitTotal] = useState(0);
-  const [dashboard, setStateDashboard] = useState(user.dashboard ?? []);
+  const [dashboard, setStateDashboard] = useState<NonNullable<HowlerUser['dashboard']>>(user.dashboard ?? []);
   const [refreshRate, setRefreshRate] = useState(user.refresh_rate ?? 15);
-  const [refreshTick, setRefreshTick] = useState<symbol | null>(null);
+  const [refreshTick, setRefreshTick] = useState<symbol | undefined>(undefined);
   const viewRefreshRef = useRef<ViewRefreshHandle>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -65,7 +67,7 @@ const Home: FC = () => {
     [lastViewed, user.username]
   );
 
-  const getIdFromEntry = useCallback((entry: HowlerUser['dashboard'][0]) => {
+  const getIdFromEntry = useCallback((entry: NonNullable<HowlerUser['dashboard']>[0]) => {
     const settings = JSON.parse(entry.config);
 
     if (entry.type === 'analytic') {
@@ -78,7 +80,7 @@ const Home: FC = () => {
   }, []);
 
   const setLocalDashboard = useCallback((_dashboard: HowlerUser['dashboard']) => {
-    setStateDashboard(_dashboard);
+    setStateDashboard(_dashboard ?? []);
   }, []);
 
   const handleRefreshComplete = useCallback(() => {
@@ -126,7 +128,7 @@ const Home: FC = () => {
   }, [dashboard, setDashboard, setUser, user]);
 
   const discardChanges = useCallback(() => {
-    setStateDashboard(user.dashboard);
+    setStateDashboard(user.dashboard ?? []);
     setIsEditing(false);
   }, [user.dashboard]);
 
@@ -134,7 +136,7 @@ const Home: FC = () => {
     (event: DragEndEvent) => {
       const { active, over } = event;
 
-      if (active.id !== over.id) {
+      if (over && active.id !== over.id) {
         const oldIndex = (dashboard ?? []).findIndex(entry => getIdFromEntry(entry) === active.id);
         const newIndex = (dashboard ?? []).findIndex(entry => getIdFromEntry(entry) === over.id);
 
@@ -145,13 +147,18 @@ const Home: FC = () => {
   );
 
   useEffect(() => {
-    void api.search.hit
-      .post({
+    void dispatchApi(
+      api.search.hit.post({
         query: updateQuery,
         rows: 0
-      })
-      .then(result => setUpdatedHitTotal(result.total));
-  }, [updateQuery]);
+      }),
+      { throwError: false }
+    ).then(result => {
+      if (result) {
+        setUpdatedHitTotal(result.total);
+      }
+    });
+  }, [updateQuery, dispatchApi]);
 
   useEffect(() => {
     return () => {

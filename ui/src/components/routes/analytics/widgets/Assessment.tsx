@@ -28,7 +28,7 @@ const Assessment = forwardRef<any, { analytic: Analytic }>(({ analytic }, ref) =
         fields: ['howler.assessment'],
         query: `howler.analytic:("${analytic.name}")`
       })
-      .then(data => setAssessmentData(data['howler.assessment']))
+      .then(data => setAssessmentData(data?.['howler.assessment'] ?? {}))
       .finally(() => setLoading(false));
   }, [analytic]);
 

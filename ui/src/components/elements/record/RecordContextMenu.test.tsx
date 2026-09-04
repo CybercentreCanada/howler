@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import type * as TuiCore from '@tui/core';

@@ -8,16 +8,16 @@ import { createContext, useCallback, useEffect, useState, type FC, type PropsWit
 interface AnalyticContextType {
   ready: boolean;
   analytics: Analytic[];
-  getAnalyticFromId: (id: string) => Promise<Analytic>;
+  getAnalyticFromId: (id: string) => Promise<Analytic | null>;
 }
 
-export const AnalyticContext = createContext<AnalyticContextType>(null);
+export const AnalyticContext = createContext<AnalyticContextType>(null!);
 
 /**
  * A set of promises for each analytic search. This is to stop several identical
  * requests from going due to issues with react state updates not happening fast enough
  */
-const PROMISES: { [index: string]: Promise<HowlerSearchResponse<Analytic>> } = {};
+const PROMISES: { [index: string]: Promise<HowlerSearchResponse<Analytic> | null> } = {};
 
 const AnalyticProvider: FC<PropsWithChildren> = ({ children }) => {
   const appUser = useAppUser<HowlerUser>();
@@ -33,7 +33,10 @@ const AnalyticProvider: FC<PropsWithChildren> = ({ children }) => {
     try {
       setFetching(true);
 
-      setAnalytics(((await api.analytic.get()) ?? []) as Analytic[]);
+      const result = await api.analytic.get();
+      if (result) {
+        setAnalytics(result);
+      }
       setReady(true);
     } finally {
       setFetching(false);
@@ -63,7 +66,7 @@ const AnalyticProvider: FC<PropsWithChildren> = ({ children }) => {
       try {
         const result = await PROMISES[id];
 
-        const analytic = result.items?.[0];
+        const analytic = result?.items[0];
 
         if (analytic) {
           setAnalytics([...(analytics ?? []), analytic]);

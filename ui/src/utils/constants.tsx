@@ -18,9 +18,9 @@ export const ESCALATION_COLORS = {
 };
 
 export const STATUS_COLORS = {
-  open: 'primary',
-  'in-progress': 'warning',
-  resolved: 'success'
+  open: 'primary' as const,
+  'in-progress': 'warning' as const,
+  resolved: 'success' as const
 };
 
 export const PROVIDER_COLORS = {

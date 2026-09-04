@@ -4,6 +4,7 @@ from flask import Response, request
 
 import howler.actions as actions
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
+from howler.api.v1.utils.etag import add_etag
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
@@ -44,6 +45,36 @@ def get_actions(**_) -> Response:
     ]
     """
     return ok(datastore().action.search("*:*", as_obj=False)["items"])
+
+
+@generate_swagger_docs()
+@action_api.route("/<id>", methods=["GET"])
+@api_login(
+    audit=True,
+    check_xsrf_token=False,
+    required_type=["admin", "automation_basic", "automation_advanced", "actionrunner_basic", "actionrunner_advanced"],
+)
+@add_etag(getter=action_service.get_action)
+def get_action(id: str, server_version: str, **kwargs) -> Response | tuple[Response, str]:
+    """Get an existing action.
+
+    Variables:
+    id  => The id of the action to retrieve
+
+    Optional Arguments:
+    None
+
+    Result Example:
+    {
+        ...action   # The requested action
+    }
+    """
+    action = kwargs.get("cached_action")
+
+    if not action:
+        return not_found(err="The specified action does not exist")
+
+    return ok(action), server_version
 
 
 @generate_swagger_docs()

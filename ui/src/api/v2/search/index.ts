@@ -11,10 +11,7 @@ export const uri = (indexes: string[]) => {
   return joinAllUri(parentUri(), 'search', indexes.join(','));
 };
 
-export const post = <T = any>(
-  indexes: SearchIndex | SearchIndex[],
-  request?: HowlerSearchRequest
-): Promise<HowlerSearchResponse<T>> => {
+export const post = <T>(indexes: SearchIndex | SearchIndex[], request?: HowlerSearchRequest) => {
   if (isNil(indexes)) {
     throw new Error('Indexes cannot be null or undefined.');
   }
@@ -31,7 +28,7 @@ export const post = <T = any>(
     throw new Error('indexes must have length of at least 1.');
   }
 
-  return hpost(uri(indexes), { ...request, query: request?.query || 'howler.id:*' });
+  return hpost<HowlerSearchResponse<T>>(uri(indexes), { ...request, query: request?.query || 'howler.id:*' });
 };
 
 export { facet };

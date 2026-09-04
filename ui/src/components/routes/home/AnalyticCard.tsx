@@ -21,7 +21,7 @@ export interface AnalyticSettings {
 
 const AnalyticCard: FC<AnalyticSettings> = ({ analyticId, type }) => {
   const { t } = useTranslation();
-  const [analytic, setAnalytic] = useState<Analytic>(null);
+  const [analytic, setAnalytic] = useState<Analytic | null>(null);
   const { getAnalyticFromId } = useContext(AnalyticContext);
 
   const chartRef = useRef<Chart>(undefined);
@@ -50,13 +50,13 @@ const AnalyticCard: FC<AnalyticSettings> = ({ analyticId, type }) => {
           )}
         </Stack>
         {{
-          assessment: () => <Assessment ref={chartRef} analytic={analytic} />,
-          created: () => <Created ref={chartRef} analytic={analytic} />,
-          status: () => <Status ref={chartRef} analytic={analytic} />,
-          detection: () => <Detection ref={chartRef} analytic={analytic} />,
+          assessment: () => <Assessment ref={chartRef} analytic={analytic!} />,
+          created: () => <Created ref={chartRef} analytic={analytic!} />,
+          status: () => <Status ref={chartRef} analytic={analytic!} />,
+          detection: () => <Detection ref={chartRef} analytic={analytic!} />,
           escalation: () => (
             <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-              <Escalation analytic={analytic} maxWidth="80%" />
+              <Escalation analytic={analytic!} maxWidth="80%" />
             </Box>
           )
         }[type]()}

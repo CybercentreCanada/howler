@@ -17,7 +17,7 @@ export const removeStored = (name: StorageKey) => {
  * If you want to edit localStorage items inside a React component, use
  * src/components/hooks/useMyLocalStorage.tsx.
  */
-export const setStored = (name: StorageKey, item: any) => {
+export const setStored = (name: StorageKey, item: unknown) => {
   localStorage.setItem(buildName(name), JSON.stringify(item));
 };
 
@@ -26,14 +26,14 @@ export const setStored = (name: StorageKey, item: any) => {
  * If you want to edit localStorage items inside a React component, use
  * src/components/hooks/useMyLocalStorage.tsx.
  */
-export const getStored = <T = string>(name?: StorageKey): T => {
+export const getStored = <T = string>(name: StorageKey): T | null => {
   try {
-    return JSON.parse(localStorage.getItem(buildName(name))) as T;
+    return JSON.parse(localStorage.getItem(buildName(name)) ?? 'null') as T | null;
   } catch {
     // Migrating from the old system, some values were not JSON encoded. Decoding them will cause an exception.
     // Obviously, this is not optimal, but it's the only way to get Typescript to play nice.
     // When this is called, T will be type string.
-    return localStorage.getItem(buildName(name)) as unknown as T;
+    return localStorage.getItem(buildName(name)) as T | null;
   }
 };
 

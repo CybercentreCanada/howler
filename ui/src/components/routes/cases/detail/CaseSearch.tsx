@@ -1,5 +1,5 @@
-import { PageCenter } from '@tui/core';
 import { Box, Skeleton, Stack, Typography } from '@mui/material';
+import { PageCenter } from '@tui/core';
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
 import type { FuzzySearchItem } from 'api/v2/fuzzy';
@@ -26,7 +26,7 @@ const CaseSearch: FC = () => {
   const indexes = useContextSelector(ParameterContext, ctx => ctx.indexes);
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
 
-  const [hitLayout] = useMyLocalStorageItem(StorageKey.HIT_LAYOUT, HitLayout.NORMAL);
+  const [hitLayout] = useMyLocalStorageItem<HitLayout>(StorageKey.HIT_LAYOUT, HitLayout.NORMAL);
 
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<HowlerSearchResponse<FuzzySearchItem> | null>(null);
@@ -79,7 +79,7 @@ const CaseSearch: FC = () => {
 
   useEffect(() => {
     if (query) {
-      void handleSearch(query, indexes);
+      void handleSearch(query, indexes?.map(String) ?? []);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [indexes, offset]);

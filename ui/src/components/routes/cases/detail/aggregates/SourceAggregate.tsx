@@ -17,10 +17,10 @@ const SourceAggregate: FC<{ case: Case }> = ({ case: providedCase }) => {
       return [];
     }
 
-    const hitIds = _case.items
+    const hitIds = (_case.items ?? [])
       .filter(item => item.type === 'hit')
       .map(item => item.value)
-      .filter(value => !!value);
+      .filter((value): value is string => !!value);
 
     return uniq(hitIds.map(id => (records[id] as Hit | undefined)?.howler?.analytic).filter(analytic => !!analytic));
   }, [_case, records]);
