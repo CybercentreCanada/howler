@@ -24,7 +24,7 @@
     "@jsonforms/core": "^3.8.0",
     "@jsonforms/material-renderers": "^3.8.0",
     "@jsonforms/react": "^3.8.0",
-    "@microlink/react-json-view": "^1.31.30",
+    "@microlink/react-json-view": "^1.31.31",
     "@monaco-editor/react": "^4.7.0",
     "@tui/a11y": "file:./tui/a11y-4.0.10.tgz",
     "@tui/apps": "file:./tui/apps-4.0.10.tgz",
