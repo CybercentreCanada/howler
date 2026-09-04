@@ -652,6 +652,8 @@ def move_case_item(
 ) -> Case:
     """Move an item to a different parent folder (or to root).
 
+    Updates the item in memory; the caller is responsible for persisting the case.
+
     Args:
         case: Case object or unique identifier of the case.
         item_id: The UUID of the item to move.
@@ -663,7 +665,7 @@ def move_case_item(
     Raises:
         NotFoundException: If the case or item does not exist.
         InvalidDataException: If the target parent is invalid or would create a cycle.
-        DataStoreException: If saving the case fails.
+        DataStoreException: If loading the case from the datastore fails.
     """
     if isinstance(case, str):
         case = get_case(case, as_odm=True, version=False, user=user)
@@ -858,18 +860,20 @@ def append_event(
 ) -> Case:
     """Append an event item to a case and create a back-reference on the event.
 
-    Validates that the case and event both exist and that the event is
-    not already present in the case. It then persists the updated case and adds a back-reference
-    from the event to the case.
+    Validates that the case and event both exist and that the event is not already
+    present in the case. It adds the item to the case in memory, persists the
+    back-reference on the event, and recomputes the case metadata. The caller is
+    responsible for persisting the updated case.
 
     Args:
-        case_id: Unique identifier of the case to append the event to.
+        case: Case to append the event to.
         item: A CaseItem whose ``value`` is the ID of an existing event.
 
     Raises:
         NotFoundException: If the case or event does not exist.
         InvalidDataException: If the event is already present in the case.
-        DataStoreException: If saving the updated case fails.
+        DataStoreException: If loading or saving the event fails.
+        ForbiddenException: If the event classification cannot be added to the case.
     """
     event, event_version = event_service.get_event(item.value, as_odm=True, version=True, user=user)
 
@@ -901,20 +905,22 @@ def append_case(
     """Append a case reference item to a case.
 
     Validates that both the parent case and the referenced case exist, and that
-    the referenced case is not already present in the parent case. It then persists the updated
-    parent case.
+    the referenced case is not already present in the parent case. It adds the
+    reference to the parent case in memory; the caller is responsible for
+    persisting the updated parent case.
 
     Case items must always be root-level; the ``CaseItem.__init__`` guard rejects
     construction with a non-null ``parent`` for ``type == "case"``.
 
     Args:
-        case_id: Unique identifier of the parent case to append the reference to.
+        case: Parent case to append the reference to.
         item: A CaseItem whose ``value`` is the ID of an existing case to reference.
 
     Raises:
         NotFoundException: If the parent case or referenced case does not exist.
         InvalidDataException: If the referenced case is already present in the parent case.
-        DataStoreException: If saving the updated case fails.
+        DataStoreException: If loading the referenced case fails.
+        ForbiddenException: If the referenced case classification cannot be added to the parent case.
     """
     referenced_case = get_case(item.value, as_odm=True, version=False, user=user)
     if referenced_case is None:
@@ -1066,7 +1072,7 @@ def rename_case_item(
     Raises:
         NotFoundException: If the case or item does not exist.
         InvalidDataException: If new_name is empty.
-        DataStoreException: If persisting the updated case fails.
+        DataStoreException: If loading the case from the datastore fails.
     """
     if not new_name or not new_name.strip():
         raise InvalidDataException("new_name must be a non-empty string")
@@ -1171,6 +1177,7 @@ def remove_case_rule(
 
     Raises:
         NotFoundException: If the case or rule does not exist.
+        DataStoreException: If loading or saving the case fails.
     """
     case, version = get_case(case_id, as_odm=True, version=True, user=user)
     if not case:
@@ -1222,6 +1229,7 @@ def update_case_rule(
     Raises:
         NotFoundException: If the case or rule does not exist.
         InvalidDataException: If no valid fields are provided.
+        DataStoreException: If loading or saving the case fails.
     """
     case, version = get_case(case_id, as_odm=True, version=True, user=user)
     if not case:

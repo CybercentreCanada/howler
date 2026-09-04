@@ -884,3 +884,73 @@ class TestBundleEndpointClassification:
             assert result.status_code == 200
             # Only the accessible child survives the filter
             mock_add_to_bundle.assert_called_once_with("root-001", ["child-001"], refresh=None, user=user)
+
+    @patch("howler.api.v1.hit.hit_service")
+    @patch("howler.services.bundle_compat_service.find_case_for_bundle")
+    @patch("howler.services.bundle_compat_service.add_to_bundle")
+    @patch("howler.security.login.auth_service")
+    def test_update_bundle_rejects_inaccessible_backing_case(
+        self,
+        mock_auth_service,
+        mock_add_to_bundle,
+        mock_find_case_for_bundle,
+        mock_hit_service,
+        stub_classification,
+        request_context: Flask,
+    ):
+        """A restricted backing case cannot be mutated through an accessible root hit."""
+        user = _build_user(classification="UNRESTRICTED")
+        _mock_auth(mock_auth_service, user)
+
+        root: Hit = random_model_obj(cast(Model, Hit))
+        root.classification = "UNRESTRICTED"
+        mock_hit_service.get_hit.return_value = root
+        mock_find_case_for_bundle.return_value = _build_case(classification="RESTRICTED")
+
+        with request_context.test_request_context(
+            method="PUT",
+            json=["child-001"],
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v1.hit import update_bundle
+
+            result: Response = update_bundle("root-001", user=user)
+
+        assert result.status_code == 404
+        assert result.get_json()["api_error_message"] == "Bundle hit root-001 does not exist"
+        mock_add_to_bundle.assert_not_called()
+
+    @patch("howler.api.v1.hit.hit_service")
+    @patch("howler.services.bundle_compat_service.find_case_for_bundle")
+    @patch("howler.services.bundle_compat_service.remove_from_bundle")
+    @patch("howler.security.login.auth_service")
+    def test_remove_bundle_children_rejects_inaccessible_backing_case(
+        self,
+        mock_auth_service,
+        mock_remove_from_bundle,
+        mock_find_case_for_bundle,
+        mock_hit_service,
+        stub_classification,
+        request_context: Flask,
+    ):
+        """A restricted backing case cannot be mutated through bundle removal."""
+        user = _build_user(classification="UNRESTRICTED")
+        _mock_auth(mock_auth_service, user)
+
+        root: Hit = random_model_obj(cast(Model, Hit))
+        root.classification = "UNRESTRICTED"
+        mock_hit_service.get_hit.return_value = root
+        mock_find_case_for_bundle.return_value = _build_case(classification="RESTRICTED")
+
+        with request_context.test_request_context(
+            method="DELETE",
+            json=["child-001"],
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v1.hit import remove_bundle_children
+
+            result: Response = remove_bundle_children("root-001", user=user)
+
+        assert result.status_code == 404
+        assert result.get_json()["api_error_message"] == "Bundle hit root-001 does not exist"
+        mock_remove_from_bundle.assert_not_called()
