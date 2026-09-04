@@ -139,30 +139,6 @@ describe('useCase', () => {
       expect(result.current.case.title).toBe('Updated via socket');
     });
 
-    it('refetches when a socket update contains only the case ID', async () => {
-      const mockCase = createMockCase({ case_id: 'c4-minimal', title: 'Original' });
-      const fetchedCase = createMockCase({ case_id: 'c4-minimal', title: 'Updated securely' });
-      mockDispatchApi.mockResolvedValue(fetchedCase);
-      const { result } = renderUseCaseHook({ case: mockCase });
-
-      const listenerCallback = mockAddListener.mock.calls[0][1];
-
-      act(() => {
-        listenerCallback({
-          type: 'cases',
-          case: { case_id: 'c4-minimal' },
-          error: false,
-          message: '',
-          status: 200
-        });
-      });
-
-      await waitFor(() => {
-        expect(result.current.case.title).toBe('Updated securely');
-      });
-      expect(mockCaseGet).toHaveBeenCalledWith('c4-minimal');
-    });
-
     it('ignores case updates for a different case ID', () => {
       const mockCase = createMockCase({ case_id: 'c5', title: 'Original' });
       const { result } = renderUseCaseHook({ case: mockCase });

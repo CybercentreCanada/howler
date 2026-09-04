@@ -1,3 +1,5 @@
+"""Websocket and inter-pod communication API endpoints."""
+
 import base64
 import json
 import os
@@ -11,8 +13,11 @@ import howler.services.viewer_service as viewer_service
 from howler.api import ok, unauthorized
 from howler.common.logging import get_logger
 from howler.helper.ws import ConnectionClosed, Server
+from howler.odm.models.user import User
 from howler.security.login import api_login
 from howler.security.socket import websocket_auth, ws_response
+from howler.security.utils import is_classification_accessible
+from howler.services import case_service
 from howler.utils.socket_utils import check_action
 
 HWL_INTERPOD_COMMS_SECRET = os.getenv("HWL_INTERPOD_COMMS_SECRET", "secret")
@@ -70,7 +75,7 @@ def get_viewers(entity_id: str, **kwargs):  # pragma: no cover
 @tracer.start_as_current_span(f"{__name__}.connect")
 @socket_api.route("/connect", websocket=True)  # type: ignore
 @websocket_auth(required_priv=["R"])
-def connect(ws: Server, *args: Any, ws_id: str, **kwargs):  # noqa: C901
+def connect(ws: Server, *args: Any, ws_id: str, user: User | None = None, **kwargs):  # noqa: C901
     """Connect to the server to monitor for updates via websocket
 
     Variables:
@@ -86,28 +91,39 @@ def connect(ws: Server, *args: Any, ws_id: str, **kwargs):  # noqa: C901
     outstanding_actions: list[tuple[str, str, bool]] = []
 
     def send_hit(data: dict[str, Any]):
+        """Send an access-controlled hit update to the websocket client."""
+        if user and user.classification:
+            if not is_classification_accessible(user, data["hit"].get("classification")):
+                return
+
         logger.debug("Sending hit update: %s", data["hit"]["howler"]["id"])
         ws.send(ws_response("hits", data))
 
     def send_broadcast(data: dict[str, str]):
+        """Send a broadcast event to the websocket client."""
         logger.debug("Sending broadcast: %s", data)
         ws.send(ws_response("broadcast", {"event": data}))
 
     def send_action(data: dict[str, str]):
+        """Send an action update to the websocket client."""
         logger.debug("Sending action: %s", data)
         ws.send(ws_response("action", data))
 
     def send_case(data: dict[str, Any]):  # pragma: no cover
+        """Send an access-controlled case update to the websocket client."""
         case_data = data.get("case", {})
-        case_id = case_data.get("case_id") if isinstance(case_data, dict) else None
-        if not case_id:
-            logger.warning("Ignoring case update without a case ID")
-            return
 
-        logger.debug("Sending case update: %s", case_id)
-        ws.send(ws_response("cases", {"case": {"case_id": case_id}}))
+        if user and user.classification:
+            if not is_classification_accessible(user, case_data.get("classification")):
+                return
+
+            case_service.filter_case_items_by_classification(case_data, user.classification)
+
+        logger.debug("Sending case update: %s", case_data.get("case_id"))
+        ws.send(ws_response("cases", {**data, "case": case_data}))
 
     def send_viewers_update(data: dict[str, Any]):  # pragma: no cover
+        """Send a viewer-presence update to the websocket client."""
         logger.debug("Sending viewers update: %s", data.get("id", "unknown"))
         ws.send(ws_response("viewers_update", data))
 

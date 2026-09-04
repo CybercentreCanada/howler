@@ -253,7 +253,7 @@ def validate(index: str, **kwargs):
 
 @generate_swagger_docs()
 @ingest_api.route("/<index>/<id>/overwrite", methods=["PATCH"])
-@api_login(audit=False, required_priv=["W"])
+@api_login(audit=True, required_priv=["W"])
 @add_etag()
 @parse_parameters(refresh=parse_refresh)
 def overwrite(
