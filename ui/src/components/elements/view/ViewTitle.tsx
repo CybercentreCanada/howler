@@ -31,32 +31,30 @@ export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span, 
   const indexLabel = useMemo(() => {
     if (!indexes || indexes.length === 0) {
       return '';
-    } else return `(${indexes.join(', ')})`;
+    }
+
+    return `(${indexes.join(', ')})`;
   }, [indexes]);
 
   return (
     <Stack>
       <Stack direction="row" alignItems="start" spacing={1}>
         <Tooltip title={t(`route.views.manager.${type}`)}>
-          {
-            {
-              readonly: <Lock fontSize="small" />,
-              global: <Language fontSize="small" />,
-              personal: <Person fontSize="small" />
-            }[type]
-          }
+          {{
+            readonly: <Lock fontSize="small" />,
+            global: <Language fontSize="small" />,
+            personal: <Person fontSize="small" />
+          }[type!] ?? <span />}
         </Tooltip>
         {settings?.display && (
           <Tooltip title={t(`page.settings.local.hits.display_type.${settings.display}`)}>
-            {
-              {
-                list: <List fontSize="small" />,
-                grid: <TableChart fontSize="small" />
-              }[settings.display]
-            }
+            {{
+              list: <List fontSize="small" />,
+              grid: <TableChart fontSize="small" />
+            }[settings.display] ?? <span />}
           </Tooltip>
         )}
-        <Typography variant="body1">{t(title)}</Typography>
+        <Typography variant="body1">{t(title!)}</Typography>
       </Stack>
       <Typography variant="caption">
         <code>{query}</code>

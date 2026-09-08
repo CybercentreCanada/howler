@@ -1,4 +1,3 @@
-import { AppListEmpty, PageCenter } from '@tui/core';
 import { ErrorOutline } from '@mui/icons-material';
 import {
   Alert,
@@ -12,6 +11,7 @@ import {
   useTheme
 } from '@mui/material';
 import { grey } from '@mui/material/colors';
+import { AppListEmpty, PageCenter } from '@tui/core';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { RecordContext } from 'components/app/providers/RecordProvider';
 import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
@@ -61,7 +61,7 @@ const Item: FC<{
     }
   }, []);
 
-  const [hitLayout] = useMyLocalStorageItem(StorageKey.HIT_LAYOUT, HitLayout.NORMAL);
+  const [hitLayout] = useMyLocalStorageItem<HitLayout>(StorageKey.HIT_LAYOUT, HitLayout.NORMAL);
 
   const layout: HitLayout = useMemo(() => (isMobile ? HitLayout.COMFY : hitLayout), [hitLayout]);
 
@@ -138,7 +138,7 @@ const SearchPane: FC = () => {
     const selectedElement = target.closest('[id]') as HTMLElement;
 
     if (!selectedElement) {
-      return;
+      return '';
     }
 
     return selectedElement.id;
@@ -162,7 +162,7 @@ const SearchPane: FC = () => {
                 </Tooltip>
               )}
               <FlexOne />
-              <SearchActionMenu query={query} />
+              <SearchActionMenu query={query!} />
             </Stack>
           </Stack>
 

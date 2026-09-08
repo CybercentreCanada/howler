@@ -77,7 +77,7 @@ interface SocketContextType {
   fetchViewers: (entityId: string) => Promise<void>;
 }
 
-export const SocketContext = createContext<SocketContextType>(null);
+export const SocketContext = createContext<SocketContextType>(null!);
 
 const SocketProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const { get } = useMyLocalStorage();
@@ -196,7 +196,9 @@ const SocketProvider: React.FC<PropsWithChildren> = ({ children }) => {
     }
 
     // If we aren't retrying or we don't have an app token we can use, we don't continue
-    if (!retry || !appToken) return;
+    if (!retry || !appToken) {
+      return;
+    }
 
     setRetry(false);
 
@@ -259,20 +261,22 @@ const SocketProvider: React.FC<PropsWithChildren> = ({ children }) => {
 
   // Handler for when the socket closes
   useEffect(() => {
-    if (!socket.current) return;
+    if (!socket.current) {
+      return;
+    }
 
     if ([Status.CLOSED, Status.CLOSING].includes(status)) {
       socket.current.removeEventListener('close', onClose);
       socket.current.removeEventListener('error', onWsError);
       socket.current.removeEventListener('message', onMessageError);
 
-      Object.values(listeners.current).forEach(l => socket.current.removeEventListener('message', l));
+      Object.values(listeners.current).forEach(l => socket.current!.removeEventListener('message', l));
       listeners.current = {};
 
       window.removeEventListener('beforeunload', onBeforeUnload);
 
       socket.current.close();
-      socket.current = null;
+      socket.current = undefined;
     }
   }, [status, socket, appToken, onBeforeUnload, onClose, onWsError, onMessageError]);
 

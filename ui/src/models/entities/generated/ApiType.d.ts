@@ -49,6 +49,7 @@ export interface APILookups {
     'compromise',
     'mitigated'
   ];
+  'case.escalation': ["normal", "focus", "crisis"];
   transitions: { [index: string]: string[] };
   techniques: { [index: string]: { key: string; name: string; url: string } };
   tactics: { [index: string]: { key: string; name: string; url: string } };
@@ -56,7 +57,7 @@ export interface APILookups {
   roles: ['admin', 'actionrunner_advanced', 'actionrunner_basic', 'automation_advanced', 'automation_basic', 'user'];
 }
 
-export interface APIConfiguration {
+export interface APIConfiguration extends APIMappings {
   auth: {
     allow_apikeys: boolean;
     allow_extended_apikeys: boolean;
@@ -81,7 +82,6 @@ export interface APIConfiguration {
   ui: {
     apps: { alt: string; name: string; img_d: string; img_l: string; route: string; classification: string }[];
   };
-  mapping: APIMappings;
   features: {
     clue: boolean;
     notebook: boolean;
@@ -237,5 +237,4 @@ export interface ApiType {
   lookups: APILookups;
   configuration: APIConfiguration;
   c12nDef: ClassificationDefinition;
-  mapping: APIMappings;
 }

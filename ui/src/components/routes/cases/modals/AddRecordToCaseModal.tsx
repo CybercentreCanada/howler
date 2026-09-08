@@ -50,10 +50,10 @@ const AddRecordToCaseModal: FC<{ records: (Hit | Event)[] }> = ({ records }) => 
     try {
       for (const entry of entries) {
         await dispatchApi(
-          api.v2.case.items.post(selectedCase.case_id, {
+          api.v2.case.items.post(selectedCase.case_id!, {
             name: entry.name,
             value: entry.record.howler.id,
-            type: entry.record.__index,
+            type: entry.record.__index!,
             parent: entry.parent
           })
         );

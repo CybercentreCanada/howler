@@ -1,6 +1,6 @@
-import { AppListEmpty } from '@tui/core';
 import { Article } from '@mui/icons-material';
 import { Box, Fab, Skeleton, Stack, Typography, useMediaQuery } from '@mui/material';
+import { AppListEmpty } from '@tui/core';
 import api from 'api';
 import 'chartjs-adapter-dayjs-4';
 import useMyApi from 'components/hooks/useMyApi';
@@ -23,7 +23,7 @@ const AnalyticTemplates: FC<{ analytic: Analytic }> = ({ analytic }) => {
   useEffect(() => {
     setLoading(true);
     void dispatchApi(api.template.get())
-      .then(_templates => _templates.filter(_template => _template.analytic === analytic?.name))
+      .then(_templates => (_templates ?? []).filter(_template => _template.analytic === analytic?.name))
       .then(setTemplates)
       .finally(() => setLoading(false));
   }, [analytic?.name, dispatchApi]);

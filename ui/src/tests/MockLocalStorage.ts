@@ -1,8 +1,11 @@
+// @ts-nocheck
+import { notNil } from 'utils/utils';
+
 export default class MockLocalStorage {
   constructor() {
     Object.defineProperty(this, 'getItem', {
       enumerable: false,
-      value: vi.fn(key => (this[key] !== undefined ? this[key] : null))
+      value: vi.fn(key => (notNil(this[key]) ? this[key] : null))
     });
     Object.defineProperty(this, 'setItem', {
       enumerable: false,

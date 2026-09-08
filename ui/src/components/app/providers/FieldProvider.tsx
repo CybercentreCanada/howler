@@ -9,7 +9,7 @@ interface FieldContextType {
   getHitFields: () => Promise<SearchField[]>;
 }
 
-export const FieldContext = createContext<FieldContextType>(null);
+export const FieldContext = createContext<FieldContextType>(null!);
 
 const FieldProvider: FC<PropsWithChildren> = ({ children }) => {
   const { dispatchApi } = useMyApi();
@@ -21,7 +21,7 @@ const FieldProvider: FC<PropsWithChildren> = ({ children }) => {
       return hitFields;
     }
 
-    const fields = await dispatchApi(api.search.fields.hit.get());
+    const fields = (await dispatchApi(api.search.fields.hit.get())) ?? [];
 
     setHitFields(fields);
 

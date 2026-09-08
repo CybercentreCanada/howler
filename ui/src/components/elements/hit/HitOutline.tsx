@@ -15,8 +15,8 @@ import { memo, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
-import { PROVIDER_COLORS, StorageKey } from 'utils/constants';
-import { stringToColor } from 'utils/utils';
+import { StorageKey } from 'utils/constants';
+import { getProviderColor } from 'utils/utils';
 import PluginTypography from '../PluginTypography';
 import { HitLayout } from './HitLayout';
 
@@ -36,23 +36,17 @@ const HitOutline: FC<{
   layout: HitLayout;
   forceAllFields?: boolean;
   template?: Template;
-}> = ({ hit, layout, lazy = false, forceAllFields = false, template: providedTemplate = null }) => {
+}> = ({ hit, layout, lazy = false, forceAllFields = false, template: providedTemplate }) => {
   const theme = useTheme();
   const { t } = useTranslation();
   const { config } = useContext(ApiConfigContext);
   const addFilter = useContextSelector(ParameterContext, ctx => ctx?.addFilter);
   const { getMatchingTemplate } = useMatchers(lazy);
 
-  const [templateFieldCount] = useMyLocalStorageItem(StorageKey.TEMPLATE_FIELD_COUNT, null);
-  const [template, setTemplate] = useState<Template>(null);
+  const [templateFieldCount] = useMyLocalStorageItem<number>(StorageKey.TEMPLATE_FIELD_COUNT);
+  const [template, setTemplate] = useState<Template>();
 
-  const providerColor = useMemo(() => {
-    if (!hit?.event.provider) {
-      return PROVIDER_COLORS.unknown;
-    }
-
-    return PROVIDER_COLORS[hit?.event.provider] ?? stringToColor(hit?.event.provider);
-  }, [hit?.event.provider]);
+  const providerColor = getProviderColor(hit?.event?.provider);
 
   const fields = useMemo(() => {
     const keys = template?.keys;

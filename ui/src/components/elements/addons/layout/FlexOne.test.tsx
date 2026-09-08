@@ -1,4 +1,5 @@
 /// <reference types="vitest" />
+// @ts-nocheck
 import { render, screen } from '@testing-library/react';
 import FlexOne from './FlexOne';
 

@@ -14,14 +14,14 @@ import { compareTimestamp } from 'utils/utils';
 
 interface CommentData {
   hitId: string;
-  detection: string;
+  detection?: string;
   comment: HitComment;
 }
 
 const AnalyticHitComments: FC<{ analytic: Analytic }> = ({ analytic }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
+  const [pageCount] = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25);
 
   const [comments, setComments] = useState<CommentData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -30,7 +30,8 @@ const AnalyticHitComments: FC<{ analytic: Analytic }> = ({ analytic }) => {
   const users = useMyUserList(userIds);
 
   useEffect(() => {
-    setUserIds(new Set(comments.map(c => c.comment.user)));
+    // oxlint-disable-next-line react/set-state-in-effect
+    setUserIds(new Set(comments.map(c => c.comment.user!)));
   }, [comments]);
 
   useEffect(() => {
@@ -38,20 +39,27 @@ const AnalyticHitComments: FC<{ analytic: Analytic }> = ({ analytic }) => {
       return;
     }
 
+    // oxlint-disable-next-line react/set-state-in-effect
     setLoading(true);
     void api.search.hit
       .post({
-        query: `howler.analytic:"${sanitizeLuceneQuery(analytic.name)}" AND _exists_:howler.comment`,
-        rows: pageCount
+        query: `howler.analytic:"${sanitizeLuceneQuery(analytic.name!)}" AND _exists_:howler.comment`,
+        rows: pageCount ?? 25
       })
       .then(response => {
+        if (!response) {
+          setComments([]);
+          return;
+        }
+
         setComments(
-          response.items.flatMap(h =>
-            h.howler.comment.map(comment => ({
-              hitId: h.howler.id,
-              detection: h.howler.detection,
-              comment
-            }))
+          response.items.flatMap(
+            h =>
+              h.howler.comment?.map(comment => ({
+                hitId: h.howler.id!,
+                detection: h.howler.detection,
+                comment
+              })) ?? []
           )
         );
       })
@@ -67,19 +75,20 @@ const AnalyticHitComments: FC<{ analytic: Analytic }> = ({ analytic }) => {
       ) : (
         comments
           .filter(c => !searchParams.has('filter') || c.detection === searchParams.get('filter'))
-          .sort((a, b) => compareTimestamp(b.comment.timestamp, a.comment.timestamp))
+          .sort((a, b) => compareTimestamp(b.comment.timestamp!, a.comment.timestamp!))
           .map(c => (
             <Comment
-              key={c.comment.id}
+              key={c.comment.id!}
               comment={c.comment}
               users={users}
               onClick={() => navigate(`/hits/${c.hitId}`)}
               extra={
-                !searchParams.get('filter') && (
+                !searchParams.get('filter') &&
+                c.detection && (
                   <Chip
                     size="small"
                     sx={theme => ({ marginLeft: '0 !important', mr: `${theme.spacing(2)} !important` })}
-                    label={c.detection ?? 'Analytic'}
+                    label={c.detection}
                   />
                 )
               }

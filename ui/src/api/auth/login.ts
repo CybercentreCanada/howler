@@ -19,11 +19,11 @@ export const uri = (searchParams?: URLSearchParams) => {
   return joinUri(parentUri(), 'login', searchParams);
 };
 
-export const post = (body: PostLoginBody): Promise<LoginResponse> => {
-  return hpost(uri(), body);
+export const post = (body: PostLoginBody) => {
+  return hpost<LoginResponse>(uri(), body);
 };
 
-export const get = (search: URLSearchParams): Promise<LoginResponse> => {
+export const get = (search: URLSearchParams) => {
   const nonce = localStorage.getItem(`${MY_LOCAL_STORAGE_PREFIX}.${StorageKey.LOGIN_NONCE}`);
 
   if (nonce) {
@@ -31,5 +31,5 @@ export const get = (search: URLSearchParams): Promise<LoginResponse> => {
     localStorage.removeItem(`${MY_LOCAL_STORAGE_PREFIX}.${StorageKey.LOGIN_NONCE}`);
   }
 
-  return hget(uri(), search);
+  return hget<LoginResponse>(uri(), search);
 };

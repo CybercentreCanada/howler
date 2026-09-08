@@ -83,7 +83,7 @@ const CreateRuleDialog: FC<CreateRuleDialogProps> = ({ open, onClose, onSubmit }
   const [expireAfterResolved, setExpireAfterResolved] = useState(false);
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
-  const [response, setResponse] = useState<HowlerSearchResponse<Hit> | null>(null);
+  const [response, setResponse] = useState<HowlerSearchResponse<Hit>>();
 
   const handleOpen = useCallback(() => {
     setQuery('');
@@ -92,7 +92,7 @@ const CreateRuleDialog: FC<CreateRuleDialogProps> = ({ open, onClose, onSubmit }
     setTimeframeDays(DEFAULT_TIMEFRAME_DAYS);
     setHasExpiry(true);
     setExpireAfterResolved(false);
-    setResponse(null);
+    setResponse(undefined);
   }, []);
 
   const handleSearch = useCallback(async () => {
@@ -113,7 +113,7 @@ const CreateRuleDialog: FC<CreateRuleDialogProps> = ({ open, onClose, onSubmit }
 
   const handleQueryChange = useCallback((q: string) => {
     setQuery(q);
-    setResponse(null);
+    setResponse(undefined);
   }, []);
 
   const handleSubmit = useCallback(async () => {
@@ -126,7 +126,7 @@ const CreateRuleDialog: FC<CreateRuleDialogProps> = ({ open, onClose, onSubmit }
       await onSubmit({
         query: query.trim(),
         destination: destination.trim(),
-        timeframe: hasExpiry ? timeframeDays : null,
+        timeframe: hasExpiry ? timeframeDays : undefined,
         expire_after_resolved: hasExpiry ? expireAfterResolved : false,
         indexes
       });

@@ -1,8 +1,9 @@
 import { Stack, type StackProps } from '@mui/material';
 import { useAppBar, useAppBarHeight } from '@tui/core';
+import { isNil } from 'lodash-es';
 import { createContext, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-type VSBoxProps = StackProps & {
+type VSBoxProps = Omit<StackProps, 'top'> & {
   top?: number;
 };
 
@@ -18,10 +19,10 @@ export const VSBoxContext = createContext<{ state: VSBoxState; setState?: (state
 });
 
 const VSBox = ({ top, children, ...stackProps }: VSBoxProps) => {
-  const ref = useRef<HTMLDivElement>(undefined);
+  const ref = useRef<HTMLDivElement>(null);
   const appbarHeight = useAppBarHeight();
   const { autoHide } = useAppBar();
-  const [state, setState] = useState<VSBoxState>({ top, scrollTop: top });
+  const [state, setState] = useState<VSBoxState>({ top: top ?? 0, scrollTop: top ?? 0 });
 
   useLayoutEffect(() => {
     // const tableHeader = content?.querySelector(':first-child[data-tuitable]') as HTMLDivElement;
@@ -29,7 +30,7 @@ const VSBox = ({ top, children, ...stackProps }: VSBoxProps) => {
     const content = ref.current?.querySelector('[data-vsbox-content]') as HTMLDivElement;
 
     // Explicit top or appbar height.
-    const _top = top !== undefined && top !== null ? top : autoHide ? 0 : appbarHeight;
+    const _top = !isNil(top) ? top : autoHide ? 0 : appbarHeight;
 
     // We compute scroll top value on demand in order to ensure the
     //  header element is fully rendered.

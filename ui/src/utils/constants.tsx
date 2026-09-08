@@ -1,5 +1,5 @@
 import { LocalPolice, MoodBad, NewReleases, PsychologyAlt, Star, Timeline } from '@mui/icons-material';
-import { blue, grey, indigo, orange, pink, red, teal, yellow } from '@mui/material/colors';
+import { blue, orange, pink, red, yellow } from '@mui/material/colors';
 import dayjs from 'dayjs';
 import type { ReactElement } from 'react';
 
@@ -10,26 +10,6 @@ export const VERSION = import.meta.env.VITE_VERSION;
 // A constant that will be used as prefix of all local storage keys.
 export const MY_LOCAL_STORAGE_PREFIX = 'howler.ui';
 export const MY_SESSION_STORAGE_PREFIX = `${MY_LOCAL_STORAGE_PREFIX}.cache`;
-
-export const ESCALATION_COLORS = {
-  alert: 'warning' as const,
-  evidence: 'error' as const,
-  hit: 'primary' as const
-};
-
-export const STATUS_COLORS = {
-  open: 'primary',
-  'in-progress': 'warning',
-  resolved: 'success'
-};
-
-export const PROVIDER_COLORS = {
-  HBS: indigo[700],
-  NBS: pink.A200,
-  CBS: teal[700],
-  howler: '#1769bb',
-  unknown: grey[700]
-};
 
 export enum StorageKey {
   DISABLE_FEATURE_WARNING = 'disable.feature.warning',

@@ -5,6 +5,6 @@ export const uri = (username: string) => {
   return joinUri(joinUri(parentUri(), 'avatar'), username);
 };
 
-export const get = (username: string): Promise<string> => {
-  return hget(uri(username));
+export const get = (username: string) => {
+  return hget<string>(uri(username));
 };

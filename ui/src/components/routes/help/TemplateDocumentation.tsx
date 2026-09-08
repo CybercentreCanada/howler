@@ -59,7 +59,7 @@ const TemplateDocumentation: FC = () => {
 
     return markdown
       .split('\n===SPLIT===\n')
-      .map(section => modifyDocumentation(section, howlerPluginStore, pluginStore));
+      .map((section: string) => modifyDocumentation(section, howlerPluginStore, pluginStore));
   }, [i18n.language, pluginStore]);
 
   return (

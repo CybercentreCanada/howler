@@ -32,10 +32,10 @@ const useMySnackbar = () => {
             ...options.SnackbarProps,
             onClick: options.SnackbarProps?.onClick
               ? e => {
-                  options.SnackbarProps?.onClick(e);
-                  snackBarOptions.SnackbarProps.onClick(e);
+                  options.SnackbarProps!.onClick!(e);
+                  snackBarOptions.SnackbarProps!.onClick!(e);
                 }
-              : snackBarOptions.SnackbarProps.onClick
+              : snackBarOptions.SnackbarProps!.onClick
           }
         }),
     [enqueueSnackbar, snackBarOptions]

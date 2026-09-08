@@ -66,7 +66,7 @@ const HitActions: FC<{
   const { availableTransitions, canVote, canAssess, loading, assess, vote, selectedVote } = useHitActions([hit]);
 
   const [openSetting, setOpenSetting] = useState<null | HTMLElement>(null);
-  const [analytic, setAnalytic] = useState<Analytic>(null);
+  const [analytic, setAnalytic] = useState<Analytic | null>(null);
 
   const shortcuts = useMemo(
     () =>
@@ -89,11 +89,7 @@ const HitActions: FC<{
       _actions = [
         ..._actions,
         ...VOTE_OPTIONS.map(
-          option =>
-            ({
-              ...option,
-              actionFunction: () => vote(option.name.toLowerCase())
-            }) as ActionButton
+          option => ({ ...option, actionFunction: () => vote(option.name!.toLowerCase()) }) as ActionButton
         )
       ];
     }
@@ -146,14 +142,10 @@ const HitActions: FC<{
   const keyboardDownHandler = useCallback(
     (event: KeyboardEvent) => {
       THROTTLER.debounce(() => {
-        const currentElement = document.activeElement.tagName;
-        if (
-          shortcuts !== HitShortcuts.NO_SHORTCUTS &&
-          event.key.toUpperCase() in actions &&
-          !event.ctrlKey &&
-          currentElement !== 'INPUT'
-        ) {
-          actions[event.key.toUpperCase()]();
+        const currentElement = document.activeElement?.tagName;
+        const matchedAction = actions.find(_action => _action.key === event.key.toUpperCase());
+        if (shortcuts !== HitShortcuts.NO_SHORTCUTS && matchedAction && !event.ctrlKey && currentElement !== 'INPUT') {
+          matchedAction.actionFunction();
         }
       });
     },
@@ -169,13 +161,13 @@ const HitActions: FC<{
   }, [keyboardDownHandler]);
 
   useEffect(() => {
-    void getMatchingAnalytic(hit).then(setAnalytic);
+    void getMatchingAnalytic(hit).then(_analytic => setAnalytic(_analytic ?? null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hit?.howler.analytic]);
 
   const handleOpenSetting = useCallback((e: React.MouseEvent<HTMLElement>) => setOpenSetting(e.currentTarget), []);
   const handleCloseSetting = useCallback(() => setOpenSetting(null), []);
-  const onShortcutChange = useCallback((__: any, s: HitShortcuts) => set(StorageKey.HIT_SHORTCUTS, s), [set]);
+  const onShortcutChange = useCallback((__: any, s: string) => set(StorageKey.HIT_SHORTCUTS, s as HitShortcuts), [set]);
   const onDropdownChange = useCallback((__: any, checked: boolean) => set(StorageKey.FORCE_DROPDOWN, checked), [set]);
 
   const showButton = useMediaQuery(
@@ -190,8 +182,8 @@ const HitActions: FC<{
     <Stack direction="row" alignItems="stretch">
       {showDropdown || forceDropdown ? (
         <DropdownActions
-          currentAssessment={hit?.howler.assessment}
-          currentStatus={hit?.howler.status}
+          currentAssessment={hit?.howler.assessment!}
+          currentStatus={hit?.howler.status!}
           currentVote={selectedVote}
           actions={actions}
           loading={loading}

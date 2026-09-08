@@ -60,9 +60,7 @@ const renderPanel = (caseValue: Case | null) => {
 const makeCaseItem = (value: string, id = value) => ({
   type: 'case' as const,
   value,
-  id,
-  name: null as string | null,
-  parent: null as string | null
+  id
 });
 
 // ---------------------------------------------------------------------------

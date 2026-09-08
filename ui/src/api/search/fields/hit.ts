@@ -7,6 +7,5 @@ export const uri = () => {
 };
 
 export const get = async (): Promise<SearchField[]> => {
-  const response = await hget<{ [key: string]: SearchField }>(uri());
-  return indexed(response);
+  return indexed((await hget<{ [key: string]: SearchField }>(uri())) ?? {});
 };

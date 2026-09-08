@@ -47,8 +47,8 @@ const RecordRelated: FC<{ record: Hit | Event }> = ({ record }) => {
 
       {currentTab === 'links' && (
         <Box display="grid" gridTemplateColumns="repeat(auto-fill, minmax(200px, 1fr))" gap={1} pt={1}>
-          {record.howler.links.map(l => (
-            <RelatedLink key={l.title + l.href} {...l} />
+          {record.howler.links?.map(l => (
+            <RelatedLink key={(l.title ?? '') + (l.href ?? '')} {...l} title={l.title!} href={l.href!} />
           ))}
         </Box>
       )}

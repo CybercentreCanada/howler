@@ -70,6 +70,12 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
 
   const goToJupyhub = useCallback(
     async (filename: string, url: string) => {
+      const environment = envs[0];
+      if (!environment) {
+        showErrorMessage(t('hit.notebook.error.failToPost'));
+        return;
+      }
+
       try {
         await fetch(url, {
           ...FETCH_OPTIONS,
@@ -77,7 +83,7 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
           body: `{"type":"notebook","content":${JSON.stringify(loadedNotebook.nb_content)}}`
         });
 
-        window.open(`${envs[0].url}lab/tree/${filename}`, '_blank');
+        window.open(`${environment.url}lab/tree/${filename}`, '_blank');
         setOpen(false);
       } catch {
         showErrorMessage(t('hit.notebook.error.failToPost'));
@@ -87,28 +93,33 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
   );
 
   const checkJupyhub = useCallback(async () => {
+    const environment = envs[0];
+    if (!environment) {
+      return;
+    }
+
     setLoading(true);
 
     const nbFileName = hit ? `${loadedNotebook.name} - ${hit.howler.id}.ipynb` : `${loadedNotebook.name}.ipynb`;
 
     //using fetch since we are going directly to jupyterhub
     try {
-      const response = await fetch(`${envs[0].url}api/contents/${nbFileName}`, FETCH_OPTIONS);
+      const response = await fetch(`${environment.url}api/contents/${nbFileName}`, FETCH_OPTIONS);
       if (response.status < 300) {
         // if it exists, we need to ask for overwrite
         showModal(
           <ConfirmNotebookModal
             onConfirm={() => {
-              void goToJupyhub(nbFileName, `${envs[0].url}post/${nbFileName}`);
+              void goToJupyhub(nbFileName, `${environment.url}post/${nbFileName}`);
             }}
           />
         );
       } else {
-        void goToJupyhub(nbFileName, `${envs[0].url}post/${nbFileName}`);
+        void goToJupyhub(nbFileName, `${environment.url}post/${nbFileName}`);
       }
     } catch {
       // error means notebook doesn't exist, we can proceed with posting
-      void goToJupyhub(nbFileName, `${envs[0].url}post/${nbFileName}`);
+      void goToJupyhub(nbFileName, `${environment.url}post/${nbFileName}`);
     }
 
     setLoading(false);
@@ -118,7 +129,7 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
     setLoading(true);
     try {
       const jhEnvs = await dispatchApi(api.notebook.environments.get(), { showError: true, throwError: false });
-      setEnvs(jhEnvs.envs.map(env => ({ ...env, url: env.url.endsWith('/') ? env.url : env.url + '/' })));
+      setEnvs((jhEnvs?.envs ?? []).map(env => ({ ...env, url: env.url.endsWith('/') ? env.url : env.url + '/' })));
     } finally {
       setLoading(false);
     }
@@ -127,11 +138,17 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
   // retrieve notebook json from howler-api/nbgallery
   const fetchNb = useCallback(
     async (link?: string) => {
+      const notebookLink = link ?? analytic.notebooks?.find(notebook => notebook.name === selectedNotebook)?.value;
+      if (!notebookLink) {
+        setLoadedNotebook({ nb_content: null, name: '' });
+        return;
+      }
+
       setLoading(true);
       try {
         const notebookResponse = await dispatchApi(
           api.notebook.post({
-            link: link ?? analytic?.notebooks.find(n => n.name === selectedNotebook).value,
+            link: notebookLink,
             analytic: analytic,
             ...(hit ? { hit: hit } : {})
           }),
@@ -140,7 +157,9 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
             throwError: false
           }
         );
-        setLoadedNotebook(notebookResponse);
+        if (notebookResponse) {
+          setLoadedNotebook(notebookResponse);
+        }
       } finally {
         setLoading(false);
       }
@@ -193,13 +212,15 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
                         }
                       }}
                       defaultValue={
-                        selectedNotebook ? analytic?.notebooks.find(n => n.name === selectedNotebook).value : ''
+                        selectedNotebook
+                          ? (analytic.notebooks?.find(n => n.name === selectedNotebook)?.value ?? '')
+                          : ''
                       }
                     >
                       <MenuItem disabled value="">
                         <em>{t('hit.notebook.select')}</em>
                       </MenuItem>
-                      {analytic?.notebooks.sort(safeStringPropertyCompare('detection')).map(e => (
+                      {[...(analytic.notebooks ?? [])].sort(safeStringPropertyCompare('detection')).map(e => (
                         <MenuItem value={e.value} key={e.value}>
                           <Stack direction={'row'} sx={{ width: '100%' }}>
                             {e.name}

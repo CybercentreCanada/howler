@@ -2,7 +2,7 @@ import type { PhraseToken } from '.';
 import type PhraseLexer from './PhraseLexer';
 
 export default abstract class PhraseConsumer<L extends PhraseLexer> {
-  protected _buffer = [];
+  protected _buffer: string[] = [];
 
   public reset(): void {
     this._buffer = [];
@@ -31,5 +31,5 @@ export default abstract class PhraseConsumer<L extends PhraseLexer> {
 
   abstract lock(lexer: L): boolean;
 
-  abstract consume(lexer: L): PhraseToken;
+  abstract consume(lexer: L): PhraseToken | null;
 }

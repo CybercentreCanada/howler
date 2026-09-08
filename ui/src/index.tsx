@@ -15,4 +15,4 @@ if (import.meta.env.VITE_ENABLE_CLUE === 'true') {
   howlerPluginStore.install(new cluePlugin.default());
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+ReactDOM.createRoot(document.getElementById('root')!).render(<App />);

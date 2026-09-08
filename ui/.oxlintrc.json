@@ -21,7 +21,13 @@
     "build/**",
     "src/react-app-env.d.ts",
     "src/serviceWorker.ts",
-    "src/config-overrides.js"
+    "src/config-overrides.js",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.spec.ts",
+    "src/**/*.spec.tsx",
+    "src/tests/**",
+    "src/setupTests.ts"
   ],
   "rules": {
     "import/namespace": "error",

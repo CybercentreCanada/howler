@@ -13,7 +13,7 @@ const mockCase = vi.hoisted(() => ({
     case_id: 'case-001',
     title: 'Test Case',
     rules: []
-  } as Case
+  } as unknown as Case
 }));
 
 vi.mock('components/hooks/useMyApi', () => ({

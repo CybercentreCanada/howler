@@ -1,5 +1,9 @@
 # Howler Releases
 
+## Howler UI `v3.1.0`
+
+- **Strict TypeScript Checking** _(technical update)_: Enabled strict TypeScript checking for the UI and updated application code, API clients, hooks, components, plugins, and tests to use explicit, type-safe definitions.
+
 ## Howler MCP `v0.1.1`
 
 - **HTTP Client Lifecycle** _(bugfix)_: Prevented an MCP session shutdown from closing the shared Howler API client while other sessions are still running.
@@ -8,6 +12,7 @@
 ## Howler API `v4.1.0`
 
 - **Classification Access Control** _(bugfix)_: Enforced classification authorization consistently across direct updates, ingestion, bundle compatibility endpoints, and case references without exposing inaccessible records.
+- **Action Retrieval Endpoint** _(new feature)_: Added an authenticated endpoint for retrieving individual actions with ETag support and conditional `304 Not Modified` responses.
 
 ## Howler API `v4.0.11`
 

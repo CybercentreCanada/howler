@@ -11,8 +11,8 @@ export const uri = (apiKeyName?: string) => {
   return apiKeyName ? joinUri(joinUri(parentUri(), 'apikey'), apiKeyName) : joinUri(parentUri(), 'apikey');
 };
 
-export const post = (apiKeyName: string, priv: Privileges[], expiryDate: string): Promise<CreateApiKeyResponse> => {
-  return hpost(uri(), { name: apiKeyName, priv, expiry_date: expiryDate });
+export const post = (apiKeyName: string, priv: Privileges[], expiryDate: string) => {
+  return hpost<CreateApiKeyResponse>(uri(), { name: apiKeyName, priv, expiry_date: expiryDate });
 };
 
 export const del = (apiKeyName: string) => {

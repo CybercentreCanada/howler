@@ -6,10 +6,10 @@ export const uri = (analytic: string) => {
   return joinUri(parentUri(analytic), 'notebooks');
 };
 
-export const post = (analytic: string, body: { detection: string; value: string; name: string }): Promise<Analytic> => {
-  return hpost(uri(analytic), body);
+export const post = (analytic: string, body: { detection: string; value: string; name: string }) => {
+  return hpost<Analytic>(uri(analytic), body);
 };
 
-export const del = (analytic: string, notebooks: string[]): Promise<{ success: boolean }> => {
+export const del = (analytic: string, notebooks: string[]) => {
   return hdelete(uri(analytic), notebooks);
 };

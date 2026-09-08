@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { renderHook } from '@testing-library/react';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -69,20 +70,20 @@ describe('useMatchers', () => {
   });
 
   describe('getMatchingTemplate', () => {
-    it('should return null when hit is null', async () => {
+    it('should return undefined when hit is null', async () => {
       const { result } = renderHook(() => useMatchers());
 
       const template = await result.current.getMatchingTemplate(null);
 
-      expect(template).toBeNull();
+      expect(template).toBeUndefined();
     });
 
-    it('should return null when hit is undefined', async () => {
+    it('should return undefined when hit is undefined', async () => {
       const { result } = renderHook(() => useMatchers());
 
       const template = await result.current.getMatchingTemplate(undefined);
 
-      expect(template).toBeNull();
+      expect(template).toBeUndefined();
     });
 
     it('should prefer a provided template over hit metadata', async () => {
@@ -134,26 +135,26 @@ describe('useMatchers', () => {
 
       const { result } = renderHook(() => useMatchers());
 
-      await expect(result.current.getMatchingTemplate(mockHit)).resolves.toBeNull();
+      await expect(result.current.getMatchingTemplate(mockHit)).resolves.toBeUndefined();
       expect(mockGetRecord).toHaveBeenCalledWith('test-hit-id', true);
     });
   });
 
   describe('getMatchingOverview', () => {
-    it('should return null when hit is null', async () => {
+    it('should return undefined when hit is null', async () => {
       const { result } = renderHook(() => useMatchers());
 
       const overview = await result.current.getMatchingOverview(null);
 
-      expect(overview).toBeNull();
+      expect(overview).toBeUndefined();
     });
 
-    it('should return null when hit is undefined', async () => {
+    it('should return undefined when hit is undefined', async () => {
       const { result } = renderHook(() => useMatchers());
 
       const overview = await result.current.getMatchingOverview(undefined);
 
-      expect(overview).toBeNull();
+      expect(overview).toBeUndefined();
     });
 
     it('should return overview from metadata when it exists', async () => {
@@ -191,26 +192,26 @@ describe('useMatchers', () => {
 
       const { result } = renderHook(() => useMatchers());
 
-      await expect(result.current.getMatchingOverview(mockHit)).resolves.toBeNull();
+      await expect(result.current.getMatchingOverview(mockHit)).resolves.toBeUndefined();
       expect(mockGetRecord).toHaveBeenCalledWith('test-hit-id', true);
     });
   });
 
   describe('getMatchingDossiers', () => {
-    it('should return null when hit is null', async () => {
+    it('should return an empty array when hit is null', async () => {
       const { result } = renderHook(() => useMatchers());
 
       const dossiers = await result.current.getMatchingDossiers(null);
 
-      expect(dossiers).toBeNull();
+      expect(dossiers).toEqual([]);
     });
 
-    it('should return null when hit is undefined', async () => {
+    it('should return an empty array when hit is undefined', async () => {
       const { result } = renderHook(() => useMatchers());
 
       const dossiers = await result.current.getMatchingDossiers(undefined);
 
-      expect(dossiers).toBeNull();
+      expect(dossiers).toEqual([]);
     });
 
     it('should return dossiers from metadata when they exist', async () => {

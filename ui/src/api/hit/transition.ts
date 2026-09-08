@@ -7,6 +7,6 @@ export const uri = (id: string) => {
   return joinAllUri(parentUri(), id, 'transition');
 };
 
-export const post = (id: string, body: HitTransitionBody, refresh?: HowlerRefreshParam): Promise<Hit> => {
-  return hpost(uri(id), body, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
+export const post = (id: string, body: HitTransitionBody, refresh?: HowlerRefreshParam) => {
+  return hpost<Hit>(uri(id), body, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };

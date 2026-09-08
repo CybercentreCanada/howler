@@ -35,11 +35,11 @@ const ColumnHeader: FC<{
         alignItems="center"
         sx={[{ minWidth: '220px' }, width ? { width, maxWidth: width } : { maxWidth: '300px' }]}
       >
-        <Tooltip title={config.indexes.hit[col].description}>
+        <Tooltip title={config.indexes.hit[col]?.description}>
           <span>{col}</span>
         </Tooltip>
-        {colSource?.length > 1 && (
-          <Tooltip title={colSource.join(', ')}>
+        {(colSource?.length ?? 0) > 1 && (
+          <Tooltip title={colSource!.join(', ')}>
             <JoinFull fontSize="small" />
           </Tooltip>
         )}

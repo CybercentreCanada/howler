@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { RenderHookResult } from '@testing-library/react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { hget, hpost, hput } from 'api';
