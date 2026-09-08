@@ -18,6 +18,7 @@ import type { Task } from 'models/entities/generated/Task';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
+import { notNil } from 'utils/utils';
 import { buildPathFromID } from '../utils';
 
 const CaseTask: FC<{
@@ -39,8 +40,8 @@ const CaseTask: FC<{
   const [item, setItem] = useState(task?.item ? _case.items?.find(_item => _item.id === task.item) : null);
   const [assignment, setAssignment] = useState(task?.assignment);
   const [complete, setComplete] = useState(task?.complete ?? false);
-  const canEdit = !readOnly && onEdit !== undefined;
-  const canDelete = canEdit && onDelete !== undefined;
+  const canEdit = !readOnly && notNil(onEdit);
+  const canDelete = canEdit && notNil(onDelete);
 
   const dirty =
     summary !== task?.summary ||

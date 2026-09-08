@@ -1,3 +1,4 @@
+import { isNil } from 'lodash-es';
 import type * as mdast from 'mdast';
 import type { Plugin } from 'unified';
 import { visit } from 'unist-util-visit';
@@ -34,7 +35,7 @@ const findTabs = (index: number, parent: mdast.Parent) => {
 export const codeTabs: Plugin<[], mdast.Root> = () => {
   return (tree, file) => {
     visit(tree, 'code', (node, index, parent) => {
-      if (index === undefined || !parent) {
+      if (isNil(index) || !parent) {
         return;
       }
       const metaString = `${node.lang ?? ''} ${node.meta ?? ''}`.trim();

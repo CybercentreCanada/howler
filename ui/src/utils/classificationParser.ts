@@ -1,5 +1,8 @@
 // pulled from https://github.com/CybercentreCanada/assemblyline-ui-frontend/blob/master/src/helpers/classificationParser.ts
 
+import { isNil } from 'lodash-es';
+import { notNil } from './utils';
+
 /**
  * Classification related utils.
  *
@@ -170,7 +173,7 @@ export const getLevelText = (
     text = c12nDef.levels_map[lvl.toString()];
   }
 
-  if (text === undefined || text == null) {
+  if (isNil(text)) {
     //ERROR: `Classification level number '${lvl}' was not found in your classification definition.`
     /* eslint-disable no-console */
     console.error(
@@ -194,11 +197,11 @@ const getLevelIndex = (c12n: string, c12nDef: ClassificationDefinition): [number
   const [level, unused, _x] = c12n?.split(/\/\/(.*)/) ?? [null, null, null];
   const c12nLvl = level?.toUpperCase();
 
-  if (c12nDef.levels_map[c12nLvl] !== undefined) {
+  if (notNil(c12nDef.levels_map[c12nLvl])) {
     retIndex = c12nDef.levels_map[c12nLvl];
-  } else if (c12nDef.levels_map_lts[c12nLvl] !== undefined) {
+  } else if (notNil(c12nDef.levels_map_lts[c12nLvl])) {
     retIndex = c12nDef.levels_map[c12nDef.levels_map_lts[c12nLvl]];
-  } else if (c12nDef.levels_aliases[c12nLvl] !== undefined) {
+  } else if (notNil(c12nDef.levels_aliases[c12nLvl])) {
     retIndex = c12nDef.levels_map[c12nDef.levels_aliases[c12nLvl]];
   } else {
     // ERROR: `Classification level '${level}' was not found in your classification definition.`
@@ -361,7 +364,7 @@ const getGroups = (
   // Check if there are any forbidden group assignments
   for (const subgroup of g2Set) {
     const limitedToGroup = c12nDef.params_map?.[subgroup]?.limited_to_group;
-    if (limitedToGroup !== null && limitedToGroup !== undefined) {
+    if (notNil(limitedToGroup)) {
       if (g1Set.size > 1 || (g1Set.size === 1 && !g1Set.has(limitedToGroup))) {
         // ERROR: `Subgroup ${subgroup} is limited to group ${limitedToGroup} (found: ${Array.from(g1Set).toString()})`
         // just log the error and leave it

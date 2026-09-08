@@ -1,5 +1,5 @@
 import type { SearchIndex } from 'api/v2/search';
-import { identity, isEmpty, isEqual, isUndefined, omitBy, uniq } from 'lodash-es';
+import { identity, isEmpty, isEqual, isNil, isUndefined, omitBy, uniq } from 'lodash-es';
 import type { Dispatch, FC, PropsWithChildren, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useParams, useSearchParams } from 'react-router';
@@ -327,7 +327,7 @@ const useUrlSync = (
           if (Array.isArray(value)) {
             newParams.delete(key);
             (value as string[]).forEach(val => newParams.append(key, val));
-          } else if (value === null || value === undefined) {
+          } else if (isNil(value)) {
             newParams.delete(key);
           } else {
             newParams.set(key, String(value));

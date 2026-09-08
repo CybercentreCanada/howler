@@ -1,6 +1,6 @@
 import useLocalStorage from 'components/hooks/useLocalStorage';
-import { isNil } from 'lodash-es';
 import { useEffect, useMemo, useState } from 'react';
+import { notNil } from 'utils/utils';
 
 // Module-level subscriber map for same-page cross-component synchronization.
 // Maps each storage key to the set of React state setters currently subscribed to it.
@@ -62,7 +62,7 @@ const useLocalStorageItem: UseLocalStorageItem = <T,>(
   const [value, setValue] = useState<T | undefined>(get(key) ?? initialValue ?? undefined);
 
   useEffect(() => {
-    if (!isNil(initialValue) && !has(key)) {
+    if (notNil(initialValue) && !has(key)) {
       set(key, initialValue);
     }
   }, [key, initialValue, has, set]);
@@ -100,7 +100,7 @@ const useLocalStorageItem: UseLocalStorageItem = <T,>(
       value,
       (newValue, save = true) => {
         if (save) {
-          if (!isNil(newValue)) {
+          if (notNil(newValue)) {
             set(key, newValue);
           } else {
             remove(key);

@@ -65,7 +65,7 @@ const EditRow = <T extends string | number | boolean>({
   const [confirmPassword, setConfirmPassword] = useState('');
 
   useEffect(() => {
-    if ((editValue === undefined || editValue === null) && value) {
+    if (isNil(editValue) && value) {
       setEditValue(value);
     }
   }, [editValue, value]);

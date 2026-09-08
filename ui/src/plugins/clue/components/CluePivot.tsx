@@ -13,6 +13,7 @@ import isNil from 'lodash-es/isNil';
 import type { Mapping } from 'models/entities/generated/Mapping';
 import { memo, useCallback, useContext, useState, type FC, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { notNil } from 'utils/utils';
 
 const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) => {
   const guessType = useClueEnrichSelector(ctx => ctx?.guessType);
@@ -109,12 +110,10 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) 
             if (Array.isArray(value)) {
               return [
                 _mapping.key,
-                value
-                  .filter(val => !isNil(val))
-                  .map(val => ({
-                    type: config.configuration?.mapping?.[_mapping.field!] || guessType!(val.toString()),
-                    value: val
-                  }))
+                value.filter(notNil).map(val => ({
+                  type: config.configuration?.mapping?.[_mapping.field!] || guessType!(val.toString()),
+                  value: val
+                }))
               ];
             }
 
@@ -133,7 +132,7 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) 
 
       const selectors = (actions[pivot.value!].accept_multiple ? [data.selectors] : [data.selector])
         .flat()
-        .filter(val => !isNil(val));
+        .filter(notNil);
 
       delete data.selector;
       delete data.selectors;
@@ -146,7 +145,7 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) 
     },
     [
       actions,
-      config.configuration?.mapping.mapping,
+      config.configuration?.mapping,
       executeAction,
       getValue,
       guessType,

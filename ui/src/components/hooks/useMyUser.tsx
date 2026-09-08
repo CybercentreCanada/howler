@@ -1,5 +1,5 @@
 import type { AppUserService, AppUserValidatedProp } from '@tui/core';
-import { difference } from 'lodash-es';
+import { difference, isNil } from 'lodash-es';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import { useCallback, useMemo, useState } from 'react';
 
@@ -11,7 +11,7 @@ const useMyUser = (): AppUserService<HowlerUser> => {
 
   const validateProps = useCallback(
     (props: AppUserValidatedProp[]) => {
-      if (props === undefined) return true;
+      if (isNil(props)) return true;
 
       return props.every((propDef: AppUserValidatedProp) => {
         const prop = propDef.prop as keyof HowlerUser;

@@ -13,6 +13,7 @@ import { useParams } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 import { parsePixelSizeStringToInt } from 'utils/stringUtils';
+import { notNil } from 'utils/utils';
 import { ParameterContext } from './ParameterProvider';
 import { RecordSearchContext } from './RecordSearchProvider';
 import { ViewContext } from './ViewProvider';
@@ -192,7 +193,7 @@ const GridColumnsProvider = ({
             if (!sources[field!]) {
               // First occurrence wins for column order and width.
               columns.push(field!);
-              if (width !== undefined) {
+              if (notNil(width)) {
                 widths[field!] = width;
               }
               sources[field!] = [view.title!];

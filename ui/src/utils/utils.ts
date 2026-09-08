@@ -214,7 +214,7 @@ export const removeEmpty = (obj: unknown, aggressive = false): unknown => {
 
   return Object.fromEntries(
     Object.entries(obj ?? {})
-      .filter(([__, v]) => !isNil(v))
+      .filter(([__, v]) => notNil(v))
       .map(([k, v]) => [k, isPlainObject(v) || isArray(v) ? removeEmpty(v, aggressive) : v])
       .filter(([__, v]) => !!v)
   );
@@ -327,4 +327,8 @@ export const modifyDocumentation = (
     original = pluginStore.executeFunction(`${plugin}.documentation`, original) as string;
   }
   return original;
+};
+
+export const notNil = <T>(val: T | null | undefined): val is T => {
+  return !isNil(val);
 };

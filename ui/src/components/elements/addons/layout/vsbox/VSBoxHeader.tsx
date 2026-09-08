@@ -1,5 +1,6 @@
 import type { BoxProps } from '@mui/material';
 import { Box, useTheme } from '@mui/material';
+import { isNil } from 'lodash-es';
 import type { FC, PropsWithChildren } from 'react';
 import { useContext, useEffect, useRef } from 'react';
 import { useResizeDetector } from 'react-resize-detector';
@@ -14,7 +15,7 @@ const VSBoxHeader: FC<PropsWithChildren<VSBoxHeaderProps>> = ({ children, ...box
   const { state, setState } = useContext(VSBoxContext);
 
   useEffect(() => {
-    if (height !== undefined && height !== heightRef.current) {
+    if (!isNil(height) && height !== heightRef.current) {
       setState?.({ ...state, scrollTop: state.top + height });
       heightRef.current = height;
     }

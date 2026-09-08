@@ -4,7 +4,7 @@ import useMyApi from 'components/hooks/useMyApi';
 import useMyLocalStorage, { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import dayjs from 'dayjs';
 import i18n from 'i18n';
-import { cloneDeep, isNil } from 'lodash-es';
+import { cloneDeep } from 'lodash-es';
 import isNull from 'lodash-es/isNull';
 import isUndefined from 'lodash-es/isUndefined';
 import type { Event } from 'models/entities/generated/Event';
@@ -24,7 +24,7 @@ import { useLocation } from 'react-router';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import Throttler from 'utils/Throttler';
-import { convertCustomDateRangeToLucene, convertDateToLucene } from 'utils/utils';
+import { convertCustomDateRangeToLucene, convertDateToLucene, notNil } from 'utils/utils';
 import { ParameterContext } from './ParameterProvider';
 import { RecordContext } from './RecordProvider';
 import { ViewContext } from './ViewProvider';
@@ -161,7 +161,7 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
           const responseResult = await dispatchApi(
             api.v2.search.post<WithMetadata<Hit | Event>>(indexes, {
-              offset: appendResults && !isNil(response?.rows) ? response.rows : offset,
+              offset: appendResults && notNil(response?.rows) ? response.rows : offset,
               rows: pageCount,
               query: _query || DEFAULT_QUERY,
               sort,

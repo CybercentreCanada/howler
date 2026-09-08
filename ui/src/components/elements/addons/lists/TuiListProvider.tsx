@@ -1,3 +1,4 @@
+import { isNil } from 'lodash-es';
 import type { ReactNode } from 'react';
 import { createContext, useCallback, useMemo, useState } from 'react';
 import type { TuiListItem } from '.';
@@ -50,9 +51,9 @@ const TuiListProvider = <T,>({ children }: TuiListProviderProps) => {
         if (previous) {
           return {
             ...i,
-            cursor: i.cursor === undefined ? previous.cursor : i.cursor,
-            selected: i.selected === undefined ? previous.selected : i.selected,
-            details: i.details === undefined ? previous.details : i.details
+            cursor: isNil(i.cursor) ? previous.cursor : i.cursor,
+            selected: isNil(i.selected) ? previous.selected : i.selected,
+            details: isNil(i.details) ? previous.details : i.details
           };
         }
         return i;

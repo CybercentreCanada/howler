@@ -1,5 +1,6 @@
 import { Stack, type StackProps } from '@mui/material';
 import { useAppBar, useAppBarHeight } from '@tui/core';
+import { isNil } from 'lodash-es';
 import { createContext, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 type VSBoxProps = Omit<StackProps, 'top'> & {
@@ -29,7 +30,7 @@ const VSBox = ({ top, children, ...stackProps }: VSBoxProps) => {
     const content = ref.current?.querySelector('[data-vsbox-content]') as HTMLDivElement;
 
     // Explicit top or appbar height.
-    const _top = top !== undefined && top !== null ? top : autoHide ? 0 : appbarHeight;
+    const _top = !isNil(top) ? top : autoHide ? 0 : appbarHeight;
 
     // We compute scroll top value on demand in order to ensure the
     //  header element is fully rendered.

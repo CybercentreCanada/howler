@@ -3,6 +3,7 @@ import type { DispatchApiConfig } from 'components/hooks/useMyApi';
 import useMyApi from 'components/hooks/useMyApi';
 import { isNil } from 'lodash-es';
 import { createContext, useCallback, useContext, useState, type Context, type PropsWithChildren } from 'react';
+import { notNil } from 'utils/utils';
 
 export type SearchResponseState<T> = HowlerSearchResponse<T> & {
   removeCount: number;
@@ -83,11 +84,7 @@ const SearchResponseProvider = <T,>({
       const modifiedRequest = { ...requestData };
 
       if (response?.removeCount) {
-        if (
-          response.offset !== undefined &&
-          modifiedRequest.offset !== undefined &&
-          response.offset < modifiedRequest.offset
-        ) {
+        if (notNil(response.offset) && notNil(modifiedRequest.offset) && response.offset < modifiedRequest.offset) {
           modifiedRequest.offset = Math.max(0, modifiedRequest.offset - response.removeCount);
         }
       }
@@ -122,13 +119,13 @@ const SearchResponseProvider = <T,>({
 
   const replace = useCallback(
     (id: string, item: T) => {
-      if (getFieldValue(item) !== undefined && id !== getFieldValue(item)) {
+      if (notNil(getFieldValue(item)) && id !== getFieldValue(item)) {
         throw new Error('Item id is defined but id does not match the id provided to replace function');
       }
 
       const newItem = {
         ...item,
-        [idField]: getFieldValue(item) !== undefined ? getFieldValue(item) : id
+        [idField]: notNil(getFieldValue(item)) ? getFieldValue(item) : id
       };
 
       setResponse(_response => {

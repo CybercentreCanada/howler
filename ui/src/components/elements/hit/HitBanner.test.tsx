@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { SocketContext } from 'components/app/providers/SocketProvider';
+import { isNil } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import howlerPluginStore from 'plugins/store';
 import type { FC, PropsWithChildren, ReactNode } from 'react';
@@ -26,7 +27,7 @@ vi.mock('react-pluggable', async () => {
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: { count?: number; duration?: string }) => {
-      if (options?.count !== undefined) {
+      if (!isNil(options?.count)) {
         return `${key}:${options.count}`;
       }
 

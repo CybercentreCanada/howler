@@ -1,5 +1,7 @@
+import { isNil } from 'lodash-es';
 import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router';
+import { notNil } from 'utils/utils';
 
 type Primitive = string | number | boolean | null;
 
@@ -14,7 +16,7 @@ const parseValue = <T extends Primitive>(raw: string | null, defaultValue: T): T
 };
 
 const serializeValue = (value: Primitive): string => {
-  if (value === null || value === undefined) return '';
+  if (isNil(value)) return '';
   return String(value);
 };
 
@@ -45,7 +47,7 @@ const useParamState: {
             (newValue as T[]).forEach(item => next.append(key, serializeValue(item)));
           } else {
             const scalar = newValue as T;
-            if (scalar !== defaultValue && scalar !== null && scalar !== undefined) {
+            if (scalar !== defaultValue && notNil(scalar)) {
               next.set(key, serializeValue(scalar));
             }
           }

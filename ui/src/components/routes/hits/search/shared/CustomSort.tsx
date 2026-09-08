@@ -7,6 +7,7 @@ import type { FC } from 'react';
 import { memo, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
+import { notNil } from 'utils/utils';
 
 const CustomSort: FC = () => {
   const { t } = useTranslation();
@@ -49,7 +50,7 @@ const CustomSort: FC = () => {
           sx={{ minWidth: '225px' }}
           size="small"
           value={field}
-          options={hitFields.map(_field => _field.key).filter(_key => _key !== undefined)}
+          options={hitFields.map(_field => _field.key).filter(notNil)}
           getOptionDisabled={option => sortEntries.map(entry => entry.replace(/ .+/, '')).includes(option!)}
           renderInput={_params => <TextField {..._params} label={t('hit.search.sort.fields')} />}
           onChange={(_, value) => setField(value!)}

@@ -1,3 +1,5 @@
+import { notNil } from 'utils/utils';
+
 export type PhraseAnalysis = {
   cursor: number;
   parentIndex: number;
@@ -60,16 +62,18 @@ export class PhraseBuffer {
   }
 
   public start(index?: number): number {
-    if (index !== undefined) {
+    if (notNil(index)) {
       this.startIndex = index;
     }
+
     return this.startIndex;
   }
 
   public end(index?: number): number {
-    if (index !== undefined) {
+    if (notNil(index)) {
       this.endIndex = index;
     }
+
     return this.endIndex;
   }
 
