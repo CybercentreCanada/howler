@@ -10,7 +10,7 @@ const notify = (key: string, value: unknown) => {
   SUBSCRIBERS.get(key)?.forEach(setter => setter(value));
 };
 
-export type LocalStorageItemResult<T> = [T, (value: T | null | undefined) => void, () => void];
+export type LocalStorageItemResult<T> = [T, (value: T | undefined) => void, () => void];
 
 export type NonNullish = object | string | number | bigint | boolean | symbol;
 
@@ -35,7 +35,7 @@ export type WidenLiteral<T> = T extends string
 type UseLocalStorageItem = {
   <T extends string | number | boolean | bigint>(key: string, initialValue: T): LocalStorageItemResult<WidenLiteral<T>>;
   <T extends NonNullish>(key: string, initialValue: T): LocalStorageItemResult<T>;
-  <T>(key: string, initialValue?: T | null): LocalStorageItemResult<T | null>;
+  <T>(key: string, initialValue?: T): LocalStorageItemResult<T | undefined>;
 };
 
 /**
@@ -56,13 +56,13 @@ type UseLocalStorageItem = {
  */
 const useLocalStorageItem: UseLocalStorageItem = <T,>(
   key: string,
-  initialValue?: T | null
-): LocalStorageItemResult<T | null> => {
+  initialValue?: T
+): LocalStorageItemResult<T | undefined> => {
   const { get, set, has, remove } = useLocalStorage();
-  const [value, setValue] = useState<T | null | undefined>(get(key) ?? initialValue ?? null);
+  const [value, setValue] = useState<T | undefined>(get(key) ?? initialValue ?? undefined);
 
   useEffect(() => {
-    if (initialValue !== null && initialValue !== undefined && !has(key)) {
+    if (!isNil(initialValue) && !has(key)) {
       set(key, initialValue);
     }
   }, [key, initialValue, has, set]);
@@ -97,7 +97,7 @@ const useLocalStorageItem: UseLocalStorageItem = <T,>(
 
   return useMemo(
     () => [
-      value ?? null,
+      value,
       (newValue, save = true) => {
         if (save) {
           if (!isNil(newValue)) {

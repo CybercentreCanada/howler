@@ -43,7 +43,7 @@ const HitOutline: FC<{
   const addFilter = useContextSelector(ParameterContext, ctx => ctx?.addFilter);
   const { getMatchingTemplate } = useMatchers(lazy);
 
-  const [templateFieldCount] = useMyLocalStorageItem<number>(StorageKey.TEMPLATE_FIELD_COUNT, null);
+  const [templateFieldCount] = useMyLocalStorageItem<number>(StorageKey.TEMPLATE_FIELD_COUNT);
   const [template, setTemplate] = useState<Template>();
 
   const providerColor = getProviderColor(hit?.event?.provider);

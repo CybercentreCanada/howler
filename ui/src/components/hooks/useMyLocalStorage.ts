@@ -19,10 +19,10 @@ type UseMyLocalStorageItem = {
     initialValue: T
   ): LocalStorageItemResult<WidenLiteral<T>>;
   <T extends NonNullish>(key: StorageKey, initialValue: T): LocalStorageItemResult<T>;
-  <T>(key: StorageKey, initialValue?: T | null): LocalStorageItemResult<T | null>;
+  <T>(key: StorageKey, initialValue?: T): LocalStorageItemResult<T | undefined>;
 };
 
-export const useMyLocalStorageItem: UseMyLocalStorageItem = <T>(key: StorageKey, initialValue?: T | null) => {
+export const useMyLocalStorageItem: UseMyLocalStorageItem = <T>(key: StorageKey, initialValue?: T) => {
   return useLocalStorageItem<T>(`${MY_LOCAL_STORAGE_PREFIX}.${key}`, initialValue);
 };
 
