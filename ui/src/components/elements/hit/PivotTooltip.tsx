@@ -13,9 +13,6 @@ const PivotTooltip: FC<{ dossier: Dossier; resolvedUrl: string }> = ({ dossier, 
       <Typography variant="body2" color="text.secondary">
         {dossier.owner}
       </Typography>
-      <Typography variant="body2" sx={{ mt: 2 }}>
-        {dossier.leads?.[0]?.content?.slice(0, 120) ?? t('pivot.description.none')}
-      </Typography>
       <Box sx={{ mt: 2, wordBreak: 'break-all' }}>
         <Typography variant="caption" display="block">
           {t('pivot.url')}

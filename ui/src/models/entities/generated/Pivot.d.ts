@@ -10,4 +10,5 @@ export interface Pivot {
   label?: Label;
   mappings?: Mapping[];
   value?: string;
+  group?:string;
 }

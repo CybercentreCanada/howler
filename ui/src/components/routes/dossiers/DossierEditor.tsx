@@ -26,6 +26,7 @@ import { memo, useCallback, useEffect, useMemo, useState, type FC } from 'react'
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
+import pivotGroupValidation from '../../../utils/pivotGroupValidation';
 import QueryResultText from '../../elements/display/QueryResultText';
 import RecordQuery from '../hits/search/RecordQuery';
 import LeadForm from './LeadForm';
@@ -55,6 +56,7 @@ const DossierEditor: FC = () => {
   const [loading, setLoading] = useState(false);
 
   const dirty = useMemo(() => !isEqual(originalDossier, dossier), [dossier, originalDossier]);
+
   const validationError = useMemo(() => {
     if (!dossier) {
       return t('route.dossiers.manager.validation.error');
@@ -113,6 +115,12 @@ const DossierEditor: FC = () => {
     }
 
     for (const pivot of dossier.pivots ?? []) {
+      const groupErr = pivotGroupValidation(pivot.group ?? '');
+      if (groupErr) {
+        // If there's an error, return the translated error string. It also disable the Save button
+        return t(groupErr);
+      }
+
       if (!pivot.label) {
         // You have not configured a pivot label.
         return t('route.dossiers.manager.validation.error.pivots.label');

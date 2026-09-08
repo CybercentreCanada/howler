@@ -5,6 +5,7 @@ dossiers - collections of security alerts and investigation data organized by an
 Dossiers can be personal (private to the creator) or global (shared with the team).
 """
 
+import re
 from typing import Any, Literal, Optional, cast, overload
 
 from mergedeep.mergedeep import merge
@@ -28,6 +29,9 @@ PERMITTED_KEYS = {
     "type",
     "owner",
 }
+
+# Cap the number of group suggestions returned, so the endpoint can't be used to dump the entire group list
+MAX_GROUP_SUGGESTIONS = 10
 
 
 def exists(dossier_id: str) -> bool:
@@ -91,6 +95,39 @@ def get_dossier(
     return datastore().dossier.get_if_exists(key=id, as_obj=as_odm, version=version)
 
 
+def validate_group(group: str | Any) -> None:
+    """Validate a slash-separated dossier group path.
+
+    Args:
+        group: Group path to validate, such as ``Parent/Child``.
+
+    Raises:
+        TypeError: If ``group`` is not a string.
+        InvalidDataException: If ``group`` contains unsupported characters
+            or empty path sections.
+    """
+    if group == "" or group is None:
+        return
+    if not isinstance(group, str):
+        raise TypeError('Data "group" should be a slash-separated string.')
+
+    # 1. Check for allowed characters
+    if not re.fullmatch(r"[0-9A-Za-zùûüÿàâæçéèêëïîôœÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ/]*", group):
+        raise InvalidDataException(
+            "Group contains invalid characters. Only English, French alphabetical, numeral and / character are allowed"
+        )
+
+    # 2. Check for empty sections anywhere (consecutive slashes, or leading/trailing slashes)
+    if "//" in group or group.startswith("/") or group.endswith("/"):
+        raise InvalidDataException('Every section of a group path needs characters between the "/"')
+
+    # 3. Check for the word pivot as it is use to classify them in the front end
+    if re.search(r"(^|/)pivot(/|$)", group):
+        raise InvalidDataException('The word "pivot" can not be use as a group section.')
+
+    return
+
+
 def create_dossier(  # noqa: C901
     dossier_data: Optional[Any],
     username: str,
@@ -145,6 +182,9 @@ def create_dossier(  # noqa: C901
         for pivot in dossier.pivots:
             if len(pivot.mappings) != len(set(mapping.key for mapping in pivot.mappings)):
                 raise InvalidDataException("One of your pivots has duplicate keys set.")
+            # verify the pivot group is valid format
+            if hasattr(pivot, "group"):
+                validate_group(pivot.group)
 
         # Ensure the owner is set to the current user (security measure)
         dossier.owner = username
@@ -218,6 +258,8 @@ def update_dossier(  # noqa: C901
             mappings = pivot.get("mappings") or []
             if len(mappings) != len(set(mapping.get("key") for mapping in mappings)):
                 raise InvalidDataException("One of your pivots has duplicate keys set.")
+            group = pivot.get("group") if isinstance(pivot, dict) else getattr(pivot, "group", None)
+            validate_group(group)
 
     try:
         # Validate the Lucene query if it's being updated
@@ -239,6 +281,31 @@ def update_dossier(  # noqa: C901
         logger.exception("Error when updating dossier.")
         # Provide a user-friendly error message while preserving the original exception
         raise InvalidDataException("We were unable to update the dossier.", cause=e) from e
+
+
+def get_pivot_groups(prefix: str, username: str) -> list[str]:
+    """Suggest existing pivot group paths matching a prefix, so users can reuse groups already in use.
+
+    Args:
+        prefix: Case-insensitive prefix to filter suggestions by.
+        username: The requesting user, used to scope which dossiers are visible.
+
+    Returns:
+        Up to MAX_GROUP_SUGGESTIONS unique group paths, sorted alphabetically.
+    """
+    dossiers = datastore().dossier.search(
+        f"type:global OR owner:({username} OR none)",
+        as_obj=False,
+        rows=1000,
+        fl="pivots.group",
+    )["items"]
+
+    groups = {pivot.get("group") for dossier in dossiers for pivot in dossier.get("pivots", []) if pivot.get("group")}
+
+    lowered_prefix = (prefix or "").lower()
+    matches = sorted(group for group in groups if group.lower().startswith(lowered_prefix))
+
+    return matches[:MAX_GROUP_SUGGESTIONS]
 
 
 def get_matching_dossiers(

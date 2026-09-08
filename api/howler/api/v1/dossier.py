@@ -92,6 +92,26 @@ def create_dossier(**kwargs):
 
 
 @generate_swagger_docs()
+@dossier_api.route("/groups", methods=["GET"])
+@api_login(required_priv=["R"])
+def get_pivot_groups(user: User, **kwargs):
+    """Suggest existing pivot group paths matching a prefix
+
+    Variables:
+    None
+
+    Optional Arguments:
+    prefix => A case-insensitive prefix to filter suggestions by
+
+    Result Example:
+    [
+        "network/dns"   # Up to 10 matching group paths, used to autocomplete the pivot group field
+    ]
+    """
+    return ok(dossier_service.get_pivot_groups(request.args.get("prefix", "", type=str), username=user.uname))
+
+
+@generate_swagger_docs()
 @dossier_api.route("/<id>", methods=["GET"])
 @api_login(required_priv=["R"])
 def get_dossier(id: str, user: User, **kwargs):

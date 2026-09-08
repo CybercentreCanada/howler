@@ -14,6 +14,7 @@ import {
   Typography,
   useTheme
 } from '@mui/material';
+import api from 'api';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import isNull from 'lodash-es/isNull';
 import merge from 'lodash-es/merge';
@@ -34,6 +35,14 @@ import {
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { useSearchParams } from 'react-router';
+import Throttler from 'utils/Throttler';
+import pivotGroupValidation from '../../../utils/pivotGroupValidation';
+
+// Maximum number of group suggestions to request/display at once, mirroring the backend's own cap
+const MAX_GROUP_SUGGESTIONS = 10;
+
+// Minimum delay between group suggestion requests, so fast typing can't flood the backend
+const GROUP_SUGGESTION_THROTTLE_MS = 1000;
 
 export interface PivotFormProps {
   pivot: Pivot;
@@ -151,6 +160,8 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [tab, setTab] = useState(parseInt(searchParams.get('pivot') ?? '0'));
+  const [groupOptions, setGroupOptions] = useState<string[]>([]);
+  const groupThrottler = useMemo(() => new Throttler(GROUP_SUGGESTION_THROTTLE_MS), []);
 
   const update = useCallback(
     (data: Partial<Pivot>) =>
@@ -191,6 +202,26 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
     setSearchParams(searchParams, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setSearchParams, tab]);
+
+  // Validate the pivot's folder/group path to provide inline feedback before the dossier is saved.
+  const groupError = useMemo(() => {
+    return pivotGroupValidation(pivot?.group ?? '');
+  }, [pivot?.group]);
+
+  // Suggest existing group paths as the user types, throttled so we never issue more than one request per second
+  const fetchGroupSuggestions = useCallback(
+    (prefix: string) => {
+      groupThrottler.debounce(async () => {
+        try {
+          const suggestions = await api.dossier.groups.get(prefix);
+          setGroupOptions(suggestions.slice(0, MAX_GROUP_SUGGESTIONS));
+        } catch {
+          setGroupOptions([]);
+        }
+      });
+    },
+    [groupThrottler]
+  );
 
   return (
     <Paper sx={{ p: 1, display: 'flex', flexDirection: 'column', flex: 1 }} id="pivot-form">
@@ -255,6 +286,42 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
             <Add />
           </Button>
         </Stack>
+        <Typography
+          sx={theme => ({
+            color: theme.palette.text.secondary,
+            fontSize: '0.9em',
+            fontStyle: 'italic',
+            mt: 0.5
+          })}
+          variant="body2"
+        >
+          {t('route.dossiers.pivot.explanation')}
+        </Typography>
+        <Autocomplete
+          freeSolo
+          disableClearable
+          disabled={!dossier || loading}
+          options={groupOptions}
+          inputValue={pivot?.group ?? ''}
+          onInputChange={(_ev, value, reason) => {
+            update({ group: value });
+            if (reason === 'input') {
+              fetchGroupSuggestions(value);
+            }
+          }}
+          renderInput={params => (
+            <TextField
+              {...params}
+              id="dossier-group"
+              label={t('route.pivots.groups.label')}
+              size="small"
+              fullWidth
+              error={Boolean(groupError)}
+              helperText={groupError ? t(groupError) : ' '}
+              onFocus={() => fetchGroupSuggestions(pivot?.group ?? '')}
+            />
+          )}
+        />
         <Stack spacing={2}>
           <Stack direction="row" alignItems="center" position="relative">
             <TextField
@@ -278,12 +345,14 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
               <Delete />
             </Button>
           </Stack>
+
           <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: `${theme.spacing(0.5)} !important` }}>
             <Typography color="text.secondary">{t('route.dossiers.manager.icon.description')}</Typography>
             <IconButton size="small" component="a" href="https://icon-sets.iconify.design/">
               <OpenInNew fontSize="small" />
             </IconButton>
           </Stack>
+
           <Stack direction="row" spacing={2}>
             <TextField
               size="small"
