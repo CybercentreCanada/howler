@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import json
 import time
-from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, cast
 
 from redis import RedisCluster
 
 from howler.common.exceptions import HowlerValueError
-from howler.remote.datatypes import get_client, retry_call
+from howler.remote.datatypes import RedisScriptClient, get_client, retry_call
 
 if TYPE_CHECKING:
     from redis import Redis
@@ -78,9 +78,9 @@ class Hash(Generic[T]):
     ):
         self.c: Any = get_client(host, port, False)
         self.name = name
-        self._pop = self.c.register_script(h_pop_script)
-        self._limited_add = self.c.register_script(_limited_add)
-        self._conditional_remove = self.c.register_script(_conditional_remove_script)
+        self._pop = cast(RedisScriptClient, self.c).register_script(h_pop_script)
+        self._limited_add = cast(RedisScriptClient, self.c).register_script(_limited_add)
+        self._conditional_remove = cast(RedisScriptClient, self.c).register_script(_conditional_remove_script)
 
     def __iter__(self):
         return HashIterator(self)

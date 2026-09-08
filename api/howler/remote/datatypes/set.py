@@ -1,8 +1,8 @@
 import json
 import time
-from typing import Any
+from typing import Any, cast
 
-from howler.remote.datatypes import get_client, retry_call
+from howler.remote.datatypes import RedisScriptClient, get_client, retry_call
 
 _drop_card_script = """
 local set_name = ARGV[1]
@@ -29,8 +29,8 @@ class Set(object):
     def __init__(self, name, host=None, port=None):
         self.c: Any = get_client(host, port, False)
         self.name = name
-        self._drop_card = self.c.register_script(_drop_card_script)
-        self._limited_add = self.c.register_script(_limited_add)
+        self._drop_card = cast(RedisScriptClient, self.c).register_script(_drop_card_script)
+        self._limited_add = cast(RedisScriptClient, self.c).register_script(_limited_add)
 
     def __enter__(self):
         return self

@@ -1,8 +1,8 @@
-from typing import Any
+from typing import Any, cast
 
 from redis.exceptions import ResponseError
 
-from howler.remote.datatypes import get_client, retry_call
+from howler.remote.datatypes import RedisScriptClient, get_client, retry_call
 
 begin_script = """
 local t = redis.call('time')
@@ -25,7 +25,7 @@ end
 class UserQuotaTracker(object):
     def __init__(self, prefix, timeout=120, redis=None, host=None, port=None, private=False):
         self.c: Any = redis or get_client(host, port, private)
-        self.bs = self.c.register_script(begin_script)
+        self.bs = cast(RedisScriptClient, self.c).register_script(begin_script)
         self.prefix = prefix
         self.timeout = timeout
 

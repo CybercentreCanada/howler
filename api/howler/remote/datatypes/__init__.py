@@ -7,7 +7,7 @@ import socket
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 import redis
 from packaging.version import parse
@@ -28,6 +28,11 @@ if parse(redis.__version__) <= parse("2.10.0"):
     )
 
 APP_NAME = os.environ.get("APP_NAME", "howler")
+
+
+class RedisScriptClient(Protocol):
+    def register_script(self, script: str) -> Any: ...
+
 
 log = logging.getLogger(f"{APP_NAME}.queue")
 pool: dict[tuple[str, str, bool], redis.BlockingConnectionPool] = {}

@@ -1,6 +1,6 @@
-from typing import Any
+from typing import Any, cast
 
-from howler.remote.datatypes import get_client, retry_call
+from howler.remote.datatypes import RedisScriptClient, get_client, retry_call
 from howler.utils.uid import get_random_id
 
 lock_acquire_script = """
@@ -33,8 +33,8 @@ class Lock(object):
         self.lock_release = "-".join(("lock", str(timeout), name, "released"))
         self.lock_holder = "-".join(("lock", str(timeout), name, "holder"))
         self.timeout = timeout
-        self._acquire = self.c.register_script(lock_acquire_script)
-        self._release = self.c.register_script(lock_release_script)
+        self._acquire = cast(RedisScriptClient, self.c).register_script(lock_acquire_script)
+        self._release = cast(RedisScriptClient, self.c).register_script(lock_release_script)
 
     def __enter__(self):
         while not retry_call(self._acquire, args=[self.lock_holder, self.uuid, self.timeout]):

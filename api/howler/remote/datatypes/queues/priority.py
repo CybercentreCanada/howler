@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import json
 import time
-from typing import Any, Generic, Optional, TypeVar, Union
+from typing import Any, Generic, Optional, TypeVar, Union, cast
 
 from howler.common.exceptions import HowlerTypeError
-from howler.remote.datatypes import decode, get_client, retry_call
+from howler.remote.datatypes import RedisScriptClient, decode, get_client, retry_call
 
 SORTING_KEY_LEN = 21
 
@@ -37,7 +37,7 @@ T = TypeVar("T")
 class PriorityQueue(Generic[T]):
     def __init__(self, name, host=None, port=None, private=False):
         self.c: Any = get_client(host, port, private)
-        self._deque_range = self.c.register_script(pq_dequeue_range_script)
+        self._deque_range = cast(RedisScriptClient, self.c).register_script(pq_dequeue_range_script)
         self.name = name
 
     def __enter__(self):
