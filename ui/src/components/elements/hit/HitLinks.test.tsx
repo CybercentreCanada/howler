@@ -1,6 +1,5 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import PivotGroupProvider from 'components/app/providers/PivotGroupProvider';
 import PivotGroupMenuItem from 'components/elements/hit/PivotGroupMenuItem';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import { setupLocalStorageMock } from 'tests/mocks';
@@ -53,10 +52,10 @@ describe('HitLinks pivot grouping', () => {
     const user = userEvent.setup();
 
     render(
-      <PivotGroupProvider>
+      <>
         <PivotGroupMenuItem />
         <HitLinks dossiers={[dossier]} />
-      </PivotGroupProvider>
+      </>
     );
 
     const toggle = screen.getByRole('switch');
@@ -99,10 +98,10 @@ describe('HitLinks pivot grouping', () => {
     } as unknown as Dossier;
 
     render(
-      <PivotGroupProvider>
+      <>
         <PivotGroupMenuItem />
         <HitLinks dossiers={[repeatedValueDossier]} />
-      </PivotGroupProvider>
+      </>
     );
 
     const toggle = screen.getByRole('switch');

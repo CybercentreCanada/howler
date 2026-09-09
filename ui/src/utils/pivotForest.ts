@@ -7,7 +7,7 @@ import type { Pivot } from 'models/entities/generated/Pivot';
  *
  * The flow is:
  * 1) Group pivots by their slash-delimited `pivot.group` path.
- * 2) Store pivots at each path node under the reserved `pivot` key.
+ * 2) Store pivots at each path node under an internal symbol key.
  * 3) Convert the grouped object into `menuPathNode[]` for UI rendering.
  * 4) Squash non-branching path chains that contain no local pivots so
  *    navigation menus avoid unnecessary empty intermediate levels.
@@ -15,6 +15,8 @@ import type { Pivot } from 'models/entities/generated/Pivot';
  * The resulting structure is consumed by Hit links/folder components to
  * render root pivots and nested submenu folders consistently.
  */
+
+const PIVOTS = Symbol('pivots');
 
 export type menuPathNode = {
   path: string;
@@ -32,53 +34,45 @@ export type dossierPivot = {
 const getDossierPivotKey = ({ pivot, dossier }: dossierPivot): string => JSON.stringify([dossier.dossier_id, pivot]);
 
 type PivotTree = {
-  pivot?: dossierPivot[];
-  [key: string]: PivotTree | dossierPivot[];
+  [PIVOTS]?: dossierPivot[];
+  [key: string]: PivotTree;
 };
 
 /**
  * Builds an intermediate tree keyed by each pivot group segment.
  *
  * Each slash-delimited segment in `pivot.group` creates or reuses a nested
- * node, and pivots at that location are stored in the reserved `pivot` array.
+ * node, and pivots at that location are stored in an internal symbol-keyed array.
  * This raw tree is later converted into `menuPathNode[]` for menu rendering.
  *
  * @param dossiers Dossiers whose pivots should be grouped.
  * @returns A nested grouping tree where branch keys are path segments and
- *          each node may contain a reserved `pivot` array.
+ *          each node may contain a symbol-keyed pivot array.
  */
 const getGroupPivot = (dossiers: Dossier[]) => {
   // no prototype: group segments are user-defined words (e.g. "constructor", "toString") and must not resolve to inherited Object.prototype keys
   const groupPivot: PivotTree = Object.create(null);
 
-  for (const dossier of dossiers) {
-    if (!dossier.pivots) {
-      continue;
-    }
-
-    for (const pivot of dossier.pivots) {
+  dossiers.forEach(dossier => {
+    dossier.pivots?.forEach(pivot => {
       let current: PivotTree = groupPivot;
 
       // if we have a group we move the pointer to the proper location
-      if (pivot.group && pivot.group !== '') {
-        const group = pivot.group.split('/');
-        for (let i = 0; i < group.length; i++) {
-          if (!(group[i] in current)) {
-            current[group[i]] = Object.create(null);
+      if (pivot.group) {
+        pivot.group.split('/').forEach(groupSegment => {
+          if (!(groupSegment in current)) {
+            current[groupSegment] = Object.create(null);
           }
-          current = current[group[i]] as PivotTree;
-        }
+          current = current[groupSegment] as PivotTree;
+        });
       }
 
-      // Add the pivot section, this(pivot) is reserved inside of the PivotGroupValidation check and the back end.
-      if (!current.pivot) {
-        current.pivot = [];
-      }
+      // Add the pivot to its location.
+      current[PIVOTS] ??= [];
+      current[PIVOTS].push({ pivot, dossier });
+    });
+  });
 
-      // Add the pivot to its location
-      current.pivot.push({ pivot: pivot, dossier: dossier });
-    }
-  }
   return groupPivot;
 };
 
@@ -95,15 +89,11 @@ const getGroupPivot = (dossiers: Dossier[]) => {
 const buildPathMap = (tree: PivotTree, language = 'en'): menuPathNode[] => {
   const nodes: menuPathNode[] = [];
   for (const key in tree) {
-    if (key == 'pivot') {
-      continue;
-    } // this is not a branch these are buttons we solve it earlier
-
     let path: string = key;
     let current = tree[key] as PivotTree;
     // squash a chain as long as it neither branches nor carries pivots of its own; that's a pure "pass-through"
     // segment, so its name is folded into the path instead of forcing its own empty menu level
-    while (Object.keys(current).length === 1 && !current.pivot) {
+    while (Object.keys(current).length === 1 && !current[PIVOTS]) {
       const newKey = Object.keys(current)[0];
       path = path + `/${newKey}`;
       current = current[newKey] as PivotTree;
@@ -111,7 +101,7 @@ const buildPathMap = (tree: PivotTree, language = 'en'): menuPathNode[] => {
 
     nodes.push({
       path: path,
-      pivots: sortBy(current.pivot ?? [], item => item.pivot.label?.[language]),
+      pivots: sortBy(current[PIVOTS] ?? [], item => item.pivot.label?.[language]),
       children: buildPathMap(current, language)
     });
   }
@@ -133,10 +123,10 @@ const pivotForest = (dossiers: Dossier[], language = 'en'): menuPathNode[] => {
   const group = getGroupPivot(dossiers);
   const nodes: menuPathNode[] = [];
 
-  if (group.pivot) {
+  if (group[PIVOTS]) {
     nodes.push({
       path: '',
-      pivots: sortBy(group.pivot, item => item.pivot.label?.[language]),
+      pivots: sortBy(group[PIVOTS], item => item.pivot.label?.[language]),
       children: []
     });
   }

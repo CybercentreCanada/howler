@@ -2,7 +2,6 @@ import { Box, ListItemText, Stack, Tooltip, Typography } from '@mui/material';
 import HowlerCard from 'components/elements/display/HowlerCard';
 import RelatedLinkTooltip from 'components/elements/hit/RelatedLinkTooltip';
 import React, { type PropsWithChildren } from 'react';
-import { Link } from 'react-router';
 import RelatedIcon from './RelatedIcon';
 
 const RelatedLink: React.FC<
@@ -20,7 +19,7 @@ const RelatedLink: React.FC<
     // a trailing element (e.g. a settings icon button) rendered next to the title, outside the title's own hover/link
     action?: React.ReactNode;
     // wraps the content in its own bordered card - used for standalone entries not already inside a parent's card/button chrome
-    card?: boolean;
+    withCard?: boolean;
   }>
 > = ({
   icon,
@@ -33,46 +32,40 @@ const RelatedLink: React.FC<
   dense = false,
   secondary,
   action,
-  card = false,
+  withCard = false,
   children
 }) => {
   const safeTitle = title ?? href ?? '';
 
   if (dense) {
     return (
-      <Stack
-        direction="row"
-        spacing={1}
-        alignItems="center"
-        onClick={() => href && window.open(href, target, 'noopener,noreferrer')}
-        sx={theme => ({
-          cursor: 'pointer',
-          width: '100%',
-          p: 0.5,
-          borderRadius: 1,
-          transition: theme.transitions.create(['background-color']),
-          '&:hover': { backgroundColor: 'action.hover' },
-          '& a': { textDecoration: 'none', color: 'text.primary' }
-        })}
-      >
-        {children || <RelatedIcon icon={icon} title={title} href={href} compact />}
-        <ListItemText
-          primary={
-            <Typography
-              component={Link}
-              to={href ?? '#'}
-              target={target}
-              rel={rel}
-              onClick={e => e.stopPropagation()}
-              noWrap
-              sx={{ '&:hover': { textDecoration: 'underline' } }}
-            >
-              {safeTitle}
-            </Typography>
-          }
-          secondary={secondary}
-          secondaryTypographyProps={{ component: 'div', noWrap: true }}
-        />
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
+        <Stack
+          component="a"
+          href={href}
+          target={target}
+          rel={rel}
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          sx={theme => ({
+            color: 'text.primary',
+            flex: 1,
+            minWidth: 0,
+            p: 0.5,
+            borderRadius: 1,
+            textDecoration: 'none',
+            transition: theme.transitions.create(['background-color']),
+            '&:hover': { backgroundColor: 'action.hover', textDecoration: 'underline' }
+          })}
+        >
+          {children || <RelatedIcon icon={icon} title={title} href={href} compact />}
+          <ListItemText
+            primary={<Typography noWrap>{safeTitle}</Typography>}
+            secondary={secondary}
+            secondaryTypographyProps={{ component: 'div', noWrap: true }}
+          />
+        </Stack>
         {action}
       </Stack>
     );
@@ -83,55 +76,46 @@ const RelatedLink: React.FC<
   const content = (
     <Stack direction="row" p={compact ? 0.5 : 1} spacing={1} alignItems="center" sx={{ height: '100%' }}>
       {children || <RelatedIcon icon={icon} title={title} href={href} compact={compact} />}
-      <Typography component={Link} to={href ?? '#'} target={target} rel={rel} onClick={e => e.stopPropagation()}>
-        {safeTitle}
-      </Typography>
+      <Typography>{safeTitle}</Typography>
     </Stack>
   );
 
-  if (!card) {
-    return (
-      <Tooltip title={tooltipContent}>
-        <Box
-          onClick={() => href && window.open(href, target, 'noopener,noreferrer')}
-          sx={{
-            display: 'flex',
-            cursor: 'pointer',
-            '& a': { textDecoration: 'none', color: 'text.primary' }
-          }}
-        >
-          {content}
-        </Box>
-      </Tooltip>
-    );
-  }
-
-  return (
-    <Tooltip title={tooltipContent}>
-      <div style={{ display: 'flex' }}>
-        <HowlerCard
-          variant={compact ? 'outlined' : 'elevation'}
-          key={href}
-          onClick={() => href && window.open(href, target, 'noopener,noreferrer')}
-          sx={[
-            theme => ({
-              cursor: 'pointer',
-              backgroundColor: 'transparent',
-              transition: theme.transitions.create(['border-color']),
-              '&:hover': { borderColor: 'primary.main', '& a': { textDecoration: 'underline' } },
-              '& > div': {
-                height: '100%'
-              },
-              '& a': { textDecoration: 'none', color: 'text.primary' }
-            }),
-            !compact && { border: 'thin solid', borderColor: 'transparent' }
-          ]}
-        >
-          {content}
-        </HowlerCard>
-      </div>
-    </Tooltip>
+  const link = (
+    <Box
+      component="a"
+      href={href}
+      target={target}
+      rel={rel}
+      sx={{ display: 'flex', height: '100%', color: 'text.primary', textDecoration: 'none' }}
+    >
+      {content}
+    </Box>
   );
+
+  const wrappedLink = withCard ? (
+    <div style={{ display: 'flex' }}>
+      <HowlerCard
+        variant={compact ? 'outlined' : 'elevation'}
+        sx={[
+          theme => ({
+            backgroundColor: 'transparent',
+            transition: theme.transitions.create(['border-color']),
+            '&:hover': { borderColor: 'primary.main', textDecoration: 'underline' },
+            '& > div': {
+              height: '100%'
+            }
+          }),
+          !compact && { border: 'thin solid', borderColor: 'transparent' }
+        ]}
+      >
+        {link}
+      </HowlerCard>
+    </div>
+  ) : (
+    link
+  );
+
+  return <Tooltip title={tooltipContent}>{wrappedLink}</Tooltip>;
 };
 
 export default RelatedLink;

@@ -3,4 +3,4 @@ import { uri as parentUri } from '.';
 
 export const uri = () => joinAllUri(parentUri(), 'groups');
 
-export const get = (prefix: string): Promise<string[]> => hget(uri(), new URLSearchParams({ prefix }));
+export const get = (prefix: string) => hget<string[]>(uri(), new URLSearchParams({ prefix }));

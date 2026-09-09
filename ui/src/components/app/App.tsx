@@ -135,7 +135,6 @@ import LocalStorageProvider from './providers/LocalStorageProvider';
 import ModalProvider from './providers/ModalProvider';
 import OverviewProvider from './providers/OverviewProvider';
 import ParameterProvider from './providers/ParameterProvider';
-import PivotGroupProvider from './providers/PivotGroupProvider';
 import RecordProvider from './providers/RecordProvider';
 import RecordSearchProvider from './providers/RecordSearchProvider';
 import SocketProvider from './providers/SocketProvider';
@@ -295,12 +294,10 @@ const AppProviderWrapper = () => {
               <TuiAppDrawerProvider>
                 <AppAccessibilityProvider preferences={myAccessibility.preferences} features={myAccessibility.features}>
                   <AppSwitcherProvider>
-                    <PivotGroupProvider>
-                      <MyAppProvider>
-                        <MyApp />
-                        <Modal />
-                      </MyAppProvider>
-                    </PivotGroupProvider>
+                    <MyAppProvider>
+                      <MyApp />
+                      <Modal />
+                    </MyAppProvider>
                   </AppSwitcherProvider>
                 </AppAccessibilityProvider>
               </TuiAppDrawerProvider>
