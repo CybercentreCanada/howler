@@ -5,7 +5,6 @@ import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import get from 'lodash-es/get';
-import isNil from 'lodash-es/isNil';
 import isObject from 'lodash-es/isObject';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Template } from 'models/entities/generated/Template';
@@ -16,7 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
-import { getProviderColor } from 'utils/utils';
+import { getProviderColor, notNil } from 'utils/utils';
 import PluginTypography from '../PluginTypography';
 import { HitLayout } from './HitLayout';
 
@@ -55,7 +54,7 @@ const HitOutline: FC<{
       return DEFAULT_FIELDS;
     }
 
-    if (!isNil(templateFieldCount) && !forceAllFields) {
+    if (notNil(templateFieldCount) && !forceAllFields) {
       return keys.slice(0, templateFieldCount);
     }
 

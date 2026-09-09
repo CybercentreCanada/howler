@@ -3,13 +3,14 @@ import { Chip, Grid, Skeleton, Stack, TextField, Typography } from '@mui/materia
 import api from 'api';
 import ChipPopper from 'components/elements/display/ChipPopper';
 import useMyApi from 'components/hooks/useMyApi';
-import { isNil, toArray, uniq } from 'lodash-es';
+import { toArray, uniq } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
 import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
 import { memo, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOutletContext } from 'react-router';
+import { notNil } from 'utils/utils';
 import useCase from '../hooks/useCase';
 import ObservableTable from './observables/ObservableTable';
 import type { ObservableRole, ObservableType, OriginType } from './types';
@@ -38,7 +39,7 @@ const CaseObservables: FC<{ case?: Case; caseId?: string }> = ({ case: providedC
       (_case?.items ?? [])
         .filter(item => ['hit', 'event'].includes(item.type!))
         .map(item => item.value)
-        .filter(val => !isNil(val)),
+        .filter(notNil),
     [_case?.items]
   );
 

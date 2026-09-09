@@ -2,13 +2,12 @@ import { Box, Skeleton, Stack, useTheme } from '@mui/material';
 import api from 'api';
 import { RecordContext } from 'components/app/providers/RecordProvider';
 import useMyApi from 'components/hooks/useMyApi';
-import { isNil } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
 import type { Item } from 'models/entities/generated/Item';
 import { useCallback, useEffect, useMemo, useState, type FC } from 'react';
 import { useParams } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
-import { getEscalationColor } from 'utils/utils';
+import { getEscalationColor, notNil } from 'utils/utils';
 import { buildPathFromID } from '../../utils';
 import CaseFolderContextMenu from './CaseFolderContextMenu';
 import FolderEntry from './FolderEntry';
@@ -198,7 +197,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
                       <CaseFolder
                         case={nestedCase}
                         step={step + 1}
-                        parentCaseNames={[...parentCaseNames, leaf.name].filter(_name => !isNil(_name))}
+                        parentCaseNames={[...parentCaseNames, leaf.name].filter(notNil)}
                         onItemUpdated={onItemUpdated}
                         collapseKey={collapseKey}
                       />

@@ -34,6 +34,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { useSearchParams } from 'react-router';
+import { notNil } from 'utils/utils';
 
 export interface PivotFormProps {
   pivot: Pivot;
@@ -176,7 +177,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
 
             return merged;
           })
-          .filter(_pivot => !isNil(_pivot))
+          .filter(notNil)
       })),
     [setDossier, tab]
   );

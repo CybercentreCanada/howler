@@ -17,6 +17,7 @@ import { isNil, isNull, isUndefined } from 'lodash-es';
 import type { KeyboardEventHandler } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { notNil } from 'utils/utils';
 
 type EditRowBase<T extends string | number | boolean> = {
   titleKey: string;
@@ -253,7 +254,7 @@ const EditRow = <T extends string | number | boolean>({
           <TableCell sx={cellSx} width="100%">
             {type === 'checkbox' ? (
               <Checkbox onChange={ev => onChange(ev.target.checked)} checked={value.toString() === 'true'} />
-            ) : type === 'range' && !isNil(value) ? (
+            ) : type === 'range' && notNil(value) ? (
               typeof valueLabelFormat === 'function' ? (
                 valueLabelFormat(Number(value), 0)
               ) : (

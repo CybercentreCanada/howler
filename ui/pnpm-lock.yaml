@@ -2392,6 +2392,11 @@ packages:
 
   '@volar/typescript@2.4.23':
     resolution: {integrity: sha512-lAB5zJghWxVPqfcStmAP1ZqQacMpe90UrP5RJ3arDyrhy4aCUQqmxPPLB2PWDKugvylmO41ljK7vZ+t6INMTag==}
+    peerDependencies:
+      typescript: '*'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   '@vue/compiler-core@3.5.22':
     resolution: {integrity: sha512-jQ0pFPmZwTEiRNSb+i9Ow/I/cHv2tXYqsnHKKyCQ08irI2kdF5qmYedmF8si8mA7zepUFmJ2hqzS8CQmNOWOkQ==}
@@ -3366,9 +3371,6 @@ packages:
 
   html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
-
-  html-parse-stringify@3.0.1:
-    resolution: {integrity: sha512-KknJ50kTInJ7qIScF3jeaFRpMpE8/lfiTdzf/twXyPBLAGrLRTmkz3AdTnKeh40X8k9L2fdYwEp/42WGXIRGcg==}
 
   html-parse-stringify@3.1.0:
     resolution: {integrity: sha512-E0oAXcELOtsXe+BmpJ2EZyedbldPpriV5vICzEuo6xjC/D1lDukOI7KrpfQGF2Qc4wWEy0nk3bFORS2K5ZAhFQ==}
@@ -7062,11 +7064,13 @@ snapshots:
 
   '@volar/source-map@2.4.23': {}
 
-  '@volar/typescript@2.4.23':
+  '@volar/typescript@2.4.23(typescript@7.0.2)':
     dependencies:
       '@volar/language-core': 2.4.23
       path-browserify: 1.0.1
       vscode-uri: 3.0.8
+    optionalDependencies:
+      typescript: 7.0.2
 
   '@vue/compiler-core@3.5.22':
     dependencies:
@@ -8139,10 +8143,6 @@ snapshots:
       - '@noble/hashes'
 
   html-escaper@2.0.2: {}
-
-  html-parse-stringify@3.0.1:
-    dependencies:
-      void-elements: 3.1.0
 
   html-parse-stringify@3.1.0:
     dependencies:
@@ -9314,7 +9314,7 @@ snapshots:
   react-i18next@16.6.6(i18next@25.10.10(typescript@7.0.2))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@7.0.2):
     dependencies:
       '@babel/runtime': 7.29.7
-      html-parse-stringify: 3.0.1
+      html-parse-stringify: 3.1.0
       i18next: 25.10.10(typescript@7.0.2)
       react: 19.2.8
       use-sync-external-store: 1.6.0(react@19.2.8)
@@ -10047,7 +10047,7 @@ snapshots:
     dependencies:
       '@microsoft/api-extractor': 7.54.0(@types/node@20.19.43)
       '@rollup/pluginutils': 5.3.0(rollup@4.61.1)
-      '@volar/typescript': 2.4.23
+      '@volar/typescript': 2.4.23(typescript@7.0.2)
       '@vue/language-core': 2.2.0(typescript@7.0.2)
       compare-versions: 6.1.1
       debug: 4.4.1(supports-color@8.1.1)

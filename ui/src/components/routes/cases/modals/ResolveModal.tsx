@@ -27,13 +27,14 @@ import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import useHitActions from 'components/hooks/useHitActions';
 import useMyApi from 'components/hooks/useMyApi';
-import { isNil, uniq } from 'lodash-es';
+import { uniq } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
 import type { Hit } from 'models/entities/generated/Hit';
 import { useCallback, useContext, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
+import { notNil } from 'utils/utils';
 import useCase from '../hooks/useCase';
 
 const HitEntry: FC<{ hit: Hit; checked?: boolean; onChange?: () => void }> = ({ hit, checked, onChange }) => {
@@ -55,7 +56,7 @@ const HitEntry: FC<{ hit: Hit; checked?: boolean; onChange?: () => void }> = ({ 
         }}
       >
         <Stack direction="row" alignItems="center" spacing={1} pr={1} width="100%">
-          {!isNil(checked) && (
+          {notNil(checked) && (
             <Checkbox
               size="small"
               checked={checked}

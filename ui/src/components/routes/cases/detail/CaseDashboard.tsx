@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOutletContext } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
+import { notNil } from 'utils/utils';
 import useCase from '../hooks/useCase';
 import CaseAggregate from './aggregates/CaseAggregate';
 import AlertPanel from './AlertPanel';
@@ -48,7 +49,7 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
       (_case?.items ?? [])
         .filter(item => ['hit', 'event'].includes(item.type!))
         .map(item => item.value)
-        .filter(val => !isNil(val)),
+        .filter(notNil),
     [_case?.items]
   );
 
