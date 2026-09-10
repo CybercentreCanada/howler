@@ -101,15 +101,17 @@ const CluePivotForm: FC<PivotFormProps> = ({ pivot, update }) => {
 
     // Enhance string properties with hit index options for better UX
     Object.entries(clueAdaptedSchema.properties ?? {}).forEach(([key, prop]) => {
+      const hitFields = Object.keys(config.indexes?.hit ?? {});
+
       // Handle boolean properties by converting to enum with hit indexes
       if (typeof prop === 'boolean') {
-        clueAdaptedSchema.properties![key] = { enum: Object.keys(config.indexes.hit) };
+        clueAdaptedSchema.properties![key] = { enum: hitFields };
         return;
       }
 
       if (prop.type === 'array') {
         if (isBoolean(prop.items)) {
-          clueAdaptedSchema.properties![key] = { enum: Object.keys(config.indexes.hit) };
+          clueAdaptedSchema.properties![key] = { enum: hitFields };
           return;
         } else if (!Array.isArray(prop.items)) {
           prop.type = prop.items!.type;
@@ -129,12 +131,12 @@ const CluePivotForm: FC<PivotFormProps> = ({ pivot, update }) => {
 
       // Add hit index options to string properties without existing enums
       if (!prop.enum && !prop.oneOf) {
-        prop.enum = Object.keys(config.indexes.hit);
+        prop.enum = hitFields;
       }
     });
 
     return clueAdaptedSchema;
-  }, [actions, config.indexes.hit, pivot?.value]);
+  }, [actions, config.indexes, pivot?.value]);
 
   /**
    * Generates the UI schema for JsonForms based on the form schema.
@@ -307,7 +309,7 @@ const CluePivotForm: FC<PivotFormProps> = ({ pivot, update }) => {
         <>
           <Autocomplete
             fullWidth
-            options={['custom', ...Object.keys(config.indexes.hit)]}
+            options={['custom', ...Object.keys(config.indexes?.hit ?? {})]}
             renderInput={params => (
               <TextField
                 {...params}
@@ -410,9 +412,9 @@ const CluePivotForm: FC<PivotFormProps> = ({ pivot, update }) => {
                 const newMappings = Object.entries(fullData).map(([key, val]: [string, any]) => ({
                   key,
                   // Use 'custom' field type if value is not a standard hit index
-                  field: val in config.indexes.hit ? val : 'custom',
+                  field: val in (config.indexes?.hit ?? {}) ? val : 'custom',
                   // Store custom values separately from field names
-                  custom_value: val in config.indexes.hit ? null : val
+                  custom_value: val in (config.indexes?.hit ?? {}) ? null : val
                 }));
 
                 // Only update if mappings have actually changed (performance optimization)

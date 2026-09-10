@@ -22,8 +22,8 @@ import SearchResponseProvider, {
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import { TuiListProvider, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext } from 'components/elements/addons/lists/TuiListProvider';
-import HowlerAvatar from 'components/elements/display/HowlerAvatar';
 import ItemManager from 'components/elements/display/ItemManager';
+import Members from 'components/elements/membership/Members';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import type { HowlerUser } from 'models/entities/HowlerUser';
@@ -189,15 +189,12 @@ const ActionSearch: FC = () => {
                   </Tooltip>
                 )}
                 <FlexOne />
-                {((item.item.owner_id === user.username && editRoles) || user.roles?.includes('admin')) && (
+                <Members item={item.item} />
+                {((item.item.owner === user.username && editRoles) || user.roles?.includes('admin')) && (
                   <IconButton size="small" onClick={e => onDelete(e, item.item.action_id!)}>
                     <Delete />
                   </IconButton>
                 )}
-                <HowlerAvatar
-                  sx={{ width: 24, height: 24, marginRight: '8px !important' }}
-                  userId={item.item.owner_id!}
-                />
               </Stack>
             }
             subheader={item.item.query}

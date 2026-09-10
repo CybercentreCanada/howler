@@ -63,7 +63,7 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
         return;
       }
 
-      if (!config.lookups[_category as keyof APILookups]) {
+      if (!config.lookups?.[_category as keyof APILookups]) {
         setLoading(true);
 
         const facets = await dispatchApi(
@@ -97,7 +97,7 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
 
   const filterValue = filter?.replaceAll('"', '').replaceAll('\\-', '-') || '';
   const configuredLookup =
-    category && category in config.lookups ? config.lookups[category as keyof APILookups] : undefined;
+    category && category in (config.lookups ?? {}) ? config.lookups?.[category as keyof APILookups] : undefined;
   const lookupOptions = Array.isArray(configuredLookup) ? configuredLookup : customLookups;
 
   return (

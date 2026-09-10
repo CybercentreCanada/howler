@@ -43,7 +43,7 @@ const ClueLeadForm: FC<LeadFormProps> = ({ lead, metadata, update, updateMetadat
         onChange={(_ev, type) => updateMetadata({ type })}
       />
       <Autocomplete
-        options={['custom', ...Object.keys(config.indexes.hit)]}
+        options={['custom', ...Object.keys(config.indexes?.hit ?? {})]}
         disabled={!metadata?.type}
         renderInput={params => <TextField {...params} size="small" label={t('route.dossiers.manager.clue.value')} />}
         getOptionLabel={opt => t(opt)}

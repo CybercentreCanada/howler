@@ -41,6 +41,7 @@ nav:
 - Installation:
   - installation/deployment.md
   - installation/deployment_minikube.md
+  - migration.md
   - Configuring Howler:
     - installation/default_configuration.md
     - installation/configuration.md

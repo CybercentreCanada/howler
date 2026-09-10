@@ -48,6 +48,10 @@ const RowEntry: FC<{ field: string }> = memo(({ field }) => {
   const { config } = useContext(ApiConfigContext);
   const theme = useTheme();
 
+  if (!config.indexes) {
+    return;
+  }
+
   return (
     <TableRow>
       <TableCell width="350" style={{ wordBreak: 'break-word' }}>
@@ -136,6 +140,10 @@ const HitSchemaDocumentation: FC = () => {
         return true;
       }
 
+      if (!config.indexes) {
+        return false;
+      }
+
       const _phrase = phrase.toLowerCase();
       if (field.includes(_phrase)) {
         return true;
@@ -148,31 +156,31 @@ const HitSchemaDocumentation: FC = () => {
 
       return false;
     },
-    [config.indexes.hit, phrase]
+    [config.indexes, phrase]
   );
 
   const howlerFields = useMemo(
     () =>
-      Object.keys(config.indexes.hit)
+      Object.keys(config.indexes?.hit ?? {})
         .filter(field => field.startsWith('howler') && !field.endsWith('key_a'))
         .filter(filterSearch),
-    [config.indexes.hit, filterSearch]
+    [config.indexes, filterSearch]
   );
 
   const assemblylineFields = useMemo(
     () =>
-      Object.keys(config.indexes.hit)
+      Object.keys(config.indexes?.hit ?? {})
         .filter(field => field.startsWith('assemblyline') && !field.endsWith('key_a'))
         .filter(filterSearch),
-    [config.indexes.hit, filterSearch]
+    [config.indexes, filterSearch]
   );
 
   const ecsFields = useMemo(
     () =>
-      Object.keys(config.indexes.hit)
+      Object.keys(config.indexes?.hit ?? {})
         .filter(field => !field.startsWith('howler') && !field.startsWith('assemblyline') && !field.endsWith('key_a'))
         .filter(filterSearch),
-    [config.indexes.hit, filterSearch]
+    [config.indexes, filterSearch]
   );
 
   return (

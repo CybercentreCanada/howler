@@ -293,7 +293,7 @@ const HitGraph: FC = () => {
         />
         <Autocomplete
           sx={{ flex: 1 }}
-          options={config.lookups['howler.escalation']}
+          options={config.lookups?.['howler.escalation'] ?? []}
           renderInput={params => <TextField {...params} label={t('hit.summary.filter.escalation')} size="small" />}
           value={escalationFilter}
           onChange={(__, option) => setEscalationFilter(option)}

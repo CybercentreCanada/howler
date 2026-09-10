@@ -18,6 +18,7 @@ import {
 import { PageCenter } from '@tui/core';
 import api from 'api';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { MembershipManagement } from 'components/elements/membership/MembershipManagement';
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import { isEqual, omit, uniqBy } from 'lodash-es';
@@ -38,6 +39,7 @@ const DossierEditor: FC = () => {
   const { showSuccessMessage } = useMySnackbar();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+
   const dossierId = params.id;
 
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
@@ -56,6 +58,7 @@ const DossierEditor: FC = () => {
   const [loading, setLoading] = useState(false);
 
   const dirty = useMemo(() => !isEqual(originalDossier, dossier), [dossier, originalDossier]);
+
   const validationError = useMemo(() => {
     const language = i18n.language as 'en' | 'fr';
 
@@ -200,7 +203,9 @@ const DossierEditor: FC = () => {
         showSuccessMessage(t('route.dossiers.manager.create.success'));
         void navigate(`/dossiers/${result.dossier_id}/edit`);
       } else {
-        const result = await dispatchApi(api.dossier.put(dossierId, omit(dossier, ['dossier_id', 'id'])));
+        const result = await dispatchApi(
+          api.dossier.put(dossierId, omit(dossier, ['dossier_id', 'id', 'owner', 'admins', 'members']))
+        );
         if (!result) {
           return;
         }
@@ -294,7 +299,7 @@ const DossierEditor: FC = () => {
         <Stack spacing={1} height="100%">
           <Paper sx={{ p: 1 }}>
             <Stack spacing={1}>
-              <Stack spacing={1} direction="row">
+              <Stack spacing={1} direction="row" alignItems="center">
                 <TextField
                   id="dossier-title"
                   disabled={!dossier || loading}
@@ -321,6 +326,7 @@ const DossierEditor: FC = () => {
                     </ToggleButton>
                   </Tooltip>
                 </ToggleButtonGroup>
+                <MembershipManagement type="dossier" entity={dossier} onChange={_dossier => setDossier(_dossier)} />
               </Stack>
               <Typography
                 sx={theme => ({

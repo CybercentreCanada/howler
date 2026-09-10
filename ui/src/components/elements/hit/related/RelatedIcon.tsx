@@ -1,6 +1,6 @@
-import { useAppTheme } from '@tui/core';
 import { Icon } from '@iconify/react';
 import Avatar from '@mui/material/Avatar';
+import { useAppTheme } from '@tui/core';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { useContext, type FC } from 'react';
 
@@ -18,7 +18,7 @@ const RelatedIcon: FC<{ icon?: string; title?: string; href?: string; compact?: 
   }
 
   let avatarImage: string | null = null;
-  const app = config.configuration.ui.apps.find(a => a.name.toLowerCase() === icon?.toLowerCase());
+  const app = config.configuration?.ui.apps.find(a => a.name.toLowerCase() === icon?.toLowerCase());
   if (app) {
     // use the image link for the configured related application instead
     avatarImage = app[`img_${isDark ? 'd' : 'l'}`];

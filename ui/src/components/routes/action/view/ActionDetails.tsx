@@ -15,12 +15,13 @@ import { ModalContext } from 'components/app/providers/ModalProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import Phrase from 'components/elements/addons/search/phrase/Phrase';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
+import { MembershipManagement } from 'components/elements/membership/MembershipManagement';
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import OperationEntry from 'components/routes/action/shared/OperationEntry';
 import type { ActionOperation } from 'models/ActionTypes';
-import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Action } from 'models/entities/generated/Action';
+import type { HowlerUser } from 'models/entities/HowlerUser';
 import howlerPluginStore from 'plugins/store';
 import { useCallback, useContext, useEffect, useState, type ChangeEventHandler } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -120,13 +121,14 @@ const ActionDetails = () => {
         user.roles.includes('actionrunner_basic') ||
         user.roles.includes('actionrunner_advanced')));
   const actionId = action?.action_id;
+  const adminList = action?.admins ?? [];
 
   return (
     <PageCenter maxWidth="1500px" textAlign="left" height="100%">
       <Stack spacing={1}>
         <Stack direction="row" justifyContent="space-between">
           <Typography variant="h5">{action?.name}</Typography>
-          {action?.owner_id && <HowlerAvatar sx={{ width: 32, height: 32 }} userId={action.owner_id} />}
+          {action?.owner && <HowlerAvatar sx={{ width: 32, height: 32 }} userId={action.owner} />}
         </Stack>
         <Phrase
           fullWidth
@@ -143,7 +145,7 @@ const ActionDetails = () => {
         <Stack direction="row" alignItems="center" spacing={1}>
           {response && <QueryResultText count={response.total} query={action?.query ?? ''} />}
           <FlexOne />
-          {((action?.owner_id === user.username && editRoles) || user.roles?.includes('admin')) && (
+          {((action?.owner === user.username && editRoles) || user.roles?.includes('admin')) && (
             <Button startIcon={<Delete />} size="small" variant="outlined" color="error" onClick={onDelete}>
               {t('button.delete')}
             </Button>
@@ -159,7 +161,10 @@ const ActionDetails = () => {
               {t('route.actions.execute')}
             </Button>
           )}
-          {((action?.owner_id === user.username && editRoles) || user.roles?.includes('admin')) && (
+          {((action?.owner === user.username && editRoles) ||
+            (adminList.includes(user.username) && editRoles) ||
+            (action?.members?.includes(user.username) && editRoles) ||
+            user.roles?.includes('admin')) && (
             <Button
               startIcon={<Edit />}
               size="small"
@@ -170,6 +175,7 @@ const ActionDetails = () => {
               {t('route.actions.edit')}
             </Button>
           )}
+          <MembershipManagement size="small" type="action" entity={action} onChange={_action => setAction(_action)} />
         </Stack>
         {(user.roles ?? []).includes('automation_advanced') && (
           <FormGroup>
