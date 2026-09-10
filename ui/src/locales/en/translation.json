@@ -20,6 +20,7 @@
   "api.user.apikey.removed": "API key removed successfully.",
   "api.user.apikey.updated": "New API key added successfully.",
   "api.user.email.updated": "User's email updated successfully.",
+  "api.user.groups.empty": "No user groups to show.",
   "api.user.name.updated": "User's name updated successfully.",
   "api.user.quota.updated": "API quota updated successfully.",
   "api.user.role.updated": "User's roles updated successfully.",

@@ -51,7 +51,7 @@ const RecordGrid: FC = () => {
       const target = event.target as HTMLDivElement;
 
       if (target.scrollHeight - target.scrollTop === target.clientHeight) {
-        search(query, true);
+        search(query!, true);
       }
     },
     [query, search]
@@ -83,7 +83,7 @@ const RecordGrid: FC = () => {
         >
           {t('hit.search.prompt')}
         </Typography>
-        <SearchActionMenu query={query} />
+        <SearchActionMenu query={query!} />
       </Stack>
       <Stack direction="row" spacing={1}>
         <Stack position="relative" flex={1}>
@@ -124,11 +124,11 @@ const RecordGrid: FC = () => {
         onScroll={onScroll}
       >
         <RecordTable
-          query={query}
+          query={query!}
           items={response?.items}
           refreshItems={search}
           ContextMenu={RecordContextMenu}
-          contextMenuProps={{ Component: TableBody, getSelectedId: getSelectedId }}
+          contextMenuProps={{ Component: TableBody, getSelectedId }}
           onItemClick={onClick}
         />
         {(response?.total ?? 0) < 1 && (

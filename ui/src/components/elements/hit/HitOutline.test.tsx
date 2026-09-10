@@ -41,13 +41,13 @@ vi.mock('use-context-selector', () => ({
     selector({ addFilter })
 }));
 
-vi.mock('utils/constants', () => ({
-  PROVIDER_COLORS: { unknown: '#000000' },
-  StorageKey: { TEMPLATE_FIELD_COUNT: 'template-field-count' }
+vi.mock('utils/utils', () => ({
+  getProviderColor: (_provider: string | undefined) => '#000000',
+  notNil: (value: unknown) => value !== null && value !== undefined
 }));
 
-vi.mock('utils/utils', () => ({
-  stringToColor: () => '#ffffff'
+vi.mock('utils/constants', () => ({
+  StorageKey: { TEMPLATE_FIELD_COUNT: 'template-field-count' }
 }));
 
 describe('HitOutline', () => {

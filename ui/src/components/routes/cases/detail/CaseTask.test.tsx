@@ -162,6 +162,19 @@ describe('CaseTask', () => {
     });
   });
 
+  describe('missing callbacks', () => {
+    it('does not expose editing controls without an edit callback', () => {
+      const { container } = render(
+        <MemoryRouter>
+          <CaseTask case={testCase} task={mkTask()} />
+        </MemoryRouter>
+      );
+
+      expect(getEditButton(container)).not.toBeInTheDocument();
+      expect(screen.getByRole('checkbox')).toBeDisabled();
+    });
+  });
+
   describe('auto-update effects', () => {
     it('auto-calls onEdit when complete is toggled while not editing', async () => {
       const { mockOnEdit } = renderTask(mkTask({ complete: false }));

@@ -47,7 +47,7 @@ const RelatedRecords: FC<{ hit: Hit }> = ({ hit }) => {
   const { t } = useTranslation();
 
   const [open, setOpen] = useState(false);
-  const [filter, setFilter] = useState<string>(null);
+  const [filter, setFilter] = useState<string | null>(null);
 
   const related = useMemo(() => hit?.howler.related ?? [], [hit?.howler.related]);
   const records = useRelatedRecords(related, open);

@@ -2,7 +2,9 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PivotGroupMenuItem from 'components/elements/hit/PivotGroupMenuItem';
 import type { Dossier } from 'models/entities/generated/Dossier';
+import type { Pivot } from 'models/entities/generated/Pivot';
 import { setupLocalStorageMock } from 'tests/mocks';
+import type { menuPathNode } from 'utils/pivotForest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import HitLinks from './HitLinks';
 
@@ -11,7 +13,7 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('components/elements/hit/related/PivotFolderMenu', () => ({
-  default: ({ node }) => <span>{`group:${node.path}`}</span>
+  default: ({ node }: { node: menuPathNode }) => <span>{`group:${node.path}`}</span>
 }));
 
 const pivotLifecycle = vi.hoisted(() => ({ mounted: vi.fn(), unmounted: vi.fn() }));
@@ -20,7 +22,7 @@ vi.mock('components/elements/hit/related/PivotLink', async () => {
   const { useEffect } = await import('react');
 
   return {
-    default: ({ pivot }) => {
+    default: ({ pivot }: { pivot: Pivot }) => {
       useEffect(() => {
         pivotLifecycle.mounted(pivot.value);
         return () => pivotLifecycle.unmounted(pivot.value);

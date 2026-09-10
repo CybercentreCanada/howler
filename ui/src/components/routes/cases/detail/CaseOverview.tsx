@@ -24,7 +24,7 @@ const CaseOverview: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promi
 
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [overview, setOverview] = useState(_case?.overview);
+  const [overview, setOverview] = useState(_case?.overview ?? '');
 
   useEffect(() => {
     if (!editing && _case?.overview) {
@@ -57,7 +57,7 @@ const CaseOverview: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promi
             {editing ? (
               <MarkdownEditor height="40vh" content={overview} setContent={_content => setOverview(_content)} />
             ) : (
-              <Markdown md={_case.overview} />
+              <Markdown md={_case.overview ?? ''} />
             )}
           </Box>
 

@@ -20,7 +20,7 @@ const useTitle = () => {
   const getHit = useContextSelector(RecordContext, ctx => ctx.getRecord);
 
   const setTitle = useCallback((title: string) => {
-    document.querySelector('title').innerHTML = title;
+    document.querySelector('title')!.innerHTML = title;
   }, []);
 
   const runChecks = useCallback(async () => {

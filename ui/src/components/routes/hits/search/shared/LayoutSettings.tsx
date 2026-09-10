@@ -12,7 +12,7 @@ import {
 import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import ChipPopper from 'components/elements/display/ChipPopper';
 import { HitLayout } from 'components/elements/hit/HitLayout';
-import LayoutToggle from 'components/elements/view/LayoutToggle';
+import LayoutToggle, { type HowlerViewLayoutType } from 'components/elements/view/LayoutToggle';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,7 +25,10 @@ const LayoutSettings: FC = () => {
   const displayType = useContextSelector(RecordSearchContext, ctx => ctx.displayType);
   const setDisplayType = useContextSelector(RecordSearchContext, ctx => ctx.setDisplayType);
   const [hitLayout, setHitLayout] = useMyLocalStorageItem(StorageKey.HIT_LAYOUT, false);
-  const [templateFieldCount, setTemplateFieldCount] = useMyLocalStorageItem(StorageKey.TEMPLATE_FIELD_COUNT, null);
+  const [templateFieldCount, setTemplateFieldCount] = useMyLocalStorageItem<number | null>(
+    StorageKey.TEMPLATE_FIELD_COUNT,
+    null
+  );
 
   return (
     <ChipPopper
@@ -48,7 +51,10 @@ const LayoutSettings: FC = () => {
             <InfoOutlined fontSize="inherit" />
           </Tooltip>
         </Stack>
-        <LayoutToggle displayType={displayType} setDisplayType={setDisplayType} />
+        <LayoutToggle
+          displayType={displayType}
+          setDisplayType={setDisplayType as (type: HowlerViewLayoutType) => void}
+        />
         <Divider flexItem />
         <Stack direction="row" spacing={0.5} alignItems="center" alignSelf="stretch">
           <FormLabel id="layout">{t('page.settings.local.hits.layout')}</FormLabel>

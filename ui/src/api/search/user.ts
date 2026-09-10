@@ -9,11 +9,16 @@ export const uri = () => {
   return joinUri(parentUri(), 'user');
 };
 
-export const post = async (request?: HowlerSearchRequest): Promise<HowlerSearchResponse<HowlerUser>> => {
+export const post = async (request?: HowlerSearchRequest) => {
   const response = await hpost<HowlerSearchResponse<HowlerApiUser>>(uri(), {
     ...request,
     query: request?.query || 'name:*'
   });
+
+  if (!response) {
+    throw new Error('Search response was empty.');
+  }
+
   return {
     ...response,
     items: response.items.map((i: HowlerApiUser) => ({ ...i, username: i.uname }))

@@ -3,6 +3,7 @@ import { Box, useTheme } from '@mui/material';
 import type { FC, PropsWithChildren } from 'react';
 import { useContext, useEffect, useRef } from 'react';
 import { useResizeDetector } from 'react-resize-detector';
+import { notNil } from 'utils/utils';
 import { VSBoxContext } from './VSBox';
 
 type VSBoxHeaderProps = Omit<BoxProps, 'children'>;
@@ -14,8 +15,8 @@ const VSBoxHeader: FC<PropsWithChildren<VSBoxHeaderProps>> = ({ children, ...box
   const { state, setState } = useContext(VSBoxContext);
 
   useEffect(() => {
-    if (height !== heightRef.current) {
-      setState({ ...state, scrollTop: state.top + height });
+    if (notNil(height) && height !== heightRef.current) {
+      setState?.({ ...state, scrollTop: state.top + height });
       heightRef.current = height;
     }
   }, [height, state, setState]);

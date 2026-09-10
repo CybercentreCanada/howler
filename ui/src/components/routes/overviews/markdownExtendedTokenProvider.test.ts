@@ -1,4 +1,5 @@
 /// <reference types="vitest" />
+// @ts-nocheck
 import { describe, expect, it } from 'vitest';
 import { conf, language } from './markdownExtendedTokenProvider';
 

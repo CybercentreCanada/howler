@@ -55,7 +55,7 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
           };
         })
       ),
-      item => item.pivot.label?.[i18n.language]
+      item => item.pivot.label?.[i18n.language as 'en' | 'fr']
     );
   }, [pivotGroupEnabled, dossiers, i18n.language, hit]);
 
@@ -111,7 +111,7 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
 
       {hasNotebooks && (
         <Grid>
-          <HitNotebooks analytic={analytic} hit={hit} compact />
+          <HitNotebooks analytic={analytic!} hit={hit!} compact />
         </Grid>
       )}
     </Grid>

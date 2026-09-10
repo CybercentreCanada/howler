@@ -16,7 +16,7 @@ describe('buildTree', () => {
   });
 
   it('places items at root when parent is null', () => {
-    const item: Item = { id: 'item-1', type: 'hit', value: 'hit-001', parent: null };
+    const item: Item = { id: 'item-1', type: 'hit', value: 'hit-001' };
     const result = buildTree([item]);
     expect(result.leaves).toEqual([item]);
   });
@@ -28,7 +28,7 @@ describe('buildTree', () => {
   });
 
   it('places items inside a folder by parent reference', () => {
-    const folder: Item = { id: 'folder-1', type: 'folder', value: 'My Folder', name: 'My Folder', parent: null };
+    const folder: Item = { id: 'folder-1', type: 'folder', value: 'My Folder', name: 'My Folder' };
     const item: Item = { id: 'item-1', type: 'hit', value: 'hit-001', parent: 'folder-1' };
     const result = buildTree([folder, item]);
     expect(result.folders?.['My Folder']).toBeDefined();
@@ -36,14 +36,14 @@ describe('buildTree', () => {
   });
 
   it('renders empty folders', () => {
-    const folder: Item = { id: 'folder-1', type: 'folder', value: 'Empty', name: 'Empty', parent: null };
+    const folder: Item = { id: 'folder-1', type: 'folder', value: 'Empty', name: 'Empty' };
     const result = buildTree([folder]);
     expect(result.folders?.Empty).toBeDefined();
     expect(result.folders?.Empty.leaves).toEqual([]);
   });
 
   it('nests folders inside other folders', () => {
-    const parent: Item = { id: 'f1', type: 'folder', value: 'Parent', name: 'Parent', parent: null };
+    const parent: Item = { id: 'f1', type: 'folder', value: 'Parent', name: 'Parent' };
     const child: Item = { id: 'f2', type: 'folder', value: 'Child', name: 'Child', parent: 'f1' };
     const item: Item = { id: 'i1', type: 'hit', value: 'hit-1', parent: 'f2' };
     const result = buildTree([parent, child, item]);
@@ -51,7 +51,7 @@ describe('buildTree', () => {
   });
 
   it('includes folder id in tree nodes', () => {
-    const folder: Item = { id: 'folder-1', type: 'folder', value: 'Folder', name: 'Folder', parent: null };
+    const folder: Item = { id: 'folder-1', type: 'folder', value: 'Folder', name: 'Folder' };
     const result = buildTree([folder]);
     expect(result.folders?.Folder.item?.id).toBe('folder-1');
   });
@@ -63,7 +63,7 @@ describe('buildTree', () => {
   });
 
   it('handles markdown items', () => {
-    const markdown: Item = { id: 'md-1', type: 'markdown', value: '# Hello', parent: null };
+    const markdown: Item = { id: 'md-1', type: 'markdown', value: '# Hello' };
     const result = buildTree([markdown]);
     expect(result.leaves).toEqual([markdown]);
   });
@@ -76,7 +76,7 @@ describe('buildTree', () => {
   });
 
   it('handles multiple items in the same folder', () => {
-    const folder: Item = { id: 'f1', type: 'folder', value: 'Alerts', name: 'Alerts', parent: null };
+    const folder: Item = { id: 'f1', type: 'folder', value: 'Alerts', name: 'Alerts' };
     const a: Item = { id: 'a', type: 'hit', value: 'hit-a', parent: 'f1' };
     const b: Item = { id: 'b', type: 'hit', value: 'hit-b', parent: 'f1' };
     const result = buildTree([folder, a, b]);
@@ -90,7 +90,7 @@ describe('buildTree', () => {
   });
 
   it('preserves all item fields on leaves', () => {
-    const rich: Item = { id: 'r1', type: 'reference', value: 'https://example.com', name: 'Example', parent: null };
+    const rich: Item = { id: 'r1', type: 'reference', value: 'https://example.com', name: 'Example' };
     const result = buildTree([rich]);
     expect(result.leaves?.[0]).toEqual(rich);
   });

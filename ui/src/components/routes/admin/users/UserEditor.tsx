@@ -6,7 +6,7 @@ import useMyUserFunctions from 'components/hooks/useMyUserFunctions';
 import ProfileSection from 'components/routes/settings/ProfileSection';
 import SecuritySection from 'components/routes/settings/SecuritySection';
 import type { HowlerUser } from 'models/entities/HowlerUser';
-import { useCallback, useEffect, useState, type FC } from 'react';
+import { useEffect, useState, type FC } from 'react';
 import { useParams } from 'react-router';
 
 const UserEditor: FC = () => {
@@ -14,39 +14,52 @@ const UserEditor: FC = () => {
   const { id } = useParams();
   const [user, setUser] = useState<HowlerUser>();
   const { user: currentUser } = useAppUser<HowlerUser>();
+
   const isAdmin = currentUser.is_admin;
+  const sameUser = currentUser.username === user?.username;
 
   const { editName, editPassword, editQuota, addRole, removeRole, addApiKey, removeApiKey, viewGroups } =
     useMyUserFunctions();
 
-  const userWrapper = useCallback(
-    (fn: (user: HowlerUser, newValue: unknown) => Promise<HowlerUser>) => {
-      return async (value: unknown) => setUser(await fn(user, value));
-    },
-    [user, setUser]
-  );
+  const userWrapper = <T,>(fn: (user: HowlerUser, newValue: T) => Promise<HowlerUser>) => {
+    return async (value: T) => {
+      if (!user) {
+        return;
+      }
+
+      setUser(await fn(user, value));
+    };
+  };
 
   useEffect(() => {
     if (id && !user) {
-      void dispatchApi(api.user.get(id)).then(setUser);
+      void dispatchApi(api.user.get(id)).then(result => {
+        if (result) {
+          setUser(result);
+        }
+      });
     }
   }, [dispatchApi, id, user]);
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <UserPageWrapper user={user}>
       <ProfileSection
         user={user}
-        editName={(isAdmin || currentUser.username === user?.username) && userWrapper(editName)}
-        addRole={isAdmin && userWrapper(addRole)}
-        removeRole={isAdmin && userWrapper(removeRole)}
-        viewGroups={currentUser.username === user?.username && viewGroups}
+        editName={isAdmin || sameUser ? userWrapper(editName) : undefined}
+        addRole={isAdmin ? userWrapper(addRole) : undefined}
+        removeRole={isAdmin ? userWrapper(removeRole) : undefined}
+        viewGroups={sameUser ? viewGroups : undefined}
       />
       <SecuritySection
         user={user}
-        editPassword={currentUser.username === user?.username && editPassword}
-        addApiKey={currentUser.username === user?.username && addApiKey}
-        removeApiKey={(isAdmin || currentUser.username === user?.username) && userWrapper(removeApiKey)}
-        editQuota={isAdmin && userWrapper(editQuota)}
+        editPassword={sameUser ? editPassword : undefined}
+        addApiKey={sameUser ? addApiKey : undefined}
+        removeApiKey={isAdmin || sameUser ? userWrapper(removeApiKey) : undefined}
+        editQuota={isAdmin ? userWrapper(editQuota) : undefined}
       />
     </UserPageWrapper>
   );

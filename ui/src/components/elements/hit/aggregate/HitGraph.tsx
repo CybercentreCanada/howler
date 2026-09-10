@@ -67,14 +67,14 @@ const HitGraph: FC = () => {
   const chartRef = useRef<Chart<'scatter'>>(undefined);
 
   const [loading, setLoading] = useState(false);
-  const [filterField, setFilterField] = useState<string>(FILTER_FIELDS[0]);
+  const [filterField, setFilterField] = useState<string>(FILTER_FIELDS[0]!);
   const [data, setData] = useState<ChartDataset<'scatter'>[]>([]);
   const [showWarning, setShowWarning] = useState(false);
   const [override, setOverride] = useState(false);
   const [disabled, setDisabled] = useState(false);
   const [searchTotal, setSearchTotal] = useState(0);
 
-  const [escalationFilter, setEscalationFilter] = useState<string>(null);
+  const [escalationFilter, setEscalationFilter] = useState<string | null>(null);
 
   const performQuery = useCallback(async () => {
     setLoading(true);
@@ -87,14 +87,19 @@ const HitGraph: FC = () => {
         filters.push(`howler.escalation:${escalationFilter}`);
       }
 
-      const total = (
-        await dispatchApi(
-          api.search.count.hit.post({
-            query,
-            filters
-          })
-        )
-      ).count;
+      const countResult = await dispatchApi(
+        api.search.count.hit.post({
+          query: query ?? DEFAULT_QUERY,
+          filters
+        })
+      );
+      if (!countResult) {
+        setData([]);
+        setDisabled(false);
+        return;
+      }
+
+      const total = countResult.count;
 
       if (total > MAX_QUERY_SIZE) {
         setDisabled(true);
@@ -104,7 +109,7 @@ const HitGraph: FC = () => {
         setDisabled(false);
       }
 
-      const _data = await dispatchApi(
+      const groupedResult = await dispatchApi(
         api.search.grouped.hit.post(filterField, {
           query: query || DEFAULT_QUERY,
           fl: 'event.created,howler.assessment,howler.analytic,howler.detection,howler.outline.threat,howler.outline.target,howler.outline.summary,howler.id',
@@ -118,11 +123,17 @@ const HitGraph: FC = () => {
         })
       );
 
-      if (_data.total > MAX_ROWS && !override) {
+      if (!groupedResult) {
+        setData([]);
+        setShowWarning(false);
+        return;
+      }
+
+      if (groupedResult.total > MAX_ROWS && !override) {
         setShowWarning(true);
       }
 
-      const processed = _data.items.map(category => {
+      const processed = groupedResult.items.map(category => {
         const label = capitalize(category.value ?? 'None');
 
         return {
@@ -147,7 +158,7 @@ const HitGraph: FC = () => {
   }, [dispatchApi, escalationFilter, filterField, getFilters, override, query]);
 
   useEffect(() => {
-    if ((!query && views?.length < 1) || error || !response) {
+    if ((!query && (views?.length ?? 0) < 1) || error || !response) {
       return;
     }
 
@@ -167,7 +178,7 @@ const HitGraph: FC = () => {
           return;
         }
 
-        if ((event.native as MouseEvent).ctrlKey || (event.native as MouseEvent).shiftKey) {
+        if ((event.native! as MouseEvent).ctrlKey || (event.native! as MouseEvent).shiftKey) {
           ids.forEach(id => {
             if (selectedHits.some(hit => hit.howler.id === id)) {
               removeHitFromSelection(id);
@@ -183,8 +194,12 @@ const HitGraph: FC = () => {
           }
         }
       },
-      onHover: (event, chartElement) =>
-        ((event.native.target as any).style.cursor = chartElement[0] ? 'pointer' : 'default'),
+      onHover: (event, chartElement) => {
+        const target = event.native?.target;
+        if (target instanceof HTMLElement) {
+          target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+        }
+      },
       interaction: {
         mode: 'nearest'
       },
@@ -221,8 +236,9 @@ const HitGraph: FC = () => {
             color: theme.palette.divider
           },
           ticks: {
-            callback: (value: number) => {
-              const [hour, minute] = [Math.floor(value), Math.floor((value - Math.floor(value)) * 60)];
+            callback: (value: number | string) => {
+              const numValue = typeof value === 'number' ? value : parseFloat(value);
+              const [hour, minute] = [Math.floor(numValue), Math.floor((numValue - Math.floor(numValue)) * 60)];
 
               return dayjs().hour(hour).minute(minute).format('HH:mm');
             }
@@ -273,7 +289,7 @@ const HitGraph: FC = () => {
           options={FILTER_FIELDS}
           renderInput={params => <TextField {...params} label={t('hit.summary.filter.field')} size="small" />}
           value={filterField}
-          onChange={(__, option) => setFilterField(option)}
+          onChange={(__, option) => setFilterField(option!)}
         />
         <Autocomplete
           sx={{ flex: 1 }}

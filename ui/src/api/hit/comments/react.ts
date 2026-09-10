@@ -6,10 +6,10 @@ export const uri = (hit: string, comment: string) => {
   return joinUri(parentUri(hit, comment), 'react');
 };
 
-export const put = (hit: string, comment: string, type: string): Promise<boolean> => {
-  return hput(uri(hit, comment), { type });
+export const put = (hit: string, comment: string, type: string) => {
+  return hput<boolean>(uri(hit, comment), { type });
 };
 
-export const del = (hit: string, comment: string): Promise<boolean> => {
+export const del = (hit: string, comment: string) => {
   return hdelete(uri(hit, comment));
 };

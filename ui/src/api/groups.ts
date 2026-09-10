@@ -1,5 +1,4 @@
-import { hget, joinAllUri } from 'api';
-import { uri as parentUri } from '.';
+import { hget, joinAllUri, uri as parentUri } from 'api';
 
 export const uri = () => joinAllUri(parentUri(), 'groups');
 

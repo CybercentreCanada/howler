@@ -20,7 +20,7 @@ type HandlebarsInstance = typeof Handlebars;
 
 export interface PivotLinkProps {
   pivot: Pivot;
-  hit: Hit;
+  hit?: Hit;
   compact?: boolean;
   dossier: Dossier;
   resolvedUrl: string;
@@ -54,14 +54,14 @@ const PivotLink: FC<PivotLinkProps> = ({
 
     const templateObject = Object.fromEntries(
       (pivot.mappings ?? []).map(mapping => {
-        const result = [mapping.key];
+        const result = [mapping.key!];
 
         if (mapping.field === 'custom') {
-          result.push(mapping.custom_value);
-        } else if (Array.isArray(flatHit[mapping.field])) {
-          result.push(flatHit[mapping.field][0]);
+          result.push(mapping.custom_value!);
+        } else if (Array.isArray(flatHit[mapping.field!])) {
+          result.push(flatHit[mapping.field!][0]);
         } else {
-          result.push(flatHit[mapping.field]);
+          result.push(flatHit[mapping.field!]);
         }
 
         return result;
@@ -77,7 +77,7 @@ const PivotLink: FC<PivotLinkProps> = ({
         // eslint-disable-next-line no-console
         console.debug(`Running helper ${helper.keyword}`);
 
-        return helper.callback(...args);
+        return helper.callback?.(...args);
       });
     });
 
@@ -97,7 +97,7 @@ const PivotLink: FC<PivotLinkProps> = ({
 
     return (
       <RelatedLink
-        title={pivot.label?.[i18n.language] ?? pivot.value ?? ''}
+        title={pivot.label?.[i18n.language as 'en' | 'fr'] ?? ''}
         href={href}
         icon={pivot.icon}
         target="_blank"
@@ -141,7 +141,7 @@ const PivotLink: FC<PivotLinkProps> = ({
   // eslint-disable-next-line no-console
   const oldError = console.error;
 
-  let pluginPivot: React.ReactElement = null;
+  let pluginPivot: React.ReactElement | null = null;
   try {
     // eslint-disable-next-line no-console
     console.error = () => {};

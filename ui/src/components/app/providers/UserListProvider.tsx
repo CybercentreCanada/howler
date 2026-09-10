@@ -10,7 +10,7 @@ interface UserListContextType {
   fetchUsers: (ids: Set<string>) => void;
 }
 
-export const UserListContext = createContext<UserListContextType>(null);
+export const UserListContext = createContext<UserListContextType>(null!);
 
 const UserListProvider: FC<PropsWithChildren> = ({ children }) => {
   const { dispatchApi } = useMyApi();

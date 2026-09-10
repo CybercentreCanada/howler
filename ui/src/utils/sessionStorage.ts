@@ -12,11 +12,11 @@ const {
   // This allows us to write to the same key many times in quick succession without actually writing it to session storage right away.
   const throttler = new Throttler(3000);
 
-  let changes = {};
+  let changes: Record<string, any> = {};
 
   const _getStored = <T = string>(name: StorageKey): T => {
     return {
-      ...JSON.parse(sessionStorage.getItem(buildName(name))),
+      ...JSON.parse(sessionStorage.getItem(buildName(name)) ?? '{}'),
       ...changes[buildName(name)]
     } as T;
   };

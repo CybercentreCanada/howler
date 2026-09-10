@@ -306,7 +306,7 @@ describe('AddToCaseModal', () => {
           name: `${MOCK_HIT_1.howler.analytic} (${MOCK_HIT_1.howler.id})`,
           value: MOCK_HIT_1.howler.id,
           type: 'hit',
-          parent: null
+          parent: undefined
         })
       );
     });

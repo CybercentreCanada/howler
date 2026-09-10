@@ -31,18 +31,18 @@ const HitLabelsDocumentation: FC = () => {
                     variant="filled"
                     size="small"
                     label={label}
-                    sx={[
-                      {
-                        mr: 1,
-                        mb: 1
-                      },
-                      details?.color && {
-                        '&, & svg': {
-                          color: theme => theme.palette.getContrastText(details.color) + ' !important'
-                        },
-                        backgroundColor: details.color
-                      }
-                    ]}
+                    sx={{
+                      mr: 1,
+                      mb: 1,
+                      ...(details?.color
+                        ? {
+                            '&, & svg': {
+                              color: theme => theme.palette.getContrastText(details.color!) + ' !important'
+                            },
+                            backgroundColor: details.color
+                          }
+                        : {})
+                    }}
                   />
                 </TableCell>
               </TableRow>

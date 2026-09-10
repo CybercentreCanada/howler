@@ -3,7 +3,7 @@ import type { View } from 'models/entities/generated/View';
 export const buildViewUrl = (view: View) => {
   const params = new URLSearchParams();
 
-  params.set('view', view.view_id);
+  params.set('view', view.view_id!);
 
   if (view.span) {
     params.set('span', view.span);

@@ -39,6 +39,12 @@ ChartJS.register(
 
 ChartJS.register(zoomPlugin);
 
+const withoutOption = <T extends object, K extends keyof T>(options: T, option: K): Omit<T, K> => {
+  const result = { ...options };
+  Reflect.deleteProperty(result, option);
+  return result;
+};
+
 const useMyChart = () => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -124,17 +130,26 @@ const useMyChart = () => {
     // https://www.chartjs.org/docs/latest/charts/line.html
     line: (titleKey: string, subtitleKey?: string) => {
       const options = generateOptions(titleKey, subtitleKey);
+      const plugins = withoutOption(options.plugins, 'subtitle');
 
-      options.plugins.subtitle = null;
-
-      options.plugins.zoom.pan.mode = 'x';
-
-      return options;
+      return {
+        ...options,
+        plugins: {
+          ...plugins,
+          zoom: {
+            ...plugins.zoom,
+            pan: {
+              ...plugins.zoom.pan,
+              mode: 'x' as const
+            }
+          }
+        }
+      };
     },
 
     // https://www.chartjs.org/docs/latest/charts/doughnut.html
     doughnut: (titleKey: string, subtitleKey?: string) => {
-      const options = { ...generateOptions(titleKey, subtitleKey), scales: null };
+      const options = withoutOption(generateOptions(titleKey, subtitleKey), 'scales');
 
       return options;
     },
@@ -143,14 +158,17 @@ const useMyChart = () => {
     bar: (titleKey: string, subtitleKey?: string) => {
       const options = generateOptions(titleKey, subtitleKey);
 
-      options.plugins.legend = { display: false } as any;
-
-      options.scales = {
-        y: { beginAtZero: true, ticks: { precision: 0, color: theme.palette.text.primary } },
-        x: { ticks: { color: theme.palette.text.primary } }
-      } as any;
-
-      return options;
+      return {
+        ...options,
+        plugins: {
+          ...options.plugins,
+          legend: { display: false }
+        },
+        scales: {
+          y: { beginAtZero: true, ticks: { precision: 0, color: theme.palette.text.primary } },
+          x: { ticks: { color: theme.palette.text.primary } }
+        }
+      };
     },
 
     scatter: (titleKey: string, subtitleKey?: string) => {

@@ -38,7 +38,7 @@ const RetentionDocumentation: FC = () => {
         rows: 1,
         fl: 'howler.id'
       })
-      .then(val => setHitId(val.items[0].howler.id));
+      .then(val => setHitId(val?.items[0]?.howler?.id));
   });
 
   return (

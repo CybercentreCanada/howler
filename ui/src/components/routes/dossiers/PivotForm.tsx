@@ -16,7 +16,7 @@ import {
 } from '@mui/material';
 import api from 'api';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
-import isNull from 'lodash-es/isNull';
+import { isNil } from 'lodash-es';
 import merge from 'lodash-es/merge';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Pivot } from 'models/entities/generated/Pivot';
@@ -36,6 +36,7 @@ import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { useSearchParams } from 'react-router';
 import Throttler from 'utils/Throttler';
+import { notNil } from 'utils/utils';
 import pivotGroupValidation from '../../../utils/pivotGroupValidation';
 
 // Maximum number of group suggestions to request/display at once, mirroring the backend's own cap
@@ -46,7 +47,7 @@ const GROUP_SUGGESTION_THROTTLE_MS = 1000;
 
 export interface PivotFormProps {
   pivot: Pivot;
-  update: (pivot: Partial<Pivot>) => void;
+  update: (pivot?: Partial<Pivot>) => void;
 }
 
 const LinkForm: FC<PivotFormProps> = ({ pivot, update }) => {
@@ -77,7 +78,7 @@ const LinkForm: FC<PivotFormProps> = ({ pivot, update }) => {
               value={_mapping?.key ?? ''}
               onChange={ev =>
                 update({
-                  mappings: pivot.mappings.map((_m, _index) =>
+                  mappings: pivot.mappings!.map((_m, _index) =>
                     index === _index ? { ..._m, key: ev.target.value } : _m
                   )
                 })
@@ -100,14 +101,16 @@ const LinkForm: FC<PivotFormProps> = ({ pivot, update }) => {
               value={_mapping.field ?? ''}
               onChange={(_ev, field) =>
                 update({
-                  mappings: pivot.mappings.map((_m, _index) => (index === _index ? { ..._m, field } : _m))
+                  mappings: pivot.mappings!.map((_m, _index) =>
+                    index === _index ? { ..._m, field: field ?? undefined } : _m
+                  )
                 })
               }
             />
             <IconButton
               onClick={() =>
                 update({
-                  mappings: pivot.mappings.filter((_m, _index) => index !== _index)
+                  mappings: pivot.mappings!.filter((_m, _index) => index !== _index)
                 })
               }
             >
@@ -122,7 +125,7 @@ const LinkForm: FC<PivotFormProps> = ({ pivot, update }) => {
               value={_mapping?.custom_value ?? ''}
               onChange={ev =>
                 update({
-                  mappings: pivot.mappings.map((_m, _index) =>
+                  mappings: pivot.mappings!.map((_m, _index) =>
                     index === _index ? { ..._m, custom_value: ev.target.value } : _m
                   )
                 })
@@ -164,7 +167,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
   const groupThrottler = useMemo(() => new Throttler(GROUP_SUGGESTION_THROTTLE_MS), []);
 
   const update = useCallback(
-    (data: Partial<Pivot>) =>
+    (data?: Partial<Pivot>) =>
       setDossier(_dossier => ({
         ..._dossier,
         pivots: (_dossier.pivots ?? [])
@@ -173,8 +176,8 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
               return pivot;
             }
 
-            if (isNull(data)) {
-              return null;
+            if (isNil(data)) {
+              return;
             }
 
             const merged = merge({}, pivot, data);
@@ -185,12 +188,12 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
 
             return merged;
           })
-          .filter(_pivot => !isNull(_pivot))
+          .filter(notNil)
       })),
     [setDossier, tab]
   );
 
-  const pivot: Pivot = useMemo(() => dossier.pivots?.[tab] ?? null, [dossier.pivots, tab]);
+  const pivot: Pivot | undefined = useMemo(() => dossier.pivots?.[tab], [dossier.pivots, tab]);
   const icon = useMemo(() => pivot?.icon ?? 'material-symbols:find-in-page', [pivot?.icon]);
 
   useEffect(() => {
@@ -214,7 +217,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
       groupThrottler.debounce(async () => {
         try {
           const suggestions = await api.dossier.groups.get(prefix);
-          setGroupOptions(suggestions.slice(0, MAX_GROUP_SUGGESTIONS));
+          setGroupOptions((suggestions ?? []).slice(0, MAX_GROUP_SUGGESTIONS));
         } catch {
           setGroupOptions([]);
         }
@@ -259,7 +262,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
                   label={
                     <Stack direction="row" spacing={0.5}>
                       {lead.icon && <Icon icon={lead.icon} />}
-                      <span>{i18n.language === 'en' ? lead.label.en : lead.label.fr}</span>
+                      <span>{i18n.language === 'en' ? lead.label!.en : lead.label!.fr}</span>
                     </Stack>
                   }
                   value={index}
@@ -340,7 +343,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
               color="error"
               disabled={!pivot}
               sx={{ minWidth: '0 !important', ml: 1 }}
-              onClick={() => update(null)}
+              onClick={() => update(undefined)}
             >
               <Delete />
             </Button>
@@ -378,7 +381,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
               <TextField {...params} size="small" label={t('route.dossiers.manager.pivot.format')} />
             )}
             value={pivot?.format ?? null}
-            onChange={(_ev, format) => update({ format, value: '', mappings: [] })}
+            onChange={(_ev, format) => update({ format: format ?? undefined, value: '', mappings: [] })}
           />
           {!!pivot?.format &&
             (pivot.format === 'link' ? (

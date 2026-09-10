@@ -24,7 +24,7 @@ const QuerySettings: FC<{ verticalSorters?: boolean; boxSx?: SxProps }> = ({ box
 
   const allowAddViews = useMemo(
     () =>
-      Object.values(views).filter(_view => !!_view && !currentViews?.includes(_view.view_id))?.length > 0 &&
+      Object.values(views).filter(_view => !!_view && !currentViews?.includes(_view.view_id!))?.length > 0 &&
       !currentViews?.includes(''),
     [views, currentViews]
   );

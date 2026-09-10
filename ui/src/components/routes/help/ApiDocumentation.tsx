@@ -1,4 +1,3 @@
-import { useAppUser, PageCenter } from '@tui/core';
 import { Help } from '@mui/icons-material';
 import {
   Chip,
@@ -15,6 +14,7 @@ import {
   useMediaQuery,
   useTheme
 } from '@mui/material';
+import { PageCenter, useAppUser } from '@tui/core';
 import api from 'api';
 import type { HelpResponse } from 'api/help';
 import Markdown from 'components/elements/display/Markdown';
@@ -30,7 +30,7 @@ const APIKEY_LABELS = {
   W: 'apikey.write',
   E: 'apikey.extended',
   I: 'apikey.impersonate'
-};
+} as const;
 
 const ApiDocumentation: FC = () => {
   const { t } = useTranslation();
@@ -41,7 +41,7 @@ const ApiDocumentation: FC = () => {
 
   const isLg = useMediaQuery(theme.breakpoints.down('lg'));
 
-  const [data, setData] = useState<HelpResponse>(null);
+  const [data, setData] = useState<HelpResponse>();
 
   useEffect(() => {
     void dispatchApi(api.help.get()).then(setData);
@@ -188,7 +188,7 @@ const ApiDocumentation: FC = () => {
                       </TableCell>
                       <TableCell>
                         <Stack spacing={1} direction="row">
-                          {endpoint.required_priv.map((p: 'R' | 'W' | 'E' | 'I') => (
+                          {endpoint.required_priv.map(p => (
                             <Chip key={p} size="small" label={t(APIKEY_LABELS[p])} />
                           ))}
                         </Stack>

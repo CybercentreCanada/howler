@@ -23,7 +23,7 @@ const MarkdownPage: FC<{ case: Case; item: Item }> = ({ case: _case, item }) => 
     setIsEditing(false);
   }, [item.id, item.value]);
 
-  const path = useMemo(() => buildPathFromID(_case, item.parent), [_case, item.parent]);
+  const path = useMemo(() => buildPathFromID(_case, item.parent!), [_case, item.parent]);
 
   const handleCancel = useCallback(() => {
     setMarkdown(item.value ?? '');

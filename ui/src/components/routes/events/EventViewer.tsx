@@ -8,7 +8,7 @@ import { useEffect, useState, type FC } from 'react';
 const EventViewer: FC<{ event?: Event; eventId?: string }> = ({ event: provided, eventId }) => {
   const { dispatchApi } = useMyApi();
 
-  const [event, setEvent] = useState<Event>(null);
+  const [event, setEvent] = useState<Event | null>(null);
 
   useEffect(() => {
     if (provided) {
@@ -20,7 +20,7 @@ const EventViewer: FC<{ event?: Event; eventId?: string }> = ({ event: provided,
     if (eventId) {
       void dispatchApi(api.v2.search.post<Event>('event', { query: `howler.id:${eventId}`, rows: 1 }), {
         throwError: false
-      }).then(res => setEvent(res.items[0]));
+      }).then(res => setEvent(res?.items[0] ?? null));
     }
   }, [dispatchApi, eventId]);
 

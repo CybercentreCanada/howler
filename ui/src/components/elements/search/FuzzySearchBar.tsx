@@ -29,7 +29,7 @@ const FuzzySearchBar: FC<FuzzySearchBarProps> = ({ onSearch, loading = false }) 
   const handleSearch = useCallback(() => {
     if (query.trim()) {
       setQuery(query.trim());
-      onSearch(query.trim(), indexes);
+      onSearch(query.trim(), indexes ?? ['hit']);
     }
   }, [query, setQuery, onSearch, indexes]);
 

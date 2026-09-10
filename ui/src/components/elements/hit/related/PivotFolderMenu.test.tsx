@@ -66,7 +66,7 @@ describe('PivotFolderMenu', () => {
     const open = vi.spyOn(window, 'open').mockReturnValue(null);
     const pluginNode = {
       ...node,
-      pivots: [node.pivots[0], { pivot: pluginPivot, dossier }]
+      pivots: [node.pivots![0], { pivot: pluginPivot, dossier }]
     };
 
     render(<PivotFolderMenu node={pluginNode} />);

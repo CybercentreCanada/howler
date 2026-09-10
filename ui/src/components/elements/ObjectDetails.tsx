@@ -44,7 +44,7 @@ const ListRenderer: FC<{
   objKey?: string;
   maxKeyLength?: number;
   entries: any[];
-}> = memo(({ obj, objKey: key, entries, maxKeyLength }) => {
+}> = memo(({ obj, objKey: key = '', entries, maxKeyLength }) => {
   const theme = useTheme();
   const { t } = useTranslation();
 
@@ -151,7 +151,9 @@ const ObjectRenderer: FC<{
   const theme = useTheme();
 
   const entries = useMemo(() => {
-    const unsorted = Object.entries(flatten(data, { safe: true })).map(([key, val]) => [key, val]);
+    const unsorted = Object.entries(flatten(data, { safe: true }) as Record<string, any>).map(
+      ([key, val]) => [key, val] as [string, any]
+    );
 
     const sortedAlphabetical = unsorted.map(([key]) => key).sort();
 
@@ -262,7 +264,7 @@ const Collapsible: FC<{ obj: Hit | Event; query: string; title: string; data: { 
 
       throttler.debounce(() => {
         const fuseResults = fuse.search(query);
-        setScores(fuseResults.map(result => [result.item.key, result.score]));
+        setScores(fuseResults.map(result => [result.item.key, result.score ?? 0]));
         setResults(fuseResults.reduce((acc, entry) => ({ ...acc, [entry.item.key]: entry.item.value }), {}));
       });
     }, [data, fuse, query, throttler]);
@@ -305,7 +307,7 @@ const ObjectDetails: FC<{ obj: Hit | Event }> = ({ obj }) => {
   const groups = useMemo(
     () =>
       groupBy(
-        Object.entries(flatten(obj ?? {}, { safe: true })).filter(
+        Object.entries(flatten(obj ?? {}, { safe: true }) as Record<string, any>).filter(
           ([key, value]) =>
             !key.startsWith('__') &&
             key.includes('.') &&

@@ -5,7 +5,6 @@ import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import get from 'lodash-es/get';
-import isNil from 'lodash-es/isNil';
 import isObject from 'lodash-es/isObject';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Template } from 'models/entities/generated/Template';
@@ -15,8 +14,8 @@ import { memo, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
-import { PROVIDER_COLORS, StorageKey } from 'utils/constants';
-import { stringToColor } from 'utils/utils';
+import { StorageKey } from 'utils/constants';
+import { getProviderColor, notNil } from 'utils/utils';
 import PluginTypography from '../PluginTypography';
 import { HitLayout } from './HitLayout';
 
@@ -36,23 +35,17 @@ const HitOutline: FC<{
   layout: HitLayout;
   forceAllFields?: boolean;
   template?: Template;
-}> = ({ hit, layout, lazy = false, forceAllFields = false, template: providedTemplate = null }) => {
+}> = ({ hit, layout, lazy = false, forceAllFields = false, template: providedTemplate }) => {
   const theme = useTheme();
   const { t } = useTranslation();
   const { config } = useContext(ApiConfigContext);
   const addFilter = useContextSelector(ParameterContext, ctx => ctx?.addFilter);
   const { getMatchingTemplate } = useMatchers(lazy);
 
-  const [templateFieldCount] = useMyLocalStorageItem(StorageKey.TEMPLATE_FIELD_COUNT, null);
-  const [template, setTemplate] = useState<Template>(null);
+  const [templateFieldCount] = useMyLocalStorageItem<number>(StorageKey.TEMPLATE_FIELD_COUNT);
+  const [template, setTemplate] = useState<Template>();
 
-  const providerColor = useMemo(() => {
-    if (!hit?.event.provider) {
-      return PROVIDER_COLORS.unknown;
-    }
-
-    return PROVIDER_COLORS[hit?.event.provider] ?? stringToColor(hit?.event.provider);
-  }, [hit?.event.provider]);
+  const providerColor = getProviderColor(hit?.event?.provider);
 
   const fields = useMemo(() => {
     const keys = template?.keys;
@@ -61,7 +54,7 @@ const HitOutline: FC<{
       return DEFAULT_FIELDS;
     }
 
-    if (!isNil(templateFieldCount) && !forceAllFields) {
+    if (notNil(templateFieldCount) && !forceAllFields) {
       return keys.slice(0, templateFieldCount);
     }
 

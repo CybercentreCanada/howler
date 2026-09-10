@@ -1,3 +1,4 @@
+import { isNil } from 'lodash-es';
 import type { ReactNode } from 'react';
 import { createContext, useCallback, useMemo, useState } from 'react';
 import type { TuiListItem } from '.';
@@ -5,7 +6,7 @@ import type { TuiListItem } from '.';
 export type TuiListMethodsState<T> = {
   load: (items: TuiListItem<T>[]) => void;
   move: (index: number) => void;
-  select: (item: TuiListItem<T>, index: number) => TuiListItem<T>;
+  select: (item: TuiListItem<T>, index: number) => TuiListItem<T> | null;
   replace: (item: TuiListItem<T>, newItem: TuiListItem<T>) => void;
   replaceById: (item: TuiListItem<T>, newItem: TuiListItem<T>) => void;
   remove: (id: string) => void;
@@ -17,7 +18,7 @@ export type TuiListItemsState<T> = {
   movePrevious: () => void;
 };
 
-const DEFAULT_METHODS_STATE = {
+const DEFAULT_METHODS_STATE: TuiListMethodsState<any> = {
   load: () => null,
   move: () => null,
   select: () => null,
@@ -26,8 +27,7 @@ const DEFAULT_METHODS_STATE = {
   remove: () => null
 };
 
-const DEFAULT_ITEMS_STATE = {
-  size: 0,
+const DEFAULT_ITEMS_STATE: TuiListItemsState<any> = {
   items: [],
   movePrevious: () => null,
   moveNext: () => null
@@ -51,9 +51,9 @@ const TuiListProvider = <T,>({ children }: TuiListProviderProps) => {
         if (previous) {
           return {
             ...i,
-            cursor: i.cursor === undefined ? previous.cursor : i.cursor,
-            selected: i.selected === undefined ? previous.selected : i.selected,
-            details: i.details === undefined ? previous.details : i.details
+            cursor: isNil(i.cursor) ? previous.cursor : i.cursor,
+            selected: isNil(i.selected) ? previous.selected : i.selected,
+            details: isNil(i.details) ? previous.details : i.details
           };
         }
         return i;

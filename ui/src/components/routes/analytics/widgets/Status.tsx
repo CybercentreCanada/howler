@@ -2,7 +2,7 @@ import { useTheme } from '@mui/material';
 import 'chartjs-adapter-dayjs-4';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import { forwardRef } from 'react';
-import { STATUS_COLORS } from 'utils/constants';
+import { getStatusColor } from 'utils/utils';
 import Stacked from './Stacked';
 
 const Status = forwardRef<any, { analytic: Analytic }>(({ analytic }, ref) => {
@@ -13,7 +13,7 @@ const Status = forwardRef<any, { analytic: Analytic }>(({ analytic }, ref) => {
       ref={ref as any}
       analytic={analytic}
       field="howler.status"
-      color={status => (status === 'on-hold' ? theme.palette.grey : theme.palette[STATUS_COLORS[status]].main)}
+      color={status => getStatusColor(status, theme.palette.grey[500], theme)}
     />
   );
 });

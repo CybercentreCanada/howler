@@ -88,12 +88,11 @@ vi.mock('components/app/providers/ModalProvider', async () => {
 
 import CaseSidebar from './CaseSidebar';
 
-const hitItem = (value: string, id = value, parent: string | null = null): Item => ({
+const hitItem = (value: string, id = value, parent?: string): Item => ({
   type: 'hit',
   value,
   id,
-  parent,
-  name: null
+  parent
 });
 
 const renderSidebar = (overrides?: Partial<Case>, onUpdate = vi.fn()) => {

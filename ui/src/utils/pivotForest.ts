@@ -88,6 +88,7 @@ const getGroupPivot = (dossiers: Dossier[]) => {
  */
 const buildPathMap = (tree: PivotTree, language = 'en'): menuPathNode[] => {
   const nodes: menuPathNode[] = [];
+  const languageKey = language === 'fr' ? 'fr' : 'en';
   for (const key in tree) {
     let path: string = key;
     let current = tree[key] as PivotTree;
@@ -101,7 +102,7 @@ const buildPathMap = (tree: PivotTree, language = 'en'): menuPathNode[] => {
 
     nodes.push({
       path: path,
-      pivots: sortBy(current[PIVOTS] ?? [], item => item.pivot.label?.[language]),
+      pivots: sortBy(current[PIVOTS] ?? [], item => item.pivot.label?.[languageKey]),
       children: buildPathMap(current, language)
     });
   }
@@ -122,11 +123,12 @@ const buildPathMap = (tree: PivotTree, language = 'en'): menuPathNode[] => {
 const pivotForest = (dossiers: Dossier[], language = 'en'): menuPathNode[] => {
   const group = getGroupPivot(dossiers);
   const nodes: menuPathNode[] = [];
+  const languageKey = language === 'fr' ? 'fr' : 'en';
 
   if (group[PIVOTS]) {
     nodes.push({
       path: '',
-      pivots: sortBy(group[PIVOTS], item => item.pivot.label?.[language]),
+      pivots: sortBy(group[PIVOTS], item => item.pivot.label?.[languageKey]),
       children: []
     });
   }

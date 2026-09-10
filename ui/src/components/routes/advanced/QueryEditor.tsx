@@ -138,7 +138,7 @@ const QueryEditor: FC<QueryEditorProps> = ({
         width={width}
         theme={theme.palette.mode === 'light' ? 'howler' : 'howler-dark'}
         value={query}
-        onChange={value => setQuery(value)}
+        onChange={value => setQuery(value!)}
         beforeMount={beforeEditorMount}
         onMount={onMount}
         options={options}

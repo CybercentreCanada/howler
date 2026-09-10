@@ -131,7 +131,7 @@ packages = [{ include = "evidence" }]
 
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.16.5"
+ruff = "^0.16.6"
 mypy = "^1.20.2"
 pre-commit = "^4.6.2"
 howler-api = { path = "../../api" }

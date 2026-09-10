@@ -2,15 +2,15 @@ import type { PhraseAnalysis, PhraseToken } from '.';
 import type PhraseConsumer from './PhraseConsumer';
 
 export default abstract class PhraseLexer {
-  private _phrase: string = null;
+  private _phrase = '';
 
-  private _buffer: string[] = null;
+  private _buffer: string[] = [];
 
-  private _tokens: PhraseToken[] = null;
+  private _tokens: PhraseToken[] = [];
 
-  private _consumers: PhraseConsumer<PhraseLexer>[] = null;
+  private _consumers: PhraseConsumer<PhraseLexer>[] = [];
 
-  private _consumer: PhraseConsumer<PhraseLexer> = null;
+  private _consumer: PhraseConsumer<PhraseLexer> | null = null;
 
   private _startIndex: number = 0;
 
@@ -19,7 +19,7 @@ export default abstract class PhraseLexer {
   private find(cursor: number, tokens: PhraseToken[]): { token: PhraseToken; index: number } {
     const index = tokens.findIndex(t => t.startIndex <= cursor && cursor <= t.endIndex);
     const token = tokens.at(index);
-    return { index, token };
+    return { index, token: token! };
   }
 
   public parse(phrase: string, cursor: number = 0): PhraseAnalysis {
@@ -45,7 +45,7 @@ export default abstract class PhraseLexer {
 
       // Try to find a consumer to lock on.
       if (!this._consumer) {
-        this._consumer = this.lock();
+        this._consumer = this.lock() ?? null;
         if (this._consumer) {
           newLock = true;
           // console.log('new lock...');
@@ -106,7 +106,7 @@ export default abstract class PhraseLexer {
     };
   }
 
-  public lock(): PhraseConsumer<PhraseLexer> {
+  public lock(): PhraseConsumer<PhraseLexer> | undefined {
     return this._consumers.find(c => c.lock(this));
   }
 
