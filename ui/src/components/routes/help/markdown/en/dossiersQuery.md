@@ -6,7 +6,7 @@ The title and query determine what a dossier is and where it appears. Give the d
 
 ## Validate before saving
 
-Use the query control to run the search and inspect its match count. The editor requires a title, a type, a query, and a completed query validation before it enables **Save**. Editing the query makes the previous validation stale, so run it again before saving.
+Use the query control to run the search and inspect its match count. The editor requires a title, a type, a validated query, at least one lead or pivot, and valid lead and pivot details before it enables **Save**. Hover over **Save** to see what is preventing it. Editing the query makes the previous validation stale, so run it again before saving.
 
 The query is evaluated against each hit, not just against the current result list. Keep it precise enough that the dossier does not appear on unrelated investigations. Opening a dossier card in Search is a useful way to review its current matches.
 
