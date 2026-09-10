@@ -1,6 +1,6 @@
 # Choose a query language
 
-The **Query Type** control changes the editor language and endpoint used to search hits. Selecting a different language loads an example suited to that syntax.
+The **Query Type** control changes the editor language and endpoint used to search hits. Selecting a different language replaces the editor contents with an example suited to that syntax and clears the current response, so copy your query first if you need to keep it.
 
 `advanced_languages`
 
@@ -10,7 +10,7 @@ Use **Lucene Query** for the same field-oriented syntax used by Howler's regular
 
 ## EQL Query
 
-Use **EQL** (Event Query Language) for event-based sequences and time-series-style queries. EQL has its own syntax and response structure, so inspect the JSON result rather than expecting a regular hit list. Switching to EQL resets the Lucene-only execution mode to Default.
+Use **EQL** (Event Query Language) for event-based sequences and time-series-style queries. EQL has its own syntax and response structure, so inspect the JSON result rather than expecting a regular hit list. Switching from Lucene to EQL or Sigma resets the Lucene-only execution mode to Default.
 
 ## Sigma Rule
 

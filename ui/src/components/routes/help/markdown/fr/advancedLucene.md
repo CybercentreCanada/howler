@@ -6,7 +6,7 @@ Lorsque **Requête Lucene** est sélectionné, le contrôle **Méthode de requê
 
 ## Défaut
 
-**Défaut** exécute une recherche de hit normale. Utilisez-le pour examiner les enregistrements correspondants, tester des filtres, puis déplacer une requête réussie vers la page de recherche habituelle ou une vue enregistrée.
+**Défaut** exécute une recherche de hit normale. Utilisez-le pour examiner les enregistrements correspondants, tester des filtres, puis déplacer une requête réussie vers la page Recherche ou une vue enregistrée.
 
 ## Facette
 
@@ -18,4 +18,4 @@ Lorsque **Requête Lucene** est sélectionné, le contrôle **Méthode de requê
 
 ## Expliquer
 
-**Expliquer** retourne l'explication Elasticsearch d'une requête Lucene au lieu des enregistrements correspondants ordinaires. Ce mode sert à déboguer le comportement d'une requête et à examiner la demande que Howler envoie au cluster, pas à trier un ensemble de résultats.
+**Expliquer** retourne l'explication Elasticsearch d'une requête Lucene au lieu des enregistrements correspondants ordinaires. Ce mode sert à déboguer le comportement d'une requête et à examiner la demande que Howler envoie au cluster, pas à trier un ensemble de résultats. La limite de lignes et les contrôles de sélection des champs ne s'appliquent pas au mode Expliquer.
