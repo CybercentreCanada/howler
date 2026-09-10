@@ -32,16 +32,14 @@ describe('pivotGroupValidation', () => {
     expect(pivotGroupValidation('network_dns')).toBe('route.dossiers.pivots.invalid.character');
   });
 
-  it('rejects "pivot" as a whole path segment', () => {
-    expect(pivotGroupValidation('pivot')).toBe('route.pivots.groups.invalid.word');
-    expect(pivotGroupValidation('pivot/network')).toBe('route.pivots.groups.invalid.word');
-    expect(pivotGroupValidation('network/pivot')).toBe('route.pivots.groups.invalid.word');
-    expect(pivotGroupValidation('network/pivot/dns')).toBe('route.pivots.groups.invalid.word');
-  });
-
-  it('allows "pivot" as part of a longer segment', () => {
+  it('allows "pivot" in path segments', () => {
+    expect(pivotGroupValidation('pivot')).toBeNull();
+    expect(pivotGroupValidation('pivot/network')).toBeNull();
+    expect(pivotGroupValidation('network/pivot')).toBeNull();
+    expect(pivotGroupValidation('network/pivot/dns')).toBeNull();
     expect(pivotGroupValidation('pivots')).toBeNull();
     expect(pivotGroupValidation('network/pivots')).toBeNull();
+    expect(pivotGroupValidation('pivot1')).toBeNull();
   });
 
   it('rejects consecutive slashes', () => {
@@ -54,9 +52,5 @@ describe('pivotGroupValidation', () => {
 
   it('rejects a trailing slash', () => {
     expect(pivotGroupValidation('network/')).toBe('route.pivots.groups.invalid.format');
-  });
-
-  it('allows reserved word variants that are not exact segment matches', () => {
-    expect(pivotGroupValidation('pivot1')).toBeNull();
   });
 });
