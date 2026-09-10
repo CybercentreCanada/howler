@@ -59,6 +59,7 @@ export const MembershipManagement = <T extends Ownership>({
 
   const canManageMembership =
     entity &&
+    user &&
     (entity.owner === user.username || entity.admins?.includes(user.username) || !!user.roles?.includes('admin'));
 
   const members = getAllMembers(entity);
