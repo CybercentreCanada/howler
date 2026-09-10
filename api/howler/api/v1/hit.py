@@ -723,7 +723,7 @@ def transition(
     if "If-Match" in request.headers:
         version = request.headers["If-Match"]
     else:
-        logger.warning("User is mising version - no If-Match header in request.")
+        logger.warning("User is missing version - no If-Match header in request.")
         version = server_version
 
     try:
@@ -735,9 +735,16 @@ def transition(
                 )
             )
 
-        hit, version = hit_service.transition_hit(
-            id, transition, **kwargs, **transition_data.get("data", {}), user=user, version=version, refresh=refresh
+        updated_hits = hit_service.transition_hits(
+            record,
+            transition,
+            user,
+            version,
+            refresh=refresh,
+            **kwargs,
+            **transition_data.get("data", {}),
         )
+        hit, version = updated_hits[0]
     except (WorkflowException, DataStoreException, InvalidDataException) as e:
         return bad_request(err=str(e))
     except VersionConflictException as e:

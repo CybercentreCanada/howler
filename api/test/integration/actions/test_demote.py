@@ -1,5 +1,4 @@
 import json
-import time
 from uuid import uuid4
 
 import pytest
@@ -65,10 +64,6 @@ def datastore(datastore_connection):
         wipe_hits(ds)
         create_hits(ds, hit_count=5)
 
-        ds.hit.commit()
-
-        time.sleep(1)
-
         yield ds
     finally:
         wipe_hits(ds)
@@ -86,7 +81,6 @@ def test_demote_to_hit(datastore: HowlerDatastore, login_session):
     # Ensure hits are at alert first
     _promote_to_alert(session, host, query="howler.id:*")
     datastore.hit.commit()
-    time.sleep(1)
 
     resp = _execute(session, host, query="howler.id:*", escalation=Escalation.HIT)
 
@@ -100,7 +94,6 @@ def test_demote_to_hit(datastore: HowlerDatastore, login_session):
             assert "message" in entry
 
     datastore.hit.commit()
-    time.sleep(1)
 
     demoted = datastore.hit.search(f"howler.escalation:{Escalation.HIT}")["total"]
     assert demoted > 0
@@ -146,7 +139,6 @@ def test_demote_already_at_escalation_skipped(datastore: HowlerDatastore, login_
     # Ensure all hits are at hit escalation
     _execute(session, host, query="howler.id:*", escalation=Escalation.HIT)
     datastore.hit.commit()
-    time.sleep(1)
 
     # Second call with same target — already there
     resp = _execute(session, host, query=f"howler.escalation:{Escalation.HIT}", escalation=Escalation.HIT)

@@ -26,7 +26,9 @@ class ILMException(HowlerException):
 
 
 class VersionConflictException(HowlerException):
-    pass
+    def __init__(self, message: str = "Something went wrong", cause: Optional[Exception] = None, failures=None) -> None:
+        super().__init__(message, cause)
+        self.failures = failures or []
 
 
 class MultiKeyError(HowlerKeyError):

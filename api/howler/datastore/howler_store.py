@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, overload
 
 from howler.common.exceptions import HowlerAttributeError
 from howler.config import config
@@ -72,7 +72,40 @@ class HowlerDatastore(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.ds.close()
 
-    def __getitem__(self, key: str):
+    @overload
+    def __getitem__(self, key: Literal["hit"]) -> ESCollection[Hit]: ...
+
+    @overload
+    def __getitem__(self, key: Literal["event"]) -> ESCollection[Event]: ...
+
+    @overload
+    def __getitem__(self, key: Literal["case"]) -> ESCollection[Case]: ...
+
+    @overload
+    def __getitem__(self, key: Literal["template"]) -> ESCollection[Template]: ...
+
+    @overload
+    def __getitem__(self, key: Literal["overview"]) -> ESCollection[Overview]: ...
+
+    @overload
+    def __getitem__(self, key: Literal["analytic"]) -> ESCollection[Analytic]: ...
+
+    @overload
+    def __getitem__(self, key: Literal["action"]) -> ESCollection[Action]: ...
+
+    @overload
+    def __getitem__(self, key: Literal["user"]) -> ESCollection[User]: ...
+
+    @overload
+    def __getitem__(self, key: Literal["view"]) -> ESCollection[View]: ...
+
+    @overload
+    def __getitem__(self, key: Literal["dossier"]) -> ESCollection[Dossier]: ...
+
+    @overload
+    def __getitem__(self, key: str) -> ESCollection: ...
+
+    def __getitem__(self, key: str) -> ESCollection:
         return self.ds[key]
 
     def stop_model_validation(self):

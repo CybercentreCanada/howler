@@ -1,5 +1,4 @@
 import json
-import time
 from uuid import uuid4
 
 import pytest
@@ -24,6 +23,7 @@ def _execute(session, host, query: str, field: str, value: str):
         session,
         f"{host}/api/v1/action/execute",
         method="POST",
+        params={"refresh": "wait_for"},
         data=json.dumps(req),
     )
 
@@ -35,10 +35,6 @@ def datastore(datastore_connection):
     try:
         wipe_hits(ds)
         create_hits(ds, hit_count=5)
-
-        ds.hit.commit()
-
-        time.sleep(1)
 
         yield ds
     finally:
@@ -69,8 +65,7 @@ def test_change_field_happy_path(datastore: HowlerDatastore, login_session):
         assert "howler.outline.summary" in entry["message"]
         assert "integration-test-summary" in entry["message"]
 
-    datastore.hit.commit()
-    time.sleep(1)
+    datastore.hit.refresh()
 
     updated = datastore.hit.search("howler.outline.summary:integration-test-summary")["total"]
     assert updated > 0
@@ -94,9 +89,6 @@ def test_change_field_updates_all_matching(datastore: HowlerDatastore, login_ses
     for report in resp.values():
         assert len(report) == 1
         assert report[0]["outcome"] == "success"
-
-    datastore.hit.commit()
-    time.sleep(1)
 
     updated = datastore.hit.search("howler.outline.summary:single-hit-summary")["total"]
     assert updated == 1
