@@ -212,7 +212,7 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
               size="small"
               value={assessment}
               onChange={(_ev, _assessment) => setAssessment(_assessment)}
-              options={config.lookups['howler.assessment']}
+              options={config.lookups?.['howler.assessment'] ?? []}
               disablePortal
               renderInput={params => (
                 <TextField

@@ -99,10 +99,21 @@ def give_privilege(
         raise InvalidDataException(message=f"Failed to grant privileges for some users: {error_details}")
 
     if permission_request.privilege == "owner":
-        result.owner = user_ids[0]
+        new_owner = user_ids[0]
+        result.owner = new_owner
+
+        # Ownership supersedes any non-owner privilege held by the new owner.
+        for privilege in ("admins", "members"):
+            current_members = cast(list[str], result[privilege])
+            current_members[:] = [user_id for user_id in current_members if user_id != new_owner]
     else:
-        for user_id in user_ids:
-            cast(list[str], result[permission_request.privilege]).append(user_id)
+        current_members = cast(list[str], result[permission_request.privilege])
+        other_privilege = "members" if permission_request.privilege == "admins" else "admins"
+        other_members = cast(list[str], result[other_privilege])
+
+        # Switching between non-owner privileges removes the previous privilege.
+        other_members[:] = [user_id for user_id in other_members if user_id not in user_ids]
+        current_members.extend(user_ids)
 
     collection.save(id, result, version=version, refresh=refresh)
     return result.as_primitives()

@@ -190,6 +190,35 @@ def test_give_privilege_transfers_owner(app, monkeypatch):
 
 
 @pytest.mark.parametrize(
+    ("requested_privilege", "existing_privilege"),
+    [("admins", "members"), ("members", "admins")],
+)
+def test_give_privilege_switches_non_owner_privilege(app, monkeypatch, requested_privilege, existing_privilege):
+    ownership = DummyOwnership(**{existing_privilege: ["analyst"]})
+    collection, _ = mock_datastore(monkeypatch, ownership)
+
+    with app.test_request_context(json={"privilege": requested_privilege, "user_ids": ["analyst"]}):
+        result = permission_service.give_privilege("dummy-id", make_user(), DummyOwnership)
+
+    assert result[existing_privilege] == []
+    assert result[requested_privilege] == ["analyst"]
+    assert result["owner"] == "owner"
+    collection.save.assert_called_once_with("dummy-id", ownership, version="dummy-version", refresh=None)
+
+
+def test_give_privilege_does_not_implicitly_remove_owner(app, monkeypatch):
+    ownership = DummyOwnership()
+    collection, _ = mock_datastore(monkeypatch, ownership)
+
+    with app.test_request_context(json={"privilege": "members", "user_ids": ["owner"]}):
+        result = permission_service.give_privilege("dummy-id", make_user(), DummyOwnership)
+
+    assert result["owner"] == "owner"
+    assert result["members"] == ["owner"]
+    collection.save.assert_called_once_with("dummy-id", ownership, version="dummy-version", refresh=None)
+
+
+@pytest.mark.parametrize(
     ("existing_members", "user_exists", "expected_message"),
     [
         ([], False, "User analyst does not exist"),

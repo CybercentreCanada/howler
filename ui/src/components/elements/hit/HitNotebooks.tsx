@@ -183,7 +183,7 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
   }, [open]);
 
   return (
-    config.configuration.features.notebook &&
+    config.configuration?.features.notebook &&
     analytic?.notebooks && (
       <ClickAwayListener onClickAway={() => setOpen(false)} mouseEvent={'onMouseUp'}>
         <div>

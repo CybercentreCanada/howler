@@ -193,7 +193,7 @@ const AnalyticDetails = () => {
               <Tab label={t('route.analytics.tab.hit_comments')} value="hit_comments" />
               <Tab label={t('route.analytics.tab.templates')} value="templates" />
               <Tab label={t('route.analytics.tab.overviews')} value="overviews" />
-              {config?.configuration.features.notebook && (
+              {config?.configuration?.features.notebook && (
                 <Tab label={t('route.analytics.tab.notebooks')} value="notebooks" />
               )}
               <Tab label={t('route.analytics.tab.triage')} value="triage" />
@@ -219,7 +219,7 @@ const AnalyticDetails = () => {
             overviews: <AnalyticOverviews analytic={analytic} />,
             templates: <AnalyticTemplates analytic={analytic} />,
             triage: <TriageSettings analytic={analytic} setAnalytic={setAnalytic} />,
-            ...(config?.configuration.features.notebook
+            ...(config?.configuration?.features.notebook
               ? {
                   notebooks: <AnalyticNotebooks analytic={analytic} setAnalytic={setAnalytic} />
                 }

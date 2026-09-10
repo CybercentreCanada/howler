@@ -1,4 +1,4 @@
-import { Delete, Edit, PersonAdd, PlayCircleOutline, Search } from '@mui/icons-material';
+import { Delete, Edit, PlayCircleOutline, Search } from '@mui/icons-material';
 import {
   Button,
   Checkbox,
@@ -15,7 +15,7 @@ import { ModalContext } from 'components/app/providers/ModalProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import Phrase from 'components/elements/addons/search/phrase/Phrase';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
-import { MembershipManagement } from 'components/elements/MembershipManagement';
+import { MembershipManagement } from 'components/elements/membership/MembershipManagement';
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import OperationEntry from 'components/routes/action/shared/OperationEntry';
@@ -44,7 +44,6 @@ const ActionDetails = () => {
 
   const [operations, setOperations] = useState<ActionOperation[]>([]);
   const [action, setAction] = useState<Action>();
-  const [memberModalOpen, setMemberModalOpen] = useState(false);
 
   const { withConfirmDeleteModal } = useContext(ModalContext);
   const { showSuccessMessage } = useMySnackbar();
@@ -176,11 +175,7 @@ const ActionDetails = () => {
               {t('route.actions.edit')}
             </Button>
           )}
-          {(action?.owner === user.username || adminList.includes(user.username) || user.roles?.includes('admin')) && (
-            <Button startIcon={<PersonAdd />} size="small" variant="outlined" onClick={() => setMemberModalOpen(true)}>
-              {t('membership.manage')}
-            </Button>
-          )}
+          <MembershipManagement size="small" type="action" entity={action} onChange={_action => setAction(_action)} />
         </Stack>
         {(user.roles ?? []).includes('automation_advanced') && (
           <FormGroup>
@@ -250,7 +245,6 @@ const ActionDetails = () => {
             );
           })}
       </Stack>
-      <MembershipManagement open={memberModalOpen} onClose={() => setMemberModalOpen(false)} />
     </PageCenter>
   );
 };

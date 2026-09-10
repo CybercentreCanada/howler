@@ -23,8 +23,8 @@ import { ViewContext } from 'components/app/providers/ViewProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import { TuiListProvider, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext, type TuiListMethodsState } from 'components/elements/addons/lists/TuiListProvider';
-import HowlerAvatar from 'components/elements/display/HowlerAvatar';
 import ItemManager from 'components/elements/display/ItemManager';
+import Members from 'components/elements/membership/Members';
 import { ViewTitle } from 'components/elements/view/ViewTitle';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMySnackbar from 'components/hooks/useMySnackbar';
@@ -336,6 +336,7 @@ const ViewsBase: FC = () => {
           >
             <ViewTitle {...item.item} />
             <FlexOne />
+            <Members item={item.item} />
             {item.item.type !== 'readonly' &&
               (item.item.owner === user.username ||
                 item.item.admins?.includes(user.username) ||
@@ -352,16 +353,6 @@ const ViewsBase: FC = () => {
                 <IconButton onClick={event => onDelete(event, item.item.view_id!)}>
                   <Clear />
                 </IconButton>
-              </Tooltip>
-            )}
-            {item.item.type === 'global' && item.item.owner !== user.username && (
-              <Tooltip title={item.item.owner}>
-                <div>
-                  <HowlerAvatar
-                    sx={{ width: 24, height: 24, marginRight: '8px !important', marginLeft: '8px !important' }}
-                    userId={item.item.owner!}
-                  />
-                </div>
               </Tooltip>
             )}
             <Tooltip title={t('button.pin')}>

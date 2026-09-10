@@ -78,7 +78,7 @@ const LinkForm: FC<PivotFormProps> = ({ pivot, update }) => {
             <Autocomplete
               fullWidth
               disabled={!pivot}
-              options={['custom', ...Object.keys(config.indexes.hit)]}
+              options={['custom', ...Object.keys(config.indexes?.hit ?? {})]}
               renderInput={params => (
                 <TextField
                   {...params}

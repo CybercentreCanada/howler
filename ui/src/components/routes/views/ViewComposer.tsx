@@ -1,9 +1,9 @@
-import { AppListEmpty, PageCenter, useAppUser } from '@tui/core';
+import { AppListEmpty, PageCenter } from '@tui/core';
 import type { FC } from 'react';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { HelpOutline, PersonAdd, Save, Settings } from '@mui/icons-material';
+import { HelpOutline, Save, Settings } from '@mui/icons-material';
 import {
   Alert,
   Checkbox,
@@ -45,13 +45,13 @@ import useMySnackbar from 'components/hooks/useMySnackbar';
 import { uniq } from 'lodash-es';
 import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { HowlerUser } from 'models/entities/HowlerUser';
+import type { View } from 'models/entities/generated/View';
 import { useNavigate, useParams } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import { convertDateToLucene } from 'utils/utils';
 import { buildViewUrl } from 'utils/viewUtils';
-import { MembershipManagement } from '../../elements/MembershipManagement';
+import { MembershipManagement } from '../../elements/membership/MembershipManagement';
 import ErrorBoundary from '../ErrorBoundary';
 import RecordQuery from '../hits/search/RecordQuery';
 import HitSort from '../hits/search/shared/HitSort';
@@ -64,7 +64,6 @@ const ViewComposer: FC = () => {
   const { showSuccessMessage, showErrorMessage } = useMySnackbar();
   const routeParams = useParams();
   const navigate = useNavigate();
-  const { user } = useAppUser<HowlerUser>();
 
   const addView = useContextSelector(ViewContext, ctx => ctx.addView);
   const editView = useContextSelector(ViewContext, ctx => ctx.editView);
@@ -76,12 +75,12 @@ const ViewComposer: FC = () => {
 
   const loadRecords = useContextSelector(RecordContext, ctx => ctx.loadRecords);
 
+  const [view, setView] = useState<View>();
+
   // view state
-  const [canManageMembership, setCanManageMembership] = useState(false);
   const [title, setTitle] = useState('');
   const [type, setType] = useState('global');
   const [advanceOnTriage, setAdvanceOnTriage] = useState(false);
-  const [memberModalOpen, setMemberModalOpen] = useState(false);
   const { columns, setColumns, columnWidths, isReady } = useContext(GridColumnsContext);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
@@ -235,40 +234,37 @@ const ViewComposer: FC = () => {
     }
 
     void (async () => {
-      const viewToEdit = (await getCurrentViews({ views: [routeParams.id!] }))[0];
+      const _view = (await getCurrentViews({ views: [routeParams.id!] }))[0];
 
-      if (!viewToEdit) {
+      setView(_view);
+
+      if (!_view) {
         setError('route.views.missing');
         return;
       } else {
         setError(null);
       }
 
-      setTitle(viewToEdit.title ?? '');
-      setAdvanceOnTriage(viewToEdit.settings?.advance_on_triage ?? false);
-      setDisplayType(viewToEdit.settings?.display ?? 'list');
-      setType(viewToEdit.type!);
-      setCanManageMembership(
-        viewToEdit.owner === user.username ||
-          viewToEdit.admins?.includes(user.username) ||
-          !!user.roles?.includes('admin')
-      );
+      setTitle(_view.title ?? '');
+      setAdvanceOnTriage(_view.settings?.advance_on_triage ?? false);
+      setDisplayType(_view.settings?.display ?? 'list');
+      setType(_view.type!);
 
-      const loadedQuery = viewToEdit.query || DEFAULT_QUERY;
-      const loadedIndexes = (viewToEdit.indexes as SearchIndex[] | undefined) || indexes || ['hit'];
-      const loadedSort = viewToEdit.sort || sort;
-      const loadedSpan = viewToEdit.span || span;
+      const loadedQuery = _view.query || DEFAULT_QUERY;
+      const loadedIndexes = (_view.indexes as SearchIndex[] | undefined) || indexes || ['hit'];
+      const loadedSort = _view.sort || sort;
+      const loadedSpan = _view.span || span;
 
       setQuery(loadedQuery);
-      if (viewToEdit.indexes) {
+      if (_view.indexes) {
         setIndexes(loadedIndexes);
       }
 
-      if (viewToEdit.sort) {
+      if (_view.sort) {
         setSort(loadedSort!);
       }
 
-      if (viewToEdit.span) {
+      if (_view.span) {
         setSpan(loadedSpan!);
       }
 
@@ -326,11 +322,7 @@ const ViewComposer: FC = () => {
                   >
                     {t('save')}
                   </CustomButton>
-                  {canManageMembership && (
-                    <CustomButton variant="outlined" startIcon={<PersonAdd />} onClick={() => setMemberModalOpen(true)}>
-                      {t('membership.manage')}
-                    </CustomButton>
-                  )}
+                  <MembershipManagement type="view" entity={view} onChange={_view => setView(_view)} />
                 </Stack>
                 <Typography
                   sx={theme => ({
@@ -433,7 +425,6 @@ const ViewComposer: FC = () => {
               )}
             </VSBoxContent>
           </VSBox>
-          <MembershipManagement open={memberModalOpen} onClose={() => setMemberModalOpen(false)} />
         </PageCenter>
       </ErrorBoundary>
     </FlexPort>

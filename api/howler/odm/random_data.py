@@ -43,7 +43,7 @@ from howler.odm.models.overview import Overview
 from howler.odm.models.template import Template
 from howler.odm.models.user import User
 from howler.odm.models.view import View
-from howler.odm.randomizer import get_random_string, get_random_user, get_random_word, random_model_obj
+from howler.odm.randomizer import get_random_string, get_random_word, random_model_obj
 from howler.security.utils import get_password_hash
 from howler.services import analytic_service, user_service
 
@@ -66,6 +66,19 @@ def run_modifications(odm: str, data: Any, log: bool = False):
         logger.debug("%s new top-level fields configured for %s", len(new_keys), odm)
 
     return data
+
+
+def _get_ownership_data(users: list[User], owner: str) -> dict[str, Any]:
+    """Generate random ownership permissions for an object."""
+    available_users = [user.uname for user in users if user.uname != owner]
+    admins = sample(available_users, k=randint(0, min(1, len(available_users))))
+    available_members = [user for user in available_users if user not in admins]
+
+    return {
+        "owner": owner,
+        "admins": admins,
+        "members": sample(available_members, k=randint(0, min(2, len(available_members)))),
+    }
 
 
 def create_users(ds):
@@ -479,12 +492,14 @@ def wipe_overviews(ds):
 
 def create_views(ds: HowlerDatastore):
     """Create some random views"""
+    users = ds.user.search("*:*", as_obj=True)["items"]
+
     view = View(
         {
             "title": "CMT Hits",
             "query": "howler.analytic:cmt.*",
             "type": "global",
-            "owner": "admin",
+            **_get_ownership_data(users, "admin"),
         }
     )
 
@@ -499,12 +514,13 @@ def create_views(ds: HowlerDatastore):
     key_list = [key for key in fields.keys() if isinstance(fields[key], Keyword)]
     for _ in range(10):
         query = f"{choice(key_list)}:*{choice(VALID_CHARS)}* OR {choice(key_list)}:*{choice(VALID_CHARS)}*"
+        owner = choice([user.uname for user in users])
         view = View(
             {
                 "title": get_random_word(),
                 "query": query,
                 "type": "global",
-                "owner": get_random_user(),
+                **_get_ownership_data(users, owner),
             }
         )
 
@@ -840,12 +856,13 @@ def create_actions(ds: HowlerDatastore, num_actions: int = 30):
 
             operations.append({"operation_id": operation_id, "data_json": json.dumps((action_data))})
 
+        owner = choice([user.uname for user in users])
         action = Action(
             {
                 "name": get_random_word(),
-                "owner": choice([user["uname"] for user in users]),
                 "query": f"{choice(key_list)}:*{choice(VALID_CHARS)}* OR {choice(key_list)}:*{choice(VALID_CHARS)}*",
                 "operations": operations,
+                **_get_ownership_data(users, owner),
             }
         )
 
@@ -866,6 +883,9 @@ def create_dossiers(ds: HowlerDatastore, num_dossiers: int = 5):
     users = ds.user.search("*:*")["items"]
     for index in range(num_dossiers):
         dossier = generate_useful_dossier(users)
+        ownership_data = _get_ownership_data(users, dossier.owner)
+        dossier.admins = ownership_data["admins"]
+        dossier.members = ownership_data["members"]
         if index == 0:
             dossier.type = "personal"
         elif index == 1:

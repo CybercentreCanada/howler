@@ -126,7 +126,7 @@ const mockCase = {
 } as any;
 
 const Wrapper: FC<PropsWithChildren> = ({ children }) => (
-  <ApiConfigContext.Provider value={{ config: mockConfig, setConfig: vi.fn() }}>
+  <ApiConfigContext.Provider value={{ loaded: false, config: mockConfig, setConfig: vi.fn() }}>
     <RecordContext.Provider value={{ records: {}, loadRecords: mockLoadRecords } as any}>
       <MemoryRouter initialEntries={['/cases/case-001/timeline']}>{children}</MemoryRouter>
     </RecordContext.Provider>
@@ -143,7 +143,7 @@ const mockConfigWithUrls = {
 } as any;
 
 const WrapperWithUrl: FC<PropsWithChildren> = ({ children }) => (
-  <ApiConfigContext.Provider value={{ config: mockConfigWithUrls, setConfig: vi.fn() }}>
+  <ApiConfigContext.Provider value={{ loaded: false, config: mockConfigWithUrls, setConfig: vi.fn() }}>
     <RecordContext.Provider value={{ records: {}, loadRecords: mockLoadRecords } as any}>
       <MemoryRouter initialEntries={['/cases/case-001/timeline']}>{children}</MemoryRouter>
     </RecordContext.Provider>
@@ -315,7 +315,7 @@ describe('CaseTimeline component', () => {
     const emptyCaseWrapper: FC<PropsWithChildren> = ({ children }) =>
       createElement(
         ApiConfigContext.Provider,
-        { value: { config: mockConfig, setConfig: vi.fn() }, children: null },
+        { value: { loaded: true, config: mockConfig, setConfig: vi.fn() }, children: null },
         createElement(
           RecordContext.Provider,
           { value: { records: {}, loadRecords: mockLoadRecords } as any, children: null },

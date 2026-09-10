@@ -26,8 +26,7 @@ const InjectCss = styled(Stack)(({ theme }) => ({
 }));
 
 const LoginScreen = () => {
-  const { config } = useContext(ApiConfigContext);
-  const loading = config.configuration === null;
+  const { config, loaded } = useContext(ApiConfigContext);
 
   return (
     <Container component="main" maxWidth="xs">
@@ -36,20 +35,22 @@ const LoginScreen = () => {
           <LogWrap>
             <AppBrand application="howler" variant="banner-vertical" size="large" />
             <Box m={2} />
-            {loading && (
+            {!loaded ? (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 <CircularProgress />
               </div>
-            )}
-            {config.configuration?.auth?.internal?.enabled && (
+            ) : (
               <>
-                <UserPassLogin />
-                {config.configuration?.auth?.oauth_providers?.length > 0 && <TextDivider />}
+                {config.configuration?.auth?.internal?.enabled && (
+                  <>
+                    <UserPassLogin />
+                    {!!config.configuration?.auth?.oauth_providers?.length && <TextDivider />}
+                  </>
+                )}
+                {!!config.configuration?.auth?.oauth_providers?.length && (
+                  <OAuthLogin providers={config.configuration?.auth?.oauth_providers} />
+                )}
               </>
-            )}
-
-            {config.configuration?.auth?.oauth_providers?.length > 0 && (
-              <OAuthLogin providers={config.configuration?.auth?.oauth_providers} />
             )}
           </LogWrap>
         </PageCardCentered>

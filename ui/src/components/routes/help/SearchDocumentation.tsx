@@ -136,9 +136,13 @@ const SearchDocumentation: FC = () => {
   const useHorizontal = useMediaQuery(theme.breakpoints.down(1700));
   useScrollRestoration();
 
-  const indexes: APIIndexes = useMemo(() => {
-    return config?.indexes ?? {};
+  const indexes = useMemo(() => {
+    return config?.indexes;
   }, [config]);
+
+  if (!indexes) {
+    return;
+  }
 
   return (
     <PageCenterRoot margin={4} width="100%" maxWidth="1750px" textAlign="left">

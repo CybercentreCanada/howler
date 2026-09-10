@@ -44,7 +44,7 @@ const SecuritySection: FC<{
           type="password"
         />
       )}
-      {config?.configuration.auth.allow_apikeys && (
+      {config.configuration?.auth.allow_apikeys && (
         <TableRow sx={{ cursor: 'pointer' }}>
           <TableCell style={{ whiteSpace: 'nowrap' }}>{t('page.settings.security.table.apikeys')}</TableCell>
           <TableCell width="100%">

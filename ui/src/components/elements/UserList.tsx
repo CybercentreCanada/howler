@@ -4,7 +4,7 @@ import {
   Autocomplete,
   AvatarGroup,
   Box,
-  Button,
+  Divider,
   IconButton,
   Popover,
   Stack,
@@ -13,15 +13,43 @@ import {
 } from '@mui/material';
 import { UserListContext } from 'components/app/providers/UserListProvider';
 import { uniq } from 'lodash-es';
+import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { FC, HTMLAttributes } from 'react';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import Throttler from 'utils/Throttler';
 import HowlerAvatar from './display/HowlerAvatar';
+
+const UserEntry: FC<{ user: HowlerUser }> = ({ user }) => {
+  return (
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: 'auto 1fr',
+        gridTemplateRows: 'auto auto',
+        gridTemplateAreas: `"profile name"\n"profile email"`,
+        columnGap: 1.5
+      }}
+    >
+      <HowlerAvatar
+        sx={{ gridArea: 'profile', alignSelf: 'center', height: '32px', width: '32px' }}
+        userId={user?.username}
+      />
+      <Typography sx={{ gridArea: 'name' }} variant="body1">
+        {user?.name}
+      </Typography>
+      <Typography sx={{ gridArea: 'email' }} variant="caption">
+        {user?.email ?? ''}
+      </Typography>
+    </Box>
+  );
+};
 
 const UserList: FC<{
   variant?: 'compact' | 'list';
   buttonSx?: SxProps<Theme>;
   userIds: string[];
+  except?: string[];
   onChange: (userIds: string[]) => void;
   i18nLabel: string;
   avatarHeight?: number;
@@ -35,12 +63,13 @@ const UserList: FC<{
   avatarHeight = 32,
   multiple = false,
   disabled = false,
-  variant = 'compact'
+  variant = 'compact',
+  except = []
 }) => {
   const { t } = useTranslation();
 
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
-  const { users, fetchUsers } = useContext(UserListContext);
+  const { users, fetchUsers, searchUsers } = useContext(UserListContext);
 
   const allUserIds = useMemo(() => Object.keys(users), [users]);
 
@@ -49,47 +78,52 @@ const UserList: FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userIds]);
 
+  const throttler = useMemo(() => new Throttler(300), []);
+
+  const search = (value: string) => throttler.debounce(() => searchUsers(value));
+
   const renderInput = (params: AutocompleteRenderInputParams) => (
-    <TextField {...params} label={t(i18nLabel)} size="small" />
+    <TextField {...params} autoComplete="off" label={t(i18nLabel)} size="small" />
   );
 
   const renderOption = (props: HTMLAttributes<HTMLLIElement> & { key: any }, optionUserId: string) => {
     const { key, ...optionProps } = props;
-    const user = users[optionUserId];
-
     return (
       <li key={key} {...optionProps}>
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: 'auto 1fr',
-            gridTemplateRows: 'auto auto',
-            gridTemplateAreas: `"profile name"\n"profile email"`,
-            columnGap: 1.5
-          }}
-        >
-          <HowlerAvatar
-            sx={{ gridArea: 'profile', alignSelf: 'center', height: '32px', width: '32px' }}
-            userId={user?.username}
-          />
-          <Typography sx={{ gridArea: 'name' }} variant="body1">
-            {user?.name ?? optionUserId}
-          </Typography>
-          <Typography sx={{ gridArea: 'email' }} variant="caption">
-            {user?.email ?? ''}
-          </Typography>
-        </Box>
+        <UserEntry user={users[optionUserId]} />
       </li>
     );
   };
 
   const sharedAutocompleteProps = {
     disabled,
+    autocomplete: 'off',
     sx: { minWidth: '300px' },
     options: allUserIds,
     renderInput,
-    renderOption
+    renderOption,
+    onInputChange: (_e: any, value: string) => search(value),
+    getOptionDisabled: (optionUserId: string) => userIds.includes(optionUserId) || except.includes(optionUserId)
   };
+
+  const autocomplete = multiple ? (
+    <Autocomplete
+      {...sharedAutocompleteProps}
+      multiple
+      value={userIds}
+      onChange={(__, options) => {
+        onChange(options);
+      }}
+    />
+  ) : (
+    <Autocomplete
+      {...sharedAutocompleteProps}
+      value={userIds?.[0] ?? null}
+      onChange={(__, option) => {
+        onChange(option ? [option] : []);
+      }}
+    />
+  );
 
   return (
     <>
@@ -111,16 +145,11 @@ const UserList: FC<{
           </IconButton>
         )
       ) : multiple ? (
-        <Stack width="100%" spacing={1} alignItems="stretch">
+        <Stack width="100%" spacing={1} alignItems="stretch" divider={<Divider flexItem />}>
           {uniq(userIds ?? [null]).map(userId => (
-            <Stack key={userId} direction="row">
-              <HowlerAvatar userId={userId} sx={{ height: avatarHeight, width: avatarHeight }} />
-              <Typography>{userId}</Typography>
-            </Stack>
+            <UserEntry key={userId} user={users[userId]} />
           ))}
-          <Button variant="outlined" disabled={disabled} onClick={e => setAnchorEl(e.currentTarget)}>
-            {t('add')}
-          </Button>
+          {autocomplete}
         </Stack>
       ) : (
         <Stack direction="row">
@@ -128,33 +157,16 @@ const UserList: FC<{
           <Typography>{userIds[0]}</Typography>
         </Stack>
       )}
-      <Popover
-        open={!!anchorEl}
-        onClose={() => setAnchorEl(null)}
-        anchorEl={anchorEl}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-      >
-        <Box sx={{ p: 2 }}>
-          {multiple ? (
-            <Autocomplete
-              {...sharedAutocompleteProps}
-              multiple
-              value={userIds}
-              onChange={(__, options) => {
-                onChange(options);
-              }}
-            />
-          ) : (
-            <Autocomplete
-              {...sharedAutocompleteProps}
-              value={userIds?.[0] ?? null}
-              onChange={(__, option) => {
-                onChange(option ? [option] : []);
-              }}
-            />
-          )}
-        </Box>
-      </Popover>
+      {variant === 'compact' && (
+        <Popover
+          open={!!anchorEl}
+          onClose={() => setAnchorEl(null)}
+          anchorEl={anchorEl}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        >
+          <Box sx={{ p: 2 }}>{autocomplete}</Box>
+        </Popover>
+      )}
     </>
   );
 };
