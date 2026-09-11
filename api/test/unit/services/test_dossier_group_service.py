@@ -23,7 +23,11 @@ def test_get_pivot_groups_filters_prefix_deduplicates_sorts_and_caps(mock_datast
 
     results = dossier_service.get_pivot_groups("NETWORK/", username="analyst")
 
-    expected_groups = sorted({"network/dns", "Network/DHCP", *matching_groups})[: dossier_service.MAX_GROUP_SUGGESTIONS]
+    # scanning stops as soon as MAX_GROUP_SUGGESTIONS unique matches are found, so only the groups
+    # encountered up to that point are included, not every matching group across all dossiers
+    first_dossier_groups = ["network/dns", "Network/DHCP"]
+    remaining_slots = dossier_service.MAX_GROUP_SUGGESTIONS - len(first_dossier_groups)
+    expected_groups = sorted({*first_dossier_groups, *matching_groups[:remaining_slots]})
     assert results == expected_groups
     assert len(results) == dossier_service.MAX_GROUP_SUGGESTIONS
 

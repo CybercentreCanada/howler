@@ -120,7 +120,7 @@
       "tables": false
     }
   },
-  "python-envs.defaultEnvManager": "ms-python.python:system",
+  "python-envs.defaultEnvManager": "ms-python.python:poetry",
   "editor.autoIndentOnPaste": true,
   "python-envs.pythonProjects": [
     {
@@ -130,8 +130,8 @@
     },
     {
       "path": "api",
-      "envManager": "ms-python.python:system",
-      "packageManager": "ms-python.python:pip"
+      "envManager": "ms-python.python:poetry",
+      "packageManager": "ms-python.python:poetry"
     },
     {
       "path": "client",
@@ -145,11 +145,5 @@
   "oxc.path.oxlint": "./ui/node_modules/.bin/oxlint",
   "oxc.path.oxfmt": "./ui/node_modules/.bin/oxfmt",
   "oxc.path.tsgolint": "./ui/node_modules/.bin/tsgolint",
-  "python-envs.defaultPackageManager": "ms-python.python:pip",
-  "chat.tools.terminal.autoApprove": {
-    "/^python3 - <<'PY'\nimport json\np='/home/agauvin/\\.vscode-server/data/User/workspaceStorage/b913331f2ab4e686794dc59d2a7cb9e7/GitHub\\.copilot-chat/chat-session-resources/f9310193-3b4a-4bb4-89b6-8d7d9b274dcb/call_wkkHwkC7JHmduEQaoaH5dWZO__vscode-1788952944242/content\\.json'\nd=json\\.load\\(open\\(p, encoding='utf-8'\\)\\)\ndef who\\(x\\):\n    return x if isinstance\\(x, str\\) else \\(\\(x or \\{\\}\\)\\.get\\('login'\\) or \\(x or \\{\\}\\)\\.get\\('name'\\)\\)\nprint\\('lastUpdatedAt:', d\\.get\\('lastUpdatedAt'\\)\\)\nfor t in d\\.get\\('reviewThreads', \\[\\]\\):\n    thread_id=t\\.get\\('threadId'\\) or t\\.get\\('id'\\)\n    file=t\\.get\\('path'\\) or t\\.get\\('file'\\)\n    for c in t\\.get\\('comments', \\[\\]\\):\n        if who\\(c\\.get\\('author'\\)\\) == 'cccs-mdr':\n            print\\(json\\.dumps\\(\\{'threadId':thread_id,'file':file,'text':c\\.get\\('body',c\\.get\\('text',''\\)\\),'isResolved':t\\.get\\('isResolved'\\),'canResolve':t\\.get\\('canResolve'\\)\\}, ensure_ascii=False\\)\\)\nPY$/": {
-      "approve": true,
-      "matchCommandLine": true
-    }
-  }
+  "python-envs.defaultPackageManager": "ms-python.python:poetry"
 }

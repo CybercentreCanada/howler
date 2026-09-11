@@ -102,9 +102,8 @@ def validate_group(group: str | Any) -> None:
         group: Group path to validate, such as ``Parent/Child``.
 
     Raises:
-        TypeError: If ``group`` is not a string.
-        InvalidDataException: If ``group`` contains unsupported characters
-            or empty path sections.
+        InvalidDataException: If ``group`` is not a string, contains unsupported
+            characters, or contains empty path sections.
     """
     # 1 : check if we have to verify group or if group is a valid string
     if group is None:
@@ -300,7 +299,6 @@ def get_pivot_groups(prefix: str, username: str) -> list[str]:
 
     groups: set[str] = set()
     lowered_prefix: str = (prefix or "").lower()
-    matches: list[str] = []
 
     for dossier in dossiers:
         for pivot in dossier.pivots:
@@ -308,16 +306,12 @@ def get_pivot_groups(prefix: str, username: str) -> list[str]:
                 continue
             if not pivot.group.lower().startswith(lowered_prefix):
                 continue
-            # we want uniq group to be proposed to the user, not multiple time the same one
-            if pivot.group in groups:
-                continue
             groups.add(pivot.group)
-            matches.append(pivot.group)
+            # stop scanning once we have enough matches, rather than collecting every match up front
+            if len(groups) >= MAX_GROUP_SUGGESTIONS:
+                return sorted(groups)
 
-            if len(matches) >= MAX_GROUP_SUGGESTIONS:
-                return sorted(matches)
-
-    return sorted(matches)
+    return sorted(groups)
 
 
 def get_matching_dossiers(

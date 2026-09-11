@@ -105,7 +105,7 @@ def get_pivot_groups(user: User, **kwargs):
 
     Result Example:
     [
-        "network/dns"   # Up to 10 matching group paths, used to autocomplete the pivot group field
+        "network/dns"   # Up to 25 matching group paths, used to autocomplete the pivot group field
     ]
     """
     return ok(dossier_service.get_pivot_groups(request.args.get("prefix", "", type=str), username=user.uname))

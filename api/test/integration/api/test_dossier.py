@@ -103,7 +103,14 @@ def test_get_pivot_groups_scopes_results_and_matches_prefix(datastore: HowlerDat
             "query": "howler.id:*",
             "type": "global",
             "owner": "admin",
-            "pivots": [{"group": f"{prefix}/global", "label": {"en": "Global"}, "value": "global", "format": "link"}],
+            "pivots": [
+                {
+                    "group": f"{prefix}/global",
+                    "label": {"en": "Global", "fr": "Global"},
+                    "value": "global",
+                    "format": "link",
+                }
+            ],
             "leads": [],
         }
     )
@@ -114,7 +121,12 @@ def test_get_pivot_groups_scopes_results_and_matches_prefix(datastore: HowlerDat
             "type": "personal",
             "owner": "other_user",
             "pivots": [
-                {"group": f"{prefix}/private", "label": {"en": "Private"}, "value": "private", "format": "link"}
+                {
+                    "group": f"{prefix}/private",
+                    "label": {"en": "Private", "fr": "Privé"},
+                    "value": "private",
+                    "format": "link",
+                }
             ],
             "leads": [],
         }
