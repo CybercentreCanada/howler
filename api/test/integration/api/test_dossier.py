@@ -1,4 +1,5 @@
 import json
+import uuid
 from typing import Any
 
 import pytest
@@ -87,6 +88,62 @@ def test_get_dossiers(datastore, login_session):
     resp = get_api_data(session, f"{host}/api/v1/dossier/")
 
     assert all(t["type"] == "global" or t["owner"] in ["admin", "none"] for t in resp)
+
+
+# noinspection PyUnusedLocal
+def test_get_pivot_groups_scopes_results_and_matches_prefix(datastore: HowlerDatastore, login_session):
+    session, host = login_session
+    prefix = f"integration-{uuid.uuid4().hex[:12]}"
+
+    from howler.odm.models.dossier import Dossier as DossierModel
+
+    global_dossier = DossierModel(
+        {
+            "title": "Global Pivot Group Test",
+            "query": "howler.id:*",
+            "type": "global",
+            "owner": "admin",
+            "pivots": [
+                {
+                    "group": f"{prefix}/global",
+                    "label": {"en": "Global", "fr": "Global"},
+                    "value": "global",
+                    "format": "link",
+                }
+            ],
+            "leads": [],
+        }
+    )
+    other_user_dossier = DossierModel(
+        {
+            "title": "Other User Pivot Group Test",
+            "query": "howler.id:*",
+            "type": "personal",
+            "owner": "other_user",
+            "pivots": [
+                {
+                    "group": f"{prefix}/private",
+                    "label": {"en": "Private", "fr": "Privé"},
+                    "value": "private",
+                    "format": "link",
+                }
+            ],
+            "leads": [],
+        }
+    )
+    datastore.dossier.save(global_dossier.dossier_id, global_dossier)
+    datastore.dossier.save(other_user_dossier.dossier_id, other_user_dossier)
+    datastore.dossier.commit()
+
+    try:
+        groups = get_api_data(session, f"{host}/api/v1/dossier/groups?prefix={prefix}")
+
+        assert f"{prefix}/global" in groups
+        assert f"{prefix}/private" not in groups
+    finally:
+        datastore.dossier.delete(global_dossier.dossier_id)
+        datastore.dossier.delete(other_user_dossier.dossier_id)
+        datastore.dossier.commit()
 
 
 # noinspection PyUnusedLocal
@@ -282,9 +339,9 @@ def test_get_dossier_for_hit_user_scoping(datastore: HowlerDatastore, login_sess
 
         # All returned dossiers must be either global or owned by admin
         for dossier in resp:
-            assert (
-                dossier["type"] == "global" or dossier["owner"] == "admin"
-            ), f"Unexpected dossier in results: {dossier}"
+            assert dossier["type"] == "global" or dossier["owner"] == "admin", (
+                f"Unexpected dossier in results: {dossier}"
+            )
 
     finally:
         datastore.hit.delete(test_hit_id)
