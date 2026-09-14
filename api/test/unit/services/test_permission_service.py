@@ -76,27 +76,6 @@ def test_is_allowed_to_change_allows_owner_and_local_admin_updates():
     assert permission_service._is_allowed_to_change("members", make_user("admin"), ownership)
 
 
-@pytest.mark.parametrize("privilege", ["admins", "members"])
-def test_can_change_visibility_rejects_shared_records(privilege):
-    record = SimpleNamespace(owner="owner", type="global", admins=[], members=[])
-    getattr(record, privilege).append("shared-user")
-
-    assert not permission_service.can_change_visibility(record, "personal")
-
-
-def test_can_change_visibility_allows_unshared_records():
-    record = SimpleNamespace(owner="owner", type="global", admins=[], members=[])
-
-    assert permission_service.can_change_visibility(record, "personal")
-    assert permission_service.can_change_visibility(record, "global")
-
-
-def test_can_change_visibility_allows_owner_only_permissions():
-    record = SimpleNamespace(owner="owner", type="global", admins=["owner"], members=["owner"])
-
-    assert permission_service.can_change_visibility(record, "personal")
-
-
 def test_build_permissions_request_returns_valid_payload(app):
     with app.test_request_context(json={"privilege": "members", "user_ids": ["analyst"]}):
         permission_request = permission_service._build_permissions_request()

@@ -27,14 +27,6 @@ class _VisibilityItem(Protocol):
     def members(self) -> Sequence[str]: ...
 
 
-def can_change_visibility(existing_item: _VisibilityItem, requested_type: str) -> bool:
-    """Return whether a shared record can change its visibility."""
-    shared_users = set(existing_item.admins).union(existing_item.members)
-    shared_users.discard(existing_item.owner)
-
-    return requested_type == existing_item.type or not shared_users
-
-
 def _is_allowed_to_change(level_requested: str, user: User, existing_item: Ownership) -> bool:
     if "admin" in user.type:
         return True
@@ -85,18 +77,17 @@ def give_privilege(
     if permission_request.privilege == "owner" and len(user_ids) != 1:
         raise InvalidDataException("When setting the owner, user_ids must be a single entry long.")
 
-    errors: list[tuple[str, str]] = []
+    errors: list[str] = []
     for user_id in user_ids:
         if not storage.user.exists(user_id):
-            errors.append((user_id, f"User {user_id} does not exist"))
+            errors.append(f"User {user_id} does not exist")
             continue
 
         if permission_request.privilege != "owner" and user_id in result[permission_request.privilege]:
-            errors.append((user_id, f"User {user_id} already has permission {permission_request.privilege}"))
+            errors.append(f"User {user_id} already has permission {permission_request.privilege}")
 
     if errors:
-        error_details = "; ".join([f"{user_id}: {message}" for user_id, message in errors])
-        raise InvalidDataException(message=f"Failed to grant privileges for some users: {error_details}")
+        raise InvalidDataException(message=f"Failed to grant privileges for some users: {'; '.join(errors)}")
 
     if permission_request.privilege == "owner":
         new_owner = user_ids[0]
@@ -143,25 +134,14 @@ def remove_privilege(  # noqa: C901
     if permission_request.privilege == "owner":
         raise InvalidDataException(message="You cannot remove the owner privilege. Only transfer is allowed.")
 
+    errors: list[str] = []
     current_members = result.admins if permission_request.privilege == "admins" else result.members
     for user_id in user_ids:
         if user_id not in current_members:
-            raise InvalidDataException(
-                message=f"The user '{user_id}' does not have the '{permission_request.privilege}' privilege."
-            )
-
-    errors: list[tuple[str, str]] = []
-    for user_id in user_ids:
-        if not storage.user.exists(user_id):
-            errors.append((user_id, f"User {user_id} does not exist"))
-            continue
-
-        if user_id not in result[permission_request.privilege]:
-            errors.append((user_id, f"User {user_id} does not have permission {permission_request.privilege}"))
+            errors.append(f"The user '{user_id}' does not have the '{permission_request.privilege}' privilege.")
 
     if errors:
-        error_details = "; ".join([f"{user_id}: {message}" for user_id, message in errors])
-        raise InvalidDataException(message=f"Failed to revoke privileges for some users: {error_details}")
+        raise InvalidDataException(message=f"Failed to revoke privileges for some users: {'; '.join(errors)}")
 
     for user_id in user_ids:
         cast(list[str], result[permission_request.privilege]).remove(user_id)
