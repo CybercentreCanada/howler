@@ -66,19 +66,28 @@ def test_create_dossier_fails(datastore: HowlerDatastore):
 def test_update_dossier_fails(datastore: HowlerDatastore):
     user = datastore.user.search("uname:admin")["items"][0]
 
+    def get_unauthorized_user(dossier: Dossier):
+        return next(
+            candidate
+            for candidate in datastore.user.search("uname:*")["items"]
+            if candidate.uname != dossier.owner
+            and candidate.uname not in dossier.admins
+            and "admin" not in candidate.type
+        )
+
     with pytest.raises(NotFoundException):
-        dossier_service.update_dossier("potatopotatopotato", {"owner": "test"}, user).owner == "test"
+        dossier_service.update_dossier("potatopotatopotato", {"title": "test"}, user).title == "test"
 
     existing_dossier: Dossier = datastore.dossier.search("type:personal", as_obj=True)["items"][0]
 
     with pytest.raises(ForbiddenException):
-        other_user = datastore.user.search(f"-uname:{existing_dossier.owner} AND -type:admin")["items"][0]
-        dossier_service.update_dossier(existing_dossier.dossier_id, {"owner": other_user.uname}, other_user)
+        other_user = get_unauthorized_user(existing_dossier)
+        dossier_service.update_dossier(existing_dossier.dossier_id, {"title": "test"}, other_user)
 
     existing_dossier = datastore.dossier.search("type:global", as_obj=True)["items"][0]
     with pytest.raises(ForbiddenException):
-        other_user = datastore.user.search(f"-uname:{existing_dossier.owner} AND -type:admin")["items"][0]
-        dossier_service.update_dossier(existing_dossier.dossier_id, {"owner": other_user.uname}, other_user)
+        other_user = get_unauthorized_user(existing_dossier)
+        dossier_service.update_dossier(existing_dossier.dossier_id, {"title": "test"}, other_user)
 
     user = datastore.user.search(f"uname:{existing_dossier.owner}")["items"][0]
     with pytest.raises(InvalidDataException):
@@ -96,7 +105,33 @@ def test_update_dossier(datastore: HowlerDatastore):
     user = datastore.user.search("uname:admin")["items"][0]
     existing_dossier_id = datastore.dossier.search("type:global", as_obj=True)["items"][0].dossier_id
 
-    assert dossier_service.update_dossier(existing_dossier_id, {"owner": "test"}, user).owner == "test"
+    assert dossier_service.update_dossier(existing_dossier_id, {"title": "test"}, user).title == "test"
+
+
+def test_update_dossier_allows_visibility_change_for_shared_dossier(datastore: HowlerDatastore):
+    owner = datastore.user.search("uname:user")["items"][0]
+    dossier = Dossier(
+        {
+            "title": "Shared visibility test",
+            "query": "howler.hash:*",
+            "type": "global",
+            "owner": owner.uname,
+            "admins": ["huey"],
+            "leads": [],
+            "pivots": [],
+        }
+    )
+    datastore.dossier.save(dossier.dossier_id, dossier)
+    datastore.dossier.commit()
+
+    try:
+        updated_dossier = dossier_service.update_dossier(dossier.dossier_id, {"type": "personal"}, owner)
+
+        assert updated_dossier.type == "personal"
+        assert datastore.dossier.get(dossier.dossier_id, as_obj=True).type == "personal"
+    finally:
+        datastore.dossier.delete(dossier.dossier_id)
+        datastore.dossier.commit()
 
 
 def test_pivot_with_duplicates(datastore: HowlerDatastore):

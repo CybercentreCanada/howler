@@ -45,11 +45,13 @@ import useMySnackbar from 'components/hooks/useMySnackbar';
 import { uniq } from 'lodash-es';
 import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { View } from 'models/entities/generated/View';
 import { useNavigate, useParams } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import { convertDateToLucene } from 'utils/utils';
 import { buildViewUrl } from 'utils/viewUtils';
+import { MembershipManagement } from '../../elements/membership/MembershipManagement';
 import ErrorBoundary from '../ErrorBoundary';
 import RecordQuery from '../hits/search/RecordQuery';
 import HitSort from '../hits/search/shared/HitSort';
@@ -72,6 +74,8 @@ const ViewComposer: FC = () => {
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
   const loadRecords = useContextSelector(RecordContext, ctx => ctx.loadRecords);
+
+  const [view, setView] = useState<View>();
 
   // view state
   const [title, setTitle] = useState('');
@@ -230,39 +234,37 @@ const ViewComposer: FC = () => {
     }
 
     void (async () => {
-      const viewToEdit = (await getCurrentViews({ views: [routeParams.id!] }))[0];
+      const _view = (await getCurrentViews({ views: [routeParams.id!] }))[0];
 
-      if (!viewToEdit) {
+      setView(_view);
+
+      if (!_view) {
         setError('route.views.missing');
         return;
       } else {
         setError(null);
       }
 
-      setTitle(viewToEdit.title ?? '');
-      setAdvanceOnTriage(viewToEdit.settings?.advance_on_triage ?? false);
-      setDisplayType(
-        ((viewToEdit.settings?.display === 'grid' || viewToEdit.settings?.display === 'list'
-          ? viewToEdit.settings.display
-          : displayType) ?? 'list') as 'grid' | 'list'
-      );
-      setType(viewToEdit.type!);
+      setTitle(_view.title ?? '');
+      setAdvanceOnTriage(_view.settings?.advance_on_triage ?? false);
+      setDisplayType(_view.settings?.display ?? 'list');
+      setType(_view.type!);
 
-      const loadedQuery = viewToEdit.query || DEFAULT_QUERY;
-      const loadedIndexes = (viewToEdit.indexes as SearchIndex[] | undefined) || indexes || ['hit'];
-      const loadedSort = viewToEdit.sort || sort;
-      const loadedSpan = viewToEdit.span || span;
+      const loadedQuery = _view.query || DEFAULT_QUERY;
+      const loadedIndexes = (_view.indexes as SearchIndex[] | undefined) || indexes || ['hit'];
+      const loadedSort = _view.sort || sort;
+      const loadedSpan = _view.span || span;
 
       setQuery(loadedQuery);
-      if (viewToEdit.indexes) {
+      if (_view.indexes) {
         setIndexes(loadedIndexes);
       }
 
-      if (viewToEdit.sort) {
+      if (_view.sort) {
         setSort(loadedSort!);
       }
 
-      if (viewToEdit.span) {
+      if (_view.span) {
         setSpan(loadedSpan!);
       }
 
@@ -320,6 +322,7 @@ const ViewComposer: FC = () => {
                   >
                     {t('save')}
                   </CustomButton>
+                  <MembershipManagement type="view" entity={view} onChange={_view => setView(_view)} />
                 </Stack>
                 <Typography
                   sx={theme => ({

@@ -5,23 +5,24 @@ import { useContext, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const Classification: FC = () => {
-  const { config } = useContext(ApiConfigContext);
+  const { config, loaded } = useContext(ApiConfigContext);
   const { t } = useTranslation();
   const theme = useTheme();
   const isSm = useMediaQuery(theme.breakpoints.down('md'));
 
+  const c12nDef = loaded ? config.c12nDef : null;
+
   const label = useMemo(() => {
     if (isSm) {
-      return config.c12nDef?.RESTRICTED?.replace(/[a-z]/g, '').replace(/ /g, '') ?? '???';
+      return c12nDef?.RESTRICTED?.replace(/[a-z]/g, '').replace(/ /g, '') ?? '???';
     } else {
-      return config.c12nDef?.RESTRICTED ?? 'Unknown';
+      return c12nDef?.RESTRICTED ?? 'Unknown';
     }
-  }, [config.c12nDef?.RESTRICTED, isSm]);
+  }, [c12nDef?.RESTRICTED, isSm]);
 
   const color = useMemo(
-    () =>
-      (config.c12nDef?.levels_styles_map?.[label.replace(/\/\/.+/, '')]?.color ?? 'default') as ChipOwnProps['color'],
-    [config.c12nDef?.levels_styles_map, label]
+    () => (c12nDef?.levels_styles_map?.[label.replace(/\/\/.+/, '')]?.color ?? 'default') as ChipOwnProps['color'],
+    [c12nDef?.levels_styles_map, label]
   );
 
   return <Chip label={t(label)} color={color} sx={{ mr: 1, fontSize: '.9rem', p: 2, textTransform: 'uppercase' }} />;

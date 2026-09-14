@@ -1,36 +1,17 @@
+import { isEmpty } from 'lodash-es';
 import type { ApiType } from 'models/entities/generated/ApiType';
 import type { FC, PropsWithChildren } from 'react';
 import { createContext, useMemo, useState } from 'react';
 import { missingContext } from './contextUtils';
 
 export type ApiConfigContextType = {
-  config: ApiType;
+  config: Partial<ApiType>;
   setConfig: (config: ApiType) => void;
-  loaded?: boolean;
+  loaded: boolean;
 };
 
-class PendingApiConfig implements ApiType {
-  public get indexes(): ApiType['indexes'] {
-    return missingContext('ApiConfigContext');
-  }
-
-  public get lookups(): ApiType['lookups'] {
-    return missingContext('ApiConfigContext');
-  }
-
-  public get configuration(): ApiType['configuration'] {
-    return missingContext('ApiConfigContext');
-  }
-
-  public get c12nDef(): ApiType['c12nDef'] {
-    return missingContext('ApiConfigContext');
-  }
-}
-
-const PENDING_API_CONFIG = new PendingApiConfig();
-
 const DEFAULT_API_CONFIG_CONTEXT: ApiConfigContextType = {
-  config: PENDING_API_CONFIG,
+  config: {},
   setConfig: () => missingContext('ApiConfigContext'),
   loaded: false
 };
@@ -38,13 +19,13 @@ const DEFAULT_API_CONFIG_CONTEXT: ApiConfigContextType = {
 export const ApiConfigContext = createContext<ApiConfigContextType>(DEFAULT_API_CONFIG_CONTEXT);
 
 const ApiConfigProvider: FC<PropsWithChildren<{ defaultConfig?: ApiType }>> = ({ children, defaultConfig }) => {
-  const [config, setConfig] = useState<ApiType | null>(defaultConfig ?? null);
+  const [config, setConfig] = useState<Partial<ApiType>>(defaultConfig ?? {});
 
   const context = useMemo<ApiConfigContextType>(
     () => ({
-      config: config ?? PENDING_API_CONFIG,
+      config,
       setConfig,
-      loaded: config !== null
+      loaded: !isEmpty(config)
     }),
     [config, setConfig]
   );

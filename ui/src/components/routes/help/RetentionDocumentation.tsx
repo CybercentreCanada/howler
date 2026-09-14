@@ -48,7 +48,7 @@ const RetentionDocumentation: FC = () => {
         components={{
           duration: (
             <span>
-              {config.configuration.system.retention.limit_amount} {config.configuration.system.retention.limit_unit}
+              {config.configuration?.system.retention.limit_amount} {config.configuration?.system.retention.limit_unit}
             </span>
           ),
           alert: hitId ? <HitCard layout={HitLayout.DENSE} id={hitId} /> : <Skeleton variant="rounded" height="250px" />

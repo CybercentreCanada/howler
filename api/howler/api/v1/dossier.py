@@ -1,6 +1,7 @@
 from flask import request
 
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
+from howler.api.v1.utils import permission_helper
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import (
     ForbiddenException,
@@ -19,6 +20,7 @@ from howler.services import dossier_service
 SUB_API = "dossier"
 dossier_api = make_subapi_blueprint(SUB_API, api_version=1)
 dossier_api._doc = "Manage the different dossiers created for filtering hits"  # type: ignore
+permission_helper.add_access_control_endpoints(dossier_api, Dossier)
 
 logger = get_logger(__file__)
 
@@ -185,7 +187,7 @@ def delete_dossier(id: str, user: User, **kwargs):
         return not_found(err="This dossier does not exist")
 
     if existing_dossier.owner != user.uname and "admin" not in user.type:
-        return forbidden(err="You cannot delete a dossier unless you are an administrator, or the owner.")
+        return forbidden(err="You cannot delete a dossier unless you are a global administrator or the owner.")
 
     success = storage.dossier.delete(id, refresh=refresh)
 

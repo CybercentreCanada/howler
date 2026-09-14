@@ -6,5 +6,5 @@ import type { Column } from './Column';
 export interface Settings {
   advance_on_triage?: boolean;
   columns?: Column[];
-  display?: string;
+  display?: 'list' | 'grid';
 }

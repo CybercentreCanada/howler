@@ -7,7 +7,9 @@ export interface Action {
   action_id?: string;
   name?: string;
   operations?: Operation[];
-  owner_id?: string;
+  owner?: string;
   query?: string;
   triggers?: string[];
+  admins?: string[];
+  members?: string[];
 }

@@ -118,7 +118,7 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
             disabled={loading}
             disableClearable
             value={_case.status}
-            options={config.lookups['howler.status'] ?? []}
+            options={config.lookups?.['howler.status'] ?? []}
             renderInput={params => <TextField {...params} size="small" />}
             onChange={(_ev, status) => {
               if (status) {

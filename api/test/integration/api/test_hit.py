@@ -32,7 +32,7 @@ valid_hit_data = [
             "assignment": "user",
             "hash": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
             "labels": {"assignments": ["test", "test2"], "generic": ["test", "test2"]},
-            "votes": {"benign": {}, "obscure": {}, "malicious": {}},
+            "votes": {"benign": [], "obscure": [], "malicious": []},
             "source": {"address": "test", "geo": {"city_name": "test_city", "continent_code": "TT"}, "packets": 64},
         },
     },
@@ -46,7 +46,7 @@ valid_hit_data = [
                 "assignments": ["test", "banana"],
                 "generic": ["test", "banana"],
             },
-            "votes": {"benign": {}, "obscure": {}, "malicious": {}},
+            "votes": {"benign": [], "obscure": [], "malicious": []},
         },
     },
     {
@@ -57,7 +57,7 @@ valid_hit_data = [
             "hash": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
             "score": "0.4",
             "labels": {"assignments": ["test"], "generic": ["test"]},
-            "votes": {"benign": {}, "obscure": {}, "malicious": {}},
+            "votes": {"benign": [], "obscure": [], "malicious": []},
         },
     },
     {
@@ -68,7 +68,7 @@ valid_hit_data = [
             "hash": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
             "score": "0.8",
             "labels": {"assignments": ["test"], "generic": ["test"]},
-            "votes": {"benign": {}, "obscure": {}, "malicious": {}},
+            "votes": {"benign": [], "obscure": [], "malicious": []},
         },
     },
     {
@@ -79,7 +79,7 @@ valid_hit_data = [
             "hash": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
             "score": "0.8",
             "labels": {"assignments": ["test"], "generic": ["test"]},
-            "votes": {"benign": {}, "obscure": {}, "malicious": {}},
+            "votes": {"benign": [], "obscure": [], "malicious": []},
         },
     },
     {
@@ -90,7 +90,7 @@ valid_hit_data = [
             "hash": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
             "score": "0.8",
             "labels": {"assignments": ["test"], "generic": ["test"]},
-            "votes": {"benign": {}, "obscure": {}, "malicious": {}},
+            "votes": {"benign": [], "obscure": [], "malicious": []},
         },
     },
     {
@@ -432,7 +432,7 @@ def test_create_tools_hits_bundle_dedup_falls_back_to_direct_ingest(datastore: H
                 "hash": bundle_hash,
                 "score": "0.2",
                 "labels": {"assignments": [], "generic": []},
-                "votes": {"benign": {}, "obscure": {}, "malicious": {}},
+                "votes": {"benign": [], "obscure": [], "malicious": []},
             }
         },
     )

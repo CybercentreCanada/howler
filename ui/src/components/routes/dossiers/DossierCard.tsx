@@ -1,6 +1,6 @@
 import { Delete, Language, ManageSearch, Person } from '@mui/icons-material';
 import { Box, Card, Chip, Divider, Grid, IconButton, Stack, Tooltip, Typography } from '@mui/material';
-import HowlerAvatar from 'components/elements/display/HowlerAvatar';
+import Members from 'components/elements/membership/Members';
 import { isEmpty } from 'lodash-es';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { FC } from 'react';
@@ -19,12 +19,12 @@ const DossierCard: FC<{
       <Stack direction="row" alignItems="center" spacing={1} sx={{ '& > *': { flexShrink: 0 } }}>
         <Stack sx={{ flex: 1 }}>
           <Typography variant="body1" display="flex" alignItems="start">
+            <Box component="span" mr={1}>
+              {dossier.title}
+            </Box>
             <Tooltip title={t(`route.dossiers.manager.${dossier.type}`)}>
               {dossier.type === 'personal' ? <Person fontSize="small" /> : <Language fontSize="small" />}
             </Tooltip>
-            <Box component="span" ml={1}>
-              {dossier.title}
-            </Box>
           </Typography>
           <Typography variant="caption" color="text.secondary">
             <code>{dossier.query}</code>
@@ -63,8 +63,7 @@ const DossierCard: FC<{
             ))}
           </Grid>
         </Stack>
-
-        <HowlerAvatar sx={{ height: '28px', width: '28px' }} userId={dossier.owner!} />
+        <Members item={dossier} />
         <Tooltip title={t('route.dossiers.manager.openinsearch')}>
           <IconButton
             component={Link}

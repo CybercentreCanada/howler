@@ -4,7 +4,7 @@ Views are a feature in Howler that allows users to create custom, default querie
 
 ## Using a View
 
-You can use views by navigating to the view manager under [Manage > Views](/views). Clicking on any view will open it in the search page. Here, you can also use the `search` icon to open the view in the search page. You can also edit views that belong to you, and mark them as favourites. This will show them in the `t(route.views.saved)` dropdown in the sidebar. In the top right, you can also choose your "`t(route.views.manager.default)`", that will be selected by default when opening the alerts page.
+You can use views by navigating to the view manager under [Manage > Views](/views). Clicking on any view will open it in the search page. Here, you can also use the `search` icon to open the view in the search page. You can also edit views that belong to you or that have been shared with you, and mark them as favourites. This will show them in the `t(route.views.saved)` dropdown in the sidebar. In the top right, you can also choose your "`t(route.views.manager.default)`", that will be selected by default when opening the alerts page.
 
 ## Creating Views
 

@@ -45,7 +45,7 @@ const ApiKeyDrawer: FC<ApiKeyDrawerProps> = ({ onCreated }) => {
       return [1, 'seconds'];
     }
 
-    const { max_apikey_duration_amount: _amount, max_apikey_duration_unit: _unit } = config.configuration.auth;
+    const { max_apikey_duration_amount: _amount, max_apikey_duration_unit: _unit } = config.configuration?.auth ?? {};
 
     return [_amount ?? 1, _unit];
   }, [config]);
@@ -135,7 +135,7 @@ const ApiKeyDrawer: FC<ApiKeyDrawerProps> = ({ onCreated }) => {
               control={<Checkbox onChange={updatePrivs('I')} />}
               label={t('apikey.impersonate')}
             />
-            {config.configuration.auth.allow_extended_apikeys && (
+            {config.configuration?.auth.allow_extended_apikeys && (
               <FormControlLabel
                 disabled={privs.includes('I')}
                 control={<Checkbox onChange={updatePrivs('E')} />}

@@ -9,4 +9,6 @@ export interface HowlerDossier {
   icon?: string;
   label?: Label;
   metadata?: string;
+  admins?: string[];
+  members?: string[];
 }

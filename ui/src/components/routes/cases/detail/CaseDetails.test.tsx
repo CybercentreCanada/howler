@@ -77,7 +77,7 @@ const mockConfig = {
 const mockViewers: Record<string, string[]> = {};
 
 const Wrapper: FC<PropsWithChildren> = ({ children }) => (
-  <ApiConfigContext.Provider value={{ config: mockConfig, setConfig: vi.fn() }}>
+  <ApiConfigContext.Provider value={{ loaded: true, config: mockConfig, setConfig: vi.fn() }}>
     <SocketContext.Provider
       value={
         {

@@ -7,7 +7,7 @@ import { createContext, useCallback, useEffect, useRef, useState } from 'react';
 interface UserListContextType {
   users: { [id: string]: HowlerUser };
   searchUsers: (query: string) => void;
-  fetchUsers: (ids: Set<string>) => void;
+  fetchUsers: (ids: Iterable<string>) => void;
 }
 
 export const UserListContext = createContext<UserListContextType>(null!);
@@ -42,7 +42,7 @@ const UserListProvider: FC<PropsWithChildren> = ({ children }) => {
   );
 
   const fetchUsers = useCallback(
-    (ids: Set<string>) => {
+    (ids: Iterable<string>) => {
       const nextIds = new Set(ids);
       nextIds.delete('Unknown');
       nextIds.forEach(id => pendingIds.current.add(id));

@@ -8,16 +8,18 @@ import { stringToColor } from 'utils/utils';
 
 type HowlerAvatarProps = AvatarProps & {
   userId: string;
+  label?: string;
 };
 
-const HowlerAvatar: FC<HowlerAvatarProps> = ({ userId, ...avatarProps }) => {
+const HowlerAvatar: FC<HowlerAvatarProps> = ({ userId, label: _label, ...avatarProps }) => {
   const { t } = useTranslation();
   const { getAvatar } = useContext(AvatarContext);
   const theme = useTheme();
   const [props, setProps] = useState<{ sx?: SxProps<Theme>; children?: ReactNode | ReactNode[]; src?: string }>();
 
-  const displayId =
-    userId && userId.toLowerCase() !== 'unassigned' ? userId : t('app.drawer.hit.assignment.unassigned.name');
+  const label =
+    _label ||
+    (userId && userId.toLowerCase() !== 'unassigned' ? userId : t('app.drawer.hit.assignment.unassigned.name'));
 
   const stringAvatar = useCallback(
     (name: string) => {
@@ -53,9 +55,9 @@ const HowlerAvatar: FC<HowlerAvatarProps> = ({ userId, ...avatarProps }) => {
 
   if (userId) {
     return (
-      <Tooltip title={displayId}>
+      <Tooltip title={label}>
         <Avatar
-          aria-label={displayId}
+          aria-label={label}
           {...avatarProps}
           {...props}
           sx={{ ...avatarProps?.sx, ...props?.sx } as SxProps<Theme>}

@@ -1,7 +1,7 @@
 import { UserListContext } from 'components/app/providers/UserListProvider';
 import { useContext, useEffect } from 'react';
 
-const useMyUserList = (ids: Set<string>) => {
+const useMyUserList = (ids: Iterable<string>) => {
   const { users, fetchUsers } = useContext(UserListContext);
 
   useEffect(() => {

@@ -131,6 +131,44 @@ howlerUi:
     pullPolicy: IfNotPresent
 ```
 
+## Running a one-off datastore migration
+
+Datastore migrations are not an API startup action. Before a schema or data migration, create an explicit Kubernetes
+Job using the exact REST image repository and tag currently deployed. The Job must override the image's default
+Gunicorn command:
+
+```yaml
+command:
+  - python
+  - -m
+  - howler.external.run_migrations
+args:
+  - --all
+```
+
+Reuse the REST deployment's `howler-server-conf` ConfigMap, Elasticsearch credential Secret, optional certificate
+Secret, environment variables, and `HWL_DATASTORE_INDEX_PREFIX`. The configuration and index prefix must be identical
+to the API's; otherwise the Job can target a different datastore namespace. Mount configuration at `/etc/howler/conf/`
+and certificates at `/etc/howler/certs/` when the REST deployment uses those paths.
+
+Take an Elasticsearch backup and schedule a maintenance window first. Scale down REST and every ingestion or worker
+deployment that writes to Elasticsearch. Temporarily disable or suspend the REST HPA so it cannot recreate API writers
+while the Job runs. Do not add an automatically enabled Helm migration Job or upgrade hook.
+
+Run and inspect the operator-created Job:
+
+```bash
+kubectl apply -f howler-migrate-job.yaml
+kubectl logs -f job/howler-migrate
+poetry run howler-migrate --list
+```
+
+The command exits `0` when selected migrations complete or were already applied, `1` for migration or Elasticsearch
+failures, and `2` for invalid options or migration IDs. It waits for active claims and replaces stale claims according to
+`HWL_MIGRATION_STALE_CLAIM_TIMEOUT`. Review the Job logs and records in the `<HWL_DATASTORE_INDEX_PREFIX>-migration`
+alias before restoring writers and the HPA. See the [datastore migration runbook](../migration.md) for the full
+configuration and recovery procedure.
+
 <!-- markdownlint-disable -->
 ??? tip "Building Images from Source"
     If you need to build custom images or want to contribute to Howler development, see the

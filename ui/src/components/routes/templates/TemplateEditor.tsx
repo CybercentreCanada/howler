@@ -84,7 +84,7 @@ const TemplateEditor = ({
                 field={field}
                 data={data}
                 onRemove={onRemove}
-                tooltipTitle={(config.indexes.hit[field].description ?? t('none')).split('\n')[0]}
+                tooltipTitle={(config.indexes?.hit[field].description ?? t('none')).split('\n')[0]}
                 key={field}
               />
             );

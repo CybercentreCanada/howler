@@ -72,12 +72,14 @@ This document outlines the overall structure of the Howler API codebase. The fir
   - **`collection.py`** - Database collection management
   - **`operations.py`** - Database operations
   - **`bulk.py`** - Bulk data operations
-  - **`migrations/`**, **`support/`** - Database migrations and support utilities
+  - **`migrations/`** - Explicit, claim-protected datastore migrations and their runner
+  - **`support/`** - Datastore support utilities
 
 - `external` - external data integration tools:
   - **`generate_mitre.py`** - MITRE ATT&CK framework data generation
   - **`generate_sigma_rules.py`** - Sigma rule processing
   - **`generate_tlds.py`** - Top-level domain data
+  - **`run_migrations.py`** - Explicit one-off datastore migration command (`howler-migrate`)
   - **`reindex_data.py`**, **`wipe_databases.py`** - Database maintenance
 
 - `helper/` - business logic helpers:

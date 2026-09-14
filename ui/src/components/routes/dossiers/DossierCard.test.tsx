@@ -147,7 +147,7 @@ describe('DossierCard', () => {
       render(<DossierCard dossier={dossier} />, { wrapper: Wrapper });
 
       await waitFor(() => {
-        expect(screen.getByLabelText('john.doe')).toBeInTheDocument();
+        expect(screen.getByLabelText('Owner - john.doe')).toBeInTheDocument();
       });
     });
 
@@ -627,7 +627,7 @@ describe('DossierCard', () => {
         expect(screen.getByText('Complete Dossier')).toBeInTheDocument();
         expect(screen.getByText('howler.status:open AND howler.assigned:me')).toBeInTheDocument();
         expect(screen.getByLabelText(/personal/i)).toBeInTheDocument();
-        expect(screen.getByLabelText('admin')).toBeInTheDocument();
+        expect(screen.getByLabelText('Owner - admin')).toBeInTheDocument();
         expect(screen.getByRole('button')).toBeInTheDocument();
         expect(screen.getByText(/Lead 1/)).toBeInTheDocument();
         expect(screen.getByText(/Pivot 1/)).toBeInTheDocument();
@@ -667,7 +667,7 @@ describe('DossierCard', () => {
       for (const owner of owners) {
         rerender(<DossierCard dossier={createMockDossier({ owner })} />);
         await waitFor(() => {
-          expect(screen.getByLabelText(owner)).toBeInTheDocument();
+          expect(screen.getByLabelText(`Owner - ${owner}`)).toBeInTheDocument();
         });
       }
     });

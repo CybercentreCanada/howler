@@ -17,7 +17,7 @@ def _build_action() -> Action:
     return Action(
         {
             "action_id": "11111111-1111-4111-8111-111111111111",
-            "owner_id": "test",
+            "owner": "test",
             "name": "Test action",
             "query": "howler.id:*",
             "triggers": [],

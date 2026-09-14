@@ -188,7 +188,7 @@ SAMPLE_HIT_DATA = {
     "howler.hash": "1234567890abcdef",
     "howler.analytic": "Test Analytic",
     "howler.detection": "Test Detection",
-    "howler.data": {"foo": "bar"},
+    "howler.data": ["foo: bar"],
     "event.kind": "alert",
 }
 

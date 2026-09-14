@@ -3,8 +3,8 @@ import api from 'api';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { FieldContext } from 'components/app/providers/FieldProvider';
 import Fuse from 'fuse.js';
-import type { languages } from 'monaco-editor';
 import type { APILookups } from 'models/entities/generated/ApiType';
+import type { languages } from 'monaco-editor';
 import { useContext, useEffect, useMemo } from 'react';
 import { DEFAULT_QUERY } from 'utils/constants';
 
@@ -38,7 +38,7 @@ const useLuceneCompletionProvider = (): languages.CompletionItemProvider => {
 
       // If the field is complete and we're autocompleting the value, we parse the field and see if it's an enum.
       // If it is, suggest the matching values
-      if (before.trim().endsWith(':')) {
+      if (before.trim().endsWith(':') && config.lookups) {
         const key = before.trim().replace(/^.*?[^a-zA-Z._]?([a-zA-Z._]+):$/, '$1');
         const lookupValues = isLookupKey(key, config.lookups) ? config.lookups[key] : undefined;
 

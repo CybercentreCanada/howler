@@ -123,7 +123,7 @@ const HitOutline: FC<{
                 pr: '75px'
               }}
             >
-              <Tooltip title={(config.indexes.hit[field]?.description ?? t('none')).split('\n')[0]}>
+              <Tooltip title={(config.indexes?.hit[field]?.description ?? t('none')).split('\n')[0]}>
                 <Typography variant={layout !== HitLayout.COMFY ? 'caption' : 'body1'} fontWeight="bold">
                   {field}:
                 </Typography>

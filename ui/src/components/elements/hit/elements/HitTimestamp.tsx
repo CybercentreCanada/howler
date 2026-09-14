@@ -21,10 +21,10 @@ const HitTimestamp: FC<{ hit: Hit; layout: HitLayout }> = ({ hit, layout }) => {
   const threshold = useMemo(
     () =>
       dayjs().subtract(
-        config.configuration.system.retention?.limit_amount ?? 350,
-        (config.configuration.system.retention?.limit_unit as dayjs.ManipulateType) ?? 'days'
+        config.configuration?.system.retention?.limit_amount ?? 350,
+        (config.configuration?.system.retention?.limit_unit as dayjs.ManipulateType) ?? 'days'
       ),
-    [config.configuration.system.retention?.limit_amount, config.configuration.system.retention?.limit_unit]
+    [config.configuration]
   );
 
   const timestamp = useMemo(() => {

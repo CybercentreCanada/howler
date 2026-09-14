@@ -95,7 +95,17 @@ class TestILMConfig:
         for name in ("hit", "event", "case"):
             assert registered_configs[name] is not None
             assert registered_configs[name].enabled is True
-        for name in ("template", "overview", "analytic", "action", "user", "view", "dossier", "user_avatar"):
+        for name in (
+            "template",
+            "overview",
+            "analytic",
+            "action",
+            "migration",
+            "user",
+            "view",
+            "dossier",
+            "user_avatar",
+        ):
             assert registered_configs[name] is None
 
     def test_registration_skips_disabled_indices(self):
@@ -113,7 +123,18 @@ class TestILMConfig:
         for name in ("hit", "case"):
             assert registered_configs[name] is not None
             assert registered_configs[name].enabled is True
-        for name in ("event", "template", "overview", "analytic", "action", "user", "view", "dossier", "user_avatar"):
+        for name in (
+            "event",
+            "template",
+            "overview",
+            "analytic",
+            "action",
+            "migration",
+            "user",
+            "view",
+            "dossier",
+            "user_avatar",
+        ):
             assert registered_configs[name] is None
 
 

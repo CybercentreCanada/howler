@@ -43,7 +43,7 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) 
         return mapping.custom_value;
       }
 
-      if (!Object.keys(config.indexes.hit).includes(mapping.field!)) {
+      if (!config.indexes || !Object.keys(config.indexes.hit).includes(mapping.field!)) {
         return mapping.field!;
       }
 
@@ -79,7 +79,7 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) 
       // We have a single object and that's what they want
       return hitData;
     },
-    [actions, config.indexes.hit, hit]
+    [actions, config.indexes, hit]
   );
 
   const onClueClick = useCallback(

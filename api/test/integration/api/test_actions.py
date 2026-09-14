@@ -286,7 +286,7 @@ def test_valid_action_on_triage(datastore: HowlerDatastore, login_session):
         {
             "triggers": ["demote"],
             "name": "Test demote on triage",
-            "owner_id": "admin",
+            "owner": "admin",
             "query": "howler.id:*",
             "operations": [
                 {
@@ -306,7 +306,7 @@ def test_valid_action_on_triage(datastore: HowlerDatastore, login_session):
         {
             "triggers": ["promote"],
             "name": "Test promote on triage",
-            "owner_id": "admin",
+            "owner": "admin",
             "query": "howler.id:*",
             "operations": [
                 {
@@ -683,7 +683,7 @@ def test_create_action_success(datastore: HowlerDatastore, login_session):
 
     req = {
         "name": "Test Create action",
-        "owner_id": "admin",
+        "owner": "admin",
         "query": "howler.id:*",
         "operations": [
             {
@@ -713,7 +713,6 @@ def test_update_action_success(datastore: HowlerDatastore, login_session):
     req = {
         "name": "Test Update action",
         "query": "howler.id:*",
-        "owner_id": "admin",
         "operations": [
             {
                 "operation_id": "add_label",
