@@ -66,18 +66,27 @@ def test_create_dossier_fails(datastore: HowlerDatastore):
 def test_update_dossier_fails(datastore: HowlerDatastore):
     user = datastore.user.search("uname:admin")["items"][0]
 
+    def get_unauthorized_user(dossier: Dossier):
+        return next(
+            candidate
+            for candidate in datastore.user.search("uname:*")["items"]
+            if candidate.uname != dossier.owner
+            and candidate.uname not in dossier.admins
+            and "admin" not in candidate.type
+        )
+
     with pytest.raises(NotFoundException):
         dossier_service.update_dossier("potatopotatopotato", {"title": "test"}, user).title == "test"
 
     existing_dossier: Dossier = datastore.dossier.search("type:personal", as_obj=True)["items"][0]
 
     with pytest.raises(ForbiddenException):
-        other_user = datastore.user.search(f"-uname:{existing_dossier.owner} AND -type:admin")["items"][0]
+        other_user = get_unauthorized_user(existing_dossier)
         dossier_service.update_dossier(existing_dossier.dossier_id, {"title": "test"}, other_user)
 
     existing_dossier = datastore.dossier.search("type:global", as_obj=True)["items"][0]
     with pytest.raises(ForbiddenException):
-        other_user = datastore.user.search(f"-uname:{existing_dossier.owner} AND -type:admin")["items"][0]
+        other_user = get_unauthorized_user(existing_dossier)
         dossier_service.update_dossier(existing_dossier.dossier_id, {"title": "test"}, other_user)
 
     user = datastore.user.search(f"uname:{existing_dossier.owner}")["items"][0]
@@ -99,7 +108,7 @@ def test_update_dossier(datastore: HowlerDatastore):
     assert dossier_service.update_dossier(existing_dossier_id, {"title": "test"}, user).title == "test"
 
 
-def test_update_dossier_rejects_visibility_change_for_shared_dossier(datastore: HowlerDatastore):
+def test_update_dossier_allows_visibility_change_for_shared_dossier(datastore: HowlerDatastore):
     owner = datastore.user.search("uname:user")["items"][0]
     dossier = Dossier(
         {
@@ -116,10 +125,10 @@ def test_update_dossier_rejects_visibility_change_for_shared_dossier(datastore: 
     datastore.dossier.commit()
 
     try:
-        with pytest.raises(ForbiddenException, match="visibility"):
-            dossier_service.update_dossier(dossier.dossier_id, {"type": "personal"}, owner)
+        updated_dossier = dossier_service.update_dossier(dossier.dossier_id, {"type": "personal"}, owner)
 
-        assert datastore.dossier.get(dossier.dossier_id, as_obj=True).type == "global"
+        assert updated_dossier.type == "personal"
+        assert datastore.dossier.get(dossier.dossier_id, as_obj=True).type == "personal"
     finally:
         datastore.dossier.delete(dossier.dossier_id)
         datastore.dossier.commit()

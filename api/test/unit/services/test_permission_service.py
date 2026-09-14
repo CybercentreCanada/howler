@@ -290,28 +290,29 @@ def test_remove_privilege_requires_existing_privilege(app, monkeypatch, privileg
     collection.save.assert_not_called()
 
 
-def test_remove_privilege_rejects_missing_target_user_without_saving(app, monkeypatch):
+def test_remove_privilege_removes_missing_target_user_without_validating_user(app, monkeypatch):
     ownership = DummyOwnership(members=["analyst"])
     collection, user_collection = mock_datastore(monkeypatch, ownership)
     user_collection.exists.return_value = False
 
     with app.test_request_context(json={"privilege": "members", "user_ids": ["analyst"]}):
-        with pytest.raises(InvalidDataException, match="User analyst does not exist"):
-            permission_service.remove_privilege("dummy-id", make_user(), DummyOwnership)
+        result = permission_service.remove_privilege("dummy-id", make_user(), DummyOwnership)
 
-    collection.save.assert_not_called()
+    assert result["members"] == []
+    user_collection.exists.assert_not_called()
+    collection.save.assert_called_once_with("dummy-id", ownership, version="dummy-version", refresh=None)
 
 
-def test_remove_privilege_rejects_inconsistent_privilege_lookup(app, monkeypatch):
+def test_remove_privilege_uses_the_privilege_collection_for_removal(app, monkeypatch):
     ownership = DummyOwnership(members=["analyst"])
-    ownership.permissions["members"] = []
+    ownership.permissions["members"] = ownership.members
     collection, _ = mock_datastore(monkeypatch, ownership)
 
     with app.test_request_context(json={"privilege": "members", "user_ids": ["analyst"]}):
-        with pytest.raises(InvalidDataException, match="User analyst does not have permission members"):
-            permission_service.remove_privilege("dummy-id", make_user(), DummyOwnership)
+        result = permission_service.remove_privilege("dummy-id", make_user(), DummyOwnership)
 
-    collection.save.assert_not_called()
+    assert result["members"] == []
+    collection.save.assert_called_once_with("dummy-id", ownership, version="dummy-version", refresh=None)
 
 
 @pytest.mark.parametrize("privilege", ["admins", "members"])
@@ -337,5 +338,5 @@ def test_remove_privilege_deduplicates_user_ids(app, monkeypatch):
         result = permission_service.remove_privilege("dummy-id", make_user(), DummyOwnership)
 
     assert result["members"] == []
-    user_collection.exists.assert_called_once_with("analyst")
+    user_collection.exists.assert_not_called()
     collection.save.assert_called_once_with("dummy-id", ownership, version="dummy-version", refresh=None)

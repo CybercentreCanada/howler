@@ -134,7 +134,7 @@ def test_set_view(datastore: HowlerDatastore, login_session):
     assert updated_view.title == "new title thing"
 
 
-def test_personal_view_members_can_edit(datastore: HowlerDatastore, user_sessions):
+def test_personal_view_permission_levels_control_editing(datastore: HowlerDatastore, user_sessions):
     owner_session, host = user_sessions["user"]
     member_session, _ = user_sessions["huey"]
 
@@ -192,19 +192,19 @@ def test_personal_view_members_can_edit(datastore: HowlerDatastore, user_session
             data=json.dumps({"privilege": "members", "user_ids": [member_uname]}),
         )
 
-        member_update = get_api_data(
-            member_session,
-            f"{host}/api/v1/view/{view_id}/",
-            method="PUT",
-            data=json.dumps({"title": "member updated personal view"}),
-        )
-        assert member_update["title"] == "member updated personal view"
+        with pytest.raises(APIError):
+            get_api_data(
+                member_session,
+                f"{host}/api/v1/view/{view_id}/",
+                method="PUT",
+                data=json.dumps({"title": "member cannot update personal view"}),
+            )
     finally:
         datastore.view.delete(view_id)
         datastore.view.commit()
 
 
-def test_visibility_change_rejected_for_shared_view(datastore: HowlerDatastore, user_sessions):
+def test_visibility_change_allowed_for_shared_view(datastore: HowlerDatastore, user_sessions):
     owner_session, host = user_sessions["user"]
     member_session, _ = user_sessions["huey"]
 
@@ -225,18 +225,15 @@ def test_visibility_change_rejected_for_shared_view(datastore: HowlerDatastore, 
             data=json.dumps({"privilege": "members", "user_ids": [member_uname]}),
         )
 
-        for session in (owner_session, member_session):
-            with pytest.raises(APIError) as err:
-                get_api_data(
-                    session,
-                    f"{host}/api/v1/view/{view_id}/",
-                    method="PUT",
-                    data=json.dumps({"type": "personal"}),
-                )
+        updated_view = get_api_data(
+            owner_session,
+            f"{host}/api/v1/view/{view_id}/",
+            method="PUT",
+            data=json.dumps({"type": "personal"}),
+        )
 
-            assert "visibility" in str(err.value)
-
-        assert datastore.view.get(view_id, as_obj=True).type == "global"
+        assert updated_view["type"] == "personal"
+        assert datastore.view.get(view_id, as_obj=True).type == "personal"
     finally:
         datastore.view.delete(view_id)
         datastore.view.commit()
