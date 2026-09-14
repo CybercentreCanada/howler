@@ -5,6 +5,7 @@ dossiers - collections of security alerts and investigation data organized by an
 Dossiers can be personal (private to the creator) or global (shared with the team).
 """
 
+import re
 from typing import Any, Literal, Optional, cast, overload
 
 from mergedeep.mergedeep import merge
@@ -16,6 +17,7 @@ from howler.datastore.exceptions import SearchException
 from howler.odm.models.dossier import Dossier
 from howler.odm.models.user import User
 from howler.services import lucene_service
+from howler.utils.str_utils import sanitize_lucene_query
 
 logger = get_logger(__file__)
 
@@ -27,6 +29,12 @@ PERMITTED_KEYS = {
     "pivots",
     "type",
 }
+
+# Cap the number of group suggestions returned, so the endpoint can't be used to dump the entire group list
+MAX_GROUP_SUGGESTIONS = 25
+GROUP_SUGGESTION_PAGE_SIZE = 100
+# Group suggestions are a convenience feature, so bound aggregation work for broad prefixes.
+MAX_GROUP_SUGGESTION_PAGES = 5
 
 
 def exists(dossier_id: str) -> bool:
@@ -90,6 +98,39 @@ def get_dossier(
     return datastore().dossier.get_if_exists(key=id, as_obj=as_odm, version=version)
 
 
+def validate_group(group: str | Any) -> None:
+    """Validate a slash-separated dossier group path.
+
+    Args:
+        group: Group path to validate, such as ``Parent/Child``.
+
+    Raises:
+        InvalidDataException: If ``group`` is not a string, contains unsupported
+            characters, or contains empty path sections.
+    """
+    # 1 : check if we have to verify group or if group is a valid string
+    if group is None:
+        return
+
+    if group == "":
+        raise InvalidDataException("Group cannot be an empty string")
+
+    if not isinstance(group, str):
+        raise InvalidDataException('Data "group" should be a slash-separated string.')
+
+    # 2. Check for allowed characters
+    if not re.fullmatch(r"[0-9A-Za-zùûüÿàâæçéèêëïîôœÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ/]*", group):
+        raise InvalidDataException(
+            "Group contains invalid characters. Only English, French alphabetical, numeral and / character are allowed"
+        )
+
+    # 3. Check for empty sections anywhere (consecutive slashes, or leading/trailing slashes)
+    if "//" in group or group.startswith("/") or group.endswith("/"):
+        raise InvalidDataException("A group must consist of a relative path with no empty segments (e.g. a/b/c)")
+
+    return
+
+
 def create_dossier(  # noqa: C901
     dossier_data: Optional[Any],
     username: str,
@@ -144,6 +185,7 @@ def create_dossier(  # noqa: C901
         for pivot in dossier.pivots:
             if len(pivot.mappings) != len(set(mapping.key for mapping in pivot.mappings)):
                 raise InvalidDataException("One of your pivots has duplicate keys set.")
+            validate_group(pivot.group)
 
         # Ensure the owner is set to the current user.
         dossier.owner = username
@@ -215,6 +257,7 @@ def update_dossier(  # noqa: C901
             mappings = pivot.get("mappings") or []
             if len(mappings) != len(set(mapping.get("key") for mapping in mappings)):
                 raise InvalidDataException("One of your pivots has duplicate keys set.")
+            validate_group(pivot.get("group"))
 
     try:
         # Validate the Lucene query if it's being updated
@@ -236,6 +279,49 @@ def update_dossier(  # noqa: C901
         logger.exception("Error when updating dossier.")
         # Provide a user-friendly error message while preserving the original exception
         raise InvalidDataException("We were unable to update the dossier.", cause=e) from e
+
+
+def get_pivot_groups(prefix: str, username: str) -> list[str]:
+    """Suggest existing pivot group paths matching a prefix, so users can reuse groups already in use.
+
+    Args:
+        prefix: Case-insensitive prefix to filter suggestions by.
+        username: The requesting user, used to scope which dossiers are visible.
+
+    Returns:
+        Up to MAX_GROUP_SUGGESTIONS unique matching group paths from the visible dossier search, sorted alphabetically.
+        Suggestions are best-effort and scan up to MAX_GROUP_SUGGESTION_PAGES aggregation pages.
+    """
+    groups: set[str] = set()
+    lowered_prefix: str = (prefix or "").lower()
+    after: dict[str, str] | None = None
+
+    for _ in range(MAX_GROUP_SUGGESTION_PAGES):
+        composite: dict[str, Any] = {
+            "size": GROUP_SUGGESTION_PAGE_SIZE,
+            "sources": [{"group": {"terms": {"field": "pivots.group"}}}],
+        }
+        if after:
+            composite["after"] = after
+
+        result = datastore().dossier.search(
+            f'(type:global OR owner:("{sanitize_lucene_query(username)}" OR none))',
+            rows=0,
+            aggregations=[("pivot_groups", {"composite": composite})],
+        )
+        aggregation = result["aggregations"]["pivot_groups"]
+
+        for bucket in aggregation["buckets"]:
+            group = bucket["key"]["group"]
+            if not group.lower().startswith(lowered_prefix):
+                continue
+            groups.add(group)
+
+        after = aggregation.get("after_key")
+        if not after:
+            break
+
+    return sorted(groups)[:MAX_GROUP_SUGGESTIONS]
 
 
 def get_matching_dossiers(

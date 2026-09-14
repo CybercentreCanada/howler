@@ -2,7 +2,7 @@
 import { hdelete, hget, hpost, hput, joinAllUri, joinUri, uri as parentUri, type HowlerRefreshParam } from 'api';
 import createPermissionsApi from 'api/utils/createPermissionsApi';
 import type { Dossier } from 'models/entities/generated/Dossier';
-import * as hit from './hit';
+import * as groups from './groups';
 
 export const uri = (id?: string) => {
   return id ? joinAllUri(parentUri(), 'dossier', id) : joinUri(parentUri(), 'dossier');
@@ -29,4 +29,4 @@ export const del = (id: string, refresh?: HowlerRefreshParam) => {
 
 const permission = createPermissionsApi<Dossier>(uri);
 
-export { hit, permission };
+export { groups, permission };

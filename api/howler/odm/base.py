@@ -32,6 +32,7 @@ from howler.common import loader
 from howler.common.exceptions import HowlerKeyError, HowlerNotImplementedError, HowlerTypeError, HowlerValueError
 from howler.common.net import is_valid_domain, is_valid_ip
 from howler.odm.howler_enum import HowlerEnum
+from howler.utils.compat import Self
 from howler.utils.compat import StrEnum as PyStrEnum
 from howler.utils.dict_utils import flatten, recursive_update
 from howler.utils.isotime import now_as_iso
@@ -284,11 +285,20 @@ class Keyword(_Field):
     Examples: file hashes, service names, document ids
     """
 
-    def check(self, value, context=[], **kwargs):
+    def __init__(self, *args, coerce=True, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.coerce = coerce
+
+    def check(self: Self, value: Any | None, context=[], **kwargs):
         # We have a special case for bytes here due to how often strings and bytes
         # get mixed up in python apis
         if self.optional and value is None:
             return None
+
+        if not (self.coerce or isinstance(value, str)):
+            raise HowlerValueError(
+                f"[{'.'.join(context) or self.name}] Provided value is not a strict, and coerce is set to false"
+            )
 
         if isinstance(value, bytes):
             raise HowlerValueError(f"[{'.'.join(context) or self.name}] Keyword doesn't accept bytes values")
@@ -422,7 +432,7 @@ class IP(Keyword):
         super().__init__(*args, **kwargs)
         self.validation_regex = re.compile(IP_ONLY_REGEX)
 
-    def check(self, value, context=[], **kwargs):
+    def check(self: Self, value: str, context: list[str] = [], **kwargs):
         if not value:
             return None
 
@@ -465,7 +475,7 @@ class Email(Keyword):
         super().__init__(*args, **kwargs)
         self.validation_regex = re.compile(EMAIL_REGEX)
 
-    def check(self, value, context=[], **kwargs):
+    def check(self: Self, value: str, context: list[str] = [], **kwargs):
         if not value:
             return None
 
@@ -489,7 +499,7 @@ class URI(Keyword):
         super().__init__(*args, **kwargs)
         self.validation_regex = re.compile(FULL_URI)
 
-    def check(self, value, context=[], **kwargs):
+    def check(self: Self, value: str, context: list[str] = [], **kwargs):
         if not value:
             return None
 
