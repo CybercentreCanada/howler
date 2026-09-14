@@ -12,10 +12,7 @@ from uuid import uuid4
 from howler.common.exceptions import HowlerRuntimeError
 from howler.datastore.collection import CREATE_TOKEN
 from howler.datastore.exceptions import DataStoreException, VersionConflictException
-from howler.datastore.migrations.action_owner import (
-    ActionOwnerLegacyFieldCleanupMigration,
-    ActionOwnerMigration,
-)
+from howler.datastore.migrations.action_owner import ActionOwnerMigration
 from howler.datastore.migrations.base import Migration
 from howler.utils.isotime import now_as_iso
 
@@ -26,10 +23,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("howler.datastore.migrations")
 
-MIGRATIONS: tuple[Migration, ...] = (
-    ActionOwnerMigration(),
-    ActionOwnerLegacyFieldCleanupMigration(),
-)
+MIGRATIONS: tuple[Migration, ...] = (ActionOwnerMigration(),)
 DEFAULT_WAIT_TIMEOUT = 14400.0
 DEFAULT_POLL_INTERVAL = 0.5
 # Keep this above the default task/retry budget so a live long-running migration is not reclaimed.

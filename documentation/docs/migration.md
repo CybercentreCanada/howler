@@ -39,10 +39,6 @@ Use the exact configuration and data namespace used by the API:
 - `HWL_DATASTORE_TASK_POLL_TIMEOUT` and `HWL_DATASTORE_TASK_POLL_INTERVAL` bound and pace asynchronous Elasticsearch
   task polling.
 
-The `action-owner-id-legacy-field-cleanup` migration is a separate stable follow-up for environments where the original
-`action-owner-id-to-owner` record was already marked applied. It is safe to select on new installations as well; it
-records zero affected documents when no legacy field remains.
-
 ### One-off Kubernetes operation
 
 Do not add a Helm migration Job or upgrade hook. Create an operator-run Job or pod using the exact REST image repository

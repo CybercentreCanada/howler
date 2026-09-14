@@ -45,9 +45,6 @@ poetry run howler-migrate --all
 
 # Run one or more selected migrations
 poetry run howler-migrate --migration-id action-owner-id-to-owner
-poetry run howler-migrate \
-  --migration-id action-owner-id-to-owner \
-  --migration-id action-owner-id-legacy-field-cleanup
 
 # Override the Elasticsearch transport timeout before datastore imports
 poetry run howler-migrate --all --timeout 3600

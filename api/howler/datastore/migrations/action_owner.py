@@ -32,9 +32,3 @@ class ActionOwnerMigration(Migration):
         if isinstance(updated, bool) or not isinstance(updated, int) or updated < 0:
             raise DataStoreException("Action-owner migration received an invalid update count from Elasticsearch.")
         return updated
-
-
-class ActionOwnerLegacyFieldCleanupMigration(ActionOwnerMigration):
-    """Clean legacy owner fields in deployments where the original migration already ran."""
-
-    migration_id = "action-owner-id-legacy-field-cleanup"
