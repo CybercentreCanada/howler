@@ -187,13 +187,9 @@ def update_action(id: str, user: User, **kwargs) -> Response:
     ):
         return forbidden(err="Updating triggers requires the role 'automation_advanced'.")
 
-    allowed_list = [
-        existing_action.get("owner"),
-        *existing_action.get("admins", []),
-        *existing_action.get("members", []),
-    ]
-    if user.uname not in allowed_list and "admin" not in user.type:
-        return forbidden(err="You do not have the permission to update this action")
+    is_action_admin = user.uname == existing_action.get("owner") or user.uname in existing_action.get("admins", [])
+    if not is_action_admin and "admin" not in user.type:
+        return forbidden(err="You cannot update a view that is not owned by you, or you are not an administrator of.")
 
     updated_action = {
         **existing_action,
