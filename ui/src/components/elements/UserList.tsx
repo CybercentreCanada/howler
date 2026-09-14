@@ -97,7 +97,6 @@ const UserList: FC<{
 
   const sharedAutocompleteProps = {
     disabled,
-    autocomplete: 'off',
     sx: { minWidth: '300px' },
     options: allUserIds,
     renderInput,

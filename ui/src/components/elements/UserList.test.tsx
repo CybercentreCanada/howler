@@ -116,22 +116,47 @@ describe('UserList', () => {
     expect(onChange).toHaveBeenCalledWith(expect.arrayContaining(['analystA', 'analystB']));
   });
 
-  it('does not open popover when disabled', async () => {
+  it('renders an inline picker and selects a user in list variant multiple mode', async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
 
     render(
-      <UserList
-        i18nLabel="user.list.label"
-        userIds={['analystA']}
-        onChange={onChange}
-        disabled
-        multiple
-        variant="list"
-      />,
+      <UserList i18nLabel="user.list.label" userIds={['analystA']} onChange={onChange} multiple variant="list" />,
       {
         wrapper: createWrapper(defaultUsers)
       }
     );
+
+    expect(screen.getByText('Alice Analyst')).toBeInTheDocument();
+
+    const combo = screen.getByRole('combobox', { name: 'user.list.label' });
+    await user.click(combo);
+
+    const listbox = await screen.findByRole('listbox');
+    await user.click(within(listbox).getByText('Bob Analyst'));
+
+    expect(onChange).toHaveBeenCalledWith(expect.arrayContaining(['analystA', 'analystB']));
+  });
+
+  it('renders the selected user without a picker in list variant single mode', () => {
+    const onChange = vi.fn();
+
+    render(<UserList i18nLabel="user.list.label" userIds={['analystA']} onChange={onChange} variant="list" />, {
+      wrapper: createWrapper(defaultUsers)
+    });
+
+    expect(screen.getByText('analystA', { selector: 'p' })).toBeInTheDocument();
+    expect(document.querySelector('#avatar-analystA')).toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('does not open popover when disabled', async () => {
+    const onChange = vi.fn();
+
+    render(<UserList i18nLabel="user.list.label" userIds={['analystA']} onChange={onChange} disabled multiple />, {
+      wrapper: createWrapper(defaultUsers)
+    });
 
     const button = screen.getByRole('button');
     expect(button).toBeDisabled();
