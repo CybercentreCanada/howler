@@ -11,7 +11,7 @@ class PermissionRequest(odm.Model):
     )
     user_ids: list[str] = odm.List(
         odm.Keyword(),
-        description="The group administrator for this object.",
+        description="The list of user IDs to grant or revoke for the selected privilege.",
         default=[],
         optional=False,
     )
