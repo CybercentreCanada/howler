@@ -296,42 +296,6 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
             <Add />
           </Button>
         </Stack>
-        <Typography
-          sx={theme => ({
-            color: theme.palette.text.secondary,
-            fontSize: '0.9em',
-            fontStyle: 'italic',
-            mt: 0.5
-          })}
-          variant="body2"
-        >
-          {t('route.dossiers.pivot.explanation')}
-        </Typography>
-        <Autocomplete
-          freeSolo
-          disableClearable
-          disabled={!dossier || loading}
-          options={groupOptions}
-          inputValue={pivot?.group ?? ''}
-          onInputChange={(_ev, value, reason) => {
-            update({ group: value || undefined });
-            if (reason === 'input') {
-              fetchGroupSuggestions(value);
-            }
-          }}
-          renderInput={params => (
-            <TextField
-              {...params}
-              id="dossier-group"
-              label={t('route.pivots.groups.label')}
-              size="small"
-              fullWidth
-              error={Boolean(groupError)}
-              helperText={groupError ? t(groupError) : ' '}
-              onFocus={() => fetchGroupSuggestions(pivot?.group ?? '')}
-            />
-          )}
-        />
         <Stack spacing={2}>
           <Stack direction="row" alignItems="center" position="relative">
             <TextField
@@ -357,11 +321,40 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
           </Stack>
 
           <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: `${theme.spacing(0.5)} !important` }}>
-            <Typography color="text.secondary">{t('route.dossiers.manager.icon.description')}</Typography>
+            <Typography variant="caption" color="text.secondary">
+              {t('route.dossiers.manager.icon.description')}
+            </Typography>
             <IconButton size="small" component="a" href="https://icon-sets.iconify.design/">
-              <OpenInNew fontSize="small" />
+              <OpenInNew sx={{ fontSize: '12px' }} />
             </IconButton>
           </Stack>
+          <Autocomplete
+            freeSolo
+            disableClearable
+            disabled={!dossier || loading}
+            options={groupOptions}
+            inputValue={pivot?.group ?? ''}
+            onInputChange={(_ev, value, reason) => {
+              update({ group: value || undefined });
+              if (reason === 'input') {
+                fetchGroupSuggestions(value);
+              }
+            }}
+            renderInput={params => (
+              <TextField
+                {...params}
+                id="dossier-group"
+                label={t('route.pivots.groups.label')}
+                size="small"
+                fullWidth
+                error={!!groupError}
+                onFocus={() => fetchGroupSuggestions(pivot?.group ?? '')}
+              />
+            )}
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ mt: `${theme.spacing(0.5)} !important` }}>
+            {groupError ? t(groupError) : t('route.dossiers.pivot.explanation')}
+          </Typography>
 
           <Stack direction="row" spacing={2}>
             <TextField
