@@ -27,6 +27,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type FC,
@@ -165,6 +166,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
   const [tab, setTab] = useState(parseInt(searchParams.get('pivot') ?? '0'));
   const [groupOptions, setGroupOptions] = useState<string[]>([]);
   const groupThrottler = useMemo(() => new Throttler(GROUP_SUGGESTION_THROTTLE_MS), []);
+  const latestGroupRequest = useRef(0);
 
   const update = useCallback(
     (data?: Partial<Pivot>) =>
@@ -218,15 +220,19 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
   // Suggest existing group paths as the user types, throttled so we never issue more than one request per second
   const fetchGroupSuggestions = useCallback(
     (prefix: string) => {
+      const requestId = ++latestGroupRequest.current;
+
       groupThrottler.debounce(async () => {
         try {
           const suggestions = await api.dossier.groups.get(prefix);
 
-          if (suggestions) {
+          if (requestId === latestGroupRequest.current && suggestions) {
             setGroupOptions(suggestions.slice(0, MAX_GROUP_SUGGESTIONS));
           }
         } catch {
-          setGroupOptions([]);
+          if (requestId === latestGroupRequest.current) {
+            setGroupOptions([]);
+          }
         }
       });
     },

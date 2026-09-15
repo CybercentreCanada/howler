@@ -1,6 +1,6 @@
 import type { Hit } from 'models/entities/generated/Hit';
+import type { DossierPivot, MenuPathNode } from 'components/routes/dossiers/utils';
 import type { ReactNode } from 'react';
-import type { dossierPivot, menuPathNode } from 'utils/pivotForest';
 
 export interface PivotSharedProps {
   hit?: Hit;
@@ -8,15 +8,15 @@ export interface PivotSharedProps {
 }
 
 export interface PivotFolderMenuProps extends PivotSharedProps {
-  node: menuPathNode;
+  node: MenuPathNode;
 }
 
 export interface PivotSubMenuItemProps extends PivotFolderMenuProps {
-  renderContent: (node: menuPathNode, onNavigate?: () => void) => ReactNode;
+  renderContent: (node: MenuPathNode, onNavigate?: () => void) => ReactNode;
 }
 
 export interface PivotFlyoutContentProps extends PivotSharedProps {
-  pivots: dossierPivot[];
-  groups: menuPathNode[];
-  renderGroup: (node: menuPathNode) => ReactNode;
+  pivots: DossierPivot[];
+  groups: MenuPathNode[];
+  renderGroup: (node: MenuPathNode) => ReactNode;
 }

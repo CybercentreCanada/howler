@@ -759,7 +759,7 @@
   "route.dossiers.manager.validation.search": "You must search to validate your query before submitting.",
   "route.dossiers.pivot.explanation": "Add a group value allowing this pivot to merge with other inside of the dossier buttons.",
   "route.dossiers.pivots.invalid.character": "Group contain invalid character, only English, French and numeral splited with / are allowed",
-  "route.dossiers.pivots.invalid.format": "the format need to be something/something. character are require in between slashes, as well as it can not start or end with a /",
+  "route.dossiers.pivots.invalid.format": "A group must consist of a relative path with no empty segments (e.g. a/b/c)",
   "route.dossiers.prompt": "Activate autocomplete using [ctrl + space].",
   "route.dossiers.search.prompt": "Search by title, query, or owner.",
   "route.dossiers.view": "View Dossier",

@@ -42,7 +42,6 @@ const PivotFolderMenu: FC<PivotFolderMenuProps> = ({ node, hit }) => {
           dossier={only.dossier}
           resolvedUrl={resolvePivotUrl(only, hit)}
           compact
-          withCard
         />
       );
     }

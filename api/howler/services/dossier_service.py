@@ -290,7 +290,7 @@ def get_pivot_groups(prefix: str, username: str) -> list[str]:
 
     Returns:
         Up to MAX_GROUP_SUGGESTIONS unique matching group paths from the visible dossier search, sorted alphabetically.
-        Suggestions are best-effort and scan up to MAX_GROUP_SUGGESTION_PAGES aggregation pages.
+        Suggestions are best-effort and scan up to MAX_GROUP_SUGGESTION_PAGES matching aggregation pages.
     """
     groups: set[str] = set()
     lowered_prefix: str = (prefix or "").lower()
@@ -304,12 +304,16 @@ def get_pivot_groups(prefix: str, username: str) -> list[str]:
         if after:
             composite["after"] = after
 
+        group_filter: dict[str, Any] = {"match_all": {}}
+        if prefix:
+            group_filter = {"prefix": {"pivots.group": {"value": prefix, "case_insensitive": True}}}
+
         result = datastore().dossier.search(
             f'(type:global OR owner:("{sanitize_lucene_query(username)}" OR none))',
             rows=0,
-            aggregations=[("pivot_groups", {"composite": composite})],
+            aggregations=[("pivot_groups", {"filter": group_filter, "aggs": {"groups": {"composite": composite}}})],
         )
-        aggregation = result["aggregations"]["pivot_groups"]
+        aggregation = result["aggregations"]["pivot_groups"]["groups"]
 
         for bucket in aggregation["buckets"]:
             group = bucket["key"]["group"]

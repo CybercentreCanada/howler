@@ -19,7 +19,7 @@ export const pivotGroupValidation = (group: string): string | null => {
 
   // Protection against wrongly formated /. We need words inbetween and they should not start or end with a /.
   if (group.includes('//') || group.startsWith('/') || group.endsWith('/')) {
-    return 'route.pivots.groups.invalid.format';
+    return 'route.dossiers.pivots.invalid.format';
   }
 
   return null;

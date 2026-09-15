@@ -26,18 +26,8 @@ export interface PivotLinkProps {
   resolvedUrl: string;
   // list-item rendering used inside dropdown menus: no card outline, title/owner/dossier settings shown inline
   dense?: boolean;
-  // wraps the content in its own bordered card - used for standalone entries not already inside a parent's card/button chrome
-  withCard?: boolean;
 }
-const PivotLink: FC<PivotLinkProps> = ({
-  pivot,
-  hit,
-  compact = false,
-  dossier,
-  resolvedUrl,
-  dense = false,
-  withCard = false
-}) => {
+const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, resolvedUrl, dense = false }) => {
   const { i18n, t } = useTranslation();
 
   const helpers = useHelpers({ async: false, components: false });
@@ -132,7 +122,6 @@ const PivotLink: FC<PivotLinkProps> = ({
           ) : undefined
         }
         tooltip={dense ? undefined : <PivotTooltip dossier={dossier} resolvedUrl={resolvedUrl} />}
-        withCard={!dense && withCard}
       />
     );
   }

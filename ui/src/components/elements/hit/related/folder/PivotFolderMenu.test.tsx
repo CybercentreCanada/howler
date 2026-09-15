@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { MenuPathNode } from 'components/routes/dossiers/utils';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Pivot } from 'models/entities/generated/Pivot';
-import PivotFolderMenu from '.';
+import PivotFolderMenu from './PivotFolderMenu';
 
 vi.mock('@iconify/react', () => ({
   Icon: () => <span />

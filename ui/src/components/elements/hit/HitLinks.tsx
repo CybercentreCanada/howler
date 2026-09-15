@@ -9,7 +9,7 @@ import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Hit } from 'models/entities/generated/Hit';
 
 import HitNotebooks from 'components/elements/hit/HitNotebooks';
-import PivotFolderMenu from 'components/elements/hit/related/PivotFolderMenu';
+import PivotFolderMenu from 'components/elements/hit/related/folder/PivotFolderMenu';
 import PivotLink from 'components/elements/hit/related/PivotLink';
 import RelatedLink from 'components/elements/hit/related/RelatedLink';
 import resolvePivotUrl from 'components/elements/hit/ResolvePivotUrl';

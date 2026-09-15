@@ -36,15 +36,15 @@ describe('pivotGroupValidation', () => {
   });
 
   it('rejects consecutive slashes', () => {
-    expect(pivotGroupValidation('network//dns')).toBe('route.pivots.groups.invalid.format');
+    expect(pivotGroupValidation('network//dns')).toBe('route.dossiers.pivots.invalid.format');
   });
 
   it('rejects a leading slash', () => {
-    expect(pivotGroupValidation('/network')).toBe('route.pivots.groups.invalid.format');
+    expect(pivotGroupValidation('/network')).toBe('route.dossiers.pivots.invalid.format');
   });
 
   it('rejects a trailing slash', () => {
-    expect(pivotGroupValidation('network/')).toBe('route.pivots.groups.invalid.format');
+    expect(pivotGroupValidation('network/')).toBe('route.dossiers.pivots.invalid.format');
   });
 });
 
