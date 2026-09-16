@@ -913,7 +913,7 @@ def create_dossiers(ds: HowlerDatastore, num_dossiers: int = 5):
         }
     )
     pivot_groups = [
-        "",
+        None,
         "credentials",
         "credentials/hash",
         "credentials/metadata",
