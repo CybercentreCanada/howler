@@ -1,12 +1,14 @@
-# Vue d'ensemble du générateur de requêtes avancé
+# Vue d'ensemble de la recherche avancée
 
-Le générateur de requêtes avancé est un espace de travail pour les requêtes de hit. Il permet de tester une requête, d'inspecter sa réponse brute et de choisir un langage de requête ou un mode d'exécution Lucene. Utilisez-le lorsque la page de recherche habituelle ne suffit pas pour examiner des valeurs de champ, des données regroupées, des séquences EQL, des règles Sigma ou la requête Elasticsearch derrière une recherche Lucene.
+La recherche avancée est un espace de travail pour les requêtes de hit. Elle permet de tester une requête, d'inspecter sa réponse brute et de choisir un langage de requête ou un mode d'exécution Lucene. Utilisez-la lorsque la page de recherche habituelle ne suffit pas pour examiner des valeurs de champ, des données regroupées, des séquences EQL, des règles Sigma ou la requête Elasticsearch derrière une recherche Lucene.
 
 `advanced_languages`
 
 ## Exécuter une requête
 
 Écrivez ou collez la requête dans l'éditeur de gauche, configurez les contrôles au-dessus, puis sélectionnez **Exécuter**. Vous pouvez aussi utiliser **Ctrl+Entrée** sous Windows et Linux ou **Cmd+Entrée** sous macOS lorsque l'éditeur est actif.
+
+L'éditeur fournit des suggestions adaptées au langage. Appuyez sur **Ctrl+Espace** si elles ne s'affichent pas automatiquement.
 
 `advanced_execute`
 

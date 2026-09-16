@@ -1,6 +1,6 @@
 # Choisir un langage de requête
 
-Le contrôle **Type de requête** modifie le langage de l'éditeur et le point de terminaison utilisé pour rechercher les hits. La sélection d'un autre langage charge un exemple adapté à cette syntaxe.
+Le contrôle **Type de requête** modifie le langage de l'éditeur et le point de terminaison utilisé pour rechercher les hits. La sélection d'un autre langage remplace le contenu de l'éditeur par un exemple adapté à cette syntaxe et efface la réponse actuelle; copiez donc votre requête au préalable si vous devez la conserver.
 
 `advanced_languages`
 
@@ -10,7 +10,7 @@ Utilisez **Requête Lucene** pour la même syntaxe orientée champs que la reche
 
 ## Requête EQL
 
-Utilisez **EQL** (Event Query Language) pour des séquences d'événements et des requêtes de type série temporelle. EQL a sa propre syntaxe et sa propre structure de réponse; examinez donc le résultat JSON plutôt que d'attendre une liste de hits habituelle. Le passage à EQL réinitialise le mode d'exécution propre à Lucene à Défaut.
+Utilisez **EQL** (Event Query Language) pour des séquences d'événements et des requêtes de type série temporelle. EQL a sa propre syntaxe et sa propre structure de réponse; examinez donc le résultat JSON plutôt que d'attendre une liste de hits habituelle. Le passage de Lucene à EQL ou Sigma réinitialise le mode d'exécution propre à Lucene à Défaut.
 
 ## Règle Sigma
 

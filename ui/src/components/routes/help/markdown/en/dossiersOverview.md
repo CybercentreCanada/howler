@@ -12,7 +12,7 @@ This makes dossiers useful for recurring investigation context, such as analyst 
 
 ## Visibility and ownership
 
-Create dossiers from **Manage > Dossiers**. A **Global** dossier is considered for every user, while a **Personal** dossier is considered only for its owner. Choose the scope deliberately: global content should be broadly useful and safe to expose to every user who can view a matching hit.
+Create dossiers from the [Dossiers](/dossiers) page in the left navigation. A **Global** dossier is considered for every user, while a **Personal** dossier is considered only for its owner. Choose the scope deliberately: global content should be broadly useful and safe to expose to every user who can view a matching hit.
 
 `dossier_scope`
 

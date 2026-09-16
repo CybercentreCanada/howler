@@ -8,7 +8,9 @@ Une piste est un onglet d'information affiché dans le visualiseur de hit lorsqu
 
 Chaque piste a besoin d'étiquettes anglaise et française, d'un identifiant d'icône Iconify valide, d'un format et d'un contenu. Les étiquettes localisées sont celles que les utilisateurs voient dans la langue choisie pour leur interface. Utilisez le navigateur Iconify accessible depuis l'éditeur pour sélectionner une icône qui existe.
 
-Le format intégré **markdown** rend le contenu dans le visualiseur de hit. Il convient aux étapes d'enquête concises, au contexte et aux références. Les pistes Markdown sont rendues avec le hit actuel comme contexte; vérifiez donc tout contenu dynamique sur un hit réel correspondant avant de le publier.
+Le format intégré **markdown** rend le contenu dans le visualiseur de hit. Il convient aux étapes d'enquête concises et au contexte. Les pistes Markdown sont des modèles Handlebars rendus avec le hit actuel comme contexte; `{{howler.id}}` produit donc l'identifiant du hit et les assistants Howler pris en charge sont disponibles. Vérifiez tout contenu dynamique sur un hit réel correspondant avant de le publier.
+
+Les liens externes dans les pistes Markdown sont affichés en texte brut, sauf les liens internes (`/...`) et ceux vers `*.gc.ca`. Utilisez un pivot de lien pour une destination externe cliquable.
 
 ## Formats de piste des plugins
 
