@@ -897,9 +897,9 @@ def create_dossiers(ds: HowlerDatastore, num_dossiers: int = 5):
         # Keep one dossier's random pivot data intact, while ensuring the mock data
         # always includes shared and nested groups for the grouped-pivot UI.
         if index > 0:
-            group = grouped_paths[(index - 1) % len(grouped_paths)]
+            grouped_path = grouped_paths[(index - 1) % len(grouped_paths)]
             for pivot in dossier.pivots:
-                pivot.group = group
+                pivot.group = grouped_path
 
         ds.dossier.save(dossier.dossier_id, dossier)
 
@@ -929,14 +929,14 @@ def create_dossiers(ds: HowlerDatastore, num_dossiers: int = 5):
         "recommendations/rotation",
         "recommendations/monitoring",
     ]
-    for index, group in enumerate(pivot_groups, start=1):
+    for index, pivot_group in enumerate(pivot_groups, start=1):
         password_checker_dossier.pivots.append(
             Pivot(
                 {
                     "label": {"en": f"Password Check {index}", "fr": f"Verification mot de passe {index}"},
                     "value": "https://password-checker.example.test/{{pivot_value}}",
                     "format": "link",
-                    "group": group,
+                    "group": pivot_group,
                     "mappings": [{"key": "pivot_value", "field": "howler.id"}],
                 }
             )
