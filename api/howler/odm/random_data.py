@@ -36,10 +36,12 @@ from howler.odm.base import Keyword
 from howler.odm.helper import generate_useful_case, generate_useful_dossier, generate_useful_event, generate_useful_hit
 from howler.odm.models.action import Action
 from howler.odm.models.analytic import Analytic, Comment, Notebook, TriageOptions
+from howler.odm.models.dossier import Dossier
 from howler.odm.models.ecs.event import EVENT_CATEGORIES
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import Assessment, Escalation, Scrutiny, Status
 from howler.odm.models.overview import Overview
+from howler.odm.models.pivot import Pivot
 from howler.odm.models.template import Template
 from howler.odm.models.user import User
 from howler.odm.models.view import View
@@ -901,6 +903,46 @@ def create_dossiers(ds: HowlerDatastore, num_dossiers: int = 5):
 
         ds.dossier.save(dossier.dossier_id, dossier)
 
+    password_checker_dossier = Dossier(
+        {
+            "title": "Password Checker Pivot Folders",
+            "query": 'howler.analytic:"Password Checker"',
+            "type": "global",
+            **_get_ownership_data(users, "admin"),
+            "leads": [],
+        }
+    )
+    pivot_groups = [
+        "",
+        "credentials",
+        "credentials/hash",
+        "credentials/metadata",
+        "validation",
+        "validation/length",
+        "validation/complexity",
+        "validation/reuse",
+        "exposure",
+        "exposure/breach",
+        "exposure/darkweb",
+        "exposure/thirdparty",
+        "recommendations",
+        "recommendations/rotation",
+        "recommendations/monitoring",
+    ]
+    for index, group in enumerate(pivot_groups, start=1):
+        password_checker_dossier.pivots.append(
+            Pivot(
+                {
+                    "label": {"en": f"Password Check {index}", "fr": f"Verification mot de passe {index}"},
+                    "value": "https://password-checker.example.test/{{pivot_value}}",
+                    "format": "link",
+                    "group": group,
+                    "mappings": [{"key": "pivot_value", "field": "howler.id"}],
+                }
+            )
+        )
+
+    ds.dossier.save(password_checker_dossier.dossier_id, password_checker_dossier)
     ds.dossier.commit()
 
 

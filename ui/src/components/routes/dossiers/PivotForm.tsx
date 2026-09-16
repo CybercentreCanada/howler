@@ -200,7 +200,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
   );
 
   const pivot: Pivot | undefined = useMemo(() => dossier.pivots?.[tab], [dossier.pivots, tab]);
-  const icon = useMemo(() => pivot?.icon ?? 'material-symbols:find-in-page', [pivot?.icon]);
+  const icon = useMemo(() => pivot?.icon ?? 'material-symbols:link', [pivot?.icon]);
 
   useEffect(() => {
     searchParams.delete('lead');
@@ -293,7 +293,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
                 ..._dossier,
                 pivots: [
                   ...(_dossier.pivots ?? []),
-                  { icon: 'material-symbols:add-ad', label: { en: 'New Pivot', fr: 'Nouvelle pivot' }, mappings: [] }
+                  { icon: 'material-symbols:link', label: { en: 'New Pivot', fr: 'Nouvelle pivot' }, mappings: [] }
                 ]
               }));
             }}

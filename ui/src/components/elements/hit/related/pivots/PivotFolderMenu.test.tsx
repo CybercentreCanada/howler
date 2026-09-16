@@ -9,18 +9,18 @@ vi.mock('@iconify/react', () => ({
   Icon: () => <span />
 }));
 
-vi.mock('components/elements/hit/ResolvePivotUrl', () => ({
-  default: (pivot: Pivot) => `https://example.test/${pivot.value}`
-}));
-
-vi.mock('components/elements/hit/related/PivotLink', () => ({
-  default: ({ pivot, resolvedUrl }: { pivot: Pivot; resolvedUrl: string }) =>
+vi.mock('components/elements/hit/related/pivots/PivotLink', () => ({
+  default: ({ pivot, variant }: { pivot: Pivot; variant?: 'card' | 'menu-item' }) =>
     pivot.format === 'link' ? (
-      <a href={resolvedUrl} target="_blank" rel="noopener noreferrer">
+      <a href={`https://example.test/${pivot.value}`} role={variant === 'menu-item' ? 'menuitem' : undefined}>
         {pivot.label?.en}
       </a>
     ) : (
-      <button type="button" onClick={event => event.stopPropagation()}>
+      <button
+        type="button"
+        role={variant === 'menu-item' ? 'menuitem' : undefined}
+        onClick={event => event.stopPropagation()}
+      >
         {pivot.label?.en}
       </button>
     )
@@ -44,21 +44,25 @@ describe('PivotFolderMenu', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders a pivot URL as a link that can be activated with the keyboard', async () => {
+  it('opens a grouped pivot menu with the keyboard', async () => {
     const user = userEvent.setup();
 
     render(<PivotFolderMenu node={node} />);
 
-    await user.click(screen.getByRole('button'));
+    const trigger = screen.getByRole('button', { name: /example/i });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
 
-    const link = await screen.findByRole('link', { name: 'Nested' });
-    expect(link).toHaveAttribute('href', 'https://example.test/nested');
-    expect(link).toHaveAttribute('target', '_blank');
-
-    link.focus();
+    await user.tab();
+    expect(trigger).toHaveFocus();
     await user.keyboard('{Enter}');
 
-    expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
+    const link = await screen.findByRole('menuitem', { name: 'Nested' });
+    expect(link).toHaveAttribute('href', 'https://example.test/nested');
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+
+    await user.keyboard('{Escape}');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(trigger).toHaveFocus();
   });
 
   it('leaves plugin pivot activation under the plugin control', async () => {
@@ -71,10 +75,10 @@ describe('PivotFolderMenu', () => {
 
     render(<PivotFolderMenu node={pluginNode} />);
 
-    await user.click(screen.getByRole('button'));
-    await user.click(await screen.findByRole('button', { name: 'Plugin' }));
+    await user.click(screen.getByRole('button', { name: /example/i }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Plugin' }));
 
     expect(open).not.toHaveBeenCalled();
-    expect(screen.getByRole('menuitem')).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Plugin' })).toBeInTheDocument();
   });
 });

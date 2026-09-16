@@ -25,11 +25,24 @@ describe('RelatedLink', () => {
     open.mockRestore();
   });
 
-  it('preserves the card click behavior for regular links', async () => {
-    const user = userEvent.setup();
-    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+  it('renders dense secondary content and a trailing action outside the link', () => {
+    render(
+      <RelatedLink
+        title="Example"
+        href="https://example.test/pivot"
+        dense
+        secondary={<span>Details</span>}
+        action={<button type="button">Settings</button>}
+      />
+    );
 
-    const { container } = render(
+    expect(screen.getByText('Details')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Settings' }).closest('a')).toBeNull();
+  });
+
+  it('renders regular links as a single keyboard-accessible link', () => {
+    render(
       <MemoryRouter>
         <RelatedLink title="Example" href="https://example.test/pivot" target="_blank" rel="noopener noreferrer">
           <span>Icon</span>
@@ -40,10 +53,5 @@ describe('RelatedLink', () => {
     const link = screen.getByRole('link', { name: /example/i });
     expect(link).toHaveAttribute('href', 'https://example.test/pivot');
     expect(link.closest('.MuiCard-root')).not.toBeNull();
-
-    await user.click(container.querySelector('.MuiCard-root')!);
-
-    expect(open).toHaveBeenCalledWith('https://example.test/pivot', '_blank');
-    open.mockRestore();
   });
 });

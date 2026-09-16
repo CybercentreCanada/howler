@@ -27,8 +27,8 @@ class Mapping(odm.Model):
     description="The dossier object stores individual tabs/fields for a given alert.",
 )
 class Pivot(odm.Model):
-    icon: Optional[str] = odm.Text(
-        description="An optional icon to use in the tab display for this dossier.", optional=True
+    icon: str = odm.Text(
+        description="An optional icon to use in the tab display for this dossier.", default="material-symbols:link"
     )
     group: str | None = odm.Keyword(
         description="The group this pivot will merge with in hitviewer", optional=True, index=True, coerce=False

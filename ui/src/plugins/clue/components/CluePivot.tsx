@@ -5,7 +5,7 @@ import { Settings } from '@mui/icons-material';
 import { Divider, IconButton, Stack, Typography } from '@mui/material';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import HowlerCard from 'components/elements/display/HowlerCard';
-import type { PivotLinkProps } from 'components/elements/hit/related/PivotLink';
+import type { PivotLinkProps } from 'components/elements/hit/related/pivots/PivotLink';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import get from 'lodash-es/get';
 import isBoolean from 'lodash-es/isBoolean';
@@ -15,7 +15,7 @@ import { memo, useCallback, useContext, useState, type FC, type MouseEvent } fro
 import { useTranslation } from 'react-i18next';
 import { notNil } from 'utils/utils';
 
-const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) => {
+const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact, variant = 'card', onNavigate }: PivotLinkProps) => {
   const guessType = useClueEnrichSelector(ctx => ctx?.guessType);
 
   const { showErrorMessage } = useMySnackbar();
@@ -159,6 +159,37 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) 
 
   if (!actions[pivot.value!]) {
     return null;
+  }
+
+  if (variant === 'menu-item') {
+    return (
+      <Stack
+        component="button"
+        type="button"
+        role="menuitem"
+        onClick={event => {
+          void onClueClick(event);
+          onNavigate?.();
+        }}
+        direction="row"
+        spacing={1}
+        alignItems="center"
+        sx={theme => ({
+          width: '100%',
+          p: 1,
+          border: 0,
+          backgroundColor: 'transparent',
+          color: 'text.primary',
+          cursor: 'pointer',
+          font: 'inherit',
+          textAlign: 'left',
+          '&:hover': { backgroundColor: theme.palette.action.hover }
+        })}
+      >
+        <Icon fontSize="1.5rem" icon={pivot.icon!} />
+        <Typography noWrap>{pivot.label![i18n.language as 'en' | 'fr']}</Typography>
+      </Stack>
+    );
   }
 
   return (

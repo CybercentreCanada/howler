@@ -69,6 +69,10 @@ vi.mock('react-pluggable', () => ({
   usePluginStore: () => ({ executeFunction })
 }));
 
+vi.mock('plugins/store', () => ({
+  default: { pivotFormats: ['clue'] }
+}));
+
 const hit = {
   __index: 'hit',
   timestamp: '2026-01-01T00:00:00Z',
@@ -95,10 +99,10 @@ const linkPivot = {
   ]
 } as Pivot;
 
-const renderPivotLink = (pivot: Pivot, options: { compact?: boolean; dense?: boolean } = {}) =>
+const renderPivotLink = (pivot: Pivot, options: { compact?: boolean; variant?: 'card' | 'menu-item' } = {}) =>
   render(
     <MemoryRouter>
-      <PivotLink pivot={pivot} hit={hit} dossier={dossier} resolvedUrl="https://example.test/resolved" {...options} />
+      <PivotLink pivot={pivot} hit={hit} dossier={dossier} {...options} />
     </MemoryRouter>
   );
 
@@ -119,16 +123,30 @@ describe('PivotLink', () => {
     expect(executeFunction).not.toHaveBeenCalled();
   });
 
-  it('renders dossier details and an edit action for dense link pivots', () => {
-    renderPivotLink(linkPivot, { dense: true });
+  it('renders dossier details for menu-item link pivots', () => {
+    renderPivotLink(linkPivot, { variant: 'menu-item' });
 
     expect(screen.getByTestId('related-link')).toHaveAttribute('data-dense', 'true');
     expect(screen.getByText('Example dossier • analyst')).toBeInTheDocument();
     expect(screen.getByText('https://example.test/example.test/fixed-token/ALICE')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'pivot.dossier.open' })).toHaveAttribute(
-      'href',
-      '/dossiers/dossier-1/edit?tab=leads&query=foo%20bar'
+    expect(screen.queryByRole('link', { name: 'pivot.dossier.open' })).not.toBeInTheDocument();
+  });
+
+  it('falls back to the dossier when a link pivot cannot resolve without a hit', () => {
+    const pivot = {
+      format: 'link',
+      label: { en: 'Open dossier' },
+      value: '{{domain}}',
+      mappings: [{ key: 'domain', field: 'event.domain' }]
+    } as Pivot;
+
+    render(
+      <MemoryRouter>
+        <PivotLink pivot={pivot} dossier={dossier} />
+      </MemoryRouter>
     );
+
+    expect(screen.getByRole('link', { name: 'Open dossier' })).toHaveAttribute('href', '/dossier/dossier-1');
   });
 
   it('renders a plugin-provided pivot implementation', () => {
@@ -139,7 +157,13 @@ describe('PivotLink', () => {
     renderPivotLink(pivot, { compact: true });
 
     expect(screen.getByRole('button', { name: 'Plugin pivot' })).toBeInTheDocument();
-    expect(executeFunction).toHaveBeenCalledWith('pivot.clue', { pivot, hit, compact: true });
+    expect(executeFunction).toHaveBeenCalledWith('pivot.clue', {
+      pivot,
+      hit,
+      compact: true,
+      variant: 'card',
+      onNavigate: undefined
+    });
     expect(screen.queryByTestId('related-link')).not.toBeInTheDocument();
   });
 
@@ -151,6 +175,6 @@ describe('PivotLink', () => {
     expect(screen.getByTestId('howler-card')).toBeInTheDocument();
     expect(document.querySelector('[data-testid="ErrorOutlineIcon"]')).toBeInTheDocument();
     expect(screen.queryByTestId('related-link')).not.toBeInTheDocument();
-    expect(executeFunction).toHaveBeenCalledWith('pivot.unsupported', { pivot, hit, compact: false });
+    expect(executeFunction).not.toHaveBeenCalled();
   });
 });

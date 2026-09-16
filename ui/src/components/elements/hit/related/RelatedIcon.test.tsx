@@ -88,6 +88,13 @@ describe('RelatedIcon', () => {
     expect(screen.getByRole('img')).toHaveAttribute('alt', 'https://example.test');
   });
 
+  it('uses the title as the image alt text when no href is provided', () => {
+    renderWithConfig(<RelatedIcon icon="https://example.test/icon.svg" title="Example" compact />);
+
+    expect(screen.getByRole('img')).toHaveAttribute('alt', 'Example');
+    expect(screen.getByRole('img').parentElement).toHaveStyle({ width: '32px', height: '32px' });
+  });
+
   it('renders an Iconify icon when no image can be resolved', () => {
     renderWithConfig(<RelatedIcon icon="mdi:link-variant" />);
 

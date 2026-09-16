@@ -51,15 +51,29 @@ export interface MenuPathNode {
   children?: MenuPathNode[];
 }
 
-// use here and in PivotFolderMenu to relate the pivot with its dossier at rendering since we do not consider
-// dossier in the grouping. But we need to be able to find where it came from to allow the "open dossier" button to work
+// Pair each pivot with its dossier so renderers retain the associated metadata.
 export interface DossierPivot {
   pivot: Pivot;
   dossier: Dossier;
 }
 
-export const getDossierPivotKey = (dossier: Dossier, pivot: Pivot): string =>
-  JSON.stringify([dossier.dossier_id, pivot]);
+const detachedPivotKeys = new WeakMap<Pivot, number>();
+let nextDetachedPivotKey = 0;
+
+export const getDossierPivotKey = (dossier: Dossier, pivot: Pivot): string => {
+  const pivotIndex = dossier.pivots?.indexOf(pivot) ?? -1;
+  if (pivotIndex >= 0) {
+    return `${dossier.dossier_id}:${pivotIndex}`;
+  }
+
+  let detachedPivotKey = detachedPivotKeys.get(pivot);
+  if (detachedPivotKey === undefined) {
+    detachedPivotKey = nextDetachedPivotKey++;
+    detachedPivotKeys.set(pivot, detachedPivotKey);
+  }
+
+  return `${dossier.dossier_id}:${detachedPivotKey}`;
+};
 
 interface PivotTree {
   [PIVOTS]?: DossierPivot[];
@@ -116,7 +130,7 @@ const getGroupPivot = (dossiers: Dossier[]) => {
  */
 const buildPathMap = (tree: PivotTree, language: 'en' | 'fr' = 'en'): MenuPathNode[] => {
   const nodes: MenuPathNode[] = [];
-  for (const key in tree) {
+  for (const key of Object.keys(tree).sort()) {
     let path: string = key;
     let current = tree[key] as PivotTree;
     // squash a chain as long as it neither branches nor carries pivots of its own; that's a pure "pass-through"
