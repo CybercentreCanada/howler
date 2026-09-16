@@ -830,7 +830,6 @@
   "route.overviews.theme.dark": "Prévoyez en mode sombre",
   "route.overviews.theme.light": "Prévoyez en mode clair",
   "route.overviews.view": "Voir la vue d'ensemble",
-  "route.pivots.groups.invalid.word": "le mot pivot n'est pas autorisée entant que chemain",
   "route.pivots.groups.label": "Group du pivot",
   "route.search": "Rechercher",
   "route.templates": "Modèles",

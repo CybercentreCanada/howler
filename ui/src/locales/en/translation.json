@@ -830,7 +830,6 @@
   "route.overviews.theme.dark": "Preview in Dark Mode",
   "route.overviews.theme.light": "Preview in Light Mode",
   "route.overviews.view": "View Overview",
-  "route.pivots.groups.invalid.word": "The word pivot is not allowed as a group path.",
   "route.pivots.groups.label": "Pivot Group",
   "route.search": "Search",
   "route.templates": "Templates",
