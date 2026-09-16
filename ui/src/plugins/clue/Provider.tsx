@@ -8,7 +8,7 @@ import { getStored } from 'utils/localStorage';
 const Provider: React.FC<PropsWithChildren<{}>> = ({ children }) => {
   const { config } = useContext(ApiConfigContext);
 
-  const features: { [index: string]: boolean } = config.configuration?.features ?? {};
+  const features: { [index: string]: boolean } = config?.configuration?.features ?? {};
 
   return (
     <ClueProvider

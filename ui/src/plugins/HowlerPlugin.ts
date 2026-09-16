@@ -191,7 +191,7 @@ abstract class HowlerPlugin implements IPlugin {
     console.debug(`Operation ${format} enabled for plugin ${this.getPluginName()}`);
   }
 
-  on(_event: string, _hit: Hit) {
+  on(_event: string, _hit: Hit): React.ReactNode {
     return null;
   }
 

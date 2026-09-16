@@ -9,5 +9,8 @@ allowBuilds:
 
 minimumReleaseAge: 1440
 
+minimumReleaseAgeExclude:
+  - '@cccsaurora/clue-ui@1.4.2'
+
 overrides:
   handlebars-async-helpers>handlebars: '4.*'

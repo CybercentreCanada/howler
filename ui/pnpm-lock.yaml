@@ -12,8 +12,8 @@ importers:
   .:
     dependencies:
       '@cccsaurora/clue-ui':
-        specifier: 1.4.1
-        version: 1.4.1(c0ab4ace490aa1442524435ed32fa029)
+        specifier: 1.4.2
+        version: 1.4.2(c0ab4ace490aa1442524435ed32fa029)
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -374,8 +374,8 @@ packages:
     resolution: {integrity: sha512-ctxtJ/eA+t+6q2++vj5j7FYX3nRu311q1wfYH3xjlLOsczhlhxAg2FWNUXhpGvAw3BWo1xBcvOV6/YLc2r5FJw==}
     hasBin: true
 
-  '@cccsaurora/clue-ui@1.4.1':
-    resolution: {integrity: sha512-H43KZQGmrJE1QN7LD4pHHwqXWGlMf0k1Ju7MVbTlSuLzBaPQjoSo10BATmCcwivaqwTQ9kS06AaLZVppO2Vvtg==}
+  '@cccsaurora/clue-ui@1.4.2':
+    resolution: {integrity: sha512-mPgaXVywPQfSk8pfeQj8NHeEG0FGMSyHpi/emv7dWspNIYdmpQPGtuvklzZXmC9UrcSzzLzUH2vZ70aNCsmU3w==}
     peerDependencies:
       '@emotion/react': ^11.11.1
       '@emotion/styled': ^11.11.0
@@ -5188,7 +5188,7 @@ snapshots:
     dependencies:
       css-tree: 3.2.1
 
-  '@cccsaurora/clue-ui@1.4.1(c0ab4ace490aa1442524435ed32fa029)':
+  '@cccsaurora/clue-ui@1.4.2(c0ab4ace490aa1442524435ed32fa029)':
     dependencies:
       '@emotion/react': 11.14.0(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1)
       '@emotion/styled': 11.14.1(@emotion/react@11.14.0(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1)
