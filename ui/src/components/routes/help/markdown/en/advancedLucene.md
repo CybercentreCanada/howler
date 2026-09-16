@@ -6,7 +6,7 @@ When **Lucene Query** is selected, the **Query Method** control determines how H
 
 ## Default
 
-**Default** runs a normal hit search. Use it to inspect matching records, test filters, and then move a successful query into the regular Search page or a saved view.
+**Default** runs a normal hit search. Use it to inspect matching records, test filters, and then move a successful query into the Search page or a saved view.
 
 ## Facet
 
@@ -18,4 +18,4 @@ When **Lucene Query** is selected, the **Query Method** control determines how H
 
 ## Explain
 
-**Explain** returns the Elasticsearch explanation for a Lucene query instead of ordinary matching records. It is intended for debugging query behavior and inspecting the request that Howler sends to the cluster, not for triaging a result set.
+**Explain** returns the Elasticsearch explanation for a Lucene query instead of ordinary matching records. It is intended for debugging query behavior and inspecting the request that Howler sends to the cluster, not for triaging a result set. The row limit and selected-field controls do not apply in Explain mode.

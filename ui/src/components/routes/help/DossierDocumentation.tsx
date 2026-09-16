@@ -1,4 +1,4 @@
-import { Article, Language, Link as LinkIcon, Person, Search } from '@mui/icons-material';
+import { Article, Language, Link as LinkIcon, Person } from '@mui/icons-material';
 import { Box, Chip, Paper, Stack, Tab, Typography, useMediaQuery, useTheme } from '@mui/material';
 import PageCenter from 'commons/components/pages/PageCenter';
 import Markdown from 'components/elements/display/Markdown';
@@ -85,12 +85,6 @@ const DossierDocumentation: FC = () => {
           <Typography variant="body2" fontFamily="monospace">
             {'howler.analytic:"VPN Monitor" AND howler.status:open'}
           </Typography>
-          <Chip
-            size="small"
-            sx={{ alignSelf: 'start', mt: 0.5 }}
-            icon={<Search />}
-            label={t('route.dossiers.manager.openinsearch')}
-          />
         </Stack>
       </Paper>
     ),

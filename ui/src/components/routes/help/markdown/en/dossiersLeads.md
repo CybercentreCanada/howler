@@ -8,7 +8,9 @@ A lead is a tab of information displayed in the hit viewer when the dossier matc
 
 Every lead needs English and French labels, a valid Iconify icon ID, a format, and content. The localized labels are what users see in their selected interface language. Use the Iconify browser linked from the editor to choose an icon that exists.
 
-The built-in **markdown** format renders the content in the hit viewer. It is appropriate for concise investigation steps, context, and references. Markdown leads are rendered with the current hit as their context, so validate any dynamic content against a real matching hit before publishing it.
+The built-in **markdown** format renders the content in the hit viewer. It is appropriate for concise investigation steps and context. Markdown leads are Handlebars templates rendered with the current hit as their context, so `{{howler.id}}` resolves to the hit ID and supported Howler helpers are available. Validate dynamic content against a real matching hit before publishing it.
+
+External links in Markdown leads are rendered as plain text, except for internal (`/...`) and `*.gc.ca` links. Use a link pivot for a clickable external destination.
 
 ## Plugin lead formats
 

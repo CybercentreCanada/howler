@@ -12,7 +12,7 @@ Les dossiers conviennent donc au contexte récurrent d'une enquête, comme des c
 
 ## Visibilité et propriétaire
 
-Créez des dossiers dans **Gérer > Dossiers**. Un dossier **Global** est pris en compte pour tous les utilisateurs, alors qu'un dossier **Personnel** est pris en compte uniquement pour son propriétaire. Choisissez cette portée avec soin : le contenu global doit être utile à l'ensemble des utilisateurs et pouvoir être montré à tous ceux qui peuvent voir un hit correspondant.
+Créez des dossiers depuis la page [Dossiers](/dossiers) dans la navigation de gauche. Un dossier **Global** est pris en compte pour tous les utilisateurs, alors qu'un dossier **Personnel** est pris en compte uniquement pour son propriétaire. Choisissez cette portée avec soin : le contenu global doit être utile à l'ensemble des utilisateurs et pouvoir être montré à tous ceux qui peuvent voir un hit correspondant.
 
 `dossier_scope`
 
