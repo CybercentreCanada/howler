@@ -50,7 +50,8 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
       icon: <SavedSearch />,
       items
     };
-  }, [favouriteViews, fetchViews, t]);
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [favouriteViews, t]);
 
   const processAnalyticMenu = useCallback((): LeftNavMenuProps | null => {
     const favourites = favouriteAnalytics ?? [];
