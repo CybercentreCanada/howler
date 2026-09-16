@@ -113,8 +113,8 @@
     "handlebars-async-helpers": {
       "handlebars": "4.*"
     },
-    "i18next": "25.10.10",
-    "react-i18next": "16.6.6"
+    "i18next": "$i18next",
+    "react-i18next": "$react-i18next"
   },
   "peerDependencies": {
     "@emotion/react": "^11.14.0",
