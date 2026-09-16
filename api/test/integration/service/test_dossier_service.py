@@ -6,7 +6,7 @@ from mergedeep.mergedeep import merge
 
 from howler.common.exceptions import ForbiddenException, InvalidDataException, NotFoundException
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.helper import generate_useful_dossier
+from howler.odm.helper import create_users_with_username, generate_useful_dossier
 from howler.odm.models.dossier import Dossier
 from howler.odm.random_data import create_dossiers, wipe_dossiers
 from howler.services import dossier_service
@@ -65,40 +65,37 @@ def test_create_dossier_fails(datastore: HowlerDatastore):
 
 def test_update_dossier_fails(datastore: HowlerDatastore):
     user = datastore.user.search("uname:admin")["items"][0]
+    unauthorized_username = "dossier_test_unauthorized"
+    create_users_with_username(datastore, [unauthorized_username])
 
-    def get_unauthorized_user(dossier: Dossier):
-        return next(
-            candidate
-            for candidate in datastore.user.search("uname:*")["items"]
-            if candidate.uname != dossier.owner
-            and candidate.uname not in dossier.admins
-            and "admin" not in candidate.type
-        )
+    try:
+        unauthorized_user = datastore.user.get(unauthorized_username, as_obj=True)
 
-    with pytest.raises(NotFoundException):
-        dossier_service.update_dossier("potatopotatopotato", {"title": "test"}, user).title == "test"
+        with pytest.raises(NotFoundException):
+            dossier_service.update_dossier("potatopotatopotato", {"title": "test"}, user).title == "test"
 
-    existing_dossier: Dossier = datastore.dossier.search("type:personal", as_obj=True)["items"][0]
+        existing_dossier: Dossier = datastore.dossier.search("type:personal", as_obj=True)["items"][0]
 
-    with pytest.raises(ForbiddenException):
-        other_user = get_unauthorized_user(existing_dossier)
-        dossier_service.update_dossier(existing_dossier.dossier_id, {"title": "test"}, other_user)
+        with pytest.raises(ForbiddenException):
+            dossier_service.update_dossier(existing_dossier.dossier_id, {"title": "test"}, unauthorized_user)
 
-    existing_dossier = datastore.dossier.search("type:global", as_obj=True)["items"][0]
-    with pytest.raises(ForbiddenException):
-        other_user = get_unauthorized_user(existing_dossier)
-        dossier_service.update_dossier(existing_dossier.dossier_id, {"title": "test"}, other_user)
+        existing_dossier = datastore.dossier.search("type:global", as_obj=True)["items"][0]
+        with pytest.raises(ForbiddenException):
+            dossier_service.update_dossier(existing_dossier.dossier_id, {"title": "test"}, unauthorized_user)
 
-    user = datastore.user.search(f"uname:{existing_dossier.owner}")["items"][0]
-    with pytest.raises(InvalidDataException):
-        dossier_service.update_dossier(
-            existing_dossier.dossier_id, {"query": "sdklfjnasdvrtvybnuiseybuniosertv897890['['[/]['/]"}, user
-        )
+        user = datastore.user.search(f"uname:{existing_dossier.owner}")["items"][0]
+        with pytest.raises(InvalidDataException):
+            dossier_service.update_dossier(
+                existing_dossier.dossier_id, {"query": "sdklfjnasdvrtvybnuiseybuniosertv897890['['[/]['/]"}, user
+            )
 
-    with pytest.raises(InvalidDataException) as exc:
-        dossier_service.update_dossier(existing_dossier.dossier_id, {"test": "TEST"}, user)
+        with pytest.raises(InvalidDataException) as exc:
+            dossier_service.update_dossier(existing_dossier.dossier_id, {"test": "TEST"}, user)
 
-    assert exc.match("can be updated")
+        assert exc.match("can be updated")
+    finally:
+        datastore.user.delete(unauthorized_username)
+        datastore.user.commit()
 
 
 def test_update_dossier(datastore: HowlerDatastore):
