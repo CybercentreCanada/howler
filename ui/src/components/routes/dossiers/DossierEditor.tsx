@@ -31,6 +31,7 @@ import QueryResultText from '../../elements/display/QueryResultText';
 import RecordQuery from '../hits/search/RecordQuery';
 import LeadForm from './LeadForm';
 import PivotForm from './PivotForm';
+import { pivotGroupValidation } from './utils';
 
 const DossierEditor: FC = () => {
   const { t, i18n } = useTranslation();
@@ -125,6 +126,12 @@ const DossierEditor: FC = () => {
     }
 
     for (const pivot of dossier.pivots ?? []) {
+      const groupErr = pivotGroupValidation(pivot.group ?? '');
+      if (groupErr) {
+        // There's an issue with the group you've chosen.
+        return t(groupErr);
+      }
+
       if (!pivot.label) {
         // You have not configured a pivot label.
         return t('route.dossiers.manager.validation.error.pivots.label');

@@ -3,7 +3,7 @@ import clueEN from '@cccsaurora/clue-ui/en/translation.json';
 import clueFR from '@cccsaurora/clue-ui/fr/translation.json';
 import { Box } from '@mui/material';
 import type { HowlerHelper } from 'components/elements/display/handlebars/helpers';
-import type { PivotLinkProps } from 'components/elements/hit/related/PivotLink';
+import type { PivotLinkProps } from 'components/elements/hit/related/pivots/PivotLink';
 import type { PluginChipProps } from 'components/elements/PluginChip';
 import type { PluginTypographyProps } from 'components/elements/PluginTypography';
 import type { LeadFormProps } from 'components/routes/dossiers/LeadEditor';

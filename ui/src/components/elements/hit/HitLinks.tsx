@@ -1,5 +1,5 @@
 import { Grid, gridClasses } from '@mui/material';
-import { sortBy, uniqBy } from 'lodash-es';
+import { isEmpty, sortBy, uniqBy } from 'lodash-es';
 import type { FC } from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -9,9 +9,12 @@ import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Hit } from 'models/entities/generated/Hit';
 
 import HitNotebooks from 'components/elements/hit/HitNotebooks';
-import ResolvePivotUrl from 'components/elements/hit/ResolvePivotUrl';
-import PivotLink from 'components/elements/hit/related/PivotLink';
+import PivotFolderMenu from 'components/elements/hit/related/pivots/PivotFolderMenu';
+import PivotLink from 'components/elements/hit/related/pivots/PivotLink';
 import RelatedLink from 'components/elements/hit/related/RelatedLink';
+import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
+import { getDossierPivotKey, pivotForest } from 'components/routes/dossiers/utils';
+import { StorageKey } from 'utils/constants';
 
 interface HitLinksProps {
   hit?: Hit;
@@ -21,50 +24,81 @@ interface HitLinksProps {
 
 const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
   const { i18n } = useTranslation();
+  const [pivotGroupEnabled] = useMyLocalStorageItem(StorageKey.PIVOT_GROUP, true);
 
   const displayLinks = useMemo(() => uniqBy(hit?.howler?.links ?? [], 'href').slice(0, 3), [hit?.howler?.links]);
 
-  const displayPivots = useMemo(() => {
-    const flattened = dossiers.flatMap(dossier =>
-      (dossier.pivots ?? []).map(pivot => {
-        const pivotUrl = pivot.format === 'link' ? ResolvePivotUrl(pivot, hit) : undefined;
-        return {
-          pivot,
-          dossier,
-          resolvedUrl: pivotUrl || `/dossier/${dossier.dossier_id}`
-        };
-      })
+  // grouped: organize pivots into a forest of groups, each with a single root button
+  const forest = useMemo(
+    () => (pivotGroupEnabled ? pivotForest(dossiers, i18n.language as 'en' | 'fr') : []),
+    [pivotGroupEnabled, dossiers, i18n.language]
+  );
+  const rootPivots = useMemo(() => forest.find(node => isEmpty(node.path))?.pivots ?? [], [forest]);
+  // each distinct top-level group is its own tree, represented by a single root button (its own top node)
+  const groups = useMemo(() => forest.filter(node => !isEmpty(node.path)), [forest]);
+
+  // ungrouped (legacy): a flat, alphabetically sorted list of every pivot, exactly as it was before grouping
+  const flatPivots = useMemo(() => {
+    if (pivotGroupEnabled) {
+      return [];
+    }
+
+    return sortBy(
+      dossiers.flatMap(dossier => (dossier.pivots ?? []).map(pivot => ({ pivot, dossier }))),
+      item => item.pivot.label?.[i18n.language as 'en' | 'fr']
     );
-    return sortBy(flattened, item => item.pivot.label?.[i18n.language as 'en' | 'fr']);
-  }, [dossiers, i18n.language, hit]);
+  }, [pivotGroupEnabled, dossiers, i18n.language]);
 
   const hasNotebooks = (analytic?.notebooks?.length ?? 0) > 0;
 
-  if (displayLinks.length === 0 && displayPivots.length === 0 && !hasNotebooks) {
+  if (
+    displayLinks.length === 0 &&
+    !(pivotGroupEnabled ? rootPivots.length > 0 || groups.length > 0 : flatPivots.length > 0) &&
+    !hasNotebooks
+  ) {
     return null;
   }
 
   return (
     <Grid container spacing={1} pr={2} sx={{ [`& .${gridClasses.root}`]: { display: 'flex' } }}>
+      {pivotGroupEnabled ? (
+        <>
+          {groups.map(node => (
+            <Grid key={node.path}>
+              <PivotFolderMenu node={node} hit={hit} />
+            </Grid>
+          ))}
+          {rootPivots.map(({ pivot, dossier }) => (
+            <Grid key={getDossierPivotKey(dossier, pivot)}>
+              <PivotLink pivot={pivot} hit={hit} dossier={dossier} compact />
+            </Grid>
+          ))}
+        </>
+      ) : (
+        flatPivots.map(({ pivot, dossier }) => (
+          <Grid key={getDossierPivotKey(dossier, pivot)}>
+            <PivotLink pivot={pivot} hit={hit} dossier={dossier} compact />
+          </Grid>
+        ))
+      )}
+
       {displayLinks
         .filter(link => !!link.href)
         .map(link => {
-          const safeTitle = link.title ?? link.href;
-
           return (
             <Grid key={link.href}>
-              <RelatedLink compact title={safeTitle} href={link.href} target="_blank" rel="noopener noreferrer" />
+              <RelatedLink
+                compact
+                icon={link.icon}
+                title={link.title ?? link.href}
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+              />
             </Grid>
           );
         })}
 
-      {displayPivots.map(({ pivot, dossier, resolvedUrl }) => {
-        return (
-          <Grid key={`${dossier.dossier_id}-${pivot.value}`}>
-            <PivotLink pivot={pivot} hit={hit!} dossier={dossier} resolvedUrl={resolvedUrl} compact />
-          </Grid>
-        );
-      })}
       {hasNotebooks && (
         <Grid>
           <HitNotebooks analytic={analytic!} hit={hit!} compact />

@@ -23,17 +23,62 @@ import {
   Terminal,
   Topic
 } from '@mui/icons-material';
-import { Divider, Stack } from '@mui/material';
-import type { AppPreferenceConfigs, LeftNavMenuProps } from '@tui/core';
+import { Divider, List, ListItem, ListItemButton, ListItemText, Stack, Switch } from '@mui/material';
+import { useCookiesStore, type AppPreferenceConfigs, type LeftNavMenuProps } from '@tui/core';
 import { AppBarContext } from 'components/app/providers/AppBarProvider';
 import Classification from 'components/elements/display/Classification';
 import DocumentationButton from 'components/elements/display/DocumentationButton';
 import howlerPluginStore from 'plugins/store';
 import { Fragment, useContext, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { StorageKey } from 'utils/constants';
 import { applyMainMenuOperations } from 'utils/menuUtils';
+import { useMyLocalStorageItem } from './useMyLocalStorage';
 
 // This is your App Name that will be displayed in the left drawer and the top navbar
 const APP_NAME = 'howler';
+
+const PersonalizationMenuItems = () => {
+  const { t } = useTranslation();
+  const resetCookies = useCookiesStore(store => store.reset);
+  const [pivotGroupEnabled, setPivotGroupEnabled, resetPivotGroup] = useMyLocalStorageItem(
+    StorageKey.PIVOT_GROUP,
+    true
+  );
+
+  const resetPreferences = () => {
+    resetCookies();
+    resetPivotGroup();
+  };
+
+  return (
+    <>
+      <List dense>
+        <ListItem
+          disablePadding
+          secondaryAction={
+            <Switch
+              checked={pivotGroupEnabled}
+              edge="end"
+              onChange={() => setPivotGroupEnabled(!pivotGroupEnabled)}
+              onClick={event => event.stopPropagation()}
+            />
+          }
+        >
+          <ListItemButton id="personalization-pivot-group" onClick={() => setPivotGroupEnabled(!pivotGroupEnabled)}>
+            <ListItemText>{t('personalization.pivotGroup')}</ListItemText>
+          </ListItemButton>
+        </ListItem>
+      </List>
+      <Divider />
+      <List dense>
+        <ListItemButton dense id="personalization-reset" onClick={resetPreferences}>
+          <ListItemText>{t('personalization.reset_text')}</ListItemText>
+        </ListItemButton>
+      </List>
+    </>
+  );
+};
 
 const useMyPreferences = (): AppPreferenceConfigs => {
   const { leftItems, rightItems } = useContext(AppBarContext);
@@ -261,6 +306,7 @@ const useMyPreferences = (): AppPreferenceConfigs => {
         }
       },
       appLink: '/',
+      allowReset: false,
       allowThemeSelection: true,
       topnav: {
         quickSearchParam: 'query',
@@ -269,6 +315,9 @@ const useMyPreferences = (): AppPreferenceConfigs => {
           menus: {
             user: { i18nKey: 'usermenu', slot: USER_MENU_ITEMS },
             admin: { i18nKey: 'adminmenu', slot: ADMIN_MENU_ITEMS }
+          },
+          slots: {
+            bottom: [<PersonalizationMenuItems key="personalization-menu-items" />]
           }
         },
         slots: {

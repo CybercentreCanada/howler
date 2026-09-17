@@ -92,10 +92,26 @@ def test_update_dossier_fails(datastore: HowlerDatastore):
         with pytest.raises(InvalidDataException) as exc:
             dossier_service.update_dossier(existing_dossier.dossier_id, {"test": "TEST"}, user)
 
+        with pytest.raises(InvalidDataException):
+            dossier_service.update_dossier(
+                existing_dossier.dossier_id,
+                {
+                    "pivots": [
+                        {
+                            "label": {"en": "Bad Pivot", "fr": "Pivot invalide"},
+                            "format": "link",
+                            "value": "pivot.value",
+                            "mappings": [],
+                            "group": "//",
+                        }
+                    ]
+                },
+                user,
+            )
+
         assert exc.match("can be updated")
     finally:
         datastore.user.delete(unauthorized_username)
-        datastore.user.commit()
 
 
 def test_update_dossier(datastore: HowlerDatastore):

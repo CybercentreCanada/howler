@@ -1,7 +1,7 @@
 import type { HowlerHelper } from 'components/elements/display/handlebars/helpers';
 import type { ActionButton } from 'components/elements/hit/actions/SharedComponents';
 import type { StatusProps } from 'components/elements/hit/HitBanner';
-import type { PivotLinkProps } from 'components/elements/hit/related/PivotLink';
+import type { PivotLinkProps } from 'components/elements/hit/related/pivots/PivotLink';
 import type { PluginChipProps } from 'components/elements/PluginChip';
 import type { PluginTypographyProps } from 'components/elements/PluginTypography';
 import type { CustomActionProps } from 'components/routes/action/edit/ActionEditor';

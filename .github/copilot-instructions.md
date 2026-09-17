@@ -176,7 +176,7 @@ README.md, LICENSE, .gitignore, .pre-commit-config.yaml
 **UI Directory (`ui/`):**
 
 - `src/`: main TypeScript source (React)
-- `build_scripts/`: e.g., lint_staged.sh
+- `scripts/`: e.g., lint_staged.sh
 - `public/`
 - `node_modules/`, `target/`, etc.
 

@@ -34,6 +34,7 @@ const RelatedIcon: FC<{ icon?: string; title?: string; href?: string; compact?: 
         src={avatarImage}
         sx={[
           theme => ({
+            alignSelf: 'start',
             width: theme.spacing(compact ? 4 : 6),
             height: theme.spacing(compact ? 4 : 6),
             '& img': {
@@ -48,7 +49,7 @@ const RelatedIcon: FC<{ icon?: string; title?: string; href?: string; compact?: 
     );
   }
 
-  return <Icon fontSize="1.5rem" icon={icon} />;
+  return <Icon style={{ alignSelf: 'start' }} fontSize="1.5rem" icon={icon} />;
 };
 
 export default RelatedIcon;

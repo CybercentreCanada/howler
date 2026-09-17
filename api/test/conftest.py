@@ -20,6 +20,7 @@ import pytest
 import redis
 import requests
 
+from howler.cronjobs import setup_jobs
 from howler.datastore.howler_store import HowlerDatastore
 from howler.datastore.store import ESCollection, ESStore
 from howler.odm import random_data
@@ -76,6 +77,7 @@ def datastore_connection(config, auth_fail_queue):
     try:
         random_data.wipe_users(ds)
         random_data.create_users(ds)
+        setup_jobs()
         yield ds
 
     finally:

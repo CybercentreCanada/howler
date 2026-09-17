@@ -159,7 +159,7 @@ jobs:
 
       - name: Set Package Version
         run: |
-          python build_scripts/set_version.py
+          python scripts/set_version.py
         env:
           BRANCH: ${{ github.ref }}
           BUILD_ID: ${{ github.run_number }}
@@ -261,7 +261,7 @@ jobs:
 
       - name: Set Package Version
         run: |
-          python build_scripts/set_version.py
+          python scripts/set_version.py
         env:
           BRANCH: ${{ github.ref }}
           BUILD_ID: ${{ github.run_number }}

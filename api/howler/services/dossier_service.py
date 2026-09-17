@@ -9,13 +9,20 @@ from typing import Any, Literal, Optional, cast, overload
 
 from mergedeep.mergedeep import merge
 
-from howler.common.exceptions import ForbiddenException, HowlerException, InvalidDataException, NotFoundException
+from howler.common.exceptions import (
+    ForbiddenException,
+    HowlerException,
+    HowlerValueError,
+    InvalidDataException,
+    NotFoundException,
+)
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import SearchException
 from howler.odm.models.dossier import Dossier
 from howler.odm.models.user import User
 from howler.services import lucene_service
+from howler.utils.str_utils import sanitize_lucene_query
 
 logger = get_logger(__file__)
 
@@ -27,6 +34,12 @@ PERMITTED_KEYS = {
     "pivots",
     "type",
 }
+
+# Cap the number of group suggestions returned, so the endpoint can't be used to dump the entire group list
+MAX_GROUP_SUGGESTIONS = 25
+GROUP_SUGGESTION_PAGE_SIZE = 100
+# Group suggestions are a convenience feature, so bound aggregation work for broad prefixes.
+MAX_GROUP_SUGGESTION_PAGES = 5
 
 
 def exists(dossier_id: str) -> bool:
@@ -140,11 +153,6 @@ def create_dossier(  # noqa: C901
 
         dossier = Dossier(dossier_data)
 
-        # Validate pivot configurations to ensure no duplicate mapping keys
-        for pivot in dossier.pivots:
-            if len(pivot.mappings) != len(set(mapping.key for mapping in pivot.mappings)):
-                raise InvalidDataException("One of your pivots has duplicate keys set.")
-
         # Ensure the owner is set to the current user.
         dossier.owner = username
 
@@ -208,14 +216,6 @@ def update_dossier(  # noqa: C901
             "You cannot update a dossier that is not owned by you, or you are not an administrator of."
         )
 
-    # Validate pivot configurations if they're being updated
-    # Ensure no duplicate mapping keys exist within any pivot
-    if "pivots" in dossier_data:
-        for pivot in dossier_data["pivots"]:
-            mappings = pivot.get("mappings") or []
-            if len(mappings) != len(set(mapping.get("key") for mapping in mappings)):
-                raise InvalidDataException("One of your pivots has duplicate keys set.")
-
     try:
         # Validate the Lucene query if it's being updated
         if "query" in dossier_data:
@@ -231,11 +231,60 @@ def update_dossier(  # noqa: C901
     except SearchException:
         # Handle invalid Lucene query syntax
         raise InvalidDataException("You must use a valid query when updating a dossier.")
+    except HowlerValueError as e:
+        raise InvalidDataException(str(e), cause=e) from e
     except (HowlerException, TypeError) as e:
         # Log the error for debugging purposes
         logger.exception("Error when updating dossier.")
         # Provide a user-friendly error message while preserving the original exception
         raise InvalidDataException("We were unable to update the dossier.", cause=e) from e
+
+
+def get_pivot_groups(prefix: str, username: str) -> list[str]:
+    """Suggest existing pivot group paths matching a prefix, so users can reuse groups already in use.
+
+    Args:
+        prefix: Case-insensitive prefix to filter suggestions by.
+        username: The requesting user, used to scope which dossiers are visible.
+
+    Returns:
+        Up to MAX_GROUP_SUGGESTIONS unique matching group paths from the visible dossier search, sorted alphabetically.
+        Suggestions are best-effort and scan up to MAX_GROUP_SUGGESTION_PAGES matching aggregation pages.
+    """
+    groups: set[str] = set()
+    lowered_prefix: str = (prefix or "").lower()
+    after: dict[str, str] | None = None
+
+    for _ in range(MAX_GROUP_SUGGESTION_PAGES):
+        composite: dict[str, Any] = {
+            "size": GROUP_SUGGESTION_PAGE_SIZE,
+            "sources": [{"group": {"terms": {"field": "pivots.group"}}}],
+        }
+        if after:
+            composite["after"] = after
+
+        group_filter: dict[str, Any] = {"match_all": {}}
+        if prefix:
+            group_filter = {"prefix": {"pivots.group": {"value": prefix, "case_insensitive": True}}}
+
+        result = datastore().dossier.search(
+            f'(type:global OR owner:("{sanitize_lucene_query(username)}" OR none))',
+            rows=0,
+            aggregations=[("pivot_groups", {"filter": group_filter, "aggs": {"groups": {"composite": composite}}})],
+        )
+        aggregation = result["aggregations"]["pivot_groups"]["groups"]
+
+        for bucket in aggregation["buckets"]:
+            group = bucket["key"]["group"]
+            if not group.lower().startswith(lowered_prefix):
+                continue
+            groups.add(group)
+
+        after = aggregation.get("after_key")
+        if not after:
+            break
+
+    return sorted(groups)[:MAX_GROUP_SUGGESTIONS]
 
 
 def get_matching_dossiers(
