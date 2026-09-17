@@ -101,7 +101,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    name: Run Howler API Unit Tests
+    name: Run Howler API Tests
 
     needs: formatting
 
@@ -110,7 +110,8 @@ jobs:
         working-directory: api
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        test-root: ["test/unit", "test/integration"]
     steps:
       - name: Get base depth of PR
         if: github.event_name == 'pull_request'
@@ -179,7 +180,7 @@ jobs:
       - name: Run tests
         id: tests
         continue-on-error: true
-        run: poetry run test
+        run: poetry run test ${{matrix.test-root}}
         env:
           WRITE_MARKDOWN: "true"
 

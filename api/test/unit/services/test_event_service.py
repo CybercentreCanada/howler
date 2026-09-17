@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from howler.common.exceptions import HowlerTypeError, HowlerValueError, ResourceExists
+from howler.datastore.collection import BulkResult
 from howler.odm.base import UTC_TZ
 from howler.odm.models.event import Event
 from howler.services import event_service
@@ -312,13 +313,13 @@ def test_create_events_uses_event_collection(mock_datastore):
     """Bulk event ingestion checks and writes the event collection."""
     storage = mock_datastore.return_value
     storage.event.exists.return_value = False
-    storage.event.bulk.return_value = True
+    storage.event.bulk.return_value = BulkResult(responses=[], failures=[], has_errors=False)
     bulk_plan = storage.event.get_bulk_plan.return_value
     event = Event(SAMPLE_EVENT_DATA)
 
     result = event_service.create_events([event], user="test_user", refresh="wait_for")
 
-    assert result is True
+    assert result == storage.event.bulk.return_value
     storage.event.exists.assert_called_once_with(event.howler.id)
     bulk_plan.add_insert_operation.assert_called_once_with(event.howler.id, event)
     storage.event.bulk.assert_called_once_with(bulk_plan, refresh="wait_for")

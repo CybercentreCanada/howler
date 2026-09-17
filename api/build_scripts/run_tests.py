@@ -31,7 +31,7 @@ def main():  # noqa: C901
         test_env = {
             **os.environ,
             "FLASK_RUN_PORT": str(api_port),
-            "HWL_DATASTORE_INDEX_PREFIX": f"howler-test-{run_id}",
+            "HWL_DATASTORE_INDEX_PREFIX": "howler-test",
             "HWL_TEST_API_HOST": f"http://localhost:{api_port}",
             "TESTING": "true",
             "HWL_START_BACKGROUND_SERVICES": "false",
@@ -59,6 +59,7 @@ def main():  # noqa: C901
             "--cov-config=.coveragerc.pytest",
             "-rFE",
             "-v",
+            "--durations=20",
             *pytest_args,
         ]
         print(">", shlex.join(pytest_cmd))

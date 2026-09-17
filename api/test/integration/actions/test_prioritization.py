@@ -1,5 +1,4 @@
 import json
-import time
 from uuid import uuid4
 
 import pytest
@@ -38,10 +37,6 @@ def datastore(datastore_connection):
         wipe_hits(ds)
         create_hits(ds, hit_count=5)
 
-        ds.hit.commit()
-
-        time.sleep(1)
-
         yield ds
     finally:
         wipe_hits(ds)
@@ -66,7 +61,6 @@ def test_prioritization_happy_path(datastore: HowlerDatastore, login_session):
         assert "7.5" in entry["message"]
 
     datastore.hit.commit()
-    time.sleep(1)
 
     updated = datastore.hit.search("howler.score:[7 TO 8]")["total"]
     assert updated > 0

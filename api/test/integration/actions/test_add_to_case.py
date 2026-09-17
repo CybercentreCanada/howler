@@ -1,5 +1,4 @@
 import json
-import time
 from uuid import uuid4
 
 import pytest
@@ -46,13 +45,7 @@ def datastore(datastore_connection):
 
     try:
         wipe_hits(ds)
-        wipe_cases(ds)
         create_hits(ds, hit_count=5)
-
-        ds.hit.commit()
-        ds.case.commit()
-
-        time.sleep(1)
 
         yield ds
     finally:
@@ -69,16 +62,14 @@ def test_case(datastore: HowlerDatastore, login_session) -> Case:
         session,
         f"{host}/api/v2/case",
         method="POST",
+        params={"refresh": "wait_for"},
         data=json.dumps(_make_case("add_to_case integration test case")),
     )
     case_id = resp["case_id"]
 
-    datastore.case.commit()
-
     yield datastore.case.get(case_id)
 
-    datastore.case.delete(case_id)
-    datastore.case.commit()
+    datastore.case.delete(case_id, refresh="wait_for")
 
 
 # ---------------------------------------------------------------------------
@@ -107,7 +98,6 @@ def test_add_to_case_happy_path(datastore: HowlerDatastore, login_session, test_
 
     # Case is updated with the expected items
     datastore.case.commit()
-    time.sleep(1)
 
     updated = datastore.case.get(test_case.case_id)
     assert len(updated.items) > 0
@@ -148,7 +138,6 @@ def test_add_to_case_custom_path_and_template(datastore: HowlerDatastore, login_
     assert len(success_entries) == 1
 
     datastore.case.commit()
-    time.sleep(1)
 
     updated = datastore.case.get(test_case.case_id)
     matching = [item for item in updated.items if item.value == first_hit.howler.id]
@@ -226,7 +215,6 @@ def test_add_to_case_duplicate_hit(datastore: HowlerDatastore, login_session, te
         assert "success" in outcomes
 
     datastore.case.commit()
-    time.sleep(1)
 
     # Second add — same hit should be skipped
     resp2 = _execute(session, host, query=query, case_id=test_case.case_id)

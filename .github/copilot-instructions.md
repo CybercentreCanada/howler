@@ -284,6 +284,7 @@ README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
 - When ILM indices coexist with a legacy `_hot` index, alias existence alone is insufficient: remove the legacy alias and ensure the latest ILM index is the only write index. Maintenance commands that skip collection bootstrap must resolve the latest ILM index before reindexing; recovery must restore only aliases actually present on its source index.
 - UI tests must mock the router package imported by the component (`react-router` versus `react-router-dom`); mocking the other package does not intercept hooks such as `useNavigate`.
 - Unit tests that call ETag-decorated endpoints directly should inject `record` when testing endpoint logic; positional route IDs intentionally bypass decorator prefetch, while keyword IDs exercise the getter contract.
+- Case metadata recomputation must search only the backing record types present in the case. Searching both `hit` and `event` fails when an otherwise unused collection index has not been created.
 
 ---
 
@@ -443,6 +444,12 @@ For legacy collections, pass the collection alias through the `aliases` argument
 
 ---
 
+### Initial Case Items Must Be Saved Once
+
+When a case is created with initial items, pass them to `case_service.create_case(..., refresh=...)`. It delegates to `append_case_items` for the single final persisted write, so do not save an empty case before appending the items or an avoidable Elasticsearch refresh wait is reintroduced.
+
+---
+
 ### React Testing Library: Do Not Wrap `userEvent` in `act`
 
 `userEvent` already manages React updates through Testing Library. Wrapping awaited `userEvent` calls in `act` conflicts with its async wrapper, which temporarily disables `IS_REACT_ACT_ENVIRONMENT`, and produces `The current testing environment is not configured to support act(...)` warnings. Await `userEvent` calls directly; reserve `act` for direct state-changing operations that Testing Library does not wrap.
@@ -470,3 +477,11 @@ React context instances cannot safely vary a generic item type between provider 
 ### Local Storage Hook Overloads
 
 `useLocalStorageItem` and `useMyLocalStorageItem` use overloads so definitely non-nullish initializers return non-null values, while omitted, nullable, or possibly-null initializers retain nullability. Wrappers must forward the initializer without coalescing it to `null`.
+
+### ILM Scripted Bulk Updates
+
+When a scripted bulk update has no supplied version, resolve each document's version token first. For ILM collections, its token identifies the document's concrete rollover index; pass that index and the sequence number/primary term to the bulk operation instead of targeting the write alias.
+
+### ODM Flattened Field Cache
+
+`Model.flat_fields()` caches its flattened metadata by `(show_compound, skip_mappings)`. Dynamic namespace additions and removals increment the shared cache version, so flattened field layouts are rebuilt after either operation.
