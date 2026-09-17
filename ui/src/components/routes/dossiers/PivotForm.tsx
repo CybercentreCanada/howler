@@ -44,7 +44,7 @@ import { pivotGroupValidation } from './utils';
 const MAX_GROUP_SUGGESTIONS = 10;
 
 // Minimum delay between group suggestion requests, so fast typing can't flood the backend
-const GROUP_SUGGESTION_THROTTLE_MS = 1000;
+const GROUP_SUGGESTION_THROTTLE_MS = 500;
 
 export interface PivotFormProps {
   pivot: Pivot;
@@ -213,9 +213,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
   }, [setSearchParams, tab]);
 
   // Validate the pivot's folder/group path to provide inline feedback before the dossier is saved.
-  const groupError = useMemo(() => {
-    return pivotGroupValidation(pivot?.group ?? '');
-  }, [pivot?.group]);
+  const groupError = pivotGroupValidation(pivot?.group ?? '');
 
   // Suggest existing group paths as the user types, throttled so we never issue more than one request per second
   const fetchGroupSuggestions = useCallback(

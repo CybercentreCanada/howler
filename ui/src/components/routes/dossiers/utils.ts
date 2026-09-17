@@ -1,49 +1,6 @@
-/**
- * Validates a pivot group path using the same rules as the backend service.
- *
- * Rules:
- * - Allows alphabetic characters (including supported accented letters), digits, and '/'.
- * - Rejects malformed paths: consecutive '/', leading '/', or trailing '/'.
- *
- * @param group Requested pivot group path.
- * @returns null when valid, otherwise the i18n error key describing the failure.
- */
-
-export const pivotGroupValidation = (group: string): string | null => {
-  if (!group || group === '') return null;
-
-  // Only contain, French, English, numeral character as well as /.
-  if (!/^[0-9A-Za-zùûüÿàâæçéèêëïîôœÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ/]*$/.test(group)) {
-    return 'route.dossiers.pivots.invalid.character';
-  }
-
-  // Protection against wrongly formated /. We need words inbetween and they should not start or end with a /.
-  if (group.includes('//') || group.startsWith('/') || group.endsWith('/')) {
-    return 'route.dossiers.pivots.invalid.format';
-  }
-
-  return null;
-};
-
 import { sortBy } from 'lodash-es';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Pivot } from 'models/entities/generated/Pivot';
-
-/**
- * Builds a menu-oriented forest from dossier pivots.
- *
- * The flow is:
- * 1) Group pivots by their slash-delimited `pivot.group` path.
- * 2) Store pivots at each path node under an internal symbol key.
- * 3) Convert the grouped object into `menuPathNode[]` for UI rendering.
- * 4) Squash non-branching path chains that contain no local pivots so
- *    navigation menus avoid unnecessary empty intermediate levels.
- *
- * The resulting structure is consumed by Hit links/folder components to
- * render root pivots and nested submenu folders consistently.
- */
-
-const PIVOTS = Symbol('pivots');
 
 export interface MenuPathNode {
   path: string;
@@ -57,9 +14,51 @@ export interface DossierPivot {
   dossier: Dossier;
 }
 
+// Keep node-local pivots separate from user-defined group keys and Object.keys traversal.
+const PIVOTS = Symbol('pivots');
+
+interface PivotTree {
+  [PIVOTS]?: DossierPivot[];
+  [key: string]: PivotTree | DossierPivot[] | undefined;
+}
+
+/**
+ * Validates a pivot group path using the same rules as the backend service.
+ *
+ * Rules:
+ * - Allows alphabetic characters (including supported accented letters), digits, and '/'.
+ * - Rejects malformed paths: consecutive '/', leading '/', or trailing '/'.
+ *
+ * @param group Requested pivot group path.
+ * @returns null when valid, otherwise the i18n error key describing the failure.
+ */
+export const pivotGroupValidation = (group: string): string | undefined => {
+  if (!group || group === '') return;
+
+  // Only contain, French, English, numeral character as well as /.
+  if (!/^[0-9A-Za-zùûüÿàâæçéèêëïîôœÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ/]*$/.test(group)) {
+    return 'route.dossiers.pivots.invalid.character';
+  }
+
+  // Protection against wrongly formated /. We need words inbetween and they should not start or end with a /.
+  if (group.includes('//') || group.startsWith('/') || group.endsWith('/')) {
+    return 'route.dossiers.pivots.invalid.format';
+  }
+};
+
 const detachedPivotKeys = new WeakMap<Pivot, number>();
 let nextDetachedPivotKey = 0;
 
+/**
+ * Returns a stable menu key for a pivot within its dossier.
+ *
+ * Pivots currently attached to the dossier use their array index. Detached
+ * pivots receive an object-identity-based fallback key for the module lifetime.
+ *
+ * @param dossier Dossier containing the pivot, when it is attached.
+ * @param pivot Pivot for which to generate a key.
+ * @returns A dossier-scoped key suitable for identifying the pivot in the UI.
+ */
 export const getDossierPivotKey = (dossier: Dossier, pivot: Pivot): string => {
   const pivotIndex = dossier.pivots?.indexOf(pivot) ?? -1;
   if (pivotIndex >= 0) {
@@ -74,11 +73,6 @@ export const getDossierPivotKey = (dossier: Dossier, pivot: Pivot): string => {
 
   return `${dossier.dossier_id}:${detachedPivotKey}`;
 };
-
-interface PivotTree {
-  [PIVOTS]?: DossierPivot[];
-  [key: string]: PivotTree | DossierPivot[] | undefined;
-}
 
 /**
  * Builds an intermediate tree keyed by each pivot group segment.

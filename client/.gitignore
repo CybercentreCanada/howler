@@ -21,8 +21,6 @@ venv*
 ehthumbs.db
 Thumbs.db
 
-scripts/
-
 /.idea/**/*
 /*env/**/*
 /development

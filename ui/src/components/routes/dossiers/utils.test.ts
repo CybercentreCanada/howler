@@ -6,31 +6,31 @@ import type { Pivot } from 'models/entities/generated/Pivot';
 
 describe('pivotGroupValidation', () => {
   it('returns null for an empty string', () => {
-    expect(pivotGroupValidation('')).toBeNull();
+    expect(pivotGroupValidation('')).toBeUndefined();
   });
 
   it('returns null for undefined/null-like input', () => {
-    expect(pivotGroupValidation(undefined as unknown as string)).toBeNull();
-    expect(pivotGroupValidation(null as unknown as string)).toBeNull();
+    expect(pivotGroupValidation(undefined as unknown as string)).toBeUndefined();
+    expect(pivotGroupValidation(null as unknown as string)).toBeUndefined();
   });
 
   it('returns null for a valid single-level group', () => {
-    expect(pivotGroupValidation('network')).toBeNull();
+    expect(pivotGroupValidation('network')).toBeUndefined();
   });
 
   it('returns null for a valid multi-level group', () => {
-    expect(pivotGroupValidation('network/dns/query')).toBeNull();
+    expect(pivotGroupValidation('network/dns/query')).toBeUndefined();
   });
 
   it('accepts accented characters', () => {
-    expect(pivotGroupValidation('réseauÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ')).toBeNull();
+    expect(pivotGroupValidation('réseauÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ')).toBeUndefined();
   });
 
   it('accepts digits but still rejects other disallowed characters', () => {
-    expect(pivotGroupValidation('0')).toBeNull();
-    expect(pivotGroupValidation('network1')).toBeNull();
-    expect(pivotGroupValidation('net2work')).toBeNull();
-    expect(pivotGroupValidation('network/zone2')).toBeNull();
+    expect(pivotGroupValidation('0')).toBeUndefined();
+    expect(pivotGroupValidation('network1')).toBeUndefined();
+    expect(pivotGroupValidation('net2work')).toBeUndefined();
+    expect(pivotGroupValidation('network/zone2')).toBeUndefined();
     expect(pivotGroupValidation('network-dns')).toBe('route.dossiers.pivots.invalid.character');
     expect(pivotGroupValidation('network_dns')).toBe('route.dossiers.pivots.invalid.character');
   });

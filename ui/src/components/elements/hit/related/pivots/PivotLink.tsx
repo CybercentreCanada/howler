@@ -14,11 +14,17 @@ import { usePluginStore } from 'react-pluggable';
 import RelatedLink from '../RelatedLink';
 
 export interface PivotLinkProps {
+  /** Pivot definition used to build the link or plugin rendering. */
   pivot: Pivot;
+  /** Hit whose data may be used to resolve a dynamic pivot URL. */
   hit?: Hit;
+  /** Uses the compact related-link presentation. */
   compact?: boolean;
+  /** Dossier associated with the pivot. */
   dossier: Dossier;
+  /** Presentation used for the pivot: a card or a menu item. */
   variant?: 'card' | 'menu-item';
+  /** Called after navigation is requested. */
   onNavigate?: () => void;
 }
 const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, variant = 'card', onNavigate }) => {

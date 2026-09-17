@@ -2,15 +2,25 @@ import { ClickAwayListener, Paper, Popper, type PopperProps } from '@mui/materia
 import type { FC, KeyboardEvent, ReactNode } from 'react';
 import { useEffect, useRef } from 'react';
 
+/** Props for the floating menu container used by pivot navigation. */
 interface PivotFlyoutProps {
+  /** Element that anchors the flyout position. */
   anchorEl: HTMLElement | null;
+  /** Whether to focus the first menu item when the flyout opens. */
   focusOnOpen: boolean;
+  /** Menu content rendered inside the flyout. */
   children: ReactNode;
+  /** DOM id assigned to the flyout menu container. */
   id: string;
+  /** Position of the flyout relative to its anchor. */
   placement?: PopperProps['placement'];
+  /** Closes the flyout. */
   onClose: () => void;
+  /** Handles pointer entry into the flyout. */
   onMouseEnter: () => void;
+  /** Handles pointer exit from the flyout. */
   onMouseLeave: () => void;
+  /** Whether the flyout is visible. */
   open: boolean;
 }
 

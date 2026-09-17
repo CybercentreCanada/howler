@@ -23,18 +23,17 @@ import {
   Terminal,
   Topic
 } from '@mui/icons-material';
-import { Divider, List, ListItemButton, ListItemText, Stack } from '@mui/material';
+import { Divider, List, ListItem, ListItemButton, ListItemText, Stack, Switch } from '@mui/material';
 import { useCookiesStore, type AppPreferenceConfigs, type LeftNavMenuProps } from '@tui/core';
 import { AppBarContext } from 'components/app/providers/AppBarProvider';
 import Classification from 'components/elements/display/Classification';
 import DocumentationButton from 'components/elements/display/DocumentationButton';
-import PivotGroupMenuItem from 'components/elements/hit/PivotGroupMenuItem';
 import howlerPluginStore from 'plugins/store';
 import { Fragment, useContext, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useMyLocalStorageItem } from './useMyLocalStorage';
 import { StorageKey } from 'utils/constants';
 import { applyMainMenuOperations } from 'utils/menuUtils';
+import { useMyLocalStorageItem } from './useMyLocalStorage';
 
 // This is your App Name that will be displayed in the left drawer and the top navbar
 const APP_NAME = 'howler';
@@ -42,7 +41,10 @@ const APP_NAME = 'howler';
 const PersonalizationMenuItems = () => {
   const { t } = useTranslation();
   const resetCookies = useCookiesStore(store => store.reset);
-  const [, , resetPivotGroup] = useMyLocalStorageItem(StorageKey.PIVOT_GROUP, true);
+  const [pivotGroupEnabled, setPivotGroupEnabled, resetPivotGroup] = useMyLocalStorageItem(
+    StorageKey.PIVOT_GROUP,
+    true
+  );
 
   const resetPreferences = () => {
     resetCookies();
@@ -51,7 +53,23 @@ const PersonalizationMenuItems = () => {
 
   return (
     <>
-      <PivotGroupMenuItem />
+      <List dense>
+        <ListItem
+          disablePadding
+          secondaryAction={
+            <Switch
+              checked={pivotGroupEnabled}
+              edge="end"
+              onChange={() => setPivotGroupEnabled(!pivotGroupEnabled)}
+              onClick={event => event.stopPropagation()}
+            />
+          }
+        >
+          <ListItemButton id="personalization-pivot-group" onClick={() => setPivotGroupEnabled(!pivotGroupEnabled)}>
+            <ListItemText>{t('personalization.pivotGroup')}</ListItemText>
+          </ListItemButton>
+        </ListItem>
+      </List>
       <Divider />
       <List dense>
         <ListItemButton dense id="personalization-reset" onClick={resetPreferences}>

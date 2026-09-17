@@ -128,14 +128,15 @@
   },
   "scripts": {
     "build": "tsc && vite build",
-    "build-lib": "tsc && python build_scripts/prep_for_publish.py",
+    "build-lib": "tsc && python scripts/prep_for_publish.py",
     "dev": "vite -l info",
     "lint": "oxlint --fix --fix-suggestions && oxfmt src",
     "preinstall": "npx only-allow pnpm",
     "serve": "vite preview",
     "start": "vite -l info",
     "test": "vitest run --coverage",
-    "test-ui": "vitest --ui --coverage"
+    "test-ui": "vitest --ui --coverage",
+    "test:diff": "bash scripts/test_diff.sh"
   },
   "type": "module",
   "version": "3.1.0"

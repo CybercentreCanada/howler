@@ -128,7 +128,7 @@ const DossierEditor: FC = () => {
     for (const pivot of dossier.pivots ?? []) {
       const groupErr = pivotGroupValidation(pivot.group ?? '');
       if (groupErr) {
-        // If there's an error, return the translated error string. It also disable the Save button
+        // There's an issue with the group you've chosen.
         return t(groupErr);
       }
 
