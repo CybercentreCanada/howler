@@ -23,6 +23,7 @@ from howler.datastore.collection import CREATE_TOKEN, BulkResult, ESCollection
 from howler.datastore.exceptions import VersionConflictException
 from howler.datastore.operations import OdmHelper, OdmUpdateOperation
 from howler.datastore.types import SearchResult
+from howler.datastore.utils import get_version_write_target
 from howler.helper.hit import (
     AssessmentEscalationMap,
     assess_hit,
@@ -667,10 +668,16 @@ def _update_hits(
         if not version and collection.ilm_config:
             _, version = collection.get_if_exists(hit.howler.id, as_obj=False, version=True)
 
+        index = None
+        write_version = version
+        if version and collection.ilm_config:
+            index, sequence_number, primary_term = get_version_write_target(version)
+            write_version = f"{sequence_number}---{primary_term}"
+
         script = collection.create_scripts_from_operations(
             _prepare_hit_update_operations(hit, operations, username, version)
         )
-        bulk_plan.add_scripted_update_operation(hit.howler.id, script, version=version)
+        bulk_plan.add_scripted_update_operation(hit.howler.id, script, version=write_version, index=index)
 
     # Format and print the profiling data
     if not bulk_plan.empty and not (bulk_result := collection.bulk(bulk_plan, refresh=refresh)):

@@ -264,7 +264,7 @@ def test_transition_hits_returns_new_version(mock_get_workflow, mock_update_hits
 
     assert updated_hits[0][0] == {"howler": {"id": "hit-id"}}
     assert updated_hits[0][1] == "new-version"
-    mock_update_hits.assert_called_once_with([(hit, updates)], user.uname, version="current-version", refresh=None)
+    mock_update_hits.assert_called_once_with([(hit, updates, "current-version")], user.uname, refresh=None)
 
 
 @patch("howler.services.hit_service.exists", return_value=True)
@@ -295,7 +295,7 @@ def test_update_hit_loads_an_odm(mock_get_hit, mock_update_hits):
     hit_service.update_hit("some_id", operations)
 
     mock_get_hit.assert_called_once_with("some_id", as_odm=True)
-    mock_update_hits.assert_called_once_with([(hit, operations)], None, version=None, refresh=None)
+    mock_update_hits.assert_called_once_with([(hit, operations, None)], None, refresh=None)
 
 
 @patch("howler.services.template_service.datastore")

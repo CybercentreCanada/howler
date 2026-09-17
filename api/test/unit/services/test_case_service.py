@@ -14,7 +14,6 @@ from howler.config import CLASSIFICATION
 from howler.datastore.collection import CREATE_TOKEN
 from howler.datastore.exceptions import DataStoreException
 from howler.odm.models.case import Case, CaseItem, CaseRule
-from howler.odm.models.ecs.related import Related
 from howler.odm.models.user import User
 from howler.services import case_service
 
@@ -719,6 +718,7 @@ class TestAppendCaseItems:
 
         case = MagicMock()
         case.case_id = "case-001"
+        case.classification = CLASSIFICATION.UNRESTRICTED
         case.items = []
         case.save.return_value = True
         mock_ds.case.get.return_value = case
@@ -743,6 +743,25 @@ class TestAppendCaseItems:
         item = CaseItem({"type": "hit", "value": "hit-001"})
         with pytest.raises(NotFoundException, match="Case does not exist"):
             case_service.append_case_items("nonexistent", item)
+
+    @patch("howler.services.case_service.datastore")
+    def test_append_case_items_allows_later_item_to_reference_batch_folder(self, mock_ds_fn):
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        case = MagicMock()
+        case.case_id = "case-001"
+        case.classification = CLASSIFICATION.UNRESTRICTED
+        case.items = []
+        case.save.return_value = True
+        mock_ds.case.get.return_value = case
+
+        folder = CaseItem({"type": "folder", "name": "Evidence"})
+        reference = CaseItem({"type": "reference", "value": "https://example.com", "parent": folder.id})
+
+        case_service.append_case_items("case-001", [folder, reference])
+
+        assert case.items == [folder, reference]
 
 
 # ---------------------------------------------------------------------------
@@ -1110,18 +1129,18 @@ class TestAppendCase:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        existing = CaseItem({"type": "case", "value": "child-001", "name": "child-001"})
+        existing = CaseItem({"type": "case", "value": "child-001", "name": "child"})
         mock_parent = MagicMock()
         mock_parent.case_id = "parent-001"
         mock_parent.classification = CLASSIFICATION.UNRESTRICTED
         mock_parent.items = [existing]
-        mock_child = _make_case(case_id="child-001")
+        mock_child = _make_case(case_id="child-002")
         mock_ds.case.get.side_effect = lambda *, key, **_kwargs: mock_parent if key == "parent-001" else mock_child
 
-        item = CaseItem({"type": "case", "value": "child-001"})
+        item = CaseItem({"type": "case", "value": "child-002", "name": "child"})
         case_service.append_case_item("parent-001", item=item)
 
-        assert item.name == "child-001 (child-001)"
+        assert item.name == "child (child-002)"
         assert mock_parent.items == [existing, item]
 
     @patch("howler.services.case_service.datastore")
@@ -1235,7 +1254,7 @@ class TestAppendReference:
 
     @patch("howler.services.case_service.datastore")
     def test_append_reference_adds_item(self, mock_ds_fn):
-        """append_case_item adds a reference in memory for the endpoint to persist."""
+        """append_case_items persists a reference item."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -1249,7 +1268,7 @@ class TestAppendReference:
         case_service.append_case_items("case-001", items=item)
 
         assert item in mock_case.items
-        mock_case.save.assert_not_called()
+        mock_case.save.assert_called_once_with(refresh=None, version=None)
 
     @patch("howler.services.case_service.datastore")
     def test_append_reference_missing_case_raises(self, mock_ds_fn):
@@ -2495,7 +2514,7 @@ class TestAppendFolder:
 
     @patch("howler.services.case_service.datastore")
     def test_append_folder_adds_item(self, mock_ds_fn):
-        """append_case_item appends a folder in memory for the endpoint to persist."""
+        """append_case_items persists a folder item."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -2509,7 +2528,7 @@ class TestAppendFolder:
         case_service.append_case_items("case-001", items=item)
 
         assert len(mock_case.items) == 1
-        mock_case.save.assert_not_called()
+        mock_case.save.assert_called_once_with(refresh=None, version=None)
 
     @patch("howler.services.case_service.datastore")
     def test_append_folder_missing_case_raises(self, mock_ds_fn):
@@ -2550,7 +2569,7 @@ class TestAppendMarkdown:
 
     @patch("howler.services.case_service.datastore")
     def test_append_markdown_adds_item(self, mock_ds_fn):
-        """append_case_item appends markdown in memory for the endpoint to persist."""
+        """append_case_items persists a markdown item."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -2564,7 +2583,7 @@ class TestAppendMarkdown:
         case_service.append_case_items("case-001", items=item)
 
         assert len(mock_case.items) == 1
-        mock_case.save.assert_not_called()
+        mock_case.save.assert_called_once_with(refresh=None, version=None)
 
     @patch("howler.services.case_service.datastore")
     def test_append_markdown_missing_case_raises(self, mock_ds_fn):

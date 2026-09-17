@@ -217,12 +217,12 @@ class ElasticBulkPlan(object):
             index: Explicit concrete index to target. When omitted, queues one
                 update operation for each configured index.
         """
-        metadata = {"_id": doc_id}
-        if version:
-            index, sequence_number, primary_term = get_version_write_target(version, index)
-            metadata.update({"if_seq_no": sequence_number, "if_primary_term": primary_term})
-
         for current_index in [index] if index else self.indexes:
+            metadata = {"_id": doc_id}
+            if version:
+                current_index, sequence_number, primary_term = get_version_write_target(version, current_index)
+                metadata.update({"if_seq_no": sequence_number, "if_primary_term": primary_term})
+
             self.operations.append(
                 (
                     json.dumps({"update": {"_index": current_index, **metadata}}),

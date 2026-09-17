@@ -113,9 +113,6 @@ def create_bundle(
             raise InvalidDataException(
                 f"You cannot specify a bundle as a child of another bundle - {child_id} is a bundle."
             )
-    if not child_hit_ids:
-        raise InvalidDataException("You did not provide any child hits.")
-
     child_hit_ids = _validate_child_hits(child_hit_ids, skip_missing=True)
 
     odm, warnings = hit_service.convert_hit(bundle_hit_data, unique=True, user=user, ignore_extra_values=True)

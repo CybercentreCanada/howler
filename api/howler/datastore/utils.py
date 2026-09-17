@@ -60,7 +60,7 @@ def prune_to_paths(value, allowed: set[str], prefix: str = ""):
     return value
 
 
-def get_version_write_target(version: str, fallback_index: str | None) -> tuple[str, str, str]:
+def get_version_write_target(version: str, fallback_index: str | None = None) -> tuple[str, str, str]:
     """Return the concrete write target and optimistic-concurrency values from a version token."""
     version_parts = version.split("---")
     if len(version_parts) == 3:

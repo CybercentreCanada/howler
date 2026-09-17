@@ -593,7 +593,9 @@ def append_case_item(  # noqa: C901
             raise InvalidDataException(f"Unsupported item type: {item.type}")
 
 
-def _validate_case_item_access(case: Case, item: CaseItem, user: User | None) -> None:
+def _validate_case_item_access(
+    case: Case, item: CaseItem, user: User | None, case_items: list[CaseItem] | None = None
+) -> None:
     """Validate item classification and parent folder access before mutation."""
     if not is_classification_accessible(user, item.classification):
         raise ForbiddenException(f"User cannot add item at classification {item.classification}.")
@@ -605,7 +607,7 @@ def _validate_case_item_access(case: Case, item: CaseItem, user: User | None) ->
         )
 
     if item.parent is not None:
-        _ensure_parent_exists(case, item.parent)
+        _ensure_parent_exists(case, item.parent, case_items)
 
 
 def append_case_items(  # noqa: C901
@@ -638,21 +640,18 @@ def append_case_items(  # noqa: C901
     update_metadata = False
 
     # Validate every item before changing the case or its backing records.
+    # Earlier batch items are available as parents for later items.
+    validated_items = list(case.items)
     for item in items:
         if item.name is None:
             item.name = item.value
 
-        _validate_case_item_access(case, item, user)
-        check_conflicts(case, item)
+        _validate_case_item_access(case, item, user, validated_items)
+        check_conflicts(case, item, validated_items)
+        validated_items.append(item)
 
     for item in items:
-        conflict = (
-            any(existing.type == item.type and existing.value == item.value for existing in case.items)
-            if item.type in {CaseItemTypes.HIT, CaseItemTypes.EVENT, CaseItemTypes.CASE}
-            else any(
-                existing.name == (item.name or item.value) and existing.parent == item.parent for existing in case.items
-            )
-        )
+        conflict = check_conflicts(case, item)
         match item.type:
             case CaseItemTypes.HIT:
                 if conflict:
@@ -730,7 +729,7 @@ def append_case_items(  # noqa: C901
     return case
 
 
-def check_conflicts(case: Case, item: CaseItem) -> bool:
+def check_conflicts(case: Case, item: CaseItem, case_items: list[CaseItem] | None = None) -> bool:
     """Validate that two items are not created with the same name and parent.
 
     Args:
@@ -740,8 +739,10 @@ def check_conflicts(case: Case, item: CaseItem) -> bool:
     Raises:
         InvalidDataException: If there is a conflict between the existing case items and the new item
     """
+    case_items = case_items if case_items is not None else case.items
+
     if item.type in {CaseItemTypes.HIT, CaseItemTypes.EVENT, CaseItemTypes.CASE} and any(
-        existing.type == item.type and existing.value == item.value for existing in case.items
+        existing.type == item.type and existing.value == item.value for existing in case_items
     ):
         raise InvalidDataException(f"Item {item.value} already exists in case {case.case_id}")
 
@@ -752,10 +753,10 @@ def check_conflicts(case: Case, item: CaseItem) -> bool:
         name = item.value
 
     # Check for duplicate folder under same parent
-    return any(ci.name == name and ci.parent == item.parent for ci in case.items)
+    return any(ci.name == name and ci.parent == item.parent for ci in case_items)
 
 
-def _ensure_parent_exists(case: Case, parent_id: str) -> None:
+def _ensure_parent_exists(case: Case, parent_id: str, case_items: list[CaseItem] | None = None) -> None:
     """Validate that a parent ID references an existing folder item in the case.
 
     Args:
@@ -765,7 +766,8 @@ def _ensure_parent_exists(case: Case, parent_id: str) -> None:
     Raises:
         InvalidDataException: If the parent ID does not match any folder item.
     """
-    parent = next((item for item in case.items if item.id == parent_id), None)
+    case_items = case_items if case_items is not None else case.items
+    parent = next((item for item in case_items if item.id == parent_id), None)
     if parent is None:
         raise InvalidDataException(f"Parent item '{parent_id}' does not exist in the case")
     if parent.type != CaseItemTypes.FOLDER:

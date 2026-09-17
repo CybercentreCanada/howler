@@ -1599,7 +1599,7 @@ class ESCollection(Generic[ModelType]):
         if version:
             if version == CREATE_TOKEN:
                 raise DataStoreException("Cannot delete a document using the create version token.")
-            index, seq_no, primary_term = self._get_version_write_target(version)
+            index, seq_no, primary_term = get_version_write_target(version)
             kwargs.update({"index": index, "if_seq_no": seq_no, "if_primary_term": primary_term})
 
         try:
