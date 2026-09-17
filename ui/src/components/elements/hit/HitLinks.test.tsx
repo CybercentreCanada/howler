@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, render, screen } from '@testing-library/react';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import { setupLocalStorageMock } from 'tests/mocks';
+import { MY_LOCAL_STORAGE_PREFIX, StorageKey } from 'utils/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import HitLinks from './HitLinks';
 
@@ -35,6 +35,19 @@ vi.mock('components/elements/hit/related/RelatedLink', () => ({
 }));
 
 const mockLocalStorage = setupLocalStorageMock();
+const pivotGroupStorageKey = `${MY_LOCAL_STORAGE_PREFIX}.${StorageKey.PIVOT_GROUP}`;
+
+const setPivotGrouping = async (enabled: boolean) => {
+  await act(async () => {
+    mockLocalStorage.setItem(pivotGroupStorageKey, JSON.stringify(enabled));
+    window.dispatchEvent(
+      new StorageEvent('storage', {
+        key: pivotGroupStorageKey,
+        newValue: JSON.stringify(enabled)
+      })
+    );
+  });
+};
 
 const dossier = {
   dossier_id: 'dossier-1',
@@ -53,22 +66,18 @@ describe('HitLinks pivot grouping', () => {
   });
 
   it('replaces grouped and flat pivots without accumulating renders', async () => {
-    const user = userEvent.setup();
-
     render(
       <>
         <HitLinks dossiers={[dossier]} />
       </>
     );
 
-    const toggle = screen.getByRole('switch');
-
     expect(screen.getByText('group:network')).toBeInTheDocument();
     expect(screen.getAllByText('pivot:root')).toHaveLength(1);
     expect(screen.queryByText('pivot:example')).not.toBeInTheDocument();
     expect(pivotLifecycle.mounted).toHaveBeenCalledWith('root');
 
-    await user.click(toggle);
+    await setPivotGrouping(false);
     expect(screen.queryByText('group:network')).not.toBeInTheDocument();
     expect(screen.getAllByText('pivot:root')).toHaveLength(1);
     expect(screen.getAllByText('pivot:example')).toHaveLength(1);
@@ -76,13 +85,13 @@ describe('HitLinks pivot grouping', () => {
     expect(pivotLifecycle.unmounted).toHaveBeenCalledWith('root');
     expect(pivotLifecycle.mounted.mock.calls.filter(([value]) => value === 'root')).toHaveLength(2);
 
-    await user.click(toggle);
+    await setPivotGrouping(true);
     expect(screen.getByText('group:network')).toBeInTheDocument();
     expect(screen.getAllByText('pivot:root')).toHaveLength(1);
     expect(screen.queryByText('pivot:example')).not.toBeInTheDocument();
     expect(screen.queryByText('pivot:example-two')).not.toBeInTheDocument();
 
-    await user.click(toggle);
+    await setPivotGrouping(false);
     expect(screen.queryByText('group:network')).not.toBeInTheDocument();
     expect(screen.getAllByText('pivot:root')).toHaveLength(1);
     expect(screen.getAllByText('pivot:example')).toHaveLength(1);
@@ -90,7 +99,6 @@ describe('HitLinks pivot grouping', () => {
   });
 
   it('does not accumulate pivots that share an action value', async () => {
-    const user = userEvent.setup();
     const repeatedValueDossier = {
       dossier_id: 'dossier-1',
       pivots: [
@@ -101,17 +109,15 @@ describe('HitLinks pivot grouping', () => {
 
     render(<HitLinks dossiers={[repeatedValueDossier]} />);
 
-    const toggle = screen.getByRole('switch');
-
-    await user.click(toggle);
+    await setPivotGrouping(false);
     expect(screen.getAllByText('pivot:example')).toHaveLength(2);
 
-    await user.click(toggle);
-    await user.click(toggle);
+    await setPivotGrouping(true);
+    await setPivotGrouping(false);
     expect(screen.getAllByText('pivot:example')).toHaveLength(2);
 
-    await user.click(toggle);
-    await user.click(toggle);
+    await setPivotGrouping(true);
+    await setPivotGrouping(false);
     expect(screen.getAllByText('pivot:example')).toHaveLength(2);
   });
 
