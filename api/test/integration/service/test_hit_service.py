@@ -791,17 +791,20 @@ def test_update_hits_uses_one_bulk_plan(mock_datastore, mock_prepare_operations,
     ]
 
 
+@patch("howler.datastore.utils.get_version_write_target")
 @patch("howler.services.hit_service.comms_service.emit")
 @patch("howler.services.hit_service._prepare_hit_update_operations")
 @patch("howler.services.hit_service.datastore")
-def test_update_hits_resolves_ilm_version_to_concrete_index(mock_datastore, mock_prepare_operations, mock_emit):
+def test_update_hits_resolves_ilm_version_to_concrete_index(
+    mock_datastore, mock_prepare_operations, mock_emit, mock_get_version_write_target
+):
     hit = MagicMock(spec=Hit)
     hit.howler.id = "hit-001"
     operations = [OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.status", "in_progress")]
     collection = mock_datastore.return_value.hit
     collection.ilm_config = True
     collection.get_if_exists.return_value = (None, "hit-000001---10---2")
-    collection._get_version_write_target.return_value = ("hit-000001", "10", "2")
+    mock_get_version_write_target.return_value = ("hit-000001", "10", "2")
     bulk_plan = MagicMock(empty=False)
     collection.get_bulk_plan.return_value = bulk_plan
     mock_prepare_operations.return_value = operations
