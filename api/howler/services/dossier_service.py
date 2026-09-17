@@ -5,12 +5,17 @@ dossiers - collections of security alerts and investigation data organized by an
 Dossiers can be personal (private to the creator) or global (shared with the team).
 """
 
-import re
 from typing import Any, Literal, Optional, cast, overload
 
 from mergedeep.mergedeep import merge
 
-from howler.common.exceptions import ForbiddenException, HowlerException, InvalidDataException, NotFoundException
+from howler.common.exceptions import (
+    ForbiddenException,
+    HowlerException,
+    HowlerValueError,
+    InvalidDataException,
+    NotFoundException,
+)
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import SearchException
@@ -98,39 +103,6 @@ def get_dossier(
     return datastore().dossier.get_if_exists(key=id, as_obj=as_odm, version=version)
 
 
-def validate_group(group: str | Any) -> None:
-    """Validate a slash-separated dossier group path.
-
-    Args:
-        group: Group path to validate, such as ``Parent/Child``.
-
-    Raises:
-        InvalidDataException: If ``group`` is not a string, contains unsupported
-            characters, or contains empty path sections.
-    """
-    # 1 : check if we have to verify group or if group is a valid string
-    if group is None:
-        return
-
-    if group == "":
-        raise InvalidDataException("Group cannot be an empty string")
-
-    if not isinstance(group, str):
-        raise InvalidDataException('Data "group" should be a slash-separated string.')
-
-    # 2. Check for allowed characters
-    if not re.fullmatch(r"[0-9A-Za-zùûüÿàâæçéèêëïîôœÙÛÜŸÀÂÆÇÉÈÊËÏÎÔŒ/]*", group):
-        raise InvalidDataException(
-            "Group contains invalid characters. Only English, French alphabetical, numeral and / character are allowed"
-        )
-
-    # 3. Check for empty sections anywhere (consecutive slashes, or leading/trailing slashes)
-    if "//" in group or group.startswith("/") or group.endswith("/"):
-        raise InvalidDataException("A group must consist of a relative path with no empty segments (e.g. a/b/c)")
-
-    return
-
-
 def create_dossier(  # noqa: C901
     dossier_data: Optional[Any],
     username: str,
@@ -180,12 +152,6 @@ def create_dossier(  # noqa: C901
             dossier_data["owner"] = username
 
         dossier = Dossier(dossier_data)
-
-        # Validate pivot configurations to ensure no duplicate mapping keys
-        for pivot in dossier.pivots:
-            if len(pivot.mappings) != len(set(mapping.key for mapping in pivot.mappings)):
-                raise InvalidDataException("One of your pivots has duplicate keys set.")
-            validate_group(pivot.group)
 
         # Ensure the owner is set to the current user.
         dossier.owner = username
@@ -250,15 +216,6 @@ def update_dossier(  # noqa: C901
             "You cannot update a dossier that is not owned by you, or you are not an administrator of."
         )
 
-    # Validate pivot configurations if they're being updated
-    # Ensure no duplicate mapping keys exist within any pivot
-    if "pivots" in dossier_data:
-        for pivot in dossier_data["pivots"]:
-            mappings = pivot.get("mappings") or []
-            if len(mappings) != len(set(mapping.get("key") for mapping in mappings)):
-                raise InvalidDataException("One of your pivots has duplicate keys set.")
-            validate_group(pivot.get("group"))
-
     try:
         # Validate the Lucene query if it's being updated
         if "query" in dossier_data:
@@ -274,6 +231,8 @@ def update_dossier(  # noqa: C901
     except SearchException:
         # Handle invalid Lucene query syntax
         raise InvalidDataException("You must use a valid query when updating a dossier.")
+    except HowlerValueError as e:
+        raise InvalidDataException(str(e), cause=e) from e
     except (HowlerException, TypeError) as e:
         # Log the error for debugging purposes
         logger.exception("Error when updating dossier.")

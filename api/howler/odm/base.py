@@ -297,7 +297,7 @@ class Keyword(_Field):
 
         if not (self.coerce or isinstance(value, str)):
             raise HowlerValueError(
-                f"[{'.'.join(context) or self.name}] Provided value is not a strict, and coerce is set to false"
+                f"[{'.'.join(context) or self.name}] Provided value is not a string, and coerce is set to false"
             )
 
         if isinstance(value, bytes):
