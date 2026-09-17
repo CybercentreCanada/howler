@@ -163,7 +163,7 @@ Key directories:
 **Root files:**
 
 ```
-README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
+README.md, LICENSE, .gitignore, .pre-commit-config.yaml
 ```
 
 **API Directory (`api/`):**

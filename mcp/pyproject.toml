@@ -104,6 +104,23 @@ ignore = [
 "test/*" = ["D", "ANN", "S", "N818", "TRY", "PIE", "E402"]
 "**/dev_setup.py" = ["T20"]
 
+[tool.pyright]
+exclude = [
+    "**/build",
+    "**/.venv",
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.*",
+]
+ignore = [
+    "**/build",
+    "**/.venv",
+]
+reportMissingImports = "error"
+reportOptionalMemberAccess = "error"
+strictDictionaryInference = true
+strictListInference = true
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 pythonpath = ["."]

@@ -126,6 +126,26 @@ suppress-none-returning = true
 "test/*" = ["D", "ANN", "S", "N818", "TRY", "PIE", "E402"]
 "build_scripts/*" = ["D", "ANN", "S", "N818", "T20", "TRY"]
 
+[tool.pyright]
+exclude = [
+    "**/build",
+    "**/.venv",
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.*",
+]
+ignore = [
+    "**/build",
+    "**/.venv",
+]
+reportMissingImports = "error"
+reportOptionalMemberAccess = "error"
+strictDictionaryInference = true
+strictListInference = true
+reportAssignmentType = "information"
+reportAttributeAccessIssue = "information"
+reportReturnType = "information"
+
 [tool.poetry]
 packages = [{ include = "sync" }]
 

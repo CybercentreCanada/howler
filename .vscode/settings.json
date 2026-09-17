@@ -1,14 +1,11 @@
 {
-  "eslint.validate": [
-    "javascript",
-    "javascriptreact",
-    "typescript",
-    "typescriptreact"
-  ],
   "[css]": {
     "editor.defaultFormatter": "oxc.oxc-vscode"
   },
-  "[scss]": {
+  "[javascript]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[javascriptreact]": {
     "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "[json]": {
@@ -17,10 +14,11 @@
   "[jsonc]": {
     "editor.defaultFormatter": "vscode.json-language-features"
   },
-  "[javascript]": {
-    "editor.defaultFormatter": "oxc.oxc-vscode"
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true
   },
-  "[javascriptreact]": {
+  "[scss]": {
     "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "[typescript]": {
@@ -30,120 +28,106 @@
     "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "[yaml]": {
-    "editor.insertSpaces": true,
-    "editor.tabSize": 2,
-    "editor.autoIndent": "keep",
     "diffEditor.ignoreTrimWhitespace": false,
+    "editor.autoIndent": "keep",
     "editor.defaultColorDecorators": "never",
+    "editor.insertSpaces": true,
     "editor.quickSuggestions": {
-      "strings": true,
+      "comments": false,
       "other": true,
-      "comments": false
-    }
+      "strings": true
+    },
+    "editor.tabSize": 2
   },
-  "git.enableCommitSigning": true,
+  "editor.autoIndentOnPaste": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit",
+    "source.fixAll.eslint": "never",
+    "source.fixAll.oxc": "never",
+    "source.format.oxc": "explicit",
+    "source.organizeImports": "explicit",
+    "source.unusedImports": "explicit"
+  },
   "editor.formatOnSave": true,
+  "editor.formatOnSaveMode": "modificationsIfAvailable",
   "editor.rulers": [
     120
   ],
   "editor.tabSize": 2,
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.DS_Store": true,
+    "**/.git": true,
+    "**/.hg": true,
+    "**/.idea": true,
+    "**/.mypy_cache": true,
+    // "**/dist": true,
+    "**/.pytest_cache": true,
+    "**/.ruff_cache": true,
+    "**/.svn": true,
+    "**/build": true,
+    "**/CVS": true,
+    "**/howler_api.egg-info": true,
+    "**/Thumbs.db": true
+  },
   "files.insertFinalNewline": true,
   "files.trimFinalNewlines": true,
   "files.trimTrailingWhitespace": true,
-  "files.exclude": {
-    "**/.git": true,
-    "**/.svn": true,
-    "**/.hg": true,
-    "**/CVS": true,
-    "**/.DS_Store": true,
-    "**/Thumbs.db": true,
-    "**/build": true,
-    // "**/dist": true,
-    "**/.pytest_cache": true,
-    "**/.idea": true,
-    "**/__pycache__": true,
-    "**/howler_api.egg-info": true,
-    "**/.mypy_cache": true,
-    "**/.ruff_cache": true
-  },
-  "npm.packageManager": "pnpm",
-  "python.terminal.activateEnvironment": false,
-  "python.testing.pytestEnabled": true,
-  "python.testing.pytestPath": "./api/.venv/bin/python",
-  "[python]": {
-    "editor.defaultFormatter": "charliermarsh.ruff",
-    "editor.formatOnSave": true
-  },
-  "editor.codeActionsOnSave": {
-    "source.organizeImports": "explicit",
-    "source.fixAll": "explicit",
-    "source.unusedImports": "explicit",
-    "source.format.oxc": "explicit",
-    "source.fixAll.oxc": "never",
-    "source.fixAll.eslint": "never"
-  },
-  "python.defaultInterpreterPath": "${workspaceFolder}/api/.venv/bin/python",
-  "python.analysis.autoImportCompletions": true,
-  "python.analysis.autoFormatStrings": true,
-  "python.analysis.completeFunctionParens": true,
+  "git.enableCommitSigning": true,
+  "mypy-type-checker.cwd": "${workspaceFolder}/api",
   "mypy-type-checker.ignorePatterns": [
     "api/test/**/*.py",
     "client/test/**/*.py",
     "plugins/*/test/**/*.py"
   ],
-  "ruff.configurationPreference": "filesystemFirst",
-  "editor.formatOnSaveMode": "modificationsIfAvailable",
-  "mypy-type-checker.cwd": "${workspaceFolder}/api",
   "mypy-type-checker.interpreter": [
     "poetry",
     "run",
     "python"
   ],
-  "eslint.workingDirectories": [
-    {
-      "directory": "./ui",
-      "changeProcessCWD": true
-    }
-  ],
-  "search.exclude": {
-    "**/node_modules": true,
-    "**/bower_components": true,
-    "**/*.code-search": true,
-    "ui/target": true,
-    "ui/pnpm-lock.yaml": true
-  },
-  "markdownlint.config": {
-    "MD024": false,
-    "MD013": {
-      "line_length": 120,
-      "code_blocks": false,
-      "tables": false
-    }
-  },
-  "python-envs.defaultEnvManager": "ms-python.python:poetry",
-  "editor.autoIndentOnPaste": true,
-  "python-envs.pythonProjects": [
-    {
-      "path": "mcp",
-      "envManager": "ms-python.python:poetry",
-      "packageManager": "ms-python.python:poetry"
-    },
-    {
-      "path": "api",
-      "envManager": "ms-python.python:poetry",
-      "packageManager": "ms-python.python:poetry"
-    },
-    {
-      "path": "client",
-      "envManager": "ms-python.python:poetry",
-      "packageManager": "ms-python.python:poetry"
-    }
-  ],
+  "npm.packageManager": "pnpm",
   "oxc.configPath": "./ui/.oxlintrc.json",
   "oxc.enable": true,
   "oxc.fixKind": "all",
-  "oxc.path.oxlint": "./ui/node_modules/.bin/oxlint",
   "oxc.path.oxfmt": "./ui/node_modules/.bin/oxfmt",
+  "oxc.path.oxlint": "./ui/node_modules/.bin/oxlint",
   "oxc.path.tsgolint": "./ui/node_modules/.bin/tsgolint",
-  "python-envs.defaultPackageManager": "ms-python.python:poetry"
+  "python-envs.defaultEnvManager": "ms-python.python:poetry",
+  "python-envs.defaultPackageManager": "ms-python.python:poetry",
+  "python-envs.pythonProjects": [
+    {
+      "envManager": "ms-python.python:poetry",
+      "packageManager": "ms-python.python:poetry",
+      "path": "mcp"
+    },
+    {
+      "envManager": "ms-python.python:poetry",
+      "packageManager": "ms-python.python:poetry",
+      "path": "api"
+    },
+    {
+      "envManager": "ms-python.python:poetry",
+      "packageManager": "ms-python.python:poetry",
+      "path": "client"
+    }
+  ],
+  "python.analysis.autoFormatStrings": true,
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.completeFunctionParens": true,
+  "python.analysis.diagnosticsSource": "Pylance + Pyright",
+  "python.analysis.typeCheckingMode": "strict",
+  "python.analysis.typeEvaluation.enableReachabilityAnalysis": true,
+  "python.analysis.useNearestConfiguration": true,
+  "python.defaultInterpreterPath": "${workspaceFolder}/api/.venv/bin/python",
+  "python.terminal.activateEnvironment": false,
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestPath": "./api/.venv/bin/python",
+  "ruff.configurationPreference": "filesystemFirst",
+  "search.exclude": {
+    "**/*.code-search": true,
+    "**/bower_components": true,
+    "**/node_modules": true,
+    "ui/pnpm-lock.yaml": true,
+    "ui/target": true
+  }
 }

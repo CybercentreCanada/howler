@@ -31,6 +31,23 @@ check_untyped_defs = true
 disable_error_code = "no-redef"
 exclude = "test"
 
+[tool.pyright]
+exclude = [
+    "**/build",
+    "**/.venv",
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.*",
+]
+ignore = [
+    "**/build",
+    "**/.venv",
+]
+reportMissingImports = "error"
+reportOptionalMemberAccess = "error"
+strictDictionaryInference = true
+strictListInference = true
+
 
 #################
 # Ruff Settings #

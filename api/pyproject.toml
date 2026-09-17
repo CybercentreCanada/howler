@@ -76,8 +76,100 @@ module = "requests"
 ignore_missing_imports = true
 
 [tool.pyright]
+exclude = [
+    "**/build",
+    "**/.venv",
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.*",
+]
+ignore = [
+    "**/build",
+    "**/.venv",
+]
+reportMissingImports = "error"
+reportOptionalMemberAccess = "error"
+strictDictionaryInference = true
+strictListInference = true
 venvPath = "."
 venv = ".venv"
+
+[[tool.pyright.executionEnvironments]]
+extraPaths = ["."]
+reportArgumentType = "none"
+reportAssignmentType = "none"
+root = "howler/odm/models"
+
+[[tool.pyright.executionEnvironments]]
+extraPaths = ["."]
+reportArgumentType = "information"
+reportAttributeAccessIssue = "information"
+reportOptionalCall = "information"
+root = "howler/datastore"
+
+[[tool.pyright.executionEnvironments]]
+extraPaths = ["."]
+reportOptionalMemberAccess = "information"
+reportPossiblyUnboundVariable = "information"
+root = "howler/odm/helper.py"
+
+[[tool.pyright.executionEnvironments]]
+extraPaths = ["."]
+reportPossiblyUnboundVariable = "information"
+root = "howler/odm/random_data.py"
+
+[[tool.pyright.executionEnvironments]]
+extraPaths = ["."]
+reportArgumentType = "information"
+reportAttributeAccessIssue = "information"
+reportIncompatibleMethodOverride = "information"
+reportOperatorIssue = "information"
+reportOptionalMemberAccess = "information"
+reportPossiblyUnboundVariable = "information"
+root = "howler/odm/base.py"
+
+[[tool.pyright.executionEnvironments]]
+extraPaths = ["."]
+reportAttributeAccessIssue = "information"
+root = "howler/security/login.py"
+
+[[tool.pyright.executionEnvironments]]
+extraPaths = ["."]
+reportArgumentType = "information"
+reportOperatorIssue = "information"
+reportOptionalMemberAccess = "information"
+reportPossiblyUnboundVariable = "information"
+root = "howler/helper/ws.py"
+
+[[tool.pyright.executionEnvironments]]
+extraPaths = ["."]
+reportArgumentType = "information"
+reportIncompatibleMethodOverride = "information"
+reportReturnType = "information"
+root = "howler/remote/datatypes"
+
+[[tool.pyright.executionEnvironments]]
+extraPaths = ["."]
+reportArgumentType = "none"
+root = "howler/common/classification.py"
+
+[[tool.pyright.executionEnvironments]]
+extraPaths = ["."]
+reportArgumentType = "none"
+reportAttributeAccessIssue = "none"
+reportCallIssue = "none"
+reportGeneralTypeIssues = "none"
+reportInvalidTypeForm = "none"
+reportOperatorIssue = "none"
+reportOptionalIterable = "none"
+reportOptionalMemberAccess = "none"
+reportOptionalOperand = "none"
+reportOptionalSubscript = "none"
+reportPossiblyUnboundVariable = "none"
+reportReturnType = "none"
+reportTypedDictNotRequiredAccess = "none"
+reportUnusedExpression = "none"
+root = "test"
 
 [tool.ruff]
 line-length = 120

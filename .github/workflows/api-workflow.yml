@@ -87,9 +87,7 @@ jobs:
         run: poetry run type_check
 
       - name: Run pyright type checking
-        run: |
-          jq 'walk(if type == "string" then sub("api/"; "") else . end)' ../pyrightconfig.json > pyrightconfig.json
-          poetry run pyright --level warning
+        run: poetry run pyright --project pyproject.toml --level warning
 
       - name: Run hadolint formatting checks
         uses: hadolint/hadolint-action@v3.5.0
