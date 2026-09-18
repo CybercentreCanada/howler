@@ -8,6 +8,7 @@ import pytest
 from howler.datastore.exceptions import DataStoreException, VersionConflictException
 from howler.datastore.migrations.action_owner import ActionOwnerMigration
 from howler.datastore.migrations.base import Migration
+from howler.datastore.migrations.bundle_to_case import BundleToCaseMigration
 from howler.datastore.migrations.runner import _mark_applied, _release_claim, run_migrations
 
 
@@ -209,6 +210,58 @@ def test_action_owner_migration_records_noop_count():
     datastore = SimpleNamespace(action=collection)
 
     assert ActionOwnerMigration().run(datastore) == 0
+
+
+def test_bundle_to_case_migration_creates_case_and_links_children(monkeypatch):
+    bundle_hit = SimpleNamespace(
+        howler=SimpleNamespace(id="bundle", analytic="Analytic", detection="Detection", related=[])
+    )
+    case = SimpleNamespace(case_id="case", items=[], save=MagicMock())
+    datastore = SimpleNamespace(
+        hit=SimpleNamespace(
+            search=MagicMock(side_effect=[{"items": [bundle_hit]}, {"items": []}]),
+            get=MagicMock(return_value={"howler": {"hits": ["child", "missing"]}}),
+            exists=MagicMock(side_effect=lambda hit_id: hit_id == "child"),
+            commit=MagicMock(),
+        ),
+        case=SimpleNamespace(get=MagicMock(return_value=None), commit=MagicMock()),
+    )
+    datastore.case.get.side_effect = lambda case_id: case if case_id == "case" else None
+    create_case = MagicMock(return_value=case)
+
+    def append_case_item(case, item_type, item_value):
+        case.items.append(SimpleNamespace(type=item_type, value=item_value, parent=None))
+
+    monkeypatch.setattr("howler.datastore.migrations.bundle_to_case.case_service.create_case", create_case)
+    monkeypatch.setattr("howler.datastore.migrations.bundle_to_case.case_service.append_case_item", append_case_item)
+
+    affected_documents = BundleToCaseMigration().run(datastore)
+
+    assert affected_documents == 1
+    create_case.assert_called_once_with({"title": "Analytic - Detection", "summary": "Migrated from bundle bundle"})
+    assert [item.value for item in case.items] == ["bundle", "child"]
+    assert datastore.hit.commit.call_count == 1
+    assert datastore.case.commit.call_count == 1
+
+
+def test_bundle_to_case_migration_skips_bundle_with_existing_case():
+    bundle_hit = SimpleNamespace(
+        howler=SimpleNamespace(id="bundle", analytic="Analytic", detection="Detection", related=["case"])
+    )
+    case = SimpleNamespace(case_id="case", items=[])
+    datastore = SimpleNamespace(
+        hit=SimpleNamespace(
+            search=MagicMock(side_effect=[{"items": [bundle_hit]}, {"items": []}]),
+            get=MagicMock(),
+            exists=MagicMock(),
+            commit=MagicMock(),
+        ),
+        case=SimpleNamespace(get=MagicMock(return_value=case), commit=MagicMock()),
+    )
+
+    assert BundleToCaseMigration().run(datastore) == 0
+    datastore.hit.get.assert_not_called()
+    datastore.hit.exists.assert_not_called()
 
 
 def test_failed_action_owner_update_does_not_record_applied_migration():
