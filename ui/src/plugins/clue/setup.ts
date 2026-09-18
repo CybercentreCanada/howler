@@ -1,6 +1,6 @@
-import { useAppUser } from '@tui/core';
 import { SNACKBAR_EVENT_ID, type SnackbarEvents } from '@cccsaurora/clue-ui/data/event';
 import useClue from '@cccsaurora/clue-ui/hooks/useClue';
+import { useAppUser } from '@tui/core';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import type { HowlerUser } from 'models/entities/HowlerUser';
@@ -13,7 +13,7 @@ const useSetup = () => {
 
   const { showSuccessMessage, showErrorMessage, showInfoMessage, showWarningMessage } = useMySnackbar();
 
-  const features: { [index: string]: boolean } = config.configuration?.features ?? {};
+  const features: { [index: string]: boolean } = config?.configuration?.features ?? {};
 
   useEffect(() => {
     // eslint-disable-next-line no-console
@@ -44,7 +44,7 @@ const useSetup = () => {
       return;
     }
 
-    if (features.borealis || features.clue) {
+    if (features.clue) {
       clue.setReady(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

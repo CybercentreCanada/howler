@@ -12,6 +12,7 @@ import type { i18n as I18N } from 'i18next';
 import get from 'lodash-es/get';
 import type { Hit } from 'models/entities/generated/Hit';
 import HowlerPlugin from 'plugins/HowlerPlugin';
+import type { FC, PropsWithChildren } from 'react';
 import ClueChip from './components/ClueChip';
 import ClueLeadForm from './components/ClueLeadForm';
 import CluePivot from './components/CluePivot';
@@ -20,10 +21,16 @@ import ClueTypography from './components/ClueTypography';
 import HELPERS from './helpers';
 import howlerClueEN from './locales/clue.en.json';
 import howlerClueFR from './locales/clue.fr.json';
-import Provider from './Provider';
+import Provider, { type CluePluginOptions } from './Provider';
 import useSetup from './setup';
 
+export type { CluePluginOptions } from './Provider';
+
 class CluePlugin extends HowlerPlugin {
+  constructor(private readonly options: CluePluginOptions = {}) {
+    super();
+  }
+
   name = 'CluePlugin';
   version = '0.0.1';
   author = 'Matthew Rafuse <matthew.rafuse@cyber.gc.ca>';
@@ -60,8 +67,9 @@ class CluePlugin extends HowlerPlugin {
     super.addPivot('clue', pivotForm, pivotRenderer);
   }
 
-  provider() {
-    return Provider;
+  provider(): FC<PropsWithChildren> {
+    const options = this.options;
+    return ({ children }: PropsWithChildren) => <Provider options={options}>{children}</Provider>;
   }
 
   setup() {
