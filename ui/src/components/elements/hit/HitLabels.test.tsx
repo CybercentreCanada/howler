@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import HitLabels from './HitLabels';
 
@@ -13,9 +13,12 @@ import HitLabels from './HitLabels';
  * - Safe rendering when no labels are present
  */
 
+const mockDispatchApi = vi.hoisted(() => vi.fn());
+const mockUpdateRecord = vi.hoisted(() => vi.fn());
+
 vi.mock('components/hooks/useMyApi', () => ({
   default: () => ({
-    dispatchApi: vi.fn()
+    dispatchApi: mockDispatchApi
   })
 }));
 
@@ -24,7 +27,7 @@ vi.mock('components/app/providers/RecordProvider', () => ({
 }));
 
 vi.mock('use-context-selector', () => ({
-  useContextSelector: () => vi.fn()
+  useContextSelector: () => mockUpdateRecord
 }));
 
 vi.mock('react-i18next', () => ({
@@ -36,6 +39,7 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('utils/constants', () => ({
   LABEL_TYPES: {
+    generic: { icon: null, color: '#0000ff' },
     security: { icon: null, color: '#ff0000' },
     system: { icon: null, color: '#00ff00' }
   }
@@ -91,4 +95,32 @@ describe('HitLabels', () => {
 
     expect(container).toBeInTheDocument();
   });
+
+  it('opens the drawer, validates empty input, and adds labels', async () => {
+    mockDispatchApi.mockResolvedValueOnce({ howler: { labels: { security: ['critical', 'high'], system: ['info'], generic: ['fresh'] } } });
+
+    render(<HitLabels hit={baseHit} readOnly={false} />);
+
+    fireEvent.click(screen.getByRole('button'));
+    fireEvent.keyDown(screen.getByLabelText('hit.label.edit.add.label'), { key: 'Enter' });
+    expect(screen.getByText('hit.label.edit.add.error.empty')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('hit.label.edit.add.label'), { target: { value: 'fresh' } });
+    fireEvent.keyDown(screen.getByLabelText('hit.label.edit.add.label'), { key: 'Enter' });
+
+    await waitFor(() =>
+      expect(mockDispatchApi).toHaveBeenCalledWith({ op: 'put', id: 'hit-1', category: 'generic', body: { value: ['fresh'] } })
+    );
+    expect(mockUpdateRecord).toHaveBeenCalled();
+  });
 });
+vi.mock('api', () => ({
+  default: {
+    hit: {
+      labels: {
+        put: (id: string, category: string, body: any) => ({ op: 'put', id, category, body }),
+        del: (id: string, category: string, body: any) => ({ op: 'del', id, category, body })
+      }
+    }
+  }
+}));
