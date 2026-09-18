@@ -599,7 +599,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
                 }
             )
 
-        ds.hit.save(hit.howler.id, hit)
+        ds.hit.save(hit.howler.id, hit, refresh="wait_for")
         created_hit_ids.append(hit.howler.id)
         analytic_service.save_from_hits(hit, random.choice(users))
         ds.analytic.commit()

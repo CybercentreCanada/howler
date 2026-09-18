@@ -15,12 +15,6 @@ repos:
       - id: ruff-format
         name: Ruff Formatting
 
-  - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.12
-    hooks:
-      - id: actionlint
-        name: GitHub Actions Linting
-
   - repo: https://github.com/oxc-project/mirrors-oxfmt
     rev: v0.63.0
     hooks:
