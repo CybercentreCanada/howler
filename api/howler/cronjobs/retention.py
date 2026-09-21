@@ -9,8 +9,13 @@ from pytz import timezone
 from howler.common.logging import get_logger
 from howler.config import DEBUG, config
 from howler.datastore.howler_store import HowlerDatastore
+from howler.datastore.operations import OdmHelper
+from howler.odm.models.case import CaseItemTypes
+from howler.odm.models.hit import Hit
+from howler.services import case_service
 
 logger = get_logger(__file__)
+hit_helper = OdmHelper(Hit)
 
 
 def execute():
@@ -25,9 +30,7 @@ def execute():
 
     ds = datastore()
 
-    ds.hit.delete_by_query(f"event.created:{{* TO {cutoff}}} OR howler.expiry:{{* TO now}}")
-
-    ds.hit.commit()
+    _delete_matching_hits(ds, f"event.created:{{* TO {cutoff}}} OR howler.expiry:{{* TO now}}")
 
     logger.debug("Deletion complete")
 
@@ -82,8 +85,7 @@ def _execute_rules(ds: HowlerDatastore) -> None:
 
         try:
             count = ds.hit.count(combined_query, filters=None).get("count", -1)
-            ds.hit.delete_by_query(combined_query)
-            ds.hit.commit()
+            _delete_matching_hits(ds, combined_query)
             logger.debug("Retention rule '%s' complete", rule.name)
             result = {"rule": rule.name, "status": "ok", "deleted": count, "cutoff": cutoff}
         except Exception:
@@ -96,6 +98,26 @@ def _execute_rules(ds: HowlerDatastore) -> None:
             result = {"rule": rule.name, "status": "error", "query": combined_query}
 
         logger.info("Rule result: '%s'", result)
+
+
+def _delete_matching_hits(ds: HowlerDatastore, query: str) -> None:
+    """Remove matching hits after cleaning their references from cases and hits."""
+    hit_ids = {hit.howler.id for hit in ds.hit.stream_search(query)}
+
+    if hit_ids:
+        id_query = " OR ".join(hit_ids)
+        for case in ds.case.stream_search(f"items.value:({id_query})"):
+            item_ids = [item.id for item in case.items if item.type == CaseItemTypes.HIT and item.value in hit_ids]
+            if item_ids:
+                case_service.remove_case_items(case, item_ids)
+
+        ds.hit.update_by_query(
+            f"howler.related:({id_query})",
+            [hit_helper.list_remove("howler.related", hit_id, silent=True) for hit_id in hit_ids],
+        )
+
+    ds.hit.delete_by_query(query)
+    ds.hit.commit()
 
 
 def _remove_analytics_without_hits(ds: HowlerDatastore):
