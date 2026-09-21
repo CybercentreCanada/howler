@@ -5,8 +5,16 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('@mui/material', () => ({
   Box: ({ children }: any) => <div>{children}</div>,
   Stack: ({ children }: any) => <div>{children}</div>,
-  Tab: ({ label, onClick }: any) => <button onClick={onClick}>{label}</button>,
-  Tabs: ({ children }: any) => <div>{children}</div>,
+  Tab: ({ label }: any) => <span>{label}</span>,
+  Tabs: ({ children, onChange }: any) => (
+    <div>
+      {Array.isArray(children)
+        ? children.map((child: any) =>
+            child ? <button key={child.props.value} onClick={() => onChange?.(null, child.props.value)}>{child}</button> : null
+          )
+        : children}
+    </div>
+  ),
   useTheme: () => ({ palette: { divider: '#ddd' } })
 }));
 
@@ -80,13 +88,13 @@ describe('RecordRelated', () => {
 
     expect(screen.getByText('Example:https://example.com')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('hit.related.tab.hit'));
+    fireEvent.click(screen.getAllByText('hit.related.tab.hit')[0]!);
     expect(screen.getByText('hit:hit-2')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('hit.related.tab.case'));
+    fireEvent.click(screen.getAllByText('hit.related.tab.case')[0]!);
     expect(screen.getByText('case:case-1')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('hit.related.tab.event'));
+    fireEvent.click(screen.getAllByText('hit.related.tab.event')[0]!);
     expect(screen.getByText('event:event-1')).toBeInTheDocument();
   });
 

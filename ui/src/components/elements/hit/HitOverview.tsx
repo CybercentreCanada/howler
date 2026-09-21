@@ -23,7 +23,7 @@ const HitOverview: FC<{ content?: string; hit: Hit }> = ({ content, hit }) => {
       matchingOverview
         ? `/overviews/view?analytic=${encodeURIComponent(matchingOverview.analytic!)}${matchingOverview.detection && '&detection=' + encodeURIComponent(matchingOverview.detection!)}`
         : hit
-          ? `/overviews/view?analytic=${encodeURIComponent(hit?.howler.analytic!)}${hit?.howler.detection && '&detection=' + encodeURIComponent(hit?.howler.detection!)}`
+          ? `/overviews/view?analytic=${encodeURIComponent(hit?.howler.analytic)}${hit?.howler.detection && '&detection=' + encodeURIComponent(hit?.howler.detection)}`
           : null,
     [hit, matchingOverview]
   );

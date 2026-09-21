@@ -35,7 +35,7 @@ const ClassificationChip: FC<EnrichedChipProps & Exclude<ChipProps, 'label'>> = 
 
     const chipProps: ChipProps = useMemo(() => {
       const definedColor = parts
-        ? config.c12nDef?.levels_styles_map[config.c12nDef?.levels_map[parts.lvlIdx]!]?.color
+        ? config.c12nDef?.levels_styles_map[config.c12nDef?.levels_map[parts.lvlIdx]]?.color
         : undefined;
 
       if (THEME_TYPES.includes(definedColor ?? '')) {
