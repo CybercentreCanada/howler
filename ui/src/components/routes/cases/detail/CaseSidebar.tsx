@@ -16,6 +16,7 @@ import {
   Dashboard,
   Dataset,
   Description,
+  Event as EventIcon,
   Folder,
   Refresh,
   Rule,
@@ -38,6 +39,7 @@ import {
 import api from 'api';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import useMyApi from 'components/hooks/useMyApi';
+import AddEventModal from 'components/routes/cases/modals/AddEventModal';
 import AddToCaseModal from 'components/routes/cases/modals/AddToCaseModal';
 import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
@@ -154,6 +156,10 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
     [_case, dispatchApi, update]
   );
 
+  if (!_case) {
+    return null;
+  }
+
   return (
     <Box
       sx={{
@@ -254,6 +260,31 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
       <Card sx={{ borderRadius: 0, p: 0.25 }}>
         <Stack direction="row" spacing={0.25}>
           <div style={{ flex: 1 }} />
+
+          <Tooltip title={t('page.cases.sidebar.add_event')}>
+            <IconButton
+              size="small"
+              sx={{ position: 'relative' }}
+              onClick={() => {
+                if (_case) {
+                  showModal(<AddEventModal case={_case} onUpdated={update} />, { maxHeight: '90vh', height: 'unset' });
+                }
+              }}
+            >
+              <EventIcon sx={{ fontSize: '18px' }} />
+              <AddCircle
+                sx={{
+                  fontSize: '12px',
+                  position: 'absolute',
+                  bottom: 2,
+                  right: 2,
+                  backgroundColor: theme.palette.background.paper,
+                  borderRadius: '100%'
+                }}
+                htmlColor="grey"
+              />
+            </IconButton>
+          </Tooltip>
 
           <Tooltip title={t('page.cases.sidebar.add_item')}>
             <IconButton

@@ -127,6 +127,28 @@ def test_convert_event_event_without_created():
     assert result.event.created is not None
 
 
+def test_convert_event_preserves_outline():
+    """Test that event outline values, including its optional summary, are preserved."""
+    data: dict[str, Any] = {
+        "howler": {
+            "data": ["data"],
+            "outline": {
+                "target": "host-1",
+                "threat": "threat-1",
+                "indicators": ["1.2.3.4"],
+                "summary": "Manual event summary",
+            },
+        }
+    }
+
+    result, _ = event_service.convert_event(data, unique=False)
+
+    assert result.howler.outline.target == "host-1"
+    assert result.howler.outline.threat == "threat-1"
+    assert result.howler.outline.indicators == ["1.2.3.4"]
+    assert result.howler.outline.summary == "Manual event summary"
+
+
 def test_convert_event_extra_values_raises():
     """Test that extra values raise HowlerValueError when ignore_extra_values=False."""
     data: dict[str, Any] = {

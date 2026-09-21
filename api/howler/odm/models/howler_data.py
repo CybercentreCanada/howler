@@ -6,6 +6,7 @@ from howler import odm
 from howler.common.exceptions import HowlerValueError
 from howler.odm.constants import Status
 from howler.odm.howler_enum import HowlerEnum
+from howler.odm.models.header import Header
 from howler.odm.models.lead import Lead
 
 
@@ -127,14 +128,6 @@ class Log(odm.Model):
                 )
 
         super().__init__(data, *args, **kwargs)
-
-
-@odm.model(index=True, store=True, description="Hit outline header.")
-class Header(odm.Model):
-    threat: str | None = odm.Optional(odm.Keyword(description="The IP of the threat."))
-    target: str | None = odm.Optional(odm.Keyword(description="The target of the hit."))
-    indicators: list[str] = odm.List(odm.Keyword(description="Indicators of the hit."), default=[])
-    summary: str | None = odm.Optional(odm.Keyword(description="Summary of the hit."))
 
 
 @odm.model(index=True, store=True, description="Fields describing the location where this alert has been retained.")

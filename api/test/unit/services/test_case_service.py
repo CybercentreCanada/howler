@@ -1665,6 +1665,11 @@ class TestSyncCaseMetadata:
         mock_related = Related({"ip": ["10.0.0.1"], "hosts": ["host-x"]})
         mock_obs = MagicMock()
         mock_obs.related = mock_related
+        mock_obs.howler.outline = MagicMock(
+            target="target-1",
+            threat="threat-1",
+            indicators=["indicator-1"],
+        )
         mock_ds.event.get.return_value = mock_obs
 
         case_service.recompute_case_metadata(mock_case)
@@ -1672,6 +1677,9 @@ class TestSyncCaseMetadata:
         mock_case.save.assert_not_called()
         assert "10.0.0.1" in mock_case.indicators
         assert "host-x" in mock_case.indicators
+        assert mock_case.targets == ["target-1"]
+        assert mock_case.threats == ["threat-1"]
+        assert "indicator-1" in mock_case.indicators
 
     @patch("howler.services.case_service.datastore")
     def test_sync_case_metadata_skips_missing_event(self, mock_ds_fn):

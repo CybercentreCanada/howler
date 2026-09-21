@@ -1,4 +1,5 @@
 import { uri as parentUri } from 'api/search';
+import * as event from 'api/search/fields/event';
 import * as hit from 'api/search/fields/hit';
 import * as user from 'api/search/fields/user';
 // import urlJoin from 'url-join';
@@ -12,6 +13,10 @@ export type SearchField = {
   stored: boolean;
   type: string;
   description?: string;
+  deprecated?: boolean;
+  deprecated_description?: string;
+  regex?: string;
+  values?: string[];
 };
 
 export const uri = () => {
@@ -26,4 +31,4 @@ export const indexed = (fields: { [key: string]: SearchField }): SearchField[] =
   return map(fields).filter(field => field.indexed);
 };
 
-export { hit, user };
+export { event, hit, user };

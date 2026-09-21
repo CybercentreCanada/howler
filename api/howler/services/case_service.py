@@ -958,7 +958,7 @@ def recompute_case_metadata(case: Case) -> None:  # noqa: C901
 
     Iterates over hit and event items in the case and re-derives the
     ``targets``, ``threats``, and ``indicators`` lists from the backing
-    objects' ECS ``related.*`` fields and, for hits, the outline fields. Does
+    objects' ECS ``related.*`` fields and outline fields. Does
     not persist the case; callers are responsible for saving it.
     """
     ds = datastore()
@@ -968,28 +968,26 @@ def recompute_case_metadata(case: Case) -> None:  # noqa: C901
     indicators: set[str] = set()
 
     for item in case.items:
+        record: Event | Hit | None = None
         if item.type == CaseItemTypes.HIT and item.value:
-            hit = ds.hit.get(item.value)
-            if hit is None:
-                continue
-
-            indicators.update(_collect_indicators_from_related(hit.related))
-
-            if hit.howler.outline:
-                outline = hit.howler.outline
-                if outline.threat:
-                    threats.add(outline.threat)
-                if outline.target:
-                    targets.add(outline.target)
-                if outline.indicators:
-                    indicators.update(str(v) for v in outline.indicators if v)
+            record = ds.hit.get(item.value)
 
         elif item.type == CaseItemTypes.EVENT and item.value:
-            event = ds.event.get(item.value)
-            if event is None:
-                continue
+            record = ds.event.get(item.value)
 
-            indicators.update(_collect_indicators_from_related(event.related))
+        if record is None:
+            continue
+
+        indicators.update(_collect_indicators_from_related(record.related))
+
+        if record.howler.outline:
+            outline = record.howler.outline
+            if outline.threat:
+                threats.add(outline.threat)
+            if outline.target:
+                targets.add(outline.target)
+            if outline.indicators:
+                indicators.update(str(v) for v in outline.indicators if v)
 
     case.targets = sorted(targets)
     case.threats = sorted(threats)
