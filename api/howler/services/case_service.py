@@ -25,7 +25,9 @@ from howler.datastore.exceptions import DataStoreException
 from howler.odm.models.case import Case, CaseItem, CaseItemTypes, CaseLog, CaseRule
 from howler.odm.models.ecs.related import Related
 from howler.odm.models.event import Event
+from howler.odm.models.event import Log as EventLog
 from howler.odm.models.hit import Hit
+from howler.odm.models.howler_data import Log as HitLog
 from howler.odm.models.user import User
 from howler.security.utils import is_classification_accessible
 from howler.services import comms_service, event_service, hit_service
@@ -996,7 +998,11 @@ def recompute_case_metadata(case: Case) -> None:  # noqa: C901
     case.indicators = sorted(indicators)
 
 
-def add_backreference(backing_obj: Hit | Event | None, case_id: str) -> bool:
+def add_backreference(
+    backing_obj: Hit | Event | None,
+    case_id: str,
+    user: User | None = None,
+) -> bool:
     """Add a back-reference from a hit or event to a case, in memory only.
 
     Records the case ID in the backing object's ``howler.related`` list so
@@ -1023,6 +1029,26 @@ def add_backreference(backing_obj: Hit | Event | None, case_id: str) -> bool:
         return False
 
     backing_obj.howler.related.append(case_id)
+    if isinstance(backing_obj, Hit):
+        backing_obj.howler.log.append(
+            HitLog(
+                {
+                    "timestamp": "NOW",
+                    "explanation": f"Added to case {case_id}",
+                    "user": user.uname if user else "system",
+                }
+            )
+        )
+    else:
+        backing_obj.howler.log.append(
+            EventLog(
+                {
+                    "timestamp": "NOW",
+                    "explanation": f"Added to case {case_id}",
+                    "user": user.uname if user else "system",
+                }
+            )
+        )
     return True
 
 
@@ -1051,6 +1077,14 @@ def remove_backreference(
 
     if case_id in backing_obj.howler.related:
         backing_obj.howler.related.remove(case_id)
+        if isinstance(backing_obj, Hit):
+            backing_obj.howler.log.append(
+                HitLog({"timestamp": "NOW", "explanation": f"Removed from case {case_id}", "user": "system"})
+            )
+        else:
+            backing_obj.howler.log.append(
+                EventLog({"timestamp": "NOW", "explanation": f"Removed from case {case_id}", "user": "system"})
+            )
 
 
 def rename_case_item(

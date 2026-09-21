@@ -27,7 +27,8 @@ from howler.datastore.exceptions import DataStoreException, VersionConflictExcep
 from howler.datastore.operations import OdmHelper, OdmUpdateOperation
 from howler.helper.workflow import WorkflowException
 from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import Comment, HitOperationType, HitStatusTransition
+from howler.odm.models.howler_data import Comment, HitStatusTransition
+from howler.odm.models.log import LogOperationType
 from howler.odm.models.user import User
 from howler.security.login import api_login
 from howler.security.utils import is_classification_accessible, validate_bulk_operation_targets
@@ -407,7 +408,7 @@ def update_hit(
                     "explanation": f"Hit updated by {user.uname}\n\n" + "\n".join(explanation),
                     "new_value": "N/A",
                     "previous_value": "None",
-                    "type": HitOperationType.APPENDED,
+                    "type": LogOperationType.APPENDED,
                     "user": user.uname,
                 },
                 silent=True,
