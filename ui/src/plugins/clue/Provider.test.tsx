@@ -94,7 +94,7 @@ describe('Clue Provider', () => {
     expect(getProviderProps().getToken?.()).toBe('stored-token');
   });
 
-  it('builds a replicated database and passes supplied deployment options', async () => {
+  it('builds a configured database and passes supplied deployment options', async () => {
     const database = { name: 'replicated' };
     const getToken = vi.fn(() => 'custom-token');
     mocks.buildDatabase.mockResolvedValue(database);
@@ -108,7 +108,9 @@ describe('Clue Provider', () => {
         customIconify: 'https://icons.example',
         includeContext: true,
         defaultTimeout: 7,
-        chunkSize: 25
+        chunkSize: 25,
+        replicate: true,
+        storageType: 'memory'
       }
     );
 
@@ -130,6 +132,21 @@ describe('Clue Provider', () => {
       includeContext: true,
       defaultTimeout: 7,
       chunkSize: 25
+    });
+  });
+
+  it('uses non-replicated in-memory storage by default', async () => {
+    mocks.buildDatabase.mockResolvedValue({ name: 'local' });
+
+    renderProvider({ configuration: { features: { clue: true } } });
+
+    await waitFor(() => {
+      expect(mocks.buildDatabase).toHaveBeenCalledWith({
+        storageType: 'memory',
+        replicate: false,
+        baseURL: `${location.origin}/api/v1/clue`,
+        getToken: expect.any(Function)
+      });
     });
   });
 

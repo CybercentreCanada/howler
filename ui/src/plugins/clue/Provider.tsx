@@ -1,4 +1,5 @@
 import { buildDatabase, type ClueDatabase } from '@cccsaurora/clue-ui';
+import type { DatabaseConfig } from '@cccsaurora/clue-ui/database/types';
 import { ClueProvider } from '@cccsaurora/clue-ui/hooks/ClueProvider';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { useCallback, useContext, useEffect, useState, type PropsWithChildren } from 'react';
@@ -14,6 +15,8 @@ export interface CluePluginOptions {
   includeContext?: boolean;
   defaultTimeout?: number;
   chunkSize?: number;
+  replicate?: boolean;
+  storageType?: DatabaseConfig['storageType'];
 }
 
 type ProviderProps = PropsWithChildren<{
@@ -38,7 +41,12 @@ const Provider: React.FC<ProviderProps> = ({ children, options = {} }) => {
       return;
     }
 
-    void buildDatabase({ storageType: 'memory', replicate: true, baseURL, getToken }).then(database => {
+    void buildDatabase({
+      storageType: options.storageType ?? 'memory',
+      replicate: !!options.replicate,
+      baseURL,
+      getToken
+    }).then(database => {
       if (!cancelled) {
         setDatabase(database);
       }
@@ -47,7 +55,7 @@ const Provider: React.FC<ProviderProps> = ({ children, options = {} }) => {
     return () => {
       cancelled = true;
     };
-  }, [baseURL, features.clue, getToken]);
+  }, [baseURL, features.clue, getToken, options.storageType, options.replicate]);
 
   return (
     <ClueProvider

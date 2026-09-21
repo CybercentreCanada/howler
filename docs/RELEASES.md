@@ -3,6 +3,7 @@
 ## Howler UI `v3.1.0`
 
 - **Strict TypeScript Checking** _(technical update)_: Enabled strict TypeScript checking for the UI and updated application code, API clients, hooks, components, plugins, and tests to use explicit, type-safe definitions.
+- **Clue Database Configuration** _(bugfix)_: Exposed Clue storage and replication options so deployments can configure database behavior instead of always using the previous replicated in-memory setup.
 
 ## Howler MCP `v0.1.1`
 
