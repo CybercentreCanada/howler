@@ -186,70 +186,81 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
         </Stack>
       </Card>
 
-      <Stack
-        direction="row"
-        alignItems="center"
-        sx={navItemSx(location.pathname.endsWith(_case.case_id!))}
-        component={Link}
-        to={`/cases/${_case.case_id!}`}
-      >
-        <Dashboard fontSize="small" />
-        <Typography variant="body2" sx={{ pl: 1, textWrap: 'nowrap' }}>
-          {t('page.cases.dashboard')}
-        </Typography>
-      </Stack>
+      {_case ? (
+        <>
+          <Stack
+            direction="row"
+            alignItems="center"
+            sx={navItemSx(location.pathname.endsWith(_case.case_id!))}
+            component={Link}
+            to={`/cases/${_case.case_id!}`}
+          >
+            <Dashboard fontSize="small" />
+            <Typography variant="body2" sx={{ pl: 1, textWrap: 'nowrap' }}>
+              {t('page.cases.dashboard')}
+            </Typography>
+          </Stack>
 
-      <Stack
-        direction="row"
-        alignItems="center"
-        sx={navItemSx(location.pathname.endsWith('search'))}
-        component={Link}
-        to={`/cases/${_case.case_id!}/search`}
-      >
-        <Search fontSize="small" />
-        <Typography variant="body2" sx={{ userSelect: 'none', pl: 1, textWrap: 'nowrap' }}>
-          {t('page.cases.search')}
-        </Typography>
-      </Stack>
+          <Stack
+            direction="row"
+            alignItems="center"
+            sx={navItemSx(location.pathname.endsWith('search'))}
+            component={Link}
+            to={`/cases/${_case.case_id!}/search`}
+          >
+            <Search fontSize="small" />
+            <Typography variant="body2" sx={{ userSelect: 'none', pl: 1, textWrap: 'nowrap' }}>
+              {t('page.cases.search')}
+            </Typography>
+          </Stack>
 
-      <Stack
-        direction="row"
-        alignItems="center"
-        sx={navItemSx(location.pathname.endsWith('observables'))}
-        component={Link}
-        to={`/cases/${_case.case_id!}/observables`}
-      >
-        <Dataset fontSize="small" />
-        <Typography variant="body2" sx={{ userSelect: 'none', pl: 1, textWrap: 'nowrap' }}>
-          {t('page.cases.observables')}
-        </Typography>
-      </Stack>
+          <Stack
+            direction="row"
+            alignItems="center"
+            sx={navItemSx(location.pathname.endsWith('observables'))}
+            component={Link}
+            to={`/cases/${_case.case_id!}/observables`}
+          >
+            <Dataset fontSize="small" />
+            <Typography variant="body2" sx={{ userSelect: 'none', pl: 1, textWrap: 'nowrap' }}>
+              {t('page.cases.observables')}
+            </Typography>
+          </Stack>
 
-      <Stack
-        direction="row"
-        alignItems="center"
-        sx={navItemSx(location.pathname.endsWith('timeline'))}
-        component={Link}
-        to={`/cases/${_case.case_id!}/timeline`}
-      >
-        <CalendarMonth fontSize="small" />
-        <Typography variant="body2" sx={{ userSelect: 'none', pl: 1, textWrap: 'nowrap' }}>
-          {t('page.cases.timeline')}
-        </Typography>
-      </Stack>
+          <Stack
+            direction="row"
+            alignItems="center"
+            sx={navItemSx(location.pathname.endsWith('timeline'))}
+            component={Link}
+            to={`/cases/${_case.case_id!}/timeline`}
+          >
+            <CalendarMonth fontSize="small" />
+            <Typography variant="body2" sx={{ userSelect: 'none', pl: 1, textWrap: 'nowrap' }}>
+              {t('page.cases.timeline')}
+            </Typography>
+          </Stack>
 
-      <Stack
-        direction="row"
-        alignItems="center"
-        sx={navItemSx(location.pathname.endsWith('rules'))}
-        component={Link}
-        to={`/cases/${_case.case_id!}/rules`}
-      >
-        <Rule />
-        <Typography variant="body2" sx={{ userSelect: 'none', pl: 1, textWrap: 'nowrap' }}>
-          {t('page.cases.rules')}
-        </Typography>
-      </Stack>
+          <Stack
+            direction="row"
+            alignItems="center"
+            sx={navItemSx(location.pathname.endsWith('rules'))}
+            component={Link}
+            to={`/cases/${_case.case_id!}/rules`}
+          >
+            <Rule />
+            <Typography variant="body2" sx={{ userSelect: 'none', pl: 1, textWrap: 'nowrap' }}>
+              {t('page.cases.rules')}
+            </Typography>
+          </Stack>
+        </>
+      ) : (
+        <>
+          <Skeleton height={28} />
+          <Skeleton height={28} />
+          <Skeleton height={28} />
+          <Skeleton height={28} />
+        </>
+      )}
 
       <Card sx={{ borderRadius: 0, p: 0.25 }}>
         <Stack direction="row" spacing={0.25}>
