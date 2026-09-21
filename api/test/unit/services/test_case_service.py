@@ -893,7 +893,7 @@ class TestAppendHit:
         case_service.append_hit(mock_case, item)
 
         assert len(mock_case.items) == 1
-        mock_backref.assert_called_once_with(mock_hit, "case-001")
+        mock_backref.assert_called_once_with(mock_hit, "case-001", user=None)
         mock_sync.assert_called_once_with(mock_case)
         mock_hit.save.assert_called_once_with(version="howler-hit-000001---5---2")
 
@@ -1024,7 +1024,7 @@ class TestAppendEvent:
 
         mock_case.save.assert_not_called()
         assert len(mock_case.items) == 1
-        mock_backref.assert_called_once_with(mock_obs, "case-001")
+        mock_backref.assert_called_once_with(mock_obs, "case-001", user=None)
         mock_sync.assert_called_once_with(mock_case)
         mock_obs.save.assert_called_once_with(version="howler-event-000001---5---2")
 
