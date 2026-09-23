@@ -161,11 +161,20 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact, variant = 'card', 
     return null;
   }
 
+  const children = (
+    <>
+      <Icon fontSize="1.5rem" icon={pivot.icon!} />
+      <Typography noWrap>{pivot.label![i18n.language as 'en' | 'fr']}</Typography>
+      <Divider orientation="vertical" flexItem />
+      <IconButton size="small" onClick={e => onClueClick(e, true)}>
+        <Settings fontSize="small" />
+      </IconButton>
+    </>
+  );
+
   if (variant === 'menu-item') {
     return (
       <Stack
-        component="button"
-        type="button"
         role="menuitem"
         onClick={event => {
           void onClueClick(event);
@@ -186,8 +195,7 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact, variant = 'card', 
           '&:hover': { backgroundColor: theme.palette.action.hover }
         })}
       >
-        <Icon fontSize="1.5rem" icon={pivot.icon!} />
-        <Typography noWrap>{pivot.label![i18n.language as 'en' | 'fr']}</Typography>
+        {children}
       </Stack>
     );
   }
@@ -214,12 +222,7 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact, variant = 'card', 
       ]}
     >
       <Stack direction="row" p={compact ? 0.5 : 1} spacing={1} alignItems="center">
-        <Icon fontSize="1.5rem" icon={pivot.icon!} />
-        <Typography>{pivot.label![i18n.language as 'en' | 'fr']}</Typography>
-        <Divider orientation="vertical" flexItem />
-        <IconButton size="small" onClick={e => onClueClick(e, true)}>
-          <Settings fontSize="small" />
-        </IconButton>
+        {children}
       </Stack>
     </HowlerCard>
   );
