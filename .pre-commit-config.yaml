@@ -89,3 +89,10 @@ repos:
         language: python
         stages: [pre-commit]
         files: ^ui/.*
+      - id: duplicate-test-files
+        name: Check for Duplicate Test Modules
+        entry: hooks/find_duplicate_test_files.py
+        language: python
+        stages: [pre-commit]
+        always_run: true
+        pass_filenames: false

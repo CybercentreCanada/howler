@@ -10,8 +10,10 @@ BANNED_STRINGS = [
     (
         "@mui/icons-material/",
         [
-            "Using @mui/icons-material/SomeIcon in exported components leads to issues when extending howler's "
-            "functionality: https://stackoverflow.com/questions/78815858/mui-icons-material-vitest-es-module-issue ",
+            (
+                "Using @mui/icons-material/SomeIcon in exported components leads to issues when extending howler's "
+                "functionality: https://stackoverflow.com/questions/78815858/mui-icons-material-vitest-es-module-issue "
+            ),
             "Instead, use import { SomeIcon } from '@mui/icons-material'",
         ],
     ),
@@ -50,7 +52,7 @@ for filename in glob.glob(str(src_dir / "**/*.ts*"), recursive=True):
         if banned_string in data:
             print("failed")
 
-            wrapped_explanation = []
+            wrapped_explanation: list[str] = []
             for explanation in explanations:
                 wrapped_explanation += textwrap.wrap(explanation, width=120)
 
