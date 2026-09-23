@@ -18,7 +18,7 @@ const Escalation = forwardRef<any, { analytic: Analytic; maxWidth?: string }>(({
   const escalationColors = useMemo(
     () =>
       Object.keys(escalationData).map(escalation => getEscalationColor(escalation, 'rgba(255, 255, 255, 0.16)', theme)),
-    [theme]
+    [escalationData, theme]
   );
 
   useEffect(() => {

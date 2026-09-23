@@ -27,8 +27,12 @@ import useSetup from './setup';
 export type { CluePluginOptions } from './Provider';
 
 class CluePlugin extends HowlerPlugin {
+  private readonly providerComponent: FC<PropsWithChildren>;
+
   constructor(private readonly options: CluePluginOptions = {}) {
     super();
+
+    this.providerComponent = ({ children }) => <Provider options={this.options}>{children}</Provider>;
   }
 
   name = 'CluePlugin';
@@ -68,8 +72,7 @@ class CluePlugin extends HowlerPlugin {
   }
 
   provider(): FC<PropsWithChildren> {
-    const options = this.options;
-    return ({ children }: PropsWithChildren) => <Provider options={options}>{children}</Provider>;
+    return this.providerComponent;
   }
 
   setup() {
