@@ -22,7 +22,7 @@ class Log(odm.Model):
 
     def __init__(self, data: dict = None, *args, **kwargs):
         if "explanation" not in data:
-            required_keys = {"key", "new_value", "type", "previous_value"}
+            required_keys = {"key", "new_value", "previous_value"}
             if required_keys.intersection(set(data.keys())) != required_keys:
                 raise HowlerValueError(
                     f"If no explanation provided, you must provide the following values: {','.join(required_keys)}"
