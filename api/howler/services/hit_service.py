@@ -29,7 +29,8 @@ from howler.helper.hit import (
 from howler.helper.workflow import Transition, Workflow
 from howler.odm.models.ecs.event import ECSEvent
 from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import HitOperationType, HitStatusTransition, Log, Status
+from howler.odm.models.howler_data import HitStatusTransition, Status
+from howler.odm.models.log import Log, LogOperationType
 from howler.odm.models.user import User
 from howler.security.utils import is_classification_accessible
 from howler.services import action_service, analytic_service, dossier_service, overview_service, template_service
@@ -625,16 +626,16 @@ def _update_hit(
 
         if is_list:
             operation_type = (
-                HitOperationType.APPENDED
+                LogOperationType.APPENDED
                 if operation.operation
                 in (
                     ESCollection.UPDATE_APPEND,
                     ESCollection.UPDATE_APPEND_IF_MISSING,
                 )
-                else HitOperationType.REMOVED
+                else LogOperationType.REMOVED
             )
         else:
-            operation_type = HitOperationType.SET
+            operation_type = LogOperationType.SET
 
         logger.debug("%s - %s - %s -> %s", hit_id, operation.key, previous_value, operation.value)
         final_operations.append(operation)
