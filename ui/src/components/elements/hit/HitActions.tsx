@@ -182,8 +182,8 @@ const HitActions: FC<{
     <Stack direction="row" alignItems="stretch">
       {showDropdown || forceDropdown ? (
         <DropdownActions
-          currentAssessment={hit?.howler.assessment!}
-          currentStatus={hit?.howler.status!}
+          currentAssessment={hit?.howler.assessment}
+          currentStatus={hit?.howler.status}
           currentVote={selectedVote}
           actions={actions}
           loading={loading}
