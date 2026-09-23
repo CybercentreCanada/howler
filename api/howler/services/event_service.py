@@ -77,17 +77,17 @@ def get_event(id: str, as_odm=False, version=False, user: User | None = None):
         Event object (if as_odm=True) or dictionary representation of the event.
         Returns None if the event doesn't exist.
     """
-    hit_version: str | None = None
+    event_version: str | None = None
     obj: Event | dict[str, Any] | None = None
 
-    hit = datastore().hit.get_if_exists(key=id, as_obj=as_odm, version=version)
+    event = datastore().event.get_if_exists(key=id, as_obj=as_odm, version=version)
     if user is None:
-        return hit
+        return event
 
     if version:
-        obj, hit_version = cast(tuple[dict[str, Any] | Event, str], hit)
+        obj, event_version = cast(tuple[dict[str, Any] | Event, str], event)
     else:
-        obj = cast(Event | dict[str, Any], hit)
+        obj = cast(Event | dict[str, Any], event)
 
     classification: str | None = None
     if as_odm and obj:
@@ -97,10 +97,10 @@ def get_event(id: str, as_odm=False, version=False, user: User | None = None):
 
     if obj is not None and not is_classification_accessible(user, classification):
         obj = None
-        hit_version = CREATE_TOKEN
+        event_version = CREATE_TOKEN
 
     if version:
-        return obj, hit_version
+        return obj, event_version
 
     return obj
 

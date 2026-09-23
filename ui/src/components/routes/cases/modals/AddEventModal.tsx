@@ -215,7 +215,7 @@ const AddEventModal: FC<AddEventModalProps> = ({ case: _case, parentId, onUpdate
   const filteredFields = useMemo(() => searchFields(fields, fieldSearch), [fieldSearch, fields]);
 
   const hasOutlineValue = Boolean(target.trim() || threat.trim() || parseList(indicators).length);
-  const isValid = Boolean(title.trim() && created && provider.trim() && escalation && hasOutlineValue);
+  const isValid = Boolean(title.trim() && created?.isValid() && provider.trim() && escalation && hasOutlineValue);
 
   const setOptionalField = (field: SearchField) => {
     if (!field.key || selectedFields.some(selected => selected.key === field.key)) {

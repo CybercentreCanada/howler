@@ -1,8 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import dayjs from 'dayjs';
 import type { PropsWithChildren } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AddEventModal from './AddEventModal';
 
 const mockDispatchApi = vi.hoisted(() => vi.fn());
@@ -27,9 +27,14 @@ vi.mock('@mui/x-date-pickers/AdapterDayjs', () => ({ AdapterDayjs: class {} }));
 
 vi.mock('@mui/x-date-pickers/DateTimePicker', () => ({
   DateTimePicker: ({ label, onChange }: { label: string; onChange: (value: dayjs.Dayjs) => void }) => (
-    <button type="button" onClick={() => onChange(dayjs('2026-09-21T12:00:00Z'))}>
-      {label}
-    </button>
+    <>
+      <button type="button" onClick={() => onChange(dayjs('2026-09-21T12:00:00Z'))}>
+        {label} valid
+      </button>
+      <button type="button" onClick={() => onChange(dayjs('not-a-date'))}>
+        {label} invalid
+      </button>
+    </>
   )
 }));
 
@@ -87,7 +92,26 @@ const renderModal = () =>
   });
 
 describe('AddEventModal', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('requires escalation in addition to the other required fields', async () => {
+    mockFieldsGet.mockResolvedValue(fields);
+    mockDispatchApi.mockImplementation(async request => request);
+
+    renderModal();
+    await waitFor(() => expect(mockFieldsGet).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByLabelText(/modal\.cases\.add_event\.title/), { target: { value: 'Manual event' } });
+    fireEvent.click(screen.getByRole('button', { name: 'modal.cases.add_event.created valid' }));
+    fireEvent.change(screen.getByLabelText(/modal\.cases\.add_event\.provider/), { target: { value: 'Analyst' } });
+    fireEvent.change(screen.getByLabelText(/modal\.cases\.add_event\.target/), { target: { value: 'host-1' } });
+
+    expect(screen.getByRole('button', { name: 'modal.cases.add_event.submit' })).toBeDisabled();
+  });
+
+  it('rejects an invalid created date', async () => {
     const user = userEvent.setup();
     mockFieldsGet.mockResolvedValue(fields);
     mockDispatchApi.mockImplementation(async request => request);
@@ -95,10 +119,12 @@ describe('AddEventModal', () => {
     renderModal();
     await waitFor(() => expect(mockFieldsGet).toHaveBeenCalled());
 
-    await user.type(screen.getByLabelText(/modal\.cases\.add_event\.title/), 'Manual event');
-    await user.click(screen.getByRole('button', { name: 'modal.cases.add_event.created' }));
-    await user.type(screen.getByLabelText(/modal\.cases\.add_event\.provider/), 'Analyst');
-    await user.type(screen.getByLabelText(/modal\.cases\.add_event\.target/), 'host-1');
+    fireEvent.change(screen.getByLabelText(/modal\.cases\.add_event\.title/), { target: { value: 'Manual event' } });
+    fireEvent.click(screen.getByRole('button', { name: 'modal.cases.add_event.created invalid' }));
+    fireEvent.change(screen.getByLabelText(/modal\.cases\.add_event\.provider/), { target: { value: 'Analyst' } });
+    fireEvent.change(screen.getByLabelText(/modal\.cases\.add_event\.target/), { target: { value: 'host-1' } });
+    await user.click(screen.getByRole('combobox', { name: /modal\.cases\.add_event\.escalation/ }));
+    await user.click(await screen.findByRole('option', { name: 'evidence' }));
 
     expect(screen.getByRole('button', { name: 'modal.cases.add_event.submit' })).toBeDisabled();
   });
@@ -114,18 +140,20 @@ describe('AddEventModal', () => {
     renderModal();
     await waitFor(() => expect(mockFieldsGet).toHaveBeenCalled());
 
-    await user.type(screen.getByLabelText(/modal\.cases\.add_event\.title/), 'Manual event');
-    await user.click(screen.getByRole('button', { name: 'modal.cases.add_event.created' }));
-    await user.type(screen.getByLabelText(/modal\.cases\.add_event\.provider/), 'Analyst');
+    fireEvent.change(screen.getByLabelText(/modal\.cases\.add_event\.title/), { target: { value: 'Manual event' } });
+    fireEvent.click(screen.getByRole('button', { name: 'modal.cases.add_event.created valid' }));
+    fireEvent.change(screen.getByLabelText(/modal\.cases\.add_event\.provider/), { target: { value: 'Analyst' } });
     await user.click(screen.getByRole('combobox', { name: /modal\.cases\.add_event\.escalation/ }));
     await user.click(await screen.findByRole('option', { name: 'evidence' }));
-    await user.type(screen.getByLabelText(/modal\.cases\.add_event\.target/), 'host-1');
-    await user.type(screen.getByLabelText(/modal\.cases\.add_event\.summary/), 'Observed manually');
+    fireEvent.change(screen.getByLabelText(/modal\.cases\.add_event\.target/), { target: { value: 'host-1' } });
+    fireEvent.change(screen.getByLabelText(/modal\.cases\.add_event\.summary/), {
+      target: { value: 'Observed manually' }
+    });
 
     const fieldSearch = screen.getByLabelText(/modal\.cases\.add_event\.search_fields/);
-    await user.type(fieldSearch, 'destination IP');
+    fireEvent.change(fieldSearch, { target: { value: 'destination IP' } });
     await user.click(await screen.findByText('destination.ip'));
-    await user.type(screen.getByLabelText(/destination\.ip/), '192.0.2.10');
+    fireEvent.change(screen.getByLabelText(/destination\.ip/), { target: { value: '192.0.2.10' } });
     await user.click(screen.getByRole('button', { name: 'modal.cases.add_event.submit' }));
 
     expect(mockIngestPost).toHaveBeenCalledWith(
