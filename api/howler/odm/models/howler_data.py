@@ -3,11 +3,11 @@ from datetime import datetime
 from typing import Optional
 
 from howler import odm
-from howler.common.exceptions import HowlerValueError
 from howler.odm.constants import Status
 from howler.odm.howler_enum import HowlerEnum
 from howler.odm.models.header import Header
 from howler.odm.models.lead import Lead
+from howler.odm.models.log import Log
 
 
 class Scrutiny(str, HowlerEnum):
@@ -30,12 +30,6 @@ class HitStatusTransition(str, HowlerEnum):
     RE_EVALUATE = "re_evaluate"
     PROMOTE = "promote"
     DEMOTE = "demote"
-
-
-class HitOperationType(str, HowlerEnum):
-    APPENDED = "appended"
-    REMOVED = "removed"
-    SET = "set"
 
 
 class Escalation(str, HowlerEnum):
@@ -106,28 +100,6 @@ class Comment(odm.Model):
         default={},
         description="A list of reactions to the comment.",
     )
-
-
-@odm.model(index=True, store=True, description="Log definition.")
-class Log(odm.Model):
-    timestamp = odm.Date(description="Timestamp at which the Log event took place.")
-    key = odm.Optional(odm.Keyword(description="The key whose value changed."))
-    explanation = odm.Optional(odm.Text(description="A manual description of the changes made."))
-    previous_version = odm.Optional(odm.Keyword(description="The version this action was applied to."))
-    new_value = odm.Optional(odm.Keyword(description="The value the key is changing to."))
-    type = odm.Optional(odm.Enum(values=HitOperationType, description="The operation performed on the value."))
-    previous_value = odm.Optional(odm.Keyword(description="The value the key is changing from."))
-    user = odm.Keyword(description="User ID who created the log event.")
-
-    def __init__(self, data: dict = None, *args, **kwargs):
-        if "explanation" not in data:
-            required_keys = {"key", "new_value", "type", "previous_value"}
-            if required_keys.intersection(set(data.keys())) != required_keys:
-                raise HowlerValueError(
-                    f"If no explanation provided, you must provide the following values: {','.join(required_keys)}"
-                )
-
-        super().__init__(data, *args, **kwargs)
 
 
 @odm.model(index=True, store=True, description="Fields describing the location where this alert has been retained.")

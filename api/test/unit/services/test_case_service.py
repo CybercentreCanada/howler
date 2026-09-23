@@ -893,7 +893,7 @@ class TestAppendHit:
         case_service.append_hit(mock_case, item)
 
         assert len(mock_case.items) == 1
-        mock_backref.assert_called_once_with(mock_hit, "case-001")
+        mock_backref.assert_called_once_with(mock_hit, "case-001", user=None)
         mock_sync.assert_called_once_with(mock_case)
         mock_hit.save.assert_called_once_with(version="howler-hit-000001---5---2")
 
@@ -1024,7 +1024,7 @@ class TestAppendEvent:
 
         mock_case.save.assert_not_called()
         assert len(mock_case.items) == 1
-        mock_backref.assert_called_once_with(mock_obs, "case-001")
+        mock_backref.assert_called_once_with(mock_obs, "case-001", user=None)
         mock_sync.assert_called_once_with(mock_case)
         mock_obs.save.assert_called_once_with(version="howler-event-000001---5---2")
 
@@ -1724,24 +1724,29 @@ class TestAddBackreference:
         """add_backreference appends the case_id to related, in memory only."""
         mock_obj = MagicMock()
         mock_obj.howler.related = []
+        mock_obj.howler.log = []
         mock_obj.howler.id = "obj-001"
 
         added = case_service.add_backreference(mock_obj, "case-abc")
 
         assert added is True
         assert "case-abc" in mock_obj.howler.related
+        assert mock_obj.howler.log[0].explanation == "Added to case case-abc"
+        assert mock_obj.howler.log[0].user == "system"
         mock_obj.save.assert_not_called()
 
     def test_add_backreference_is_idempotent(self):
         """add_backreference does not add a duplicate if the case_id is already present."""
         mock_obj = MagicMock()
         mock_obj.howler.related = ["case-abc"]
+        mock_obj.howler.log = []
         mock_obj.howler.id = "obj-001"
 
         added = case_service.add_backreference(mock_obj, "case-abc")
 
         assert added is False
         assert mock_obj.howler.related.count("case-abc") == 1
+        assert mock_obj.howler.log == []
         mock_obj.save.assert_not_called()
 
 
@@ -1762,22 +1767,27 @@ class TestRemoveBackreference:
         """remove_backreference does nothing when case_id is not in related."""
         mock_obj = MagicMock()
         mock_obj.howler.related = ["other-case"]
+        mock_obj.howler.log = []
 
         case_service.remove_backreference(mock_obj, "case-that-was-never-added")
 
         assert "other-case" in mock_obj.howler.related
+        assert mock_obj.howler.log == []
         mock_obj.save.assert_not_called()
 
     def test_remove_backreference_removes_without_saving(self):
         """remove_backreference removes the case_id from related, in memory only."""
         mock_obj = MagicMock()
         mock_obj.howler.related = ["case-abc", "other-case"]
+        mock_obj.howler.log = []
         mock_obj.howler.id = "obj-001"
 
         case_service.remove_backreference(mock_obj, "case-abc")
 
         assert "case-abc" not in mock_obj.howler.related
         assert "other-case" in mock_obj.howler.related
+        assert mock_obj.howler.log[0].explanation == "Removed from case case-abc"
+        assert mock_obj.howler.log[0].user == "system"
         mock_obj.save.assert_not_called()
 
 

@@ -427,6 +427,8 @@
   "page.cases.dashboard.cases": "Related Cases",
   "page.cases.dashboard.duration": "Duration",
   "page.cases.dashboard.indicators": "Indicators",
+  "page.cases.dashboard.select_all": "Select all",
+  "page.cases.dashboard.show_values": "Show values",
   "page.cases.dashboard.target": "Targets",
   "page.cases.dashboard.tasks": "Tasks",
   "page.cases.dashboard.tasks.add": "Add Task",
