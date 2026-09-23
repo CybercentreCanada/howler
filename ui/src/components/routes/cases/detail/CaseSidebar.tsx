@@ -259,6 +259,7 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
           <Skeleton height={28} />
           <Skeleton height={28} />
           <Skeleton height={28} />
+          <Skeleton height={28} />
         </>
       )}
 

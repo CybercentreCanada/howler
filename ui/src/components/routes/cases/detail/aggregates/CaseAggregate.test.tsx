@@ -6,6 +6,10 @@ import CaseAggregate from './CaseAggregate';
 const mockShowErrorMessage = vi.hoisted(() => vi.fn());
 const mockShowSuccessMessage = vi.hoisted(() => vi.fn());
 
+vi.mock('components/elements/PluginTypography', () => ({
+  default: ({ value }: { value: string }) => <span>{value}</span>
+}));
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key
