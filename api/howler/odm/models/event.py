@@ -4,6 +4,7 @@ from howler import odm
 from howler.common.logging import get_logger
 from howler.odm.howler_enum import HowlerEnum
 from howler.odm.mixins import DatastoreMixin
+from howler.odm.models.header import Header
 from howler.odm.models.log import Log
 from howler.odm.models.record import Record
 
@@ -54,6 +55,10 @@ class EventData(odm.Model):
     related: list[str] = odm.List(
         odm.Keyword(description="Related records."),
         default=[],
+    )
+    outline: Header | None = odm.Optional(
+        odm.Compound(Header),
+        description="The user specified header of the event.",
     )
     score: float | None = odm.Optional(
         odm.Float(description="A score assigned by an enrichment to help prioritize triage.", default=0)

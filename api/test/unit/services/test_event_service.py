@@ -19,6 +19,20 @@ SAMPLE_EVENT_DATA: dict[str, Any] = {
 }
 
 
+@patch("howler.services.event_service.datastore")
+def test_get_event_uses_event_collection(mock_datastore):
+    """Event lookup reads from the event collection rather than the hit collection."""
+    event = MagicMock()
+    storage = mock_datastore.return_value
+    storage.event.get_if_exists.return_value = event
+
+    result = event_service.get_event("event-001", as_odm=True)
+
+    assert result is event
+    storage.event.get_if_exists.assert_called_once_with(key="event-001", as_obj=True, version=False)
+    storage.hit.get_if_exists.assert_not_called()
+
+
 def test_convert_event_basic():
     """Test basic conversion of a dictionary to an Event ODM object."""
     data: dict[str, Any] = {
@@ -125,6 +139,28 @@ def test_convert_event_event_without_created():
     result, _ = event_service.convert_event(data, unique=False)
 
     assert result.event.created is not None
+
+
+def test_convert_event_preserves_outline():
+    """Test that event outline values, including its optional summary, are preserved."""
+    data: dict[str, Any] = {
+        "howler": {
+            "data": ["data"],
+            "outline": {
+                "target": "host-1",
+                "threat": "threat-1",
+                "indicators": ["1.2.3.4"],
+                "summary": "Manual event summary",
+            },
+        }
+    }
+
+    result, _ = event_service.convert_event(data, unique=False)
+
+    assert result.howler.outline.target == "host-1"
+    assert result.howler.outline.threat == "threat-1"
+    assert result.howler.outline.indicators == ["1.2.3.4"]
+    assert result.howler.outline.summary == "Manual event summary"
 
 
 def test_convert_event_extra_values_raises():
