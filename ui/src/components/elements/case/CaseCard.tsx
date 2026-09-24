@@ -1,12 +1,14 @@
-import { HourglassBottom, UpdateOutlined } from '@mui/icons-material';
+import { CheckCircleOutline, HourglassBottom, RadioButtonUnchecked, UpdateOutlined } from '@mui/icons-material';
 import { Chip, Divider, Skeleton, Stack, Tooltip, Typography, useTheme, type CardProps } from '@mui/material';
 import api from 'api';
 import StatusIcon from 'components/elements/case/StatusIcon';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
 import useMyApi from 'components/hooks/useMyApi';
 import dayjs from 'dayjs';
+import { countBy } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
 import { useEffect, useState, type FC } from 'react';
+import { useTranslation } from 'react-i18next';
 import { twitterShort } from 'utils/utils';
 import HowlerCard from '../display/HowlerCard';
 
@@ -22,6 +24,7 @@ const CaseCard: FC<{
 }> = ({ case: providedCase, caseId, className, slotProps }) => {
   const { dispatchApi } = useMyApi();
   const theme = useTheme();
+  const { t } = useTranslation();
 
   const [_case, setCase] = useState(providedCase);
 
@@ -95,6 +98,29 @@ const CaseCard: FC<{
                 {_case.participants?.map(participant => (
                   <HowlerAvatar key={participant} sx={{ height: '20px', width: '20px' }} userId={participant} />
                 ))}
+              </Stack>
+            </>
+          )}
+
+          {(_case.tasks?.length ?? 0) > 0 && (
+            <>
+              <Divider flexItem />
+
+              <Stack spacing={0.5} alignItems="start">
+                {_case.tasks!.some(task => task.complete) && (
+                  <Chip
+                    size="small"
+                    color="success"
+                    icon={<CheckCircleOutline />}
+                    label={`${countBy(_case.tasks!, task => task.complete).true} ${t('complete')}`}
+                  />
+                )}
+
+                {_case
+                  .tasks!.filter(task => !task.complete)
+                  .map(task => (
+                    <Chip key={task.id} icon={<RadioButtonUnchecked />} label={task.summary} />
+                  ))}
               </Stack>
             </>
           )}
