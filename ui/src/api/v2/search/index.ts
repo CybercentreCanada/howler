@@ -11,7 +11,7 @@ export const uri = (indexes: string[]) => {
   return joinAllUri(parentUri(), 'search', indexes.join(','));
 };
 
-export const post = <T>(indexes: SearchIndex | SearchIndex[], request?: HowlerSearchRequest) => {
+export const post = <T>(indexes: SearchIndex | SearchIndex[], request?: HowlerSearchRequest, signal?: AbortSignal) => {
   if (isNil(indexes)) {
     throw new Error('Indexes cannot be null or undefined.');
   }
@@ -28,7 +28,13 @@ export const post = <T>(indexes: SearchIndex | SearchIndex[], request?: HowlerSe
     throw new Error('indexes must have length of at least 1.');
   }
 
-  return hpost<HowlerSearchResponse<T>>(uri(indexes), { ...request, query: request?.query || 'howler.id:*' });
+  return hpost<HowlerSearchResponse<T>>(
+    uri(indexes),
+    { ...request, query: request?.query || 'howler.id:*' },
+    undefined,
+    undefined,
+    signal
+  );
 };
 
 export { facet };

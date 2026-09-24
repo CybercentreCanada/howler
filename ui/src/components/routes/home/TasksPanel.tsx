@@ -21,13 +21,14 @@ import CaseTask from 'components/routes/cases/detail/CaseTask';
 import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
 import type { HowlerUser } from 'models/entities/HowlerUser';
-import { useCallback, useEffect, useId, useMemo, useState, type FC } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 import { twitterShort } from 'utils/utils';
 
 const SEARCH_PAGE_SIZE = 150;
+const MAX_SEARCH_PAGES = 3;
 type TaskFilter = 'all' | 'complete' | 'incomplete';
 
 export interface TasksSettings {
@@ -35,12 +36,14 @@ export interface TasksSettings {
 }
 
 interface TasksPanelProps extends TasksSettings {
+  panelId?: string;
   refreshTick?: symbol;
-  onRefreshComplete?: () => void;
+  onRefreshComplete?: (panelId: string, refreshTick: symbol) => void;
 }
 
 const TasksPanel: FC<TasksPanelProps> = ({
   taskFilter: initialTaskFilter = 'incomplete',
+  panelId = 'tasks-panel',
   refreshTick,
   onRefreshComplete
 }) => {
@@ -54,60 +57,107 @@ const TasksPanel: FC<TasksPanelProps> = ({
   const [taskFilter, setTaskFilter] = useState<TaskFilter>(initialTaskFilter);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const activeRefreshTick = useRef<symbol | undefined>(undefined);
+  useEffect(() => {
+    const controller = new AbortController();
+    let refreshComplete = false;
+    const completeRefresh = () => {
+      if (refreshTick && !refreshComplete) {
+        refreshComplete = true;
+        if (activeRefreshTick.current === refreshTick) {
+          activeRefreshTick.current = undefined;
+        }
+        onRefreshComplete?.(panelId, refreshTick);
+      }
+    };
 
-  const loadCases = useCallback(async () => {
+    if (refreshTick) {
+      activeRefreshTick.current = refreshTick;
+    }
+
     if (!username) {
       setCases([]);
-      onRefreshComplete?.();
+      setLoading(false);
+      completeRefresh();
       return;
     }
 
     setLoading(true);
     setError(false);
 
-    const allCases: Case[] = [];
-    let offset = 0;
-    let total = 0;
+    const loadCases = async () => {
+      const allCases: Case[] = [];
+      let offset = 0;
+      let total = 0;
+      let page = 0;
 
-    try {
-      do {
-        const response = await dispatchApi(
-          api.v2.search.post<Case>('case', {
-            query: 'case_id:*',
-            filters: [`tasks.assignment:"${sanitizeLuceneQuery(username)}"`],
-            rows: SEARCH_PAGE_SIZE,
-            offset,
-            sort: 'created desc'
-          }),
-          { showError: false }
-        );
+      try {
+        do {
+          const response = await dispatchApi(
+            api.v2.search.post<Case>(
+              'case',
+              {
+                query: 'case_id:*',
+                filters: [`tasks.assignment:"${sanitizeLuceneQuery(username)}"`],
+                rows: SEARCH_PAGE_SIZE,
+                offset,
+                sort: 'created desc'
+              },
+              controller.signal
+            ),
+            { showError: false }
+          );
 
-        if (!response) {
-          break;
+          if (controller.signal.aborted) {
+            return;
+          }
+
+          if (!response) {
+            break;
+          }
+
+          allCases.push(...response.items);
+          total = response.total;
+          offset += response.items.length;
+          page += 1;
+
+          if (response.items.length === 0) {
+            break;
+          }
+        } while (offset < total && page < MAX_SEARCH_PAGES);
+
+        if (!controller.signal.aborted) {
+          setCases(allCases);
         }
-
-        allCases.push(...response.items);
-        total = response.total;
-        offset += response.items.length;
-
-        if (response.items.length === 0) {
-          break;
+      } catch {
+        if (!controller.signal.aborted) {
+          setError(true);
+          setCases([]);
         }
-      } while (offset < total);
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+          completeRefresh();
+        }
+      }
+    };
 
-      setCases(allCases);
-    } catch {
-      setError(true);
-      setCases([]);
-    } finally {
-      setLoading(false);
-      onRefreshComplete?.();
-    }
-  }, [dispatchApi, onRefreshComplete, username]);
-
-  useEffect(() => {
     void loadCases();
-  }, [loadCases, refreshTick]);
+
+    return () => {
+      controller.abort();
+    };
+  }, [dispatchApi, onRefreshComplete, panelId, refreshTick, username]);
+
+  useEffect(
+    () => () => {
+      if (activeRefreshTick.current) {
+        onRefreshComplete?.(panelId, activeRefreshTick.current);
+        activeRefreshTick.current = undefined;
+      }
+    },
+    [onRefreshComplete, panelId]
+  );
 
   const visibleCases = useMemo(
     () =>

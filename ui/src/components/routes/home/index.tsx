@@ -87,8 +87,8 @@ const Home: FC = () => {
     setStateDashboard(_dashboard ?? []);
   }, []);
 
-  const handleRefreshComplete = useCallback(() => {
-    viewRefreshRef.current?.handleRefreshComplete();
+  const handleRefreshComplete = useCallback((panelId: string, completedRefreshTick: symbol) => {
+    viewRefreshRef.current?.handleRefreshComplete(panelId, completedRefreshTick);
   }, []);
 
   const handleRefreshRateChange = useCallback(
@@ -111,8 +111,8 @@ const Home: FC = () => {
     [setRefreshRateBackend, setUser, user]
   );
 
-  const handleRefresh = useCallback(() => {
-    setRefreshTick(Symbol());
+  const handleRefresh = useCallback((nextRefreshTick: symbol) => {
+    setRefreshTick(nextRefreshTick);
   }, []);
 
   const saveChanges = useCallback(async () => {
@@ -170,8 +170,8 @@ const Home: FC = () => {
     };
   }, []);
 
-  const refreshableCardCount = useMemo(
-    () => (dashboard ?? []).filter(e => ['view', 'case', 'tasks'].includes(e.type)).length,
+  const refreshableCardIds = useMemo(
+    () => (dashboard ?? []).filter(e => ['view', 'case', 'tasks'].includes(e.type)).map(e => e.entry_id),
     [dashboard]
   );
 
@@ -184,7 +184,7 @@ const Home: FC = () => {
       <ViewRefresh
         ref={viewRefreshRef}
         refreshRate={refreshRate}
-        viewCardCount={refreshableCardCount}
+        viewCardIds={refreshableCardIds}
         onRefresh={handleRefresh}
       />
     );
@@ -211,7 +211,7 @@ const Home: FC = () => {
     handleRefreshRateChange,
     isEditing,
     refreshRate,
-    refreshableCardCount,
+    refreshableCardIds,
     removeFromAppBar
   ]);
 
@@ -308,6 +308,7 @@ const Home: FC = () => {
                         }
                       >
                         <ViewCard
+                          panelId={entry.entry_id}
                           key={entry.config}
                           refreshTick={refreshTick}
                           onRefreshComplete={handleRefreshComplete}
@@ -346,7 +347,12 @@ const Home: FC = () => {
                           )
                         }
                       >
-                        <CasePanel refreshTick={refreshTick} onRefreshComplete={handleRefreshComplete} {...settings} />
+                        <CasePanel
+                          panelId={entry.entry_id}
+                          refreshTick={refreshTick}
+                          onRefreshComplete={handleRefreshComplete}
+                          {...settings}
+                        />
                       </EntryWrapper>
                     );
                   } else if (entry.type === 'tasks') {
@@ -363,7 +369,12 @@ const Home: FC = () => {
                           )
                         }
                       >
-                        <TasksPanel refreshTick={refreshTick} onRefreshComplete={handleRefreshComplete} {...settings} />
+                        <TasksPanel
+                          panelId={entry.entry_id}
+                          refreshTick={refreshTick}
+                          onRefreshComplete={handleRefreshComplete}
+                          {...settings}
+                        />
                       </EntryWrapper>
                     );
                   } else {

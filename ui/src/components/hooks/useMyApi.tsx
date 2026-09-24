@@ -27,6 +27,10 @@ const useMyApi = () => {
         const response = await apiCall;
         return response;
       } catch (error) {
+        if (error instanceof Error && ['AbortError', 'CanceledError'].includes(error.name)) {
+          return;
+        }
+
         if (error instanceof Error) {
           if (onConflict && [409, 412].includes((error.cause as HowlerResponse<any>)?.api_status_code)) {
             void onConflict();

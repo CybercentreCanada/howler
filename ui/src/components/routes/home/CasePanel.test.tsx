@@ -68,12 +68,16 @@ describe('CasePanel', () => {
 
     await waitFor(() => expect(mockDispatchApi).toHaveBeenCalled());
 
-    expect(mockSearchPost).toHaveBeenCalledWith('case', {
-      query: 'case_id:*',
-      filters: ['status:("open")', '(participants:"alice" OR tasks.assignment:"alice")', 'created:[now-1d/d TO now]'],
-      rows: 10,
-      sort: 'created desc'
-    });
+    expect(mockSearchPost).toHaveBeenCalledWith(
+      'case',
+      {
+        query: 'case_id:*',
+        filters: ['status:("open")', '(participants:"alice" OR tasks.assignment:"alice")', 'created:[now-1d/d TO now]'],
+        rows: 10,
+        sort: 'created desc'
+      },
+      expect.any(AbortSignal)
+    );
     expect(await screen.findByText('Case One')).toBeInTheDocument();
   });
 
@@ -84,5 +88,32 @@ describe('CasePanel', () => {
     expect(screen.getByText('assignee-filter')).toBeInTheDocument();
     expect(screen.getByText('date-filter')).toBeInTheDocument();
     await waitFor(() => expect(mockDispatchApi).toHaveBeenCalled());
+  });
+
+  it('reports a pending refresh when the panel unmounts', () => {
+    const refreshTick = Symbol('refresh');
+    const onRefreshComplete = vi.fn();
+    mockDispatchApi.mockReturnValue(new Promise(() => {}));
+
+    const { unmount } = render(
+      <CasePanel panelId="case-panel-1" refreshTick={refreshTick} onRefreshComplete={onRefreshComplete} />,
+      { wrapper: Wrapper }
+    );
+
+    unmount();
+
+    expect(onRefreshComplete).toHaveBeenCalledWith('case-panel-1', refreshTick);
+    expect(mockSearchPost.mock.calls[0][2].aborted).toBe(true);
+  });
+
+  it('aborts an earlier refresh when a newer refresh begins', () => {
+    mockDispatchApi.mockReturnValue(new Promise(() => {}));
+
+    const { rerender } = render(<CasePanel refreshTick={Symbol('first')} />, { wrapper: Wrapper });
+    const firstSignal = mockSearchPost.mock.calls[0][2] as AbortSignal;
+    rerender(<CasePanel refreshTick={Symbol('second')} />);
+
+    expect(firstSignal.aborted).toBe(true);
+    expect(mockSearchPost).toHaveBeenCalledTimes(2);
   });
 });

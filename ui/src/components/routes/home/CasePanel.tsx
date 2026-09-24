@@ -9,7 +9,7 @@ import CaseDateFilter, { type DateRangeOption } from 'components/routes/cases/se
 import CaseStatusFilter from 'components/routes/cases/search/CaseStatusFilter';
 import dayjs, { type Dayjs } from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
-import { useEffect, useMemo, useState, type FC } from 'react';
+import { useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { DATE_RANGE_LUCENE } from 'utils/constants';
@@ -26,8 +26,9 @@ export interface CaseSettings {
 }
 
 interface CasePanelProps extends CaseSettings {
+  panelId?: string;
   refreshTick?: symbol;
-  onRefreshComplete?: () => void;
+  onRefreshComplete?: (panelId: string, refreshTick: symbol) => void;
 }
 
 const getDate = (value: string | undefined, fallback: Dayjs) => {
@@ -41,6 +42,7 @@ const CasePanel: FC<CasePanelProps> = ({
   dateRange: initialDateRange = 'date.range.all',
   customStart: initialCustomStart,
   customEnd: initialCustomEnd,
+  panelId = 'case-panel',
   refreshTick,
   onRefreshComplete
 }) => {
@@ -55,7 +57,7 @@ const CasePanel: FC<CasePanelProps> = ({
   const [dateRange, setDateRange] = useState<DateRangeOption>(initialDateRange);
   const [customStart, setCustomStart] = useState(() => getDate(initialCustomStart, dayjs().subtract(2, 'days')));
   const [customEnd, setCustomEnd] = useState(() => getDate(initialCustomEnd, dayjs()));
-
+  const activeRefreshTick = useRef<symbol | undefined>(undefined);
   const filters = useMemo(() => {
     const nextFilters: string[] = [];
 
@@ -85,42 +87,70 @@ const CasePanel: FC<CasePanelProps> = ({
   }, [assigneeFilter, customEnd, customStart, dateRange, statusFilter]);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
+    let refreshComplete = false;
+    const completeRefresh = () => {
+      if (refreshTick && !refreshComplete) {
+        refreshComplete = true;
+        if (activeRefreshTick.current === refreshTick) {
+          activeRefreshTick.current = undefined;
+        }
+        onRefreshComplete?.(panelId, refreshTick);
+      }
+    };
+
+    if (refreshTick) {
+      activeRefreshTick.current = refreshTick;
+    }
 
     setLoading(true);
     setError(false);
 
     void dispatchApi(
-      api.v2.search.post<Case>('case', {
-        query: 'case_id:*',
-        filters,
-        rows: CASE_LIMIT,
-        sort: 'created desc'
-      }),
+      api.v2.search.post<Case>(
+        'case',
+        {
+          query: 'case_id:*',
+          filters,
+          rows: CASE_LIMIT,
+          sort: 'created desc'
+        },
+        controller.signal
+      ),
       { showError: false }
     )
       .then(response => {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setCases(response?.items ?? []);
         }
       })
       .catch(() => {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setError(true);
           setCases([]);
         }
       })
       .finally(() => {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setLoading(false);
-          onRefreshComplete?.();
+          completeRefresh();
         }
       });
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
-  }, [dispatchApi, filters, onRefreshComplete, refreshTick]);
+  }, [dispatchApi, filters, onRefreshComplete, panelId, refreshTick]);
+
+  useEffect(
+    () => () => {
+      if (activeRefreshTick.current) {
+        onRefreshComplete?.(panelId, activeRefreshTick.current);
+        activeRefreshTick.current = undefined;
+      }
+    },
+    [onRefreshComplete, panelId]
+  );
 
   return (
     <Card variant="outlined" sx={{ height: '100%' }}>

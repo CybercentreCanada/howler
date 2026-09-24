@@ -74,13 +74,17 @@ describe('TasksPanel', () => {
     const { queryByText } = render(<TasksPanel />, { wrapper: Wrapper });
 
     await waitFor(() => expect(mockDispatchApi).toHaveBeenCalled());
-    expect(mockSearchPost).toHaveBeenCalledWith('case', {
-      query: 'case_id:*',
-      filters: ['tasks.assignment:"alice"'],
-      rows: 150,
-      offset: 0,
-      sort: 'created desc'
-    });
+    expect(mockSearchPost).toHaveBeenCalledWith(
+      'case',
+      {
+        query: 'case_id:*',
+        filters: ['tasks.assignment:"alice"'],
+        rows: 150,
+        offset: 0,
+        sort: 'created desc'
+      },
+      expect.any(AbortSignal)
+    );
     expect(await screen.findByText('Open task')).toBeInTheDocument();
     expect(queryByText('Done task')).not.toBeInTheDocument();
     expect(queryByText('Other user task')).not.toBeInTheDocument();
@@ -91,5 +95,74 @@ describe('TasksPanel', () => {
 
     expect(await screen.findByText('Done task')).toBeInTheDocument();
     expect(screen.queryByText('Open task')).not.toBeInTheDocument();
+  });
+
+  it('keeps the latest results when requests overlap', async () => {
+    let resolveFirst: ((value: { items: any[]; total: number }) => void) | undefined;
+    let resolveSecond: ((value: { items: any[]; total: number }) => void) | undefined;
+    mockDispatchApi
+      .mockReturnValueOnce(new Promise(resolve => (resolveFirst = resolve)))
+      .mockReturnValueOnce(new Promise(resolve => (resolveSecond = resolve)));
+
+    const { rerender } = render(<TasksPanel refreshTick={Symbol('first')} />, { wrapper: Wrapper });
+    const firstSignal = mockSearchPost.mock.calls[0][2] as AbortSignal;
+    rerender(<TasksPanel refreshTick={Symbol('second')} />);
+    expect(firstSignal.aborted).toBe(true);
+
+    resolveSecond?.({
+      items: [
+        {
+          __index: 'case',
+          case_id: 'latest-case',
+          title: 'Latest Case',
+          tasks: [{ id: 'latest-task', assignment: 'alice', summary: 'Latest task', complete: false }]
+        }
+      ],
+      total: 1
+    });
+    expect(await screen.findByText('Latest task')).toBeInTheDocument();
+
+    resolveFirst?.({
+      items: [
+        {
+          __index: 'case',
+          case_id: 'stale-case',
+          title: 'Stale Case',
+          tasks: [{ id: 'stale-task', assignment: 'alice', summary: 'Stale task', complete: false }]
+        }
+      ],
+      total: 1
+    });
+
+    await waitFor(() => expect(screen.queryByText('Stale task')).not.toBeInTheDocument());
+    expect(screen.getByText('Latest task')).toBeInTheDocument();
+  });
+
+  it('bounds task loading to a maximum of three search pages', async () => {
+    mockDispatchApi.mockResolvedValue({
+      items: Array.from({ length: 50 }, (_, index) => ({ case_id: `case-${index}`, tasks: [] })),
+      total: 1000
+    });
+
+    render(<TasksPanel />, { wrapper: Wrapper });
+
+    await waitFor(() => expect(mockDispatchApi).toHaveBeenCalledTimes(3));
+    expect(mockSearchPost.mock.calls.map(([, query]) => query.offset)).toEqual([0, 50, 100]);
+  });
+
+  it('reports a pending refresh when the panel unmounts', () => {
+    const refreshTick = Symbol('refresh');
+    const onRefreshComplete = vi.fn();
+    mockDispatchApi.mockReturnValue(new Promise(() => {}));
+
+    const { unmount } = render(
+      <TasksPanel panelId="tasks-panel-1" refreshTick={refreshTick} onRefreshComplete={onRefreshComplete} />,
+      { wrapper: Wrapper }
+    );
+
+    unmount();
+
+    expect(onRefreshComplete).toHaveBeenCalledWith('tasks-panel-1', refreshTick);
+    expect(mockSearchPost.mock.calls[0][2].aborted).toBe(true);
   });
 });

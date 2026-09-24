@@ -22,7 +22,7 @@ describe('ViewRefresh', () => {
   it('should render the refresh button', () => {
     const onRefresh = vi.fn();
 
-    render(<ViewRefresh refreshRate={30} viewCardCount={2} onRefresh={onRefresh} />, { wrapper: Wrapper });
+    render(<ViewRefresh refreshRate={30} viewCardIds={['one', 'two']} onRefresh={onRefresh} />, { wrapper: Wrapper });
 
     expect(screen.getByRole('button')).toBeInTheDocument();
   });
@@ -30,7 +30,7 @@ describe('ViewRefresh', () => {
   it('should show a progress indicator initially', () => {
     const onRefresh = vi.fn();
 
-    render(<ViewRefresh refreshRate={30} viewCardCount={2} onRefresh={onRefresh} />, { wrapper: Wrapper });
+    render(<ViewRefresh refreshRate={30} viewCardIds={['one', 'two']} onRefresh={onRefresh} />, { wrapper: Wrapper });
 
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
@@ -38,7 +38,7 @@ describe('ViewRefresh', () => {
   it('should trigger refresh when progress reaches 100%', async () => {
     const onRefresh = vi.fn();
 
-    render(<ViewRefresh refreshRate={30} viewCardCount={2} onRefresh={onRefresh} />, { wrapper: Wrapper });
+    render(<ViewRefresh refreshRate={30} viewCardIds={['one', 'two']} onRefresh={onRefresh} />, { wrapper: Wrapper });
 
     // Progress increments by 1 every refreshRate*10ms = 300ms.
     // Each increment triggers a re-render and a new setTimeout.
@@ -56,7 +56,9 @@ describe('ViewRefresh', () => {
     const onRefresh = vi.fn();
     const ref = React.createRef<ViewRefreshHandle>();
 
-    render(<ViewRefresh ref={ref} refreshRate={30} viewCardCount={2} onRefresh={onRefresh} />, { wrapper: Wrapper });
+    render(<ViewRefresh ref={ref} refreshRate={30} viewCardIds={['one', 'two']} onRefresh={onRefresh} />, {
+      wrapper: Wrapper
+    });
 
     // Advance to 100% to trigger refresh
     for (let i = 0; i < 101; i++) {
@@ -69,8 +71,8 @@ describe('ViewRefresh', () => {
 
     // Simulate both cards completing
     act(() => {
-      ref.current?.handleRefreshComplete();
-      ref.current?.handleRefreshComplete();
+      ref.current?.handleRefreshComplete('one', onRefresh.mock.calls[0][0]);
+      ref.current?.handleRefreshComplete('two', onRefresh.mock.calls[0][0]);
     });
 
     // After all cards complete, the progress should reset (button re-enabled)
@@ -80,7 +82,7 @@ describe('ViewRefresh', () => {
   it('should trigger refresh via manual click', () => {
     const onRefresh = vi.fn();
 
-    render(<ViewRefresh refreshRate={30} viewCardCount={2} onRefresh={onRefresh} />, { wrapper: Wrapper });
+    render(<ViewRefresh refreshRate={30} viewCardIds={['one', 'two']} onRefresh={onRefresh} />, { wrapper: Wrapper });
 
     // Click the refresh button directly using fireEvent (avoids userEvent timer issues)
     const button = screen.getByRole('button');
@@ -91,10 +93,10 @@ describe('ViewRefresh', () => {
     expect(onRefresh).toHaveBeenCalled();
   });
 
-  it('should not call onRefresh when viewCardCount is 0 and button is clicked', () => {
+  it('should not call onRefresh when there are no refreshable panels and the button is clicked', () => {
     const onRefresh = vi.fn();
 
-    render(<ViewRefresh refreshRate={30} viewCardCount={0} onRefresh={onRefresh} />, { wrapper: Wrapper });
+    render(<ViewRefresh refreshRate={30} viewCardIds={[]} onRefresh={onRefresh} />, { wrapper: Wrapper });
 
     const button = screen.getByRole('button');
     act(() => {
