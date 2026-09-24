@@ -26,7 +26,7 @@ type ProviderProps = PropsWithChildren<{
 const Provider: React.FC<ProviderProps> = ({ children, options = {} }) => {
   const { config } = useContext(ApiConfigContext);
   const features: { [index: string]: boolean } = config?.configuration?.features ?? {};
-  const [database, setDatabase] = useState<ClueDatabase>();
+  const [database, setDatabase] = useState<ClueDatabase | null>(null);
 
   const defaultGetToken = useCallback(() => getStored<string>(StorageKey.APP_TOKEN) ?? '', []);
   const baseURL = options.baseURL ?? `${location.origin}/api/v1/clue`;
@@ -35,12 +35,11 @@ const Provider: React.FC<ProviderProps> = ({ children, options = {} }) => {
   const customIconify = options.customIconify ?? location.origin.replace('howler', 'icons');
 
   useEffect(() => {
-    let cancelled = false;
-
-    if (!features.clue) {
+    if (!features.clue || database) {
       return;
     }
 
+    let cancelled = false;
     void buildDatabase({
       storageType: options.storageType ?? 'memory',
       replicate: !!options.replicate,
@@ -55,7 +54,7 @@ const Provider: React.FC<ProviderProps> = ({ children, options = {} }) => {
     return () => {
       cancelled = true;
     };
-  }, [baseURL, features.clue, getToken, options.storageType, options.replicate]);
+  }, [baseURL, features.clue, getToken, options.storageType, options.replicate, database]);
 
   return (
     <ClueProvider

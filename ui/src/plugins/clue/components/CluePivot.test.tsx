@@ -93,7 +93,7 @@ describe('CluePivot', () => {
     showErrorMessage.mockReset();
   });
 
-  it('renders a menu item and executes the mapped action without opening a window', async () => {
+  it('renders a menu item and executes the mapped action', async () => {
     const user = userEvent.setup();
     const onNavigate = vi.fn();
 
@@ -112,6 +112,29 @@ describe('CluePivot', () => {
         [{ type: 'indicator', value: 'hit-1' }],
         { note: 'from-pivot' },
         { forceMenu: false }
+      );
+    });
+  });
+
+  it('opens the force menu from the settings control in a menu item', async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+
+    render(
+      <Wrapper>
+        <CluePivot pivot={pivot()} hit={hit} dossier={dossier} variant="menu-item" onNavigate={onNavigate} />
+      </Wrapper>
+    );
+
+    await user.click(screen.getByRole('button', { name: '' }));
+
+    expect(onNavigate).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(clueState.executeAction).toHaveBeenCalledWith(
+        'enrich',
+        [{ type: 'indicator', value: 'hit-1' }],
+        { note: 'from-pivot' },
+        { forceMenu: true }
       );
     });
   });

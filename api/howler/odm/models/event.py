@@ -1,10 +1,10 @@
 # mypy: ignore-errors
 
 from howler import odm
-from howler.common.exceptions import HowlerValueError
 from howler.common.logging import get_logger
 from howler.odm.howler_enum import HowlerEnum
 from howler.odm.mixins import DatastoreMixin
+from howler.odm.models.log import Log
 from howler.odm.models.record import Record
 
 logger = get_logger(__file__)
@@ -28,26 +28,6 @@ class Comment(odm.Model):
         default={},
         description="A list of reactions to the comment.",
     )
-
-
-@odm.model(index=True, store=True, description="Log definition.")
-class Log(odm.Model):
-    timestamp = odm.Date(description="Timestamp at which the Log event took place.")
-    key = odm.Optional(odm.Keyword(description="The key whose value changed."))
-    explanation = odm.Optional(odm.Text(description="A manual description of the changes made."))
-    new_value = odm.Optional(odm.Keyword(description="The value the key is changing to."))
-    previous_value = odm.Optional(odm.Keyword(description="The value the key is changing from."))
-    user = odm.Keyword(description="User ID who created the log event.")
-
-    def __init__(self, data: dict = None, *args, **kwargs):
-        if "explanation" not in data:
-            required_keys = {"key", "new_value", "previous_value"}
-            if required_keys.intersection(set(data.keys())) != required_keys:
-                raise HowlerValueError(
-                    f"If no explanation provided, you must provide the following values: {','.join(required_keys)}"
-                )
-
-        super().__init__(data, *args, **kwargs)
 
 
 DEFAULT_LABELS = {"assignments": [], "generic": []}

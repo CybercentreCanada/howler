@@ -194,7 +194,7 @@ const HitBrowser: FC = () => {
           </Stack>
         </Collapse>
       </Box>
-      <Wrapper show={show} showDrawer={showDrawer} onClose={() => setShow(false)}>
+      <Wrapper show={show} showDrawer={showDrawer} onClose={onClose}>
         <HitSummary response={response ?? undefined} />
         <Card
           variant="outlined"

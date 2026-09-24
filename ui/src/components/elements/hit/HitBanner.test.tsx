@@ -161,16 +161,23 @@ describe('HitBanner', () => {
 
     expect(screen.getByText('Test Org')).toBeInTheDocument();
     expect(screen.getByTestId('analytic-link')).toBeInTheDocument();
-    expect(screen.getByText('hit.header.rationale: Escalation rationale')).toBeInTheDocument();
+
+    expect(screen.getByText('hit.header.rationale:')).toBeInTheDocument();
+    expect(screen.getByText('Escalation rationale')).toBeInTheDocument();
+
     expect(screen.getByText('hit.header.threat:')).toBeInTheDocument();
     expect(screen.getByText('Threat value')).toBeInTheDocument();
+
     expect(screen.getByText('hit.header.target:')).toBeInTheDocument();
     expect(screen.getByText('Target value')).toBeInTheDocument();
+
     expect(screen.getByText('hit.header.indicators:')).toBeInTheDocument();
     expect(screen.getByText('ioc-a')).toBeInTheDocument();
     expect(screen.getByText('ioc-b')).toBeInTheDocument();
+
     expect(screen.getByText('hit.header.summary:')).toBeInTheDocument();
     expect(screen.getByText('Summary value')).toBeInTheDocument();
+
     expect(screen.getByRole('link', { name: 'Open source link' })).toHaveAttribute('href', 'https://example.com');
   });
 
