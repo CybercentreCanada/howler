@@ -13,6 +13,8 @@ The implementation can be developed in incremental workstreams, but it will ship
 - Internal Python ODM compatibility is not required. Preserve HTTP endpoint contracts, stored
   documents, Elasticsearch mappings, query behavior, and generated/public schemas, but freely
   rewrite internal model and persistence APIs.
+- Legacy runtime references and models may be removed during Step 8 with preserved contract
+  coverage; Step 9 is the final cleanup gate, not a restriction on earlier deletion.
 - Use the Pydantic integration introduced in `elasticsearch-py` 9.2.0 despite its Technical Preview status, but isolate it behind Howler-owned base classes and adapters.
 - Preserve current external and persistence behavior. An ECS schema upgrade, API redesign, search relevance changes, and unrelated datastore refactoring are out of scope.
 - Keep direct `elasticsearch-py` client calls for cluster administration features that the DSL does not improve, such as ILM policy management, rollover, shrink/split, reindex task handling, and low-level optimistic concurrency.
@@ -21,12 +23,13 @@ The implementation can be developed in incremental workstreams, but it will ship
 
 **Branch:** `elasticsearch-dsl`
 
-**Completed:** Steps 1–7
+**Completed:** Steps 1–8
 
-**Next:** Step 8, rewriting remaining application consumers
+**Next:** Step 9, permanent golden fixtures, legacy reference deletion, and cutover verification
 
-**Working tree at this handoff:** Step 7 is implemented but uncommitted. The prior Step 6 handoff
-update was preserved and extended with the Step 7 result and validation notes.
+**Working tree at the latest continuation:** The earlier Step 8 work was committed as
+`1225396c` (`step 8 partial commit`). The new continuation changes are uncommitted.
+Step 8 is complete and ready for the user's signed commit. Changes remain uncommitted.
 
 | Step | Status | Commit | Result |
 | ---- | ------ | ------ | ------ |
@@ -36,7 +39,8 @@ update was preserved and extended with the Step 7 result and validation notes.
 | 4. Pydantic/DSL foundation | Complete | `ae78105c` | Added Howler model bases, annotated fields, registry, serializers, safe construction, and differential tests. |
 | 5. Rewrite every model | Complete | `67f46f5d` | Rewrote the domain/ECS/provider/plugin model surface with Pydantic and Elasticsearch DSL metadata. |
 | 6. Mapping and index registration | Complete | `a293c452` | Switched index schemas, templates, introspection, and reconciliation to finalized Pydantic models. |
-| 7. Persistence, updates, and searches | Complete | Uncommitted | Switched registered collection CRUD, bulk/update validation, projections, searches, EQL, and Lucene normalization to finalized models and Elasticsearch 9 response semantics. |
+| 7. Persistence, updates, and searches | Complete | `7a44156f` | Switched registered collection CRUD, bulk/update validation, projections, searches, EQL, and Lucene normalization to finalized models and Elasticsearch 9 response semantics. |
+| 8. Consumers and generated surfaces | Complete | Uncommitted | Runtime and sample-data consumers use Pydantic; plugin migration notes and Markdown freshness are verified. Exact generated-output parity is deferred. |
 
 ### Work completed in Steps 1–3
 
@@ -209,13 +213,284 @@ update was preserved and extended with the Step 7 result and validation notes.
   branches, migrate constructors/helpers/services to `howler.models`, and leave the frozen legacy
   contract/reference implementation intact until Step 9.
 
+### Step 8 progress
+
+- Updated the action queue worker to import its trigger vocabulary from the Pydantic action
+  model. Converted view cleanup to use Pydantic dashboard attributes and to consume the `items`
+  array on subsequent search pages rather than extending with response-dictionary keys. Added
+  a regression covering multiple pages, retained views, and analytic dashboard entries.
+- Synced the API virtualenv to the lockfile (`elasticsearch-py` 9.5.0); the focused runtime
+  compatibility suite passes (`9` tests). Changed-file Pyright and Ruff lint/format checks pass.
+- Migrated built-in action operation imports and field/label metadata lookups to Pydantic models
+  and the canonical registry. Adapted promote/demote assessment lookups to the new string-valued
+  enums. Migrated fuzzy-search boosted-field classification and token regexes to the registry and
+  new field definitions; the offline fuzzy query tests pass (`36` tests). Action test fixtures
+  now use Pydantic users and isolate the action/transition datastore calls, with `27` action
+  tests passing and `12` skipped. Pyright and Ruff checks on action and fuzzy-service code pass.
+- Fuzzy endpoint audit tests require the local Redis service, which was unavailable during this
+  pass. The remaining action/transition typing shim should be removed when `hit_service` and the
+  other service consumers move to Pydantic.
+- Switched notebook, matching-template, and matching-overview service model references to the
+  new models. The matching services now read analytic names from either Pydantic hit projections
+  or dictionaries and have a dedicated regression suite. Combined offline action, fuzzy, and
+  matching-service checks: `67` passed, `12` skipped, `2` Redis-dependent endpoint cases
+  deselected; changed runtime files pass Pyright and Ruff.
+- Migrated action execution, authentication, dossier, and user-service model paths to finalized
+  Pydantic models. Action execution now reads the typed operation's JSON payload; user API-key
+  presentation reads typed embedded keys and preserves the public expiry string. Added focused
+  dossier and action execution regressions. Service/API type-boundary casts remain temporary
+  until all service consumers and datastore annotations use the new model family.
+- Migrated view, overview, template, action, user, dossier, config, and v1/v2 search API model
+  references and constructors where these paths consume registered collections. Search helper
+  authorization now accepts both Pydantic users and dictionaries; user view-favourite operations
+  use model attributes. Config tests isolate index introspection from the unavailable local ES
+  node (`2` passed); action execution/queue tests (`44` passed, `12` skipped), dossier and user
+  service checks (`5` passed), and search helper checks (`1` passed) pass offline.
+- Migrated analytic API embedded comment/triage/notebook construction, removed the unused eager
+  legacy Hit field inventory in the hit API, and adapted the authentication route to typed API
+  keys. The focused Step 7 consumer suite and auth service tests pass (`13` tests). Migration
+  remains in progress: Hit/Event/Case services, remaining API routes, plugin consumers, and
+  generated documentation still import the legacy model family.
+- Combined offline checks through the current Step 8 changes: `96` passed, `12` skipped, `2`
+  Redis-dependent endpoint cases deselected. Changed runtime files pass Pyright, Ruff lint and
+  formatting, and Git diff whitespace checks. The Step 8 commit gate is **not** met yet; the
+  remaining runtime consumers, plugin consumers, generators, and published schema parity still
+  need migration and verification.
+- Migrated Event conversion and write helpers to typed models, extending shared flatten/extra-key
+  helpers to accept the Pydantic registry while retaining the legacy differential path. Event
+  service tests now use Pydantic Event instances (`22` passed), and registry-aware flatten and
+  extra-key regressions pass (`2` passed). The v2 ingest replacement path now selects the
+  registered collection model rather than the legacy `INDEXES` table. Hit workflow helpers now
+  resolve assessment/vote values through the typed enums (`2` focused tests passed). The Hit,
+  Case, and correlation services still require a coordinated consumer rewrite.
+- Migrated analytic matching/creation service paths and authenticated-user handling to typed
+  models, with focused analytics regressions (`2` passed). The offline selected suite now passes
+  `124` tests with `12` skipped and `2` Redis-dependent endpoint cases deselected; full API Mypy,
+  Ruff lint/format, and changed-runtime Pyright checks pass. Legacy-only differential data
+  generation remains available while its callers are migrated.
+- Rechecked after these changes: full API Mypy and Ruff lint/format pass; changed-runtime Pyright
+  reports no errors or warnings. This is still a partial Step 8 migration: 92 API Python files
+  outside the legacy reference package retain ODM imports, along with plugin consumers and the
+  Markdown generator. The generator/fixture parity and remaining service/route migration must be
+  completed before requesting the Step 8 commit.
+- Migrated the v2 Case item route to typed embedded CaseItem validation, with `13` focused Case
+  service compatibility tests passing. Full API Mypy and Ruff checks remain green. The Case
+  service still deliberately retains legacy construction in its broader unit suite while the
+  remaining Case/Hit consumer rewrite is completed.
+- The complete existing Case service unit suite also passes (`169` tests). The current Case
+  constructor is still legacy for these tests, so passing the suite is a compatibility check,
+  not evidence that the Case service consumer rewrite is finished.
+- Case, correlation, and migrated Event unit suites run together offline: `218` passed. The
+  separate ingest-to-correlation unit suite currently reaches the real local Elasticsearch
+  datastore from Case metadata recomputation and cannot finish without its test dependency or
+  explicit fixture isolation; the local Elasticsearch node is unavailable.
+- Broader offline verification, including bulk and ILM collection suites alongside migrated
+  consumers and Case/correlation services: `417` passed, `12` skipped, `3` deselected. The
+  deselected cases require external services. Full API Mypy and Ruff lint/format also pass.
+- Began the Sync plugin runtime migration: Spark schema generation now reads registry field
+  metadata, the routes use the Pydantic Hit model, and the sync service uses the shared date
+  format from the new field module. Replaced legacy-only Spark schema test models with annotated
+  Pydantic fixtures; focused plugin schema tests pass (`5` passed). The plugin environment's
+  installed Howler package predates `howler.models`, so these checks use
+  `PYTHONPATH=/path/to/howler/api` to test the checkout.
+- Migrated Sentinel action consumers and its ingest route to new model imports, using registry
+  metadata for configurable hash fields and guarding optional organization fields. Sentinel
+  action tests were skipped by their unavailable external connection; plugin Ruff checks pass.
+  Sync's offline schema/parser subset passes (`13` tests). Plugin legacy `odm/` modules remain
+  differential references until Step 9 and must be made non-runtime before the Step 8 gate.
+- Remaining: migrate services/routes/helpers and plugin action consumers, update TypeScript and
+  Markdown generation and snapshots, document mandatory typed extensions, and verify no runtime
+  ODM imports remain before Step 9 removes the legacy reference implementation.
+- With local Elasticsearch available, the previously blocked ingest/correlation tests now pass.
+  Correlation consumes Pydantic Case/CaseRule/CaseItem/Hit/Event models and constructs new items
+  without the legacy-instance fallback; its tests now use typed Case fixtures. The combined
+  Case, Event, and correlation suites pass (`235` tests). Correlation changed-file Mypy, Pyright,
+  and Ruff checks pass. Remaining Case-service annotations still require temporary type-boundary
+  casts; Step 8 is not ready to commit.
+- Bundle compatibility service now references Pydantic Case/Hit/User models for registered
+  collections, retaining the existing legacy-shaped HTTP response. Added focused typed-model
+  backreference and response-shape regressions. Combined relevant Case, Event, correlation, and
+  bundle-action tests pass (`255` tests); changed-file Pyright/Ruff and service Mypy pass. The
+  Markdown generator and its published class-set parity still need a dedicated pass.
+- Migrated Hit conversion, creation, update field inspection, and v1/v2 ingest/tool boundaries
+  to registered models and the field registry. Restored unknown nested mapping-key rejection and
+  added focused Pydantic conversion/field-path regressions. Hit service integration passes (`30`
+  tests); a combined Case/Event/correlation/Hit/field subset passes (`271` tests). Fixed legacy
+  Case-item classification assignment when receiving a Pydantic backing record; the broader
+  selected application/action suite passes (`330` tests). Full API Mypy and targeted Pyright and
+  Ruff checks pass. Case service still has legacy construction and mixed-model helpers.
+- Began moving Markdown generation to the Pydantic registry. The script now provides a read-only
+  `--check`, covers the published class set (except the historical PreviousProcess page with no
+  corresponding model), and the generated output passes its freshness check; CI runs this check.
+  The generated table differences still require contract review before Step 8 can be committed.
+  TypeScript regeneration and plugin extension author/release documentation remain outstanding.
+- New Case creation and its initial log/items now use Pydantic Case/CaseLog/CaseItem; the full
+  Case service suite passes (`169` tests), and the combined Case endpoint, ingest endpoint,
+  correlation, and add-to-case checks pass (`312` tests). Updated the v2 Case user annotations
+  and the ingest overwrite test to use the registered collection boundary. Full API Mypy and
+  changed runtime Pyright/Ruff checks pass. Remaining Case mutations still contain legacy
+  construction and mixed-model compatibility paths and need completion before committing Step 8.
+- The full API unit corpus plus Hit service integration now passes (`1438` tests). OAuth user
+  conversion strips transient avatar and synthetic access-control fields before strict Pydantic
+  validation while retaining avatar storage in its separate collection; the legacy Hit ECS alert
+  test compares the stored primitive indicator shape. Full API Mypy, Ruff, targeted Pyright,
+  Markdown freshness, and Git whitespace checks pass. The migration is **not ready to commit**:
+  remaining Case/persistence runtime ODM imports, TypeScript generation, plugin documentation,
+  and generated Markdown contract differences still need completion and review.
+- Added the mandatory typed-extension migration note and Pydantic extension examples in
+  `docs/api/plugins.md`. The Markdown generator and CI freshness check are wired up; publishing
+  the changed field descriptions, type labels, required markers, and row order still requires
+  a deliberate parity review. The v2 ingest endpoint unit suite passes (`30` tests) with its
+  overwrite fixture aligned to the registered model boundary.
+
+### Current Step 8 handoff (latest validation)
+
+#### Step 8 completion (supersedes historical continuation notes below)
+
+- Application runtime and sample-data modules contain no legacy ODM imports. A static import
+  regression and a fresh-process application/sample-data import enforce this boundary.
+- Moved synthetic helpers/CLI to `howler.sample_data`, with an annotation-driven Pydantic
+  randomizer. Updated API/plugin fixtures, CI/demo commands, debugger configuration, and English
+  and French documentation. Generators use finalized Hit extensions and validated embedded values.
+  Exercised users, events, hits, templates, overviews, views, analytics, actions, dossiers, and
+  cases against a disposable index namespace and removed its indices afterward.
+- Migrated endpoint/service fixtures and ordinary integration model callers to Pydantic.
+  Ad-hoc namespace tests now declare extensions before finalization; reindex fixtures use typed
+  models. Legacy model/field/mixin suites and differential references intentionally remain for
+  Step 9, including `test_hit_mixin.py` and plugin legacy model definitions.
+- Fixed `register_model` typing to preserve the decorated class instead of erasing it to
+  `BaseModel`. Case and correlation service Pyright checks now pass, as does full API Mypy.
+- Fixed schema-less multiget to remove the synthetic stored ID consistently with single gets.
+  Live multiget, reindex success/failure preservation, and explicit failure-acceptance tests pass.
+- Updated plugin migration/release notes. Sample-generation hooks use Pydantic; legacy
+  `modify_odm` hooks are not executed. Frozen mapping/settings reference generation remains
+  independent and matches the original collection-contract fixture exactly.
+- Final consolidated API validation: **1647 passed, 1 skipped** across unit, service,
+  datastore, schema, namespace, ILM, cronjob, and plugin-configuration suites. A subsequently
+  added import-boundary regression plus sample/contract selection passed (**16 passed**).
+  Entire API test tree collects successfully (**2154 tests** before the last added regression).
+  Sentinel **10**, Evidence **1**, and Sync **25** passed sequentially using checkout code.
+- Full API Mypy; Case/correlation Pyright; changed-file Ruff lint/format; frozen contract;
+  Markdown freshness; and whitespace checks passed. Full HTTP/client/MCP and multi-Python
+  cutover validation remain Step 9 work, as originally planned. Exact TypeScript/Markdown
+  parity remains deferred by user decision.
+- **Ready to commit Step 8.** Do not invoke signing automatically; the user runs the commit.
+
+#### Historical consolidated continuation
+
+- Removed all legacy model branches from `ESCollection`: normalization, stored-field metadata,
+  updates, projections, mappings/settings, and reconciliation. Ad-hoc model-backed collections
+  now infer their Pydantic schema; schema-less collections retain their raw-document behavior.
+- Moved the old mapping builder/constants into `howler.odm.mapping` and
+  `howler.odm.mapping_constants`, used only by differential tooling. The reference collection
+  contract generator now builds its legacy payload independently of the runtime collection.
+  Runtime datastore imports succeed in a fresh process without loading `howler.odm`.
+- Converted dictionary metadata helpers and wildcard expansion to the model registry, replacing
+  legacy Mapping marker objects in projections with path sets. Migrated the ad-hoc live datastore
+  suite and ILM mapping-update tests to exercise the Pydantic path.
+- Broader service integration uncovered an open-ended Lucene range bug: wildcard protection
+  hashed range endpoints. Range syntax is now preserved, with four regression cases. Action
+  integration tests process real queued transitions locally and use typed Action fixtures.
+- Sentinel now owns a unique index namespace per run and deletes its concrete indices afterward.
+  All previously skipped live tests run. Fixed missing XDR hostname mapping to use `None`, and
+  made the send-action fixture use a configured tenant and complete typed Hit data.
+- Validation: `poetry run pytest --import-mode=importlib -q test/unit test/integration/service
+  test/integration/test_datastore_odm.py` passed **1553 tests**. Sentinel **10**, Evidence **1**,
+  and Sync **25** passed sequentially. Full API Mypy, changed-file Ruff, frozen contract and
+  Markdown freshness checks passed. Use Sync's own Poetry environment for its Spark dependency.
+- Step 8 remains in progress: legacy random-data helpers and remaining plugin/test consumers
+  still need migration before deleting the reference package. Exact generated-output parity is
+  deferred. Previous shared-index blockers and collection fallback notes below are historical.
+
+- The latest continuation removed the legacy index registration table and runtime
+  `modify_odm`/Clue mutation from datastore startup. The frozen ODM contract collector
+  retains its own legacy index table for differential generation. A regression confirms
+  that typed plugin extensions are invoked without mutating the legacy model.
+- Case item construction from individual fields now creates an embedded item matching
+  its parent model; unnamed folders use the supplied value as their name before typed
+  validation. The full API unit corpus plus Hit integration passed (`1440 passed`),
+  full API Mypy and changed-file Ruff lint/format passed, as did Markdown freshness,
+  the frozen contract check, and Git whitespace checks. Case service tests passed
+  (`170 passed`).
+- The remaining Case service still has legacy imports, annotations, and compatibility
+  branches. A full Pyright check of that file reports pre-existing mixed-model type
+  errors; the complete Case consumer migration must resolve these rather than treating
+  this continuation as a finished Step 8. The TypeScript generator remains coupled to
+  a live API/sample documents, and the published Markdown parity review is outstanding.
+- Sync's checkout unit suite also passed (`18 passed`, two warnings) after the legacy
+  random-hit differential generator was guarded against assigning the removed legacy
+  Clue namespace to a frozen ODM Hit. This is a fixture bridge for registered Pydantic
+  collections; the generator is still legacy-only and must be replaced for runtime use.
+- The user approved deferring exact TypeScript and Markdown output parity. Markdown
+  pages must still present relevant data; the TypeScript generator/output may be fixed
+  later. These generated-surface differences are no longer a Step 8 commit blocker.
+- Continued moving the already-Pydantic application configuration out of the legacy
+  package to `api/howler/config_models.py`, with the old path re-exporting it only for
+  differential and test imports. Runtime configuration callers and the Markdown script
+  now use the neutral module. Added a Pydantic Related regression for Case indicator
+  collection. Converted the Case endpoint success fixtures to registered Cases, so API
+  response conversion now accepts only Howler Pydantic models. Full API unit/Hit integration
+  checks pass (`1443 passed`); the
+  focused Case suite passes (`171 passed`), full API Mypy and Markdown freshness pass.
+  The relocated configuration preserves the old default static-folder path, avoids a
+  cold-import cycle through `common.loader`, and imports without loading the ODM package.
+  The new tests cover a fresh-process import and identity of the legacy re-export.
+- Evidence and Sentinel manifests now declare only typed Hit extensions. Evidence's
+  conversion unit test uses the finalized typed extension without a live datastore or
+  test-time ODM mutation (`1 passed`); Sync's unit suite still passes (`18 passed`).
+  Sentinel's live action tests still need an isolated compatible index, as noted below.
+- Migrated the five Case endpoint success fixtures to registered Cases and removed the
+  API response serializer's legacy ODM dependency. The destructive database wipe script
+  now calls the registered collections directly instead of importing the legacy random
+  data generator. The full API unit/Hit integration suite still passes (`1443 passed`).
+  Plugin configuration logging now uses its own module name rather than an ODM logger.
+- With explicit approval to remove old ODM references, Case service persistence, embedded
+  items/rules/logs, related-indicator traversal, and backreferences now use Pydantic models
+  exclusively; 171 Case service tests and 44 correlation/ingest tests pass after replacing
+  legacy Case fixture constructors and `.save()` assertions. Legacy synthetic Case generation
+  now builds folders locally instead of calling the typed Case service. The add-to-case
+  action uses a typed Case fixture for its live path (12 tests passed). Full API unit/Hit
+  integration selection passes (`1443 passed`), and full API Mypy passes.
+- Sync's fixture now validates generated samples into registered Hit objects before assigning
+  Pydantic logs/client fields (`18 passed`). Sentinel's model-conversion test runs offline
+  (`1 passed`); its live action/ingest cases remain gated by the incompatible shared Hit
+  index, so the fixture skips those eight cases before writing rather than bypassing mapping
+  safety (`2 passed, 8 skipped`). These live cases require an isolated compatible index.
+- The collection still contains legacy/ad-hoc mapping and CRUD branches needed by old
+  differential tests. Their removal and the rest of the plugin/test fixtures are not yet
+  complete. The old ODM package is still present; the commit gate is not met.
+
+- The latest full API unit suite plus Hit service integration passed: `1438 passed` (`poetry run
+  pytest -q test/unit test/integration/service/test_hit_service.py` from `api/`). The full API
+  Mypy check, Ruff lint/format for changed runtime and generator files, targeted Pyright, the
+  Markdown generator's read-only `--check`, and staged/unstaged `git diff --check` passed.
+- Sync plugin's full unit suite passed: `18 passed`, with two warnings, using the API checkout
+  on `PYTHONPATH`. Its legacy random-data fixture now reads the persisted Pydantic Hit before
+  passing it to the migrated analytic service. Plugin tests that mutate the datastore should
+  continue to run sequentially.
+- Sentinel's ingest route now validates its system User as a Pydantic model. The Sentinel test
+  fixture was adjusted to prefer checked-out plugin manifests; it now gets through extension
+  registration, but its two action tests cannot reach assertions: the shared local
+  `howler-hit_hot` index has incompatible/missing Evidence dynamic templates and different
+  template ordering. The datastore correctly refuses to reconcile that change automatically.
+  Test against an isolated compatible index or explicitly migrate the fixture; do not bypass
+  the mapping safety check or mutate the shared index just to make the test pass.
+- The Markdown generator draws model tables from the Pydantic registry and CI checks the
+  generated files for freshness. Freshness is **not** legacy/public contract parity: many
+  regenerated pages differ in types, required markers, descriptions, and field order; review
+  those differences against the frozen inventory and correct the generator or approved model
+  metadata before accepting them. The historical `previousprocess.md` has no current model;
+  the check explicitly retains that page. The installation configuration pages are outside
+  this model-doc freshness check.
+- The historical Step 8 blockers above have been resolved by the completion pass. Legacy
+  reference deletion and permanent golden conversion are Step 9; generated-output parity is deferred.
+
 ### Important implementation details to preserve
 
-- `api/howler/odm/contract.py` intentionally forces `schema_model=None` while collecting the
-  frozen legacy contract. Do not switch that collector to the new generator before the legacy
-  implementation is deleted and the fixtures become permanent goldens.
-- Keep `api/howler/datastore/support/build.py` and the legacy ODM models available as differential
-  references until Step 9. They are no longer authoritative for registered index schemas.
+- `api/howler/odm/contract.py` independently builds legacy collection mappings/settings. Do not
+  switch that collector to the new generator while it supplies differential reference output.
+- `api/howler/odm/mapping.py` and the legacy models remain differential references. They may be
+  deleted once equivalent golden coverage replaces them; runtime schemas use Pydantic only.
 - Dynamic-template order is part of the mapping contract because Elasticsearch applies the first
   matching template. Do not sort templates in comparisons or treat reordered active templates as
   equivalent.
@@ -225,8 +500,7 @@ update was preserved and extended with the Step 7 result and validation notes.
 - `model_extensions.clear()` at datastore startup is intentional. The extension registry is a
   process singleton, while tests and some tools construct more than one datastore.
 - Registered collections pass the same finalized class as `model_class` and `schema_model`.
-  Legacy model registration remains only for deliberate differential/ad hoc compatibility paths
-  until the Step 8/9 cleanup.
+  Ad-hoc Pydantic collections infer `schema_model` from `model_class`; legacy models are rejected.
 
 ### Validation and environment pitfalls
 
@@ -265,11 +539,9 @@ update was preserved and extended with the Step 7 result and validation notes.
 - Continue one numbered plan step at a time and keep a commit boundary between steps.
 - Do not run `git commit` automatically. Commit signing prompts for a password, so stage the
   completed step and ask the user to run the proposed commit command.
-- Start Step 8 from the finalized collection runtime. Do not revert registered persistence to the
-  legacy models.
-- Rewrite remaining application imports, constructors, annotations, helpers, plugin action
-  consumers, and service assumptions from `howler.odm.models` to `howler.models`.
-- Remove localized Step 7 compatibility branches only as their consumers are migrated and covered.
+- Step 8 is complete. After its commit, begin Step 9 with permanent golden replacement of
+  differential/reference tests and deletion of the legacy package. Preserve the new runtime
+  import-boundary tests and validate HTTP/client/MCP and supported Python versions.
 - Preserve HTTP endpoints, stored primitives, mappings, queries, response shapes, and concurrency
   behavior; keep legacy contract/reference code and fixtures until Step 9.
 
@@ -421,7 +693,7 @@ While both implementations exist on the migration branch:
 - Preserve both existing legacy `_hot` alias and ILM rollover lifecycle paths until stored collections are confirmed migrated; do not rewrite working administration logic solely for DSL style.
 - Determine whether any approved mapping change requires a new index/reindex/alias swap. Avoid reindexing 8.x-created indices when mappings remain compatible.
 
-### 7. Migrate persistence, updates, and searches — next
+### 7. Migrate persistence, updates, and searches — complete (`7a44156f`)
 
 - Convert get/require/multiget/exists/save/delete and object deserialization to Pydantic/DSL documents.
 - Convert bulk indexing and field-scoped partial updates, preserving refresh, retry, conflict, error, and optimistic-concurrency behavior.
@@ -430,11 +702,15 @@ While both implementations exist on the migration branch:
 - Replace private client imports and update retry/error handling for the 9.x exception/response model.
 - Rework Lucene explain parsing against Lucene 10 output, or replace string parsing with a stable public representation if available; retain regression cases for all supported query shapes.
 
-### 8. Rewrite consumers and generated surfaces
+### 8. Rewrite consumers and generated surfaces — complete (uncommitted)
 
-- Replace all `howler.odm` imports and ODM type assumptions across services, APIs, helpers, cron jobs, tests, and plugins.
+- Replace runtime `howler.odm` imports and ODM type assumptions across services, APIs, helpers,
+  cron jobs, ordinary consumer tests, and active plugins. Retain explicit differential/reference
+  tests until their permanent golden replacement in Step 9.
 - Update datastore operation validation and field metadata consumers to use the new registry.
-- Update TypeScript and Markdown generators, regenerate outputs, and fail CI on uncommitted schema-generation differences.
+- Keep the Pydantic Markdown generator informative and its output current. Exact Markdown
+  parity and TypeScript generation/output parity are deferred by user decision; they do
+  not block the Step 8 runtime migration commit.
 - Update plugin author documentation and release notes for the mandatory extension API migration.
 - Remove duplicate/dead ODM-specific schema and mapping modules only after import and generated-output checks prove they are unused.
 

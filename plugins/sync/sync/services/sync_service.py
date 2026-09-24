@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
 
-from howler import odm
 from howler.common.loader import datastore
 from howler.datastore.types import SearchResult
-from howler.odm.constants import DATEFORMAT
-from howler.odm.models.hit import Hit
+from howler.models.fields import DATEFORMAT
+from howler.models.hit import Hit
+from pydantic import BaseModel
 from pyspark.sql.types import StructType
 
 from sync.iceberg.build import build_schema
@@ -36,8 +36,8 @@ def get_upserted_hits(
     return res
 
 
-def get_model_struct_schema(model: type[odm.Model]) -> StructType:
-    """Get the schema for the odm model structure."""
+def get_model_struct_schema(model: type[BaseModel]) -> StructType:
+    """Get the schema for a Pydantic model structure."""
     schema = build_schema(model)
     return schema
 

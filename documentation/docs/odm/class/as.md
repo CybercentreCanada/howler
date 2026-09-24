@@ -9,5 +9,3 @@
 | :--- | :--- | :--- | :--- | :--- |
 | number | Integer | Unique number allocated to the autonomous system | :material-minus-box-outline: Optional | `None` |
 | organization_name | Keyword | Organization name | :material-minus-box-outline: Optional | `None` |
-
-

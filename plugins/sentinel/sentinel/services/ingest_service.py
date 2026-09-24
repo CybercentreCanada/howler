@@ -7,8 +7,8 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.config import CLASSIFICATION
 from howler.datastore.exceptions import VersionConflictException
-from howler.odm.models.case import Case, CaseItem
-from howler.odm.models.user import User
+from howler.models.case import Case, CaseItem
+from howler.models.user import User
 from howler.remote.datatypes.lock import Lock as RedisLock
 from howler.services import action_service, analytic_service, case_service, comms_service, hit_service
 from howler.utils.str_utils import sanitize_lucene_query
@@ -18,7 +18,7 @@ from sentinel.mapping.xdr_alert import XDRAlert
 
 logger = get_logger(__file__)
 
-SYSTEM_USER = User(
+SYSTEM_USER = User.model_validate(
     {
         "uname": "system",
         "name": "system",
@@ -389,7 +389,7 @@ def _ensure_incident_case(  # noqa: C901
         if case.case_id not in root_hit.howler.related:
             case_service.add_backreference(root_hit, case.case_id, user=SYSTEM_USER)
             try:
-                root_hit.save(version=root_hit_version)
+                ds.hit.save(root_hit.howler.id, root_hit, version=root_hit_version, refresh="wait_for")
             except VersionConflictException:
                 if attempt + 1 == _CASE_RECONCILIATION_ATTEMPTS:
                     raise
@@ -406,7 +406,7 @@ def _queue_case_hit(case: Case, pending: list[CaseItem], hit_id: str, name: str,
         item.type == "hit" and item.value == hit_id for item in pending
     ):
         return
-    pending.append(CaseItem({"type": "hit", "value": hit_id, "parent": parent_id, "name": name}))
+    pending.append(CaseItem.validate_howler({"type": "hit", "value": hit_id, "parent": parent_id, "name": name}))
 
 
 def _record_matches_incident(hit: Any, tenant_id: str, incident_identity: str) -> bool:
@@ -608,7 +608,7 @@ def _save_reconciled_case(
     writer may already have persisted every required item.
     """
     try:
-        case.save(version=case_version)
+        case_service.save_case(case, version=case_version)
         return case, True
     except VersionConflictException:
         case, case_version = datastore().case.get(case.case_id, as_obj=True, version=True)
@@ -634,7 +634,7 @@ def _save_reconciled_case(
             )
         changed = _case_item_membership(case) != case_items_before
         if changed:
-            case.save(version=case_version)
+            case_service.save_case(case, version=case_version)
         return case, changed
 
 

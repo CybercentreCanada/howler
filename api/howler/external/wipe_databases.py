@@ -46,13 +46,15 @@ if __name__ == "__main__":
     ESCollection.IGNORE_ENSURE_COLLECTION = True
 
     from howler.common import loader
-    from howler.odm.random_data import wipe_hits, wipe_users
 
     ds = loader.datastore(archive_access=False)
 
     if index == "user":
-        wipe_users(ds)
+        ds.user.wipe()
+        ds.user_avatar.wipe()
+        ds.user.commit()
+        ds.user_avatar.commit()
     else:
-        wipe_hits(ds)
+        ds.hit.wipe()
 
     print(f"Wiped {index}.")

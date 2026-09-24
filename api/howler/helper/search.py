@@ -1,8 +1,8 @@
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional, Union, cast
 
 from howler.common.loader import datastore
 from howler.datastore.collection import ESCollection
-from howler.odm.models.user import User
+from howler.models.user import User
 
 # List of indices where queries are protected with classification access control
 ACCESS_CONTROLLED_INDICES: set[str] = {"hit", "event", "case"}
@@ -48,7 +48,8 @@ def get_collection(index: str, user: Union[User, dict[str, Any]]) -> Optional[Ca
     Returns:
         ESCollection: The corresponding ESCollection
     """
-    return INDEX_MAP.get(index, ADMIN_INDEX_MAP.get(index, None) if "admin" in user["type"] else None)
+    roles = user["type"] if isinstance(user, dict) else cast(Any, user).type
+    return INDEX_MAP.get(index, ADMIN_INDEX_MAP.get(index, None) if "admin" in roles else None)
 
 
 def get_default_sort(index: str, user: Union[User, dict[str, Any]]) -> Optional[str]:
@@ -61,9 +62,10 @@ def get_default_sort(index: str, user: Union[User, dict[str, Any]]) -> Optional[
     Returns:
         str: The default sort for the index
     """
+    roles = user["type"] if isinstance(user, dict) else cast(Any, user).type
     return INDEX_ORDER_MAP.get(
         index,
-        ADMIN_INDEX_ORDER_MAP.get(index, None) if "admin" in user["type"] else None,
+        ADMIN_INDEX_ORDER_MAP.get(index, None) if "admin" in roles else None,
     )
 
 

@@ -3,11 +3,9 @@
 
 # SharepointData
 
-> None
+> Sharepoint application/user metadata.
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
 | application | Keyword | The associated application. | :material-minus-box-outline: Optional | `None` |
 | user | Keyword | The associated application. | :material-minus-box-outline: Optional | `None` |
-
-

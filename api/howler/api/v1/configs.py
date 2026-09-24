@@ -5,7 +5,7 @@ from flask import request
 import howler.services.config_service as config_service
 from howler.api import make_subapi_blueprint, ok
 from howler.common.swagger import generate_swagger_docs
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.security.utils import get_disco_url
 
 SUB_API = "configs"

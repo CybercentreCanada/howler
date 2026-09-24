@@ -1,5 +1,5 @@
 import functools
-from typing import Optional
+from typing import Any, Optional, cast
 
 import requests
 from flask import request
@@ -21,7 +21,7 @@ from howler.common.loader import APP_NAME
 from howler.common.logging import get_logger
 from howler.common.logging.audit import audit
 from howler.config import AUDIT, QUOTA_TRACKER, config
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.utils.constants import TESTING
 
 logger = get_logger(__file__)
@@ -163,8 +163,8 @@ class api_login(object):  # noqa: D101, N801
                     # Success!
                     logger.warning(
                         "%s is impersonating %s",
-                        user["uname"],
-                        impersonated_user["uname"],
+                        cast(Any, user).uname,
+                        cast(Any, impersonated_user).uname,
                     )
                     impersonator = user
                     user, priv = impersonated_user, impersonated_priv
@@ -174,9 +174,9 @@ class api_login(object):  # noqa: D101, N801
                     raise AccessDeniedException("You do not have access to this API.")
 
                 # Make sure the user has the correct type for this endpoint
-                if not set(self.required_type) & set(user["type"]):
+                if not set(self.required_type) & set(cast(Any, user).type):
                     logger.warning(
-                        f"{user['uname']} is missing one of the types: {', '.join(self.required_type)}. "
+                        f"{cast(Any, user).uname} is missing one of the types: {', '.join(self.required_type)}. "
                         "Cannot access {request.path}"
                     )
                     raise AccessDeniedException(
@@ -185,17 +185,17 @@ class api_login(object):  # noqa: D101, N801
 
                 ip = request.headers.get("X-Forwarded-For", request.remote_addr)
                 if not TESTING:
-                    logger.info("Logged in as %s from %s for path %s", user["uname"], ip, request.path)
+                    logger.info("Logged in as %s from %s for path %s", cast(Any, user).uname, ip, request.path)
 
                 # If auditing is enabled, write this successful access to the audit logs
                 if self.audit:
                     audit(
                         args,
                         kwargs,
-                        user["uname"],
+                        cast(Any, user).uname,
                         user,
                         func,
-                        impersonator=impersonator["uname"] if impersonator else None,
+                        impersonator=cast(Any, impersonator).uname if impersonator else None,
                     )
             except InvalidDataException as e:
                 FAILED_ATTEMPTS.labels("400").inc()
@@ -217,19 +217,21 @@ class api_login(object):  # noqa: D101, N801
                 logger.debug("Bypassing quota limits for clue enrichment")
             elif self.enforce_quota:
                 # Check current user quota
-                flsk_session["quota_user"] = user["uname"]
+                flsk_session["quota_user"] = cast(Any, user).uname
                 flsk_session["quota_set"] = True
 
-                quota = user.get("api_quota", 25)
-                if not QUOTA_TRACKER.begin(user["uname"], quota):
+                quota = cast(Any, user).api_quota
+                if not QUOTA_TRACKER.begin(cast(Any, user).uname, quota):
                     if config.ui.enforce_quota:
-                        logger.warning("%s was prevented from using the api due to exceeded quota.", user["uname"])
+                        logger.warning(
+                            "%s was prevented from using the api due to exceeded quota.", cast(Any, user).uname
+                        )
                         FAILED_ATTEMPTS.labels("429").inc()
                         return too_many_requests(err=f"You've exceeded your maximum quota of {quota}")
                     else:
-                        logger.debug("Quota of %s exceeded for user %s.", quota, user["uname"])
+                        logger.debug("Quota of %s exceeded for user %s.", quota, cast(Any, user).uname)
             else:
-                logger.debug("Quota not enforced for %s", user["uname"])
+                logger.debug("Quota not enforced for %s", cast(Any, user).uname)
 
             # Save user data in kwargs for future reference in the wrapped method
             kwargs["user"] = user

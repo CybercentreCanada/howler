@@ -5,8 +5,8 @@ from typing import Any
 import pytest
 
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.models.dossier import Dossier
-from howler.odm.random_data import create_dossiers, wipe_dossiers
+from howler.models.dossier import Dossier
+from howler.sample_data.random_data import create_dossiers, wipe_dossiers
 from test.conftest import APIError, get_api_data
 
 
@@ -429,9 +429,9 @@ def test_get_dossier_for_hit_user_scoping(datastore: HowlerDatastore, login_sess
     personal_admin_dossier_id = personal_admin_res["dossier_id"]
 
     # Directly save a personal dossier owned by another user - should NOT be returned for admin
-    from howler.odm.models.dossier import Dossier as DossierModel
+    from howler.models.dossier import Dossier as DossierModel
 
-    other_user_dossier = DossierModel(
+    other_user_dossier = DossierModel.model_validate(
         {
             "title": "Other User Personal Dossier",
             "query": matching_query,

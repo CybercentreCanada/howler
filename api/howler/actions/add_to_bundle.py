@@ -1,13 +1,13 @@
 """Deprecated add_to_bundle action — delegates to add_to_case via bundle_compat_service."""
 
-from typing import Optional
+from typing import Any, Optional, cast
 
 from howler.actions import check_hit_limit
 from howler.common.exceptions import NotFoundException
 from howler.common.loader import datastore
-from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.case import CaseItemTypes
-from howler.odm.models.user import User
+from howler.models.action import VALID_TRIGGERS
+from howler.models.case import CaseItemTypes
+from howler.models.user import User
 from howler.services import bundle_compat_service, case_service, comms_service
 from howler.utils.str_utils import sanitize_lucene_query
 
@@ -71,7 +71,7 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
             return report
 
         original_item_count = len(case.items)
-        folder = case_service.get_parent_from_path(case, "hits", create_if_missing=True, user=user)
+        folder = case_service.get_parent_from_path(cast(Any, case), "hits", create_if_missing=True, user=user)
 
         added = []
         skipped = []
@@ -79,7 +79,7 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
             name = f"{hit.howler.analytic} ({hit.howler.id})"
             try:
                 case_service.append_case_item(
-                    case,
+                    cast(Any, case),
                     item_type=CaseItemTypes.HIT,
                     item_name=name,
                     item_value=hit.howler.id,

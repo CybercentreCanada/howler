@@ -10,7 +10,7 @@ import threading
 from apscheduler.schedulers.base import BaseScheduler
 
 from howler.common.logging import get_logger
-from howler.odm.models.config import config
+from howler.config_models import config
 
 logger = get_logger(__file__)
 

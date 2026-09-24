@@ -1,9 +1,8 @@
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, AnyStr, Optional, cast
+from typing import Any, AnyStr, Optional, cast
 from typing import Mapping as _Mapping
 
-if TYPE_CHECKING:
-    from howler.odm.base import Model, _Field
+from pydantic import BaseModel
 
 
 def strip_nulls(d: Any):
@@ -73,7 +72,7 @@ def get_recursive_delta(
     return out
 
 
-def flatten(data: _Mapping, parent_key: Optional[str] = None, odm: Optional[type["Model"]] = None) -> dict[str, Any]:
+def flatten(data: _Mapping, parent_key: Optional[str] = None, odm: Optional[type[BaseModel]] = None) -> dict[str, Any]:
     """Flatten a nested dict.
 
     Args:
@@ -87,7 +86,9 @@ def flatten(data: _Mapping, parent_key: Optional[str] = None, odm: Optional[type
     # Pre-compute ODM valid keys if provided
     valid_keys_set: set[str] | None = None
     if odm:
-        valid_keys_set = set(odm.flat_fields().keys())
+        from howler.models.registry import model_registry
+
+        valid_keys_set = set(model_registry.flat_fields(odm))
 
     def _flatten_recursive(mapping: _Mapping, prefix: str = "") -> dict[str, Any]:
         """Inner recursive function for flattening."""
@@ -153,36 +154,39 @@ def unflatten(data: _Mapping) -> _Mapping:
     return out
 
 
-def extra_keys(odm: type["Model"], data: _Mapping) -> set[str]:
-    "Geta list of extra keys when compared to a list of permitted keys"
-    from howler.odm.base import Mapping, Optional
+def extra_keys(model: type[BaseModel], data: _Mapping) -> set[str]:
+    """Return unknown flattened paths, allowing dynamic mapping keys."""
+    from howler.models.registry import model_registry
 
-    data = flatten_deep(data)
-
+    paths = model_registry.flat_fields(model, show_compound=True)
     result: set[str] = set()
-    for key in data.keys():
+    for key in flatten_deep(data):
+        if key in paths:
+            continue
         parts = key.split(".")
-        current_odm = odm
-        for part in parts:
-            sub_fields: dict[str, Any] = current_odm.fields()
-
-            if part in sub_fields:
-                current_odm = sub_fields[part]
-            else:
-                if isinstance(current_odm, Optional):
-                    current_odm = current_odm.child_type
-
-                if isinstance(current_odm, Mapping):
-                    current_odm = current_odm.child_type
-                else:
-                    result.add(key)
+        for index in range(len(parts) - 1, 0, -1):
+            parent = paths.get(".".join(parts[:index]))
+            if (
+                parent
+                and parent.metadata
+                and parent.metadata.kind
+                in {
+                    "Mapping",
+                    "FlattenedObject",
+                    "FlattenedListObject",
+                }
+            ):
+                # A typed Mapping permits one dynamic key, whose value must match the declared
+                # child annotation. Do not silently accept deeper unknown paths under that key.
+                if parent.metadata.kind != "Mapping" or index + 1 == len(parts):
                     break
-
+        else:
+            result.add(key)
     return result
 
 
 def prune(  # noqa: C901
-    data: _Mapping, keys: list[str], fields: dict[str, "_Field"], mapping_class: type, parent_key: Optional[str] = None
+    data: _Mapping, keys: list[str], mapping_paths: set[str], parent_key: Optional[str] = None
 ) -> dict[str, Any]:
     "Remove all keys in the given list from the dict if they exist"
     pruned_items: list[tuple[str, Any]] = []
@@ -191,13 +195,13 @@ def prune(  # noqa: C901
         cur_key = f"{parent_key}.{key}" if parent_key else key
 
         # If this key is a mapping, preserve all children
-        if isinstance(fields.get(cur_key, None), mapping_class):
+        if cur_key in mapping_paths:
             pruned_items.append((key, val))
         elif isinstance(val, dict):
             child_keys = [_key for _key in keys if _key.startswith(cur_key)]
 
             if len(child_keys) > 0:
-                pruned_items.append((key, prune(val, child_keys, fields, mapping_class, cur_key)))
+                pruned_items.append((key, prune(val, child_keys, mapping_paths, cur_key)))
         elif isinstance(val, list):
             if cur_key not in keys and not any(_key.startswith(cur_key) for _key in keys):
                 continue
@@ -208,7 +212,7 @@ def prune(  # noqa: C901
                     child_keys = [_key for _key in keys if _key.startswith(cur_key)]
 
                     if len(child_keys) > 0:
-                        pruned_items.append((key, prune(val, child_keys, fields, mapping_class, cur_key)))
+                        pruned_items.append((key, prune(val, child_keys, mapping_paths, cur_key)))
                 else:
                     list_result.append(entry)
 

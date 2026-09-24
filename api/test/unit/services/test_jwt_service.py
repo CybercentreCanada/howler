@@ -12,7 +12,7 @@ from unittest.mock import patch
 import pytest
 
 from howler.common.exceptions import HowlerValueError
-from howler.odm.models.config import OAuthProvider
+from howler.config_models import OAuthProvider
 from howler.services import jwt_service
 
 

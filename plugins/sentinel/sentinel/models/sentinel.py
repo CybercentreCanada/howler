@@ -1,8 +1,6 @@
 """Sentinel Pydantic model: metadata relating to Microsoft Sentinel.
 
-Mirrors ``sentinel.odm.models.sentinel.Sentinel`` field-for-field, built on the new
-``howler.models`` Pydantic/DSL foundation. The legacy ``odm`` module keeps running unchanged
-until the Step 8 consumer/runtime cutover.
+Mirrors the stored Sentinel fields using the ``howler.models`` Pydantic/DSL foundation.
 """
 
 from __future__ import annotations

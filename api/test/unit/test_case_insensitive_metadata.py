@@ -22,8 +22,8 @@ from howler.datastore.migrations.case_insensitive_metadata import (
 )
 from howler.datastore.migrations.runner import MIGRATIONS, run_migrations
 from howler.datastore.store import ESStore
-from howler.datastore.support.build import build_mapping
 from howler.external import run_migrations as migration_cli
+from howler.odm.mapping import build_mapping
 from howler.odm.models.action import Action
 from howler.odm.models.dossier import Dossier
 from howler.odm.models.overview import Overview

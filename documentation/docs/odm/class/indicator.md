@@ -11,7 +11,7 @@
 | description | Text | Describes the type of action conducted by the threat. | :material-minus-box-outline: Optional | `None` |
 | email | [Email](/howler/odm/class/email) | None | :material-minus-box-outline: Optional | `None` |
 | file | [File](/howler/odm/class/file) | None | :material-minus-box-outline: Optional | `None` |
-| provider | Keyword | The name of the indicator’s provider. | :material-minus-box-outline: Optional | `None` |
+| provider | Keyword | The name of the indicator's provider. | :material-minus-box-outline: Optional | `None` |
 | reference | Keyword | Reference URL linking to additional information about this indicator. | :material-minus-box-outline: Optional | `None` |
 | scanner_stats | Integer | Count of AV/EDR vendors that successfully detected malicious file or URL. | :material-minus-box-outline: Optional | `None` |
 | sightings | Integer | Number of times this indicator was observed conducting threat activity. | :material-minus-box-outline: Optional | `None` |

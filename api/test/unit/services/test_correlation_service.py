@@ -3,7 +3,7 @@
 import json
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, call, patch
 from uuid import UUID
 
@@ -13,9 +13,9 @@ from howler.common.exceptions import HowlerRuntimeError, InvalidDataException
 from howler.config import CLASSIFICATION
 from howler.datastore.bulk import ElasticBulkPlan
 from howler.datastore.collection import ESCollection
-from howler.odm.models.case import Case, CaseItem, CaseRule
-from howler.odm.models.event import Event
-from howler.odm.models.hit import Hit
+from howler.models.case import Case, CaseItem, CaseRule
+from howler.models.event import Event
+from howler.models.hit import Hit
 from howler.services import correlation_service
 
 # ---------------------------------------------------------------------------
@@ -39,7 +39,7 @@ def _make_rule(
     query: str = "*:*",
     destination: str = "related",
     indexes: list[str] | None = None,
-) -> CaseRule:
+) -> Any:
     data: dict[str, Any] = {
         "query": query,
         "destination": destination,
@@ -51,10 +51,10 @@ def _make_rule(
     if indexes is not None:
         data["indexes"] = indexes
 
-    return CaseRule(data)
+    return cast(Any, CaseRule).validate_howler(data)
 
 
-def _make_case_obj(case_id: str, rules: list[CaseRule]) -> MagicMock:
+def _make_case_obj(case_id: str, rules: list[Any]) -> MagicMock:
     case = MagicMock()
     case.case_id = case_id
     case.rules = rules
@@ -627,7 +627,7 @@ class TestProcessBatch:
     @patch("howler.services.correlation_service.datastore")
     def test_skips_duplicates(self, mock_ds_fn, mock_get_rules, mock_search_svc, mock_comms):
         """Records that would conflict with an existing item are silently skipped."""
-        existing = CaseItem({"type": "hit", "value": "hit-0", "name": "related"})
+        existing = cast(Any, CaseItem).validate_howler({"type": "hit", "value": "hit-0", "name": "related"})
         case = _make_case("case-1", items=[existing])
         mock_ds = _setup_ds(mock_ds_fn, {"case-1": case})
 
@@ -1179,7 +1179,7 @@ class TestCorrelationUnreachableBranches:
         rule = _make_rule(destination="related")
 
         with (
-            patch.object(correlation_service, "CaseItem", return_value=item),
+            patch.object(correlation_service.CaseItem, "validate_howler", return_value=item),
             patch.object(
                 correlation_service,
                 "_resolve_backing_object",

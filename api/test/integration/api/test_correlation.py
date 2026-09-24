@@ -12,7 +12,7 @@ import uuid
 import pytest
 
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.random_data import wipe_cases, wipe_hits
+from howler.sample_data.random_data import wipe_cases, wipe_hits
 from howler.services import correlation_service
 from test.conftest import get_api_data
 

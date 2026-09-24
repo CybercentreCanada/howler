@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Any, cast
 
 from flask import request
 from mergedeep.mergedeep import merge
@@ -11,8 +11,8 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException
-from howler.odm.models.user import User
-from howler.odm.models.view import View
+from howler.models.user import User
+from howler.models.view import View
 from howler.security.login import api_login
 
 SUB_API = "view"
@@ -43,7 +43,8 @@ def get_views(user: User, **kwargs):
     try:
         return ok(
             datastore().view.search(
-                f"type:global OR owner:({user['uname']} OR none) OR admins:{user['uname']} OR members:{user['uname']}",
+                f"type:global OR owner:({cast(Any, user).uname} OR none) OR admins:{cast(Any, user).uname} "
+                f"OR members:{cast(Any, user).uname}",
                 as_obj=False,
                 rows=1000,
                 sort="title asc",
@@ -102,14 +103,14 @@ def create_view(user: User, **kwargs):
 
         view_data["owner"] = user.uname
 
-        view = View(view_data)
+        view = cast(Any, View).validate_howler(view_data)
 
         if view.type == "personal":
             current_user = storage.user.get_if_exists(user.uname)
 
             current_user.favourite_views.append(view.view_id)
 
-            storage.user.save(current_user["uname"], current_user)
+            storage.user.save(current_user.uname, current_user)
 
         storage.view.save(view.view_id, view, refresh=refresh)
         return created(view)
@@ -145,7 +146,7 @@ def delete_view(view_id: str, user: User, **kwargs):
 
     storage = datastore()
 
-    existing_view: View = storage.view.get_if_exists(view_id)
+    existing_view = cast(Any, storage.view.get_if_exists(view_id))
     if not existing_view:
         return not_found(err="This view does not exist")
 
@@ -199,7 +200,7 @@ def update_view(view_id: str, user: User, **kwargs):  # noqa: C901
     if set(new_data) & {"owner", "admins", "members"}:
         return bad_request(err="You cannot change permissions using this endpoint.")
 
-    existing_view: View = storage.view.get_if_exists(view_id)
+    existing_view = cast(Any, storage.view.get_if_exists(view_id))
     if not existing_view:
         return not_found(err="This view does not exist")
 
@@ -218,7 +219,7 @@ def update_view(view_id: str, user: User, **kwargs):  # noqa: C901
     except HowlerException as e:
         return bad_request(err=str(e))
 
-    new_view = View(cast(dict, merge({}, existing_view.as_primitives(), new_data)))
+    new_view = cast(Any, View).validate_howler(cast(dict, merge({}, existing_view.as_primitives(), new_data)))
     storage.view.save(new_view.view_id, new_view, refresh=refresh)
 
     return ok(new_view.as_primitives())
@@ -246,7 +247,7 @@ def set_as_favourite(view_id: str, **kwargs):
     """
     storage = datastore()
 
-    existing_view: View = storage.view.get_if_exists(view_id)
+    existing_view = cast(Any, storage.view.get_if_exists(view_id))
     if not existing_view:
         return not_found(err="This view does not exist")
 
@@ -260,9 +261,9 @@ def set_as_favourite(view_id: str, **kwargs):
     try:
         current_user = storage.user.get_if_exists(kwargs["user"]["uname"])
 
-        current_user["favourite_views"] = list(set(current_user.favourite_views + [view_id]))
+        current_user.favourite_views = list(set(current_user.favourite_views + [view_id]))
 
-        storage.user.save(current_user["uname"], current_user)
+        storage.user.save(current_user.uname, current_user)
 
         return ok()
     except ValueError as e:
@@ -296,9 +297,9 @@ def remove_as_favourite(view_id: str, **kwargs):
         if view_id not in current_favourites:
             return not_found(err="View is not favourited.")
 
-        current_user["favourite_views"] = [favourite for favourite in current_favourites if favourite != view_id]
+        current_user.favourite_views = [favourite for favourite in current_favourites if favourite != view_id]
 
-        storage.user.save(current_user["uname"], current_user)
+        storage.user.save(current_user.uname, current_user)
 
         return no_content()
     except ValueError as e:

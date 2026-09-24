@@ -6,9 +6,9 @@ from mergedeep.mergedeep import merge
 
 from howler.common.exceptions import ForbiddenException, InvalidDataException, NotFoundException
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.helper import create_users_with_username, generate_useful_dossier
-from howler.odm.models.dossier import Dossier
-from howler.odm.random_data import create_dossiers, wipe_dossiers
+from howler.models.dossier import Dossier
+from howler.sample_data.helper import create_users_with_username, generate_useful_dossier
+from howler.sample_data.random_data import create_dossiers, wipe_dossiers
 from howler.services import dossier_service
 
 

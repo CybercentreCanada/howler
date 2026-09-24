@@ -45,7 +45,8 @@ def mock_post(url: str, **kwargs):
 
 
 @pytest.fixture(scope="module")
-def client():
+def client(datastore_connection):
+    # Arrange: Setup Flask app and register blueprint
     from sentinel.routes.ingest import sentinel_api
 
     app = Flask("test_app")

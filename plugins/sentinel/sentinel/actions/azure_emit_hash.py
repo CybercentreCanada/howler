@@ -4,8 +4,9 @@ from typing import Any, Optional
 import requests
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
-from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.hit import Hit
+from howler.models.action import VALID_TRIGGERS
+from howler.models.hit import Hit
+from howler.models.registry import model_registry
 from pydash import get
 
 from sentinel.utils.hit_types import is_derived_evidence
@@ -129,7 +130,7 @@ def specification():
         "steps": [
             {
                 "args": {"url": [], "field": []},
-                "options": {"field": [field for field in Hit.flat_fields().keys() if field.endswith("sha256")]},
+                "options": {"field": [field for field in model_registry.flat_fields(Hit) if field.endswith("sha256")]},
                 "validation": {"warn": {"query": "-_exists_:$field"}},
             }
         ],

@@ -4,8 +4,8 @@ from howler.common.exceptions import InvalidDataException
 from howler.common.logging import get_logger
 from howler.datastore.operations import OdmHelper, OdmUpdateOperation
 from howler.helper.workflow import Transition
-from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import (
+from howler.models.hit import Hit
+from howler.models.howler_data import (
     Assessment,
     AssessmentEscalationMap,
     Escalation,
@@ -13,7 +13,7 @@ from howler.odm.models.howler_data import (
     Status,
     Vote,
 )
-from howler.odm.models.user import User
+from howler.models.user import User
 
 odm_helper = OdmHelper(Hit)
 
@@ -43,11 +43,11 @@ def assess_hit(
         # In case the assessment is set to empty string
         assessment = None
     else:
-        if assessment not in Assessment:
-            assessment_list = ", ".join(Assessment)
+        if assessment not in Assessment.list():
+            assessment_list = ", ".join(Assessment.list())
             raise InvalidDataException(f"Must set assessment to one of {assessment_list}.")
 
-        escalation = cast(Escalation, AssessmentEscalationMap[assessment])
+        escalation = Escalation(AssessmentEscalationMap[Assessment(assessment).name].value)
 
     if assessment is None and rationale:
         rationale = None
@@ -62,12 +62,12 @@ def assess_hit(
 
     logger.debug(
         "Updating assessment of %s to %s",
-        hit["howler"]["id"] if hit else "unknown",
+        cast(Any, hit)["howler"]["id"] if hit else "unknown",
         assessment,
     )
     logger.debug(
         "Updating escalation of %s to %s",
-        hit["howler"]["id"] if hit else "unknown",
+        cast(Any, hit)["howler"]["id"] if hit else "unknown",
         escalation,
     )
 
@@ -97,7 +97,7 @@ def unassign_hit(
     Returns:
         list[OdmUpdateOperation]: A list of the operations necessary to update the hit
     """
-    if user and hit["howler"]["assignment"] == user.get("uname", user.get("username", None)):
+    if user and hit["howler"]["assignment"] == cast(Any, user).get("uname", cast(Any, user).get("username", None)):
         return [odm_helper.update("howler.assignment", "unassigned")]
 
     raise InvalidDataException("Cannot release hit that isn't assigned to you.")
@@ -137,7 +137,7 @@ def assign_hit(
     return [
         odm_helper.update(
             "howler.assignment",
-            assignee or user.get("uname", user.get("username", None)) if user else None,
+            assignee or cast(Any, user).get("uname", cast(Any, user).get("username", None)) if user else None,
         )
     ]
 
@@ -207,8 +207,8 @@ def vote_hit(
     if not email:
         raise InvalidDataException("Could not vote on Hit as no email was provided")
 
-    if vote not in Vote or vote == "" or vote is None:
-        raise InvalidDataException(f"vote is not optional. Provide a value from: {', '.join(Vote)}")
+    if vote not in Vote.list() or vote == "" or vote is None:
+        raise InvalidDataException(f"vote is not optional. Provide a value from: {', '.join(Vote.list())}")
 
     actions = []
 

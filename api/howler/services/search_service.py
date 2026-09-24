@@ -31,7 +31,7 @@ from howler.datastore.utils import (
     stored_field_paths,
 )
 from howler.helper.search import INDEX_MAP, get_collection, get_default_sort, has_access_control
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.services import case_service
 from howler.utils.indexes import get_logical_index_name, normalize_indexes
 
@@ -452,8 +452,8 @@ def facet(
 
     parsed_filters = _parse_filters(filters)
 
-    if user and user.access_control and has_access_control(index_list):
-        parsed_filters.append(user.access_control)
+    if user and cast(Any, user).access_control and has_access_control(index_list):
+        parsed_filters.append(cast(Any, user).access_control)
 
     effective_query = query or "id:*"
 

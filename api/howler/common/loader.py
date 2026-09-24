@@ -6,8 +6,6 @@ from typing import TYPE_CHECKING, Optional, Union
 
 import yaml
 
-from howler.odm.models.config import config
-
 if TYPE_CHECKING:
     from howler.common.classification import Classification
     from howler.datastore.howler_store import HowlerDatastore
@@ -147,6 +145,7 @@ def datastore(archive_access: bool = True) -> "HowlerDatastore":
     """Get a datastore connection"""
     global _datastore
 
+    from howler.config_models import config
     from howler.datastore.howler_store import HowlerDatastore
     from howler.datastore.store import ESStore
 

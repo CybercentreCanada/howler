@@ -7,7 +7,7 @@
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
-| attachments | List [[Attachment](/howler/odm/class/attachment)] | None | :material-minus-box-outline: Optional | `None` |
+| attachments | List [[Attachment](/howler/odm/class/attachment)] | A list of objects describing the attachment files sent along with an email message. | :material-minus-box-outline: Optional | `None` |
 | bcc | [Address](/howler/odm/class/address) | The email address of BCC recipient. | :material-minus-box-outline: Optional | `None` |
 | cc | [Address](/howler/odm/class/address) | The email address of CC recipient. | :material-minus-box-outline: Optional | `None` |
 | content_type | Keyword | Information about how the message is to be displayed. | :material-minus-box-outline: Optional | `None` |

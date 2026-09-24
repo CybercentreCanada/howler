@@ -1,18 +1,17 @@
 import base64
 import json
 import uuid
-from typing import Any, cast
+from typing import Any
 
 import pytest
 
 from howler.config import CLASSIFICATION
 from howler.datastore.collection import ESCollection
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm import Model
-from howler.odm.helper import create_users_with_username
-from howler.odm.models.hit import Hit
-from howler.odm.random_data import create_hits, wipe_analytics, wipe_hits
-from howler.odm.randomizer import (
+from howler.models.hit import Hit
+from howler.sample_data.helper import create_users_with_username
+from howler.sample_data.random_data import create_hits, wipe_analytics, wipe_hits
+from howler.sample_data.randomizer import (
     get_random_filename,
     get_random_hash,
     get_random_ip,
@@ -812,7 +811,7 @@ def test_add_labels(datastore: HowlerDatastore, login_session):
         # get current hit
         current_hit = datastore.hit.get(hit["howler"]["id"])
 
-        for label_set in current_hit.howler.labels.fields().keys():
+        for label_set in type(current_hit.howler.labels).model_fields:
             new_labels = ["apa2b", "cccs"]
 
             response = get_api_data(
@@ -837,7 +836,7 @@ def test_add_labels_existing(datastore: HowlerDatastore, login_session):
     # get current hit
     current_hit = datastore.hit.get(hit["howler"]["id"])
 
-    for label_set in current_hit.howler.labels.fields().keys():
+    for label_set in type(current_hit.howler.labels).model_fields:
         existing_labels = current_hit[f"howler.labels.{label_set}"]
 
         if len(existing_labels) != 0:
@@ -859,7 +858,7 @@ def test_remove_labels(datastore: HowlerDatastore, login_session):
         # get current hit
         current_hit = datastore.hit.get(hit["howler"]["id"])
 
-        for label_set in current_hit.howler.labels.fields().keys():
+        for label_set in type(current_hit.howler.labels).model_fields:
             remove_labels = current_hit[f"howler.labels.{label_set}"]
 
             if len(remove_labels) != 0:
@@ -899,7 +898,7 @@ def test_add_labels_missing(datastore: HowlerDatastore, login_session):
 def test_overwrite_hit(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
-    hit_to_update: Hit = random_model_obj(cast(Model, Hit))
+    hit_to_update: Hit = random_model_obj(Hit)
     hit_to_update.classification = CLASSIFICATION.UNRESTRICTED
     datastore.hit.save(hit_to_update.howler.id, hit_to_update)
     datastore.hit.commit()
@@ -928,7 +927,7 @@ def test_overwrite_hit(datastore: HowlerDatastore, login_session):
 def test_update_hit(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
-    hit_to_update: Hit = random_model_obj(cast(Model, Hit))
+    hit_to_update: Hit = random_model_obj(Hit)
     hit_to_update.classification = CLASSIFICATION.UNRESTRICTED
     datastore.hit.save(hit_to_update.howler.id, hit_to_update)
     datastore.hit.commit()
@@ -977,7 +976,7 @@ def test_update_hit_fails(datastore: HowlerDatastore, login_session):
 def test_update_by_query(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
-    hit_to_check: Hit = random_model_obj(cast(Model, Hit))
+    hit_to_check: Hit = random_model_obj(Hit)
     datastore.hit.save(hit_to_check.howler.id, hit_to_check)
     datastore.hit.commit()
 

@@ -19,8 +19,8 @@ from howler.common.exceptions import (
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import SearchException
-from howler.odm.models.dossier import Dossier
-from howler.odm.models.user import User
+from howler.models.dossier import Dossier
+from howler.models.user import User
 from howler.services import lucene_service
 from howler.utils.str_utils import sanitize_lucene_query
 
@@ -108,7 +108,7 @@ def get_dossier(
     Raises:
         NotFoundException: If the dossier doesn't exist
     """
-    return datastore().dossier.get_if_exists(key=id, as_obj=as_odm, version=version)
+    return cast(Any, datastore().dossier.get_if_exists(key=id, as_obj=as_odm, version=version))
 
 
 def create_dossier(  # noqa: C901
@@ -159,7 +159,7 @@ def create_dossier(  # noqa: C901
         if "owner" not in dossier_data:
             dossier_data["owner"] = username
 
-        dossier = Dossier(dossier_data)
+        dossier = cast(Any, Dossier).validate_howler(dossier_data)
 
         # Ensure the owner is set to the current user.
         dossier.owner = username
@@ -215,11 +215,15 @@ def update_dossier(  # noqa: C901
 
     # Retrieve the existing dossier for access control checks
     existing_dossier, server_version = get_dossier(dossier_id, as_odm=True, version=True)
+    existing_dossier = cast(Any, existing_dossier)
+    requesting_user = cast(Any, user)
 
     # Enforce access control for dossiers
     # Only the owner or admin users can modify personal dossiers
-    is_dossier_admin = user.uname == existing_dossier.owner or user.uname in existing_dossier.admins
-    if not is_dossier_admin and "admin" not in user.type:
+    is_dossier_admin = (
+        requesting_user.uname == existing_dossier.owner or requesting_user.uname in existing_dossier.admins
+    )
+    if not is_dossier_admin and "admin" not in requesting_user.type:
         raise ForbiddenException(
             "You cannot update a dossier that is not owned by you, or you are not an administrator of."
         )
@@ -231,7 +235,9 @@ def update_dossier(  # noqa: C901
             storage.hit.search(dossier_data["query"])
 
         # Merge the new data with existing dossier data
-        new_data = Dossier(cast(dict, merge({}, existing_dossier.as_primitives(), dossier_data)))
+        new_data = cast(Any, Dossier).validate_howler(
+            cast(dict, merge({}, existing_dossier.as_primitives(), dossier_data))
+        )
 
         storage.dossier.save(dossier_id, new_data, version=server_version, refresh=refresh)
 

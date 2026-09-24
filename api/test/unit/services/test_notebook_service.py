@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, timedelta
-from typing import Any, cast
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -9,10 +9,9 @@ from requests import Response
 
 from howler.common.exceptions import AuthenticationException, HowlerRuntimeError, HowlerValueError
 from howler.config import cache, config
-from howler.odm.base import Model
-from howler.odm.models.analytic import Analytic
-from howler.odm.models.hit import Hit
-from howler.odm.randomizer import random_model_obj
+from howler.models.analytic import Analytic
+from howler.models.hit import Hit
+from howler.sample_data.randomizer import random_model_obj
 
 time = datetime.now() + timedelta(seconds=10)
 
@@ -136,8 +135,8 @@ def test_get_nb_information(request_context, mocked_requests_get):
 
     from howler.services import notebook_service
 
-    analytic = random_model_obj(cast(Model, Analytic))
-    hit = random_model_obj(cast(Model, Hit))
+    analytic = random_model_obj(Analytic)
+    hit = random_model_obj(Hit)
 
     json_result, name = notebook_service.get_nb_information(
         "https://nbgallery.example.com/notebooks/12-notebook",
@@ -158,8 +157,8 @@ def test_get_nb_information_error(request_context, mocked_requests_get):
 
     from howler.services import notebook_service
 
-    analytic = random_model_obj(cast(Model, Analytic))
-    hit = random_model_obj(cast(Model, Hit))
+    analytic = random_model_obj(Analytic)
+    hit = random_model_obj(Hit)
 
     with pytest.raises(HowlerValueError):
         notebook_service.get_nb_information(

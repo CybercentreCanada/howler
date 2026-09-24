@@ -1,7 +1,7 @@
 # Génération de données aléatoires
 
 Pour avoir une idée de ce à quoi ressemble Howler avec des données, et pour tester votre code, vous pouvez utiliser le
-script d'aide `api/howler/odm/random_data.py`. Ce script contient des méthodes pour générer des données de test
+script d'aide `api/howler/sample_data/random_data.py`. Ce script contient des méthodes pour générer des données de test
 réalistes pour tous les modèles utilisés dans Howler.
 
 ## Utilisation de base
@@ -10,16 +10,16 @@ réalistes pour tous les modèles utilisés dans Howler.
 cd ~/repos/howler/api
 
 # Exécuter sans arguments - tous les index sont effacés et remplis avec des données de test
-python howler/odm/random_data.py
+python -m howler.sample_data.random_data
 
 # Remplir tous les index sans effacer les données existantes
-python howler/odm/random_data.py all --no-wipe
+python -m howler.sample_data.random_data all --no-wipe
 
 # Remplir uniquement des index spécifiques
-python howler/odm/random_data.py users hits analytics
+python -m howler.sample_data.random_data users hits analytics
 
 # Remplir des index spécifiques sans effacer
-python howler/odm/random_data.py users hits --no-wipe
+python -m howler.sample_data.random_data users hits --no-wipe
 ```
 
 ## Index disponibles
@@ -56,7 +56,7 @@ Le script crée plusieurs utilisateurs prédéfinis pour tester différents scé
     ```shell
     export DEV_ADMIN_PASS="mon_mot_de_passe_securise"
     export DEV_USER_PASS="mon_mot_de_passe_utilisateur"
-    python howler/odm/random_data.py users
+    python -m howler.sample_data.random_data users
     ```
 <!-- markdownlint-enable -->
 
@@ -158,7 +158,7 @@ génération de données pour remplir les champs spécifiques aux plugins.
 Remplir rapidement une instance Howler fraîche avec des données de test réalistes :
 
 ```shell
-python howler/odm/random_data.py all
+python -m howler.sample_data.random_data all
 ```
 
 ### Tester des fonctionnalités spécifiques
@@ -167,13 +167,13 @@ Remplir uniquement les données nécessaires pour votre fonctionnalité :
 
 ```shell
 # Tester les permissions utilisateur
-python howler/odm/random_data.py users --no-wipe
+python -m howler.sample_data.random_data users --no-wipe
 
 # Tester le traitement des hits
-python howler/odm/random_data.py hits analytics --no-wipe
+python -m howler.sample_data.random_data hits analytics --no-wipe
 
 # Tester les actions
-python howler/odm/random_data.py hits actions --no-wipe
+python -m howler.sample_data.random_data hits actions --no-wipe
 ```
 
 ### Intégration continue

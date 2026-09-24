@@ -3,7 +3,7 @@
 
 # Sharepoint
 
-> None
+> Sharepoint creation/modification metadata.
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |

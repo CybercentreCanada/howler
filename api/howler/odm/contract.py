@@ -9,6 +9,7 @@ import inspect
 import json
 import pkgutil
 import re
+from copy import deepcopy
 from datetime import date, datetime
 from enum import Enum as PyEnum
 from ipaddress import IPv4Address, IPv6Address
@@ -18,8 +19,14 @@ from typing import Any
 import howler.odm.base as odm_base
 import howler.odm.models as model_package
 from howler.common.exceptions import HowlerException
-from howler.datastore.support.build import build_mapping
+from howler.models.schema_defaults import (
+    default_dynamic_strings,
+    default_dynamic_templates,
+    default_index,
+    default_mapping,
+)
 from howler.odm.base import Compound, Enum, List, Mapping, Model, Optional, _Field
+from howler.odm.mapping import build_mapping
 
 CONTRACT_VERSION = 1
 REPOSITORY_ROOT = Path(__file__).parents[3]
@@ -186,35 +193,40 @@ def _model_contract(model_class: type[Model]) -> dict[str, Any]:
 
 
 def _collection_contract(name: str, model_class: type[Model] | None, ilm_enabled: bool) -> dict[str, Any]:
-    from howler.datastore.collection import ESCollection
-
-    collection = object.__new__(ESCollection)
-    collection.model_class = model_class
-    collection.name = f"howler-{name}"
-    collection.shards = 1
-    collection.replicas = 0
-    # This contract is exclusively about the legacy ODM's mapping/settings generation, so the
-    # new schema-model path (Step 6) must stay off here regardless of what is registered on the
-    # real datastore.
-    collection.schema_model = None
-
-    settings = collection._get_index_settings()
-    mappings = collection._get_index_mappings()
+    # Keep the reference generator independent of the Pydantic-only runtime collection.
+    collection_name = f"howler-{name}"
+    settings: dict[str, Any] = deepcopy(default_index)["settings"]
+    settings.setdefault("index", {})
+    settings["index"]["number_of_shards"] = 1
+    settings["index"]["number_of_replicas"] = 0
+    settings["index"].setdefault("mapping", {}).setdefault("total_fields", {})["limit"] = max(
+        len(model_class.flat_fields()) + 500 if model_class else 1500, 1500
+    )
+    mappings: dict[str, Any] = deepcopy(default_mapping)
+    if model_class:
+        mappings["properties"], mappings["dynamic_templates"] = build_mapping(model_class.fields().values())
+        mappings["dynamic_templates"].insert(0, deepcopy(default_dynamic_strings))
+    else:
+        mappings["dynamic_templates"] = deepcopy(default_dynamic_templates)
+    if not mappings["dynamic_templates"]:
+        mappings["dynamic"] = "strict"
+    mappings["properties"]["id"] = {"store": True, "doc_values": True, "type": "keyword"}
+    mappings["properties"]["__text__"] = {"store": False, "type": "text"}
     contract: dict[str, Any] = {
         "model": _qualified_name(model_class) if model_class else None,
         "ilm_enabled_by_default": ilm_enabled,
         "legacy_index": {
-            "aliases": {collection.name: {}},
+            "aliases": {collection_name: {}},
             "mappings": mappings,
             "settings": settings,
         },
     }
     if ilm_enabled:
         ilm_settings = json.loads(json.dumps(settings))
-        ilm_settings["index"]["lifecycle.name"] = f"{collection.name}_policy"
-        ilm_settings["index"]["lifecycle.rollover_alias"] = collection.name
+        ilm_settings["index"]["lifecycle.name"] = f"{collection_name}_policy"
+        ilm_settings["index"]["lifecycle.rollover_alias"] = collection_name
         contract["ilm_template"] = {
-            "index_patterns": [f"{collection.name}-*"],
+            "index_patterns": [f"{collection_name}-*"],
             "template": {
                 "mappings": mappings,
                 "settings": ilm_settings,
@@ -373,13 +385,38 @@ def _source_usage_contract() -> dict[str, list[dict[str, Any]]]:
 
 def build_contract_inventory() -> dict[str, Any]:
     """Build the complete core ODM compatibility inventory."""
-    from howler.datastore.howler_store import ILM_ENABLED_INDEXES, INDEXES
+    from howler.datastore.howler_store import ILM_ENABLED_INDEXES
+    from howler.odm.models.action import Action
+    from howler.odm.models.analytic import Analytic
+    from howler.odm.models.case import Case
+    from howler.odm.models.dossier import Dossier
+    from howler.odm.models.event import Event
+    from howler.odm.models.hit import Hit
+    from howler.odm.models.overview import Overview
+    from howler.odm.models.template import Template
+    from howler.odm.models.user import User
+    from howler.odm.models.view import View
+
+    # Legacy model registration is only needed while generating differential fixtures.
+    indexes = {
+        "hit": Hit,
+        "event": Event,
+        "case": Case,
+        "template": Template,
+        "overview": Overview,
+        "analytic": Analytic,
+        "action": Action,
+        "user": User,
+        "view": View,
+        "dossier": Dossier,
+        "user_avatar": None,
+    }
 
     return {
         "contract_version": CONTRACT_VERSION,
         "collections": {
             name: _collection_contract(name, model_class, name in ILM_ENABLED_INDEXES)
-            for name, model_class in sorted(INDEXES.items())
+            for name, model_class in sorted(indexes.items())
         },
         "field_types": {
             _qualified_name(field_class): _field_type_contract(field_class) for field_class in _field_classes()

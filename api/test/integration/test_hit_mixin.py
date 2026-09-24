@@ -15,8 +15,8 @@ from howler.common import loader
 from howler.common.exceptions import HowlerRuntimeError
 from howler.datastore.collection import ESCollection
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.helper import generate_useful_hit
 from howler.odm.models.hit import Hit
+from howler.sample_data.helper import generate_useful_hit
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -51,7 +51,8 @@ def usernames(datastore: HowlerDatastore):
 
 def _make_hit(lookups, usernames) -> Hit:
     """Return a random, well-formed Hit ready to be saved."""
-    return generate_useful_hit(lookups, usernames, prune_hit=False)
+    # This suite is the retained legacy mixin reference for Step 9, not a runtime consumer.
+    return Hit(generate_useful_hit(lookups, usernames, prune_hit=False).as_primitives())
 
 
 # ---------------------------------------------------------------------------

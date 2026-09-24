@@ -5,9 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping as ABCMapping
 from fnmatch import fnmatchcase
-from typing import TYPE_CHECKING, Any, Iterable, Optional, cast
-
-from pydantic import BaseModel
+from typing import TYPE_CHECKING, Any, Iterable, Optional
 
 from howler import odm
 from howler.datastore.exceptions import SearchException
@@ -29,11 +27,7 @@ def expand_field_patterns(model: Optional[type], patterns: Iterable[str], preser
     if model is None:
         return set(patterns)
 
-    known_paths = (
-        list(model_registry.flat_fields(model).keys())
-        if issubclass(model, BaseModel)
-        else list(cast(Any, model).flat_fields().keys())
-    )
+    known_paths = list(model_registry.flat_fields(model))
     expanded: set[str] = set()
     for pattern in patterns:
         if "*" not in pattern:

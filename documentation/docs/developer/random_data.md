@@ -1,7 +1,7 @@
 # Generating Random Data
 
 To get an idea of what Howler looks like with data, and to test your code, you can use the helper script
-`api/howler/odm/random_data.py`. This script contains methods for generating realistic test data for all models used
+`api/howler/sample_data/random_data.py`. This script contains methods for generating realistic test data for all models used
 in Howler.
 
 ## Basic Usage
@@ -10,16 +10,16 @@ in Howler.
 cd ~/repos/howler/api
 
 # Run without arguments - all indexes are wiped and populated with test data
-python howler/odm/random_data.py
+python -m howler.sample_data.random_data
 
 # Populate all indexes without wiping existing data
-python howler/odm/random_data.py all --no-wipe
+python -m howler.sample_data.random_data all --no-wipe
 
 # Populate specific indexes only
-python howler/odm/random_data.py users hits analytics
+python -m howler.sample_data.random_data users hits analytics
 
 # Populate specific indexes without wiping
-python howler/odm/random_data.py users hits --no-wipe
+python -m howler.sample_data.random_data users hits --no-wipe
 ```
 
 ## Available Indexes
@@ -56,7 +56,7 @@ The script creates several predefined users for testing different scenarios:
     ```shell
     export DEV_ADMIN_PASS="my_secure_password"
     export DEV_USER_PASS="my_user_password"
-    python howler/odm/random_data.py users
+    python -m howler.sample_data.random_data users
     ```
 <!-- markdownlint-enable -->
 
@@ -158,7 +158,7 @@ fields.
 Quickly populate a fresh Howler instance with realistic test data:
 
 ```shell
-python howler/odm/random_data.py all
+python -m howler.sample_data.random_data all
 ```
 
 ### Testing Specific Features
@@ -167,13 +167,13 @@ Populate only the data needed for your feature:
 
 ```shell
 # Testing user permissions
-python howler/odm/random_data.py users --no-wipe
+python -m howler.sample_data.random_data users --no-wipe
 
 # Testing hit processing
-python howler/odm/random_data.py hits analytics --no-wipe
+python -m howler.sample_data.random_data hits analytics --no-wipe
 
 # Testing actions
-python howler/odm/random_data.py hits actions --no-wipe
+python -m howler.sample_data.random_data hits actions --no-wipe
 ```
 
 ### Continuous Integration

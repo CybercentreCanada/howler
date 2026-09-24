@@ -3,7 +3,7 @@ from flask import Flask, Response
 
 from howler.api.v1.utils.etag import add_etag
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.random_data import create_users, wipe_hits
+from howler.sample_data.random_data import create_users, wipe_hits
 from test.conftest import get_api_data
 
 hit = {

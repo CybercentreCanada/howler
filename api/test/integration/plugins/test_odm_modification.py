@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from pydantic_settings import SettingsConfigDict
 
-from howler.common.loader import config
+from howler.config import config
 from howler.datastore.howler_store import HowlerDatastore
 from howler.datastore.store import ESStore
 from howler.plugins.config import BasePluginConfig
@@ -27,14 +27,15 @@ def mock_plugin():
 
     conf = HowlerTestPluginConfig(name="test-plugin")
 
-    conf.modules.odm.modify_odm["hit"] = generate
     conf.modules.models.declare_extensions["hit"] = lambda: None
 
     PLUGINS["test-plugin"] = conf
+    yield
+    PLUGINS.pop("test-plugin", None)
 
 
-def test_odm_mods(caplog):
+def test_typed_extension_declaration(caplog):
     with caplog.at_level(logging.INFO):
         HowlerDatastore(ESStore(config=config))
 
-    assert "Modifying hit odm with function from plugin test-plugin" in caplog.text
+    assert "Declaring hit model extension with function from plugin test-plugin" in caplog.text

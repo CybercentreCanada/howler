@@ -11,7 +11,7 @@ from howler.common.exceptions import (
 from howler.common.loader import APP_NAME
 
 if TYPE_CHECKING:
-    from howler.odm.base import ClassificationObject
+    from howler.models.fields import ClassificationValue
 
 log = logging.getLogger(f"{APP_NAME}.classification")
 
@@ -760,8 +760,8 @@ class Classification(object):
 
     def is_accessible(
         self,
-        user_c12n: "str | ClassificationObject",
-        c12n: "str | ClassificationObject | None",
+        user_c12n: "str | ClassificationValue",
+        c12n: "str | ClassificationValue | None",
         ignore_invalid: bool = False,
     ) -> bool:
         """

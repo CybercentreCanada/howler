@@ -8,5 +8,3 @@
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
 | type | Keyword | SESSIONNAME from Process Environment Variable | :material-minus-box-outline: Optional | `None` |
-
-

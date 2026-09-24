@@ -26,7 +26,7 @@ def setup_telemetry(app: Flask) -> None:
     exporters, and instrumentation). Requires the
     ``APPLICATIONINSIGHTS_CONNECTION_STRING`` environment variable.
     """
-    from howler.odm.models.config import config
+    from howler.config_models import config
 
     backend = config.core.telemetry.backend
 

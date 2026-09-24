@@ -2,7 +2,7 @@
 
 Generates settings, mappings (properties + dynamic templates), aliases, and ILM composable
 template payloads directly from ``howler.models.registry.model_registry`` metadata. This module
-is structurally faithful to the legacy ``howler.datastore.support.build.build_mapping``/
+is structurally faithful to the legacy ``howler.odm.mapping.build_mapping``/
 ``build_templates`` algorithm (same disabled-object rules, same dynamic template shapes, same
 ``refuse_all_implicit_mappings``/``strings_as_keywords`` behavior) so the generated contract is
 normalized-compatible with the deterministic legacy contract fixture.
@@ -222,7 +222,7 @@ def _dynamic_templates(  # noqa: C901
 ) -> list[dict[str, Any]]:
     """Recursively build dynamic templates for a raw (unflattened) annotation.
 
-    Mirrors ``howler.datastore.support.build.build_templates`` exactly, including its legacy
+    Mirrors ``howler.odm.mapping.build_templates`` exactly, including its legacy
     quirks: a nested ``Mapping``/``List``/``FlattenedObject`` always forces ``nested_template``
     on its own recursive call regardless of the incoming flag, while descending into a
     ``Compound`` model always resets it to ``False`` for each sub-field (matching the legacy

@@ -275,7 +275,7 @@ TESTING=true poetry run flask --app howler.app run --no-reload
 
 # 4. In another terminal, seed users and random data (this creates the admin API key the tests use)
 cd api
-poetry run python -m howler.odm.random_data
+poetry run python -m howler.sample_data.random_data
 
 # 5. Run the full client test suite with coverage
 cd ../client
