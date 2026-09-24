@@ -16,7 +16,6 @@ import useMyApi from "components/hooks/useMyApi";
 import dayjs from "dayjs";
 import type { Case } from "models/entities/generated/Case";
 import { useEffect, useState, type FC } from "react";
-import { useTranslation } from "react-i18next";
 import { twitterShort } from "utils/utils";
 import HowlerCard from "../display/HowlerCard";
 
@@ -35,7 +34,6 @@ const CaseCard: FC<{
   className?: string;
   slotProps?: { card?: CardProps };
 }> = ({ case: providedCase, caseId, className, slotProps }) => {
-  const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
   const theme = useTheme();
 
