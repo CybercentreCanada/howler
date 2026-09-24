@@ -13,8 +13,8 @@ from howler.common.exceptions import ForbiddenException, HowlerException, Invali
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import SearchException
-from howler.odm.models.dossier import Dossier
-from howler.odm.models.user import User
+from howler.models.dossier import Dossier
+from howler.models.user import User
 from howler.services import lucene_service
 
 logger = get_logger(__file__)
@@ -88,7 +88,7 @@ def get_dossier(
     Raises:
         NotFoundException: If the dossier doesn't exist
     """
-    return datastore().dossier.get_if_exists(key=id, as_obj=as_odm, version=version)
+    return cast(Any, datastore().dossier.get_if_exists(key=id, as_obj=as_odm, version=version))
 
 
 def create_dossier(  # noqa: C901
@@ -139,7 +139,7 @@ def create_dossier(  # noqa: C901
         if "owner" not in dossier_data:
             dossier_data["owner"] = username
 
-        dossier = Dossier(dossier_data)
+        dossier = cast(Any, Dossier).validate_howler(dossier_data)
 
         # Validate pivot configurations to ensure no duplicate mapping keys
         for pivot in dossier.pivots:
@@ -200,15 +200,25 @@ def update_dossier(  # noqa: C901
 
     # Retrieve the existing dossier for access control checks
     existing_dossier, server_version = get_dossier(dossier_id, as_odm=True, version=True)
+    existing_dossier = cast(Any, existing_dossier)
+    requesting_user = cast(Any, user)
 
     # Enforce access control for personal dossiers
     # Only the owner or admin users can modify personal dossiers
-    if existing_dossier.type == "personal" and existing_dossier.owner != user.uname and "admin" not in user.type:
+    if (
+        existing_dossier.type == "personal"
+        and existing_dossier.owner != requesting_user.uname
+        and "admin" not in requesting_user.type
+    ):
         raise ForbiddenException("You cannot update a personal dossier that is not owned by you.")
 
     # Enforce access control for global dossiers
     # Only the owner or admin users can modify global dossiers
-    if existing_dossier.type == "global" and existing_dossier.owner != user.uname and "admin" not in user.type:
+    if (
+        existing_dossier.type == "global"
+        and existing_dossier.owner != requesting_user.uname
+        and "admin" not in requesting_user.type
+    ):
         raise ForbiddenException("Only the owner of a dossier and administrators can edit a global dossier.")
 
     # Validate pivot configurations if they're being updated
@@ -226,7 +236,9 @@ def update_dossier(  # noqa: C901
             storage.hit.search(dossier_data["query"])
 
         # Merge the new data with existing dossier data
-        new_data = Dossier(cast(dict, merge({}, existing_dossier.as_primitives(), dossier_data)))
+        new_data = cast(Any, Dossier).validate_howler(
+            cast(dict, merge({}, existing_dossier.as_primitives(), dossier_data))
+        )
 
         storage.dossier.save(dossier_id, new_data, version=server_version, refresh=refresh)
 

@@ -3,10 +3,8 @@
 
 # Matched
 
-> None
+> Threat matched-indicator information.
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
 | atomic | Keyword | Identifies the atomic indicator value that matched a extended local envirnment endpoint or network event | :material-minus-box-outline: Optional | `None` |
-
-

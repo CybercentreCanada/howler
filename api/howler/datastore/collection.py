@@ -8,10 +8,9 @@ import time
 import typing
 import warnings
 from copy import deepcopy
-from datetime import datetime
 from os import environ
 from random import random
-from typing import Any, Callable, Dict, Generic, Literal, Optional, TypeVar, Union, cast, overload
+from typing import Any, Callable, Generic, Literal, Optional, TypeVar, Union, cast, overload
 
 import elasticsearch
 from datemath import dm
@@ -21,12 +20,10 @@ from elasticsearch import dsl
 from opentelemetry import trace
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from howler import odm
 from howler.common.exceptions import HowlerRuntimeError, HowlerValueError, NonRecoverableError
 from howler.common.loader import DATASTORE_INDEX_PREFIX
 from howler.common.logging.format import HWL_DATE_FORMAT, HWL_LOG_FORMAT
 from howler.datastore.bulk import ElasticBulkPlan
-from howler.datastore.constants import BACK_MAPPING, TYPE_MAPPING
 from howler.datastore.exceptions import (
     DataStoreException,
     HowlerScanError,
@@ -35,10 +32,8 @@ from howler.datastore.exceptions import (
     SearchRetryException,
     VersionConflictException,
 )
-from howler.datastore.support.build import build_mapping
 from howler.datastore.support.elastic import error_message, error_status, error_type, response_body, total_hits_value
 from howler.datastore.support.schemas import (
-    default_dynamic_strings,
     default_dynamic_templates,
     default_index,
     default_mapping,
@@ -57,20 +52,6 @@ from howler.models.fields import FIELD_SANITIZER as MODEL_FIELD_SANITIZER
 from howler.models.fields import NOT_INDEXED_SANITIZER as MODEL_NOT_INDEXED_SANITIZER
 from howler.models.registry import BANNED_FIELDS as MODEL_BANNED_FIELDS
 from howler.models.registry import field_metadata, model_registry
-from howler.odm.base import FIELD_SANITIZER as LEGACY_FIELD_SANITIZER
-from howler.odm.base import (
-    IP,
-    ClassificationObject,
-    Enum,
-    Integer,
-    Keyword,
-    List,
-    Mapping,
-    Model,
-    ValidatedKeyword,
-    _Field,
-)
-from howler.odm.base import NOT_INDEXED_SANITIZER as LEGACY_NOT_INDEXED_SANITIZER
 from howler.utils.dict_utils import prune, recursive_update
 
 if typing.TYPE_CHECKING:
@@ -135,24 +116,6 @@ def _strip_lists(model: type, data: dict[str, Any]) -> dict[str, Any]:
     we want the field to be multi-valued or not. This method uses the model's
     knowledge of what should or should not have multiple values to fix the data.
     """
-    if not issubclass(model, BaseModel):
-        fields = cast(Any, model).fields()
-        out = {}
-        for key, value in odm.flat_to_nested(data).items():
-            doc_type = fields.get(key, fields.get("", model))
-            if isinstance(doc_type, odm.Optional):
-                doc_type = doc_type.child_type
-
-            if isinstance(doc_type, odm.List):
-                out[key] = value
-            elif isinstance(doc_type, (odm.Compound, odm.Mapping)):
-                out[key] = _strip_lists(doc_type.child_type, value)
-            elif isinstance(value, list):
-                out[key] = value[0]
-            else:
-                out[key] = value
-        return out
-
     fields = model_registry.flat_fields(model)
     normalized: dict[str, Any] = {}
     for key, value in data.items():
@@ -324,11 +287,10 @@ class ESCollection(Generic[ModelType]):
         self.ilm_config = ilm_config
         self.index_name = f"{self.name}_hot"
         self.model_class = model_class
-        self._pydantic_model = bool(isinstance(model_class, type) and issubclass(model_class, BaseModel))
-        # Registered Howler collections use the same finalized Pydantic/DSL class for runtime
-        # persistence and schema generation. ``None`` preserves raw schema-less collections and
-        # the legacy mapping fallback for unregistered/ad hoc callers until the Step 9 cleanup.
-        self.schema_model = schema_model
+        if model_class is not None and not (isinstance(model_class, type) and issubclass(model_class, BaseModel)):
+            raise TypeError("Collection models must be Pydantic models")
+        # Ad-hoc model-backed collections use the same schema path as registered collections.
+        self.schema_model = schema_model if schema_model is not None else model_class
         self.validate = validate
         self.max_attempts = max_attempts
 
@@ -341,14 +303,9 @@ class ESCollection(Generic[ModelType]):
 
         self.stored_fields = {}
         if model_class:
-            if self._pydantic_model:
-                for name, definition in model_registry.flat_fields(model_class).items():
-                    if definition.metadata is not None and definition.metadata.store:
-                        self.stored_fields[name] = definition
-            else:
-                for name, field in model_class.flat_fields().items():
-                    if field.store:
-                        self.stored_fields[name] = field
+            for name, definition in model_registry.flat_fields(model_class).items():
+                if definition.metadata is not None and definition.metadata.store:
+                    self.stored_fields[name] = definition
 
     @property
     def index_list_full(self):
@@ -1198,7 +1155,9 @@ class ESCollection(Generic[ModelType]):
                 resolved[data_id] = data_output["__non_doc_raw__"]
             else:
                 metadata = _response_metadata(row or {}, doc_id=data_id)
-                resolved[data_id] = self.normalize(data_output, as_obj=as_obj, metadata=metadata, read=True)
+                source = deepcopy(data_output)
+                source.pop("id", None)
+                resolved[data_id] = self.normalize(source, as_obj=as_obj, metadata=metadata, read=True)
 
         if missing_keys:
             if self.ilm_config:
@@ -1362,13 +1321,6 @@ class ESCollection(Generic[ModelType]):
                 if value is not None
             },
         }
-
-        if not self._pydantic_model:
-            if as_obj and not isinstance(data, self.model_class):
-                return self.model_class(data, docid=doc_id)
-            if isinstance(data, dict):
-                return {key: value for key, value in data.items() if key not in MODEL_BANNED_FIELDS}
-            return data
 
         if isinstance(data, self.model_class):
             if not as_obj:
@@ -1822,9 +1774,6 @@ class ESCollection(Generic[ModelType]):
     def _validate_operations(self, operations):
         """Validate the different operations received for a partial update
 
-        TODO: When the field is of type Mapping, the validation/check only works for depth 1. A full recursive
-              solution is needed to support multi-depth cases.
-
         :param operations: list of operation tuples
         :raises: DatastoreException if operation not valid
         """
@@ -1833,79 +1782,6 @@ class ESCollection(Generic[ModelType]):
                 raise DataStoreException(
                     f"Hidden access field {doc_key} is derived from classification and cannot be updated directly."
                 )
-
-        if self.model_class and not self._pydantic_model:
-            fields = self.model_class.flat_fields(show_compound=True)
-            if "classification" in fields:
-                fields.update(
-                    {
-                        "__access_lvl__": Integer(),
-                        "__access_req__": List(Keyword()),
-                        "__access_grp1__": List(Keyword()),
-                        "__access_grp2__": List(Keyword()),
-                    }
-                )
-
-            legacy_operations = []
-            for op, doc_key, value in operations:
-                access_parts = None
-                if op not in self.UPDATE_OPERATIONS:
-                    raise DataStoreException(f"Not a valid Update Operation: {op}")
-                previous_key = None
-                if doc_key not in fields:
-                    if "." in doc_key:
-                        previous_key = doc_key[: doc_key.rindex(".")]
-                        if previous_key in fields and not isinstance(fields[previous_key], Mapping):
-                            raise DataStoreException(f"Invalid field for model: {previous_key}")
-                        if previous_key in fields:
-                            mapping_field = fields[previous_key]
-                            sanitizer = (
-                                LEGACY_FIELD_SANITIZER
-                                if mapping_field.index or mapping_field.store
-                                else LEGACY_NOT_INDEXED_SANITIZER
-                            )
-                            dynamic_key = doc_key[len(previous_key) + 1 :]
-                            if not sanitizer.fullmatch(dynamic_key):
-                                raise DataStoreException(f"Invalid field for model: {doc_key}")
-                    else:
-                        raise DataStoreException(f"Invalid field for model: {doc_key}")
-
-                field = fields[previous_key].child_type if previous_key else fields[doc_key]
-                if op == self.UPDATE_DELETE:
-                    if previous_key is not None or not isinstance(field, Mapping):
-                        raise DataStoreException(f"Invalid field for DELETE operation: {doc_key}")
-                    try:
-                        value = TypeAdapter(str).validate_python(value)
-                    except (TypeError, ValueError, ValidationError) as error:
-                        raise DataStoreException(f"Invalid value for field {doc_key}: {value}") from error
-                    sanitizer = LEGACY_FIELD_SANITIZER if field.index or field.store else LEGACY_NOT_INDEXED_SANITIZER
-                    if not sanitizer.fullmatch(value):
-                        raise DataStoreException(f"Invalid value for field {doc_key}: {value}")
-                elif op in {
-                    self.UPDATE_APPEND,
-                    self.UPDATE_APPEND_IF_MISSING,
-                    self.UPDATE_REMOVE,
-                    self.UPDATE_SET,
-                    self.UPDATE_DEC,
-                    self.UPDATE_INC,
-                }:
-                    try:
-                        value = field.check(value)
-                    except (AttributeError, TypeError, ValueError) as error:
-                        raise DataStoreException(f"Invalid value for field {doc_key}: {value}") from error
-                    if op == self.UPDATE_SET and doc_key == "classification":
-                        access_parts = value.get_access_control_parts()
-
-                if isinstance(value, Model):
-                    value = value.as_primitives()
-                elif isinstance(value, datetime):
-                    value = value.isoformat()
-                elif isinstance(value, ClassificationObject):
-                    value = str(value)
-                legacy_operations.append((op, doc_key, value))
-                if access_parts is not None:
-                    legacy_operations.extend((self.UPDATE_SET, name, access_parts[name]) for name in ACCESS_FIELDS)
-            return legacy_operations
 
         ret_ops = []
         for op, doc_key, value in operations:
@@ -2086,39 +1962,7 @@ class ESCollection(Generic[ModelType]):
         patterns = [p.strip() for p in fl.split(",") if p.strip()]
         return ",".join(sorted(expand_field_patterns(self.model_class, patterns, preserve_all=True)))
 
-    def _format_legacy_output(self, result, fields=None, as_obj=True):
-        """Temporary projection path for differential legacy collections."""
-        extra_fields = deepcopy(result.get("fields", {}))
-        source_data = deepcopy(result.get("_source"))
-        if source_data is not None:
-            for field in MODEL_BANNED_FIELDS:
-                source_data.pop(field, None)
-
-        item_id = result["_id"]
-        if not fields:
-            fields = [*self.stored_fields, "id"]
-        elif isinstance(fields, str):
-            fields = fields.split(",")
-
-        extra_fields = _strip_lists(self.model_class, extra_fields)
-        if as_obj:
-            if "_index" in fields and "_index" in result:
-                extra_fields["_index"] = result["_index"]
-            if "*" in fields:
-                fields = None
-            return self.model_class(source_data, mask=fields, docid=item_id, extra_fields=extra_fields)
-
-        source_data = recursive_update(source_data, extra_fields, allow_recursion=False)
-        if "id" in fields:
-            source_data["id"] = item_id
-        if "_index" in fields and "_index" in result:
-            source_data["_index"] = result["_index"]
-        return prune(source_data, fields, cast(Any, self.stored_fields), mapping_class=Mapping)
-
     def _format_output(self, result, fields=None, as_obj=True):
-        if self.model_class and not self._pydantic_model:
-            return self._format_legacy_output(result, fields, as_obj)
-
         # Getting search document data
         extra_fields = deepcopy(result.get("fields", {}))
         source_data = deepcopy(result.get("_source"))
@@ -2163,11 +2007,12 @@ class ESCollection(Generic[ModelType]):
         if fields is None or "*" in fields:
             return source_data
 
-        projection_fields = cast(dict[str, Any], dict(self.stored_fields))
-        for path, definition in self.stored_fields.items():
-            if definition.metadata is not None and definition.metadata.kind == "Mapping":
-                projection_fields[path] = Mapping(Keyword())
-        return prune(source_data, fields, projection_fields, mapping_class=Mapping)
+        mapping_paths = {
+            path
+            for path, definition in self.stored_fields.items()
+            if definition.metadata is not None and definition.metadata.kind == "Mapping"
+        }
+        return prune(source_data, fields, mapping_paths)
 
     def _search(self, args=None, deep_paging_id=None, track_total_hits=None):
         if args is None:
@@ -3041,11 +2886,8 @@ class ESCollection(Generic[ModelType]):
         }
 
     @staticmethod
-    def _get_odm_type(ds_type):
-        try:
-            return BACK_MAPPING[ds_type].__name__.lower()
-        except KeyError:
-            return ds_type.lower()
+    def _get_odm_type(ds_type: str) -> str:
+        return {"nested": "flattenedobject", "text_fuzzy": "keyword"}.get(ds_type, ds_type.lower())
 
     @staticmethod
     def _flatten_mapping_properties(props: dict[str, Any]) -> dict[str, Any]:
@@ -3078,11 +2920,6 @@ class ESCollection(Generic[ModelType]):
         index_name = list(data.keys())[0]
         properties = self._flatten_mapping_properties(data[index_name]["mappings"].get("properties", {}))
 
-        if self.model_class:
-            model_fields = self.model_class.flat_fields()
-        else:
-            model_fields = {}
-
         collection_data = {}
 
         for p_name, p_val in properties.items():
@@ -3090,61 +2927,18 @@ class ESCollection(Generic[ModelType]):
                 continue
             if not self.FIELD_SANITIZER.match(p_name):
                 continue
-            field_model = model_fields.get(p_name, None)
-
-            if "." in p_name:
-                parent_p_name = re.sub(r"^(.+)\..+?$", r"\1", p_name)
-                if parent_p_name in model_fields and isinstance(model_fields.get(parent_p_name), Mapping):
-                    if parent_p_name not in collection_data:
-                        field_model = model_fields.get(parent_p_name, None)
-                        f_type = self._describe_type(p_val, None)
-
-                        collection_data[parent_p_name] = {
-                            "default": self.DEFAULT_SEARCH_FIELD in p_val.get("copy_to", []),
-                            "indexed": self._describe_indexed(p_val, None),
-                            "list": field_model.multivalued if field_model else False,
-                            "stored": field_model.store if field_model else False,
-                            "type": f_type,
-                            "description": (field_model.description if field_model else ""),
-                            "regex": (
-                                field_model.child_type.validation_regex.pattern
-                                if field_model
-                                and (
-                                    issubclass(type(field_model.child_type), ValidatedKeyword)
-                                    or issubclass(type(field_model.child_type), IP)
-                                )
-                                else None
-                            ),
-                            "values": (
-                                list(field_model.child_type.values)
-                                if field_model and issubclass(type(field_model.child_type), Enum)
-                                else None
-                            ),
-                            "deprecated_description": (field_model.deprecated_description if field_model else ""),
-                        }
-
-                        if skip_mapping_children:
-                            continue
-                    else:
-                        continue
-
             f_type = self._describe_type(p_val, None)
             collection_data[p_name] = {
                 "default": self.DEFAULT_SEARCH_FIELD in p_val.get("copy_to", []),
                 "indexed": self._describe_indexed(p_val, None),
-                "list": field_model.multivalued if field_model else False,
-                "stored": field_model.store if field_model else False,
-                "deprecated": field_model.deprecated if field_model else False,
+                "list": False,
+                "stored": False,
+                "deprecated": False,
                 "type": f_type,
-                "description": field_model.description if field_model else "",
-                "regex": (
-                    field_model.validation_regex.pattern
-                    if field_model
-                    and (issubclass(type(field_model), ValidatedKeyword) or issubclass(type(field_model), IP))
-                    else None
-                ),
-                "values": list(field_model.values) if field_model and issubclass(type(field_model), Enum) else None,
-                "deprecated_description": (field_model.deprecated_description if field_model else ""),
+                "description": "",
+                "regex": None,
+                "values": None,
+                "deprecated_description": "",
             }
 
         collection_data.pop("id", None)
@@ -3223,6 +3017,8 @@ class ESCollection(Generic[ModelType]):
         Mapping-child de-duplication quirk (only the first live dynamic key of a given ``Mapping``
         field gets its own entry, in addition to the parent-summary entry).
         """
+        if self.schema_model is None:
+            raise HowlerValueError("Schema introspection requires a model")
         model_fields = model_registry.flat_fields(self.schema_model)
         flattened_by_index, all_paths = self._live_mapping_properties()
         caps_fields = self._live_field_capabilities()
@@ -3419,12 +3215,7 @@ class ESCollection(Generic[ModelType]):
         if "total_fields" not in settings["index"]["mapping"]:
             settings["index"]["mapping"]["total_fields"] = {}
 
-        limit = len(self.model_class.flat_fields()) + 500 if self.model_class else 1500
-        if limit < 1500:
-            limit = 1500
-        elif limit > 1500:
-            logger.warning("ODM field size is larger than 1500 - set to %s", limit)
-        settings["index"]["mapping"]["total_fields"]["limit"] = limit
+        settings["index"]["mapping"]["total_fields"]["limit"] = 1500
 
         return settings
 
@@ -3433,11 +3224,7 @@ class ESCollection(Generic[ModelType]):
             return new_schema.document_mapping(self.schema_model)
 
         mappings: dict = deepcopy(default_mapping)
-        if self.model_class:
-            mappings["properties"], mappings["dynamic_templates"] = build_mapping(self.model_class.fields().values())
-            mappings["dynamic_templates"].insert(0, default_dynamic_strings)
-        else:
-            mappings["dynamic_templates"] = deepcopy(default_dynamic_templates)
+        mappings["dynamic_templates"] = deepcopy(default_dynamic_templates)
 
         if not mappings["dynamic_templates"]:
             # Setting dynamic to strict prevents any documents with fields not in the properties to be added
@@ -3456,55 +3243,12 @@ class ESCollection(Generic[ModelType]):
 
         return mappings
 
-    def __get_possible_fields(self, field):
-        field_types = [field.__name__.lower()]
-        if field.__bases__[0] != _Field:
-            field_types.extend(self.__get_possible_fields(field.__bases__[0]))
-
-        if field_type := TYPE_MAPPING.get(field.__name__, None):
-            field_types.append(field_type)
-
-        return field_types
-
-    def _check_fields(self, model=None):
+    def _check_fields(self):
         if not self.validate:
             return
 
         if self.schema_model is not None:
             return self._check_fields_from_schema()
-
-        if model is None:
-            if self.model_class:
-                return self._check_fields(self.model_class)
-
-            return
-
-        if self.model_class is None:
-            return
-
-        fields = self.fields()
-        model = self.model_class.flat_fields(skip_mappings=True)
-
-        missing = set(model.keys()) - set(fields.keys())
-        if missing:
-            self._add_fields_with_limit_retry(
-                {key: model[key] for key in missing},
-                self._add_fields,
-            )
-
-        matching = set(fields.keys()) & set(model.keys())
-        for field_name in matching:
-            if fields[field_name]["indexed"] != model[field_name].index and model[field_name].index:
-                raise HowlerRuntimeError(f"Field {field_name} should be indexed but is not.")
-
-            possible_field_types = self.__get_possible_fields(model[field_name].__class__)
-
-            if fields[field_name]["type"] not in possible_field_types:
-                raise HowlerRuntimeError(
-                    f"Field {field_name} didn't have the expected store "
-                    f"type. [{fields[field_name]['type']} != "
-                    f"{model[field_name].__class__.__name__.lower()}]"
-                )
 
     def _add_fields_with_limit_retry(
         self,
@@ -3722,7 +3466,7 @@ class ESCollection(Generic[ModelType]):
            - If a legacy _hot index exists, migrate it to {name}-000001.
            - Otherwise, create {name}-000001 from scratch.
         """
-        from howler.odm.models.config import config as _config
+        from howler.config_models import config as _config
 
         ilm_global = _config.datastore.ilm
 
@@ -3902,37 +3646,11 @@ class ESCollection(Generic[ModelType]):
         self._check_fields()
         self._create_index_template(ilm_global)
 
-    def _add_fields(self, missing_fields: Dict):
-        no_fix = []
-        properties = {}
-        for name, field in missing_fields.items():
-            # Figure out the path of the field in the document, if the name is set in the field, it
-            # is going to be duplicated in the path from missing_fields, so drop it
-            prefix = name.split(".")
-            if field.name:
-                prefix = prefix[:-1]
-
-            # Build the fields and templates for this new mapping
-            sub_properties, sub_templates = build_mapping([field], prefix=prefix, allow_refuse_implicit=False)
-            properties.update(sub_properties)
-            if sub_templates:
-                no_fix.append(name)
-
-        # If we have collected any fields that we can't just blindly add, as they might conflict
-        # with existing things, (we might have the refuse_all_implicit_mappings rule in place)
-        # simply raise an exception
-        if no_fix:
-            raise HowlerValueError(
-                f"Can't update database mapping for {self.name}, couldn't safely amend mapping for {no_fix}"
-            )
-
-        self._put_mapping_properties(properties)
-
     def _add_schema_fields(self, missing_fields: dict[str, Any]) -> None:
         """Add already-built, safe explicit schema properties (never dynamic-template-governed).
 
-        Unlike :meth:`_add_fields`, ``missing_fields`` values here are already complete ES
-        property bodies produced by ``howler.models.schema.build_properties``, so no further
+        ``missing_fields`` values are complete ES property bodies produced by
+        ``howler.models.schema.build_properties``, so no further
         mapping/template construction is needed before uploading them.
         """
         self._put_mapping_properties({path: deepcopy(body) for path, body in missing_fields.items()})
@@ -3954,7 +3672,7 @@ class ESCollection(Generic[ModelType]):
         # When ILM is enabled, also update the composable index template so
         # future rollover indices inherit the new field mappings.
         if self.ilm_config:
-            from howler.odm.models.config import config as _config
+            from howler.config_models import config as _config
 
             self._create_index_template(_config.datastore.ilm)
 

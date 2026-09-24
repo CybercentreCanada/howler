@@ -200,7 +200,10 @@ class LuceneProcessor(TreeVisitor):
 NORMALIZED_QUERY_CACHE: Hash[str] = Hash("normalized_queries", redis)
 
 SEARCH_PHRASE_CACHE: dict[str, str] = {}
-WILDCARD_TOKEN_PATTERN = re.compile(r'(?:(?<=\()|(?<!\S))((?:\\.|[^\s()"])*[?*](?:\\.|[^\s()"])*)(?=$|[\s)])')
+WILDCARD_TOKEN_PATTERN = re.compile(
+    r"[\[{](?:\\.|[^\\\]}])*[\]}]|"
+    r'(?:(?<=\()|(?<!\S))((?:\\.|[^\s()"\[\]{}])*[?*](?:\\.|[^\s()"\[\]{}])*)(?=$|[\s)])'
+)
 LUCENE_HASH_PATTERN = re.compile(r"([0-9a-f]{64})")
 
 
@@ -239,6 +242,9 @@ def try_reinsert_lucene_phrase(match: re.Match[str]) -> str:
 def replace_lucene_wildcard(match: re.Match[str]) -> str:
     """Replace a wildcard value with a stable term before requesting a Lucene explanation."""
     wildcard_expression = match.group(1)
+    # Asterisks inside ranges represent unbounded endpoints, not wildcard terms.
+    if wildcard_expression is None:
+        return match.group(0)
     if wildcard_expression == "*:*":
         return wildcard_expression
 

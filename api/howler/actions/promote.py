@@ -3,9 +3,9 @@ from typing import Optional
 import howler.helper.hit as hit_helper
 from howler.common.loader import datastore
 from howler.datastore.operations import OdmHelper
-from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import (
+from howler.models.action import VALID_TRIGGERS
+from howler.models.hit import Hit
+from howler.models.howler_data import (
     Assessment,
     AssessmentEscalationMap,
     Escalation,
@@ -138,7 +138,7 @@ def specification():
                         "escalation:evidence": [
                             assessment
                             for assessment in Assessment.list()
-                            if AssessmentEscalationMap[assessment] == Escalation.EVIDENCE
+                            if AssessmentEscalationMap[Assessment(assessment).name] == Escalation.EVIDENCE
                         ],
                         "escalation:alert": [],
                         "escalation:hit": [],

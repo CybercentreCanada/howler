@@ -20,7 +20,7 @@ from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.config import config
 from howler.helper.oauth import fetch_groups
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.security import api_login
 from howler.security.utils import check_password_requirements, get_password_hash, get_password_requirement_message
 
@@ -144,7 +144,7 @@ def add_user_account(username, **kwargs):
         storage.user_avatar.save(username, avatar)
 
     try:
-        return ok({"success": storage.user.save(username, User(data), refresh=refresh)})
+        return ok({"success": storage.user.save(username, cast(Any, User).validate_howler(data), refresh=refresh)})
     except ValueError as e:
         return bad_request(err=str(e))
 
@@ -180,7 +180,7 @@ def get_user_account(username: str, server_version: Optional[str] = None, **kwar
     if not user:
         return not_found(err=f"User {username} does not exist")
 
-    user_dict: dict[str, Any] = user.as_primitives()
+    user_dict: dict[str, Any] = cast(Any, user).as_primitives()
     user_dict["apikeys"] = [(k, []) for k in user_dict.get("apikeys", {}).keys()]
     user_dict["has_password"] = user_dict.pop("password", "") != ""
     user_dict["roles"] = user_dict.pop("type", [])

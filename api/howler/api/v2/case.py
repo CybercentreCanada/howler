@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal, cast
 
 from flask import request
 from werkzeug.exceptions import UnsupportedMediaType
@@ -10,8 +10,8 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import DataStoreException
-from howler.odm.models.case import Case, CaseItem
-from howler.odm.models.user import User
+from howler.models.case import CaseItem
+from howler.models.user import User
 from howler.security import api_login
 from howler.services import case_service
 
@@ -52,7 +52,7 @@ def create_case(user: User, **kwargs):
         return bad_request(err="Request body must be a JSON object with case data.")
 
     try:
-        return created(case_service.create_case(case_data, user))
+        return created(case_service.create_case(case_data, cast(Any, user)))
     except InvalidDataException as e:
         return bad_request(err=str(e))
     except ResourceExists as e:
@@ -83,7 +83,7 @@ def get_case(id: str, user: User, **kwargs):
     if not case:
         return not_found(err="Case %s does not exist" % id)
 
-    case_service.filter_case_items_by_classification(case, user.classification)
+    case_service.filter_case_items_by_classification(case, cast(Any, user).classification)
 
     return ok(case)
 
@@ -163,7 +163,7 @@ def hide_cases(user: User, refresh: Literal["true", "false", "wait_for"] | None 
     if non_existing_case_ids:
         return not_found(err=f"Case id(s) {', '.join(non_existing_case_ids)} do not exist.")
 
-    case_service.hide_cases(case_ids, user=user.uname, refresh=refresh)
+    case_service.hide_cases(case_ids, user=cast(Any, user).uname, refresh=refresh)
 
     return no_content()
 
@@ -198,9 +198,9 @@ def update_case(id: str, user: User, refresh: Literal["true", "false", "wait_for
         return bad_request(err="Request body must be a JSON object with fields to update.")
 
     try:
-        updated_case = case_service.update_case(id, case_data, user, refresh=refresh)
+        updated_case = case_service.update_case(id, case_data, cast(Any, user), refresh=refresh)
 
-        case_service.filter_case_items_by_classification(updated_case, user.classification)
+        case_service.filter_case_items_by_classification(updated_case, cast(Any, user).classification)
 
         return ok(updated_case)
     except NotFoundException as e:
@@ -258,9 +258,11 @@ def append_item(id: str, user: User, refresh: Literal["true", "false", "wait_for
 
             body["parent"] = parent.id if parent else None
 
-        updated_case = case_service.append_case_item(id, item=CaseItem(body), refresh=refresh)
+        updated_case = case_service.append_case_item(
+            id, item=cast(Any, CaseItem).validate_howler(body), refresh=refresh
+        )
 
-        case_service.filter_case_items_by_classification(updated_case, user.classification)
+        case_service.filter_case_items_by_classification(updated_case, cast(Any, user).classification)
 
         return ok(updated_case)
     except DataStoreException as e:
@@ -318,7 +320,7 @@ def delete_item(case_id: str, user: User, refresh: Literal["true", "false", "wai
     try:
         updated_case = case_service.remove_case_items(case_id, ids, force=force, refresh=refresh)
 
-        case_service.filter_case_items_by_classification(updated_case, user.classification)
+        case_service.filter_case_items_by_classification(updated_case, cast(Any, user).classification)
 
         return ok(updated_case)
     except DataStoreException as e:
@@ -365,7 +367,7 @@ def rename_item(case_id: str, user: User, refresh: Literal["true", "false", "wai
 
     item_id = body["id"]
     try:
-        result: Case | None = None
+        result: Any = None
         if "name" in body:
             result = case_service.rename_case_item(
                 case_id, item_id, body["name"], refresh="wait_for" if "parent" in body else refresh
@@ -377,7 +379,7 @@ def rename_item(case_id: str, user: User, refresh: Literal["true", "false", "wai
         if not result:
             return bad_request(err="At least one of 'name' or 'parent' is required.")
 
-        case_service.filter_case_items_by_classification(result, user.classification)
+        case_service.filter_case_items_by_classification(result, cast(Any, user).classification)
 
         return ok(result)
     except DataStoreException as e:
@@ -422,9 +424,9 @@ def add_rule(id: str, user: User, refresh: Literal["true", "false", "wait_for"] 
         return bad_request(err="Request body must be a JSON object with rule data.")
 
     try:
-        updated_case = case_service.add_case_rule(id, body, user, refresh=refresh)
+        updated_case = case_service.add_case_rule(id, body, cast(Any, user), refresh=refresh)
 
-        case_service.filter_case_items_by_classification(updated_case, user.classification)
+        case_service.filter_case_items_by_classification(updated_case, cast(Any, user).classification)
 
         return ok(updated_case)
     except NotFoundException as e:
@@ -455,9 +457,9 @@ def delete_rule(
     }
     """
     try:
-        updated_case = case_service.remove_case_rule(id, rule_id, user, refresh=refresh)
+        updated_case = case_service.remove_case_rule(id, rule_id, cast(Any, user), refresh=refresh)
 
-        case_service.filter_case_items_by_classification(updated_case, user.classification)
+        case_service.filter_case_items_by_classification(updated_case, cast(Any, user).classification)
 
         return ok(updated_case)
     except NotFoundException as e:
@@ -501,9 +503,9 @@ def update_rule(
         return bad_request(err="Request body must be a JSON object with fields to update.")
 
     try:
-        updated_case = case_service.update_case_rule(id, rule_id, body, user, refresh=refresh)
+        updated_case = case_service.update_case_rule(id, rule_id, body, cast(Any, user), refresh=refresh)
 
-        case_service.filter_case_items_by_classification(updated_case, user.classification)
+        case_service.filter_case_items_by_classification(updated_case, cast(Any, user).classification)
 
         return ok(updated_case)
     except NotFoundException as e:

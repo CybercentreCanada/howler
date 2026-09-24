@@ -12,10 +12,10 @@ import requests
 from howler.common import loader
 from howler.config import CLASSIFICATION
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.helper import generate_useful_hit
-from howler.odm.models.action import Action
-from howler.odm.models.howler_data import Assessment, HitStatusTransition
-from howler.odm.random_data import create_actions, create_hits, wipe_actions, wipe_hits
+from howler.models.action import Action
+from howler.models.howler_data import Assessment, HitStatusTransition
+from howler.sample_data.helper import generate_useful_hit
+from howler.sample_data.random_data import create_actions, create_hits, wipe_actions, wipe_hits
 from howler.services import hit_service
 from test.conftest import APIError, get_api_data
 
@@ -258,7 +258,7 @@ def test_valid_action_on_triage(datastore: HowlerDatastore, login_session):
     datastore.hit.save(test_hit_demote.howler.id, test_hit_demote)
 
     # Create actions
-    action_demote = Action(
+    action_demote = Action.model_validate(
         {
             "triggers": ["demote"],
             "name": "Test demote on triage",
@@ -278,7 +278,7 @@ def test_valid_action_on_triage(datastore: HowlerDatastore, login_session):
     assert datastore.action.exists(action_demote.action_id)
 
     # Create actions
-    action_promote = Action(
+    action_promote = Action.model_validate(
         {
             "triggers": ["promote"],
             "name": "Test promote on triage",

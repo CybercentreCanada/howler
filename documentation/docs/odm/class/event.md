@@ -30,8 +30,6 @@
 | sequence | Integer | Sequence number of the event. | :material-minus-box-outline: Optional | `None` |
 | severity | Integer | The numeric severity of the event according to your event source. | :material-minus-box-outline: Optional | `None` |
 | start | Date | Contains the date when the event started or when the activity was first observed. | :material-minus-box-outline: Optional | `None` |
-| timezone | Keyword | This field should be populated when the event’s timestamp does not include timezone information already (e.g. default Syslog timestamps). | :material-minus-box-outline: Optional | `None` |
+| timezone | Keyword | This field should be populated when the event's timestamp does not include timezone information already (e.g. default Syslog timestamps). | :material-minus-box-outline: Optional | `None` |
 | type | List [Enum] | Represents a categorization "sub-bucket" that, when used along with the event.category field values, enables filtering events down to a level appropriate for single visualization. | :material-minus-box-outline: Optional | `None` |
 | url | Keyword | URL linking to an external system to continue investigation of this event. | :material-minus-box-outline: Optional | `None` |
-
-

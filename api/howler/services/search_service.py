@@ -12,7 +12,7 @@ from howler.datastore.exceptions import SearchException, SearchRetryException
 from howler.datastore.support.elastic import error_message, response_body, total_hits_value
 from howler.datastore.types import SearchResult
 from howler.helper.search import get_collection, get_default_sort, has_access_control
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.services import case_service
 from howler.utils.indexes import get_logical_index_name, normalize_indexes
 
@@ -120,8 +120,8 @@ def search(  # noqa: C901
     # NOTE: This means index searches must be either ALL access controlled or none of them have access control.
     # Otherwise, the access control requirements on one index will cause the other index to return no items.
     # This is pretty reasonable constraint, as all the relevant, searchable items support classifications.
-    if user and user.access_control and has_access_control(indexes):
-        parsed_filters.append(user.access_control)
+    if user and cast(Any, user).access_control and has_access_control(indexes):
+        parsed_filters.append(cast(Any, user).access_control)
 
     if query is None:
         query = "id:*"
@@ -196,7 +196,7 @@ def search(  # noqa: C901
         "offset": int(offset),
         "rows": len(hits),
         "total": int(total),
-        "items": _format_items(hits, user.classification if user else None),
+        "items": _format_items(hits, cast(Any, user).classification if user else None),
     }
 
     next_deep_paging_id = result.get("_scroll_id")
@@ -319,8 +319,8 @@ def facet(
 
     parsed_filters = _parse_filters(filters)
 
-    if user and user.access_control and has_access_control(index_list):
-        parsed_filters.append(user.access_control)
+    if user and cast(Any, user).access_control and has_access_control(index_list):
+        parsed_filters.append(cast(Any, user).access_control)
 
     effective_query = query or "id:*"
 

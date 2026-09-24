@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from copy import deepcopy
-from typing import Any
+from typing import Any, cast
 
 from elasticsearch import BadRequestError
 from flask import request
@@ -12,7 +12,7 @@ from howler.common.logging.audit import audit
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException
 from howler.helper.search import get_collection, has_access_control
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.security import api_login
 from howler.services import hit_service, lucene_service, search_service
 from howler.services.search_service import SensitiveUserFieldsException
@@ -27,7 +27,7 @@ logger = get_logger(__file__)
 
 def _audit_request(user: User, func: Callable[..., Any], **fields):
     """Emit an audit event with search-specific request details."""
-    audit([], fields, user["uname"], user, func)
+    audit([], fields, cast(Any, user).uname, user, func)
 
 
 @generate_swagger_docs()
@@ -122,7 +122,7 @@ def search(indexes: str, user: User, **kwargs):
         return internal_error(f"Exception on search with query {query}: {e}")
 
     if metadata and any(idx in index_list for idx in ["hit"]):
-        hit_service.augment_metadata(result["items"], metadata, user)
+        hit_service.augment_metadata(result["items"], metadata, cast(Any, user))
 
     return ok(result)
 

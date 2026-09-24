@@ -5,11 +5,11 @@ These tests mock the services and queue to verify the contract between
 ingest.py (producer) and correlation_service.process_batch (consumer).
 """
 
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 from howler.config import CLASSIFICATION
-from howler.odm.models.case import CaseItem, CaseRule
+from howler.models.case import CaseItem, CaseRule
 from howler.services import correlation_service
 
 # ---------------------------------------------------------------------------
@@ -22,7 +22,7 @@ def _make_rule(
     query: str = "*:*",
     destination: str = "related",
     indexes: list[str] | None = None,
-) -> CaseRule:
+) -> Any:
     data: dict[str, Any] = {
         "query": query,
         "destination": destination,
@@ -33,7 +33,7 @@ def _make_rule(
     if indexes is not None:
         data["indexes"] = indexes
 
-    return CaseRule(data)
+    return cast(Any, CaseRule).validate_howler(data)
 
 
 def _make_case(case_id: str, items: list | None = None) -> MagicMock:
@@ -65,7 +65,7 @@ def _setup_ds(
 
     def event_get(*args, **kwargs):
         key = args[0] if args else kwargs.get("key")
-        return (events or {}).get(key)
+        return (events or {}).get(key) if key is not None else None
 
     mock_ds.case.get.side_effect = lambda cid: cases.get(cid)
     mock_ds.hit.get.side_effect = lambda hid: (hits or {}).get(hid)
@@ -205,7 +205,7 @@ class TestIngestedAlertsCorrelation:
     @patch("howler.services.correlation_service.datastore")
     def test_duplicate_alert_skipped(self, mock_ds_fn, mock_get_rules, mock_search_svc, mock_comms):
         """An alert already present in the case is skipped."""
-        existing = CaseItem({"type": "hit", "value": "hit-dup", "name": "related"})
+        existing = cast(Any, CaseItem).validate_howler({"type": "hit", "value": "hit-dup", "name": "related"})
         case = _make_case("case-1", items=[existing])
         _setup_ds(mock_ds_fn, {"case-1": case}, hits={"hit-dup": _make_backing_obj()})
 

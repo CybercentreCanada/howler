@@ -3,9 +3,9 @@ import json
 import pytest
 
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.models.analytic import Analytic
-from howler.odm.models.hit import Hit
-from howler.odm.random_data import (
+from howler.models.analytic import Analytic
+from howler.models.hit import Hit
+from howler.sample_data.random_data import (
     create_hits,
     create_templates,
     wipe_hits,

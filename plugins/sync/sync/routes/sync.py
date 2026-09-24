@@ -7,7 +7,7 @@ from howler.api.v1.utils.params import parse_parameters
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.types import SearchResult
-from howler.odm.models.hit import Hit
+from howler.models.hit import Hit
 from howler.security import api_login
 
 from sync.services import sync_service

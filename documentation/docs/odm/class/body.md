@@ -9,5 +9,3 @@
 | :--- | :--- | :--- | :--- | :--- |
 | bytes | Integer | Size in bytes of the body. | :material-minus-box-outline: Optional | `None` |
 | content | Keyword | The full HTTP body. | :material-minus-box-outline: Optional | `None` |
-
-

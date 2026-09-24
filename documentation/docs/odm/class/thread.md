@@ -9,5 +9,3 @@
 | :--- | :--- | :--- | :--- | :--- |
 | id | Integer | Thread ID. | :material-minus-box-outline: Optional | `None` |
 | name | Keyword | Thread name. | :material-minus-box-outline: Optional | `None` |
-
-

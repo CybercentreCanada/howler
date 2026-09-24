@@ -27,10 +27,10 @@ from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import DataStoreException, VersionConflictException
 from howler.datastore.operations import OdmHelper, OdmUpdateOperation
 from howler.helper.workflow import WorkflowException
+from howler.models.hit import Hit
+from howler.models.howler_data import Comment, HitOperationType, HitStatusTransition
 from howler.models.registry import model_registry
-from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import Comment, HitOperationType, HitStatusTransition
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.security import api_login
 from howler.services import action_service, analytic_service, comms_service, correlation_service, hit_service
 from howler.utils.constants import DEBUG_FORCE_REFRESH
@@ -41,8 +41,6 @@ MAX_COMMENT_LEN = 5000
 SUB_API = "hit"
 hit_api = make_subapi_blueprint(SUB_API, api_version=1)
 hit_api._doc = "Manage the different hits in the system"  # type: ignore
-
-FIELDS = Hit.flat_fields()
 
 logger = get_logger(__file__)
 
@@ -121,7 +119,7 @@ def create_hits(user: User, **kwargs):
     for hit in hits:
         try:
             odm, _warnings = hit_service.convert_hit(hit, unique=True, ignore_extra_values=ignore_extra_values)
-            response_body["valid"].append(odm.as_primitives())
+            response_body["valid"].append(cast(Any, odm).as_primitives())
             odms.append(odm)
             warnings.extend(_warnings)
         except HowlerException as e:
@@ -136,8 +134,10 @@ def create_hits(user: User, **kwargs):
                 if odm.event is not None:
                     odm.event.id = odm.howler.id
 
-            hit_service.create_hits(odms, user=user.uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
-            analytic_service.save_from_hits(odms, user, refresh=refresh)
+            hit_service.create_hits(
+                odms, user=cast(Any, user).uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh
+            )
+            analytic_service.save_from_hits(cast(Any, odms), cast(Any, user), refresh=refresh)
             ids = [odm.howler.id for odm in odms]
             action_service.enqueue_action_execution(ids, trigger="create", user=user)
             correlation_service.enqueue_for_correlation(ids)
@@ -184,7 +184,7 @@ def delete_hits(user: User, **kwargs):
     if hit_ids is None:
         return bad_request(err="No hit ids were sent.")
 
-    if "admin" not in user["type"]:
+    if "admin" not in cast(Any, user).type:
         return forbidden(err="Cannot delete hit, only admin is allowed to delete")
 
     hit_ids = set(hit_ids)
@@ -335,7 +335,7 @@ def overwrite_hit(id: str, server_version: str, **kwargs):
         new_hit = cast(
             dict[str, Any],
             merge(
-                hit_service.flatten(hit.as_primitives(), odm=Hit),
+                hit_service.flatten(cast(Any, hit).as_primitives(), odm=Hit),
                 hit_service.flatten(new_fields),
                 strategy=Strategy.REPLACE
                 if bool(request.args.get("replace", False, type=lambda v: v.lower() == "true"))
@@ -343,7 +343,9 @@ def overwrite_hit(id: str, server_version: str, **kwargs):
             ),
         )
 
-        new_hit, new_version = hit_service.save_hit(Hit(new_hit), server_version, refresh=refresh)
+        new_hit, new_version = hit_service.save_hit(
+            cast(Any, datastore().hit.model_class).validate_howler(new_hit), server_version, refresh=refresh
+        )
 
         return ok(new_hit), new_version
     except HowlerValueError as e:
@@ -413,7 +415,7 @@ def update_hit(id: str, server_version: str, **kwargs):
         )
 
         new_hit, new_version = hit_service.update_hit(
-            hit.howler.id, operations, kwargs["user"]["uname"], server_version, refresh=refresh
+            cast(Any, hit).howler.id, operations, kwargs["user"]["uname"], server_version, refresh=refresh
         )
 
         comms_service.emit("hits", {"hit": new_hit, "version": new_version})
@@ -562,7 +564,7 @@ def add_label(id: str, label_set: str, user: User, server_version: str | None = 
     if not hit_service.exists(id):
         return not_found(err=f"Hit {id} does not exist")
 
-    existing_hit: Hit = hit_service.get_hit(id, as_odm=True)
+    existing_hit = cast(Any, hit_service.get_hit(id, as_odm=True))
     if f"howler.labels.{label_set}" not in _runtime_hit_fields(existing_hit):
         return not_found(err=f"Label set {label_set} does not exist")
 
@@ -583,7 +585,7 @@ def add_label(id: str, label_set: str, user: User, server_version: str | None = 
     hit_service.update_hit(
         id,
         [hit_helper.list_add(f"howler.labels.{label_set}", label) for label in labels],
-        user.uname,
+        cast(Any, user).uname,
         version=server_version,
         refresh="true" if DEBUG_FORCE_REFRESH else refresh,
     )
@@ -641,7 +643,7 @@ def remove_labels(id: str, label_set: str, user: User, server_version: str | Non
     hit_service.update_hit(
         id,
         [hit_helper.list_remove(f"howler.labels.{label_set}", label) for label in labels],
-        user.uname,
+        cast(Any, user).uname,
         version=server_version,
         refresh="true" if DEBUG_FORCE_REFRESH else refresh,
     )
@@ -739,7 +741,7 @@ def get_comment(id: str, comment_id: str, user: User, server_version: str | None
     if not hit:
         return not_found(err=f"Hit {id} does not exist")
 
-    comment: Optional[Comment] = next((c for c in hit.howler.comment if c.id == comment_id), None)
+    comment = next((c for c in cast(Any, hit).howler.comment if c.id == comment_id), None)
 
     if not comment:
         return not_found(err=f"Comment {comment_id} does not exist")
@@ -791,12 +793,12 @@ def add_comment(id: str, user: User, server_version: str | None = None, **kwargs
             [
                 hit_helper.list_add(
                     "howler.comment",
-                    Comment({"user": user.uname, "value": comment_value}),
+                    cast(Any, Comment).validate_howler({"user": cast(Any, user).uname, "value": comment_value}),
                     explanation=f"Added a comment:\n\n{comment_value}",
                     if_missing=True,
                 ),
             ],
-            user.uname,
+            cast(Any, user).uname,
             version=server_version,
         )
     except DataStoreException as e:
@@ -846,9 +848,9 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], server_version:
     if not hit_service.exists(id):
         return not_found(err=f"Hit {id} does not exist")
 
-    hit: Hit = kwargs["cached_hit"]
+    hit = cast(Any, kwargs["cached_hit"])
 
-    comment: Optional[Comment] = next((c for c in hit.howler.comment if c.id == comment_id), None)
+    comment = next((c for c in hit.howler.comment if c.id == comment_id), None)
 
     if not comment:
         return not_found(err=f"Comment {comment_id} does not exist")
@@ -913,10 +915,12 @@ def delete_comments(id: str, user: User, server_version: str | None = None, **kw
     if len(comment_ids) == 0:
         return bad_request(err="Supply at least one comment to delete.")
 
-    hit: Hit = kwargs["cached_hit"]
+    hit = cast(Any, kwargs["cached_hit"])
     comments = [comment for comment in hit.howler.comment if comment.id in comment_ids]
 
-    if ("admin" not in user["type"]) and any(comment for comment in comments if comment.user != user["uname"]):
+    if ("admin" not in cast(Any, user).type) and any(
+        comment for comment in comments if comment.user != cast(Any, user).uname
+    ):
         return forbidden(err="You cannot delete the comment of someone else.")
 
     if len(comments) != len(comment_ids):
@@ -934,7 +938,7 @@ def delete_comments(id: str, user: User, server_version: str | None = None, **kw
                 )
                 for comment in comments
             ],
-            user.uname,
+            cast(Any, user).uname,
             version=server_version,
         )
 

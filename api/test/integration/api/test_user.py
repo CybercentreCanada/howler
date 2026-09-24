@@ -3,7 +3,7 @@ import random
 
 import pytest
 
-from howler.odm.random_data import create_users, wipe_users
+from howler.sample_data.random_data import create_users, wipe_users
 from test.conftest import get_api_data
 
 AVATAR = "AVATAR!"

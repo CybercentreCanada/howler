@@ -4,7 +4,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from howler.odm.models.clue import Clue
+from howler.models.clue import Clue
 from howler.plugins import get_plugins
 from howler.utils.constants import TESTING
 
@@ -32,18 +32,23 @@ from howler.datastore.howler_store import HowlerDatastore
 from howler.datastore.operations import OdmHelper
 from howler.helper.hit import assess_hit
 from howler.helper.oauth import VALID_CHARS
-from howler.odm.base import Keyword
-from howler.odm.helper import generate_useful_case, generate_useful_dossier, generate_useful_event, generate_useful_hit
-from howler.odm.models.action import Action
-from howler.odm.models.analytic import Analytic, Comment, Notebook, TriageOptions
-from howler.odm.models.ecs.event import EVENT_CATEGORIES
-from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import Assessment, Escalation, Scrutiny, Status
-from howler.odm.models.overview import Overview
-from howler.odm.models.template import Template
-from howler.odm.models.user import User
-from howler.odm.models.view import View
-from howler.odm.randomizer import get_random_string, get_random_user, get_random_word, random_model_obj
+from howler.models.action import Action
+from howler.models.analytic import Analytic, Comment, Notebook, TriageOptions
+from howler.models.ecs.event import EVENT_CATEGORIES
+from howler.models.hit import Hit
+from howler.models.howler_data import Assessment, Escalation, Scrutiny, Status
+from howler.models.overview import Overview
+from howler.models.registry import model_registry
+from howler.models.template import Template
+from howler.models.user import User
+from howler.models.view import View
+from howler.sample_data.helper import (
+    generate_useful_case,
+    generate_useful_dossier,
+    generate_useful_event,
+    generate_useful_hit,
+)
+from howler.sample_data.randomizer import get_random_string, get_random_user, get_random_word, random_model_obj
 from howler.security.utils import get_password_hash
 from howler.services import analytic_service, user_service
 
@@ -78,7 +83,7 @@ def create_users(ds):
 
     admin_hash = get_password_hash(admin_pass)
 
-    admin_view = View(
+    admin_view = View.model_validate(
         {
             "title": "view.assigned_to_me",
             "query": "howler.assignment:admin",
@@ -89,7 +94,7 @@ def create_users(ds):
 
     admin_view = run_modifications("view", admin_view)
 
-    user_data = User(
+    user_data = User.model_validate(
         {
             "apikeys": {
                 "devkey": {"acl": ["R", "W", "E"], "password": admin_hash},
@@ -149,7 +154,7 @@ def create_users(ds):
 
     user_hash = get_password_hash(user_pass)
 
-    user_view = View(
+    user_view = View.model_validate(
         {
             "title": "view.assigned_to_me",
             "query": "howler.assignment:user",
@@ -158,7 +163,7 @@ def create_users(ds):
         }
     )
 
-    user_data = User(
+    user_data = User.model_validate(
         {
             "name": "Dwight Schrute",
             "email": "user@howler.cyber.gc.ca",
@@ -206,7 +211,7 @@ def create_users(ds):
 
     huey_hash = get_password_hash(huey_pass)
 
-    huey_view = View(
+    huey_view = View.model_validate(
         {
             "title": "view.assigned_to_me",
             "query": "howler.assignment:huey",
@@ -215,7 +220,7 @@ def create_users(ds):
         }
     )
 
-    huey_data = User(
+    huey_data = User.model_validate(
         {
             "name": "Huey Guy",
             "email": "huey@howler.cyber.gc.ca",
@@ -252,7 +257,7 @@ def create_users(ds):
     if not TESTING:
         logger.info("\t%s:%s", huey_data.uname, huey_pass)
 
-    shawnh_view = View(
+    shawnh_view = View.model_validate(
         {
             "title": "view.assigned_to_me",
             "query": "howler.assignment:shawnh",
@@ -260,7 +265,7 @@ def create_users(ds):
             "owner": "shawn-h",
         }
     )
-    shawn_data = User(
+    shawn_data = User.model_validate(
         {
             "name": "Shawn Hannigans",
             "email": "shawn.hannigans@howler.com",
@@ -283,7 +288,7 @@ def create_users(ds):
     if not TESTING:
         logger.info("\t%s:%s", shawn_data.uname, shawnh_pass)
 
-    goose_view = View(
+    goose_view = View.model_validate(
         {
             "title": "view.assigned_to_me",
             "query": "howler.assignment:goose",
@@ -291,7 +296,7 @@ def create_users(ds):
             "owner": "goose",
         }
     )
-    goose_data = User(
+    goose_data = User.model_validate(
         {
             "name": "Mister Goose",
             "email": "goose@howler.cyber.gc.ca",
@@ -330,10 +335,10 @@ def wipe_users(ds):
 def create_templates(ds: HowlerDatastore):
     """Create some random templates"""
     for i in range(2):
-        keys = sample(list(Hit.flat_fields().keys()), 5)
+        keys = sample(list(model_registry.flat_fields(ds.hit.model_class)), 5)
 
         for detection in ["Detection 1", "Detection 2"]:
-            template = Template(
+            template = Template.model_validate(
                 {
                     "analytic": choice(["Password Checker", "Bad Guy Finder", "SecretAnalytic"]),
                     "detection": detection,
@@ -350,7 +355,7 @@ def create_templates(ds: HowlerDatastore):
             )
 
     for analytic in ["Password Checker", "Bad Guy Finder"]:
-        template = Template(
+        template = Template.model_validate(
             {
                 "analytic": analytic,
                 "type": "global",
@@ -365,7 +370,7 @@ def create_templates(ds: HowlerDatastore):
             template,
         )
 
-        template = Template(
+        template = Template.model_validate(
             {
                 "analytic": analytic,
                 "owner": "admin",
@@ -381,7 +386,7 @@ def create_templates(ds: HowlerDatastore):
             template,
         )
 
-        template = Template(
+        template = Template.model_validate(
             {
                 "analytic": analytic,
                 "owner": "goose",
@@ -406,11 +411,11 @@ def wipe_templates(ds):
 def create_overviews(ds: HowlerDatastore):
     """Create some random overviews"""
     for i in range(2):
-        keys = sample(list(Hit.flat_fields().keys()), 5)
+        keys = sample(list(model_registry.flat_fields(ds.hit.model_class)), 5)
 
         for detection in ["Detection 1", "Detection 2"]:
             content = "\n\n".join(f"{{{key}}}" for key in keys)
-            overview = Overview(
+            overview = Overview.model_validate(
                 {
                     "analytic": choice(["Password Checker", "Bad Guy Finder", "SecretAnalytic"]),
                     "owner": "admin",
@@ -427,7 +432,7 @@ def create_overviews(ds: HowlerDatastore):
             )
 
     for analytic in ["Password Checker", "Bad Guy Finder"]:
-        overview = Overview(
+        overview = Overview.model_validate(
             {
                 "analytic": analytic,
                 "owner": "admin",
@@ -482,7 +487,7 @@ def wipe_overviews(ds):
 
 def create_views(ds: HowlerDatastore):
     """Create some random views"""
-    view = View(
+    view = View.model_validate(
         {
             "title": "CMT Hits",
             "query": "howler.analytic:cmt.*",
@@ -498,11 +503,11 @@ def create_views(ds: HowlerDatastore):
         view,
     )
 
-    fields = Hit.flat_fields()
-    key_list = [key for key in fields.keys() if isinstance(fields[key], Keyword)]
+    fields = model_registry.flat_fields(ds.hit.model_class)
+    key_list = [key for key, field in fields.items() if field.metadata and field.metadata.kind == "Keyword"]
     for _ in range(10):
         query = f"{choice(key_list)}:*{choice(VALID_CHARS)}* OR {choice(key_list)}:*{choice(VALID_CHARS)}*"
-        view = View(
+        view = View.model_validate(
             {
                 "title": get_random_word(),
                 "query": query,
@@ -562,6 +567,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
             prune_hit=False,
             hit_ids=created_hit_ids,
             event_ids=event_ids,
+            model=ds.hit.model_class,
         )
 
         # Ensure the first 20 hits have unrestricted classification for test access
@@ -572,8 +578,8 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
             hit.howler.analytic = "SecretAnalytic"
             hit.howler.detection = None
 
-        if config.core.clue.enabled:
-            hit.clue = Clue(
+        if config.core.clue.enabled and "clue" in type(hit).model_fields:
+            hit["clue"] = Clue.model_validate(
                 {
                     "types": [
                         {"field": "destination.user.group.id", "type": "domain"},
@@ -586,7 +592,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
 
         ds.hit.save(hit.howler.id, hit)
         created_hit_ids.append(hit.howler.id)
-        analytic_service.save_from_hits(hit, random.choice(users))
+        analytic_service.save_from_hits(cast(Any, ds.hit.get(hit.howler.id)), cast(Any, random.choice(users)))
         ds.analytic.commit()
 
         if choice([True, False, False, False]):
@@ -597,7 +603,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
                     *assess_hit(
                         assessment=choice(Assessment.list()),
                         rationale=get_random_string(),
-                        hit=hit,
+                        hit=cast(Any, hit),
                     ),
                     hit_helper.update(
                         "howler.assignment",
@@ -659,12 +665,12 @@ def wipe_cases(ds):
     ds.case.wipe()
 
 
-def random_escalations() -> list[Escalation]:
+def random_escalations() -> list[str]:
     """Return a list of random escalations"""
     return random.sample(Escalation.list(), k=random.randint(1, len(Escalation.list())))
 
 
-def random_scrutinies() -> list[Scrutiny]:
+def random_scrutinies() -> list[str]:
     """Return a list of random scrutinies"""
     return random.sample(Scrutiny.list(), k=random.randint(1, len(Scrutiny.list())))
 
@@ -678,10 +684,10 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
     """Create some random analytics"""
     users = [user.uname for user in ds.user.search("*:*")["items"]]
 
-    for analytic in ds.analytic.search("*:*")["items"]:
+    for analytic in ds.analytic.search("*:*", fl="*")["items"]:
         for detection in analytic.detections:
             analytic.comment.append(
-                Comment(
+                Comment.model_validate(
                     {
                         "value": f"Placeholder Comment - {detection}",
                         "user": random.choice(users),
@@ -691,7 +697,7 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
             )
 
         analytic.comment.append(
-            Comment(
+            Comment.model_validate(
                 {
                     "value": "Placeholder Comment - Analytic",
                     "user": random.choice(users),
@@ -701,7 +707,7 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
 
         if config.core.notebook.enabled:
             analytic.notebooks.append(
-                Notebook(
+                Notebook.model_validate(
                     {
                         "value": "Link to super notebook",
                         "name": "Super notebook",
@@ -714,8 +720,8 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
 
         ds.analytic.save(analytic.analytic_id, analytic)
 
-    fields = Hit.flat_fields()
-    key_list = [key for key in fields.keys() if isinstance(fields[key], Keyword)]
+    fields = model_registry.flat_fields(ds.hit.model_class)
+    key_list = [key for key, field in fields.items() if field.metadata and field.metadata.kind == "Keyword"]
     assessments = Assessment.list()
     for _ in range(num_analytics):
         a: Analytic = random_model_obj(cast(Any, Analytic))
@@ -800,8 +806,8 @@ def wipe_analytics(ds):
 
 def create_actions(ds: HowlerDatastore, num_actions: int = 30):
     """Create random actions"""
-    fields = Hit.flat_fields()
-    key_list = [key for key in fields.keys() if isinstance(fields[key], Keyword)]
+    fields = model_registry.flat_fields(ds.hit.model_class)
+    key_list = [key for key, field in fields.items() if field.metadata and field.metadata.kind == "Keyword"]
     users = ds.user.search("*:*")["items"]
 
     module_path = Path(__file__).parents[1] / "actions"
@@ -843,7 +849,7 @@ def create_actions(ds: HowlerDatastore, num_actions: int = 30):
 
             operations.append({"operation_id": operation_id, "data_json": json.dumps((action_data))})
 
-        action = Action(
+        action = Action.model_validate(
             {
                 "name": get_random_word(),
                 "owner_id": choice([user["uname"] for user in users]),

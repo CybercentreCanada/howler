@@ -1,6 +1,6 @@
 from typing import Optional
 
-from howler.odm.models.action import VALID_TRIGGERS
+from howler.models.action import VALID_TRIGGERS
 
 OPERATION_ID = "test-plugin-execute"
 

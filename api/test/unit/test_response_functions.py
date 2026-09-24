@@ -1,13 +1,8 @@
-from typing import cast
-
 import pytest
 from flask import Flask
 
 import howler.api as api
 from howler.models.action import Action as SchemaAction
-from howler.odm import Model
-from howler.odm.models.user import User
-from howler.odm.randomizer import random_model_obj
 
 
 @pytest.fixture(scope="module")
@@ -136,7 +131,7 @@ def test_format_api_error_message_clips_to_innermost_frame(request_context):
 
 def test_coerce_response_data_handles_model_instances():
     """Model instances should be converted to primitive dictionaries."""
-    user = random_model_obj(cast(Model, User))
+    user = SchemaAction.model_validate({"action_id": "action-1", "owner_id": "user-1", "name": "Test", "query": "id:*"})
 
     coerced = api._coerce_response_data(user)
 
@@ -144,8 +139,11 @@ def test_coerce_response_data_handles_model_instances():
 
 
 def test_coerce_response_data_handles_lists_of_models():
-    """Lists of ODM models should be converted element by element."""
-    users = [random_model_obj(cast(Model, User)), random_model_obj(cast(Model, User))]
+    """Lists of registered models should be converted element by element."""
+    users = [
+        SchemaAction.model_validate({"action_id": action_id, "owner_id": "user-1", "name": "Test", "query": "id:*"})
+        for action_id in ("action-1", "action-2")
+    ]
 
     coerced = api._coerce_response_data(users)
 

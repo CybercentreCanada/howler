@@ -6,8 +6,8 @@ import pytest
 
 from howler.common.loader import DATASTORE_INDEX_PREFIX
 from howler.datastore.exceptions import SearchException, SearchRetryException
-from howler.odm.models.user import User
-from howler.odm.random_data import (
+from howler.models.user import User
+from howler.sample_data.random_data import (
     create_events,
     create_hits,
     create_users,
@@ -15,7 +15,7 @@ from howler.odm.random_data import (
     wipe_hits,
     wipe_users,
 )
-from howler.odm.randomizer import random_model_obj
+from howler.sample_data.randomizer import random_model_obj
 from howler.services import search_service
 
 TEST_SIZE = 12

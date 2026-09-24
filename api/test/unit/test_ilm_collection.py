@@ -12,6 +12,7 @@ import elasticsearch
 import pytest
 from elastic_transport import ApiResponseMeta
 
+from howler.config_models import ILMConfig, ILMIndexConfig
 from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import DataStoreException, SearchException
 from howler.models import HowlerModelValidationError
@@ -23,7 +24,6 @@ from howler.models.event import Event as SchemaEvent
 from howler.models.hit import Hit as SchemaHit
 from howler.models.user import User as SchemaUser
 from howler.odm.models.action import Action as LegacyAction
-from howler.odm.models.config import ILMConfig, ILMIndexConfig
 
 
 @pytest.fixture(autouse=True)
@@ -1588,41 +1588,31 @@ class TestEnsureCollectionILMDispatch:
 
 
 class TestAddFieldsILMTemplateSync:
-    """Tests that _add_fields updates the index template when ILM is active."""
+    """Tests that adding schema fields updates the index template when ILM is active."""
 
     def test_add_fields_updates_template_when_ilm(self, mock_datastore, ilm_global):
-        """When ILM is configured, _add_fields re-creates the index template."""
+        """When ILM is configured, adding schema fields re-creates the index template."""
         ilm_index = ILMIndexConfig(warm="30d")
         col = _make_collection(mock_datastore, ilm_config=ilm_index)
         col._index_list = []
 
-        # Mock the fields that need to be added
-        mock_field = MagicMock()
-        mock_field.name = None
-
-        # Make build_mapping return valid properties
         with (
-            patch("howler.datastore.collection.build_mapping", return_value=({"new_field": {"type": "keyword"}}, [])),
             patch.object(col, "_create_index_template") as mock_template,
             patch.object(
                 ESCollection, "index_list_full", new_callable=lambda: property(lambda self: [self.index_name])
             ),
         ):
-            col._add_fields({"test_field": mock_field})
+            col._add_schema_fields({"new_field": {"type": "keyword"}})
 
             # Should have updated the template
             mock_template.assert_called_once()
 
     def test_add_fields_does_not_update_template_without_ilm(self, mock_datastore):
-        """Without ILM, _add_fields does not touch any index template."""
+        """Without ILM, adding schema fields does not touch any index template."""
         col = _make_collection(mock_datastore, ilm_config=None)
         col._index_list = []
 
-        mock_field = MagicMock()
-        mock_field.name = None
-
         with (
-            patch("howler.datastore.collection.build_mapping", return_value=({"new_field": {"type": "keyword"}}, [])),
             patch.object(
                 ESCollection, "index_list_full", new_callable=lambda: property(lambda self: [self.index_name])
             ),
@@ -1630,6 +1620,6 @@ class TestAddFieldsILMTemplateSync:
             # Ensure no legacy template exists
             mock_datastore.client.indices.exists_template.return_value = False
 
-            col._add_fields({"test_field": mock_field})
+            col._add_schema_fields({"new_field": {"type": "keyword"}})
 
             mock_datastore.client.indices.put_index_template.assert_not_called()

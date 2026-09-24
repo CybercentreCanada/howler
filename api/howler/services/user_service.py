@@ -1,4 +1,4 @@
-from typing import Any, Literal, Optional, overload
+from typing import Any, Literal, Optional, cast, overload
 
 from authlib.integrations.flask_client import OAuth
 from flask import current_app, request
@@ -9,8 +9,8 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.config import CLASSIFICATION, config
 from howler.helper.oauth import fetch_avatar, parse_profile
-from howler.odm.models.user import User
-from howler.odm.models.view import View
+from howler.models.user import User
+from howler.models.view import View
 from howler.utils.str_utils import safe_str
 
 ACCOUNT_USER_MODIFIABLE = ["name", "email", "avatar", "password", "dashboard", "refresh_rate"]
@@ -44,12 +44,12 @@ def get_user(
     as_odm=False,
     version=False,
 ):
-    """Return hit object as either an ODM or Dict"""
-    return datastore().user.get_if_exists(key=id, as_obj=as_odm, version=version)
+    """Return a user as a model or dictionary."""
+    return cast(Any, datastore().user.get_if_exists(key=id, as_obj=as_odm, version=version))
 
 
 def convert_user(user: User) -> dict[str, Any]:
-    """Converts a User ODM into a dict for frontend usage, stripping out private or irrelevant fields.
+    """Convert a User model into a dict for frontend usage, stripping private or irrelevant fields.
 
     Args:
         user (User): The user object to parse
@@ -57,9 +57,10 @@ def convert_user(user: User) -> dict[str, Any]:
     Returns:
         dict: The parsed user data object
     """
+    model_user = cast(Any, user)
     user_data = {
         k: v
-        for k, v in user.as_primitives().items()
+        for k, v in model_user.as_primitives().items()
         if k
         in [
             "classification",
@@ -78,11 +79,11 @@ def convert_user(user: User) -> dict[str, Any]:
     }
 
     user_data["apikeys"] = [
-        (key, value["acl"], value["expiry_date"])
-        for key, value in datastore().user.get_if_exists(user.uname).apikeys.items()
+        (key, value.acl, value.as_primitives(strip_null=False)["expiry_date"])
+        for key, value in cast(Any, datastore().user.get_if_exists(model_user.uname)).apikeys.items()
     ]
 
-    user_data["avatar"] = datastore().user_avatar.get_if_exists(user.uname)
+    user_data["avatar"] = datastore().user_avatar.get_if_exists(model_user.uname)
     user_data["username"] = user_data.pop("uname")
     user_data["is_admin"] = "admin" in user_data["type"]
     user_data["roles"] = list(set(user_data.pop("type")))
@@ -112,7 +113,7 @@ def parse_user_data(  # noqa: C901
             and the user doesn't exist in the database.
 
     Returns:
-        User: The parsed User ODM
+        User: The parsed User model
     """
     if not data or not oauth_provider:
         raise InvalidDataException("Both the JWT and OAuth provider must be supplied")
@@ -201,9 +202,6 @@ def parse_user_data(  # noqa: C901
                 else:
                     logger.info("Creating new user %s", username)
 
-                if avatar:
-                    current_user["avatar"] = avatar
-
                 add_access_control(current_user)
                 storage.user.save(username, current_user)
             # Ensure access_control is always present, even if user data hasn't changed
@@ -230,7 +228,7 @@ def parse_user_data(  # noqa: C901
 
                 view_query = f"owner:{current_user['uname']} AND title:view.assigned_to_me AND type:readonly"
                 if len(storage.view.search(view_query)["items"]) == 0:
-                    new_assigned_view = View(
+                    new_assigned_view = cast(Any, View).validate_howler(
                         {
                             "title": "view.assigned_to_me",
                             "query": f"howler.assignment:{current_user['uname']}",
@@ -253,7 +251,13 @@ def parse_user_data(  # noqa: C901
     else:
         raise AccessDeniedException("This user is not allowed access to the system")
 
-    return User(current_user)
+    return cast(Any, User).validate_howler(
+        {
+            key: value
+            for key, value in current_user.items()
+            if key not in {"id", "avatar"} and not key.startswith("__access_")
+        }
+    )
 
 
 def add_access_control(user: dict[str, Any]):
@@ -322,7 +326,7 @@ def save_user_account(
     data.pop("security_token_enabled", None)
     data.pop("has_password", None)
 
-    data = User(data).as_primitives()
+    data = cast(Any, User).validate_howler(data).as_primitives()
 
     if username != data["uname"]:
         raise AccessDeniedException("You are not allowed to change the username.")

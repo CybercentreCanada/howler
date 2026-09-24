@@ -6,7 +6,6 @@ from urllib.parse import urlparse
 from authlib.integrations.base_client import OAuthError
 from flask import current_app, request
 from passlib.hash import bcrypt
-from pydantic import BaseModel
 
 import howler.services.auth_service as auth_service
 import howler.services.user_service as user_service
@@ -31,8 +30,7 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.config import config
-from howler.models.user import ApiKey as SchemaApiKey
-from howler.odm.models.user import ApiKey, User
+from howler.models.user import ApiKey
 from howler.security import api_login
 from howler.security.utils import generate_random_secret
 from howler.services import jwt_service
@@ -76,7 +74,7 @@ def add_apikey(**kwargs):  # noqa: C901
     """
     user = kwargs["user"]
     storage = datastore()
-    user_data = storage.user.get_if_exists(user["uname"])
+    user_data = cast(Any, storage.user.get_if_exists(user["uname"]))
     apikey_data = request.json
     if not isinstance(apikey_data, dict):
         return bad_request(err="Invalid data format")
@@ -142,9 +140,7 @@ def add_apikey(**kwargs):  # noqa: C901
         if expiry:
             new_key["expiry_date"] = expiry.isoformat()
 
-        cast(Any, user_data).apikeys[key_name] = (
-            cast(Any, SchemaApiKey).validate_howler(new_key) if isinstance(user_data, BaseModel) else ApiKey(new_key)
-        )
+        cast(Any, user_data).apikeys[key_name] = cast(Any, ApiKey).validate_howler(new_key)
     except HowlerException as e:
         return bad_request(err=e.message)
 
@@ -172,7 +168,7 @@ def delete_apikey(name, **kwargs):
     """
     user = kwargs["user"]
     storage = datastore()
-    user_data: User = storage.user.get_if_exists(user["uname"])
+    user_data = storage.user.get_if_exists(user["uname"])
 
     if name not in user_data.apikeys:
         return not_found("Api key does not exist")
@@ -323,7 +319,7 @@ def login(**_):  # noqa: C901
                 token_data, oauth_provider, skip_setup=False, access_token=access_token
             )
 
-            logged_in_uname = cur_user.uname
+            logged_in_uname = cast(Any, cur_user).uname
 
             priv = ["R", "W", "E"]
 
@@ -343,7 +339,7 @@ def login(**_):  # noqa: C901
             if not user_data:
                 raise AuthenticationException("User does not exist, or authentication was invalid")  # noqa: TRY301
 
-            logged_in_uname = user_data.uname
+            logged_in_uname = cast(Any, user_data).uname
 
         else:
             raise AuthenticationException("Not enough information to proceed with authentication")  # noqa: TRY301

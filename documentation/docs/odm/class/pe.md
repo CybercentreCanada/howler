@@ -15,5 +15,3 @@
 | original_file_name | Keyword | Internal name of the file, provided at compile-time. | :material-minus-box-outline: Optional | `None` |
 | pehash | Keyword | A hash of the PE header and data from one or more PE sections. | :material-minus-box-outline: Optional | `None` |
 | product | Keyword | Internal product name of the file, provided at compile-time. | :material-minus-box-outline: Optional | `None` |
-
-

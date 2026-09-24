@@ -11,8 +11,8 @@
 | hostname | Keyword | Hostname of the observer | :material-minus-box-outline: Optional | `None` |
 | ingress | [Ingress](/howler/odm/class/ingress) | Holds information like interface number, name, vlan, and zone to classify ingress traffic | :material-minus-box-outline: Optional | `None` |
 | interface | [Interface](/howler/odm/class/interface) | Interface being observed | :material-minus-box-outline: Optional | `None` |
-| ip | List [IP] | None | :material-checkbox-marked-outline: Yes | `[]` |
-| mac | List [Keyword] | None | :material-checkbox-marked-outline: Yes | `[]` |
+| ip | List [IP] | IP addresses of the observer. | :material-checkbox-marked-outline: Yes | `[]` |
+| mac | List [Keyword] | Mac addresses of the observer. | :material-checkbox-marked-outline: Yes | `[]` |
 | name | Keyword | Custom name of the observer | :material-minus-box-outline: Optional | `None` |
 | product | Keyword | Product name of the observer | :material-minus-box-outline: Optional | `None` |
 | serial_number | Keyword | Observer serial number | :material-minus-box-outline: Optional | `None` |

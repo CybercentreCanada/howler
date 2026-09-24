@@ -20,12 +20,12 @@ import pytest
 import redis
 import requests
 
+from howler.config_models import Config
+from howler.config_models import config as _config
 from howler.datastore.howler_store import HowlerDatastore
 from howler.datastore.store import ESCollection, ESStore
-from howler.odm import random_data
-from howler.odm.models.config import Config
-from howler.odm.models.config import config as _config
 from howler.remote.datatypes.queues.named import NamedQueue
+from howler.sample_data import random_data
 
 original_skip = pytest.skip
 

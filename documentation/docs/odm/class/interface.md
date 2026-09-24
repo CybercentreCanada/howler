@@ -9,5 +9,3 @@
 | :--- | :--- | :--- | :--- | :--- |
 | id | Integer | Interface ID as reported by an observer (typically SNMP interface ID). | :material-minus-box-outline: Optional | `None` |
 | name | Keyword | Name of interface | :material-minus-box-outline: Optional | `None` |
-
-

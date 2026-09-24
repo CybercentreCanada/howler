@@ -8,7 +8,7 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.config import CLASSIFICATION
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.services import action_service, analytic_service, case_service, hit_service
 
 from sentinel.mapping.sentinel_incident import SentinelIncident
@@ -20,7 +20,7 @@ sentinel_api._doc = "Ingest Microsoft Sentinel XDR incidents into Howler"  # typ
 
 logger = get_logger(__file__)
 
-SYSTEM_USER = User(
+SYSTEM_USER = User.model_validate(
     {
         "uname": "system",
         "name": "system",

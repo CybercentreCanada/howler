@@ -20,7 +20,7 @@ omit = [
     "howler/external/*",
     "howler/helper/ws.py",
     "howler/odm/models/*",
-    "howler/odm/random_data.py",
+    "howler/sample_data/random_data.py",
 ]
 
 branch = true
@@ -71,7 +71,7 @@ module = "howler.security"
 disable_error_code = "attr-defined"
 
 [[tool.mypy.overrides]]
-module = "howler.odm.helper"
+module = "howler.sample_data.helper"
 disable_error_code = "union-attr"
 
 [[tool.mypy.overrides]]
@@ -140,9 +140,10 @@ suppress-none-returning = true
 "build_scripts/*" = ["D", "ANN", "S", "N818", "T20", "TRY"]
 "howler/app.py" = ["E402"]
 "howler/odm/random*.py" = ["C901", "S105", "S311", "E402"]
+"howler/sample_data/random*.py" = ["C901", "S105", "S311", "E402"]
 "howler/security/__init__.py" = ["TRY301"]
 "howler/external/*.py" = ["T20"]
-"howler/odm/helper.py" = ["S311"]
+"howler/sample_data/helper.py" = ["S311"]
 "howler/common/classification.py" = ["D", "ANN", "C901", "TRY"]
 "howler/common/iprange.py" = ["D", "ANN", "C901"]
 "howler/common/random_user.py" = ["S311"]

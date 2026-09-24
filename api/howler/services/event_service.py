@@ -1,6 +1,6 @@
 import json
 from hashlib import sha256
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, cast
 
 from opentelemetry import trace
 from prometheus_client import Counter
@@ -8,9 +8,11 @@ from prometheus_client import Counter
 from howler.common.exceptions import HowlerTypeError, HowlerValueError, ResourceExists
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
-from howler.odm.models.ecs.event import ECSEvent
-from howler.odm.models.event import Event
-from howler.odm.models.event import Log as EventLog
+from howler.models import strip_unknown_fields
+from howler.models.ecs.event import ECSEvent
+from howler.models.event import Event
+from howler.models.event import Log as EventLog
+from howler.models.registry import model_registry
 from howler.utils.dict_utils import extra_keys, flatten
 from howler.utils.uid import get_random_id
 
@@ -32,7 +34,7 @@ def exists(id: str) -> bool:
 
 
 def convert_event(data: dict[str, Any], unique: bool, ignore_extra_values: bool = False) -> tuple[Event, list[str]]:
-    """Validate and convert a dictionary to an Event ODM object.
+    """Validate and convert a dictionary to an Event model.
 
     This function performs validation on input data to ensure it can be safely
     converted to an Event object. It handles hash generation, ID assignment,
@@ -45,12 +47,12 @@ def convert_event(data: dict[str, Any], unique: bool, ignore_extra_values: bool 
 
     Returns:
         Tuple containing:
-        - Event: The validated and converted ODM object
+        - Event: The validated and converted Pydantic model
         - list[str]: List of validation warnings (unused fields, deprecated fields)
 
     Raises:
         HowlerValueError: If invalid parameters are provided
-        HowlerTypeError: If the data cannot be converted to an Event ODM object
+        HowlerTypeError: If the data cannot be converted to an Event model
         ResourceExists: If unique=True and an event with the generated ID already exists
     """
     data = flatten(data, odm=Event)
@@ -76,17 +78,19 @@ def convert_event(data: dict[str, Any], unique: bool, ignore_extra_values: bool 
 
         data["howler.data"] = parsed_data
 
+    unused_keys = extra_keys(Event, data)
+    if unused_keys and not ignore_extra_values:
+        raise HowlerValueError(f"Event was created with invalid parameters: {', '.join(unused_keys)}")
+
     try:
-        odm = Event(data, ignore_extra_values=ignore_extra_values)
+        odm = cast(Any, Event).validate_howler(strip_unknown_fields(Event, data) if ignore_extra_values else data)
     except TypeError as e:
         raise HowlerTypeError(str(e), cause=e) from e
 
-    odm_flatten = odm.flat_fields(show_compound=True)
-    unused_keys = extra_keys(Event, data)
-
-    if unused_keys and not ignore_extra_values:
-        raise HowlerValueError(f"Event was created with invalid parameters: {', '.join(unused_keys)}")
-    deprecated_keys = set(key for key in odm_flatten.keys() & data.keys() if odm_flatten[key].deprecated)
+    odm_flatten = model_registry.flat_fields(Event, show_compound=True)
+    deprecated_keys = {
+        key for key in odm_flatten.keys() & data.keys() if getattr(odm_flatten[key].metadata, "deprecated", False)
+    }
 
     warnings = [f"{key} is not currently used by howler." for key in unused_keys]
     warnings.extend(
@@ -98,7 +102,7 @@ def convert_event(data: dict[str, Any], unique: bool, ignore_extra_values: bool 
         if not odm.event.created:
             odm.event.created = "NOW"
     else:
-        odm.event = ECSEvent({"created": "NOW", "id": odm.howler.id})
+        odm.event = cast(Any, ECSEvent).validate_howler({"created": "NOW", "id": odm.howler.id})
 
     if unique and exists(odm.howler.id):
         raise ResourceExists("Resource with id %s already exists" % odm.howler.id)
@@ -141,7 +145,9 @@ def create_event(
         raise ResourceExists(f"Event {id} already exists in datastore")
 
     if user:
-        event.howler.log = [EventLog({"timestamp": "NOW", "explanation": "Created event", "user": user})]
+        cast(Any, event).howler.log = [
+            cast(Any, EventLog).validate_howler({"timestamp": "NOW", "explanation": "Created event", "user": user})
+        ]
 
     CREATED_EVENTS.inc()
     return datastore().event.save(id, event, refresh=refresh)
@@ -160,11 +166,14 @@ def create_events(
     bulk_plan = storage.event.get_bulk_plan()
 
     for event in events:
+        event = cast(Any, event)
         if not overwrite and storage.event.exists(event.howler.id):
             raise ResourceExists("Event %s already exists in datastore" % event.howler.id)
 
         if user:
-            event.howler.log = [EventLog({"timestamp": "NOW", "explanation": "Created event", "user": user})]
+            event.howler.log = [
+                cast(Any, EventLog).validate_howler({"timestamp": "NOW", "explanation": "Created event", "user": user})
+            ]
 
         CREATED_EVENTS.inc()
         if overwrite:

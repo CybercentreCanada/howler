@@ -47,7 +47,7 @@ services:
   # Howler Data Seeder
   howler-data-seeder:
     image: cccs/howler-api:nightly
-    command: python -m howler.odm.random_data all
+    command: python -m howler.sample_data.random_data all
     environment:
       # Database
       - 'HWL_DATASTORE__HOSTS=[{"name": "elastic", "scheme": "http", "host": "elasticsearch:9200"}]'

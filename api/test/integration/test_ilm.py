@@ -13,9 +13,9 @@ import time
 import pytest
 
 from howler.common.loader import DATASTORE_INDEX_PREFIX
+from howler.config_models import ILMIndexConfig
 from howler.datastore.collection import ESCollection
 from howler.datastore.store import ESStore
-from howler.odm.models.config import ILMIndexConfig
 
 logger = logging.getLogger(__name__)
 

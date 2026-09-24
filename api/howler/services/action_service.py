@@ -1,6 +1,6 @@
 import json
 from collections import defaultdict
-from typing import Any, Optional, TypedDict
+from typing import Any, Optional, TypedDict, cast
 
 from flask import Response
 
@@ -11,8 +11,8 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.logging.audit import audit
 from howler.config import config
-from howler.odm.models.action import VALID_TRIGGERS, Action
-from howler.odm.models.user import User
+from howler.models.action import VALID_TRIGGERS, Action
+from howler.models.user import User
 from howler.remote.datatypes.queues.named import NamedQueue
 from howler.utils.constants import TESTING
 from howler.utils.str_utils import sanitize_lucene_query
@@ -77,7 +77,7 @@ def enqueue_action_execution(hit_ids: list[str], trigger: str = "create", user: 
         get_action_queue(trigger).push(
             {
                 "hit_ids": hit_ids,
-                "uname": user.uname if user else None,
+                "uname": cast(Any, user).uname if user else None,
             }
         )
     except Exception:
@@ -112,7 +112,7 @@ def process_action_batch(trigger: str, items: list[TriggeredAction]) -> None:
         query = f"howler.id:({' OR '.join(sanitize_lucene_query(h) for h in unique_ids)})"
 
         try:
-            user = datastore().user.get(uname)
+            user = cast(Any, datastore().user.get(uname))
             bulk_execute_on_query(query, trigger=trigger, user=user)
         except Exception:
             logger.exception("Error processing action batch for trigger=%s user=%s", trigger, uname)
@@ -160,11 +160,12 @@ def bulk_execute_on_query(query: str, trigger: str = "create", user: Optional[Us
     if trigger not in VALID_TRIGGERS:
         raise HowlerValueError(f"{trigger} is not a valid trigger. It must be one of {','.join(VALID_TRIGGERS)}")
 
-    on_trigger_actions: list[Action] = storage.action.search(f"triggers:{sanitize_lucene_query(trigger)}", rows=10000)[
-        "items"
-    ]
+    on_trigger_actions = cast(
+        list[Action], storage.action.search(f"triggers:{sanitize_lucene_query(trigger)}", rows=10000)["items"]
+    )
 
     for action in on_trigger_actions:
+        action = cast(Any, action)
         intersected_query = f"({query}) AND ({action.query})"
 
         if datastore().hit.search(intersected_query, rows=0)["total"] < 1:
@@ -178,7 +179,7 @@ def bulk_execute_on_query(query: str, trigger: str = "create", user: Optional[Us
             if operation.operation_id == "example_plugin":
                 continue
 
-            parsed_data = json.loads(operation.data_json) if operation.data_json else operation.data
+            parsed_data = json.loads(operation.data_json) if operation.data_json else {}
 
             audit(
                 [],
@@ -187,7 +188,7 @@ def bulk_execute_on_query(query: str, trigger: str = "create", user: Optional[Us
                     "operation_id": operation.operation_id,
                     **parsed_data,
                 },
-                user["uname"] if user is not None else "unknown",
+                cast(Any, user).uname if user is not None else "unknown",
                 user,
                 bulk_execute_on_query,
             )
@@ -198,7 +199,7 @@ def bulk_execute_on_query(query: str, trigger: str = "create", user: Optional[Us
             report = actions.execute(
                 operation_id=operation.operation_id,
                 query=intersected_query,
-                user=user,
+                user=cast(Any, user),
                 **parsed_data,
             )
 

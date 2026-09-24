@@ -3,8 +3,8 @@ from typing import Any, Literal, cast, overload
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import SearchException
-from howler.odm.models.analytic import Analytic
-from howler.odm.models.hit import Hit
+from howler.models.hit import Hit
+from howler.models.template import Template
 from howler.utils.str_utils import sanitize_lucene_query
 
 logger = get_logger(__file__)
@@ -19,28 +19,29 @@ def get_matching_templates(
 @overload
 def get_matching_templates(
     hits: list[Hit] | list[dict[str, Any]], as_odm: Literal[True], uname: str | None = None
-) -> list[Analytic]: ...
+) -> list[Template]: ...
 
 
 def get_matching_templates(
     hits: list[Hit] | list[dict[str, Any]], as_odm=False, uname: str | None = None
-) -> list[dict[str, Any]] | list[Analytic]:
+) -> list[dict[str, Any]] | list[Template]:
     """Generate a list of templates matching a given list of analytic names, and optionally a user.
 
     Args:
         hits (list[Hit] | list[dict[str, Any]]]: List of hits, each containing analytic information.
         uname (str | None, optional): Username to filter templates by owner. Defaults to None.
-        as_odm (bool, optional): If True, return results as ODM objects. If False, return as dicts. Defaults to False.
+        as_odm (bool, optional): If True, return model objects. If False, return dicts. Defaults to False.
 
     Returns:
-        list[dict[str, Any]] | list[Analytic]: List of matching templates, either as dicts or Analytic ODM objects.
+        list[dict[str, Any]] | list[Template]: List of matching templates, either as dicts or Template objects.
     """
     if len(hits) < 1:
         return []
 
     analytic_names: set[str] = set()
     for hit in hits:
-        analytic_names.add(f'"{sanitize_lucene_query(hit["howler"]["analytic"])}"')
+        analytic = hit["howler"]["analytic"] if isinstance(hit, dict) else cast(Any, hit).howler.analytic
+        analytic_names.add(f'"{sanitize_lucene_query(analytic)}"')
 
     if len(analytic_names) < 1:
         return []
@@ -51,7 +52,7 @@ def get_matching_templates(
             as_obj=as_odm,
         )["items"]
 
-        return cast(list[dict[str, Any]] | list[Analytic], template_candidates)
+        return cast(list[dict[str, Any]] | list[Template], template_candidates)
     except SearchException:
         logger.exception("Exception on analytic matching")
         return []

@@ -4,7 +4,7 @@ import chevron
 
 from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.loader import datastore
-from howler.odm.models.action import VALID_TRIGGERS
+from howler.models.action import VALID_TRIGGERS
 from howler.services import case_service
 
 OPERATION_ID = "add_to_case"

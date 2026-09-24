@@ -9,22 +9,19 @@ The public API consists of three functions:
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 import chevron
 from opentelemetry import trace
-from pydantic import BaseModel
 
 from howler.common.exceptions import HowlerRuntimeError, InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.config import CORRELATION_QUEUE_NAME
-from howler.models.case import Case as SchemaCase
-from howler.models.case import CaseItem as SchemaCaseItem
-from howler.odm.models.case import Case, CaseItem, CaseRule, RuleIndexTypes
-from howler.odm.models.config import config
-from howler.odm.models.event import Event
-from howler.odm.models.hit import Hit
+from howler.config_models import config
+from howler.models.case import Case, CaseItem, CaseRule, RuleIndexTypes
+from howler.models.event import Event
+from howler.models.hit import Hit
 from howler.remote.datatypes.queues.named import NamedQueue
 from howler.services import case_service, comms_service, search_service
 from howler.utils.str_utils import sanitize_lucene_query
@@ -90,7 +87,7 @@ def _resolve_backing_object(
 
 
 def _add_record_to_case(
-    case: Case | SchemaCase,
+    case: Case,
     case_id: str,
     record: dict,
     rule: CaseRule,
@@ -117,9 +114,7 @@ def _add_record_to_case(
 
     try:
         backing_obj = _resolve_backing_object(item_type, record_id, backing_cache)
-        runtime_case = cast(Any, case)
-
-        parent = case_service.get_parent_from_path(runtime_case, path, create_if_missing=True, persist=False)
+        parent = case_service.get_parent_from_path(case, path, create_if_missing=True, persist=False)
 
         item_data = {
             "type": item_type,
@@ -127,20 +122,18 @@ def _add_record_to_case(
             "parent": parent.id if parent else None,
             "name": name,
         }
-        item = (
-            cast(Any, SchemaCaseItem).validate_howler(item_data) if isinstance(case, BaseModel) else CaseItem(item_data)
-        )
+        item = CaseItem.validate_howler(item_data)
         if item.name is None:
             item.name = item.value
 
-        if case_service.check_conflicts(runtime_case, cast(Any, item)):
+        if case_service.check_conflicts(case, item):
             item.name = f"{item.name} ({item.value})" if item.name else item.value
 
-            if case_service.check_conflicts(runtime_case, cast(Any, item)):
+            if case_service.check_conflicts(case, item):
                 return None
 
         item.classification = backing_obj.classification
-        runtime_case.items.append(item)
+        case.items.append(item)
 
         if case_service.add_backreference(backing_obj, case_id):
             return (item_type, record_id)
@@ -263,7 +256,7 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
 
     # Cases and their backing hit/event objects are fetched once per batch and mutated in
     # memory; they're only written to the datastore after every rule has been evaluated.
-    case_cache: dict[str, Case | None] = {}
+    case_cache: dict[str, Any] = {}
     case_original_item_counts: dict[str, int] = {}
     backing_cache: dict[tuple[Literal["hit", "event"], str], Hit | Event | None] = {}
     dirty_backing_keys: set[tuple[Literal["hit", "event"], str]] = set()
@@ -272,11 +265,11 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
         indexes: list[str] = list(rule.indexes) if rule.indexes else [RuleIndexTypes.HIT]
 
         if case_id not in case_cache:
-            case = ds.case.get(case_id)
-            if case:
-                case_original_item_counts[case_id] = len(case.items)
+            loaded_case = ds.case.get(case_id)
+            if loaded_case:
+                case_original_item_counts[case_id] = len(loaded_case.items)
 
-            case_cache[case_id] = case
+            case_cache[case_id] = loaded_case
 
         case = case_cache[case_id]
         if case is None:
@@ -311,17 +304,21 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
             raise HowlerRuntimeError("Bulk backing record update reported errors while flushing correlation batch")
 
     modified_cases = [
-        case for cid, case in case_cache.items() if case and len(case.items) != case_original_item_counts[cid]
+        cached_case
+        for cid, cached_case in case_cache.items()
+        if cached_case and len(cached_case.items) != case_original_item_counts[cid]
     ]
     bulk_plan = ds.case.get_bulk_plan()
 
     logger.info("Modified cases: %s", len(modified_cases))
     if modified_cases:
-        for case in modified_cases:
-            case_service.recompute_case_metadata(case)
+        for modified_case in modified_cases:
+            case_service.recompute_case_metadata(modified_case)
             # Partial update: only touch fields derived from items, so concurrent user edits
             # to the case (title, summary, rules, ...) aren't clobbered by a stale in-memory copy.
-            bulk_plan.add_update_operation(case.case_id, case, fields=["items", "targets", "threats", "indicators"])
+            bulk_plan.add_update_operation(
+                modified_case.case_id, modified_case, fields=["items", "targets", "threats", "indicators"]
+            )
 
     if bulk_plan.empty:
         logger.info(
@@ -333,8 +330,8 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
         if not ds.case.bulk(bulk_plan, refresh="wait_for"):
             raise HowlerRuntimeError("Bulk case update reported errors while flushing correlation batch")
 
-    for case in modified_cases:
-        comms_service.emit("cases", {"case": case.as_primitives()})
+    for modified_case in modified_cases:
+        comms_service.emit("cases", {"case": modified_case.as_primitives()})
 
     return added
 

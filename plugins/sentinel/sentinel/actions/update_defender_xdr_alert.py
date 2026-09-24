@@ -2,9 +2,9 @@ import requests
 from howler.common.exceptions import HowlerRuntimeError
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
-from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import Assessment, Status
+from howler.models.action import VALID_TRIGGERS
+from howler.models.hit import Hit
+from howler.models.howler_data import Assessment, Status
 
 from sentinel.utils.tenant_utils import get_token
 
@@ -75,7 +75,7 @@ def execute(query: str, **kwargs):
     for hit in hits:
         if hit.azure and hit.azure.tenant_id:
             tenant_id = hit.azure.tenant_id
-        elif hit.organization.id:
+        elif hit.organization and hit.organization.id:
             tenant_id = hit.organization.id
         else:
             report.append(

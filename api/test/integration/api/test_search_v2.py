@@ -4,8 +4,8 @@ from typing import cast
 import pytest
 
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.models.hit import Hit
-from howler.odm.random_data import (
+from howler.models.hit import Hit
+from howler.sample_data.random_data import (
     create_hits,
     create_overviews,
     create_templates,

@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 
-from howler import odm
 from howler.common.loader import datastore
 from howler.datastore.types import SearchResult
-from howler.odm.models.hit import Hit
+from howler.models.fields import DATEFORMAT
+from howler.models.hit import Hit
+from pydantic import BaseModel
 from pyspark.sql.types import StructType
 
 from sync.iceberg.build import build_schema
@@ -35,16 +36,16 @@ def get_upserted_hits(
     return res
 
 
-def get_model_struct_schema(model: type[odm.Model]) -> StructType:
-    """Get the schema for the odm model structure."""
+def get_model_struct_schema(model: type[BaseModel]) -> StructType:
+    """Get the schema for a Pydantic model structure."""
     schema = build_schema(model)
     return schema
 
 
 def _range_query_from_interval(data_interval_start: datetime | None, data_interval_end: datetime | None) -> str:
     """Construct a range query string for the specified time interval."""
-    query_range_start: str = _to_utc(data_interval_start).strftime(odm.DATEFORMAT) if data_interval_start else "*"
-    query_range_end: str = _to_utc(data_interval_end).strftime(odm.DATEFORMAT) if data_interval_end else "*"
+    query_range_start: str = _to_utc(data_interval_start).strftime(DATEFORMAT) if data_interval_start else "*"
+    query_range_end: str = _to_utc(data_interval_end).strftime(DATEFORMAT) if data_interval_end else "*"
 
     return f"[{query_range_start} TO {query_range_end}]"
 

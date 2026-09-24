@@ -1,11 +1,9 @@
 from datetime import datetime, timedelta
-from typing import cast
 from unittest import mock
 
 from mock import MagicMock
 
 from howler.config import config
-from howler.odm.models.user import User
 from howler.services import jwt_service
 
 time = datetime.now() + timedelta(seconds=10)
@@ -22,10 +20,13 @@ def test_config_service_config_on_oauth():
 
     request.headers = {"Authorization": "Bearer ."}
 
-    with mock.patch("howler.services.config_service.request", request):
+    with (
+        mock.patch("howler.services.config_service.request", request),
+        mock.patch("howler.services.config_service.list_all_fields", return_value={}),
+    ):
         from howler.services import config_service
 
-        result = config_service.get_configuration(user=cast(User, None), discovery_url=None)
+        result = config_service.get_configuration(user=None, discovery_url=None)
 
         assert result["configuration"]["auth"]["max_apikey_duration_amount"] <= 10
         assert result["configuration"]["auth"]["max_apikey_duration_unit"] <= "seconds"
@@ -39,12 +40,13 @@ def test_config_service_apps_empty_when_eureka_disabled():
     request = MagicMock()
     request.headers = {"Authorization": "Bearer ."}
 
-    with mock.patch("howler.services.config_service.request", request):
+    with (
+        mock.patch("howler.services.config_service.request", request),
+        mock.patch("howler.services.config_service.list_all_fields", return_value={}),
+    ):
         from howler.services import config_service
 
-        result = config_service.get_configuration(
-            user=cast(User, None), discovery_url="https://discover.example.com/eureka/apps"
-        )
+        result = config_service.get_configuration(user=None, discovery_url="https://discover.example.com/eureka/apps")
 
         assert result["configuration"]["ui"]["apps"] == []
 

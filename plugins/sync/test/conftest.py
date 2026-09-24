@@ -7,9 +7,9 @@ from howler.common import loader
 from howler.config import config
 from howler.datastore.howler_store import HowlerDatastore
 from howler.datastore.store import ESCollection, ESStore
-from howler.odm import random_data
-from howler.odm.models.ecs.client import Client
-from howler.odm.models.howler_data import Log
+from howler.sample_data import random_data
+from howler.models.ecs.client import Client
+from howler.models.howler_data import Log
 
 sys.path.insert(0, str(Path.cwd()))
 
@@ -56,14 +56,18 @@ def hits_with_timestamps(datastore_connection, current_time):
     lookups = loader.get_lookups()
     users = datastore_connection.user.search("*:*")["items"]
 
-    hits = [random_data.generate_useful_hit(lookups, users) for _ in range(20)]
+    hits = []
+    for _ in range(20):
+        data = random_data.generate_useful_hit(lookups, users).as_primitives()
+        data.pop("__index", None)
+        hits.append(datastore_connection.hit.model_class.validate_howler(data))
 
     for i, hit in enumerate(hits):
         # Set the timestamp of the hit to a specific number of days ago, cycling through 0 to 3 days ago
         days_ago = i % 4
         hit.timestamp = (current_time - timedelta(days=days_ago)).isoformat()
         hit.howler.log = [
-            Log(
+            Log.model_validate(
                 {
                     "timestamp": (current_time - timedelta(days=4)).isoformat(),
                     "explanation": "test first log entry",
@@ -73,11 +77,11 @@ def hits_with_timestamps(datastore_connection, current_time):
         ]
 
         if "source" not in hit or hit.source is None:
-            hit.source = Client({"ip": "1.1.1.1"})
+            hit.source = Client.model_validate({"ip": "1.1.1.1"})
 
     for hit in hits[: len(hits) // 2]:
         hit.howler.log.append(
-            Log(
+            Log.model_validate(
                 {
                     "timestamp": (current_time - timedelta(days=2)).isoformat(),
                     "explanation": "test log entry",

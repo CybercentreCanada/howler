@@ -8,5 +8,3 @@
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
 | type | Keyword | Machine type of the host machine. | :material-minus-box-outline: Optional | `None` |
-
-

@@ -9,7 +9,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | address | Keyword | Some event client addresses are defined ambiguously. The event will sometimes list an IP, a domain or a unix socket. You should always store the raw address in the .address field. | :material-minus-box-outline: Optional | `None` |
 | autonomous_systems | [AS](/howler/odm/class/as) | Collection of connected Internal Protocol routing prefixes | :material-minus-box-outline: Optional | `None` |
-| bytes | Integer | Bytes sent from the client to the server. | :material-minus-box-outline: Optional | `None` |
+| bytes | Long | Bytes sent from the client to the server. | :material-minus-box-outline: Optional | `None` |
 | domain | Keyword | The domain name of the client system. | :material-minus-box-outline: Optional | `None` |
 | geo | [Geo](/howler/odm/class/geo) | Geo fields can carry data about a specific location related to an event. | :material-minus-box-outline: Optional | `None` |
 | ip | IP | IP address of the client (IPv4 or IPv6). | :material-minus-box-outline: Optional | `None` |

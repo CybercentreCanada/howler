@@ -157,7 +157,7 @@ jobs:
       - name: Generate random data, user accounts
         working-directory: api
         run: |
-          poetry run python -m howler.odm.random_data
+          poetry run python -m howler.sample_data.random_data
 
       - name: Run tests
         id: tests

@@ -1,17 +1,17 @@
-from typing import Optional
+from typing import Any, Optional, cast
 
 import howler.helper.hit as hit_helper
 from howler.common.loader import datastore
 from howler.datastore.operations import OdmHelper
-from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import (
+from howler.models.action import VALID_TRIGGERS
+from howler.models.hit import Hit
+from howler.models.howler_data import (
     Assessment,
     AssessmentEscalationMap,
     Escalation,
     Status,
 )
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.utils.str_utils import sanitize_lucene_query
 
 OPERATION_ID = "demote"
@@ -97,7 +97,7 @@ def execute(
                     *hit_helper.assess_hit(assessment, rationale),
                     odm_helper.update(
                         "howler.assignment",
-                        user.get("uname", "automation") if user else "automation",
+                        cast(Any, user).uname if user else "automation",
                     ),
                     odm_helper.update("howler.status", Status.RESOLVED),
                 ],
@@ -151,7 +151,7 @@ def specification():
                         "escalation:miss": [
                             assessment
                             for assessment in Assessment.list()
-                            if AssessmentEscalationMap[assessment] == Escalation.MISS
+                            if AssessmentEscalationMap[Assessment(assessment).name] == Escalation.MISS
                         ],
                         "escalation:alert": [],
                         "escalation:hit": [],

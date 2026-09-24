@@ -7,11 +7,10 @@ from typing import Any, Literal, Optional, Union, cast, overload
 
 from opentelemetry import trace
 from prometheus_client import Counter
-from pydantic import BaseModel
 
 import howler.services.comms_service as comms_service
 from howler.actions.promote import Escalation
-from howler.common.exceptions import HowlerTypeError, HowlerValueError, NotFoundException, ResourceExists
+from howler.common.exceptions import HowlerValueError, NotFoundException, ResourceExists
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
 from howler.datastore.collection import ESCollection
@@ -28,11 +27,12 @@ from howler.helper.hit import (
     vote_hit,
 )
 from howler.helper.workflow import Transition, Workflow
+from howler.models.base import strip_unknown_fields
+from howler.models.ecs.event import ECSEvent
+from howler.models.hit import Hit
+from howler.models.howler_data import Assessment, HitOperationType, HitStatusTransition, Log, Status
 from howler.models.registry import model_registry
-from howler.odm.models.ecs.event import ECSEvent
-from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import HitOperationType, HitStatusTransition, Log, Status
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.services import action_service, analytic_service, dossier_service, overview_service, template_service
 from howler.utils.dict_utils import extra_keys, flatten
 from howler.utils.uid import get_random_id
@@ -234,7 +234,7 @@ def _modifies_prop(prop: str, operations: list[OdmUpdateOperation]) -> bool:
 def convert_hit(  # noqa: C901
     data: dict[str, Any], unique: bool, ignore_extra_values: bool = False
 ) -> tuple[Hit, list[str]]:
-    """Validate and convert a dictionary to a Hit ODM object.
+    """Validate and convert a dictionary to a Hit model.
 
     This function performs comprehensive validation on input data to ensure it can be
     safely converted to a Hit object. It handles hash generation, ID assignment,
@@ -249,12 +249,12 @@ def convert_hit(  # noqa: C901
 
     Returns:
         Tuple containing:
-        - Hit: The validated and converted ODM object
+        - Hit: The validated and converted model
         - list[str]: List of validation warnings (unused fields, deprecated fields, naming issues)
 
     Raises:
         HowlerValueError: If invalid parameters are provided or naming conventions are violated
-        HowlerTypeError: If the data cannot be converted to a Hit ODM object
+        HowlerTypeError: If the data cannot be converted to a Hit model
         ResourceExists: If unique=True and a hit with the generated ID already exists
 
     Note:
@@ -289,18 +289,25 @@ def convert_hit(  # noqa: C901
         data["howler.data"] = parsed_data
 
     # TODO: This is a really strange double-validation check we should look to refactor
-    try:
-        odm = Hit(data, ignore_extra_values=ignore_extra_values)
-    except TypeError as e:
-        raise HowlerTypeError(str(e), cause=e) from e
+    hit_type = cast(Any, datastore().hit.model_class)
+    if ignore_extra_values:
+        odm = hit_type.validate_howler(strip_unknown_fields(hit_type, data))
+    else:
+        unused_keys = extra_keys(hit_type, data)
+        if unused_keys:
+            raise HowlerValueError(f"Hit was created with invalid parameters: {', '.join(sorted(unused_keys))}")
+        odm = hit_type.validate_howler(data)
 
     # Check for deprecated field and unused fields
-    odm_flatten = odm.flat_fields(show_compound=True)
-    unused_keys = extra_keys(Hit, data)
+    odm_flatten = model_registry.flat_fields(type(odm), show_compound=True)
+    unused_keys = extra_keys(type(odm), data)
+    odm = cast(Any, odm)
 
-    if unused_keys and not ignore_extra_values:
-        raise HowlerValueError(f"Hit was created with invalid parameters: {', '.join(unused_keys)}")
-    deprecated_keys = set(key for key in odm_flatten.keys() & data.keys() if odm_flatten[key].deprecated)
+    deprecated_keys = {
+        key
+        for key in odm_flatten.keys() & data.keys()
+        if (metadata := odm_flatten[key].metadata) is not None and metadata.deprecated
+    }
 
     warnings = [f"{key} is not currently used by howler." for key in unused_keys]
     warnings.extend(
@@ -320,7 +327,7 @@ def convert_hit(  # noqa: C901
         )
 
     if odm.howler.assessment:
-        target_escalation = AssessmentEscalationMap[odm.howler.assessment]
+        target_escalation = AssessmentEscalationMap[Assessment(odm.howler.assessment).name]
         if odm.howler.escalation != target_escalation:
             warnings.append(
                 f"Hits with assessment {odm.howler.assessment} must also have escalation set to {target_escalation}."
@@ -336,12 +343,12 @@ def convert_hit(  # noqa: C901
         if not odm.event.created:
             odm.event.created = "NOW"
     else:
-        odm.event = ECSEvent({"created": "NOW", "id": odm.howler.id})
+        odm.event = cast(Any, ECSEvent).validate_howler({"created": "NOW", "id": odm.howler.id})
 
     if unique and exists(odm.howler.id):
         raise ResourceExists("Resource with id %s already exists" % odm.howler.id)
 
-    return odm, warnings
+    return cast(Hit, odm), warnings
 
 
 @tracer.start_as_current_span(f"{__name__}.exists")
@@ -398,7 +405,7 @@ def get_hit(id: str, as_odm=False, version=False):
         Hit object (if as_odm=True) or dictionary representation of the hit.
         Returns None if the hit doesn't exist.
     """
-    return datastore().hit.get_if_exists(key=id, as_obj=as_odm, version=version)
+    return cast(Any, datastore().hit.get_if_exists(key=id, as_obj=as_odm, version=version))
 
 
 CREATED_HITS = Counter(
@@ -437,10 +444,13 @@ def create_hit(
     if not skip_exists and exists(id):
         raise ResourceExists(f"Hit {id} already exists in datastore")
 
+    hit_data = cast(Any, hit)
     if user:
-        hit.howler.log = [Log({"timestamp": "NOW", "explanation": "Created hit", "user": user})]
+        hit_data.howler.log = [
+            cast(Any, Log).validate_howler({"timestamp": "NOW", "explanation": "Created hit", "user": user})
+        ]
 
-    CREATED_HITS.labels(hit.howler.analytic).inc()
+    CREATED_HITS.labels(hit_data.howler.analytic).inc()
     return datastore().hit.save(id, hit, refresh=refresh)
 
 
@@ -457,17 +467,20 @@ def create_hits(
     bulk_plan = storage.hit.get_bulk_plan()
 
     for hit in hits:
-        if not overwrite and storage.hit.exists(hit.howler.id):
-            raise ResourceExists("Hit %s already exists in datastore" % hit.howler.id)
+        hit_data = cast(Any, hit)
+        if not overwrite and storage.hit.exists(hit_data.howler.id):
+            raise ResourceExists("Hit %s already exists in datastore" % hit_data.howler.id)
 
         if user:
-            hit.howler.log = [Log({"timestamp": "NOW", "explanation": "Created hit", "user": user})]
+            hit_data.howler.log = [
+                cast(Any, Log).validate_howler({"timestamp": "NOW", "explanation": "Created hit", "user": user})
+            ]
 
-        CREATED_HITS.labels(hit.howler.analytic).inc()
+        CREATED_HITS.labels(hit_data.howler.analytic).inc()
         if overwrite:
-            bulk_plan.add_index_operation(hit.howler.id, hit)
+            bulk_plan.add_index_operation(hit_data.howler.id, hit)
         else:
-            bulk_plan.add_insert_operation(hit.howler.id, hit)
+            bulk_plan.add_insert_operation(hit_data.howler.id, hit)
 
     return storage.hit.bulk(bulk_plan, refresh=refresh)
 
@@ -516,7 +529,7 @@ def overwrite_hits(hits: list[Hit], refresh: str | None = None) -> bool:
     bulk_plan = storage.hit.get_bulk_plan()
 
     for hit in hits:
-        bulk_plan.add_index_operation(hit.howler.id, hit)
+        bulk_plan.add_index_operation(cast(Any, hit).howler.id, hit)
 
     return storage.hit.bulk(bulk_plan, refresh=refresh)
 
@@ -581,11 +594,8 @@ def _update_hit(
     else:
         current_hit = cast(Hit, get_hit(hit_id, as_odm=True))
 
-    hit_fields = (
-        model_registry.flat_fields(type(current_hit))
-        if isinstance(current_hit, BaseModel)
-        else current_hit.flat_fields()
-    )
+    hit_fields = model_registry.flat_fields(type(current_hit))
+    current_hit = cast(Any, current_hit)
     for operation in operations:
         if not operation:
             continue
@@ -594,7 +604,7 @@ def _update_hit(
             is_list = hit_fields[operation.key].multivalued
             try:
                 previous_value = current_hit[operation.key]
-            except (TypeError, KeyError):
+            except (AttributeError, TypeError, KeyError):
                 previous_value = None
         except KeyError:
             key = next(key for key in hit_fields if key.startswith(operation.key))
@@ -637,9 +647,9 @@ def _update_hit(
 
     datastore().hit.update(hit_id, final_operations, version, refresh=refresh)
     # Need to fetch the new data of the hit for the comms_service
-    data, _version = datastore().hit.get(hit_id, as_obj=True, version=True) or (None, None)
+    data, _version = cast(tuple[Hit | None, str | None], datastore().hit.get(hit_id, as_obj=True, version=True))
     if data and _version:
-        comms_service.emit("hits", {"hit": data.as_primitives(), "version": _version})
+        comms_service.emit("hits", {"hit": cast(Any, data).as_primitives(), "version": _version})
 
     return data, _version
 
@@ -704,7 +714,7 @@ def transition_hit(
     # Apply updates if any were generated by the workflow
     updated_hit: Hit | None = None
     if updates:
-        updated_hit, new_version = _update_hit(hit_id, updates, user.uname, version=version, refresh=refresh)
+        updated_hit, new_version = _update_hit(hit_id, updates, cast(Any, user).uname, version=version, refresh=refresh)
 
     # Execute bulk actions for transitions that require them
     # These transitions need additional processing beyond the workflow
@@ -721,7 +731,7 @@ def transition_hit(
 
         if transition == HitStatusTransition.ASSESS:
             # For assessments, determine promotion/demotion based on escalation level
-            new_escalation = AssessmentEscalationMap[kwargs["assessment"]]  # pyright: ignore[reportInvalidTypeArguments]
+            new_escalation = AssessmentEscalationMap[Assessment(kwargs["assessment"]).name]
             trigger = "promote" if new_escalation == Escalation.EVIDENCE else "demote"
         elif transition == HitStatusTransition.RE_EVALUATE:
             # Re-evaluation always promotes the hit
@@ -734,15 +744,19 @@ def transition_hit(
         datastore().hit.commit()
 
         # Enqueue action execution for all hits
-        action_service.enqueue_action_execution([hit_id], trigger=trigger, user=user)
+        action_service.enqueue_action_execution([hit_id], trigger=trigger, user=cast(Any, user))
 
         # Emit events for processed hit to notify other systems
-        updated_hit, new_version = datastore().hit.get(hit_id, as_obj=True, version=True)
+        updated_hit, new_version = cast(
+            tuple[Hit | None, str | None], datastore().hit.get(hit_id, as_obj=True, version=True)
+        )
         comms_service.emit(
-            "hits", {"hit": updated_hit.as_primitives() if updated_hit else None, "version": new_version}
+            "hits", {"hit": cast(Any, updated_hit).as_primitives() if updated_hit else None, "version": new_version}
         )
 
-        updated_hit, new_version = datastore().hit.get(hit_id, as_obj=True, version=True)
+        updated_hit, new_version = cast(
+            tuple[Hit | None, str | None], datastore().hit.get(hit_id, as_obj=True, version=True)
+        )
     return updated_hit, new_version
 
 
@@ -834,16 +848,19 @@ def search(
     Returns:
         HitSearchResult containing the matching hits and metadata
     """
-    return datastore().hit.search(
-        query=query,
-        offset=offset,
-        rows=rows,
-        sort=sort,
-        fl=fl,
-        timeout=timeout,
-        deep_paging_id=deep_paging_id,
-        track_total_hits=track_total_hits,
-        as_obj=as_obj,
+    return cast(
+        Any,
+        datastore().hit.search(
+            query=query,
+            offset=offset,
+            rows=rows,
+            sort=sort,
+            fl=fl,
+            timeout=timeout,
+            deep_paging_id=deep_paging_id,
+            track_total_hits=track_total_hits,
+            as_obj=as_obj,
+        ),
     )
 
 
@@ -908,6 +925,7 @@ def augment_metadata(data: list[dict[str, Any]] | dict[str, Any] | None, metadat
         This function modifies the input data in-place, adding metadata fields.
         Templates are filtered based on user permissions (global or owned by user).
     """
+    username = cast(Any, user).uname
     if isinstance(data, list):
         hits = data
     elif data is not None:
@@ -923,7 +941,7 @@ def augment_metadata(data: list[dict[str, Any]] | dict[str, Any] | None, metadat
     logger.debug("Augmenting %s hits with %s", len(hits), ",".join(metadata))
 
     if "template" in metadata:
-        template_candidates = template_service.get_matching_templates(hits, as_odm=False, uname=user.uname)
+        template_candidates = template_service.get_matching_templates(hits, as_odm=False, uname=username)
 
         logger.debug("\tRetrieved %s matching templates", len(template_candidates))
 
@@ -947,20 +965,20 @@ def augment_metadata(data: list[dict[str, Any]] | dict[str, Any] | None, metadat
                 (
                     analytic
                     for analytic in matched_analytics
-                    if analytic.name.lower() == hit["howler"]["analytic"].lower()
+                    if cast(Any, analytic).name.lower() == hit["howler"]["analytic"].lower()
                 ),
                 None,
             )
 
-            hit["__analytic"] = matched_analytic.as_primitives() if matched_analytic else None
+            hit["__analytic"] = cast(Any, matched_analytic).as_primitives() if matched_analytic else None
 
     if "dossiers" in metadata:
         dossiers: list[dict[str, Any]] = datastore().dossier.search(
-            f"type:global OR owner:{user.uname}",
+            f"type:global OR owner:{username}",
             as_obj=False,
             # TODO: Eventually implement caching here
             rows=1000,
         )["items"]
 
         for hit in hits:
-            hit["__dossiers"] = dossier_service.get_matching_dossiers(hit, dossiers, username=user.uname)
+            hit["__dossiers"] = dossier_service.get_matching_dossiers(hit, dossiers, username=username)

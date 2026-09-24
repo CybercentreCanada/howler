@@ -2,14 +2,14 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from howler.config_models import RetentionRule
 from howler.cronjobs import retention as retention_cronjob
 from howler.cronjobs.retention import _execute_rules, _find_analytics_with_hits, _remove_analytics_without_hits
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm import random_data
-from howler.odm.helper import EXAMPLE_ANALYTICS
-from howler.odm.models.analytic import Analytic
-from howler.odm.models.config import RetentionRule
-from howler.odm.randomizer import random_model_obj
+from howler.models.analytic import Analytic
+from howler.sample_data import random_data
+from howler.sample_data.helper import EXAMPLE_ANALYTICS
+from howler.sample_data.randomizer import random_model_obj
 
 
 @pytest.fixture(scope="function")

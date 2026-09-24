@@ -7,25 +7,18 @@ from elastic_transport import ApiResponseMeta
 from flask import Flask
 
 from howler.datastore.exceptions import SearchException, SearchRetryException
-from howler.odm.base import List, Optional, Text
+from howler.models.fields import text
+from howler.models.registry import field_metadata
+from howler.models.user import User
 from howler.services import fuzzy_service
 from howler.services.fuzzy_service import (
     _classify_boosted_fields,
     _detect_token_type,
     _escape_query_string,
     _get_ip_typed_fields,
-    _resolve_field_type,
     build_fuzzy_query,
     fuzzy_search,
 )
-
-
-class TestResolveFieldType:
-    def test_unwraps_optional_list_to_leaf_type(self):
-        """Nested Optional/List wrappers should resolve to the leaf field class."""
-        field = Optional(List(Text()))
-
-        assert _resolve_field_type(field) is Text
 
 
 class TestClassifyBoostedFields:
@@ -40,16 +33,16 @@ class TestClassifyBoostedFields:
         _classify_boosted_fields.cache_clear()
 
     def test_classifies_text_field_type(self, monkeypatch):
-        """Text ODM fields should be classified as ES text."""
-
-        class FakeHitModel:
-            @staticmethod
-            def flat_fields():
-                return {"fake.text": Text()}
+        """Text fields from the new registry should be classified as ES text."""
 
         _classify_boosted_fields.cache_clear()
         monkeypatch.setattr(fuzzy_service, "FIELD_BOOSTS", {"hit": {"fake.text": 2}})
-        monkeypatch.setattr("howler.odm.models.hit.Hit", FakeHitModel)
+        metadata = field_metadata(text())
+        monkeypatch.setattr(
+            fuzzy_service.model_registry,
+            "flat_fields",
+            lambda _model: {"fake.text": SimpleNamespace(metadata=metadata)},
+        )
 
         result = _classify_boosted_fields()
 
@@ -68,7 +61,7 @@ class TestDetectTokenType:
         assert _detect_token_type("fe80:0000:0000:0000:0204:61ff:fe9d:f156") == "ip"
 
     def test_ip_typed_fields_detected(self):
-        """Verify dynamic IP field detection finds known IP fields from the ODM models."""
+        """Verify dynamic IP field detection finds known IP fields from the model registry."""
         ip_fields = _get_ip_typed_fields()
         assert "related.ip" in ip_fields
         assert "source.ip" in ip_fields or "destination.ip" in ip_fields
@@ -368,7 +361,16 @@ class TestFuzzyEndpointAudit:
         """Fuzzy endpoint should emit an audit event with normalized query and index list."""
         from howler.api.v2.fuzzy import fuzzy_search as fuzzy_endpoint
 
-        user = {"uname": "audit_user", "type": ["admin", "user"], "api_quota": 1000, "access_control": "ac:TLP:W"}
+        user = User.model_validate(
+            {
+                "uname": "audit_user",
+                "name": "Audit User",
+                "password": "test",
+                "type": ["admin", "user"],
+                "api_quota": 1000,
+                "access_control": "ac:TLP:W",
+            }
+        )
         audit_mock = MagicMock()
         fuzzy_search_mock = MagicMock(return_value={"offset": 0, "rows": 0, "total": 0, "items": []})
 
@@ -396,7 +398,16 @@ class TestFuzzyEndpointAudit:
         """Invalid empty query should fail before the endpoint emits an audit event."""
         from howler.api.v2.fuzzy import fuzzy_search as fuzzy_endpoint
 
-        user = {"uname": "audit_user", "type": ["admin", "user"], "api_quota": 1000, "access_control": "ac:TLP:W"}
+        user = User.model_validate(
+            {
+                "uname": "audit_user",
+                "name": "Audit User",
+                "password": "test",
+                "type": ["admin", "user"],
+                "api_quota": 1000,
+                "access_control": "ac:TLP:W",
+            }
+        )
         audit_mock = MagicMock()
 
         monkeypatch.setattr("howler.security.auth_service.bearer_auth", lambda *_args, **_kwargs: (user, ["R"]))

@@ -1,16 +1,14 @@
 """Unit tests for the ingest API endpoint (howler.api.v2.ingest)."""
 
 import uuid
-from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask, Response
 
 from howler.common.loader import datastore
-from howler.odm import Model
-from howler.odm.models.user import User
-from howler.odm.randomizer import random_model_obj
+from howler.models.user import User
+from howler.sample_data.randomizer import random_model_obj
 
 
 @pytest.fixture(scope="module")
@@ -21,7 +19,7 @@ def request_context():
 
 
 def _build_user(user_type: list[str] | None = None) -> User:
-    user_data: User = random_model_obj(cast(Model, User))
+    user_data: User = random_model_obj(User)
     user_data.type = user_type or ["admin", "user"]
     user_data.uname = f"test_{uuid.uuid4().hex[:12]}"
     user_data.api_quota = 1000
@@ -608,7 +606,6 @@ class TestIngestionQueueing:
 class TestOverwrite:
     """Tests for the overwrite endpoint."""
 
-    @patch("howler.api.v2.ingest.INDEXES", {"hit": None})
     @patch("howler.api.v2.ingest.datastore")
     @patch("howler.security.auth_service")
     def test_overwrite_success(self, mock_auth_service, mock_ds, request_context: Flask):
@@ -622,6 +619,7 @@ class TestOverwrite:
             ({"howler": {"id": "hit-001", "analytic": "B"}, "event": {"kind": "alert"}}, "v2"),
         ]
         mock_ds.return_value.__getitem__.return_value.save.return_value = True
+        mock_ds.return_value.__getitem__.return_value.model_class = None
 
         with request_context.test_request_context(
             method="PATCH",

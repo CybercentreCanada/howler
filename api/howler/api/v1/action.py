@@ -1,4 +1,5 @@
 import json
+from typing import Any, cast
 
 from flask import Response, request
 
@@ -10,8 +11,8 @@ from howler.common.loader import datastore
 from howler.common.logging.audit import audit
 from howler.common.swagger import generate_swagger_docs
 from howler.config import CLASSIFICATION
-from howler.odm.models.action import Action
-from howler.odm.models.user import User
+from howler.models.action import Action
+from howler.models.user import User
 from howler.security import api_login
 from howler.services import action_service
 
@@ -88,9 +89,9 @@ def add_action(user: User, **kwargs) -> Response:
         return error
 
     try:
-        new_action["owner_id"] = user.uname
+        new_action["owner_id"] = cast(Any, user).uname
 
-        action_obj = Action(new_action)
+        action_obj = cast(Any, Action).validate_howler(new_action)
 
         ds = datastore()
         ds.action.save(action_obj.action_id, action_obj, refresh=refresh)
@@ -148,7 +149,7 @@ def update_action(id: str, user: User, **kwargs) -> Response:
     if not existing_action:
         return not_found(err="The specified automation does not exist")
 
-    if "automation_advanced" not in user.type and updated_action.get("triggers", []) != existing_action.get(
+    if "automation_advanced" not in cast(Any, user).type and updated_action.get("triggers", []) != existing_action.get(
         "triggers", []
     ):
         return forbidden(err="Updating triggers requires the role 'automation_advanced'.")
@@ -163,7 +164,7 @@ def update_action(id: str, user: User, **kwargs) -> Response:
         return error
 
     try:
-        action_obj = Action(updated_action)
+        action_obj = cast(Any, Action).validate_howler(updated_action)
         action_obj.action_id = id
 
         ds.action.save(action_obj.action_id, action_obj, version=server_version, refresh=refresh)
@@ -199,9 +200,9 @@ def delete_action(id: str, user: User, **kwargs) -> Response:
     if not result["total"]:
         return not_found(err="Action does not exist")
 
-    action: Action = result["items"][0]
+    action = cast(Any, result["items"][0])
 
-    if action.owner_id != user.uname and "admin" not in user.type:
+    if action.owner_id != cast(Any, user).uname and "admin" not in cast(Any, user).type:
         return forbidden(err="You do not have the permissions necessary to delete this action.")
 
     try:

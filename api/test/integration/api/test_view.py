@@ -4,8 +4,8 @@ from typing import Any
 import pytest
 
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.models.view import View
-from howler.odm.random_data import create_views, wipe_views
+from howler.models.view import View
+from howler.sample_data.random_data import create_views, wipe_views
 from test.conftest import APIError, get_api_data
 
 

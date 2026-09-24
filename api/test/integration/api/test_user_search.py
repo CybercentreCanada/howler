@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from howler.odm.random_data import create_users, wipe_users
+from howler.sample_data.random_data import create_users, wipe_users
 from test.conftest import APIError, get_api_data
 
 

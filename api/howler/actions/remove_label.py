@@ -2,9 +2,10 @@ from typing import Optional
 
 from howler.common.loader import datastore
 from howler.datastore.operations import OdmHelper
-from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import Label
+from howler.models.action import VALID_TRIGGERS
+from howler.models.hit import Hit
+from howler.models.howler_data import Label
+from howler.models.registry import model_registry
 from howler.utils.str_utils import sanitize_lucene_query
 
 hit_helper = OdmHelper(Hit)
@@ -13,7 +14,7 @@ OPERATION_ID = "remove_label"
 MAX_HITS_BASIC = 20
 MAX_HITS_ADVANCED = 1000
 
-CATEGORIES = list(Label.fields().keys())
+CATEGORIES = list(model_registry.fields(Label))
 
 
 def execute(query: str, category: str = "generic", label: Optional[str] = None, **kwargs):

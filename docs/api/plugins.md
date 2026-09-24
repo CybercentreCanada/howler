@@ -1,6 +1,16 @@
 # Howler Plugin Development Guide
 
-This guide explains how to create custom plugins for Howler to extend its functionality with additional routes, actions, ODM modifications, and integrations.
+This guide explains how to create custom plugins for Howler with additional routes, actions, typed model extensions, and integrations.
+
+## Migration note: Pydantic/DSL model extensions
+
+Plugins extending a registered collection must declare fields through
+`modules.models.declare_extensions` and define embedded values with `HowlerEmbeddedModel` and
+the `howler.models` field builders. Legacy `modules.odm.modify_odm` hooks are no longer executed.
+Howler rejects a legacy-only extension at startup.
+Update plugin action, ingest, and sync imports from `howler.odm.models` to `howler.models`
+before deploying the Elasticsearch 9 application cutover. The stored fields and API output
+remain compatible; plugin Python model imports and extension hooks require this migration.
 
 ## Plugin Structure
 
@@ -16,7 +26,7 @@ plugin_name/
 │   │   └── *.py
 │   ├── routes/            # API routes (optional)
 │   │   └── *.py
-│   └── odm/               # ODM modifications (optional)
+│   └── models/            # Typed model extensions (optional)
 │       └── *.py
 ├── pyproject.toml         # Python package configuration
 ├── poetry.lock           # Dependency lock file
@@ -82,12 +92,29 @@ modules:
   token_functions:
     application_name: true           # Custom token functions
   odm:
-    modify_odm:
-      hit: true                      # Modify existing ODM models
-      user: true
     generation:
-      hit: true                      # Custom data generation
+      hit: true                      # Custom Pydantic sample-data generation
+  models:
+    declare_extensions:
+      hit: true                      # Declare fields on the finalized Hit model
 ```
+
+For the Pydantic/Elasticsearch DSL cutover, `modules.models.declare_extensions` is mandatory
+for every extended collection. The legacy `modify_odm` hook alone cannot add fields to a
+registered collection; Howler refuses to start with a legacy-only extension. Declare each
+namespace before datastore startup finalizes the model. The existing `odm.generation` manifest
+key remains the sample-data hook: it receives a finalized Pydantic model and returns
+`(additional_field_names, model)`. Use `howler.sample_data.randomizer` for generated values.
+
+### Cutover release notes
+
+- Import document models from `howler.models` and configuration models from `howler.config_models`.
+- Construct documents with keyword arguments or `model_validate(data)`; save them through the
+  registered datastore collection. Use the field registry instead of legacy `fields()` calls.
+- Declare extensions before finalization; post-startup `add_namespace` mutation is unsupported.
+- Sample-data CLI: `python -m howler.sample_data.random_data` (same collection arguments).
+- Stored-document and HTTP contracts are preserved. Exact TypeScript/Markdown output parity
+  is deferred; the Pydantic Markdown freshness check remains enabled.
 
 ## Plugin Module Types
 
@@ -99,8 +126,8 @@ Actions are bulk operations that can be performed on hits. Each action file shou
 from typing import Any, Optional
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
-from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.hit import Hit
+from howler.models.action import VALID_TRIGGERS
+from howler.models.hit import Hit
 
 logger = get_logger(__file__)
 
@@ -265,56 +292,43 @@ def process_request(data):
     return {"processed": True}
 ```
 
-### 3. ODM Modifications (`odm/`)
+### 3. Typed Model Extensions (`models/`)
 
-Extend existing ODM models or provide custom data generation:
+Declare plugin fields on Pydantic models before the datastore finalizes registered collections:
 
 ```python
-from typing import TYPE_CHECKING
-import howler.odm as odm
-from howler.common.logging import get_logger
+from howler.models import compound, model_extensions, optional
+from howler.models.hit import Hit
+from your_plugin.models.custom_model import CustomModel
 
-if TYPE_CHECKING:
-    from howler.odm.models.hit import Hit
-
-logger = get_logger(__file__)
-
-def modify_odm(target):
-    """Add additional fields to existing ODM models."""
-    from your_plugin.odm.models.custom_model import CustomModel
-
-    target.add_namespace(
-        "your_namespace",
-        odm.Optional(odm.Compound(CustomModel, description="Your custom metadata")),
-    )
-
-def generate(hit: "Hit") -> "Hit":
-    """Add plugin-specific data during hit generation."""
-    from your_plugin.odm.models.custom_model import CustomModel
-
-    # Add your custom data
-    hit.your_namespace = CustomModel({
-        "custom_field": "example_value"
-    })
-
-    return ["your_namespace"], hit
+def declare_hit_extension() -> None:
+    if "your_namespace" not in model_extensions.pending(Hit) and not model_extensions.is_finalized(Hit):
+        model_extensions.declare(
+            Hit,
+            "your_namespace",
+            optional(compound(CustomModel), description="Your custom metadata"),
+            plugin="your_plugin_name",
+        )
 ```
 
-### 4. Custom ODM Models (`odm/models/`)
+Register it in `modules.models.declare_extensions.hit`. Declare a field only once per startup;
+the registry rejects conflicting names and declarations after finalization. When writing plugin
+consumers, use `datastore().hit.model_class` to access finalized fields and
+`howler.models.registry.model_registry` for field metadata. See Evidence and Sentinel under
+`plugins/` for optional-compound and list-extension examples.
+
+### 4. Custom Pydantic Models (`models/`)
 
 Define custom data models for your plugin:
 
 ```python
-import howler.odm as odm
+from howler.models import HowlerEmbeddedModel, keyword, optional, register_model
 
-@odm.model(index=False, store=False)
-class CustomModel(odm.Model):
+@register_model(index=False, store=False, embedded=True)
+class CustomModel(HowlerEmbeddedModel):
     """Custom data model for your plugin."""
 
-    custom_field = odm.Optional(odm.Keyword(description="A custom field"))
-    another_field = odm.Optional(odm.Integer(description="Another custom field"))
-
-    # Add validation and other model methods as needed
+    custom_field: optional(keyword(), description="A custom field")
 ```
 
 ## Plugin Registration
@@ -484,7 +498,7 @@ Note the double underscore (`__`) used to separate nested configuration levels.
 
 ### Simple Evidence Plugin
 
-The `evidence` plugin demonstrates a minimal plugin that only extends the hit ODM:
+The `evidence` plugin demonstrates a typed extension on the Hit model:
 
 ```yaml
 # evidence/manifest.yml
@@ -492,6 +506,9 @@ name: evidence
 modules:
   odm:
     modify_odm:
+      hit: true
+  models:
+    declare_extensions:
       hit: true
 ```
 
@@ -501,7 +518,7 @@ The `sentinel` plugin demonstrates a full-featured plugin with:
 
 - Custom actions for sending data to Microsoft Sentinel
 - API routes for ingesting Sentinel incidents
-- ODM modifications for Sentinel metadata
+- Typed Hit model extensions for Sentinel metadata
 - Custom authentication and token handling
 
 ```yaml
@@ -512,6 +529,9 @@ modules:
     modify_odm:
       hit: true
     generation:
+      hit: true
+  models:
+    declare_extensions:
       hit: true
   operations:
     - azure_emit_hash

@@ -4,23 +4,23 @@ from datetime import datetime, timedelta
 from hashlib import md5
 from math import ceil
 from random import choice, randint, sample
-from typing import Any, cast
+from typing import Any
 
 from howler.common.logging import get_logger
 from howler.config import CLASSIFICATION, config
 from howler.datastore.howler_store import HowlerDatastore
 from howler.helper.discover import get_apps_list
-from howler.odm.base import Model
-from howler.odm.constants import Status
-from howler.odm.models.case import Case, CaseItem, CaseRule, CaseTask
-from howler.odm.models.dossier import Dossier
-from howler.odm.models.event import Event
-from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import Escalation, Link
-from howler.odm.models.lead import Lead
-from howler.odm.models.pivot import Pivot
-from howler.odm.models.user import User
-from howler.odm.randomizer import (
+from howler.models.case import Case, CaseItem, CaseRule, CaseTask
+from howler.models.dossier import Dossier
+from howler.models.event import Event
+from howler.models.hit import Hit
+from howler.models.howler_data import Escalation, Link
+from howler.models.lead import Lead
+from howler.models.pivot import Pivot
+from howler.models.registry import model_registry
+from howler.models.user import User
+from howler.plugins import get_plugins
+from howler.sample_data.randomizer import (
     get_random_filename,
     get_random_host,
     get_random_ip,
@@ -29,9 +29,7 @@ from howler.odm.randomizer import (
     random_department,
     random_model_obj,
 )
-from howler.plugins import get_plugins
 from howler.security.utils import get_password_hash
-from howler.services import case_service
 from howler.utils.constants import TESTING
 from howler.utils.uid import get_random_id
 
@@ -42,15 +40,35 @@ EXAMPLE_ANALYTICS = ["Password Checker", "Bad Guy Finder", "Exploit Patcher"]
 logger = get_logger(__file__)
 
 
+def _parent_from_path(case: Case, path: str) -> CaseItem | None:
+    """Build sample-data folders without calling the typed Case service."""
+    parent_id = None
+    parent = None
+    for name in path.strip("/").split("/"):
+        if not name:
+            continue
+        parent = next(
+            (item for item in case.items if item.type == "folder" and item.name == name and item.parent == parent_id),
+            None,
+        )
+        if parent is None:
+            parent = CaseItem.model_validate({"type": "folder", "name": name, "parent": parent_id})
+            case.items.append(parent)
+        parent_id = parent.id
+    return parent
+
+
 def generate_useful_hit(  # noqa: C901
     lookups: dict[str, dict[str, Any]],
     users: list[str],
     prune_hit: bool = True,
     hit_ids: list[str] | None = None,
     event_ids: list[str] | None = None,
+    model: type[Hit] = Hit,
 ) -> Hit:
     "Create a random, useful/cogent hit for synthetic data"
-    hit: Hit = random_model_obj(cast(Model, Hit))
+    hit: Hit = random_model_obj(model)
+    users = [user if isinstance(user, str) else user.uname for user in users]
 
     if CLASSIFICATION.enforce:
         hit.classification = CLASSIFICATION.UNRESTRICTED
@@ -230,7 +248,7 @@ def generate_useful_hit(  # noqa: C901
     ]
 
     hit.howler.links = [
-        Link(
+        Link.model_validate(
             {
                 "title": "Goose",
                 "href": "https://en.wikipedia.org/wiki/Canada_goose",
@@ -244,7 +262,7 @@ def generate_useful_hit(  # noqa: C901
 
     try:
         hit.howler.links.extend(
-            Link(
+            Link.model_validate(
                 {
                     "title": get_random_word(),
                     "href": app["route"],
@@ -257,7 +275,7 @@ def generate_useful_hit(  # noqa: C901
         pass
 
     hit.howler.dossier = [
-        Lead(
+        Lead.model_validate(
             {
                 "icon": "material-symbols:sound-detection-dog-barking",
                 "label": {"en": "Example Lead", "fr": "Exemple d'un lead"},
@@ -269,7 +287,7 @@ def generate_useful_hit(  # noqa: C901
 
     if config.core.clue.enabled:
         hit.howler.dossier.append(
-            Lead(
+            Lead.model_validate(
                 {
                     "icon": "material-symbols:image",
                     "label": {"en": "Clue", "fr": "Clue"},
@@ -281,7 +299,7 @@ def generate_useful_hit(  # noqa: C901
         )
 
         hit.howler.dossier.append(
-            Lead(
+            Lead.model_validate(
                 {
                     "icon": "material-symbols:code-rounded",
                     "label": {"en": "Clue", "fr": "Clue"},
@@ -305,9 +323,11 @@ def generate_useful_hit(  # noqa: C901
         logger.debug("%s new top-level fields configured")
 
     if prune_hit:
-        empty_hit = Hit({"howler": hit.howler})
+        empty_hit = type(hit).model_validate({"howler": hit.howler})
 
-        for key in hit.fields():
+        for key in type(hit).model_fields:
+            if key == "meta":
+                continue
             if key in [
                 "howler",
                 "event",
@@ -360,7 +380,7 @@ def generate_useful_event(  # noqa: C901
     lookups: dict[str, dict[str, Any]], users: list[str], prune: bool = True
 ) -> Event:
     "Create a random, useful/cogent event for synthetic data"
-    event: Event = random_model_obj(cast(Model, Event))
+    event: Event = random_model_obj(Event)
 
     rand_seed = random.random()
 
@@ -457,7 +477,7 @@ def generate_useful_event(  # noqa: C901
 def create_users_with_username(ds: HowlerDatastore, usernames: list[str]):
     """Create basic users with username and password for testing puposes"""
     for username in usernames:
-        user_data = User(
+        user_data = User.model_validate(
             {
                 "name": f"{username}",
                 "email": f"{username}@howler.cyber.gc.ca",
@@ -484,7 +504,7 @@ def generate_useful_dossier(users: list[User]) -> Dossier:
     "generate a useful dossier object"
     type = choice(["global", "personal"])
 
-    dossier = Dossier(
+    dossier = Dossier.model_validate(
         {
             "title": f"{get_random_word()} {get_random_word()}",
             "query": f'howler.analytic:"{choice(EXAMPLE_ANALYTICS)}"',
@@ -495,7 +515,7 @@ def generate_useful_dossier(users: list[User]) -> Dossier:
 
     for _ in range(randint(1, 3)):
         dossier.leads.append(
-            Lead(
+            Lead.model_validate(
                 {
                     "icon": choice(
                         ["material-symbols:cottage", "material-symbols:cardiology", "token-branded:rainbow"]
@@ -510,7 +530,7 @@ def generate_useful_dossier(users: list[User]) -> Dossier:
 
     for i in range(randint(1, 3)):
         dossier.pivots.append(
-            Pivot(
+            Pivot.model_validate(
                 {
                     "icon": choice(
                         ["material-symbols:cottage", "material-symbols:cardiology", "token-branded:rainbow"]
@@ -519,7 +539,7 @@ def generate_useful_dossier(users: list[User]) -> Dossier:
                     "value": f"https://google.com/search?q={{{{test{i}}}}} and {{{{custom_value}}}}",
                     "format": "link",
                     "mappings": [
-                        {"key": f"test{i}", "field": choice(list(Hit.flat_fields().keys()))},
+                        {"key": f"test{i}", "field": choice(list(model_registry.flat_fields(Hit)))},
                         {"key": "custom_value", "field": "custom", "custom_value": get_random_word()},
                     ],
                 }
@@ -715,7 +735,7 @@ def generate_useful_case(ds: HowlerDatastore, generated_case_ids: list[str] = []
         ]
     )
 
-    case = Case(
+    case = Case.model_validate(
         {
             "case_id": case_id,
             "title": choice(case_titles),
@@ -735,10 +755,10 @@ def generate_useful_case(ds: HowlerDatastore, generated_case_ids: list[str] = []
     )
 
     for hit in selected_hits:
-        parent = case_service.get_parent_from_path(case, "alerts", create_if_missing=True)
+        parent = _parent_from_path(case, "alerts")
 
         case.items.append(
-            CaseItem(
+            CaseItem.model_validate(
                 {
                     "name": f"{hit.howler.analytic} ({hit.howler.id})",
                     "parent": parent.id if parent else None,
@@ -749,10 +769,10 @@ def generate_useful_case(ds: HowlerDatastore, generated_case_ids: list[str] = []
         )
 
     for event in selected_events:
-        parent = case_service.get_parent_from_path(case, "events", create_if_missing=True)
+        parent = _parent_from_path(case, "events")
 
         case.items.append(
-            CaseItem(
+            CaseItem.model_validate(
                 {
                     "name": f"{get_random_word()} ({event.howler.id})",
                     "parent": parent.id if parent else None,
@@ -765,12 +785,10 @@ def generate_useful_case(ds: HowlerDatastore, generated_case_ids: list[str] = []
     # Add a few additional deeply nested paths for existing hits/events
     nested_hit_candidates = sample(selected_hits, k=min(len(selected_hits), randint(1, 3))) if selected_hits else []
     for hit in nested_hit_candidates:
-        parent = case_service.get_parent_from_path(
-            case, f"alerts/{get_random_word()}/{get_random_word()}", create_if_missing=True
-        )
+        parent = _parent_from_path(case, f"alerts/{get_random_word()}/{get_random_word()}")
 
         case.items.append(
-            CaseItem(
+            CaseItem.model_validate(
                 {
                     "name": f"{get_random_word()} ({hit.howler.id})",
                     "parent": parent.id if parent else None,
@@ -789,12 +807,10 @@ def generate_useful_case(ds: HowlerDatastore, generated_case_ids: list[str] = []
         else []
     )
     for event in nested_event_candidates:
-        parent = case_service.get_parent_from_path(
-            case, f"alerts/{get_random_word()}/{get_random_word()}", create_if_missing=True
-        )
+        parent = _parent_from_path(case, f"alerts/{get_random_word()}/{get_random_word()}")
 
         case.items.append(
-            CaseItem(
+            CaseItem.model_validate(
                 {
                     "name": f"{get_random_word()} ({event.howler.id})",
                     "parent": parent.id if parent else None,
@@ -815,7 +831,7 @@ def generate_useful_case(ds: HowlerDatastore, generated_case_ids: list[str] = []
 
     for idx, related_case_id in enumerate(selected_related_case_ids, start=1):
         case.items.append(
-            CaseItem(
+            CaseItem.model_validate(
                 {
                     "name": f"Related Case {idx}",
                     "type": "case",
@@ -826,9 +842,9 @@ def generate_useful_case(ds: HowlerDatastore, generated_case_ids: list[str] = []
 
     selected_reference_names = sample(reference_name_pool, k=randint(1, 3))
     for reference_name in selected_reference_names:
-        parent = case_service.get_parent_from_path(case, "references", create_if_missing=True)
+        parent = _parent_from_path(case, "references")
         case.items.append(
-            CaseItem(
+            CaseItem.model_validate(
                 {
                     "name": reference_name,
                     "type": "reference",
@@ -840,7 +856,7 @@ def generate_useful_case(ds: HowlerDatastore, generated_case_ids: list[str] = []
 
     markdown_item_count = randint(2, 4)
     for index in range(markdown_item_count):
-        markdown_parent = case_service.get_parent_from_path(
+        markdown_parent = _parent_from_path(
             case,
             choice(
                 [
@@ -850,7 +866,6 @@ def generate_useful_case(ds: HowlerDatastore, generated_case_ids: list[str] = []
                     f"analysis/{get_random_word()}",
                 ]
             ),
-            create_if_missing=True,
         )
         markdown_value = choice(markdown_template_pool).format(
             hypothesis=choice(
@@ -870,7 +885,7 @@ def generate_useful_case(ds: HowlerDatastore, generated_case_ids: list[str] = []
         )
 
         case.items.append(
-            CaseItem(
+            CaseItem.model_validate(
                 {
                     "name": f"Markdown Note {index + 1}",
                     "type": "markdown",
@@ -883,12 +898,11 @@ def generate_useful_case(ds: HowlerDatastore, generated_case_ids: list[str] = []
     task_count = randint(3, 7)
     for _ in range(task_count):
         case.tasks.append(
-            CaseTask(
+            CaseTask.model_validate(
                 {
                     "id": get_random_id(),
                     "complete": choice([True, False]),
                     "assignment": choice(selected_participants or ["admin"]),
-                    "status": choice(Status.list()),
                     "summary": choice(
                         [
                             "Review related indicators and determine additional pivots.",
@@ -914,7 +928,7 @@ def generate_useful_case(ds: HowlerDatastore, generated_case_ids: list[str] = []
         timeframe = choice([7, 14, 28, None])
 
         case.rules.append(
-            CaseRule(
+            CaseRule.model_validate(
                 {
                     "destination": choice(
                         [

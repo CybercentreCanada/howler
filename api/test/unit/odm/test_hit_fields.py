@@ -86,12 +86,11 @@ def test_build_ecs_alert():
     assert hit.observer.ingress.zone == "TZ"
     assert hit.observer.ingress.interface.name == "Interface name"
     assert hit.observer.mac[1] == "mac-address-2"
-    assert hit.threat.enrichments[0].indicator == {
-        "first_seen": "2024-11-10T19:07:46.0956672Z",
-        "port": 2,
-        "description": "Description for indicator",
-        "file": {"size": 256},
-    }
+    indicator = hit.as_primitives()["threat"]["enrichments"][0]["indicator"]
+    assert indicator["port"] == 2
+    assert indicator["description"] == "Description for indicator"
+    assert indicator["file"] == {"size": 256}
+    assert indicator["first_seen"].startswith("2024-11-10T19:07:46.095667")
     assert hit.message == "Testing Message Log"
     assert hit.event.count == 1
     assert (

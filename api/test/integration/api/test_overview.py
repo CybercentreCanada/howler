@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.random_data import create_overviews, wipe_overviews
+from howler.sample_data.random_data import create_overviews, wipe_overviews
 from test.conftest import APIError, get_api_data
 
 

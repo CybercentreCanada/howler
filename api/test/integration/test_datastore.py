@@ -9,10 +9,10 @@ import pytest
 from datemath import dm
 from retrying import retry
 
-from howler import odm
 from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import DataStoreException, VersionConflictException
 from howler.datastore.store import ESStore
+from howler.models import HowlerESModel, fields, register_model
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -324,14 +324,15 @@ def _test_update_fails(c: ESCollection):
 
     Validates error handling in the update() method:
     - Updates to non-existent documents should fail
-    - Updates with invalid field names should fail
+    - Schema-less collections permit arbitrary field names using bracketed Painless paths
     - Updates with incorrect version numbers should raise VersionConflictException
     """
     assert not c.update("to_update_doesnt_exist", [(c.UPDATE_SET, "map.b", 99)])
-    assert not c.update(
+    assert c.update(
         "to_update",
         [(c.UPDATE_SET, "RTGE$%^Y#$Gavsdfvbkl", "dafgkjbsdfkgjsbdnfgjkhsdfg")],
     )
+    assert c.get("to_update")["RTGE$%^Y#$Gavsdfvbkl"] == "dafgkjbsdfkgjsbdnfgjkhsdfg"
     val = c.get("to_update", version=True)[1]
 
     with pytest.raises(VersionConflictException):
@@ -870,9 +871,9 @@ def test_fix_replicas(es_connection: ESCollection, replicas: int):
         current_replica_count = int(
             current_settings[f"{test_index_name}_hot"]["settings"]["index"]["number_of_replicas"]
         )
-        assert (
-            current_replica_count == incorrect_replicas
-        ), f"Expected {incorrect_replicas} replicas, got {current_replica_count}"
+        assert current_replica_count == incorrect_replicas, (
+            f"Expected {incorrect_replicas} replicas, got {current_replica_count}"
+        )
 
         # Add some test data to ensure data preservation during replica fixing
         test_data = {"test_field": "test_value", "timestamp": time.time()}
@@ -934,17 +935,17 @@ def test_fix_replicas(es_connection: ESCollection, replicas: int):
             pass
 
 
-@odm.model(index=True)
-class ReindexModel1(odm.Model):
-    field_1 = odm.Keyword(default="default")
-    field_2 = odm.Keyword()
-    field_3 = odm.Keyword(optional=True)
+@register_model(index=True)
+class ReindexModel1(HowlerESModel):
+    field_1: fields.keyword(default="default")
+    field_2: fields.keyword()
+    field_3: fields.optional(fields.keyword())
 
 
-@odm.model(index=True)
-class ReindexModel2(odm.Model):
-    field_2 = odm.Keyword()
-    field_3 = odm.Integer(default=1)
+@register_model(index=True)
+class ReindexModel2(HowlerESModel):
+    field_2: fields.keyword()
+    field_3: fields.integer(default=1)
 
 
 def _register_model(
@@ -998,8 +999,10 @@ def test_reindex_success(es_connection: ESCollection):
     try:
         # Register a collection and add two documents
         test_collection = _register_model(es_connection, test_collection_name, ReindexModel1)
-        test_collection.save("example", ReindexModel1({"field_1": "example", "field_2": "example", "field_3": "1"}))
-        test_collection.save("example2", ReindexModel1({"field_1": "example2", "field_2": "example2"}))
+        test_collection.save(
+            "example", ReindexModel1.model_validate({"field_1": "example", "field_2": "example", "field_3": "1"})
+        )
+        test_collection.save("example2", ReindexModel1.model_validate({"field_1": "example2", "field_2": "example2"}))
         test_collection.commit()
 
         assert test_collection.search("field_2:*")["total"] == 2
@@ -1028,7 +1031,7 @@ def test_reindex_refuses_existing_reindex_index(es_connection: ESCollection):
     test_collection = None
     try:
         test_collection = _register_model(es_connection, test_collection_name, ReindexModel1)
-        test_collection.save("example", ReindexModel1({"field_1": "example", "field_2": "example"}))
+        test_collection.save("example", ReindexModel1.model_validate({"field_1": "example", "field_2": "example"}))
         test_collection.commit()
 
         new_name = f"{test_collection.index_name}__reindex"
@@ -1059,9 +1062,10 @@ def test_reindex_failure_preserves_data(es_connection: ESCollection):
         # "example" has a non-integer field_3 that cannot be converted to ReindexModel2
         test_collection = _register_model(es_connection, test_collection_name, ReindexModel1)
         test_collection.save(
-            "example", ReindexModel1({"field_1": "example", "field_2": "example", "field_3": "not-an-int"})
+            "example",
+            ReindexModel1.model_validate({"field_1": "example", "field_2": "example", "field_3": "not-an-int"}),
         )
-        test_collection.save("example2", ReindexModel1({"field_1": "example2", "field_2": "example2"}))
+        test_collection.save("example2", ReindexModel1.model_validate({"field_1": "example2", "field_2": "example2"}))
         test_collection.commit()
 
         assert test_collection.search("field_2:*")["total"] == 2
@@ -1077,7 +1081,7 @@ def test_reindex_failure_preserves_data(es_connection: ESCollection):
 
         # The source index (and all of its data) must still be present after the failure
         test_collection.commit()
-        assert test_collection.search("field_2:*")["total"] == 2
+        assert test_collection.search("field_2:*", rows=0)["total"] == 2
         assert test_collection.get("example", as_obj=False) is not None
         assert test_collection.get("example2", as_obj=False) is not None
 
@@ -1096,7 +1100,7 @@ def test_reindex_failure_preserves_data(es_connection: ESCollection):
             document={"field_1": "example3", "field_2": "example3"},
         )
         test_collection.commit()
-        assert test_collection.search("field_2:*")["total"] == 3
+        assert test_collection.search("field_2:*", rows=0)["total"] == 3
     finally:
         if test_collection is not None:
             _delete_reindex_test_indexes(es_connection, test_collection.name)
@@ -1108,7 +1112,7 @@ def test_reindex_cleanup_errors_when_source_missing(es_connection: ESCollection)
     test_collection = None
     try:
         test_collection = _register_model(es_connection, test_collection_name, ReindexModel1)
-        test_collection.save("example", ReindexModel1({"field_1": "example", "field_2": "example"}))
+        test_collection.save("example", ReindexModel1.model_validate({"field_1": "example", "field_2": "example"}))
         test_collection.commit()
 
         new_name = f"{test_collection.index_name}__reindex"
@@ -1147,9 +1151,10 @@ def test_reindex_allow_failures(es_connection: ESCollection):
     try:
         test_collection = _register_model(es_connection, test_collection_name, ReindexModel1)
         test_collection.save(
-            "example", ReindexModel1({"field_1": "example", "field_2": "example", "field_3": "not-an-int"})
+            "example",
+            ReindexModel1.model_validate({"field_1": "example", "field_2": "example", "field_3": "not-an-int"}),
         )
-        test_collection.save("example2", ReindexModel1({"field_1": "example2", "field_2": "example2"}))
+        test_collection.save("example2", ReindexModel1.model_validate({"field_1": "example2", "field_2": "example2"}))
         test_collection.commit()
 
         assert test_collection.search("field_2:*")["total"] == 2
@@ -1162,7 +1167,7 @@ def test_reindex_allow_failures(es_connection: ESCollection):
         assert test_collection.reindex(allow_failures=True) is True
         test_collection._ensure_collection()
 
-        test_collection.save("example3", ReindexModel2({"field_2": "example3", "field_3": 2}))
+        test_collection.save("example3", ReindexModel2.model_validate({"field_2": "example3", "field_3": 2}))
         test_collection.commit()
 
         # "example" was dropped (could not convert), "example2" and "example3" remain

@@ -7,25 +7,23 @@ from typing import Any
 import elasticsearch
 from elasticsearch import Elasticsearch
 
-from howler import odm
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import SearchException, SearchRetryException
 from howler.datastore.support.elastic import error_message, response_body, total_hits_value
 from howler.datastore.types import SearchResult
-from howler.odm.base import (
-    DOMAIN_ONLY_REGEX,
+from howler.models.case import Case
+from howler.models.event import Event
+from howler.models.fields import (
+    DOMAIN_REGEX,
     EMAIL_REGEX,
-    IP,
     IP_ONLY_REGEX,
     MD5_REGEX,
     SHA1_REGEX,
     SHA256_REGEX,
-    List,
-    Optional,
-    Text,
-    _Field,
 )
+from howler.models.hit import Hit
+from howler.models.registry import model_registry
 from howler.utils.indexes import get_logical_index_name, normalize_indexes
 from howler.utils.str_utils import sanitize_lucene_query
 
@@ -41,13 +39,13 @@ def _escape_query_string(query: str) -> str:
     return sanitize_lucene_query(query)
 
 
-# Compiled regexes from ODM base for token type detection
-_IP_RE = re.compile(IP_ONLY_REGEX)
+# Compiled patterns from the Pydantic field definitions for token type detection
+_IP_RE = IP_ONLY_REGEX
 _MD5_RE = re.compile(MD5_REGEX, re.IGNORECASE)
 _SHA1_RE = re.compile(SHA1_REGEX, re.IGNORECASE)
 _SHA256_RE = re.compile(SHA256_REGEX, re.IGNORECASE)
-_EMAIL_RE = re.compile(EMAIL_REGEX)
-_DOMAIN_RE = re.compile(DOMAIN_ONLY_REGEX)
+_EMAIL_RE = EMAIL_REGEX
+_DOMAIN_RE = re.compile(rf"^{DOMAIN_REGEX}$")
 # FULL_URI is too permissive for token detection (matches bare domains).
 # Use a scheme-prefix check to identify URLs specifically.
 _URL_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+\-.]*://", re.IGNORECASE)
@@ -120,32 +118,14 @@ def _get_fields_for_index(index: str) -> list[str]:
     return [f"{field}^{boost}" for field, boost in boosts.items()]
 
 
-def _resolve_field_type(field: _Field) -> type:
-    """Unwrap Optional/List wrappers to get the leaf field type."""
-    if isinstance(field, Optional):
-        return _resolve_field_type(field.child_type)
-    if isinstance(field, List):
-        return _resolve_field_type(field.child_type)
-    return type(field)
-
-
 @lru_cache(maxsize=1)
 def _classify_boosted_fields() -> dict[str, str]:
-    """Classify each field in FIELD_BOOSTS by its Elasticsearch type using ODM model introspection.
-
-    Inspects the flat_fields() of each model to determine the ES mapping type.
-    Fields declared as odm.IP() map to ES 'ip' type.
-    Fields declared as odm.Text() map to ES 'text' type.
-    All others (Keyword and subtypes) map to ES 'keyword' type.
+    """Classify boosted fields using the Pydantic/DSL mapping registry.
 
     Returns:
         A dict mapping field name to one of 'ip', 'text', or 'keyword'.
     """
-    from howler.odm.models.case import Case
-    from howler.odm.models.event import Event
-    from howler.odm.models.hit import Hit
-
-    model_map: dict[str, type[odm.Model]] = {
+    model_map = {
         "hit": Hit,
         "event": Event,
         "case": Case,
@@ -157,7 +137,7 @@ def _classify_boosted_fields() -> dict[str, str]:
         if not model_class:
             continue
 
-        flat = model_class.flat_fields()
+        flat = model_registry.flat_fields(model_class)
         for field_name in fields:
             if field_name in field_types:
                 continue
@@ -165,13 +145,8 @@ def _classify_boosted_fields() -> dict[str, str]:
             if not field_def:
                 field_types[field_name] = "keyword"
                 continue
-            leaf_type = _resolve_field_type(field_def)
-            if issubclass(leaf_type, IP):
-                field_types[field_name] = "ip"
-            elif issubclass(leaf_type, Text):
-                field_types[field_name] = "text"
-            else:
-                field_types[field_name] = "keyword"
+            kind = field_def.metadata.kind if field_def.metadata is not None else "Keyword"
+            field_types[field_name] = "ip" if kind == "IP" else "text" if kind == "Text" else "keyword"
 
     return field_types
 
@@ -241,7 +216,7 @@ def build_fuzzy_query(  # noqa: C901
         if field not in field_boost_map or field_boost_map[field] < boost:
             field_boost_map[field] = boost
 
-    # Partition fields by ES type using ODM model introspection.
+    # Partition fields by ES type using the model registry.
     # - ip: must use term queries (no fuzzy/phrase support)
     # - text: supports all query types including phrase_prefix
     # - keyword: supports best_fields and phrase, but NOT phrase_prefix

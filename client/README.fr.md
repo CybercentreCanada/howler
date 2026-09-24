@@ -30,7 +30,7 @@ cp test/unit/config.yml /etc/howler/conf/config.yml
 cp build_scripts/classification.yml /etc/howler/conf/classification.yml
 poetry run server
 
-poetry run python howler/odm/random_data.py
+poetry run python -m howler.sample_data.random_data
 ```
 
 ### Exécuter des tests

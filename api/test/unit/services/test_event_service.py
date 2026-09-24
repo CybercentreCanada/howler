@@ -1,13 +1,15 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from howler.common.exceptions import HowlerTypeError, HowlerValueError, ResourceExists
-from howler.odm.base import UTC_TZ
-from howler.odm.models.event import Event
+from howler.models.event import Event
+from howler.models.registry import model_registry
 from howler.services import event_service
+
+UTC_TZ = timezone.utc
 
 # ========================
 # convert_event tests
@@ -195,9 +197,9 @@ def test_convert_event_deprecated_fields(mock_exists):
         "howler.score": 0.5,
     }
 
-    ff = Event.flat_fields()
-    with patch.object(Event, "flat_fields") as mock_flat_fields:
-        ff["howler.score"] = MagicMock(deprecated=True)
+    ff = model_registry.flat_fields(Event, show_compound=True)
+    with patch.object(model_registry, "flat_fields") as mock_flat_fields:
+        ff["howler.score"] = MagicMock(metadata=MagicMock(deprecated=True))
         mock_flat_fields.return_value = ff
 
         _, warnings = event_service.convert_event(data, unique=True, ignore_extra_values=True)
@@ -213,7 +215,7 @@ def test_convert_event_deprecated_fields(mock_exists):
 @patch("howler.services.event_service.exists", return_value="event")
 def test_create_event_already_exists(mock_exists):
     """Test that create_event raises ResourceExists if event exists and skip_exists=False."""
-    event = Event(SAMPLE_EVENT_DATA)
+    event = Event.validate_howler(SAMPLE_EVENT_DATA)
 
     with pytest.raises(ResourceExists, match="already exists"):
         event_service.create_event("some_id", event)
@@ -227,7 +229,7 @@ def test_create_event_success(mock_exists, mock_datastore):
     mock_datastore.return_value.event = mock_event_collection
     mock_event_collection.save.return_value = True
 
-    event = Event(SAMPLE_EVENT_DATA)
+    event = Event.validate_howler(SAMPLE_EVENT_DATA)
 
     result = event_service.create_event("test_id", event)
 
@@ -243,7 +245,7 @@ def test_create_event_with_user(mock_exists, mock_datastore):
     mock_datastore.return_value.event = mock_event_collection
     mock_event_collection.save.return_value = True
 
-    event = Event(SAMPLE_EVENT_DATA)
+    event = Event.validate_howler(SAMPLE_EVENT_DATA)
 
     event_service.create_event("test_id", event, user="test_user")
 
@@ -263,7 +265,7 @@ def test_create_event_without_user(mock_exists, mock_datastore):
     mock_datastore.return_value.event = mock_event_collection
     mock_event_collection.save.return_value = True
 
-    event = Event(SAMPLE_EVENT_DATA)
+    event = Event.validate_howler(SAMPLE_EVENT_DATA)
 
     event_service.create_event("test_id", event)
 
@@ -281,7 +283,7 @@ def test_create_event_skip_exists(mock_exists, mock_datastore):
     mock_datastore.return_value.event = mock_event_collection
     mock_event_collection.save.return_value = True
 
-    event = Event(SAMPLE_EVENT_DATA)
+    event = Event.validate_howler(SAMPLE_EVENT_DATA)
 
     event_service.create_event("test_id", event, skip_exists=True)
 
@@ -298,7 +300,7 @@ def test_create_event_increments_counter(mock_exists, mock_datastore):
     mock_datastore.return_value.event = mock_event_collection
     mock_event_collection.save.return_value = True
 
-    event = Event(SAMPLE_EVENT_DATA)
+    event = Event.validate_howler(SAMPLE_EVENT_DATA)
 
     before = event_service.CREATED_EVENTS._value.get()
     event_service.create_event("test_id", event)
@@ -314,7 +316,7 @@ def test_create_events_uses_event_collection(mock_datastore):
     storage.event.exists.return_value = False
     storage.event.bulk.return_value = True
     bulk_plan = storage.event.get_bulk_plan.return_value
-    event = Event(SAMPLE_EVENT_DATA)
+    event = Event.validate_howler(SAMPLE_EVENT_DATA)
 
     result = event_service.create_events([event], user="test_user", refresh="wait_for")
 

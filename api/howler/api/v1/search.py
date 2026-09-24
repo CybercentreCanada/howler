@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Any
+from typing import Any, cast
 
 from elasticsearch import BadRequestError
 from flask import request
@@ -13,7 +13,7 @@ from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException
 from howler.helper.search import get_collection, get_default_sort, has_access_control, list_all_fields
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.security import api_login
 from howler.services import hit_service, lucene_service
 from howler.utils.net_utils import generate_params
@@ -90,7 +90,7 @@ def search(index, **kwargs):
     params, req_data = generate_params(request, fields, multi_fields)
 
     if has_access_control(index):
-        params.update({"access_control": user["access_control"]})
+        params.update({"access_control": cast(Any, user).access_control})
 
     params.update({"sort": (params.get("sort", None) or default_sort).split(",")})
 
@@ -110,7 +110,7 @@ def search(index, **kwargs):
         result = collection().search(query, as_obj=False, **params)
 
         if index == "hit" and len(metadata) > 0:
-            hit_service.augment_metadata(result["items"], metadata, user)
+            hit_service.augment_metadata(result["items"], metadata, cast(Any, user))
 
         return ok(result)
     except (SearchException, BadRequestError) as e:

@@ -18,7 +18,7 @@ from howler.common.logging.format import (
 )
 
 if TYPE_CHECKING:
-    from howler.odm.models.config import Config
+    from howler.config_models import Config
 
 LOG_LEVEL_MAP = {
     "DEBUG": logging.DEBUG,

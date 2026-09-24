@@ -1,14 +1,13 @@
 import json
 import logging
-import time
 
 from howler.common import loader
 from howler.datastore.howler_store import HowlerDatastore
 from howler.helper.hit import HitStatusTransition, Status
-from howler.odm.helper import generate_useful_hit
-from howler.odm.models.action import VALID_TRIGGERS, Action
-from howler.odm.models.howler_data import Assessment
-from howler.odm.random_data import create_users, wipe_users
+from howler.models.action import VALID_TRIGGERS, Action
+from howler.models.howler_data import Assessment
+from howler.sample_data.helper import generate_useful_hit
+from howler.sample_data.random_data import create_users, wipe_users
 from howler.services import action_service, hit_service
 
 
@@ -20,16 +19,15 @@ def _drain_action_queues():
             pass
 
 
-def _wait_for_hit_label(ds: HowlerDatastore, hit_id: str, label: str, timeout: float = 15) -> bool:
-    """Poll until the expected label appears on a hit or timeout elapses."""
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        ds.hit.commit()
-        hit = ds.hit.get(hit_id)
-        if hit and label in (hit.howler.labels.generic or []):
-            return True
-        time.sleep(0.5)
-    return False
+def _process_queued_actions():
+    """Process real queued transitions without requiring a separately running worker."""
+    for trigger in VALID_TRIGGERS:
+        queue = action_service.get_action_queue(trigger)
+        batch = []
+        while (item := queue.pop(blocking=False)) is not None:
+            batch.append(item)
+        if batch:
+            action_service.process_action_batch(trigger, batch)
 
 
 def test_execute_action(datastore_connection: HowlerDatastore):
@@ -46,16 +44,16 @@ def test_execute_action(datastore_connection: HowlerDatastore):
     datastore_connection.hit.save(test_hit_promote.howler.id, test_hit_promote)
 
     test_hit_demote = generate_useful_hit(lookups, users, False)
-    test_hit_promote.howler.assessment = None
-    test_hit_promote.howler.status = Status.OPEN
-    test_hit_promote.howler.escalation = "alert"
+    test_hit_demote.howler.assessment = None
+    test_hit_demote.howler.status = Status.OPEN
+    test_hit_demote.howler.escalation = "alert"
     test_hit_demote.howler.analytic = "test_triage_assess_demote"
     datastore_connection.hit.save(test_hit_demote.howler.id, test_hit_demote)
 
     datastore_connection.action.wipe()
 
     # Create actions
-    action_demote = Action(
+    action_demote = Action.model_validate(
         {
             "triggers": ["demote"],
             "name": "Test demote on triage",
@@ -73,7 +71,7 @@ def test_execute_action(datastore_connection: HowlerDatastore):
     datastore_connection.action.save(action_demote.action_id, action_demote)
 
     # Create actions
-    action_promote = Action(
+    action_promote = Action.model_validate(
         {
             "triggers": ["promote"],
             "name": "Test promote on triage",
@@ -110,14 +108,10 @@ def test_execute_action(datastore_connection: HowlerDatastore):
         test_hit_promote.howler.id, HitStatusTransition.ASSESS, user=user, assessment=Assessment.COMPROMISE
     )
 
-    # Wait for the background worker to process the queued actions
-    assert _wait_for_hit_label(datastore_connection, test_hit_demote.howler.id, "demoted"), (
-        "Label 'demoted' was not applied by the action queue worker within the timeout"
-    )
-
-    assert _wait_for_hit_label(datastore_connection, test_hit_promote.howler.id, "promoted"), (
-        "Label 'promoted' was not applied by the action queue worker within the timeout"
-    )
+    _process_queued_actions()
+    datastore_connection.hit.commit()
+    assert "demoted" in datastore_connection.hit.get(test_hit_demote.howler.id).howler.labels.generic
+    assert "promoted" in datastore_connection.hit.get(test_hit_promote.howler.id).howler.labels.generic
 
     datastore_connection.hit.delete(test_hit_demote.howler.id)
     datastore_connection.action.delete(action_demote.action_id)
@@ -137,7 +131,7 @@ def test_execute_action_no_results(datastore_connection: HowlerDatastore):
     datastore_connection.action.wipe()
 
     # Create action
-    test_action = Action(
+    test_action = Action.model_validate(
         {
             "triggers": ["promote"],
             "name": "Test promote on triage",
@@ -163,8 +157,7 @@ def test_execute_action_no_results(datastore_connection: HowlerDatastore):
         test_hit.howler.id, HitStatusTransition.ASSESS, user=users[0], assessment=Assessment.FALSE_POSITIVE
     )
 
-    # Wait long enough for the worker to process
-    time.sleep(3)
+    _process_queued_actions()
 
     # The non-matching action should not have added a label
     datastore_connection.hit.commit()
@@ -192,7 +185,7 @@ def test_process_action_batch_create_trigger(datastore_connection: HowlerDatasto
 
     datastore_connection.action.wipe()
 
-    action = Action(
+    action = Action.model_validate(
         {
             "triggers": ["create"],
             "name": "Test batch create action",
@@ -241,7 +234,7 @@ def test_process_action_batch_no_matching_action(datastore_connection: HowlerDat
 
     datastore_connection.action.wipe()
 
-    action = Action(
+    action = Action.model_validate(
         {
             "triggers": ["promote"],
             "name": "Test batch no match",
@@ -301,7 +294,7 @@ def test_process_action_batch_coalesces_duplicates(datastore_connection: HowlerD
 
     datastore_connection.action.wipe()
 
-    action = Action(
+    action = Action.model_validate(
         {
             "triggers": ["create"],
             "name": "Test coalesce action",

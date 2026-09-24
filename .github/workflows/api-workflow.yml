@@ -83,6 +83,9 @@ jobs:
       - name: Run ruff linter checks
         run: poetry run ruff check howler --output-format=github
 
+      - name: Check generated model documentation
+        run: poetry run python build_scripts/generate_md_docs.py --check
+
       - name: Run mypy type checking
         run: poetry run type_check
 

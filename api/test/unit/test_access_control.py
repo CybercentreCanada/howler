@@ -20,8 +20,8 @@ import pytest
 from howler.common import loader
 from howler.common.classification import Classification
 from howler.common.exceptions import InvalidClassification
+from howler.config_models import OAuthProvider
 from howler.helper import oauth as oauth_module
-from howler.odm.models.config import OAuthProvider
 from howler.services import user_service
 
 # ---------------------------------------------------------------------------

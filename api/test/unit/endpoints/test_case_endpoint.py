@@ -1,5 +1,4 @@
 import uuid
-from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -7,9 +6,9 @@ from flask import Flask, Response
 
 from howler.common.exceptions import InvalidDataException
 from howler.common.loader import datastore
-from howler.odm import Model
-from howler.odm.models.user import User
-from howler.odm.randomizer import random_model_obj
+from howler.models.case import Case as SchemaCase
+from howler.models.user import User
+from howler.sample_data.randomizer import random_model_obj
 
 
 @pytest.fixture(scope="module")
@@ -20,7 +19,7 @@ def request_context():
 
 
 def _build_user(user_type: list[str] | None = None) -> User:
-    user_data: User = random_model_obj(cast(Model, User))
+    user_data: User = random_model_obj(User)
     user_data.type = user_type or ["admin", "user"]
 
     # The randomizer draws unames from ["admin", "user", "shawnh"], which are
@@ -280,12 +279,10 @@ class TestUpdateCaseEndpoint:
     @patch("howler.security.auth_service")
     def test_update_case_success(self, mock_auth_service, mock_case_service, request_context: Flask):
         """Returns 200 with updated case data when the update succeeds."""
-        from howler.odm.models.case import Case
-
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        updated = Case(
+        updated = SchemaCase.model_validate(
             {
                 "case_id": "case-001",
                 "title": "Updated Title",
@@ -364,12 +361,12 @@ class TestAppendItemEndpoint:
     @patch("howler.security.auth_service")
     def test_append_item_success(self, mock_auth_service, mock_case_service, request_context: Flask):
         """Returns 200 when a valid item is appended."""
-        from howler.odm.models.case import Case
-
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_case_service.append_case_item.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
+        mock_case_service.append_case_item.return_value = SchemaCase.model_validate(
+            {"case_id": "case-001", "title": "T", "summary": "S"}
+        )
 
         with request_context.test_request_context(
             method="POST",
@@ -387,8 +384,6 @@ class TestAppendItemEndpoint:
     @patch("howler.security.auth_service")
     def test_append_item_with_path_resolves_parent(self, mock_auth_service, mock_case_service, request_context: Flask):
         """Resolves `path` to a parent folder id before appending."""
-        from howler.odm.models.case import Case
-
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
@@ -396,7 +391,9 @@ class TestAppendItemEndpoint:
         resolved_parent.id = "folder-123"
 
         mock_case_service.get_parent_from_path.return_value = resolved_parent
-        mock_case_service.append_case_item.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
+        mock_case_service.append_case_item.return_value = SchemaCase.model_validate(
+            {"case_id": "case-001", "title": "T", "summary": "S"}
+        )
 
         with request_context.test_request_context(
             method="POST",
@@ -420,12 +417,12 @@ class TestAppendItemEndpoint:
         self, mock_auth_service, mock_case_service, request_context: Flask
     ):
         """Uses the provided parent id directly when no `path` is supplied."""
-        from howler.odm.models.case import Case
-
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_case_service.append_case_item.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
+        mock_case_service.append_case_item.return_value = SchemaCase.model_validate(
+            {"case_id": "case-001", "title": "T", "summary": "S"}
+        )
 
         with request_context.test_request_context(
             method="POST",
@@ -1091,12 +1088,12 @@ class TestRenameItemEndpoint:
         self, mock_auth_service, mock_case_service, request_context: Flask
     ):
         """When 'parent' is present in the body, move_case_item is called."""
-        from howler.odm.models.case import Case
-
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_case_service.move_case_item.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
+        mock_case_service.move_case_item.return_value = SchemaCase.model_validate(
+            {"case_id": "case-001", "title": "T", "summary": "S"}
+        )
 
         with request_context.test_request_context(
             method="PUT",

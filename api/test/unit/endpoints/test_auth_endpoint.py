@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime, timedelta
-from typing import cast
 
 import pytest
 from flask import Flask, Response
@@ -8,9 +7,8 @@ from mock import MagicMock, patch
 
 from howler.common.loader import datastore
 from howler.config import config
-from howler.odm import Model
-from howler.odm.models.user import User
-from howler.odm.randomizer import random_model_obj
+from howler.models.user import User
+from howler.sample_data.randomizer import random_model_obj
 
 time = datetime.now() + timedelta(seconds=10)
 
@@ -25,7 +23,7 @@ def request_context():
 
 
 def _build_user() -> User:
-    user_data: User = random_model_obj(cast(Model, User))
+    user_data: User = random_model_obj(User)
     user_data.api_quota = 1000
     user_data.type = ["admin", "user"]
 

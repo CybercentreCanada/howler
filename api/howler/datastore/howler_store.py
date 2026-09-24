@@ -2,56 +2,39 @@ from typing import TYPE_CHECKING, Any
 
 from howler.common.exceptions import HowlerAttributeError
 from howler.config import config
+from howler.config_models import ILMIndexConfig
 from howler.datastore.collection import ESCollection, logger
 from howler.models import model_extensions
 from howler.models import schema as new_schema
-from howler.models.action import Action as SchemaAction
-from howler.models.analytic import Analytic as SchemaAnalytic
-from howler.models.case import Case as SchemaCase
+from howler.models.action import Action
+from howler.models.analytic import Analytic
+from howler.models.case import Case
 from howler.models.clue import declare_hit_extension as declare_clue_hit_extension
-from howler.models.dossier import Dossier as SchemaDossier
-from howler.models.event import Event as SchemaEvent
-from howler.models.hit import Hit as SchemaHit
-from howler.models.overview import Overview as SchemaOverview
-from howler.models.template import Template as SchemaTemplate
-from howler.models.user import User as SchemaUser
-from howler.models.view import View as SchemaView
-from howler.odm.base import Compound
-from howler.odm.models.action import Action
-from howler.odm.models.analytic import Analytic
-from howler.odm.models.case import Case
-from howler.odm.models.clue import Clue
-from howler.odm.models.config import ILMIndexConfig
-from howler.odm.models.dossier import Dossier
-from howler.odm.models.event import Event
-from howler.odm.models.hit import Hit
-from howler.odm.models.overview import Overview
-from howler.odm.models.template import Template
-from howler.odm.models.user import User
-from howler.odm.models.view import View
+from howler.models.dossier import Dossier
+from howler.models.event import Event
+from howler.models.hit import Hit
+from howler.models.overview import Overview
+from howler.models.template import Template
+from howler.models.user import User
+from howler.models.view import View
 from howler.plugins import get_plugins
 
 if TYPE_CHECKING:
     from howler.datastore.store import ESStore
 
-INDEX_MODELS = {
-    "hit": (Hit, SchemaHit),
-    "event": (Event, SchemaEvent),
-    "case": (Case, SchemaCase),
-    "template": (Template, SchemaTemplate),
-    "overview": (Overview, SchemaOverview),
-    "analytic": (Analytic, SchemaAnalytic),
-    "action": (Action, SchemaAction),
-    "user": (User, SchemaUser),
-    "view": (View, SchemaView),
-    "dossier": (Dossier, SchemaDossier),
-    "user_avatar": (None, None),
+INDEXES = {
+    "hit": Hit,
+    "event": Event,
+    "case": Case,
+    "template": Template,
+    "overview": Overview,
+    "analytic": Analytic,
+    "action": Action,
+    "user": User,
+    "view": View,
+    "dossier": Dossier,
+    "user_avatar": None,
 }
-
-# Keep the legacy table exported for differential tooling and the Step 8 consumer rewrite.
-# Registered collections use finalized Pydantic/DSL models for persistence starting in Step 7.
-INDEXES = {name: models[0] for name, models in INDEX_MODELS.items()}
-SCHEMA_INDEXES = {name: models[1] for name, models in INDEX_MODELS.items()}
 
 ILM_ENABLED_INDEXES = {"hit", "event", "case"}
 
@@ -72,7 +55,7 @@ class HowlerDatastore(object):
             legacy_only_targets = {
                 target
                 for target in plugin.modules.odm.modify_odm
-                if SCHEMA_INDEXES.get(target) is not None and target not in plugin.modules.models.declare_extensions
+                if INDEXES.get(target) is not None and target not in plugin.modules.models.declare_extensions
             }
             if legacy_only_targets:
                 targets = ", ".join(sorted(legacy_only_targets))
@@ -82,30 +65,17 @@ class HowlerDatastore(object):
                     "with Pydantic-backed collections."
                 )
 
-        for plugin in plugins:
-            for _index, _odm in INDEXES.items():
-                if _odm is None:
-                    continue
-
-                if modify_odm := plugin.modules.odm.modify_odm.get(_index):
-                    logger.info("Modifying %s odm with function from plugin %s", _index, plugin.name)
-                    modify_odm(_odm)
-
         if config.core.clue.enabled:
-            Hit.add_namespace(
-                "clue",
-                Compound(Clue, description="Clue-specific overrides for this alert", default=None, optional=True),
-            )
             declare_clue_hit_extension()
 
         for plugin in plugins:
-            for _index in SCHEMA_INDEXES:
+            for _index in INDEXES:
                 if declare_extension := plugin.modules.models.declare_extensions.get(_index):
                     logger.info("Declaring %s model extension with function from plugin %s", _index, plugin.name)
                     declare_extension()
 
         finalized_schema_models: dict[str, Any] = {}
-        for _index, _schema in SCHEMA_INDEXES.items():
+        for _index, _schema in INDEXES.items():
             if _schema is None:
                 finalized_schema_models[_index] = None
                 continue
@@ -154,15 +124,15 @@ class HowlerDatastore(object):
         self.ds.archive_access = False
 
     @property
-    def hit(self) -> ESCollection[Hit]:
+    def hit(self) -> ESCollection[Any]:
         return self.ds.hit
 
     @property
-    def event(self) -> ESCollection[Event]:
+    def event(self) -> ESCollection[Any]:
         return self.ds.event
 
     @property
-    def case(self) -> ESCollection[Case]:
+    def case(self) -> ESCollection[Any]:
         return self.ds.case
 
     @property
@@ -186,7 +156,7 @@ class HowlerDatastore(object):
         return self.ds.action
 
     @property
-    def user(self) -> ESCollection[User]:
+    def user(self) -> ESCollection[Any]:
         return self.ds.user
 
     @property

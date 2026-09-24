@@ -13,6 +13,7 @@ running server or Elasticsearch is required.
 
 from unittest.mock import MagicMock, patch  # noqa: I001
 
+from howler.models.user import User
 from howler.services import user_service
 
 
@@ -171,3 +172,25 @@ class TestParseUserDataAccessControl:
 
         mock_aac.assert_not_called()
         storage.user.save.assert_not_called()
+
+
+def test_convert_user_preserves_public_apikey_expiry_shape():
+    user = User.validate_howler(
+        {
+            "uname": "alice",
+            "name": "Alice",
+            "password": "hash",
+            "apikeys": {
+                "no-expiry": {"acl": ["R"], "password": "key-hash"},
+                "expires": {"acl": ["R", "W"], "password": "key-hash", "expiry_date": "2025-01-01T00:00:00Z"},
+            },
+        }
+    )
+    storage = MagicMock()
+    storage.user.get_if_exists.return_value = user
+
+    with patch.object(user_service, "datastore", return_value=storage):
+        response = user_service.convert_user(user)
+
+    assert ("no-expiry", ["R"], None) in response["apikeys"]
+    assert ("expires", ["R", "W"], "2025-01-01T00:00:00.000000Z") in response["apikeys"]

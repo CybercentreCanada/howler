@@ -9,15 +9,15 @@ continue to work without modification.
     in a future release.
 """
 
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from howler.common.exceptions import HowlerException, InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import DataStoreException
-from howler.odm.models.case import Case, CaseItemTypes
-from howler.odm.models.hit import Hit
-from howler.odm.models.user import User
+from howler.models.case import Case, CaseItemTypes
+from howler.models.hit import Hit
+from howler.models.user import User
 from howler.services import analytic_service, case_service, hit_service
 
 
@@ -38,13 +38,13 @@ def find_case_for_bundle(bundle_hit_id: str) -> Case | None:
     The lookup relies on the ``howler.related`` back-reference that
     ``case_service.append_case_item`` automatically sets on the hit.
     """
-    hit = hit_service.get_hit(bundle_hit_id, as_odm=True)
+    hit = cast(Any, hit_service.get_hit(bundle_hit_id, as_odm=True))
     if hit is None:
         return None
 
     ds = datastore()
     for related_id in hit.howler.related:
-        case = ds.case.get(related_id)
+        case = cast(Any, ds.case.get(related_id))
         if case is not None:
             # Confirm the bundle hit is present and at root level (no parent)
             if any(item.value == bundle_hit_id and item.parent is None for item in case.items):
@@ -94,15 +94,19 @@ def create_bundle(
             )
 
     odm, warnings = hit_service.convert_hit(bundle_hit_data, unique=True, ignore_extra_values=True)
-    hit_service.create_hit(odm.howler.id, odm, user=user.uname, refresh=refresh)
-    analytic_service.save_from_hits(odm, user, refresh)
+    odm = cast(Any, odm)
+    hit_service.create_hit(odm.howler.id, odm, user=cast(Any, user).uname, refresh=refresh)
+    analytic_service.save_from_hits(cast(Any, odm), cast(Any, user), refresh)
 
     analytic = odm.howler.analytic or "Unknown"
     detection = odm.howler.detection or "Alert"
     case_title = f"{analytic} - {detection}"
 
-    case = case_service.create_case(
-        {"title": case_title, "summary": f"Auto-created case for bundle {odm.howler.id}"}, user=user
+    case = cast(
+        Any,
+        case_service.create_case(
+            {"title": case_title, "summary": f"Auto-created case for bundle {odm.howler.id}"}, user=cast(Any, user)
+        ),
     )
 
     # Root hit
@@ -132,7 +136,7 @@ def create_bundle(
         except (InvalidDataException, NotFoundException, DataStoreException) as exc:  # pragma: no cover
             logger.warning("Could not add child hit %s to case: %s", child_id, exc)
 
-    updated_case: Case | None = datastore().case.get(case.case_id)
+    updated_case = cast(Any, datastore().case.get(case.case_id))
     if updated_case is None:  # pragma: no cover
         raise NotFoundException(f"Case {case.case_id} disappeared after creation")
 
@@ -149,25 +153,28 @@ def add_to_bundle(
     a case is created on the fly — matching develop's convert-to-bundle
     behaviour.
     """
-    root_hit = hit_service.get_hit(bundle_id, as_odm=True)
+    root_hit = cast(Any, hit_service.get_hit(bundle_id, as_odm=True))
     if root_hit is None:
         raise NotFoundException(f"Bundle hit {bundle_id} does not exist")
 
-    case = find_case_for_bundle(bundle_id)
+    case = cast(Any, find_case_for_bundle(bundle_id))
 
     # develop: PUT on a plain hit converts it into a bundle by creating a case
     if case is None:
         analytic = root_hit.howler.analytic or "Unknown"
         detection = root_hit.howler.detection or "Alert"
-        case = case_service.create_case(
-            {"title": f"{analytic} - {detection}", "summary": f"Auto-created case for bundle {bundle_id}"},
+        case = cast(
+            Any,
+            case_service.create_case(
+                {"title": f"{analytic} - {detection}", "summary": f"Auto-created case for bundle {bundle_id}"},
+            ),
         )
         case_service.append_case_item(case.case_id, item_type="hit", item_value=bundle_id, refresh=refresh)
 
     case_id = case.case_id
 
     # Check for duplicates and nested bundles before modifying
-    current_case: Case | None = datastore().case.get(case_id)
+    current_case = cast(Any, datastore().case.get(case_id))
     if current_case is None:  # pragma: no cover
         raise NotFoundException(f"Case {case_id} not found")
 
@@ -189,7 +196,7 @@ def add_to_bundle(
 
         case_service.append_case_item(case_id, item_type="hit", item_value=hit_id, refresh=refresh)
 
-    updated_case: Case | None = datastore().case.get(case_id)
+    updated_case = cast(Any, datastore().case.get(case_id))
     if updated_case is None:  # pragma: no cover
         raise NotFoundException(f"Case {case_id} not found")
 
@@ -204,16 +211,16 @@ def remove_from_bundle(
     If *hit_ids* is ``["*"]``, all child hits (everything except the root) are
     removed.
     """
-    root_hit = hit_service.get_hit(bundle_id, as_odm=True)
+    root_hit = cast(Any, hit_service.get_hit(bundle_id, as_odm=True))
     if root_hit is None:
         raise NotFoundException(f"Bundle hit {bundle_id} does not exist")
 
-    _case = find_case_for_bundle(bundle_id)
+    _case = cast(Any, find_case_for_bundle(bundle_id))
     if _case is None:
         # Hit exists but is not a bundle — match develop's "must be a bundle" error
         raise InvalidDataException("The specified hit must be a bundle.")
 
-    case: Case | None = datastore().case.get(_case.case_id)
+    case = cast(Any, datastore().case.get(_case.case_id))
     if case is None:
         raise NotFoundException(f"Case {_case.case_id} not found")
 
@@ -232,9 +239,9 @@ def remove_from_bundle(
             # force=True is required when removing all children via wildcard because the "hits/" folder
             # item is included in the removal set and may still have children at removal time.
             use_force = hit_ids == ["*"]
-            case_service.remove_case_items(_case, item_ids_to_remove, force=use_force, refresh=refresh)
+            case_service.remove_case_items(cast(Any, _case), item_ids_to_remove, force=use_force, refresh=refresh)
 
-    updated_case: Case | None = datastore().case.get(_case.case_id)
+    updated_case = cast(Any, datastore().case.get(_case.case_id))
     if updated_case is None:  # pragma: no cover
         raise NotFoundException(f"Case {_case.case_id} not found")
 
@@ -252,16 +259,18 @@ def synthesize_bundle_response(
     ``is_bundle``, ``hits``, and ``bundle_size`` fields injected into
     ``howler``.
     """
+    case_model = cast(Any, case)
+    hit_model = cast(Any, root_hit)
     child_ids = [
-        item.value for item in case.items if item.type == CaseItemTypes.HIT and item.value != root_hit.howler.id
+        item.value for item in case_model.items if item.type == CaseItemTypes.HIT and item.value != hit_model.howler.id
     ]
 
-    hit_data = root_hit.as_primitives()
+    hit_data = hit_model.as_primitives()
     hit_data["howler"]["is_bundle"] = len(child_ids) > 0
     hit_data["howler"]["hits"] = child_ids
     hit_data["howler"]["bundle_size"] = len(child_ids)
     hit_data["_deprecation"] = DEPRECATION_MESSAGE
-    hit_data["_case_id"] = case.case_id
+    hit_data["_case_id"] = case_model.case_id
 
     if warnings:
         hit_data["_warnings"] = warnings

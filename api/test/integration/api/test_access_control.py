@@ -25,7 +25,7 @@ import requests
 
 from howler.config import CLASSIFICATION
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.security.utils import get_password_hash
 from howler.services import user_service
 from test.conftest import get_api_data
@@ -333,7 +333,7 @@ def group_accounts(datastore: HowlerDatastore):
         (d2_uname, _C12N_D2, d2_pass),
     ]:
         pw_hash = get_password_hash(password)
-        user_data = User(
+        user_data = User.model_validate(
             {
                 "name": f"Group Test User ({uname})",
                 "email": f"{uname}@example.com",

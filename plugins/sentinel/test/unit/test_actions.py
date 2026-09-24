@@ -5,8 +5,7 @@ from unittest.mock import patch
 import requests
 from howler.app import app
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.models.hit import Hit
-from howler.odm.randomizer import random_model_obj
+from howler.models.hit import Hit
 
 with (Path(__file__).parent / "sentinel.json").open() as _alert:
     SENTINEL_ALERT = json.load(_alert)
@@ -49,8 +48,18 @@ def mock_patch(url: str, **kwargs):
 def test_send_to_sentinel(datastore_connection: HowlerDatastore):
     with app.test_request_context():
         from sentinel.actions.send_to_sentinel import execute
+        from sentinel.config import config
 
-        hit_id = datastore_connection.hit.search("howler.id:*", fl="howler.id", rows=1)["items"][0].howler.id
+        hit = datastore_connection.hit.model_class.validate_howler(
+            {
+                "howler": {"analytic": "Configured Sentinel tenant", "hash": "a" * 64},
+                "azure": {"tenant_id": config.ingestors[0].tenant_id},
+                "event": {"ingested": "2026-01-01T00:00:00Z"},
+            }
+        )
+        hit_id = hit.howler.id
+        datastore_connection.hit.save(hit_id, hit)
+        datastore_connection.hit.commit()
 
         result = execute(f"howler.id:{hit_id}")
 
@@ -61,7 +70,12 @@ def test_send_to_sentinel(datastore_connection: HowlerDatastore):
             "message": "Howler has successfully propagated changes to this alert to Sentinel.",
         }
 
-        broken_hit = random_model_obj(Hit)
+        broken_hit = datastore_connection.hit.model_class.validate_howler(
+            {
+                "howler": {"analytic": "Unconfigured Sentinel tenant", "hash": "b" * 64},
+                "azure": {"tenant_id": "unconfigured-tenant"},
+            }
+        )
 
         datastore_connection.hit.save(broken_hit.howler.id, broken_hit)
         datastore_connection.hit.commit()

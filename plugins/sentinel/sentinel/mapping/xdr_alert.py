@@ -216,7 +216,7 @@ class XDRAlert:
                     "summary": graph_alert.get("description", ""),
                     "indicators": [],
                     "threat": graph_alert.get("threatDisplayName", ""),
-                    "target": graph_alert.get("computerDnsName", ""),
+                    "target": graph_alert.get("computerDnsName") or None,
                 },
                 "assignment": assigned_to,
                 "escalation": "hit",

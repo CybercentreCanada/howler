@@ -7,7 +7,7 @@ import pytest
 import requests
 from flask import json
 
-from howler.odm.models.config import Config
+from howler.config_models import Config
 from howler.security.utils import get_random_password
 from test.conftest import APIError, get_api_data
 from test.utils.oauth_credentials import get_token

@@ -2,7 +2,7 @@ import base64
 import hashlib
 import hmac
 from datetime import datetime
-from typing import Optional, Union
+from typing import Any, Optional, Union, cast
 
 from flask import request
 from opentelemetry import trace
@@ -18,7 +18,7 @@ from howler.common.exceptions import (
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.config import config, redis
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.remote.datatypes import retry_call
 from howler.remote.datatypes.queues.named import NamedQueue
 from howler.remote.datatypes.set import ExpiringSet
@@ -239,7 +239,7 @@ def bearer_auth(
             cur_user = user_service.parse_user_data(jwt_data, jwt_service.get_provider(data))
 
             if cur_user:
-                return cur_user, ["R", "W", "E"]
+                return cast(Any, cur_user), ["R", "W", "E"]
 
             return None, None
         else:
@@ -251,7 +251,7 @@ def bearer_auth(
             privs = validate_token(username, token)
 
             if privs is not None:
-                return datastore().user.get(username), privs
+                return cast(Any, datastore().user.get(username)), privs
 
             return None, None
         else:
@@ -277,7 +277,7 @@ def validate_apikey(  # noqa: C901
         tuple[Optional[User], Optional[list[str]]]: The user odm object and privileges, if validated
     """
     if config.auth.allow_apikeys and apikey:
-        user_data: User = datastore().user.get_if_exists(username)
+        user_data = cast(Any, datastore().user.get_if_exists(username))
         if user_data:
             try:
                 # Get the name and secret data of the api key we are validating
@@ -296,7 +296,7 @@ def validate_apikey(  # noqa: C901
                 # a) someone is trying to impersonate as this user, and the apikey can be used for that, AND the
                 #    impersonator is on the list of people allowed to use it
                 # b) The user is not being impersonated, and the api key isn't specifically meant for impersonation
-                if impersonator and ("I" not in key.acl or impersonator["uname"] not in key.agents):
+                if impersonator and ("I" not in key.acl or cast(Any, impersonator).uname not in key.agents):
                     raise AccessDeniedException("Not a valid impersonation api key")
                 elif not impersonator and "I" in key.acl:
                     raise AccessDeniedException(
@@ -340,7 +340,7 @@ def validate_userpass(username: str, password: str) -> tuple[Optional[User], Opt
         user = datastore().user.get(username)
         if user:
             if verify_password(password, user.password):
-                return user, ["R", "W", "E"]
+                return cast(Any, user), ["R", "W", "E"]
 
         return None, None
     else:

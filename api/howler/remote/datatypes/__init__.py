@@ -14,7 +14,7 @@ from packaging.version import parse
 from redis.backoff import ExponentialBackoff
 from redis.retry import Retry
 
-from howler.odm.models.config import config
+from howler.config_models import config
 from howler.utils.uid import get_random_id
 
 # Add a version warning if redis python client is < 2.10.0. Older versions

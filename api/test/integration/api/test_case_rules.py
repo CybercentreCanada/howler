@@ -4,7 +4,7 @@ import time
 import pytest
 
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.random_data import wipe_cases
+from howler.sample_data.random_data import wipe_cases
 from test.conftest import get_api_data
 
 

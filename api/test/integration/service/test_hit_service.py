@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
@@ -9,10 +9,12 @@ from howler.datastore.collection import ESCollection
 from howler.datastore.operations import OdmUpdateOperation
 from howler.helper.hit import HitStatusTransition
 from howler.helper.workflow import Workflow
-from howler.odm.base import UTC_TZ
-from howler.odm.models.hit import Hit
-from howler.odm.models.user import User
-from howler.odm.randomizer import random_model_obj
+from howler.models import construct_partial
+from howler.models.hit import Hit
+from howler.models.hit import Hit as SchemaHit
+from howler.models.registry import model_registry
+from howler.models.user import User
+from howler.sample_data.randomizer import random_model_obj
 from howler.services import hit_service
 
 
@@ -68,7 +70,7 @@ def test_convert_hit_event():
 
     assert result.event.created
 
-    create_date = datetime.now(tz=UTC_TZ).replace(year=2500)
+    create_date = datetime.now(tz=timezone.utc).replace(year=2500)
 
     obj["event"] = {"created": create_date}
 
@@ -214,23 +216,20 @@ def test_convert_hit_warnings(mock_exists):
     data = {
         **SAMPLE_HIT_DATA,
         "extra_field": "some_value",
-        "howler.is_hidden": True,  # Assuming this is a deprecated field for the test
+        "howler.is_hidden": True,
+        "related.id": "legacy-id",
     }
 
-    # Mock the Hit model to have a deprecated field for testing purposes
-    ff = Hit.flat_fields()
-    with patch.object(Hit, "flat_fields") as mock_flat_fields:
-        # We need to mock the return of flat_fields to include a deprecated field
-        # for the purpose of this test.
-        ff["howler.is_hidden"] = MagicMock(deprecated=True)
-        mock_flat_fields.return_value = ff
+    _, warnings = hit_service.convert_hit(data, unique=True, ignore_extra_values=True)
 
-        _, warnings = hit_service.convert_hit(data, unique=True, ignore_extra_values=True)
-
-        mock_flat_fields.assert_called()
-
-        assert "extra_field is not currently used by howler." in warnings
-        assert "howler.is_hidden is deprecated." in warnings
+    assert "extra_field is not currently used by howler." in warnings
+    assert "howler.is_hidden is not currently used by howler." in warnings
+    assert "related.id is deprecated." in warnings
+    assert "related.id" in [
+        name
+        for name, definition in model_registry.flat_fields(SchemaHit).items()
+        if definition.metadata and definition.metadata.deprecated
+    ]
 
 
 @patch("howler.services.hit_service.get_hit", return_value=None)
@@ -240,27 +239,29 @@ def test_transition_hit_not_found(mock_get_hit):
         hit_service.transition_hit(
             "non_existent_id",
             HitStatusTransition.ASSIGN_TO_ME,
-            user=User({"uname": "test_user", "name": "Test User", "password": "test_password"}),
+            user=User.model_validate({"uname": "test_user", "name": "Test User", "password": "test_password"}),
         )
 
 
 @patch(
     "howler.services.hit_service._update_hit",
     return_value=(
-        Hit({"howler": {"id": "hit-id", "status": "open", "analytic": "example", "hash": "abc123"}}),
+        Hit.model_validate({"howler": {"id": "hit-id", "status": "open", "analytic": "example", "hash": "abc123"}}),
         "new-version",
     ),
 )
 @patch("howler.services.hit_service.get_hit_workflow")
 @patch(
     "howler.services.hit_service.get_hit",
-    return_value=Hit({"howler": {"id": "hit-id", "status": "open", "analytic": "example", "hash": "abc123"}}),
+    return_value=Hit.model_validate(
+        {"howler": {"id": "hit-id", "status": "open", "analytic": "example", "hash": "abc123"}}
+    ),
 )
 def test_transition_hit_returns_new_version(mock_get_hit, mock_get_workflow, mock_update_hit):
     mock_get_workflow.return_value.transition.return_value = [
         OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.status", "in-progress")
     ]
-    user = User({"uname": "test_user", "name": "Test User", "password": "test_password"})
+    user = User.model_validate({"uname": "test_user", "name": "Test User", "password": "test_password"})
 
     updated_hit, new_version = hit_service.transition_hit(
         "hit-id",
@@ -279,7 +280,8 @@ def test_transition_hit_returns_new_version(mock_get_hit, mock_get_workflow, moc
 def test_create_hit_already_exists(mock_exists):
     """Test that create_hit raises ResourceExists if the hit exists and skip_exists is False."""
     with pytest.raises(ResourceExists):
-        hit_service.create_hit("some_id", Hit(SAMPLE_HIT_DATA))
+        hit, _ = hit_service.convert_hit(SAMPLE_HIT_DATA, unique=False)
+        hit_service.create_hit("some_id", hit)
 
 
 @patch("howler.services.hit_service._update_hit", return_value=(random_model_obj(cast(Any, Hit)), "version number"))
@@ -293,7 +295,7 @@ def test_update_hit_modifies_status(datastore_connection):
 
 
 def test_update_hit_fetches_version_when_missing():
-    hit = random_model_obj(cast(Any, Hit))
+    hit = construct_partial(SchemaHit, {"howler": {"id": "test-hit"}})
     version = "hit-index---1---1"
     storage = MagicMock()
     storage.hit.get.side_effect = [(hit, version), (hit, version)]
@@ -310,10 +312,11 @@ def test_update_hit_fetches_version_when_missing():
 
 
 def test_update_hit_preserves_provided_version():
-    hit = random_model_obj(cast(Any, Hit))
+    hit = construct_partial(SchemaHit, {"howler": {"id": "test-hit"}})
     version = "hit-index---2---3"
     storage = MagicMock()
     storage.hit.get.return_value = (hit, version)
+    storage.hit.get_if_exists.return_value = hit
 
     with (
         patch("howler.services.hit_service.datastore", return_value=storage),
@@ -337,7 +340,7 @@ def test_augment_metadata_single_hit_with_template(mock_match_metadata, mock_dat
     # Setup test data
     test_hit = {"howler": {"analytic": "test_analytic", "detection": "test_detection", "id": "test_hit_1"}}
 
-    test_user = User({"uname": "test_user", "name": "Test User", "password": "test_password"})
+    test_user = User.model_validate({"uname": "test_user", "name": "Test User", "password": "test_password"})
 
     # Mock template search response
     mock_template_collection = MagicMock()
@@ -376,7 +379,7 @@ def test_augment_metadata_multiple_hits_with_overview(mock_match_metadata, mock_
         {"howler": {"analytic": "analytic_2", "detection": "detection_2", "id": "hit_2"}},
     ]
 
-    test_user = User({"uname": "test_user", "name": "Test User", "password": "test_password"})
+    test_user = User.model_validate({"uname": "test_user", "name": "Test User", "password": "test_password"})
 
     # Mock overview search response
     mock_overview_collection = MagicMock()
@@ -417,7 +420,9 @@ def test_augment_metadata_with_dossiers(mock_get_matching_dossiers, mock_datasto
     # Setup test data
     test_hit = {"howler": {"analytic": "security_analytic", "detection": "threat_detection", "id": "security_hit_1"}}
 
-    test_user = User({"uname": "security_analyst", "name": "Security Analyst", "password": "test_password"})
+    test_user = User.model_validate(
+        {"uname": "security_analyst", "name": "Security Analyst", "password": "test_password"}
+    )
 
     # Mock dossier search response
     mock_dossier_collection = MagicMock()
@@ -480,7 +485,7 @@ def test_augment_metadata_all_metadata_types(
         }
     }
 
-    test_user = User({"uname": "comprehensive_user", "name": "Test User", "password": "test_password"})
+    test_user = User.model_validate({"uname": "comprehensive_user", "name": "Test User", "password": "test_password"})
 
     # Mock datastore collections
     mock_template_collection = MagicMock()
@@ -534,7 +539,7 @@ def test_augment_metadata_empty_metadata_list():
     """Test augment_metadata with empty metadata list (should do nothing)."""
     test_hit = {"howler": {"analytic": "test_analytic", "id": "test_hit"}}
 
-    test_user = User({"uname": "test_user", "name": "Test User", "password": "test_password"})
+    test_user = User.model_validate({"uname": "test_user", "name": "Test User", "password": "test_password"})
     original_hit = test_hit.copy()
 
     # Test with empty metadata list
@@ -553,7 +558,7 @@ def test_augment_metadata_no_matching_templates(mock_match_metadata, mock_datast
     """Test augment_metadata when no templates match."""
     test_hit = {"howler": {"analytic": "no_match_analytic", "id": "test_hit"}}
 
-    test_user = User({"uname": "test_user", "name": "Test User", "password": "test_password"})
+    test_user = User.model_validate({"uname": "test_user", "name": "Test User", "password": "test_password"})
 
     # Mock template search with no results
     mock_template_collection = MagicMock()
@@ -580,7 +585,7 @@ def test_augment_metadata_duplicate_analytics(mock_match_metadata, mock_datastor
         {"howler": {"analytic": "same_analytic", "detection": "detection_2", "id": "hit_2"}},
     ]
 
-    test_user = User({"uname": "test_user", "name": "Test User", "password": "test_password"})
+    test_user = User.model_validate({"uname": "test_user", "name": "Test User", "password": "test_password"})
 
     # Mock template search response
     mock_template_collection = MagicMock()
@@ -606,7 +611,7 @@ def test_augment_metadata_user_permission_filtering(mock_datastore):
     """Test that template search includes proper user permission filtering."""
     test_hit = {"howler": {"analytic": "permission_test_analytic", "id": "permission_hit"}}
 
-    test_user = User({"uname": "specific_user", "name": "Test User", "password": "test_password"})
+    test_user = User.model_validate({"uname": "specific_user", "name": "Test User", "password": "test_password"})
 
     # Mock template search
     mock_template_collection = MagicMock()
@@ -625,7 +630,7 @@ def test_augment_metadata_single_hit_as_dict():
     """Test augment_metadata properly handles single hit passed as dictionary."""
     test_hit = {"howler": {"analytic": "single_hit_analytic", "id": "single_hit"}}
 
-    test_user = User({"uname": "test_user", "name": "Test User", "password": "test_password"})
+    test_user = User.model_validate({"uname": "test_user", "name": "Test User", "password": "test_password"})
 
     with patch("howler.services.hit_service.datastore") as mock_datastore:
         # Mock collections to avoid actual datastore calls
@@ -725,7 +730,7 @@ def test__match_metadata_no_match():
 @patch("howler.services.hit_service.datastore")
 def test_augment_metadata_empty_hit_list(mock_datastore):
     """Test augment_metadata with an empty list of hits."""
-    test_user = User({"uname": "test_user", "name": "Test User", "password": "test_password"})
+    test_user = User.model_validate({"uname": "test_user", "name": "Test User", "password": "test_password"})
 
     # Mock datastore collections to ensure they're not called
     mock_template_collection = MagicMock()
@@ -752,7 +757,7 @@ def test_augment_metadata_empty_hit_list(mock_datastore):
 @patch("howler.services.hit_service.datastore")
 def test_augment_metadata_none_hit(mock_datastore):
     """Test augment_metadata with a None hit value."""
-    test_user = User({"uname": "test_user", "name": "Test User", "password": "test_password"})
+    test_user = User.model_validate({"uname": "test_user", "name": "Test User", "password": "test_password"})
 
     # Mock datastore collections to ensure they're not called
     mock_template_collection = MagicMock()

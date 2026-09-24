@@ -10,11 +10,11 @@
 | architecture | Keyword | Machine architecture of the ELF file. | :material-minus-box-outline: Optional | `None` |
 | byte_order | Keyword | Byte sequence of ELF file. | :material-minus-box-outline: Optional | `None` |
 | cpu_type | Keyword | CPU type of the ELF file. | :material-minus-box-outline: Optional | `None` |
-| creation_date | Keyword | Extracted when possible from the file’s metadata. | :material-minus-box-outline: Optional | `None` |
+| creation_date | Keyword | Extracted when possible from the file's metadata. | :material-minus-box-outline: Optional | `None` |
 | exports | List [Keyword] | List of exported element names and types. | :material-checkbox-marked-outline: Yes | `[]` |
 | header | [Header](/howler/odm/class/header) | Header information about the ELF file. | :material-minus-box-outline: Optional | `None` |
 | imports | List [Keyword] | List of imported element names and types. | :material-minus-box-outline: Optional | `None` |
-| sections | List [[Section](/howler/odm/class/section)] | None | :material-minus-box-outline: Optional | `None` |
-| segments | List [[Section](/howler/odm/class/section)] | None | :material-minus-box-outline: Optional | `None` |
+| sections | List [[Section](/howler/odm/class/section)] | An array containing an object for each section of the ELF file. | :material-minus-box-outline: Optional | `None` |
+| segments | List [[Section](/howler/odm/class/section)] | An array containing an object for each segment of the ELF file. | :material-minus-box-outline: Optional | `None` |
 | shared_libraries | List [Keyword] | List of shared libraries used by this ELF object. | :material-minus-box-outline: Optional | `None` |
 | telfhash | Keyword | telfhash symbol hash for ELF file. | :material-minus-box-outline: Optional | `None` |

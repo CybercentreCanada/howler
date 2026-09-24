@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 from flask import request
 
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
@@ -11,8 +13,7 @@ from howler.common.exceptions import (
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
-from howler.odm.models.dossier import Dossier
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.security import api_login
 from howler.services import dossier_service
 
@@ -43,7 +44,7 @@ def get_dossiers(user: User, **kwargs):
     try:
         return ok(
             datastore().dossier.search(
-                f"type:global OR owner:({user['uname']} OR none)",
+                f"type:global OR owner:({cast(Any, user).uname} OR none)",
                 as_obj=False,
                 rows=1000,
             )["items"]
@@ -149,7 +150,7 @@ def get_dossier_for_hit(id: str, user: User, **kwargs):
 
         hit = response["items"][0]
 
-        return ok(dossier_service.get_matching_dossiers(hit, username=user.uname))
+        return ok(dossier_service.get_matching_dossiers(hit, username=cast(Any, user).uname))
     except ValueError as e:
         return bad_request(err=str(e))
 
@@ -180,11 +181,11 @@ def delete_dossier(id: str, user: User, **kwargs):
 
     storage = datastore()
 
-    existing_dossier: Dossier = storage.dossier.get_if_exists(id)
+    existing_dossier = storage.dossier.get_if_exists(id)
     if not existing_dossier:
         return not_found(err="This dossier does not exist")
 
-    if existing_dossier.owner != user.uname and "admin" not in user.type:
+    if cast(Any, existing_dossier).owner != cast(Any, user).uname and "admin" not in cast(Any, user).type:
         return forbidden(err="You cannot delete a dossier unless you are an administrator, or the owner.")
 
     success = storage.dossier.delete(id, refresh=refresh)
