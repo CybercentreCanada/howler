@@ -1,9 +1,6 @@
 """Typed extension declaration wiring the Evidence model onto the Hit document.
 
-This is the Pydantic/DSL replacement for ``evidence.odm.hit.modify_odm``'s
-``target.add_namespace(...)`` call. It only *declares* the extension against the model
-extension registry; actually finalizing ``Hit`` with this extension applied, and using the
-finalized model at runtime, is Step 8 (datastore/consumer cutover) work.
+This declaration is applied when the datastore finalizes ``Hit`` at startup.
 """
 
 from __future__ import annotations

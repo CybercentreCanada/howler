@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from typing import Any, List
+from typing import Any
 
 from apscheduler.schedulers.base import BaseScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -22,42 +22,40 @@ def execute():
     # fetch the first result from user ds (needed to initialize total)
     user_result = ds.user.search("*:*", rows=250, fl="*")
     total_user_count = user_result["total"]
-    user_list: List[Any] = user_result["items"]
+    user_list: list[Any] = user_result["items"]
 
     # Do the same thing for the views
     view_result = ds.view.search("*:*", rows=250)
     total_view_count = view_result["total"]
-    view_list: List[Any] = view_result["items"]
-    view_ids: List[str] = []
+    view_list: list[Any] = view_result["items"]
+    view_ids: set[str] = set()
 
     # Collect all views
     while len(view_list) < total_view_count:
-        view_list.extend(ds.view.search("*:*", rows=250, offset=len(view_list)))
+        view_list.extend(ds.view.search("*:*", rows=250, offset=len(view_list))["items"])
 
     # Collect all users
     while len(user_list) < total_user_count:
-        user_list.extend(ds.user.search("*:*", rows=250, offset=len(user_list)))
+        user_list.extend(ds.user.search("*:*", rows=250, offset=len(user_list))["items"])
 
     for view in view_list:
-        view_ids.append(view["view_id"])
+        view_ids.add(view.view_id)
 
     # Iterate over each user to see if the dashboard contains invalid entries (deleted views)
     for user in user_list:
         valid_entries = []
         # No views/analytics saved to the dashboard? Skip it
-        if user["dashboard"] == []:
+        if not user.dashboard:
             continue
-        for dashboard_entry in user["dashboard"]:
-            if dashboard_entry["type"] != "view" or (
-                dashboard_entry["type"] == "view" and dashboard_entry["entry_id"] in view_ids
-            ):
+        for dashboard_entry in user.dashboard:
+            if dashboard_entry.type != "view" or dashboard_entry.entry_id in view_ids:
                 valid_entries.append(dashboard_entry)
         # If the length of valid entries is less than the current dashboard, one or more pins are invalid
-        if len(valid_entries) < len(user["dashboard"]):
+        if len(valid_entries) < len(user.dashboard):
             # set the user dashboard to valid entries
             user.dashboard = valid_entries
             # update the user
-            ds.user.save(user["uname"], user)
+            ds.user.save(user.uname, user)
 
 
 def setup_job(sched: BaseScheduler):

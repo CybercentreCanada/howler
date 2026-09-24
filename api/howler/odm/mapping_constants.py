@@ -1,3 +1,5 @@
+"""Frozen legacy mapping vocabulary used only by differential tooling."""
+
 from howler.odm import (
     IP,
     MAC,

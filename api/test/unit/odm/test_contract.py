@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -38,3 +39,8 @@ def test_odm_contract_covers_migration_surfaces():
 
 def test_odm_contract_rendering_is_deterministic():
     assert render_contract_inventory() == render_contract_inventory()
+
+
+def test_isolated_legacy_collection_generator_preserves_frozen_contract():
+    frozen = json.loads(CONTRACT_PATH.read_text())
+    assert build_contract_inventory()["collections"] == frozen["collections"]

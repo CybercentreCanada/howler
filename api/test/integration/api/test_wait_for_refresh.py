@@ -15,8 +15,8 @@ from howler.app import app
 from howler.common import loader
 from howler.common.exceptions import HowlerInvalidParameterException
 from howler.datastore.collection import ESCollection
-from howler.odm import random_data
-from howler.odm.models.hit import Hit
+from howler.models.hit import Hit
+from howler.sample_data import random_data
 
 _TEST_TOKEN = f"Basic {base64.b64encode(b'admin:devkey:admin').decode('utf-8')}"
 

@@ -10,5 +10,3 @@
 | benign | List [Keyword] | List of users who voted benign. | :material-checkbox-marked-outline: Yes | `[]` |
 | obscure | List [Keyword] | List of users who voted obscure. | :material-checkbox-marked-outline: Yes | `[]` |
 | malicious | List [Keyword] | List of users who voted malicious. | :material-checkbox-marked-outline: Yes | `[]` |
-
-

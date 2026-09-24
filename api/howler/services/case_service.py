@@ -8,7 +8,6 @@ from datetime import datetime, timezone
 from typing import Any, Literal, cast, overload
 
 from prometheus_client import Counter
-from pydantic import BaseModel
 
 from howler.common.exceptions import (
     ForbiddenException,
@@ -23,17 +22,13 @@ from howler.common.logging import get_logger
 from howler.config import CLASSIFICATION
 from howler.datastore.collection import CREATE_TOKEN
 from howler.datastore.exceptions import DataStoreException
-from howler.models.case import Case as SchemaCase
-from howler.models.case import CaseItem as SchemaCaseItem
-from howler.models.case import CaseLog as SchemaCaseLog
-from howler.models.case import CaseRule as SchemaCaseRule
+from howler.models.case import Case, CaseItem, CaseItemTypes, CaseLog, CaseRule
+from howler.models.ecs.related import Related
+from howler.models.event import Event
+from howler.models.hit import Hit
+from howler.models.howler_data import Log
 from howler.models.registry import model_registry
-from howler.odm.models.case import Case, CaseItem, CaseItemTypes, CaseLog, CaseRule
-from howler.odm.models.ecs.related import Related
-from howler.odm.models.event import Event
-from howler.odm.models.hit import Hit
-from howler.odm.models.log import Log
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.security.utils import is_classification_accessible
 from howler.services import comms_service, event_service, hit_service
 
@@ -42,33 +37,7 @@ logger = get_logger(__file__)
 CREATED_CASES = Counter(f"{APP_NAME.replace('-', '_')}_created_cases_total", "The number of created cases")
 
 
-def _embedded_case_value(case: Case | SchemaCase, schema_type: type[BaseModel], legacy_type: type, value: Any) -> Any:
-    """Construct an embedded value matching the parent Case implementation."""
-    if isinstance(value, BaseModel):
-        raw = value.model_dump(by_alias=True)
-    elif hasattr(value, "as_primitives"):
-        raw = value.as_primitives()
-    else:
-        raw = value
-
-    if isinstance(case, BaseModel):
-        return value if isinstance(value, schema_type) else cast(Any, schema_type).validate_howler(raw)
-    return value if isinstance(value, legacy_type) else legacy_type(raw)
-
-
-def _case_item(case: Case | SchemaCase, value: Any) -> Any:
-    return _embedded_case_value(case, SchemaCaseItem, CaseItem, value)
-
-
-def _case_log(case: Case | SchemaCase, value: Any) -> Any:
-    return _embedded_case_value(case, SchemaCaseLog, CaseLog, value)
-
-
-def _case_rule(case: Case | SchemaCase, value: Any) -> Any:
-    return _embedded_case_value(case, SchemaCaseRule, CaseRule, value)
-
-
-def _apply_case_rule_patch(rule: Any, patch: dict[str, Any]) -> tuple[Any, list[str]]:
+def _apply_case_rule_patch(rule: CaseRule, patch: dict[str, Any]) -> tuple[CaseRule, list[str]]:
     """Validate and apply a rule patch without partially mutating Pydantic rules."""
     changes: list[str] = []
     for key, value in patch.items():
@@ -76,48 +45,31 @@ def _apply_case_rule_patch(rule: Any, patch: dict[str, Any]) -> tuple[Any, list[
             raise HowlerValueError("Rule timeframe must be a positive integer or None")
         changes.append(f"{key}: '{getattr(rule, key, None)}' → '{value}'")
 
-    if isinstance(rule, BaseModel):
-        try:
-            return (
-                cast(Any, type(rule)).validate_howler({**cast(Any, rule).as_primitives(), **patch}),
-                changes,
-            )
-        except HowlerValueError as ex:
-            raise InvalidDataException(str(ex)) from ex
-
-    for key, value in patch.items():
-        setattr(rule, key, value)
-    return rule, changes
+    try:
+        return CaseRule.validate_howler({**rule.as_primitives(), **patch}), changes
+    except HowlerValueError as ex:
+        raise InvalidDataException(str(ex)) from ex
 
 
-def _save_case(
-    case: Case | SchemaCase,
+def save_case(
+    case: Case,
     refresh: Literal["true", "false", "wait_for"] | None = None,
     version: str | None = None,
 ) -> bool:
-    if isinstance(case, BaseModel):
-        model_case = cast(Any, case)
-        refresh = refresh or "wait_for"
-        if version is None:
-            return datastore().case.save(model_case.case_id, case, refresh=refresh)
-        return datastore().case.save(model_case.case_id, case, refresh=refresh, version=version)
+    """Persist a case, defaulting to a ``wait_for`` refresh like the legacy model ``save`` helper."""
+    refresh = refresh or "wait_for"
     if version is None:
-        return case.save(refresh=refresh)
-    return case.save(refresh=refresh, version=version)
+        return datastore().case.save(case.case_id, case, refresh=refresh)
+    return datastore().case.save(case.case_id, case, refresh=refresh, version=version)
 
 
 def _save_record(
-    record: Hit | Event | BaseModel,
+    record: Hit | Event,
     version: str,
     refresh: Literal["true", "false", "wait_for"] | None = None,
 ) -> bool:
-    if isinstance(record, BaseModel):
-        model_record = cast(Any, record)
-        index = type(record).__name__.lower()
-        return datastore()[index].save(model_record.howler.id, record, version=version, refresh=refresh or "wait_for")
-    if refresh is None:
-        return record.save(version=version)
-    return record.save(version=version, refresh=refresh)
+    index = "hit" if isinstance(record, Hit) else "event"
+    return datastore()[index].save(record.howler.id, record, version=version, refresh=refresh or "wait_for")
 
 
 @overload
@@ -241,17 +193,21 @@ def create_case(
         case_data["case_id"] = case_id
     items = case_data.pop("items", [])
 
-    case = Case(case_data)
-    case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user.uname if user else "system"})]
+    case = Case.validate_howler(case_data)
+    case.log = [
+        CaseLog.validate_howler(
+            {"timestamp": "NOW", "explanation": "Case created", "user": user.uname if user else "system"}
+        )
+    ]
 
     if not is_classification_accessible(user, case.classification):
         raise ForbiddenException(f"User cannot create case at classification {case.classification}")
 
     # Accumulate initial case items in memory and write the case once after validation.
     for item in items:
-        append_case_item(case, item=CaseItem(item), user=user)
+        append_case_item(case, item=CaseItem.validate_howler(item), user=user)
 
-    _save_case(case, refresh=refresh, version=CREATE_TOKEN)
+    save_case(case, refresh=refresh, version=CREATE_TOKEN)
 
     comms_service.emit("cases", {"case": case.as_primitives()})
 
@@ -288,8 +244,7 @@ def hide_cases(case_ids: set[str], user: User, refresh: Literal["true", "false",
         # Only persist the related case if we actually changed something.
         if hidden_ids:
             related_case.log.append(
-                _case_log(
-                    related_case,
+                CaseLog.validate_howler(
                     {
                         "timestamp": "NOW",
                         "user": user.uname,
@@ -297,7 +252,7 @@ def hide_cases(case_ids: set[str], user: User, refresh: Literal["true", "false",
                     },
                 )
             )
-            _save_case(related_case, refresh=refresh)
+            save_case(related_case, refresh=refresh)
 
     # Second pass: mark each target case itself as not visible.
     for case_id in case_ids:
@@ -308,8 +263,7 @@ def hide_cases(case_ids: set[str], user: User, refresh: Literal["true", "false",
 
         case.visible = False
         case.log.append(
-            _case_log(
-                case,
+            CaseLog.validate_howler(
                 {
                     "timestamp": "NOW",
                     "user": user.uname,
@@ -317,7 +271,7 @@ def hide_cases(case_ids: set[str], user: User, refresh: Literal["true", "false",
                 },
             )
         )
-        _save_case(case, refresh=refresh, version=version)
+        save_case(case, refresh=refresh, version=version)
 
 
 def delete_cases(
@@ -345,7 +299,7 @@ def delete_cases(
         related_case, related_case_version = ds.case.get(related_case_id, as_obj=True, version=True)
         if related_case:
             related_case.items = [item for item in related_case.items if item.value not in case_ids]
-            _save_case(related_case, refresh=refresh, version=related_case_version)
+            save_case(related_case, refresh=refresh, version=related_case_version)
 
     return ds.case.delete_by_query(f"case_id:({' OR '.join(case_ids)})", access_control=access_control, refresh=refresh)
 
@@ -371,14 +325,13 @@ def filter_case_items_by_classification(case_data: dict | Case, user_classificat
             if item.get("classification") is None
             or CLASSIFICATION.is_accessible(user_classification, item["classification"])
         ]
-    elif isinstance(case_data, (Case, SchemaCase)):
-        model_case = cast(Any, case_data)
-        if not model_case.items:
+    elif isinstance(case_data, Case):
+        if not case_data.items:
             return
 
-        model_case.items = [
+        case_data.items = [
             item
-            for item in model_case.items
+            for item in case_data.items
             if item.classification is None or CLASSIFICATION.is_accessible(user_classification, item.classification)
         ]
     else:
@@ -514,8 +467,7 @@ def update_case(
         explanation, prev_str, new_str = _describe_field_change(key, previous_value, new_value, compound_fields)
 
         case.log.append(
-            _case_log(
-                case,
+            CaseLog.validate_howler(
                 {
                     "timestamp": "NOW",
                     "key": key,
@@ -529,7 +481,7 @@ def update_case(
         setattr(case, key, new_value)
 
     case.updated = "NOW"
-    _save_case(case, refresh=refresh, version=version)
+    save_case(case, refresh=refresh, version=version)
 
     comms_service.emit("cases", {"case": case.as_primitives()})
 
@@ -586,8 +538,7 @@ def get_parent_from_path(
             if not create_if_missing:
                 return None
             # Create the folder
-            folder_item = _case_item(
-                case,
+            folder_item = CaseItem.validate_howler(
                 {"type": CaseItemTypes.FOLDER, "name": part, "parent": current_parent, "value": ""},
             )
             case.items.append(folder_item)
@@ -671,9 +622,9 @@ def append_case_item(  # noqa: C901
         data: dict = {"type": item_type, "value": item_value, "parent": item_parent}
         if item_name is not None:
             data["name"] = item_name
-        item = CaseItem(data)
-
-    item = cast(CaseItem, _case_item(case, item))
+        elif item_type == CaseItemTypes.FOLDER:
+            data["name"] = item_value
+        item = CaseItem.validate_howler(data)
 
     if item.name is None:
         item.name = item.value
@@ -910,7 +861,7 @@ def remove_case_items(  # noqa: C901
 
     recompute_case_metadata(case)
 
-    if not _save_case(case, refresh=refresh, version=version):  # pragma: no cover
+    if not save_case(case, refresh=refresh, version=version):  # pragma: no cover
         raise DataStoreException("Failed to save case after item removal")
 
     comms_service.emit("cases", {"case": case.as_primitives()})
@@ -952,7 +903,6 @@ def append_hit(
         InvalidDataException: If the hit is already present in the case.
         DataStoreException: If saving the updated case fails.
     """
-    item = _case_item(case, item)
     hit, hit_version = hit_service.get_hit(item.value, as_odm=True, version=True, user=user)
     if hit is None:
         raise NotFoundException(f"Hit {item.value} not found, cannot be added to case")
@@ -1032,7 +982,6 @@ def append_event(
         DataStoreException: If loading or saving the event fails.
         ForbiddenException: If the event classification cannot be added to the case.
     """
-    item = _case_item(case, item)
     event, event_version = event_service.get_event(item.value, as_odm=True, version=True, user=user)
 
     if event is None:
@@ -1080,7 +1029,6 @@ def append_case(
         DataStoreException: If loading the referenced case fails.
         ForbiddenException: If the referenced case classification cannot be added to the parent case.
     """
-    item = _case_item(case, item)
     referenced_case = get_case(item.value, as_odm=True, version=False, user=user)
     if referenced_case is None:
         raise NotFoundException(f"Referenced case {item.name} not found, cannot be added to case")
@@ -1104,9 +1052,8 @@ def _collect_indicators_from_related(related: Related | None) -> set[str]:
         return set()
 
     indicators: set[str] = set()
-    fields = model_registry.fields(type(related)) if isinstance(related, BaseModel) else related.fields()
-    for key in fields:
-        value = related[key]
+    values = (getattr(related, name) for name in model_registry.fields(type(related)))
+    for value in values:
         if value:
             indicators.update(str(v) for v in value if v)
 
@@ -1186,7 +1133,7 @@ def add_backreference(
 
     backing_obj.howler.related.append(case_id)
     backing_obj.howler.log.append(
-        Log(
+        Log.validate_howler(
             {
                 "timestamp": "NOW",
                 "explanation": f"Added to case {case_id}",
@@ -1226,7 +1173,7 @@ def remove_backreference(
         backing_obj.howler.related.remove(case_id)
 
         backing_obj.howler.log.append(
-            Log(
+            Log.validate_howler(
                 {
                     "timestamp": "NOW",
                     "explanation": f"Removed from case {case_id}",
@@ -1323,15 +1270,14 @@ def add_case_rule(
     rule_data.setdefault("expire_after_resolved", False)
 
     try:
-        rule = _case_rule(case, rule_data)
+        rule = CaseRule.validate_howler(rule_data)
     except HowlerValueError as ex:
         raise InvalidDataException(str(ex)) from ex
 
     case.rules.append(rule)
 
     case.log.append(
-        _case_log(
-            case,
+        CaseLog.validate_howler(
             {
                 "timestamp": "NOW",
                 "user": user.uname,
@@ -1341,7 +1287,7 @@ def add_case_rule(
     )
 
     case.updated = "NOW"
-    _save_case(case, refresh=refresh, version=version)
+    save_case(case, refresh=refresh, version=version)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case
 
@@ -1374,8 +1320,7 @@ def remove_case_rule(
         raise NotFoundException(f"Rule {rule_id} not found in case {case_id}")
 
     case.log.append(
-        _case_log(
-            case,
+        CaseLog.validate_howler(
             {
                 "timestamp": "NOW",
                 "user": user.uname,
@@ -1385,7 +1330,7 @@ def remove_case_rule(
     )
 
     case.updated = "NOW"
-    _save_case(case, refresh=refresh, version=version)
+    save_case(case, refresh=refresh, version=version)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case
 
@@ -1442,8 +1387,7 @@ def update_case_rule(
         raise InvalidDataException("Rule cannot expire after resolved when no timeframe is set")
 
     case.log.append(
-        _case_log(
-            case,
+        CaseLog.validate_howler(
             {
                 "timestamp": "NOW",
                 "user": user.uname,
@@ -1453,6 +1397,6 @@ def update_case_rule(
     )
 
     case.updated = "NOW"
-    _save_case(case, refresh=refresh, version=version)
+    save_case(case, refresh=refresh, version=version)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case

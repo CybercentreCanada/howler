@@ -15,13 +15,12 @@ from howler.datastore.operations import OdmUpdateOperation
 from howler.models import construct_partial, validate_field_value
 from howler.models.analytic import Analytic, Notebook, TriageOptions
 from howler.models.analytic import Comment as AnalyticComment
-from howler.models.case import Case
+from howler.models.case import Case, CaseRule
 from howler.models.case import CaseItem as SchemaCaseItem
 from howler.models.ecs.related import Related
 from howler.models.hit import Hit
+from howler.models.howler_data import Comment
 from howler.models.user import ApiKey, User
-from howler.odm.models.case import CaseRule
-from howler.odm.models.howler_data import Comment
 from howler.services import case_service, correlation_service, hit_service
 
 
@@ -38,6 +37,7 @@ def test_hit_update_uses_registry_fields_for_pydantic_hits():
     hit = construct_partial(Hit, {"howler": {"labels": {"generic": []}}})
     datastore = MagicMock()
     datastore.hit.get.return_value = (hit, "new-version")
+    datastore.hit.get_if_exists.return_value = hit
 
     with patch("howler.services.hit_service.datastore", return_value=datastore):
         data, version = hit_service._update_hit(
@@ -66,8 +66,8 @@ def test_hit_label_validation_uses_registry_fields_for_pydantic_hits():
     assert "missing" not in hit.howler
 
 
-def test_legacy_comment_update_value_is_converted_to_primitives():
-    comment = Comment({"user": "user-1", "value": "Comment"})
+def test_comment_update_value_is_converted_to_primitives():
+    comment = Comment.model_validate({"user": "user-1", "value": "Comment"})
 
     value = validate_field_value(Hit, "howler.comment", comment, list_item=True)
 
@@ -105,6 +105,38 @@ def test_view_cleanup_updates_pydantic_user_by_attribute():
 
     assert user.dashboard == []
     datastore.user.save.assert_called_once_with("user-1", user)
+
+
+def test_view_cleanup_keeps_valid_views_and_analytics_across_pages():
+    def user_with_dashboard(uname, entries):
+        return construct_partial(User, {"uname": uname, "dashboard": entries})
+
+    first = user_with_dashboard(
+        "user-1",
+        [
+            {"entry_id": "missing", "type": "view", "config": "{}"},
+            {"entry_id": "analytic-1", "type": "analytic", "config": "{}"},
+        ],
+    )
+    second = user_with_dashboard("user-2", [{"entry_id": "valid", "type": "view", "config": "{}"}])
+    datastore = MagicMock()
+    datastore.user.search.side_effect = [
+        {"total": 2, "items": [first]},
+        {"total": 2, "items": [second]},
+    ]
+    datastore.view.search.side_effect = [
+        {"total": 2, "items": [MagicMock(view_id="other")]},
+        {"total": 2, "items": [MagicMock(view_id="valid")]},
+    ]
+
+    with patch("howler.common.loader.datastore", return_value=datastore):
+        view_cleanup.execute()
+
+    assert [entry.entry_id for entry in first.dashboard] == ["analytic-1"]
+    assert [entry.entry_id for entry in second.dashboard] == ["valid"]
+    datastore.user.save.assert_called_once_with("user-1", first)
+    assert datastore.view.search.call_args_list[-1].kwargs["offset"] == 1
+    assert datastore.user.search.call_args_list[-1].kwargs["offset"] == 1
 
 
 def test_add_apikey_persists_pydantic_embedded_value():
@@ -193,7 +225,7 @@ def test_correlation_appends_pydantic_case_item_that_bulk_serializes():
             "escalation": "normal",
         }
     )
-    rule = CaseRule(
+    rule = CaseRule.model_validate(
         {
             "query": "*:*",
             "destination": "related",

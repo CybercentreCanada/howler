@@ -2,7 +2,6 @@ from typing import Union
 
 from howler.common.exceptions import HowlerNotImplementedError, HowlerValueError
 from howler.common.logging import get_logger
-from howler.datastore.constants import ANALYZER_MAPPING, NORMALIZER_MAPPING, TYPE_MAPPING
 from howler.odm import (
     Any,
     Boolean,
@@ -20,11 +19,13 @@ from howler.odm import (
     Optional,
     Text,
 )
+from howler.odm.base import _Field
+from howler.odm.mapping_constants import ANALYZER_MAPPING, NORMALIZER_MAPPING, TYPE_MAPPING
 
 logger = get_logger(__file__)
 
 
-def build_mapping(field_data, prefix=None, allow_refuse_implicit=True):
+def build_mapping(field_data, prefix=None, allow_refuse_implicit=True):  # noqa: C901
     """The mapping for Elasticsearch based on a python model object."""
     prefix = prefix or []
     mappings = {}
@@ -158,14 +159,15 @@ def build_mapping(field_data, prefix=None, allow_refuse_implicit=True):
     return mappings, dynamic
 
 
-def build_templates(name, field, nested_template=False, index=True) -> list:
+def build_templates(name: str, field: _Field, nested_template: bool = False, index: bool = True) -> list:  # noqa: C901
+    """Build the legacy dynamic templates used by differential mapping checks."""
     if isinstance(field, (Keyword, Boolean, Integer, Float, Text, Json)):
         if nested_template:
             main_template = {"match": f"{name}", "mapping": {"type": "nested"}}
 
             return [{f"nested_{name}": main_template}]
         else:
-            field_template = {
+            field_template: dict = {
                 "path_match": name,
                 "mapping": {
                     "type": TYPE_MAPPING[field.__class__.__name__],

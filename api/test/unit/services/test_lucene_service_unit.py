@@ -28,6 +28,14 @@ def test_prepare_lucene_query_protects_phrases_and_wildcards():
     assert len(prepared.rsplit(":", 1)[1]) == 64
 
 
+@pytest.mark.parametrize("bounds", ["[80 TO *]", "[* TO 100]", "{80 TO *}", "[* TO *}"])
+def test_prepare_lucene_query_preserves_unbounded_ranges(bounds):
+    query = f"howler.score:{bounds} AND howler.analytic:malware*"
+    prepared = lucene_service.prepare_lucene_query(query)
+    assert prepared.startswith(f"howler.score:{bounds} AND howler.analytic:")
+    assert "malware*" not in prepared
+
+
 def test_normalize_lucene_explanation_handles_nested_lucene_10_wrappers():
     lucene_service.SEARCH_PHRASE_CACHE.clear()
     query = 'howler.analytic:"Password Sprayer"'

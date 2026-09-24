@@ -14,4 +14,4 @@
 | hash | Keyword | Unique user hash to correlate information for a user in anonymized form. | :material-minus-box-outline: Optional | `None` |
 | id | Keyword | Unique identifier of the user. | :material-minus-box-outline: Optional | `None` |
 | name | Keyword | Short name or login of the user. | :material-minus-box-outline: Optional | `None` |
-| roles | List [Keyword] | Array of user roles at the time of the event. | :material-minus-box-outline: Optional | `[]` |
+| roles | List [Keyword] | Array of user roles at the time of the event. | :material-checkbox-marked-outline: Yes | `[]` |

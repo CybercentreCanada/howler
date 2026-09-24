@@ -9,5 +9,3 @@
 | :--- | :--- | :--- | :--- | :--- |
 | id | Keyword | Instance ID of the host machine. | :material-minus-box-outline: Optional | `None` |
 | name | Keyword | Instance name of the host machine. | :material-minus-box-outline: Optional | `None` |
-
-

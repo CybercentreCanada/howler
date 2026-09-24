@@ -5,7 +5,7 @@ from __future__ import annotations
 import types
 from copy import deepcopy
 from dataclasses import dataclass, replace
-from typing import Annotated, Any, Union, get_args, get_origin
+from typing import Annotated, Any, Callable, TypeVar, Union, get_args, get_origin
 
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
@@ -360,6 +360,7 @@ class ModelRegistry:
 
 
 model_registry = ModelRegistry()
+ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
 def register_model(
@@ -369,11 +370,11 @@ def register_model(
     index: bool | None = None,
     store: bool | None = None,
     embedded: bool = False,
-):
+) -> Callable[[type[ModelT]], type[ModelT]]:
     """Register a model with its legacy-compatible defaults."""
 
-    def decorator(model_type: type[BaseModel]) -> type[BaseModel]:
-        return model_registry.register(
+    def decorator(model_type: type[ModelT]) -> type[ModelT]:
+        model_registry.register(
             model_type,
             description=description,
             id_field=id_field,
@@ -381,5 +382,6 @@ def register_model(
             store=store,
             embedded=embedded,
         )
+        return model_type
 
     return decorator

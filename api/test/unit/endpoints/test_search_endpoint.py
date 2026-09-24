@@ -3,16 +3,14 @@
 import importlib
 import uuid
 from types import SimpleNamespace
-from typing import cast
 from unittest.mock import MagicMock, patch
 
 import elasticsearch
 import pytest
 from flask import Flask, Response
 
-from howler.odm import Model
-from howler.odm.models.user import User
-from howler.odm.randomizer import random_model_obj
+from howler.models.user import User
+from howler.sample_data.randomizer import random_model_obj
 
 
 @pytest.fixture(scope="module")
@@ -34,7 +32,7 @@ def isolate_quota_trackers():
 
 
 def _build_user(user_type: list[str] | None = None) -> User:
-    user_data: User = random_model_obj(cast(Model, User))
+    user_data: User = random_model_obj(User)
     user_data.type = user_type or ["admin", "user"]
     user_data.uname = f"test_{uuid.uuid4().hex[:12]}"
     user_data.api_quota = 1000

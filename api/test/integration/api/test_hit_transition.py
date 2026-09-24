@@ -6,9 +6,9 @@ import pytest
 
 from howler.config import CLASSIFICATION
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.helper import create_users_with_username
-from howler.odm.models.howler_data import Assessment, HitStatusTransition, Status
-from howler.odm.random_data import create_users, wipe_hits
+from howler.models.howler_data import Assessment, HitStatusTransition, Status
+from howler.sample_data.helper import create_users_with_username
+from howler.sample_data.random_data import create_users, wipe_hits
 from test.conftest import get_api_data
 
 usernames = ["donald", "huey", "louie", "dewey"]
@@ -45,7 +45,6 @@ def datastore(datastore_connection: HowlerDatastore):
 
 @pytest.fixture(scope="module")
 def transition_data(datastore: HowlerDatastore) -> list[dict[str, Any]]:
-
     def check_assignment(user: str):
         def check():
             assert datastore.hit.get(HIT_ID).howler.assignment == user

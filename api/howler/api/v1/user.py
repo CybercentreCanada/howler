@@ -1,6 +1,6 @@
 import re
 from hashlib import sha256
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from flask import request
 
@@ -20,7 +20,7 @@ from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.config import config
 from howler.helper.oauth import fetch_groups
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.security.login import api_login
 from howler.security.utils import check_password_requirements, get_password_hash, get_password_requirement_message
 
@@ -144,7 +144,7 @@ def add_user_account(username, **kwargs):
         storage.user_avatar.save(username, avatar)
 
     try:
-        return ok({"success": storage.user.save(username, User(data), refresh=refresh)})
+        return ok({"success": storage.user.save(username, cast(Any, User).validate_howler(data), refresh=refresh)})
     except ValueError as e:
         return bad_request(err=str(e))
 

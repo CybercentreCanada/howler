@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal, cast
 
 from flask import request
 from werkzeug.exceptions import UnsupportedMediaType
@@ -16,8 +16,8 @@ from howler.common.exceptions import (
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import DataStoreException
-from howler.odm.models.case import Case, CaseItem
-from howler.odm.models.user import User
+from howler.models.case import Case, CaseItem
+from howler.models.user import User
 from howler.security.login import api_login
 from howler.services import case_service, comms_service, correlation_service
 
@@ -194,9 +194,9 @@ def update_case(id: str, user: User, refresh: Literal["true", "false", "wait_for
         return bad_request(err="Request body must be a JSON object with fields to update.")
 
     try:
-        updated_case = case_service.update_case(id, case_data, user, refresh=refresh)
+        updated_case = case_service.update_case(id, case_data, cast(Any, user), refresh=refresh)
 
-        case_service.filter_case_items_by_classification(updated_case, user.classification)
+        case_service.filter_case_items_by_classification(updated_case, cast(Any, user).classification)
 
         return ok(updated_case)
     except NotFoundException as e:
@@ -267,9 +267,9 @@ def append_item(  # noqa: C901
 
             body["parent"] = parent.id if parent else None
 
-        case_service.append_case_item(record, CaseItem(body), user=user)
+        case_service.append_case_item(record, cast(Any, CaseItem).validate_howler(body), user=user)
 
-        record.save(refresh=refresh, version=server_version)
+        case_service.save_case(record, refresh=refresh, version=server_version)
         comms_service.emit("cases", {"case": record.as_primitives()})
 
         case_service.filter_case_items_by_classification(record, user.classification)
@@ -345,7 +345,7 @@ def delete_item(
             record, ids, force=force, refresh=refresh, version=server_version, user=user
         )
 
-        case_service.filter_case_items_by_classification(updated_case, user.classification)
+        case_service.filter_case_items_by_classification(updated_case, cast(Any, user).classification)
 
         return ok(updated_case)
     except DataStoreException as e:
@@ -408,7 +408,7 @@ def rename_item(
     item_id = body["id"]
 
     try:
-        result: Case | None = None
+        result: Any = None
         if "name" in body:
             result = case_service.rename_case_item(
                 record,
@@ -428,7 +428,7 @@ def rename_item(
         if not result:
             return bad_request(err="At least one of 'name' or 'parent' is required.")
 
-        result.save(refresh=refresh, version=server_version)
+        case_service.save_case(result, refresh=refresh, version=server_version)
 
         case_service.filter_case_items_by_classification(result, user.classification)
 
@@ -477,9 +477,9 @@ def add_rule(id: str, user: User, refresh: Literal["true", "false", "wait_for"] 
         return bad_request(err="Request body must be a JSON object with rule data.")
 
     try:
-        updated_case = case_service.add_case_rule(id, body, user, refresh=refresh)
+        updated_case = case_service.add_case_rule(id, body, cast(Any, user), refresh=refresh)
 
-        case_service.filter_case_items_by_classification(updated_case, user.classification)
+        case_service.filter_case_items_by_classification(updated_case, cast(Any, user).classification)
 
         return ok(updated_case)
     except NotFoundException as e:
@@ -510,9 +510,9 @@ def delete_rule(
     }
     """
     try:
-        updated_case = case_service.remove_case_rule(id, rule_id, user, refresh=refresh)
+        updated_case = case_service.remove_case_rule(id, rule_id, cast(Any, user), refresh=refresh)
 
-        case_service.filter_case_items_by_classification(updated_case, user.classification)
+        case_service.filter_case_items_by_classification(updated_case, cast(Any, user).classification)
 
         return ok(updated_case)
     except NotFoundException as e:
@@ -556,9 +556,9 @@ def update_rule(
         return bad_request(err="Request body must be a JSON object with fields to update.")
 
     try:
-        updated_case = case_service.update_case_rule(id, rule_id, body, user, refresh=refresh)
+        updated_case = case_service.update_case_rule(id, rule_id, body, cast(Any, user), refresh=refresh)
 
-        case_service.filter_case_items_by_classification(updated_case, user.classification)
+        case_service.filter_case_items_by_classification(updated_case, cast(Any, user).classification)
 
         return ok(updated_case)
     except NotFoundException as e:

@@ -12,7 +12,7 @@ from apscheduler.schedulers.base import BaseScheduler
 
 from howler.common.logging import get_logger
 from howler.config import config
-from howler.odm.models.action import VALID_TRIGGERS
+from howler.models.action import VALID_TRIGGERS
 from howler.services.action_service import TriggeredAction, get_action_queue, process_action_batch
 
 logger = get_logger(__file__)

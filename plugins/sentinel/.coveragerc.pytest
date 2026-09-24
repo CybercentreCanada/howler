@@ -8,7 +8,7 @@ omit =
     howler/external/*
     howler/helper/ws.py
     howler/odm/models/*
-    howler/odm/random_data.py
+    howler/sample_data/random_data.py
 
 [report]
 exclude_also =

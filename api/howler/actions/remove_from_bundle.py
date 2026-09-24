@@ -1,12 +1,12 @@
 """Deprecated remove_from_bundle action — delegates to case_service for item removal."""
 
-from typing import Optional
+from typing import Any, Optional, cast
 
 from howler.actions import check_hit_limit
 from howler.common.exceptions import NotFoundException
 from howler.common.loader import datastore
-from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.user import User
+from howler.models.action import VALID_TRIGGERS
+from howler.models.user import User
 from howler.services import bundle_compat_service, case_service
 from howler.utils.str_utils import sanitize_lucene_query
 
@@ -70,19 +70,19 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
             return report
 
         # Refresh case from datastore to ensure latest state
-        refreshed_case = ds.case.get(case.case_id)
+        refreshed_case = ds.case.get(cast(Any, case).case_id)
         if refreshed_case is None:
             report.append(
                 {
                     "query": query,
                     "outcome": "error",
                     "title": "Case Not Found",
-                    "message": f"Associated case {case.case_id} no longer exists.",
+                    "message": f"Associated case {cast(Any, case).case_id} no longer exists.",
                 }
             )
             return report
 
-        case = refreshed_case
+        case = cast(Any, refreshed_case)
         case_item_values = {item.value for item in case.items}
         values_to_remove = [h.howler.id for h in matching_hits if h.howler.id in case_item_values]
         skipped_ids = [h.howler.id for h in matching_hits if h.howler.id not in case_item_values]
@@ -111,7 +111,7 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
         # remove_case_items expects item UUIDs (CaseItem.id), not hit value strings.
         value_set = set(values_to_remove)
         item_ids_to_remove = [item.id for item in case.items if item.value in value_set]
-        case_service.remove_case_items(case, item_ids_to_remove)
+        case_service.remove_case_items(cast(Any, case), item_ids_to_remove)
 
         report.append(
             {

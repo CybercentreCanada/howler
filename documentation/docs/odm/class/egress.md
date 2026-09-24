@@ -8,5 +8,3 @@
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
 | zone | Keyword | Network zone of outbound traffic | :material-minus-box-outline: Optional | `None` |
-
-

@@ -177,7 +177,7 @@ def test_document_mapping_stays_dynamic_true_when_templates_exist() -> None:
 
 
 def _legacy_dynamic_templates_for(legacy_field) -> list[dict[str, Any]]:
-    from howler.datastore.support.build import build_templates
+    from howler.odm.mapping import build_templates
 
     return build_templates("edge_case.*", legacy_field, nested_template=False, index=True)
 

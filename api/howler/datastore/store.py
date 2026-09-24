@@ -11,10 +11,10 @@ from urllib.parse import urlparse
 import elasticsearch
 
 from howler.common.logging.format import HWL_DATE_FORMAT, HWL_LOG_FORMAT
+from howler.config_models import Config
+from howler.config_models import config as _config
 from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import DataStoreException
-from howler.odm.models.config import Config
-from howler.odm.models.config import config as _config
 
 TRANSPORT_TIMEOUT = int(environ.get("HWL_DATASTORE_TRANSPORT_TIMEOUT", "10"))
 CERTS_PATH = Path(os.environ.get("HWL_CERT_DIRECTORY", "/etc/howler/certs"))
@@ -80,7 +80,7 @@ class ESStore(object):
 
         Args:
             config: Application configuration.  Falls back to the global
-                ``howler.odm.models.config.config`` singleton when ``None``.
+                ``howler.config_models.config`` singleton when ``None``.
             archive_access: Whether archive indices should be accessible.
         """
         if not config:

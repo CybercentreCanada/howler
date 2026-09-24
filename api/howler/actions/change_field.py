@@ -1,7 +1,8 @@
 from howler.common.loader import datastore
 from howler.datastore.operations import OdmHelper
-from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.hit import Hit
+from howler.models.action import VALID_TRIGGERS
+from howler.models.hit import Hit
+from howler.models.registry import model_registry
 
 hit_helper = OdmHelper(Hit)
 
@@ -16,7 +17,7 @@ def execute(query: str, field: str, value: str, **kwargs):
         field (str): The field to update.
         value (str): The value to set it to. Must be a string.
     """
-    if field not in Hit.flat_fields():
+    if field not in model_registry.flat_fields(Hit):
         return [
             {
                 "query": query,
@@ -69,7 +70,7 @@ def specification():
         "steps": [
             {
                 "args": {"field": [], "value": []},
-                "options": {"field": list(Hit.flat_fields().keys())},
+                "options": {"field": list(model_registry.flat_fields(Hit))},
             }
         ],
         "triggers": VALID_TRIGGERS,

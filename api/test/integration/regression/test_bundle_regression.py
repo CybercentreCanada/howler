@@ -13,7 +13,7 @@ from uuid import uuid4
 import pytest
 
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.random_data import create_hits, wipe_cases, wipe_hits
+from howler.sample_data.random_data import create_hits, wipe_cases, wipe_hits
 from test.conftest import get_api_data
 
 # ---------------------------------------------------------------------------

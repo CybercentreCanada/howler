@@ -6,7 +6,6 @@ from flask import Blueprint, Response, jsonify, make_response, request
 from flask import session as flsk_session
 from prometheus_client import Counter
 
-from howler import odm
 from howler.common.loader import APP_NAME
 from howler.common.logging import get_logger, log_with_traceback
 from howler.config import QUOTA_TRACKER, get_version
@@ -42,10 +41,10 @@ def _format_api_error_message(err: Exception) -> str:
 
 def _coerce_response_data(data: Any) -> Any:
     """Convert Howler model responses into JSON-serializable primitives."""
-    if isinstance(data, (odm.Model, HowlerModelMixin)):
+    if isinstance(data, HowlerModelMixin):
         return data.as_primitives()
 
-    if isinstance(data, list) and data and isinstance(data[0], (odm.Model, HowlerModelMixin)):
+    if isinstance(data, list) and data and isinstance(data[0], HowlerModelMixin):
         return [item.as_primitives() for item in data]
 
     return data

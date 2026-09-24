@@ -67,7 +67,7 @@ module = "howler.security"
 disable_error_code = "attr-defined"
 
 [[tool.mypy.overrides]]
-module = "howler.odm.helper"
+module = "howler.sample_data.helper"
 disable_error_code = "union-attr"
 
 [[tool.mypy.overrides]]

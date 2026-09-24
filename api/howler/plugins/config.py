@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, YamlConf
 
 from howler.common.logging import HWL_DATE_FORMAT, HWL_LOG_FORMAT
 
-logger = logging.getLogger("howler.odm.models.config")
+logger = logging.getLogger("howler.plugins.config")
 logger.setLevel(logging.INFO)
 console = logging.StreamHandler()
 console.setLevel(logging.INFO)

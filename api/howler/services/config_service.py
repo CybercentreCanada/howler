@@ -1,6 +1,6 @@
 from datetime import datetime
 from math import ceil
-from typing import Optional
+from typing import Any, Optional, cast
 
 from flask import request
 from opentelemetry import trace
@@ -12,9 +12,9 @@ from howler.common.logging import get_logger
 from howler.config import CLASSIFICATION, config, get_branch, get_commit, get_version
 from howler.helper.discover import get_apps_list
 from howler.helper.search import list_all_fields
-from howler.odm.constants import CaseEscalation
-from howler.odm.models.howler_data import Assessment, Escalation, Scrutiny, Status
-from howler.odm.models.user import User
+from howler.models.constants import CaseEscalation, Status
+from howler.models.howler_data import Assessment, Escalation, Scrutiny
+from howler.models.user import User
 from howler.plugins import get_plugins
 from howler.services import jwt_service
 from howler.utils.str_utils import default_string_value
@@ -91,7 +91,7 @@ def get_configuration(user: User | None, **kwargs):
             "howler.scrutiny": Scrutiny.list(),
             "howler.escalation": Escalation.list(),
             "howler.assessment": Assessment.list(),
-            "transitions": {status: hit_service.get_transitions(status) for status in Status.list()},
+            "transitions": {status.value: hit_service.get_transitions(cast(Any, status)) for status in Status},
             **lookups,
         },
         "configuration": {
@@ -130,5 +130,5 @@ def get_configuration(user: User | None, **kwargs):
             "clue": {"status_checks": config.core.clue.status_checks},
         },
         "c12nDef": classification_definition,
-        "indexes": list_all_fields("admin" in user["type"] if user is not None else False),
+        "indexes": list_all_fields("admin" in cast(Any, user).type if user is not None else False),
     }

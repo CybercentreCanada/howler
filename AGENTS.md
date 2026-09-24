@@ -71,7 +71,7 @@ pnpm test <specific_test_file_paths>
 ## Client, Plugins, And MCP
 
 - Client: from `client/`, run `poetry install --with dev,test,types`, then `poetry run ruff format howler_client --diff`, `poetry run ruff check howler_client --output-format=github`, `poetry run type_check`, and `poetry run test`. A focused test is `poetry run test test/unit/test_case.py -k name`.
-- Client integration tests need the API environment configured as above, an API server, and `docker compose -f client/test/docker-compose.yml up -d` for Elasticsearch and Redis. CI seeds API data with `poetry run python -m howler.odm.random_data`.
+- Client integration tests need the API environment configured as above, an API server, and `docker compose -f client/test/docker-compose.yml up -d` for Elasticsearch and Redis. CI seeds API data with `poetry run python -m howler.sample_data.random_data`.
 - Evidence and Sentinel: from the plugin directory, install with `poetry install --with dev,types`, run Ruff against `evidence` or `sentinel`, run `poetry run type_check`, and use direct pytest for tests, for example `poetry run pytest test/unit -vv`. Their tests import the API package and may need the API config files and services.
 - API and plugin datastore tests share the development Elasticsearch instance and must run sequentially. For plugin tests against checkout code, set `HWL_PLUGIN_DIRECTORY` to the repository's `plugins/` directory because `howler.app` otherwise prepends `/etc/howler/plugins` and loads installed plugin manifests.
 - Sync: install from `plugins/sync/` with `poetry install --with dev,types`; unit tests are local, but integration tests require Elasticsearch and create/clean randomized Howler users and hits.
@@ -100,7 +100,7 @@ The Python workflows in `.github/workflows/` are the source of truth for CI. To 
   2. From `api/`, run `poetry install --with test,dev`, then `poetry run mitre /etc/howler/lookups` and `poetry run sigma`.
   3. Run `docker compose -f client/test/docker-compose.yml up -d` for Elasticsearch and Redis.
   4. From `api/`, start the API in the background with `TESTING=true poetry run flask --app howler.app run --no-reload &`, and wait until `curl --fail http://localhost:5000/api/apispec_v1.json` succeeds.
-  5. From `api/`, run `poetry run python -m howler.odm.random_data`.
+  5. From `api/`, run `poetry run python -m howler.sample_data.random_data`.
   6. From `client/`, run `poetry install --with test`, then `poetry run test`. Passing paths gives a focused run without coverage.
   7. Stop the background Flask process when finished.
 
@@ -109,7 +109,7 @@ The Python workflows in `.github/workflows/` are the source of truth for CI. To 
 - Quality job (Python 3.12, `mcp/`): `poetry install --with dev`, then the ruff format and check commands above. MCP has no type-check job.
 - Test job (Python 3.12, `mcp/`) needs the full stack:
   1. From `mcp/`, run `docker compose -f docker-compose.yml --profile full up -d howler-api elasticsearch redis keycloak`.
-  2. Seed the API with `docker compose -f docker-compose.yml exec -T howler-api python -m howler.odm.random_data users hits`.
+  2. Seed the API with `docker compose -f docker-compose.yml exec -T howler-api python -m howler.sample_data.random_data users hits`.
   3. Start the server in the background with `HOWLER_API_HOST=localhost`, `HOWLER_API_BASE_URL=http://localhost:5000/api/v1`, `AUTH_HOST=localhost`, `AUTH_TOKEN_URL=http://localhost:9100/realms/HogwartsMini/protocol/openid-connect/token`, `COVERAGE_FILE=.coverage.server`, and `poetry run coverage run -m howler_mcp.server`. Wait until `curl http://localhost:8000/mcp` responds.
   4. Run `poetry run test` with `RUN_MCP_NETWORK_TESTS=1`, `HOWLER_API_BASE_URL=http://localhost:5000/api/v1`, `COVERAGE_FILE=.coverage.tests`, and the `AUTH_*` and `TEST_AUTH_*` values from the job env in `mcp-workflow.yml`.
   5. Stop the server, then run `poetry run coverage combine`.

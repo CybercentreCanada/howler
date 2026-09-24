@@ -15,12 +15,12 @@ from uuid import uuid4
 import pytest
 
 from howler.common.loader import DATASTORE_INDEX_PREFIX
+from howler.config_models import ILMIndexConfig
 from howler.datastore.collection import ESCollection
 from howler.datastore.store import ESStore
-from howler.odm.models.case import Case, CaseRule
-from howler.odm.models.config import ILMIndexConfig
-from howler.odm.models.event import Event
-from howler.odm.models.hit import Hit
+from howler.models.case import Case, CaseRule
+from howler.models.event import Event
+from howler.models.hit import Hit
 from howler.services import correlation_service
 
 logger = logging.getLogger(__name__)

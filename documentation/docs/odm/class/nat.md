@@ -9,5 +9,3 @@
 | :--- | :--- | :--- | :--- | :--- |
 | ip | IP | Translated IP of source based NAT sessions. | :material-minus-box-outline: Optional | `None` |
 | port | Integer | Translated port of source based NAT sessions. | :material-minus-box-outline: Optional | `None` |
-
-

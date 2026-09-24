@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Any
+from typing import Any, cast
 
 from elasticsearch import BadRequestError
 from flask import request
@@ -13,7 +13,7 @@ from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import InvalidScrollTokenException, SearchException, SearchRetryException
 from howler.helper.search import get_collection, get_default_sort, has_access_control, list_all_fields
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.security.login import api_login
 from howler.services import hit_service, lucene_service, search_service
 from howler.services.search_service import SensitiveUserFieldsException
@@ -143,7 +143,7 @@ def search(index: str, user: User, **kwargs):  # noqa: C901
             result = collection().search(query, as_obj=False, **params)
 
         if index == "hit" and len(metadata) > 0:
-            hit_service.augment_metadata(result["items"], metadata, user)
+            hit_service.augment_metadata(result["items"], metadata, cast(Any, user))
 
         return ok(result)
     except SensitiveUserFieldsException as e:

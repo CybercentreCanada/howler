@@ -7,9 +7,7 @@
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
-| threat | Text | The IP of the threat. | :material-minus-box-outline: Optional | `None` |
-| target | Text | The target of the hit. | :material-minus-box-outline: Optional | `None` |
-| indicators | List [Text] | None | :material-checkbox-marked-outline: Yes | `[]` |
-| summary | Text | Summary of the hit. | :material-minus-box-outline: Optional | `None` |
-
-
+| threat | Keyword | The IP of the threat. | :material-minus-box-outline: Optional | `None` |
+| target | Keyword | The target of the hit. | :material-minus-box-outline: Optional | `None` |
+| indicators | List [Keyword] | Indicators of the hit. | :material-checkbox-marked-outline: Yes | `[]` |
+| summary | Keyword | Summary of the hit. | :material-minus-box-outline: Optional | `None` |

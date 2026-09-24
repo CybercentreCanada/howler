@@ -8,10 +8,11 @@
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
 | timestamp | Date | Date/time when the event originated.<br><a href="https://www.elastic.co/guide/en/ecs/8.5/ecs-base.html">Reference Link</a><br> | :material-checkbox-marked-outline: Yes | `NOW` |
+| howler | [HowlerData](/howler/odm/class/howlerdata) | Howler specific definition of the hit that matches the outline.<br><a href="https://confluence.devtools.cse-cst.gc.ca/display/~jjgalar/Hit+Schema">Reference Link</a><br> | :material-checkbox-marked-outline: Yes | `None` |
+| classification | Classification | Maximum classification for the hit | :material-checkbox-marked-outline: Yes | `UNRESTRICTED` |
 | labels | Mapping [Keyword] | Custom key/value pairs.<br><a href="https://www.elastic.co/guide/en/ecs/8.5/ecs-base.html">Reference Link</a><br> | :material-checkbox-marked-outline: Yes | `{}` |
 | tags | List [Keyword] | List of keywords used to tag each event.<br><a href="https://www.elastic.co/guide/en/ecs/8.5/ecs-base.html">Reference Link</a><br> | :material-checkbox-marked-outline: Yes | `[]` |
-| message | Keyword | Log message for log events, optimized for viewing in a log viewer<br><a href="https://www.elastic.co/guide/en/ecs/8.5/ecs-base.html">Reference Link</a><br> | :material-checkbox-marked-outline: Yes | `` |
-| howler | [HowlerData](/howler/odm/class/howlerdata) | Howler specific definition of the hit that matches the outline.<br><a href="https://confluence.devtools.cse-cst.gc.ca/display/~jjgalar/Hit+Schema">Reference Link</a><br> | :material-checkbox-marked-outline: Yes | `None` |
+| message | EmptyableKeyword | Log message for log events, optimized for viewing in a log viewer<br><a href="https://www.elastic.co/guide/en/ecs/8.5/ecs-base.html">Reference Link</a><br> | :material-checkbox-marked-outline: Yes | `` |
 | assemblyline | [AssemblyLine](/howler/odm/class/assemblyline) | AssemblyLine metadata associated with this alert. | :material-minus-box-outline: Optional | `None` |
 | agent | [Agent](/howler/odm/class/agent) | The agent fields contain the data about the software entity, if any, that collects, detects, or observes events on a host, or takes measurements on a host.<br><a href="https://www.elastic.co/guide/en/ecs/8.5/ecs-agent.html">Reference Link</a><br> | :material-minus-box-outline: Optional | `None` |
 | aws | [AWS](/howler/odm/class/aws) | Fields related to AWS. | :material-minus-box-outline: Optional | `None` |
@@ -21,7 +22,7 @@
 | container | [Container](/howler/odm/class/container) | Container fields are used for meta information about the specific container that is the source of information.<br><a href="https://www.elastic.co/guide/en/ecs/8.5/ecs-container.html">Reference Link</a><br> | :material-minus-box-outline: Optional | `None` |
 | destination | [Client](/howler/odm/class/client) | Destination fields capture details about the receiver of a network exchange/packet.<br><a href="https://www.elastic.co/guide/en/ecs/8.5/ecs-destination.html">Reference Link</a><br> | :material-minus-box-outline: Optional | `None` |
 | dns | [DNS](/howler/odm/class/dns) | Fields describing DNS queries and answers.<br><a href="https://www.elastic.co/guide/en/ecs/8.5/ecs-dns.html">Reference Link</a><br> | :material-minus-box-outline: Optional | `None` |
-| ecs | [ECSVersion](/howler/odm/class/ecsversion) | Meta-information specific to ECS.<br><a href="https://www.elastic.co/guide/en/ecs/8.5/ecs-ecs.html">Reference Link</a><br> | :material-checkbox-marked-outline: Yes | See [ECSVersion](/howler/odm/class/ecsversion) for more details. |
+| ecs | [ECSVersion](/howler/odm/class/ecsversion) | Meta-information specific to ECS.<br><a href="https://www.elastic.co/guide/en/ecs/8.5/ecs-base.html">Reference Link</a><br> | :material-checkbox-marked-outline: Yes | See [ECSVersion](/howler/odm/class/ecsversion) for more details. |
 | error | [Error](/howler/odm/class/error) | These fields can represent errors of any kind.<br><a href="https://www.elastic.co/guide/en/ecs/8.5/ecs-error.html">Reference Link</a><br> | :material-minus-box-outline: Optional | `None` |
 | event | [Event](/howler/odm/class/event) | The event fields are used for context information about the log or metric event itself. | :material-minus-box-outline: Optional | `None` |
 | email | [Email](/howler/odm/class/email) | Event details relating to an email transaction.<br><a href="https://www.elastic.co/guide/en/ecs/8.5/ecs-event.html">Reference Link</a><br> | :material-minus-box-outline: Optional | `None` |

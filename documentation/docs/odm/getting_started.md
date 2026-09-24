@@ -11,29 +11,29 @@ Here is a table of the basic types of fields in our data models and what they're
 
 |Name|Description|
 |:---|:----------|
-| `Any` | A field that can hold any value whatsoever but which is stored as a |
-| `Boolean` | A field storing a boolean value. |
-| `CaseInsensitiveKeyword` | A field storing a string with a technical interpretation, but is case-insensitive when searching. |
-| `Classification` | A field storing access control classification. |
-| `ClassificationString` | A field storing the classification as a string only. |
-| `Date` | A field storing a datetime value. |
-| `EmptyableKeyword` | A keyword which allow to differentiate between empty and None values. |
-| `Enum` | A field storing a short string that has predefined list of possible values |
-| `FlattenedListObject` | A field storing a flattened object |
-| `FlattenedObject` | A field storing a flattened object |
-| `Float` | A field storing a floating point value. |
-| `IndexText` | A special field with special processing rules to simplify searching. |
-| `Integer` | A field storing an integer value. |
-| `Json` | A field storing serializeable structure with their JSON encoded representations. |
-| `Keyword` | A field storing a short string with a technical interpretation. |
-| `List` | A field storing a sequence of typed elements. |
-| `LowerKeyword` | A field storing a short lowercase string with a technical interpretation. |
-| `Mapping` | A field storing a sequence of typed elements. |
-| `Optional` | A wrapper field to allow simple types (int, float, bool) to take None values. |
-| `Text` | A field storing human readable text data. |
-| `UUID` | A field storing an auto-generated unique ID if None is provided |
-| `UpperKeyword` | A field storing a short uppercase string with a technical interpretation. |
-| `ValidatedKeyword` | Keyword field which the values are validated by a regular expression |
+| `Any` | Create an arbitrary, non-indexed value. |
+| `Boolean` | Create a boolean field using legacy truthiness coercion. |
+| `CaseInsensitiveKeyword` | Create a keyword using the lowercase Elasticsearch normalizer. |
+| `Classification` | Create a normalized classification value. |
+| `ClassificationString` | Create a validated classification stored as a plain string. |
+| `Date` | Create a UTC-aware Elasticsearch date field. |
+| `EmptyableKeyword` | Create a keyword that distinguishes empty strings from null. |
+| `Enum` | Create a keyword restricted to an explicit set of values. |
+| `FlattenedListObject` | Create a dotted-key object containing lists of JSON values. |
+| `FlattenedObject` | Create a dotted-key object whose values are JSON encoded. |
+| `Float` | Create a floating-point field. |
+| `IndexText` | Create analyzed text without non-empty validation. |
+| `Integer` | Create a bounded 32-bit Elasticsearch integer. |
+| `Json` | Create a JSON-encoded keyword field. |
+| `Keyword` | Create a non-empty string stored as an Elasticsearch keyword. |
+| `List` | Create a typed array field. |
+| `LowerKeyword` | Create a keyword normalized to lowercase. |
+| `Mapping` | Create a typed dynamic-key mapping. |
+| `Optional` | Create a nullable field with a null default. |
+| `Text` | Create non-empty analyzed text. |
+| `UUID` | Create a string identifier with a generated default. |
+| `UpperKeyword` | Create a keyword normalized to uppercase. |
+| `ValidatedKeyword` | Create a keyword validated by a regular expression. |
 
 ## Field States
 
