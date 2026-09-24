@@ -57,6 +57,7 @@ pnpm test
 - `MockLocalStorage` defines a non-writable `key` method; do not use `key` as a storage key in tests. Clear the mock and its spies in `beforeEach` when using `setupLocalStorageMock()`.
 - Import the explicit `@fontsource/roboto/index.css` entry; the package-root side-effect import can fail TypeScript resolution.
 - UI lint requires type-only imports and prefers expression/arrow-style functions. Keep braces around control-flow bodies.
+- Keep UI API endpoints in modules that mirror their URL/resource hierarchy: nested resources get their own directory with an `index.ts` barrel, and deeper endpoints live in their own modules (for example, `api/v2/case/rules/backfill/index.ts` and `count.ts`). Export nested modules as namespaces so callers use paths such as `api.v2.case.rules.backfill.post(...)` and `api.v2.case.rules.backfill.count.post(...)`; avoid adding nested endpoint methods inline to a parent module.
 
 ## Client, Plugins, And MCP
 

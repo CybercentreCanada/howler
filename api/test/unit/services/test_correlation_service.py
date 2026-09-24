@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from howler.common.exceptions import HowlerRuntimeError
+from howler.common.exceptions import HowlerRuntimeError, InvalidDataException
 from howler.config import CLASSIFICATION
 from howler.odm.models.case import CaseItem, CaseRule
 from howler.services import correlation_service
@@ -192,13 +192,18 @@ class TestCorrelationWorker:
     def test_processes_full_batch(self, mock_get_queue, mock_process_batch):
         """A full queue batch is delivered to process_batch without waiting for a timeout."""
         queue = MagicMock()
-        queue.pop.side_effect = ["hit-1", "hit-2", "hit-3", KeyboardInterrupt]
+        queue.pop.side_effect = [
+            {"id": "hit-1", "rule_id": None},
+            {"id": "hit-2", "rule_id": None},
+            {"id": "hit-3", "rule_id": None},
+            KeyboardInterrupt,
+        ]
         mock_get_queue.return_value = queue
 
         with pytest.raises(KeyboardInterrupt):
             correlation_service.run_worker()
 
-        mock_process_batch.assert_called_once_with(["hit-1", "hit-2", "hit-3"])
+        mock_process_batch.assert_called_once_with(["hit-1", "hit-2", "hit-3"], rule_id=None)
 
     @patch("howler.services.correlation_service.process_batch")
     @patch("howler.services.correlation_service._get_ingestion_queue")
@@ -207,13 +212,50 @@ class TestCorrelationWorker:
     def test_flushes_partial_batch_after_timeout(self, mock_get_queue, mock_process_batch):
         """A timeout flushes queued records when the batch is not yet full."""
         queue = MagicMock()
-        queue.pop.side_effect = ["hit-1", None, KeyboardInterrupt]
+        queue.pop.side_effect = [{"id": "hit-1", "rule_id": None}, None, KeyboardInterrupt]
         mock_get_queue.return_value = queue
 
         with pytest.raises(KeyboardInterrupt):
             correlation_service.run_worker()
 
-        mock_process_batch.assert_called_once_with(["hit-1"])
+        mock_process_batch.assert_called_once_with(["hit-1"], rule_id=None)
+
+    @patch("howler.services.correlation_service.process_batch")
+    @patch("howler.services.correlation_service._get_ingestion_queue")
+    @patch.object(correlation_service, "BATCH_TIMEOUT", 1)
+    @patch.object(correlation_service, "BATCH_SIZE", 1)
+    def test_processes_rule_scoped_job(self, mock_get_queue, mock_process_batch):
+        queue = MagicMock()
+        queue.pop.side_effect = [{"id": "hit-1", "rule_id": "rule-1"}, KeyboardInterrupt]
+        mock_get_queue.return_value = queue
+
+        with pytest.raises(KeyboardInterrupt):
+            correlation_service.run_worker()
+
+        mock_process_batch.assert_called_once_with(["hit-1"], rule_id="rule-1")
+
+    @patch("howler.services.correlation_service.process_batch")
+    @patch("howler.services.correlation_service._get_ingestion_queue")
+    @patch.object(correlation_service, "BATCH_TIMEOUT", 1)
+    @patch.object(correlation_service, "BATCH_SIZE", 1)
+    def test_coerces_legacy_string_job(self, mock_get_queue, mock_process_batch):
+        queue = MagicMock()
+        queue.pop.side_effect = ["legacy-hit", KeyboardInterrupt]
+        mock_get_queue.return_value = queue
+
+        with pytest.raises(KeyboardInterrupt):
+            correlation_service.run_worker()
+
+        mock_process_batch.assert_called_once_with(["legacy-hit"], rule_id=None)
+
+    def test_rejects_malformed_correlation_jobs(self):
+        assert correlation_service._validate_correlation_job("legacy-hit") == {"id": "legacy-hit", "rule_id": None}
+        assert correlation_service._validate_correlation_job({"id": "hit-1", "rule_id": "rule-1"}) == {
+            "id": "hit-1",
+            "rule_id": "rule-1",
+        }
+        assert correlation_service._validate_correlation_job({"id": "", "rule_id": None}) is None
+        assert correlation_service._validate_correlation_job({"id": "hit-1", "rule_id": 3}) is None
 
 
 class TestEnqueueForCorrelation:
@@ -227,7 +269,126 @@ class TestEnqueueForCorrelation:
 
         correlation_service.enqueue_for_correlation(["hit-1", "hit-2"])
 
-        queue.push.assert_called_once_with("hit-1", "hit-2")
+        queue.push.assert_called_once_with(
+            {"id": "hit-1", "rule_id": None},
+            {"id": "hit-2", "rule_id": None},
+        )
+
+    @patch("howler.services.correlation_service._get_ingestion_queue")
+    def test_enqueues_rule_scoped_messages(self, mock_get_queue):
+        queue = MagicMock()
+        mock_get_queue.return_value = queue
+
+        correlation_service.enqueue_for_correlation(["hit-1", "hit-2"], rule_id="rule-1")
+
+        queue.push.assert_called_once_with(
+            {"id": "hit-1", "rule_id": "rule-1"},
+            {"id": "hit-2", "rule_id": "rule-1"},
+        )
+
+
+class TestRuleScopedCorrelation:
+    @patch("howler.services.correlation_service.case_service.get_case")
+    def test_get_backfill_rule_validates_case_and_normalizes_timestamp(self, mock_get_case):
+        rule = _make_rule()
+        rule.rule_id = "rule-1"
+        case = MagicMock()
+        case.rules = [rule]
+        mock_get_case.return_value = case
+        user = MagicMock()
+
+        found_rule, since = correlation_service.get_backfill_rule("case-1", "rule-1", user, "2026-01-01T00:00:00")
+
+        assert found_rule is rule
+        assert since == datetime(2026, 1, 1, tzinfo=timezone.utc)
+        mock_get_case.assert_called_once_with("case-1", as_odm=True, version=False, user=user)
+
+    @patch("howler.services.correlation_service.case_service.get_case")
+    def test_get_backfill_rule_rejects_disabled_rule(self, mock_get_case):
+        rule = _make_rule(enabled=False)
+        rule.rule_id = "rule-1"
+        case = MagicMock()
+        case.rules = [rule]
+        mock_get_case.return_value = case
+
+        with pytest.raises(InvalidDataException, match="Only enabled rules can be backfilled"):
+            correlation_service.get_backfill_rule("case-1", "rule-1", MagicMock(), "2026-01-01T00:00:00Z")
+
+    @patch("howler.services.correlation_service.datastore")
+    def test_get_active_rules_filters_by_rule_id(self, mock_ds_fn):
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        case = _make_case_obj("case-1", [_make_rule(query="a:b"), _make_rule(query="c:d")])
+        case.rules[0].rule_id = "rule-1"
+        case.rules[1].rule_id = "rule-2"
+        mock_ds.case.stream_search.return_value = iter([case])
+
+        result = correlation_service.get_active_rules("rule-2")
+
+        assert len(result) == 1
+        assert result[0][1].rule_id == "rule-2"
+
+    @patch("howler.services.correlation_service.datastore")
+    def test_rule_scoped_backfill_includes_expired_rule(self, mock_ds_fn):
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        expired_rule = _make_rule(timeframe=1)
+        expired_rule.rule_id = "expired-rule"
+        expired_rule.created_at = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
+        case = _make_case_obj("case-1", [expired_rule])
+        mock_ds.case.stream_search.return_value = iter([case])
+
+        result = correlation_service.get_active_rules("expired-rule")
+
+        assert len(result) == 1
+        assert result[0][1].rule_id == "expired-rule"
+
+    @patch("howler.services.correlation_service.search_service.search")
+    @patch("howler.services.correlation_service.get_backfill_rule")
+    def test_count_backfill_matches_passes_since_and_user(self, mock_get_rule, mock_search):
+        user = MagicMock()
+        rule = _make_rule(query="event.kind:alert", indexes=["hit"])
+        since = "2026-01-01T00:00:00Z"
+        normalized_since = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        mock_get_rule.return_value = (rule, normalized_since)
+        mock_search.return_value = {"total": 17}
+
+        count = correlation_service.count_backfill_matches("case-1", "rule-1", since, user)
+
+        assert count == 17
+        mock_get_rule.assert_called_once_with("case-1", "rule-1", user, since)
+        mock_search.assert_called_once_with(
+            indexes=["hit"],
+            query="event.kind:alert",
+            filters=[f'timestamp:["{normalized_since.isoformat()}" TO *]'],
+            rows=0,
+            track_total_hits=True,
+            user=user,
+        )
+
+    @patch("howler.services.correlation_service.enqueue_for_correlation")
+    @patch("howler.services.correlation_service.search_service.search")
+    @patch("howler.services.correlation_service.get_backfill_rule")
+    def test_enqueue_backfill_resolves_rule_and_streams_pages(self, mock_get_rule, mock_search, mock_enqueue):
+        user = MagicMock()
+        rule = _make_rule(query="event.kind:alert", indexes=["hit"])
+        rule.rule_id = "rule-1"
+        since_value = "2026-01-01T00:00:00Z"
+        since = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        mock_get_rule.return_value = (rule, since)
+        mock_search.side_effect = [
+            {"items": [{"howler": {"id": "hit-1"}}], "next_deep_paging_id": "scroll-1"},
+            {"items": [{"howler": {"id": "hit-2"}}]},
+        ]
+
+        count = correlation_service.enqueue_backfill("case-1", "rule-1", since_value, user)
+
+        assert count == 2
+        mock_get_rule.assert_called_once_with("case-1", "rule-1", user, since_value)
+        assert mock_enqueue.call_args_list[0].args == (["hit-1"],)
+        assert mock_enqueue.call_args_list[0].kwargs == {"rule_id": "rule-1"}
+        assert mock_enqueue.call_args_list[1].args == (["hit-2"],)
+        assert mock_enqueue.call_args_list[1].kwargs == {"rule_id": "rule-1"}
 
     @patch("howler.services.correlation_service.case_service")
     @patch("howler.services.correlation_service.datastore")

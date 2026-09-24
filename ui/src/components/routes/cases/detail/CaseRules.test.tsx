@@ -8,6 +8,9 @@ import { describe, expect, it, vi } from 'vitest';
 const mockDispatchApi = vi.hoisted(() => vi.fn());
 const mockUpdate = vi.hoisted(() => vi.fn());
 const mockShowModal = vi.hoisted(() => vi.fn());
+const mockTranslate = vi.hoisted(() =>
+  vi.fn((key: string, options?: { count?: number }) => (options?.count === undefined ? key : `${key}:${options.count}`))
+);
 const mockCase = vi.hoisted(() => ({
   current: {
     case_id: 'case-001',
@@ -18,6 +21,10 @@ const mockCase = vi.hoisted(() => ({
 
 vi.mock('components/hooks/useMyApi', () => ({
   default: () => ({ dispatchApi: mockDispatchApi })
+}));
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: mockTranslate })
 }));
 
 vi.mock('components/app/providers/ModalProvider', async () => {
@@ -81,7 +88,11 @@ vi.mock('api', () => ({
         rules: {
           post: vi.fn(),
           del: vi.fn(),
-          put: vi.fn()
+          put: vi.fn(),
+          backfill: {
+            post: vi.fn(),
+            count: { post: vi.fn() }
+          }
         }
       }
     }
@@ -298,6 +309,36 @@ describe('CaseRules', () => {
 
     await waitFor(() => {
       expect(mockDispatchApi).toHaveBeenCalledWith('put-request');
+    });
+  });
+
+  it('previews and confirms the number of matching alerts before backfilling', async () => {
+    const user = userEvent.setup();
+    mockCase.current = createMockCase({
+      case_id: 'case-001',
+      rules: [makeRule()]
+    }) as Case;
+    mockDispatchApi.mockResolvedValueOnce({ count: 23 }).mockResolvedValueOnce({ queued: 23 });
+    vi.mocked(api.v2.case.rules.backfill.count.post).mockReturnValue('count-backfill-request' as any);
+    vi.mocked(api.v2.case.rules.backfill.post).mockReturnValue('backfill-request' as any);
+
+    render(<CaseRules />);
+
+    await user.click(screen.getByTestId('rule-backfill-rule-001'));
+    await user.click(screen.getByTestId('rule-backfill-count-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('rule-backfill-confirmation')).toHaveTextContent(
+        'page.cases.rules.backfill.confirm:23'
+      );
+    });
+    expect(mockDispatchApi).toHaveBeenCalledWith('count-backfill-request');
+
+    await user.click(screen.getByTestId('rule-backfill-submit-button'));
+
+    await waitFor(() => {
+      expect(mockDispatchApi).toHaveBeenCalledWith('backfill-request');
+      expect(screen.queryByTestId('rule-backfill-dialog')).not.toBeInTheDocument();
     });
   });
 

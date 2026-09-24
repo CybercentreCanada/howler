@@ -1,8 +1,12 @@
-import { Add, Delete } from '@mui/icons-material';
+import { Add, Delete, History } from '@mui/icons-material';
 import {
   Button,
   Card,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   IconButton,
   Stack,
   Switch,
@@ -15,10 +19,14 @@ import {
   Tooltip,
   Typography
 } from '@mui/material';
+import { LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import api from 'api';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
 import useMyApi from 'components/hooks/useMyApi';
+import dayjs, { type Dayjs } from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
 import type { Rule } from 'models/entities/generated/Rule';
 import { useCallback, useContext, useState, type FC } from 'react';
@@ -35,6 +43,50 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
   const { case: _case, update } = useCase({ case: providedCase ?? routeCase, caseId });
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [backfillRule, setBackfillRule] = useState<Rule>();
+  const [backfillSince, setBackfillSince] = useState<Dayjs>(dayjs().subtract(30, 'day'));
+  const [backfillCount, setBackfillCount] = useState<number>();
+  const [backfillLoading, setBackfillLoading] = useState(false);
+
+  const handleBackfillDialogClose = useCallback(() => {
+    setBackfillRule(undefined);
+    setBackfillCount(undefined);
+    setBackfillSince(dayjs().subtract(30, 'day'));
+  }, []);
+
+  const handleCountBackfill = useCallback(async () => {
+    if (!_case?.case_id || !backfillRule?.rule_id || !backfillSince?.isValid()) {
+      return;
+    }
+
+    setBackfillLoading(true);
+    try {
+      const response = await dispatchApi(
+        api.v2.case.rules.backfill.count.post(_case.case_id, backfillRule.rule_id, backfillSince.toISOString())
+      );
+      if (response) {
+        setBackfillCount(response.count);
+      }
+    } finally {
+      setBackfillLoading(false);
+    }
+  }, [_case?.case_id, backfillRule, backfillSince, dispatchApi]);
+
+  const handleSubmitBackfill = useCallback(async () => {
+    if (!_case?.case_id || !backfillRule?.rule_id || !backfillSince?.isValid() || backfillCount === null) {
+      return;
+    }
+
+    setBackfillLoading(true);
+    try {
+      await dispatchApi(
+        api.v2.case.rules.backfill.post(_case.case_id, backfillRule.rule_id, backfillSince.toISOString())
+      );
+      handleBackfillDialogClose();
+    } finally {
+      setBackfillLoading(false);
+    }
+  }, [_case?.case_id, backfillRule, backfillSince, backfillCount, dispatchApi, handleBackfillDialogClose]);
 
   const handleCreateRule = useCallback(
     async (ruleData: Partial<Rule>) => {
@@ -174,6 +226,16 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
                       />
                     </TableCell>
                     <TableCell align="right">
+                      <Tooltip title={t('page.cases.rules.backfill')}>
+                        <IconButton
+                          id={`rule-backfill-${rule.rule_id}`}
+                          size="small"
+                          disabled={rule.enabled === false}
+                          onClick={() => setBackfillRule(rule)}
+                        >
+                          <History fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                       <Tooltip title={t('delete')}>
                         <IconButton
                           id={`rule-delete-${rule.rule_id}`}
@@ -193,6 +255,64 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
       </Card>
 
       <CreateRuleDialog open={dialogOpen} onClose={() => setDialogOpen(false)} onSubmit={handleCreateRule} />
+      <Dialog
+        open={!!backfillRule}
+        onClose={handleBackfillDialogClose}
+        maxWidth="sm"
+        fullWidth
+        id="rule-backfill-dialog"
+      >
+        <DialogTitle>{t('page.cases.rules.backfill')}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Typography>{t('page.cases.rules.backfill.description')}</Typography>
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <DateTimePicker
+                label={t('page.cases.rules.backfill.since')}
+                value={backfillSince}
+                onChange={value => {
+                  if (!value) {
+                    return;
+                  }
+
+                  setBackfillSince(value);
+                  setBackfillCount(undefined);
+                }}
+                maxDateTime={dayjs()}
+                ampm={false}
+                slotProps={{ textField: { id: 'rule-backfill-since', size: 'small', fullWidth: true } }}
+              />
+            </LocalizationProvider>
+            {backfillCount !== null && (
+              <Typography id="rule-backfill-confirmation">
+                {t('page.cases.rules.backfill.confirm', { count: backfillCount })}
+              </Typography>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleBackfillDialogClose}>{t('cancel')}</Button>
+          {backfillCount === null ? (
+            <Button
+              id="rule-backfill-count-button"
+              variant="contained"
+              onClick={handleCountBackfill}
+              disabled={backfillLoading || !backfillSince?.isValid()}
+            >
+              {t('page.cases.rules.backfill.preview')}
+            </Button>
+          ) : (
+            <Button
+              id="rule-backfill-submit-button"
+              variant="contained"
+              onClick={handleSubmitBackfill}
+              disabled={backfillLoading || backfillCount === 0}
+            >
+              {t('page.cases.rules.backfill.submit')}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 };
