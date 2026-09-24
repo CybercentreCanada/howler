@@ -19,7 +19,7 @@ from howler.datastore.exceptions import DataStoreException
 from howler.odm.models.case import Case, CaseItem
 from howler.odm.models.user import User
 from howler.security.login import api_login
-from howler.services import case_service, comms_service
+from howler.services import case_service, comms_service, correlation_service
 
 SUB_API = "case"
 case_api = make_subapi_blueprint(SUB_API, api_version=2)
@@ -565,3 +565,45 @@ def update_rule(
         return not_found(err=str(e))
     except InvalidDataException as e:
         return bad_request(err=str(e))
+
+
+@generate_swagger_docs()
+@case_api.route("/<id>/rules/<rule_id>/backfill/count", methods=["POST"])
+@api_login(required_priv=["R"])
+def count_rule_backfill(id: str, rule_id: str, user: User, **kwargs):
+    """Count accessible records matching a case rule since a timestamp."""
+    body = request.json
+    if not isinstance(body, dict):
+        return bad_request(err="Request body must contain a 'since' datetime.")
+
+    try:
+        count = correlation_service.count_backfill_matches(id, rule_id, body.get("since"), user)
+        return ok({"count": count})
+    except NotFoundException as e:
+        return not_found(err=str(e))
+    except InvalidDataException as e:
+        return bad_request(err=str(e))
+    except Exception as e:
+        logger.exception("Failed to count backfill matches for rule %s", rule_id)
+        return internal_error(err=str(e))
+
+
+@generate_swagger_docs()
+@case_api.route("/<id>/rules/<rule_id>/backfill", methods=["POST"])
+@api_login(required_priv=["R", "W"])
+def backfill_rule(id: str, rule_id: str, user: User, **kwargs):
+    """Queue accessible historical matches for a case rule."""
+    body = request.json
+    if not isinstance(body, dict):
+        return bad_request(err="Request body must contain a 'since' datetime.")
+
+    try:
+        queued = correlation_service.enqueue_backfill(id, rule_id, body.get("since"), user)
+        return ok({"queued": queued})
+    except NotFoundException as e:
+        return not_found(err=str(e))
+    except InvalidDataException as e:
+        return bad_request(err=str(e))
+    except Exception as e:
+        logger.exception("Failed to enqueue backfill matches for rule %s", rule_id)
+        return internal_error(err=str(e))
