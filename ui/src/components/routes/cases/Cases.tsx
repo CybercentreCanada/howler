@@ -38,7 +38,7 @@ const CasesBase: FC = () => {
   const [hasError, setHasError] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>(['open', 'in-progress']);
   const [assigneeFilter, setAssigneeFilter] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState<DateRangeOption>('date.range.all');
   const [customStart, setCustomStart] = useState(dayjs().subtract(2, 'days'));
