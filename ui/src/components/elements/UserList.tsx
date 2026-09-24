@@ -55,6 +55,7 @@ const UserList: FC<{
   avatarHeight?: number;
   disabled?: boolean;
   multiple?: boolean;
+  showEmptyInput?: boolean;
 }> = ({
   buttonSx = {},
   userIds,
@@ -64,7 +65,8 @@ const UserList: FC<{
   multiple = false,
   disabled = false,
   variant = 'compact',
-  except = []
+  except = [],
+  showEmptyInput = false
 }) => {
   const { t } = useTranslation();
 
@@ -80,7 +82,12 @@ const UserList: FC<{
 
   const throttler = useMemo(() => new Throttler(300), []);
 
-  const search = (value: string) => throttler.debounce(() => searchUsers(value));
+  const search = (value: string) =>
+    throttler.debounce(() => {
+      if (value) {
+        searchUsers(value);
+      }
+    });
 
   const renderInput = (params: AutocompleteRenderInputParams) => (
     <TextField {...params} autoComplete="off" label={t(i18nLabel)} size="small" />
@@ -150,12 +157,14 @@ const UserList: FC<{
           ))}
           {autocomplete}
         </Stack>
-      ) : (
+      ) : userIds.length > 0 ? (
         <Stack direction="row">
           <HowlerAvatar userId={userIds[0]} sx={{ height: avatarHeight, width: avatarHeight }} />
           <Typography>{userIds[0]}</Typography>
         </Stack>
-      )}
+      ) : showEmptyInput ? (
+        autocomplete
+      ) : null}
       {variant === 'compact' && (
         <Popover
           open={!!anchorEl}
