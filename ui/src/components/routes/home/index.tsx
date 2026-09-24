@@ -9,7 +9,7 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { Cancel, Check, Close, OpenInNew } from '@mui/icons-material';
-import { Alert, AlertTitle, CircularProgress, Grid, IconButton, Stack, Typography } from '@mui/material';
+import { Alert, AlertTitle, Box, CircularProgress, Grid, IconButton, Stack, Typography } from '@mui/material';
 import { PageCenter, useAppUser } from '@tui/core';
 import api from 'api';
 import { AppBrand } from 'branding/AppBrand';
@@ -28,8 +28,10 @@ import { StorageKey } from 'utils/constants';
 import ErrorBoundary from '../ErrorBoundary';
 import AddNewCard from './AddNewCard';
 import AnalyticCard, { type AnalyticSettings } from './AnalyticCard';
+import CasePanel, { type CaseSettings } from './CasePanel';
 import EntryWrapper from './EntryWrapper';
 import HomeSettings from './HomeSettings';
+import TasksPanel, { type TasksSettings } from './TasksPanel';
 import ViewCard, { type ViewSettings } from './ViewCard';
 import ViewRefresh, { type ViewRefreshHandle } from './ViewRefresh';
 
@@ -74,6 +76,8 @@ const Home: FC = () => {
       return `${settings.analyticId}-${settings.type}`;
     } else if (entry.type === 'view') {
       return settings.viewId;
+    } else if (entry.type === 'case' || entry.type === 'tasks') {
+      return entry.entry_id;
     } else {
       return 'unknown';
     }
@@ -166,16 +170,21 @@ const Home: FC = () => {
     };
   }, []);
 
-  const viewCardCount = useMemo(() => (dashboard ?? []).filter(e => e.type === 'view').length, [dashboard]);
+  const refreshableCardCount = useMemo(
+    () => (dashboard ?? []).filter(e => ['view', 'case', 'tasks'].includes(e.type)).length,
+    [dashboard]
+  );
 
   useEffect(() => {
+    addToAppBar('left', 'view_spacer', <Box px={0.25} />);
+
     addToAppBar(
       'left',
       'view_refresh',
       <ViewRefresh
         ref={viewRefreshRef}
         refreshRate={refreshRate}
-        viewCardCount={viewCardCount}
+        viewCardCount={refreshableCardCount}
         onRefresh={handleRefresh}
       />
     );
@@ -192,10 +201,19 @@ const Home: FC = () => {
     );
 
     return () => {
+      removeFromAppBar('view_spacer');
       removeFromAppBar('view_refresh');
       removeFromAppBar('home_settings');
     };
-  }, [addToAppBar, handleRefresh, handleRefreshRateChange, isEditing, refreshRate, removeFromAppBar, viewCardCount]);
+  }, [
+    addToAppBar,
+    handleRefresh,
+    handleRefreshRateChange,
+    isEditing,
+    refreshRate,
+    refreshableCardCount,
+    removeFromAppBar
+  ]);
 
   return (
     <PageCenter maxWidth="100%" textAlign="left" height="100%">
@@ -312,6 +330,40 @@ const Home: FC = () => {
                         }
                       >
                         <AnalyticCard key={entry.config} {...settings} />
+                      </EntryWrapper>
+                    );
+                  } else if (entry.type === 'case') {
+                    const settings: CaseSettings = JSON.parse(entry.config);
+
+                    return (
+                      <EntryWrapper
+                        key={entry.entry_id}
+                        editing={isEditing}
+                        id={getIdFromEntry(entry)}
+                        onDelete={() =>
+                          setLocalDashboard(
+                            (dashboard ?? []).filter(_entry => _entry.entry_id !== getIdFromEntry(entry))
+                          )
+                        }
+                      >
+                        <CasePanel refreshTick={refreshTick} onRefreshComplete={handleRefreshComplete} {...settings} />
+                      </EntryWrapper>
+                    );
+                  } else if (entry.type === 'tasks') {
+                    const settings: TasksSettings = JSON.parse(entry.config);
+
+                    return (
+                      <EntryWrapper
+                        key={entry.entry_id}
+                        editing={isEditing}
+                        id={getIdFromEntry(entry)}
+                        onDelete={() =>
+                          setLocalDashboard(
+                            (dashboard ?? []).filter(_entry => _entry.entry_id !== getIdFromEntry(entry))
+                          )
+                        }
+                      >
+                        <TasksPanel refreshTick={refreshTick} onRefreshComplete={handleRefreshComplete} {...settings} />
                       </EntryWrapper>
                     );
                   } else {

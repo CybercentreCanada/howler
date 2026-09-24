@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next';
 
 /**
  * Imperative handle exposed to the parent via ref.
- * The parent calls `handleRefreshComplete` once each ViewCard finishes its data fetch,
- * allowing ViewRefresh to track how many cards are still in flight.
+ * The parent calls `handleRefreshComplete` once each refreshable panel finishes its data fetch,
+ * allowing ViewRefresh to track how many panels are still in flight.
  */
 export interface ViewRefreshHandle {
   handleRefreshComplete: () => void;
@@ -15,9 +15,9 @@ export interface ViewRefreshHandle {
 interface ViewRefreshProps {
   /** Auto-refresh interval in seconds (e.g. 15, 30, 60, 300). */
   refreshRate: number;
-  /** Number of ViewCards currently on the dashboard. Used to track pending fetches. */
+  /** Number of data panels currently on the dashboard. Used to track pending fetches. */
   viewCardCount: number;
-  /** Called when a refresh cycle begins. Should update `refreshTick` in the parent to signal ViewCards. */
+  /** Called when a refresh cycle begins. Should update `refreshTick` in the parent to signal panels. */
   onRefresh: () => void;
 }
 
