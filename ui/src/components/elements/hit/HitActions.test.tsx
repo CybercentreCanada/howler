@@ -8,7 +8,9 @@ const mockSet = vi.hoisted(() => vi.fn());
 const mockSetSelected = vi.hoisted(() => vi.fn());
 const mockClearSelectedRecords = vi.hoisted(() => vi.fn());
 const mockGetCurrentViews = vi.hoisted(() => vi.fn().mockResolvedValue([{ settings: { advance_on_triage: true } }]));
-const mockGetMatchingAnalytic = vi.hoisted(() => vi.fn().mockResolvedValue({ triage_settings: { valid_assessments: ['legitimate'], skip_rationale: true } }));
+const mockGetMatchingAnalytic = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({ triage_settings: { valid_assessments: ['legitimate'], skip_rationale: true } })
+);
 const mockPluginAction = vi.hoisted(() => vi.fn());
 
 const apiConfigContextToken = vi.hoisted(() => ({ name: 'api-config-context' }));
@@ -34,11 +36,18 @@ vi.mock('@mui/material', () => ({
   FormControlLabel: ({ label, onClick }: any) => <button onClick={onClick}>{label}</button>,
   FormLabel: ({ children }: any) => <div>{children}</div>,
   IconButton: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
-  Menu: ({ children, open }: any) => open ? <div>{children}</div> : null,
+  Menu: ({ children, open }: any) => (open ? <div>{children}</div> : null),
   Radio: () => <div>radio</div>,
-  RadioGroup: ({ children, onChange }: any) => <div><button onClick={() => onChange?.(null, 'shortcut')}>set-shortcuts</button>{children}</div>,
+  RadioGroup: ({ children, onChange }: any) => (
+    <div>
+      <button onClick={() => onChange?.(null, 'shortcut')}>set-shortcuts</button>
+      {children}
+    </div>
+  ),
   Stack: ({ children }: any) => <div>{children}</div>,
-  Switch: ({ checked, onChange }: any) => <button onClick={() => onChange?.(null, !checked)}>{checked ? 'dropdown-on' : 'dropdown-off'}</button>,
+  Switch: ({ checked, onChange }: any) => (
+    <button onClick={() => onChange?.(null, !checked)}>{checked ? 'dropdown-on' : 'dropdown-off'}</button>
+  ),
   styled: (_component: any) => (styles: any) => {
     void styles;
     return ({ children }: any) => <div>{children}</div>;
@@ -99,7 +108,9 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('react-pluggable', () => ({
-  usePluginStore: () => ({ executeFunction: () => [{ type: 'action', name: 'PluginAction', actionFunction: mockPluginAction, key: 'P' }] })
+  usePluginStore: () => ({
+    executeFunction: () => [{ type: 'action', name: 'PluginAction', actionFunction: mockPluginAction, key: 'P' }]
+  })
 }));
 
 vi.mock('use-context-selector', () => ({
@@ -135,14 +146,21 @@ vi.mock('./actions/ButtonActions', () => ({
   default: ({ actions }: any) => (
     <div>
       {actions.map((action: any) => (
-        <button key={action.name} onClick={action.actionFunction}>{action.name}</button>
+        <button key={action.name} onClick={action.actionFunction}>
+          {action.name}
+        </button>
       ))}
     </div>
   )
 }));
 
 vi.mock('./actions/DropdownActions', () => ({
-  default: ({ actions }: any) => <div>{`dropdown:${actions.length}`}</div>
+  default: ({ actions, currentAssessment }: any) => (
+    <div>
+      <span>{`dropdown:${actions.length}`}</span>
+      <span>{`assessment:${currentAssessment}`}</span>
+    </div>
+  )
 }));
 
 vi.mock('react', async importOriginal => {
@@ -190,8 +208,11 @@ describe('HitActions', () => {
     localStorageValues = { HIT_SHORTCUTS: 'no', FORCE_DROPDOWN: true };
     showButtonValue = false;
 
-    render(<HitActions hit={{ howler: { id: 'hit-1', status: 'open', assessment: '' } } as any} orientation="vertical" />);
+    render(
+      <HitActions hit={{ howler: { id: 'hit-1', status: 'open', assessment: '' } } as any} orientation="vertical" />
+    );
 
     await waitFor(() => expect(screen.getByText('dropdown:6')).toBeInTheDocument());
+    expect(screen.getByText('assessment:no-assessment')).toBeInTheDocument();
   });
 });
