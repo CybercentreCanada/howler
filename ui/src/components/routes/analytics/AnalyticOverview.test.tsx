@@ -91,8 +91,10 @@ describe('AnalyticOverview', () => {
     );
 
     await waitFor(() => expect(mockCountPost).toHaveBeenCalledWith({ query: 'howler.analytic:"Alpha"' }));
-    expect(screen.getByText('route.analytics.overview.empty.title')).toBeInTheDocument();
-    expect(screen.getByText('route.analytics.overview.empty.description')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('route.analytics.overview.empty.title')).toBeInTheDocument();
+      expect(screen.getByText('route.analytics.overview.empty.description')).toBeInTheDocument();
+    });
   });
 
   it('renders statistics and saves edited markdown descriptions', async () => {

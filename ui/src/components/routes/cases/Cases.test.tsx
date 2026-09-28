@@ -140,7 +140,7 @@ describe('Cases', () => {
     await waitFor(() =>
       expect(mockRequest).toHaveBeenCalledWith('case-search', {
         query: '*',
-        filters: [],
+        filters: ['status:("open" OR "in-progress")'],
         rows: 25,
         offset: 0,
         indexes: ['case']

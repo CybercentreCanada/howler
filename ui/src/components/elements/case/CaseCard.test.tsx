@@ -44,10 +44,6 @@ vi.mock('components/elements/display/HowlerAvatar', () => ({
   default: ({ userId }: any) => <div>{`avatar:${userId}`}</div>
 }));
 
-vi.mock('components/elements/PluginChip', () => ({
-  default: ({ label }: any) => <div>{`plugin:${label}`}</div>
-}));
-
 vi.mock('components/hooks/useMyApi', () => ({
   default: () => ({ dispatchApi: mockDispatchApi })
 }));
@@ -109,9 +105,6 @@ describe('CaseCard', () => {
             end: '2024-01-02',
             summary: 'First line\nSecond line',
             participants: ['alice', 'bob'],
-            targets: ['target-1'],
-            indicators: ['indicator-1'],
-            threats: ['threat-1'],
             tasks: [
               { id: 't1', summary: 'done task', complete: true },
               { id: 't2', summary: 'todo task', complete: false }
@@ -127,9 +120,6 @@ describe('CaseCard', () => {
     expect(screen.getByText('short:2024-01-01T00:00:00Z')).toBeInTheDocument();
     expect(screen.getByText('First line')).toBeInTheDocument();
     expect(screen.getByText('avatar:alice')).toBeInTheDocument();
-    expect(screen.getByText('plugin:target-1')).toBeInTheDocument();
-    expect(screen.getByText('plugin:indicator-1')).toBeInTheDocument();
-    expect(screen.getByText('plugin:threat-1')).toBeInTheDocument();
     expect(screen.getByText('1 complete')).toBeInTheDocument();
     expect(screen.getByText('todo task')).toBeInTheDocument();
 
