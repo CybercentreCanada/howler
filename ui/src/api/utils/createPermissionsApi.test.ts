@@ -23,7 +23,10 @@ describe('createPermissionsApi', () => {
 
   it('builds permission routes relative to the parent URI', async () => {
     const permissionApi = createPermissionsApi(parentUri);
-    const payload = { privilege: 'W', user_ids: ['1', '2'] };
+    const payload = [
+      { privilege: 'W', user_id: '1' },
+      { privilege: 'W', user_id: '2' }
+    ];
 
     await permissionApi.put('abc', payload);
     await permissionApi.delete('abc', payload);
