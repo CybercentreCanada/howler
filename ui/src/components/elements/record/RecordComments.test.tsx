@@ -39,7 +39,11 @@ vi.mock('@mui/material', () => ({
   AccordionSummary: ({ children }: any) => <div>{children}</div>,
   AvatarGroup: ({ children }: any) => <div>{children}</div>,
   Chip: ({ label, onClick }: any) => <button onClick={onClick}>{label}</button>,
-  IconButton: ({ children, onClick, disabled }: any) => <button onClick={onClick} disabled={disabled}>{children}</button>,
+  IconButton: ({ children, onClick, disabled }: any) => (
+    <button onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  ),
   Skeleton: () => <div>loading</div>,
   Stack: ({ children }: any) => <div>{children}</div>,
   TextField: ({ placeholder, inputRef, onKeyDown, onChangeCapture, onFocus, onBlur, error }: any) => (
@@ -111,7 +115,8 @@ vi.mock('utils/typeUtils', () => ({
 
 vi.mock('utils/utils', () => ({
   compareTimestamp: (a: string, b: string) => new Date(a).getTime() - new Date(b).getTime(),
-  sortByTimestamp: (items: any[]) => [...items].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+  sortByTimestamp: (items: any[]) =>
+    [...items].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
 }));
 
 vi.mock('../Comment', () => ({
@@ -152,7 +157,9 @@ describe('RecordComments', () => {
   it('submits comments, reacts to socket typing, and routes analytic comment chips', async () => {
     mockGetMatchingAnalytic.mockResolvedValue({
       analytic_id: 'analytic-1',
-      comment: [{ id: 'analytic-comment', value: 'analytic note', timestamp: '2026-01-01T00:00:00Z', detection: 'det-1' }]
+      comment: [
+        { id: 'analytic-comment', value: 'analytic note', timestamp: '2026-01-01T00:00:00Z', detection: 'det-1' }
+      ]
     });
     mockDispatchApi.mockResolvedValue({
       howler: {
@@ -163,15 +170,19 @@ describe('RecordComments', () => {
     render(
       <RecordComments
         users={{ alice: { name: 'Alice' } as any, bob: { name: 'Bob' } as any }}
-        record={{
-          __index: 'hit',
-          howler: {
-            id: 'hit-1',
-            analytic: 'Rule 1',
-            detection: 'det-1',
-            comment: [{ id: 'comment-1', value: 'existing comment', timestamp: '2026-01-01T00:00:00Z', reactions: {} }]
-          }
-        } as any}
+        record={
+          {
+            __index: 'hit',
+            howler: {
+              id: 'hit-1',
+              analytic: 'Rule 1',
+              detection: 'det-1',
+              comment: [
+                { id: 'comment-1', value: 'existing comment', timestamp: '2026-01-01T00:00:00Z', reactions: {} }
+              ]
+            }
+          } as any
+        }
       />
     );
 
@@ -183,7 +194,10 @@ describe('RecordComments', () => {
     fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true, currentTarget: input });
 
     await waitFor(() =>
-      expect(mockDispatchApi).toHaveBeenCalledWith({ op: 'post', id: 'hit-1', value: 'new comment' }, expect.any(Object))
+      expect(mockDispatchApi).toHaveBeenCalledWith(
+        { op: 'post', id: 'hit-1', value: 'new comment' },
+        expect.any(Object)
+      )
     );
     expect(screen.getByText('saved comment')).toBeInTheDocument();
 

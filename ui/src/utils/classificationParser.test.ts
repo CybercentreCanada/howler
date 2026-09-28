@@ -203,10 +203,20 @@ describe('classificationParser', () => {
 
   it('returns the unrestricted label when enforcement is disabled or invalid mode is active', () => {
     expect(
-      normalizedClassification(cloneParts(defaultParts), { ...classificationDefinition, enforce: false }, 'short', false)
+      normalizedClassification(
+        cloneParts(defaultParts),
+        { ...classificationDefinition, enforce: false },
+        'short',
+        false
+      )
     ).toBe('U');
     expect(
-      normalizedClassification(cloneParts(defaultParts), { ...classificationDefinition, invalid_mode: true }, 'short', false)
+      normalizedClassification(
+        cloneParts(defaultParts),
+        { ...classificationDefinition, invalid_mode: true },
+        'short',
+        false
+      )
     ).toBe('U');
   });
 
@@ -248,7 +258,13 @@ describe('classificationParser', () => {
 
   it('falls back to unrestricted max classification when enforcement is disabled', () => {
     expect(
-      getMaxClassification('C//REL TO CAN', 'S//REL TO USA', { ...classificationDefinition, enforce: false }, 'short', false)
+      getMaxClassification(
+        'C//REL TO CAN',
+        'S//REL TO USA',
+        { ...classificationDefinition, enforce: false },
+        'short',
+        false
+      )
     ).toBe('U');
   });
 
@@ -260,8 +276,8 @@ describe('classificationParser', () => {
     expect(isAccessible('S//REL TO USA', 'S//REL TO CAN', classificationDefinition, true)).toBe(false);
     expect(isAccessible('C//REL TO CAN', 'S//REL TO CAN', classificationDefinition, false)).toBe(true);
     expect(isAccessible('S//REL TO CAN', '', classificationDefinition, true)).toBe(true);
-    expect(isAccessible('S//REL TO CAN', 'C//REL TO CAN', { ...classificationDefinition, invalid_mode: true }, true)).toBe(
-      false
-    );
+    expect(
+      isAccessible('S//REL TO CAN', 'C//REL TO CAN', { ...classificationDefinition, invalid_mode: true }, true)
+    ).toBe(false);
   });
 });

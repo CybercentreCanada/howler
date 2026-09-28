@@ -58,7 +58,12 @@ vi.mock('../../elements/EditRow', () => ({
 }));
 
 vi.mock('./SettingsSection', () => ({
-  default: ({ children, title }: any) => <div><span>{title}</span>{children}</div>
+  default: ({ children, title }: any) => (
+    <div>
+      <span>{title}</span>
+      {children}
+    </div>
+  )
 }));
 
 vi.mock('react', async importOriginal => {
@@ -88,7 +93,15 @@ describe('SecuritySection', () => {
     const addApiKey = vi.fn();
     render(
       <SecuritySection
-        user={{ apikeys: [['KeyOne', ['R', 'W'], '2099-01-01'], ['Expired', [], '2000-01-01']], api_quota: 5 } as any}
+        user={
+          {
+            apikeys: [
+              ['KeyOne', ['R', 'W'], '2099-01-01'],
+              ['Expired', [], '2000-01-01']
+            ],
+            api_quota: 5
+          } as any
+        }
         editPassword={vi.fn()}
         addApiKey={addApiKey}
         removeApiKey={removeApiKey}

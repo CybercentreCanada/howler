@@ -13,7 +13,9 @@ const mockSetUser = vi.hoisted(() => vi.fn());
 let searchParamsValue = new URLSearchParams();
 let responseValue: any = {
   total: 1,
-  items: [{ analytic_id: 'an-1', name: 'Alpha', owner: 'owner-1', contributors: ['owner-1', 'user-2'], detections: ['d1'] }]
+  items: [
+    { analytic_id: 'an-1', name: 'Alpha', owner: 'owner-1', contributors: ['owner-1', 'user-2'], detections: ['d1'] }
+  ]
 };
 let appUserValue: any = {
   user: { username: 'demo', favourite_analytics: [] },
@@ -140,7 +142,15 @@ describe('AnalyticSearch', () => {
     searchParamsValue = new URLSearchParams();
     responseValue = {
       total: 1,
-      items: [{ analytic_id: 'an-1', name: 'Alpha', owner: 'owner-1', contributors: ['owner-1', 'user-2'], detections: ['d1', 'd2', 'd3', 'd4', 'd5', 'd6'] }]
+      items: [
+        {
+          analytic_id: 'an-1',
+          name: 'Alpha',
+          owner: 'owner-1',
+          contributors: ['owner-1', 'user-2'],
+          detections: ['d1', 'd2', 'd3', 'd4', 'd5', 'd6']
+        }
+      ]
     };
     appUserValue = {
       user: { username: 'demo', favourite_analytics: [] },
@@ -157,11 +167,13 @@ describe('AnalyticSearch', () => {
   it('searches analytics, paginates, navigates, and toggles favourites', async () => {
     render(<AnalyticSearch />);
 
-    await waitFor(() => expect(mockRequest).toHaveBeenCalledWith('analytic-search', {
-      query: 'name:** OR detections:**',
-      rows: 25,
-      offset: 0
-    }));
+    await waitFor(() =>
+      expect(mockRequest).toHaveBeenCalledWith('analytic-search', {
+        query: 'name:** OR detections:**',
+        rows: 25,
+        offset: 0
+      })
+    );
     expect(mockLoad).toHaveBeenCalledWith([expect.objectContaining({ id: 'an-1' })]);
     expect(screen.getByText('Alpha')).toBeInTheDocument();
     expect(screen.getByText('avatar:owner-1')).toBeInTheDocument();
@@ -172,7 +184,9 @@ describe('AnalyticSearch', () => {
     expect(mockSetSearchParams).toHaveBeenCalled();
 
     fireEvent.click(screen.getByText('star-border'));
-    await waitFor(() => expect(mockSetUser).toHaveBeenCalledWith(expect.objectContaining({ favourite_analytics: ['an-1'] })));
+    await waitFor(() =>
+      expect(mockSetUser).toHaveBeenCalledWith(expect.objectContaining({ favourite_analytics: ['an-1'] }))
+    );
 
     fireEvent.click(screen.getByText('Alpha'));
     expect(mockNavigate).toHaveBeenCalledWith('/analytics/an-1');

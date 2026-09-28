@@ -40,9 +40,7 @@ describe('HandlebarsMarkdown', () => {
   });
 
   it('renders markdown with synchronous helpers', async () => {
-    mockUseHelpers.mockReturnValue([
-      { keyword: 'hello', callback: () => 'world' }
-    ]);
+    mockUseHelpers.mockReturnValue([{ keyword: 'hello', callback: () => 'world' }]);
 
     render(<HandlebarsMarkdown md={'{{hello}}'} disableLinks object={{}} />);
     await waitFor(() => expect(screen.getByText('world')).toBeInTheDocument());
@@ -50,9 +48,7 @@ describe('HandlebarsMarkdown', () => {
   });
 
   it('renders helper components and missing helper fallbacks', async () => {
-    mockUseHelpers.mockReturnValue([
-      { keyword: 'badge', componentCallback: () => <div>component-result</div> }
-    ]);
+    mockUseHelpers.mockReturnValue([{ keyword: 'badge', componentCallback: () => <div>component-result</div> }]);
 
     render(<HandlebarsMarkdown md={'{{badge}}'} object={{}} />);
     await waitFor(() => expect(screen.getByText(/component-result|`/)).toBeInTheDocument());

@@ -19,15 +19,14 @@ vi.mock('@mui/icons-material', async importOriginal => {
 vi.mock('@mui/material', () => ({
   Chip: ({ label }: any) => <div>{label}</div>,
   Divider: () => <div>divider</div>,
-  IconButton: ({ children, onClick, disabled }: any) => <button disabled={disabled} onClick={onClick}>{children}</button>,
+  IconButton: ({ children, onClick, disabled }: any) => (
+    <button disabled={disabled} onClick={onClick}>
+      {children}
+    </button>
+  ),
   Stack: ({ children }: any) => <div>{children}</div>,
   TextField: ({ inputRef, onKeyDown, onChangeCapture, placeholder }: any) => (
-    <textarea
-      aria-label={placeholder}
-      ref={inputRef}
-      onKeyDown={onKeyDown}
-      onChange={onChangeCapture}
-    />
+    <textarea aria-label={placeholder} ref={inputRef} onKeyDown={onKeyDown} onChange={onChangeCapture} />
   ),
   Typography: ({ children }: any) => <div>{children}</div>
 }));
@@ -44,7 +43,12 @@ vi.mock('api', () => ({
         del: (analyticId: string, ids: string[]) => ({ analyticId, ids, op: 'del' }),
         put: (analyticId: string, commentId: string, value: string) => ({ analyticId, commentId, value, op: 'put' }),
         react: {
-          put: (analyticId: string, commentId: string, type: string) => ({ analyticId, commentId, type, op: 'react-put' }),
+          put: (analyticId: string, commentId: string, type: string) => ({
+            analyticId,
+            commentId,
+            type,
+            op: 'react-put'
+          }),
           del: (analyticId: string, commentId: string) => ({ analyticId, commentId, op: 'react-del' })
         }
       }
@@ -126,10 +130,12 @@ describe('AnalyticComments', () => {
     const setAnalytic = vi.fn();
     render(
       <AnalyticComments
-        analytic={{
-          analytic_id: 'an-1',
-          comment: [{ id: 'c1', user: 'demo', value: 'line one\nline two', timestamp: '2024-01-01T00:00:00Z' }]
-        } as any}
+        analytic={
+          {
+            analytic_id: 'an-1',
+            comment: [{ id: 'c1', user: 'demo', value: 'line one\nline two', timestamp: '2024-01-01T00:00:00Z' }]
+          } as any
+        }
         setAnalytic={setAnalytic}
       />
     );
@@ -146,8 +152,22 @@ describe('AnalyticComments', () => {
     const analytic = {
       analytic_id: 'an-1',
       comment: [
-        { id: 'c1', user: 'demo', value: 'first', detection: 'Det-1', timestamp: '2024-01-02T00:00:00Z', reactions: { other: 'smile' } },
-        { id: 'c2', user: 'user2', value: 'second', detection: 'Det-2', timestamp: '2024-01-01T00:00:00Z', reactions: { demo: 'smile' } }
+        {
+          id: 'c1',
+          user: 'demo',
+          value: 'first',
+          detection: 'Det-1',
+          timestamp: '2024-01-02T00:00:00Z',
+          reactions: { other: 'smile' }
+        },
+        {
+          id: 'c2',
+          user: 'user2',
+          value: 'second',
+          detection: 'Det-2',
+          timestamp: '2024-01-01T00:00:00Z',
+          reactions: { demo: 'smile' }
+        }
       ]
     };
 
@@ -177,7 +197,12 @@ describe('AnalyticComments', () => {
     await Promise.resolve();
 
     fireEvent.click(screen.getByText('react-c1'));
-    expect(mockDispatchApi).toHaveBeenCalledWith({ analyticId: 'an-1', commentId: 'c1', type: 'thumbs_up', op: 'react-put' });
+    expect(mockDispatchApi).toHaveBeenCalledWith({
+      analyticId: 'an-1',
+      commentId: 'c1',
+      type: 'thumbs_up',
+      op: 'react-put'
+    });
     await Promise.resolve();
     await Promise.resolve();
 

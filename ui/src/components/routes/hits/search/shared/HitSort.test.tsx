@@ -16,7 +16,9 @@ vi.mock('@mui/icons-material', async importOriginal => {
 });
 
 vi.mock('@mui/material', () => ({
-  Autocomplete: ({ onChange, options }: any) => <button onClick={() => onChange(null, options.at(-1))}>change-sort</button>,
+  Autocomplete: ({ onChange, options }: any) => (
+    <button onClick={() => onChange(null, options.at(-1))}>change-sort</button>
+  ),
   Stack: ({ children }: any) => <div>{children}</div>,
   TextField: () => <div>text-field</div>
 }));
@@ -30,7 +32,12 @@ vi.mock('components/app/providers/ViewProvider', () => ({
 }));
 
 vi.mock('components/elements/display/ChipPopper', () => ({
-  default: ({ children, label }: any) => <div><div>{label}</div>{children}</div>
+  default: ({ children, label }: any) => (
+    <div>
+      <div>{label}</div>
+      {children}
+    </div>
+  )
 }));
 
 vi.mock('react-i18next', () => ({

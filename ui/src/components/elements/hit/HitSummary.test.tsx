@@ -31,7 +31,11 @@ vi.mock('@mui/material', () => ({
     </div>
   ),
   Box: ({ children }: any) => <div>{children}</div>,
-  Button: ({ children, onClick, disabled }: any) => <button onClick={onClick} disabled={disabled}>{children}</button>,
+  Button: ({ children, onClick, disabled }: any) => (
+    <button onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  ),
   Chip: ({ label, onClick }: any) => <button onClick={onClick}>{label}</button>,
   CircularProgress: () => <div>loading</div>,
   Divider: () => <div>divider</div>,
@@ -86,7 +90,8 @@ vi.mock('components/hooks/useMySnackbar', () => ({
 
 vi.mock('lodash-es', () => ({
   isEmpty: (value: any) =>
-    value == null || (Array.isArray(value) ? value.length === 0 : typeof value === 'object' ? Object.keys(value).length === 0 : !value)
+    value == null ||
+    (Array.isArray(value) ? value.length === 0 : typeof value === 'object' ? Object.keys(value).length === 0 : !value)
 }));
 
 vi.mock('react-i18next', () => ({
@@ -141,7 +146,10 @@ import HitSummary from './HitSummary';
 describe('HitSummary', () => {
   beforeEach(() => {
     fieldContextValue = {
-      hitFields: [{ key: 'severity', type: 'keyword' }, { key: 'event.created', type: 'date' }]
+      hitFields: [
+        { key: 'severity', type: 'keyword' },
+        { key: 'event.created', type: 'date' }
+      ]
     };
     parameterContextValue = {
       query: 'status:open',
@@ -177,12 +185,14 @@ describe('HitSummary', () => {
 
     render(
       <HitSummary
-        response={{
-          items: [
-            { __index: 'hit', howler: { id: 'hit-1' } },
-            { __index: 'hit', howler: { id: 'hit-2' } }
-          ]
-        } as any}
+        response={
+          {
+            items: [
+              { __index: 'hit', howler: { id: 'hit-1' } },
+              { __index: 'hit', howler: { id: 'hit-2' } }
+            ]
+          } as any
+        }
       />
     );
 

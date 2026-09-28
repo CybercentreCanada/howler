@@ -16,7 +16,12 @@ vi.mock('@mui/material', () => ({
   IconButton: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
   ListItemText: ({ primary, secondary }: any) => <div>{`${primary}:${secondary}`}</div>,
   MenuItem: ({ children }: any) => <div>{children}</div>,
-  Select: ({ onChange, children }: any) => <div><button onClick={() => onChange({ target: { value: 'op-2' } })}>change-operation</button>{children}</div>,
+  Select: ({ onChange, children }: any) => (
+    <div>
+      <button onClick={() => onChange({ target: { value: 'op-2' } })}>change-operation</button>
+      {children}
+    </div>
+  ),
   Stack: ({ children }: any) => <div>{children}</div>
 }));
 
@@ -103,7 +108,9 @@ describe('OperationEntry', () => {
     );
     expect(container.textContent ?? '').toBe('');
 
-    rerender(<OperationEntry query="q" operation={operations[0] as any} operations={operations as any} readonly values="{}" />);
+    rerender(
+      <OperationEntry query="q" operation={operations[0] as any} operations={operations as any} readonly values="{}" />
+    );
     expect(screen.queryByText('delete-icon')).not.toBeInTheDocument();
     expect(screen.getByText('step:first')).toBeInTheDocument();
     expect(screen.queryByText('step:second')).not.toBeInTheDocument();

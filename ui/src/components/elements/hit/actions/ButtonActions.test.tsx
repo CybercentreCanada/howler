@@ -3,8 +3,17 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@mui/material', () => ({
-  Badge: ({ children, badgeContent }: any) => <div>{badgeContent}{children}</div>,
-  Button: ({ children, onClick, disabled }: any) => <button onClick={onClick} disabled={disabled}>{children}</button>,
+  Badge: ({ children, badgeContent }: any) => (
+    <div>
+      {badgeContent}
+      {children}
+    </div>
+  ),
+  Button: ({ children, onClick, disabled }: any) => (
+    <button onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  ),
   FormControl: ({ children }: any) => <div>{children}</div>,
   FormControlLabel: ({ label, onClick }: any) => <button onClick={onClick}>{label}</button>,
   FormLabel: ({ children }: any) => <div>{children}</div>,
@@ -14,7 +23,12 @@ vi.mock('@mui/material', () => ({
   Tooltip: ({ children }: any) => <>{children}</>,
   styled: (_component: any) => (styles: any) => {
     void styles;
-    return ({ children, badgeContent }: any) => <div>{badgeContent}{children}</div>;
+    return ({ children, badgeContent }: any) => (
+      <div>
+        {badgeContent}
+        {children}
+      </div>
+    );
   }
 }));
 
@@ -37,11 +51,13 @@ describe('ButtonActions', () => {
 
     render(
       <ButtonActions
-        actions={[
-          { type: 'action', name: 'Transition', actionFunction: actionFn, key: 'T' },
-          { type: 'assessment', name: 'legitimate', actionFunction: assessFn, key: 'A' },
-          { type: 'vote', name: 'Benign', actionFunction: voteFn, key: 'Q' }
-        ] as any}
+        actions={
+          [
+            { type: 'action', name: 'Transition', actionFunction: actionFn, key: 'T' },
+            { type: 'assessment', name: 'legitimate', actionFunction: assessFn, key: 'A' },
+            { type: 'vote', name: 'Benign', actionFunction: voteFn, key: 'Q' }
+          ] as any
+        }
         loading={false}
         orientation="horizontal"
         shortcuts={HitShortcuts.SHORTCUTS_HINT}

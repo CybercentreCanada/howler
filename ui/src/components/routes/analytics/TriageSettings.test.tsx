@@ -22,7 +22,11 @@ vi.mock('@mui/material', () => ({
   Chip: ({ label, onClick }: any) => <button onClick={onClick}>{label}</button>,
   Divider: () => <div>divider</div>,
   Grid: ({ children }: any) => <div>{children}</div>,
-  IconButton: ({ children, onClick, disabled }: any) => <button disabled={disabled} onClick={onClick}>{children}</button>,
+  IconButton: ({ children, onClick, disabled }: any) => (
+    <button disabled={disabled} onClick={onClick}>
+      {children}
+    </button>
+  ),
   InputAdornment: ({ children }: any) => <div>{children}</div>,
   LinearProgress: () => <div>progress</div>,
   Paper: ({ children }: any) => <div>{children}</div>,
@@ -95,7 +99,9 @@ describe('TriageSettings', () => {
 
     render(
       <TriageSettings
-        analytic={{ analytic_id: 'an-1', triage_settings: { valid_assessments: ['malicious'], rationales: ['because'] } } as any}
+        analytic={
+          { analytic_id: 'an-1', triage_settings: { valid_assessments: ['malicious'], rationales: ['because'] } } as any
+        }
         setAnalytic={setAnalytic}
       />
     );

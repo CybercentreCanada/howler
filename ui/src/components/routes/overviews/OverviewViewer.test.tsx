@@ -25,11 +25,21 @@ vi.mock('@mui/material', () => ({
   Autocomplete: ({ options, value, onChange, renderInput }: any) => (
     <div>
       {renderInput({})}
-      <button onClick={() => onChange(null, options[0] ?? null)}>{typeof value === 'object' ? value?.name : value || 'empty'}</button>
+      <button onClick={() => onChange(null, options[0] ?? null)}>
+        {typeof value === 'object' ? value?.name : value || 'empty'}
+      </button>
     </div>
   ),
-  Box: ({ children, onMouseDown, onKeyDown }: any) => <div onMouseDown={onMouseDown} onKeyDown={onKeyDown}>{children}</div>,
-  Button: ({ children, onClick, disabled }: any) => <button onClick={onClick} disabled={disabled}>{children}</button>,
+  Box: ({ children, onMouseDown, onKeyDown }: any) => (
+    <div onMouseDown={onMouseDown} onKeyDown={onKeyDown}>
+      {children}
+    </div>
+  ),
+  Button: ({ children, onClick, disabled }: any) => (
+    <button onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  ),
   CircularProgress: () => <div>loading</div>,
   Divider: () => <div>divider</div>,
   FormControl: ({ children }: any) => <div>{children}</div>,
@@ -152,7 +162,8 @@ describe('OverviewViewer', () => {
     mockDispatchApi.mockImplementation(async (request: any) => {
       if (request?.query === 'analytic_id:*') return { items: [{ name: 'Alpha', detections: ['det-1'] }] };
       if (request?.fl === '*') return { items: [] };
-      if (request?.content === 'updated-content') return { overview_id: 'ov-1', analytic: 'Alpha', content: 'updated-content' };
+      if (request?.content === 'updated-content')
+        return { overview_id: 'ov-1', analytic: 'Alpha', content: 'updated-content' };
       return {};
     });
 

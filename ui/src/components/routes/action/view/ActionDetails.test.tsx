@@ -23,9 +23,19 @@ vi.mock('@mui/material', () => ({
   Button: ({ children, onClick, component: Component, to }: any) =>
     Component ? <a href={to}>{children}</a> : <button onClick={onClick}>{children}</button>,
   Checkbox: ({ name, onChange, checked }: any) => (
-    <input type="checkbox" aria-label={name} checked={checked} onChange={e => onChange({ target: { name, checked: e.target.checked } })} />
+    <input
+      type="checkbox"
+      aria-label={name}
+      checked={checked}
+      onChange={e => onChange({ target: { name, checked: e.target.checked } })}
+    />
   ),
-  FormControlLabel: ({ control, label }: any) => <label>{control}{label}</label>,
+  FormControlLabel: ({ control, label }: any) => (
+    <label>
+      {control}
+      {label}
+    </label>
+  ),
   FormGroup: ({ children }: any) => <div>{children}</div>,
   IconButton: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
   LinearProgress: ({ value }: any) => <div>{`progress:${value ?? 'indeterminate'}`}</div>,
@@ -57,7 +67,12 @@ vi.mock('components/elements/addons/layout/FlexOne', () => ({
 }));
 
 vi.mock('components/elements/addons/search/phrase/Phrase', () => ({
-  default: ({ value, startAdornment }: any) => <div>{startAdornment}<div>{`phrase:${value}`}</div></div>
+  default: ({ value, startAdornment }: any) => (
+    <div>
+      {startAdornment}
+      <div>{`phrase:${value}`}</div>
+    </div>
+  )
 }));
 
 vi.mock('components/elements/display/HowlerAvatar', () => ({
@@ -190,7 +205,11 @@ describe('ActionDetails', () => {
 
     fireEvent.click(screen.getByLabelText('alert'));
     await waitFor(() =>
-      expect(mockDispatchApi).toHaveBeenCalledWith({ op: 'patch', id: 'action-1', body: { triggers: ['manual', 'alert'] } })
+      expect(mockDispatchApi).toHaveBeenCalledWith({
+        op: 'patch',
+        id: 'action-1',
+        body: { triggers: ['manual', 'alert'] }
+      })
     );
 
     fireEvent.click(screen.getByText('route.actions.execute'));

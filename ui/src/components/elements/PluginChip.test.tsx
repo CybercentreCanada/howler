@@ -24,14 +24,24 @@ describe('PluginChip', () => {
   });
 
   it('renders the first plugin-provided chip component', () => {
-    mockExecuteFunction.mockImplementation((name: string) => (name === 'plugin-b.chip' ? <div>plugin-chip</div> : null));
-    render(<PluginChip value="v" context="ctx">child</PluginChip>);
+    mockExecuteFunction.mockImplementation((name: string) =>
+      name === 'plugin-b.chip' ? <div>plugin-chip</div> : null
+    );
+    render(
+      <PluginChip value="v" context="ctx">
+        child
+      </PluginChip>
+    );
     expect(screen.getByText('plugin-chip')).toBeInTheDocument();
   });
 
   it('falls back to the default MUI chip when no plugin handles the value', () => {
     mockExecuteFunction.mockReturnValue(null);
-    render(<PluginChip value="v" context="ctx">child</PluginChip>);
+    render(
+      <PluginChip value="v" context="ctx">
+        child
+      </PluginChip>
+    );
     expect(screen.getByText('fallback:child')).toBeInTheDocument();
   });
 });

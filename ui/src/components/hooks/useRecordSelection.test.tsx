@@ -59,7 +59,7 @@ describe('useRecordSelection', () => {
     mockRemoveRecordFromSelection.mockReset();
     mockClearSelectedRecords.mockReset();
     mockSetSelected.mockReset();
-    document.getSelection = vi.fn(() => ({ removeAllRanges: vi.fn() } as any));
+    document.getSelection = vi.fn(() => ({ removeAllRanges: vi.fn() }) as any);
   });
 
   it('selects a single record on normal click', () => {
@@ -81,13 +81,19 @@ describe('useRecordSelection', () => {
     const stopPropagation = vi.fn();
 
     act(() => {
-      result.current.onClick({ ctrlKey: true, shiftKey: false, stopPropagation } as any, { howler: { id: 'b' } } as any);
+      result.current.onClick(
+        { ctrlKey: true, shiftKey: false, stopPropagation } as any,
+        { howler: { id: 'b' } } as any
+      );
     });
     expect(mockRemoveRecordFromSelection).toHaveBeenCalledWith('b');
 
     selectedRecords = [];
     act(() => {
-      result.current.onClick({ ctrlKey: true, shiftKey: false, stopPropagation } as any, { howler: { id: 'c' } } as any);
+      result.current.onClick(
+        { ctrlKey: true, shiftKey: false, stopPropagation } as any,
+        { howler: { id: 'c' } } as any
+      );
     });
     expect(mockAddRecordToSelection).toHaveBeenCalledWith('c');
     expect(stopPropagation).toHaveBeenCalledTimes(2);
@@ -102,7 +108,10 @@ describe('useRecordSelection', () => {
     rerender();
 
     act(() => {
-      result.current.onClick({ ctrlKey: false, shiftKey: true, stopPropagation: vi.fn() } as any, { howler: { id: 'c' } } as any);
+      result.current.onClick(
+        { ctrlKey: false, shiftKey: true, stopPropagation: vi.fn() } as any,
+        { howler: { id: 'c' } } as any
+      );
     });
 
     expect(mockAddRecordToSelection).toHaveBeenCalledWith('a');
@@ -114,7 +123,10 @@ describe('useRecordSelection', () => {
     const { result } = renderHook(() => useRecordSelection());
 
     act(() => {
-      result.current.onClick({ ctrlKey: false, shiftKey: true, stopPropagation: vi.fn() } as any, { howler: { id: 'a' } } as any);
+      result.current.onClick(
+        { ctrlKey: false, shiftKey: true, stopPropagation: vi.fn() } as any,
+        { howler: { id: 'a' } } as any
+      );
     });
 
     expect(mockAddRecordToSelection).toHaveBeenCalledWith('a');

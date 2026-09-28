@@ -23,10 +23,18 @@ vi.mock('@mui/material', () => ({
       <button onClick={() => onChange?.(null, options[0] ?? null)}>{value ?? 'pick-field'}</button>
     </div>
   ),
-  Chip: ({ label, onClick, disabled }: any) => <button onClick={onClick} disabled={disabled}>{label}</button>,
+  Chip: ({ label, onClick, disabled }: any) => (
+    <button onClick={onClick} disabled={disabled}>
+      {label}
+    </button>
+  ),
   Divider: () => <div>divider</div>,
   Grid: ({ children }: any) => <div>{children}</div>,
-  IconButton: ({ children, onClick, disabled }: any) => <button onClick={onClick} disabled={disabled}>{children}</button>,
+  IconButton: ({ children, onClick, disabled }: any) => (
+    <button onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  ),
   Stack: ({ children }: any) => <div>{children}</div>,
   TextField: ({ placeholder }: any) => <div>{placeholder}</div>
 }));
@@ -83,7 +91,12 @@ import AddColumnModal from './AddColumnModal';
 describe('AddColumnModal', () => {
   beforeEach(() => {
     fieldContextValue = { hitFields: [{ key: 'severity' }, { key: 'event.created' }] };
-    responseValue = { items: [{ __index: 'hit', howler: { id: 'hit-1' } }, { __index: 'event', howler: { id: 'event-1' } }] };
+    responseValue = {
+      items: [
+        { __index: 'hit', howler: { id: 'hit-1' } },
+        { __index: 'event', howler: { id: 'event-1' } }
+      ]
+    };
     mockGetMatchingTemplate.mockReset().mockResolvedValue({ keys: ['severity', 'custom.field', 'custom.field'] });
   });
 

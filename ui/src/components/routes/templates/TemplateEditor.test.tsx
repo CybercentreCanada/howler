@@ -40,7 +40,11 @@ vi.mock('@mui/icons-material', () => ({
 }));
 
 vi.mock('@mui/material', () => ({
-  Button: ({ children, onClick, disabled }: any) => <button onClick={onClick} disabled={disabled}>{children}</button>,
+  Button: ({ children, onClick, disabled }: any) => (
+    <button onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  ),
   Stack: ({ children }: any) => <div>{children}</div>,
   Typography: ({ children }: any) => <div>{children}</div>
 }));

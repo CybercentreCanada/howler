@@ -23,7 +23,9 @@ vi.mock('@mui/icons-material', async importOriginal => {
 });
 
 vi.mock('@mui/material', () => ({
-  Autocomplete: ({ onChange, options }: any) => <button onClick={() => onChange(null, options.at(-1))}>change-span</button>,
+  Autocomplete: ({ onChange, options }: any) => (
+    <button onClick={() => onChange(null, options.at(-1))}>change-span</button>
+  ),
   Stack: ({ children }: any) => <div>{children}</div>,
   TextField: ({ label }: any) => <div>{label}</div>,
   Typography: ({ children }: any) => <div>{children}</div>
@@ -38,7 +40,12 @@ vi.mock('components/app/providers/ViewProvider', () => ({
 }));
 
 vi.mock('components/elements/display/ChipPopper', () => ({
-  default: ({ children, label }: any) => <div><div>{label}</div>{children}</div>
+  default: ({ children, label }: any) => (
+    <div>
+      <div>{label}</div>
+      {children}
+    </div>
+  )
 }));
 
 vi.mock('dayjs', () => ({
@@ -54,7 +61,8 @@ vi.mock('react-router', () => ({
 }));
 
 vi.mock('use-context-selector', () => ({
-  useContextSelector: (context: any, selector: any) => selector(context === parameterContextToken ? parameterValue : { getCurrentViews: mockGetCurrentViews })
+  useContextSelector: (context: any, selector: any) =>
+    selector(context === parameterContextToken ? parameterValue : { getCurrentViews: mockGetCurrentViews })
 }));
 
 vi.mock('utils/utils', () => ({

@@ -6,7 +6,11 @@ const mockGetAvatar = vi.hoisted(() => vi.fn());
 const avatarContextToken = vi.hoisted(() => ({ name: 'avatar-context' }));
 
 vi.mock('@mui/material', () => ({
-  Avatar: ({ children, src, ...rest }: any) => <div data-src={src} {...rest}>{children}</div>,
+  Avatar: ({ children, src, ...rest }: any) => (
+    <div data-src={src} {...rest}>
+      {children}
+    </div>
+  ),
   Tooltip: ({ children }: any) => <div>{children}</div>,
   useTheme: () => ({ palette: { getContrastText: () => '#fff' } })
 }));
@@ -52,15 +56,13 @@ describe('HowlerAvatar', () => {
   it('uses remote image sources directly and derives initials for non-url avatars', async () => {
     mockGetAvatar.mockResolvedValueOnce('https://example.com/avatar.png').mockResolvedValueOnce('Alice Example');
 
-    const { rerender } = render(
-      <HowlerAvatar userId="alice" />
+    const { rerender } = render(<HowlerAvatar userId="alice" />);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('alice')).toHaveAttribute('data-src', 'https://example.com/avatar.png')
     );
 
-    await waitFor(() => expect(screen.getByLabelText('alice')).toHaveAttribute('data-src', 'https://example.com/avatar.png'));
-
-    rerender(
-      <HowlerAvatar userId="bob" />
-    );
+    rerender(<HowlerAvatar userId="bob" />);
 
     await waitFor(() => expect(screen.getByLabelText('bob')).toHaveTextContent('AE'));
   });
@@ -69,9 +71,7 @@ describe('HowlerAvatar', () => {
     const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
     mockGetAvatar.mockRejectedValueOnce(new Error('no avatar'));
 
-    render(
-      <HowlerAvatar userId="charlie" />
-    );
+    render(<HowlerAvatar userId="charlie" />);
 
     await act(async () => {});
     expect(debugSpy).toHaveBeenCalled();

@@ -3,7 +3,11 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 let versions: Record<string, string> = {};
-const mockSetVersions = vi.hoisted(() => vi.fn((next: Record<string, string>) => { versions = next; }));
+const mockSetVersions = vi.hoisted(() =>
+  vi.fn((next: Record<string, string>) => {
+    versions = next;
+  })
+);
 
 vi.mock('components/hooks/useMyLocalStorage', () => ({
   useMyLocalStorageItem: () => [versions, mockSetVersions]
@@ -50,17 +54,35 @@ describe('RecordWorklog', () => {
     const { unmount } = render(
       <RecordWorklog
         users={{ alice: { name: 'Alice' } as any }}
-        record={{
-          __index: 'hit',
-          howler: {
-            id: 'hit-1',
-            log: [
-              { user: 'alice', previous_version: 'v3', timestamp: '2026-01-03T00:00:00Z', explanation: ' hello ' },
-              { user: 'alice', previous_version: 'v2', timestamp: '2026-01-02T00:03:00Z', key: 'status', type: 'set', previous_value: 'open', new_value: 'closed' },
-              { user: 'bob', previous_version: 'v1', timestamp: '2026-01-02T00:00:00Z', key: 'labels', type: 'appended', previous_value: '[old]', new_value: 'new' }
-            ]
-          }
-        } as any}
+        record={
+          {
+            __index: 'hit',
+            howler: {
+              id: 'hit-1',
+              log: [
+                { user: 'alice', previous_version: 'v3', timestamp: '2026-01-03T00:00:00Z', explanation: ' hello ' },
+                {
+                  user: 'alice',
+                  previous_version: 'v2',
+                  timestamp: '2026-01-02T00:03:00Z',
+                  key: 'status',
+                  type: 'set',
+                  previous_value: 'open',
+                  new_value: 'closed'
+                },
+                {
+                  user: 'bob',
+                  previous_version: 'v1',
+                  timestamp: '2026-01-02T00:00:00Z',
+                  key: 'labels',
+                  type: 'appended',
+                  previous_value: '[old]',
+                  new_value: 'new'
+                }
+              ]
+            }
+          } as any
+        }
       />
     );
 
@@ -74,5 +96,4 @@ describe('RecordWorklog', () => {
     unmount();
     expect(mockSetVersions).toHaveBeenCalled();
   });
-
 });

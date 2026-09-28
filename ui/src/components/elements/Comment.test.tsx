@@ -25,14 +25,26 @@ vi.mock('@mui/material', () => ({
   CardContent: ({ children }: any) => <div>{children}</div>,
   Chip: ({ label, onClick }: any) => <button onClick={onClick}>{String(label ?? '')}</button>,
   CircularProgress: () => <div>loading</div>,
-  Collapse: ({ children, in: open }: any) => open ? <div>{children}</div> : null,
+  Collapse: ({ children, in: open }: any) => (open ? <div>{children}</div> : null),
   Fade: ({ children }: any) => <>{children}</>,
-  IconButton: ({ children, onClick, disabled, id }: any) => <button id={id} onClick={onClick} disabled={disabled}>{children}</button>,
+  IconButton: ({ children, onClick, disabled, id }: any) => (
+    <button id={id} onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  ),
   ListItemIcon: ({ children }: any) => <div>{children}</div>,
   ListItemText: ({ children }: any) => <div>{children}</div>,
-  Menu: ({ children, open }: any) => open ? <div>{children}</div> : null,
-  MenuItem: ({ children, onClick, disabled }: any) => <button onClick={onClick} disabled={disabled}>{children}</button>,
-  Stack: ({ children, onMouseEnter, onMouseLeave }: any) => <div onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>{children}</div>,
+  Menu: ({ children, open }: any) => (open ? <div>{children}</div> : null),
+  MenuItem: ({ children, onClick, disabled }: any) => (
+    <button onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  ),
+  Stack: ({ children, onMouseEnter, onMouseLeave }: any) => (
+    <div onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
+      {children}
+    </div>
+  ),
   TextField: ({ defaultValue, onChange, onKeyDown }: any) => (
     <textarea aria-label="comment-editor" defaultValue={defaultValue} onChange={onChange} onKeyDown={onKeyDown} />
   ),
@@ -90,7 +102,15 @@ describe('Comment', () => {
 
     render(
       <Comment
-        comment={{ id: 'c1', user: 'author', value: 'hello', timestamp: '2026-01-01T00:00:00Z', modified: '2026-01-02T00:00:00Z' } as any}
+        comment={
+          {
+            id: 'c1',
+            user: 'author',
+            value: 'hello',
+            timestamp: '2026-01-01T00:00:00Z',
+            modified: '2026-01-02T00:00:00Z'
+          } as any
+        }
         handleDelete={handleDelete}
         handleQuote={handleQuote}
         users={{ author: { name: 'Author Name' } as any }}
@@ -118,14 +138,16 @@ describe('Comment', () => {
 
     render(
       <Comment
-        comment={{
-          id: 'c2',
-          user: 'author',
-          value: 'old text',
-          timestamp: '2026-01-01T00:00:00Z',
-          modified: '2026-01-01T00:00:00Z',
-          reactions: { other: 'heart' }
-        } as any}
+        comment={
+          {
+            id: 'c2',
+            user: 'author',
+            value: 'old text',
+            timestamp: '2026-01-01T00:00:00Z',
+            modified: '2026-01-01T00:00:00Z',
+            reactions: { other: 'heart' }
+          } as any
+        }
         handleEdit={handleEdit}
         handleReact={handleReact}
         users={{ author: { name: 'Author Name' } as any }}

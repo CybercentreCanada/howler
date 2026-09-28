@@ -22,7 +22,23 @@ vi.mock('api/search/template', () => ({ sentinel: 'template' }));
 vi.mock('api/search/user', () => ({ sentinel: 'user' }));
 vi.mock('api/search/view', () => ({ sentinel: 'view' }));
 
-import { action, analytic, case as caseApi, count, dossier, facet, fields, grouped, histogram, hit, overview, template, uri, user, view } from './index';
+import {
+  action,
+  analytic,
+  case as caseApi,
+  count,
+  dossier,
+  facet,
+  fields,
+  grouped,
+  histogram,
+  hit,
+  overview,
+  template,
+  uri,
+  user,
+  view
+} from './index';
 
 describe('search API', () => {
   it('builds the search URI and re-exports nested search modules', () => {

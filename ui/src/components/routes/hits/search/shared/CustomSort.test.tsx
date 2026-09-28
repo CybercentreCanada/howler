@@ -7,7 +7,10 @@ const parameterContextToken = vi.hoisted(() => ({ name: 'parameter-context' }));
 const mockGetHitFields = vi.hoisted(() => vi.fn());
 const mockSetSavedSort = vi.hoisted(() => vi.fn());
 
-let fieldContextValue: any = { hitFields: [{ key: 'event.created' }, { key: 'howler.score' }], getHitFields: mockGetHitFields };
+let fieldContextValue: any = {
+  hitFields: [{ key: 'event.created' }, { key: 'howler.score' }],
+  getHitFields: mockGetHitFields
+};
 let parameterValue: any = { sort: 'event.created desc', setSort: mockSetSavedSort };
 
 vi.mock('@mui/icons-material', async importOriginal => {
@@ -22,10 +25,17 @@ vi.mock('@mui/icons-material', async importOriginal => {
 
 vi.mock('@mui/material', () => ({
   Autocomplete: ({ onChange, options }: any) => <button onClick={() => onChange(null, options[1])}>pick-field</button>,
-  Chip: ({ label, onClick, onDelete }: any) => <div><button onClick={onClick}>{label}</button><button onClick={onDelete}>delete-{label}</button></div>,
+  Chip: ({ label, onClick, onDelete }: any) => (
+    <div>
+      <button onClick={onClick}>{label}</button>
+      <button onClick={onDelete}>delete-{label}</button>
+    </div>
+  ),
   Grid: ({ children }: any) => <div>{children}</div>,
   MenuItem: ({ children }: any) => <div>{children}</div>,
-  Select: ({ value, onChange }: any) => <button onClick={() => onChange({ target: { value: value === 'desc' ? 'asc' : 'desc' } })}>toggle-direction</button>,
+  Select: ({ value, onChange }: any) => (
+    <button onClick={() => onChange({ target: { value: value === 'desc' ? 'asc' : 'desc' } })}>toggle-direction</button>
+  ),
   Stack: ({ children }: any) => <div>{children}</div>,
   TextField: ({ label }: any) => <div>{label}</div>
 }));
@@ -43,7 +53,8 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('use-context-selector', () => ({
-  useContextSelector: (_context: any, selector: any) => selector({ sort: parameterValue.sort, setSort: mockSetSavedSort })
+  useContextSelector: (_context: any, selector: any) =>
+    selector({ sort: parameterValue.sort, setSort: mockSetSavedSort })
 }));
 
 vi.mock('react', async importOriginal => {
@@ -61,7 +72,10 @@ import CustomSort from './CustomSort';
 
 describe('CustomSort', () => {
   beforeEach(() => {
-    fieldContextValue = { hitFields: [{ key: 'event.created' }, { key: 'howler.score' }], getHitFields: mockGetHitFields };
+    fieldContextValue = {
+      hitFields: [{ key: 'event.created' }, { key: 'howler.score' }],
+      getHitFields: mockGetHitFields
+    };
     parameterValue = { sort: 'event.created desc', setSort: mockSetSavedSort };
     mockGetHitFields.mockReset();
     mockSetSavedSort.mockReset();

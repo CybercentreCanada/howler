@@ -23,7 +23,15 @@ let responseValue: any = {
   total: 2,
   items: [
     { view_id: 'view-1', title: 'Alpha', query: 'status:open', type: 'global', owner: 'demo', admins: [], members: [] },
-    { view_id: 'view-2', title: 'Bravo', query: 'status:closed', type: 'personal', owner: 'other', admins: ['demo'], members: [] }
+    {
+      view_id: 'view-2',
+      title: 'Bravo',
+      query: 'status:closed',
+      type: 'personal',
+      owner: 'other',
+      admins: ['demo'],
+      members: []
+    }
   ]
 };
 let appUserValue: any = {
@@ -199,8 +207,24 @@ describe('Views', () => {
     responseValue = {
       total: 2,
       items: [
-        { view_id: 'view-1', title: 'Alpha', query: 'status:open', type: 'global', owner: 'demo', admins: [], members: [] },
-        { view_id: 'view-2', title: 'Bravo', query: 'status:closed', type: 'personal', owner: 'other', admins: ['demo'], members: [] }
+        {
+          view_id: 'view-1',
+          title: 'Alpha',
+          query: 'status:open',
+          type: 'global',
+          owner: 'demo',
+          admins: [],
+          members: []
+        },
+        {
+          view_id: 'view-2',
+          title: 'Bravo',
+          query: 'status:closed',
+          type: 'personal',
+          owner: 'other',
+          admins: ['demo'],
+          members: []
+        }
       ]
     };
     appUserValue = { user: { username: 'demo', favourite_views: ['view-1'], is_admin: false } };
@@ -235,7 +259,8 @@ describe('Views', () => {
 
     await waitFor(() =>
       expect(mockRequest).toHaveBeenCalledWith('view-search', {
-        query: '(title:* OR query:* OR sort:* OR type:* OR owner:*) AND (type:global OR owner:(demo OR none) OR admins:demo OR members:demo) AND type:(*)',
+        query:
+          '(title:* OR query:* OR sort:* OR type:* OR owner:*) AND (type:global OR owner:(demo OR none) OR admins:demo OR members:demo) AND type:(*)',
         rows: 25,
         offset: 0
       })
@@ -247,9 +272,12 @@ describe('Views', () => {
 
     fireEvent.click(screen.getByText('filter-personal'));
     await waitFor(() =>
-      expect(mockRequest).toHaveBeenLastCalledWith('view-search', expect.objectContaining({
-        query: expect.stringContaining('type:(personal OR readonly)')
-      }))
+      expect(mockRequest).toHaveBeenLastCalledWith(
+        'view-search',
+        expect.objectContaining({
+          query: expect.stringContaining('type:(personal OR readonly)')
+        })
+      )
     );
 
     fireEvent.click(screen.getByText('page'));

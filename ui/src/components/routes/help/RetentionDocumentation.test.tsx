@@ -62,18 +62,20 @@ describe('RetentionDocumentation', () => {
 
     render(
       <ApiConfigContext.Provider
-        value={{
-          config: {
-            configuration: {
-              system: {
-                retention: {
-                  limit_amount: 90,
-                  limit_unit: 'days'
+        value={
+          {
+            config: {
+              configuration: {
+                system: {
+                  retention: {
+                    limit_amount: 90,
+                    limit_unit: 'days'
+                  }
                 }
               }
             }
-          }
-        } as any}
+          } as any
+        }
       >
         <RetentionDocumentation />
       </ApiConfigContext.Provider>

@@ -97,7 +97,9 @@ describe('HitLabels', () => {
   });
 
   it('opens the drawer, validates empty input, and adds labels', async () => {
-    mockDispatchApi.mockResolvedValueOnce({ howler: { labels: { security: ['critical', 'high'], system: ['info'], generic: ['fresh'] } } });
+    mockDispatchApi.mockResolvedValueOnce({
+      howler: { labels: { security: ['critical', 'high'], system: ['info'], generic: ['fresh'] } }
+    });
 
     render(<HitLabels hit={baseHit} readOnly={false} />);
 
@@ -109,7 +111,12 @@ describe('HitLabels', () => {
     fireEvent.keyDown(screen.getByLabelText('hit.label.edit.add.label'), { key: 'Enter' });
 
     await waitFor(() =>
-      expect(mockDispatchApi).toHaveBeenCalledWith({ op: 'put', id: 'hit-1', category: 'generic', body: { value: ['fresh'] } })
+      expect(mockDispatchApi).toHaveBeenCalledWith({
+        op: 'put',
+        id: 'hit-1',
+        category: 'generic',
+        body: { value: ['fresh'] }
+      })
     );
     expect(mockUpdateRecord).toHaveBeenCalled();
   });

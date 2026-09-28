@@ -4,7 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockDispatchApi = vi.hoisted(() => vi.fn());
 const mockShowInfoMessage = vi.hoisted(() => vi.fn());
-const mockApiKeyPost = vi.hoisted(() => vi.fn((name: string, privs: string[], expiry: string) => ({ name, privs, expiry })));
+const mockApiKeyPost = vi.hoisted(() =>
+  vi.fn((name: string, privs: string[], expiry: string) => ({ name, privs, expiry }))
+);
 const apiConfigContextToken = vi.hoisted(() => ({ name: 'api-config-context' }));
 
 let configValue: any = {
@@ -20,11 +22,20 @@ let configValue: any = {
 vi.mock('@mui/material', () => ({
   Alert: ({ children }: any) => <div>{children}</div>,
   AlertTitle: ({ children }: any) => <div>{children}</div>,
-  Button: ({ children, onClick, disabled }: any) => <button disabled={disabled} onClick={onClick}>{children}</button>,
+  Button: ({ children, onClick, disabled }: any) => (
+    <button disabled={disabled} onClick={onClick}>
+      {children}
+    </button>
+  ),
   Checkbox: ({ onChange }: any) => <input aria-label="checkbox" type="checkbox" onChange={onChange} />,
   Divider: () => <div>divider</div>,
   FormControl: ({ children }: any) => <div>{children}</div>,
-  FormControlLabel: ({ control, label }: any) => <label>{control}{label}</label>,
+  FormControlLabel: ({ control, label }: any) => (
+    <label>
+      {control}
+      {label}
+    </label>
+  ),
   FormGroup: ({ children }: any) => <div>{children}</div>,
   FormLabel: ({ children }: any) => <div>{children}</div>,
   Stack: ({ children }: any) => <div>{children}</div>,
@@ -40,7 +51,9 @@ vi.mock('@mui/material', () => ({
 vi.mock('@mui/x-date-pickers', () => ({
   LocalizationProvider: ({ children }: any) => <>{children}</>,
   StaticDateTimePicker: ({ value, onChange }: any) => (
-    <button onClick={() => onChange({ toISOString: () => '2027-01-01T00:00:00.000Z' })}>{value ? 'change-date' : 'set-date'}</button>
+    <button onClick={() => onChange({ toISOString: () => '2027-01-01T00:00:00.000Z' })}>
+      {value ? 'change-date' : 'set-date'}
+    </button>
   )
 }));
 

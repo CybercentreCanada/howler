@@ -33,7 +33,11 @@ vi.mock('@mui/material', () => ({
   IconButton: ({ children }: any) => <div>{children}</div>,
   Skeleton: () => <div>loading</div>,
   Stack: ({ children }: any) => <div>{children}</div>,
-  Tab: ({ label, onClick, value }: any) => <button data-value={value} onClick={onClick}>{label}</button>,
+  Tab: ({ label, onClick, value }: any) => (
+    <button data-value={value} onClick={onClick}>
+      {label}
+    </button>
+  ),
   Tabs: ({ children, onChange }: any) => (
     <div>
       <button onClick={() => onChange(null, 'comments')}>switch-comments</button>

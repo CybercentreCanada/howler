@@ -86,7 +86,9 @@ vi.mock('components/elements/display/ItemManager', () => ({
       <div>{String(props.hasError)}</div>
       <div>{String(props.searching)}</div>
       {props.response?.items?.map((item: any) => (
-        <div key={item.overview_id}>{props.renderer({ item: { item, disabled: item.overview_id === 'ov-2' } }, () => 'card')}</div>
+        <div key={item.overview_id}>
+          {props.renderer({ item: { item, disabled: item.overview_id === 'ov-2' } }, () => 'card')}
+        </div>
       ))}
     </div>
   )
@@ -165,7 +167,9 @@ describe('Overviews', () => {
   it('searches, loads list items, paginates, and navigates', async () => {
     render(<Overviews />);
 
-    await waitFor(() => expect(mockRequest).toHaveBeenCalledWith('overview-search', { query: '*:*', rows: 25, offset: 0 }));
+    await waitFor(() =>
+      expect(mockRequest).toHaveBeenCalledWith('overview-search', { query: '*:*', rows: 25, offset: 0 })
+    );
     expect(mockLoad).toHaveBeenCalledWith([
       expect.objectContaining({ id: 'ov-1', disabled: false }),
       expect.objectContaining({ id: 'ov-2', disabled: true })

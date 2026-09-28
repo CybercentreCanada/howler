@@ -8,9 +8,15 @@ const mockUseUserFunctions = vi.hoisted(() => ({
   editPassword: vi.fn(),
   editQuota: vi.fn(async (user: any, quota?: string) => ({ ...user, api_quota: quota ? parseInt(quota) : 25 })),
   addRole: vi.fn(async (user: any, role: string) => ({ ...user, roles: [...(user.roles ?? []), role] })),
-  removeRole: vi.fn(async (user: any, role: string) => ({ ...user, roles: (user.roles ?? []).filter((r: string) => r !== role) })),
+  removeRole: vi.fn(async (user: any, role: string) => ({
+    ...user,
+    roles: (user.roles ?? []).filter((r: string) => r !== role)
+  })),
   addApiKey: vi.fn(),
-  removeApiKey: vi.fn(async (user: any, key: any) => ({ ...user, apikeys: (user.apikeys ?? []).filter((v: any) => v !== key) })),
+  removeApiKey: vi.fn(async (user: any, key: any) => ({
+    ...user,
+    apikeys: (user.apikeys ?? []).filter((v: any) => v !== key)
+  })),
   viewGroups: vi.fn()
 }));
 
@@ -45,7 +51,9 @@ vi.mock('components/routes/settings/ProfileSection', () => ({
   default: (props: any) => (
     <div>
       <span>{`profile:${props.user.username}`}</span>
-      <span>{String(!!props.editName)}-{String(!!props.addRole)}-{String(!!props.removeRole)}-{String(!!props.viewGroups)}</span>
+      <span>
+        {String(!!props.editName)}-{String(!!props.addRole)}-{String(!!props.removeRole)}-{String(!!props.viewGroups)}
+      </span>
     </div>
   )
 }));
@@ -54,7 +62,10 @@ vi.mock('components/routes/settings/SecuritySection', () => ({
   default: (props: any) => (
     <div>
       <span>{`security:${props.user.username}`}</span>
-      <span>{String(!!props.editPassword)}-{String(!!props.addApiKey)}-{String(!!props.removeApiKey)}-{String(!!props.editQuota)}</span>
+      <span>
+        {String(!!props.editPassword)}-{String(!!props.addApiKey)}-{String(!!props.removeApiKey)}-
+        {String(!!props.editQuota)}
+      </span>
     </div>
   )
 }));

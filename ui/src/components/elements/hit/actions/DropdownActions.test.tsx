@@ -50,7 +50,14 @@ describe('DropdownActions', () => {
 
     configValue = {};
     const { rerender } = render(
-      <DropdownActions actions={[]} currentAssessment="" currentStatus="open" currentVote="" loading={false} orientation="horizontal" />
+      <DropdownActions
+        actions={[]}
+        currentAssessment=""
+        currentStatus="open"
+        currentVote=""
+        loading={false}
+        orientation="horizontal"
+      />
     );
 
     expect(screen.getAllByText('loading')).toHaveLength(3);
@@ -58,11 +65,13 @@ describe('DropdownActions', () => {
     configValue = { lookups: { any: true } };
     rerender(
       <DropdownActions
-        actions={[
-          { type: 'action', name: 'Transition', actionFunction: actionFn },
-          { type: 'assessment', name: 'false-positive', actionFunction: assessFn },
-          { type: 'vote', name: 'Benign', actionFunction: voteFn }
-        ] as any}
+        actions={
+          [
+            { type: 'action', name: 'Transition', actionFunction: actionFn },
+            { type: 'assessment', name: 'false-positive', actionFunction: assessFn },
+            { type: 'vote', name: 'Benign', actionFunction: voteFn }
+          ] as any
+        }
         currentAssessment=""
         currentStatus="open"
         currentVote=""

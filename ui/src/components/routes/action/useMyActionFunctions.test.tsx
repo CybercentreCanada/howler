@@ -75,7 +75,9 @@ vi.mock('notistack', () => ({
 }));
 
 vi.mock('react-i18next', () => ({
-  Trans: ({ i18nKey, values }: any) => <span>{`${i18nKey}:${values?.action ?? values?.messages ?? values?.message ?? ''}`}</span>,
+  Trans: ({ i18nKey, values }: any) => (
+    <span>{`${i18nKey}:${values?.action ?? values?.messages ?? values?.message ?? ''}`}</span>
+  ),
   useTranslation: () => ({ t: (key: string) => key })
 }));
 

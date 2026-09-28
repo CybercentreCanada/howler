@@ -25,10 +25,16 @@ vi.mock('@mui/material', () => ({
   Autocomplete: ({ options, value, onChange, renderInput }: any) => (
     <div>
       {renderInput({})}
-      <button onClick={() => onChange(null, options[0] ?? null)}>{typeof value === 'object' ? value?.name : value || 'empty'}</button>
+      <button onClick={() => onChange(null, options[0] ?? null)}>
+        {typeof value === 'object' ? value?.name : value || 'empty'}
+      </button>
     </div>
   ),
-  Button: ({ children, onClick, disabled }: any) => <button onClick={onClick} disabled={disabled}>{children}</button>,
+  Button: ({ children, onClick, disabled }: any) => (
+    <button onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  ),
   CircularProgress: () => <div>loading</div>,
   Divider: () => <div>divider</div>,
   FormControl: ({ children }: any) => <div>{children}</div>,
@@ -145,7 +151,12 @@ describe('TemplateViewer', () => {
       .mockResolvedValueOnce({ items: [{ name: 'Alpha' }] })
       .mockResolvedValueOnce([{ template_id: 'tpl-1', analytic: 'Alpha', type: 'personal', keys: ['field.one'] }])
       .mockResolvedValueOnce({ items: [] })
-      .mockResolvedValueOnce({ template_id: 'tpl-1', analytic: 'Alpha', type: 'personal', keys: ['field.one', 'field.added'] })
+      .mockResolvedValueOnce({
+        template_id: 'tpl-1',
+        analytic: 'Alpha',
+        type: 'personal',
+        keys: ['field.one', 'field.added']
+      })
       .mockResolvedValueOnce({});
 
     render(<TemplateViewer />);

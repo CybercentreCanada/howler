@@ -68,7 +68,12 @@ vi.mock('../../elements/EditRow', () => ({
 }));
 
 vi.mock('./SettingsSection', () => ({
-  default: ({ children, title }: any) => <div><span>{title}</span>{children}</div>
+  default: ({ children, title }: any) => (
+    <div>
+      <span>{title}</span>
+      {children}
+    </div>
+  )
 }));
 
 vi.mock('react', async importOriginal => {
@@ -113,7 +118,10 @@ describe('ProfileSection', () => {
   it('removes roles and shows check icon when removal is disabled', async () => {
     const removeRole = vi.fn().mockResolvedValue(undefined);
     const { rerender } = render(
-      <ProfileSection user={{ username: 'alice', email: 'a@example.com', roles: ['admin'] } as any} removeRole={removeRole} />
+      <ProfileSection
+        user={{ username: 'alice', email: 'a@example.com', roles: ['admin'] } as any}
+        removeRole={removeRole}
+      />
     );
 
     fireEvent.click(screen.getByText(/admin/));

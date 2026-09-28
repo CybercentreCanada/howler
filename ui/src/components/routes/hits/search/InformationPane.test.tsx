@@ -40,7 +40,11 @@ vi.mock('@mui/material', () => ({
   IconButton: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
   Skeleton: () => <div>loading</div>,
   Stack: ({ children }: any) => <div>{children}</div>,
-  Tab: ({ value, onClick }: any) => <button role="tab" onClick={onClick}>{value}</button>,
+  Tab: ({ value, onClick }: any) => (
+    <button role="tab" onClick={onClick}>
+      {value}
+    </button>
+  ),
   Tabs: ({ children }: any) => <div>{children}</div>,
   Tooltip: ({ children }: any) => <>{children}</>,
   useTheme: () => ({ palette: { background: { paper: '#fff', default: '#fff' }, divider: '#ddd' }, spacing: () => 0 })
@@ -237,9 +241,9 @@ describe('InformationPane', () => {
     locationValue = { pathname: '/hits' };
     mockEmit.mockReset();
     mockGetMatchingOverview.mockReset().mockResolvedValue({ content: 'overview' });
-    mockGetMatchingDossiers.mockReset().mockResolvedValue([
-      { leads: [{ label: { en: 'External lead', fr: 'Piste externe' } }] }
-    ]);
+    mockGetMatchingDossiers
+      .mockReset()
+      .mockResolvedValue([{ leads: [{ label: { en: 'External lead', fr: 'Piste externe' } }] }]);
     mockGetMatchingAnalytic.mockReset().mockResolvedValue({ analytic_id: 'analytic-1' });
     mockGetRecord.mockReset().mockResolvedValue(undefined);
     mockOnClose.mockReset();

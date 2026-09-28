@@ -52,7 +52,10 @@ describe('AnalyticProvider', () => {
     await expect(result.current.getAnalyticFromId('a1')).resolves.toEqual({ analytic_id: 'a1', name: 'Analytic One' });
 
     await act(async () => {
-      await expect(result.current.getAnalyticFromId('a2')).resolves.toEqual({ analytic_id: 'a2', name: 'Analytic Two' });
+      await expect(result.current.getAnalyticFromId('a2')).resolves.toEqual({
+        analytic_id: 'a2',
+        name: 'Analytic Two'
+      });
     });
     expect(mockAnalyticSearchPost).toHaveBeenCalledWith({ query: 'analytic_id:a2' });
   });

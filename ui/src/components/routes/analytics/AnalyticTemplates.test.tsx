@@ -45,7 +45,9 @@ vi.mock('react-router', () => ({
 }));
 
 vi.mock('../templates/TemplateCard', () => ({
-  default: ({ template }: any) => <div>{`template:${template.template_id}:${template.detection ?? ''}:${template.type}`}</div>
+  default: ({ template }: any) => (
+    <div>{`template:${template.template_id}:${template.detection ?? ''}:${template.type}`}</div>
+  )
 }));
 
 import AnalyticTemplates from './AnalyticTemplates';

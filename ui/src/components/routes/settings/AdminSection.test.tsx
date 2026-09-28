@@ -17,7 +17,12 @@ vi.mock('react-pluggable', () => ({
 }));
 
 vi.mock('./SettingsSection', () => ({
-  default: ({ children, title }: any) => <div><span>{title}</span>{children}</div>
+  default: ({ children, title }: any) => (
+    <div>
+      <span>{title}</span>
+      {children}
+    </div>
+  )
 }));
 
 import AdminSection from './AdminSection';

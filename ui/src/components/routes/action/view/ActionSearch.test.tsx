@@ -17,7 +17,14 @@ let searchParamsValue = new URLSearchParams();
 let responseValue: any = {
   total: 1,
   items: [
-    { action_id: 'action-1', name: 'Action One', owner: 'demo', triggers: ['manual'], operations: [{ operation_id: 'archive' }], query: 'status:open' }
+    {
+      action_id: 'action-1',
+      name: 'Action One',
+      owner: 'demo',
+      triggers: ['manual'],
+      operations: [{ operation_id: 'archive' }],
+      query: 'status:open'
+    }
   ]
 };
 let appUserValue: any = {
@@ -38,7 +45,12 @@ vi.mock('@mui/material', () => ({
   Autocomplete: ({ onChange }: any) => <button onClick={() => onChange?.(null, ['manual'])}>set-trigger</button>,
   Card: ({ children, onClick }: any) => <div onClick={onClick}>{children}</div>,
   CardContent: ({ children }: any) => <div>{children}</div>,
-  CardHeader: ({ title, subheader }: any) => <div>{title}{subheader}</div>,
+  CardHeader: ({ title, subheader }: any) => (
+    <div>
+      {title}
+      {subheader}
+    </div>
+  ),
   Chip: ({ label }: any) => <div>{label}</div>,
   Grid: ({ children }: any) => <div>{children}</div>,
   IconButton: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
@@ -154,7 +166,14 @@ describe('ActionSearch', () => {
     responseValue = {
       total: 1,
       items: [
-        { action_id: 'action-1', name: 'Action One', owner: 'demo', triggers: ['manual'], operations: [{ operation_id: 'archive' }], query: 'status:open' }
+        {
+          action_id: 'action-1',
+          name: 'Action One',
+          owner: 'demo',
+          triggers: ['manual'],
+          operations: [{ operation_id: 'archive' }],
+          query: 'status:open'
+        }
       ]
     };
     appUserValue = { user: { username: 'demo', roles: ['automation_basic'] } };

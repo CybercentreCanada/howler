@@ -68,7 +68,12 @@ vi.mock('../../elements/EditRow', () => ({
 }));
 
 vi.mock('./SettingsSection', () => ({
-  default: ({ children, title }: any) => <div><span>{title}</span>{children}</div>
+  default: ({ children, title }: any) => (
+    <div>
+      <span>{title}</span>
+      {children}
+    </div>
+  )
 }));
 
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';

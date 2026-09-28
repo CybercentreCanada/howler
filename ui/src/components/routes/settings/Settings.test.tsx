@@ -41,7 +41,9 @@ vi.mock('./LocalSection', () => ({
 }));
 
 vi.mock('./ProfileSection', () => ({
-  default: (props: any) => <div>{`profile:${String(!!props.editName)}:${String(!!props.addRole)}:${String(!!props.removeRole)}`}</div>
+  default: (props: any) => (
+    <div>{`profile:${String(!!props.editName)}:${String(!!props.addRole)}:${String(!!props.removeRole)}`}</div>
+  )
 }));
 
 vi.mock('./SecuritySection', () => ({

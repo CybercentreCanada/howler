@@ -26,7 +26,9 @@ const Consumer = () => {
   const ctx = useContext(AvatarContext);
   return (
     <div>
-      <button onClick={() => void ctx.getAvatar('alice').then(v => (document.body.dataset.value = v))}>load-alice</button>
+      <button onClick={() => void ctx.getAvatar('alice').then(v => (document.body.dataset.value = v))}>
+        load-alice
+      </button>
       <button onClick={() => void ctx.getAvatar('bob').then(v => (document.body.dataset.value = v))}>load-bob</button>
       <button onClick={() => void ctx.getAvatar('').then(v => (document.body.dataset.empty = v))}>empty</button>
     </div>

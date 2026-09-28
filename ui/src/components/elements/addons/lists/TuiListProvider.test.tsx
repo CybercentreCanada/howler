@@ -15,7 +15,13 @@ const Probe = () => {
       <button
         onClick={() =>
           methods.load([
-            { id: '1', item: 'updated', selected: undefined as any, cursor: undefined as any, details: undefined as any },
+            {
+              id: '1',
+              item: 'updated',
+              selected: undefined as any,
+              cursor: undefined as any,
+              details: undefined as any
+            },
             { id: '2', item: 'two', selected: false, cursor: false }
           ])
         }
@@ -34,8 +40,12 @@ const Probe = () => {
       </button>
       <button onClick={() => methods.select(items[0], 0)}>select-first</button>
       <button onClick={() => methods.move(1)}>move-second</button>
-      <button onClick={() => methods.replace(items[0], { id: '1', item: 'replace-ref', details: 'details' } as any)}>replace-ref</button>
-      <button onClick={() => methods.replaceById({ id: '2' } as any, { id: '2', item: 'replace-id' } as any)}>replace-id</button>
+      <button onClick={() => methods.replace(items[0], { id: '1', item: 'replace-ref', details: 'details' } as any)}>
+        replace-ref
+      </button>
+      <button onClick={() => methods.replaceById({ id: '2' } as any, { id: '2', item: 'replace-id' } as any)}>
+        replace-id
+      </button>
       <button onClick={() => methods.remove('1')}>remove-first</button>
       <button onClick={() => moveNext()}>move-next</button>
       <button onClick={() => movePrevious()}>move-previous</button>
@@ -59,16 +69,24 @@ describe('TuiListProvider', () => {
     expect(screen.getByText('[{"id":"1","item":"one","selected":true,"cursor":true}]')).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('merge-load'));
-    expect(screen.getByText('[{"id":"1","item":"updated","selected":true,"cursor":true},{"id":"2","item":"two","selected":false,"cursor":false}]')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '[{"id":"1","item":"updated","selected":true,"cursor":true},{"id":"2","item":"two","selected":false,"cursor":false}]'
+      )
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('replace-ref'));
     expect(
-      screen.getByText('[{"id":"1","item":"replace-ref","selected":true,"cursor":true,"details":"details"},{"id":"2","item":"two","selected":false,"cursor":false}]')
+      screen.getByText(
+        '[{"id":"1","item":"replace-ref","selected":true,"cursor":true,"details":"details"},{"id":"2","item":"two","selected":false,"cursor":false}]'
+      )
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('replace-id'));
     expect(
-      screen.getByText('[{"id":"1","item":"replace-ref","selected":true,"cursor":true,"details":"details"},{"id":"2","item":"replace-id","selected":false,"cursor":false}]')
+      screen.getByText(
+        '[{"id":"1","item":"replace-ref","selected":true,"cursor":true,"details":"details"},{"id":"2","item":"replace-id","selected":false,"cursor":false}]'
+      )
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('remove-first'));
@@ -84,12 +102,24 @@ describe('TuiListProvider', () => {
 
     fireEvent.click(screen.getByText('load-two'));
     fireEvent.click(screen.getByText('move-second'));
-    expect(screen.getByText('[{"id":"1","item":"one","selected":false,"cursor":false},{"id":"2","item":"two","selected":false,"cursor":true}]')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '[{"id":"1","item":"one","selected":false,"cursor":false},{"id":"2","item":"two","selected":false,"cursor":true}]'
+      )
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('move-next'));
-    expect(screen.getByText('[{"id":"1","item":"one","selected":false,"cursor":true},{"id":"2","item":"two","selected":false,"cursor":false}]')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '[{"id":"1","item":"one","selected":false,"cursor":true},{"id":"2","item":"two","selected":false,"cursor":false}]'
+      )
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('move-previous'));
-    expect(screen.getByText('[{"id":"1","item":"one","selected":false,"cursor":false},{"id":"2","item":"two","selected":false,"cursor":true}]')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '[{"id":"1","item":"one","selected":false,"cursor":false},{"id":"2","item":"two","selected":false,"cursor":true}]'
+      )
+    ).toBeInTheDocument();
   });
 });

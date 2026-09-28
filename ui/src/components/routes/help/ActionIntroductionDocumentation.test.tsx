@@ -37,7 +37,11 @@ vi.mock('components/elements/display/Markdown', () => ({
 }));
 
 vi.mock('../../elements/display/QueryResultText', () => ({
-  default: ({ count, query }: any) => <div>{count}:{query}</div>
+  default: ({ count, query }: any) => (
+    <div>
+      {count}:{query}
+    </div>
+  )
 }));
 
 vi.mock('../action/shared/ActionReportDisplay', () => ({
@@ -85,6 +89,8 @@ describe('ActionIntroductionDocumentation', () => {
     expect(screen.getByText('134:howler.id:*')).toBeInTheDocument();
     expect(screen.getByText('step:category')).toBeInTheDocument();
     expect(screen.getByText('report:1')).toBeInTheDocument();
-    expect(screen.getByText('route.actions.trigger.create, route.actions.trigger.promote, route.actions.trigger.demote')).toBeInTheDocument();
+    expect(
+      screen.getByText('route.actions.trigger.create, route.actions.trigger.promote, route.actions.trigger.demote')
+    ).toBeInTheDocument();
   });
 });

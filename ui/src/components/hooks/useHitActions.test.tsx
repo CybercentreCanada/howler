@@ -138,7 +138,11 @@ describe('useHitActions', () => {
     expect(result.current.canVote).toBe(true);
     expect(result.current.canAssess).toBe(true);
     expect(result.current.selectedVote).toBe('benign');
-    expect(result.current.availableTransitions.map(v => v.name)).toEqual(['assign_to_other', 'assign_to_me', 'promote']);
+    expect(result.current.availableTransitions.map(v => v.name)).toEqual([
+      'assign_to_other',
+      'assign_to_me',
+      'promote'
+    ]);
   });
 
   it('votes and updates hits, including conflict recovery', async () => {
@@ -161,7 +165,9 @@ describe('useHitActions', () => {
   });
 
   it('assesses hits with modal rationale and warns on conflicting server updates', async () => {
-    const hit = { howler: { id: 'hit-2', status: 'open', assignment: 'bob', assessment: null, escalation: 'hit' } } as any;
+    const hit = {
+      howler: { id: 'hit-2', status: 'open', assignment: 'bob', assessment: null, escalation: 'hit' }
+    } as any;
     mockTransitionPost.mockImplementation((id: string, body: any) => ({ id, body }));
     mockShowModal.mockImplementation((node: any) => node.props.onSubmit('modal rationale'));
     mockDispatchApi.mockImplementationOnce(async (_req, opts) => {
@@ -180,7 +186,9 @@ describe('useHitActions', () => {
   });
 
   it('uses provided rationale and manages assignment workflows', async () => {
-    const hit = { howler: { id: 'hit-3', status: 'open', assignment: 'bob', assessment: null, escalation: 'alert' } } as any;
+    const hit = {
+      howler: { id: 'hit-3', status: 'open', assignment: 'bob', assessment: null, escalation: 'alert' }
+    } as any;
     mockTransitionPost.mockImplementation((id: string, body: any) => ({ id, body }));
     mockDispatchApi.mockResolvedValue({ howler: { id: 'hit-3', updated: true } });
     mockDrawerOpen.mockImplementation((props: any) => props.children.props.onAssigned('bob'));

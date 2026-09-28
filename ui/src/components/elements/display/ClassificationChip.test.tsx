@@ -16,7 +16,11 @@ const mockGetParts = vi.hoisted(() => vi.fn(() => ({ lvlIdx: 0 })));
 const mockNormalized = vi.hoisted(() => vi.fn(() => 'S'));
 
 vi.mock('@mui/material', () => ({
-  Chip: ({ label, color, sx, variant }: any) => <div data-color={color} data-variant={variant} data-sx={JSON.stringify(sx)}>{label}</div>,
+  Chip: ({ label, color, sx, variant }: any) => (
+    <div data-color={color} data-variant={variant} data-sx={JSON.stringify(sx)}>
+      {label}
+    </div>
+  ),
   Tooltip: ({ children }: any) => <div>{children}</div>
 }));
 

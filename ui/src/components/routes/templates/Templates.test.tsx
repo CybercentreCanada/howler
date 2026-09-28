@@ -97,7 +97,9 @@ vi.mock('components/elements/display/ItemManager', () => ({
       <button onClick={() => props.onSelect({ item: responseValue.items[0] })}>select</button>
       <div>{props.searchFilters}</div>
       {props.response?.items?.map((item: any) => (
-        <div key={item.template_id}>{props.renderer({ item: { item, disabled: item.template_id === 'tpl-1' } }, () => 'card')}</div>
+        <div key={item.template_id}>
+          {props.renderer({ item: { item, disabled: item.template_id === 'tpl-1' } }, () => 'card')}
+        </div>
       ))}
     </div>
   )

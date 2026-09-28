@@ -65,8 +65,12 @@ describe('TemplateDocumentation', () => {
 
     expect(screen.getByText(/modified:intro/)).toHaveTextContent(window.location.origin);
     expect(screen.getByText(/modified:outro/)).toBeInTheDocument();
-    expect(screen.getByText(/hit1:Listening for Meows:event.start,event.end,event.kind,event.outcome/)).toBeInTheDocument();
-    expect(screen.getByText(/hit2:Looking for paw prints:event.start,event.end,event.provider,event.reason/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/hit1:Listening for Meows:event.start,event.end,event.kind,event.outcome/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/hit2:Looking for paw prints:event.start,event.end,event.provider,event.reason/)
+    ).toBeInTheDocument();
     expect(mockModifyDocumentation).toHaveBeenCalledTimes(2);
   });
 });

@@ -25,11 +25,17 @@ vi.mock('@mui/material', () => ({
   Divider: () => <div>divider</div>,
   FormControl: ({ children }: any) => <div>{children}</div>,
   Grid: ({ children }: any) => <div>{children}</div>,
-  IconButton: ({ children, onClick, disabled }: any) => <button disabled={disabled} onClick={onClick}>{children}</button>,
+  IconButton: ({ children, onClick, disabled }: any) => (
+    <button disabled={disabled} onClick={onClick}>
+      {children}
+    </button>
+  ),
   InputAdornment: ({ children }: any) => <div>{children}</div>,
   InputLabel: ({ children }: any) => <div>{children}</div>,
   MenuItem: ({ children }: any) => <div>{children}</div>,
-  Select: ({ onChange }: any) => <button onClick={() => onChange({ target: { value: 'Det-2' } })}>set-detection</button>,
+  Select: ({ onChange }: any) => (
+    <button onClick={() => onChange({ target: { value: 'Det-2' } })}>set-detection</button>
+  ),
   Stack: ({ children }: any) => <div>{children}</div>,
   TextField: ({ label, value, onChange }: any) => (
     <label>
@@ -102,7 +108,16 @@ describe('AnalyticNotebooks', () => {
 
     await waitFor(() =>
       expect(mockDispatchApi).toHaveBeenCalledWith(
-        { id: 'an-1', op: 'post', payload: { detection: 'Det-2', link: 'https://example.test', name: 'Notebook 1', value: 'https://example.test' } },
+        {
+          id: 'an-1',
+          op: 'post',
+          payload: {
+            detection: 'Det-2',
+            link: 'https://example.test',
+            name: 'Notebook 1',
+            value: 'https://example.test'
+          }
+        },
         expect.any(Object)
       )
     );
@@ -129,9 +144,7 @@ describe('AnalyticNotebooks', () => {
     expect(screen.getByText('Det-1')).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByText('delete-icon')[0]);
-    await waitFor(() =>
-      expect(mockDispatchApi).toHaveBeenCalledWith({ id: 'an-1', notebookIds: ['n1'], op: 'del' })
-    );
+    await waitFor(() => expect(mockDispatchApi).toHaveBeenCalledWith({ id: 'an-1', notebookIds: ['n1'], op: 'del' }));
     expect(setAnalytic).toHaveBeenCalledWith({
       ...analytic,
       notebooks: [{ id: 'n2', detection: 'Det-2', name: 'Second', value: 'link-2', user: 'other' }]

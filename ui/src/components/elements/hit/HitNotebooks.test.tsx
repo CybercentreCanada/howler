@@ -20,16 +20,24 @@ let configValue: any = {
 
 vi.mock('@mui/material', () => ({
   Avatar: ({ children }: any) => <div>{children}</div>,
-  Backdrop: ({ children, open }: any) => open ? <div>{children}</div> : null,
+  Backdrop: ({ children, open }: any) => (open ? <div>{children}</div> : null),
   Box: ({ children }: any) => <div>{children}</div>,
-  Button: ({ children, onClick, disabled }: any) => <button onClick={onClick} disabled={disabled}>{children}</button>,
+  Button: ({ children, onClick, disabled }: any) => (
+    <button onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  ),
   Chip: ({ label }: any) => <span>{label}</span>,
   CircularProgress: () => <div>loading</div>,
   ClickAwayListener: ({ children }: any) => <>{children}</>,
   Fade: ({ children }: any) => <>{children}</>,
-  MenuItem: ({ children, value, disabled }: any) => <option value={value} disabled={disabled}>{children}</option>,
+  MenuItem: ({ children, value, disabled }: any) => (
+    <option value={value} disabled={disabled}>
+      {children}
+    </option>
+  ),
   Paper: ({ children }: any) => <div>{children}</div>,
-  Popper: ({ children, open }: any) => open ? children({ TransitionProps: {} }) : null,
+  Popper: ({ children, open }: any) => (open ? children({ TransitionProps: {} }) : null),
   Stack: ({ children }: any) => <div>{children}</div>,
   TextField: ({ children, label, onChange, defaultValue, disabled, select }: any) =>
     select ? (
@@ -107,7 +115,8 @@ vi.mock('utils/stringUtils', async importOriginal => {
   const actual = await importOriginal<typeof import('utils/stringUtils')>();
   return {
     ...actual,
-    safeStringPropertyCompare: (key: string) => (a: any, b: any) => String(a[key] ?? '').localeCompare(String(b[key] ?? ''))
+    safeStringPropertyCompare: (key: string) => (a: any, b: any) =>
+      String(a[key] ?? '').localeCompare(String(b[key] ?? ''))
   };
 });
 
@@ -127,11 +136,11 @@ describe('HitNotebooks', () => {
 
   it('loads notebook content and opens jupyter when the notebook does not already exist', async () => {
     mockDispatchApi
-      .mockResolvedValueOnce({ envs: [{ name: 'env', url: 'https://nb.example', default: true, user_interface: 'lab' }] })
+      .mockResolvedValueOnce({
+        envs: [{ name: 'env', url: 'https://nb.example', default: true, user_interface: 'lab' }]
+      })
       .mockResolvedValueOnce({ nb_content: { cells: [] }, name: 'Loaded Notebook' });
-    (globalThis.fetch as any)
-      .mockResolvedValueOnce({ status: 404 })
-      .mockResolvedValueOnce({ status: 200 });
+    (globalThis.fetch as any).mockResolvedValueOnce({ status: 404 }).mockResolvedValueOnce({ status: 200 });
 
     render(
       <HitNotebooks
@@ -153,31 +162,42 @@ describe('HitNotebooks', () => {
 
     fireEvent.click(screen.getByText('hit.notebook.goTo'));
 
-    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledWith(
-      'https://nb.example/api/contents/Loaded Notebook - hit-1.ipynb',
-      expect.any(Object)
-    ));
-    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledWith(
-      'https://nb.example/post/Loaded Notebook - hit-1.ipynb',
-      expect.objectContaining({ method: 'post' })
-    ));
+    await waitFor(() =>
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        'https://nb.example/api/contents/Loaded Notebook - hit-1.ipynb',
+        expect.any(Object)
+      )
+    );
+    await waitFor(() =>
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        'https://nb.example/post/Loaded Notebook - hit-1.ipynb',
+        expect.objectContaining({ method: 'post' })
+      )
+    );
     expect(globalThis.open).toHaveBeenCalledWith('https://nb.example/lab/tree/Loaded Notebook - hit-1.ipynb', '_blank');
   });
 
   it('confirms overwrite for existing notebooks and can hide itself when notebooks are disabled', async () => {
     configValue = { configuration: { features: { notebook: false } } };
-    const { rerender } = render(<HitNotebooks analytic={{ notebooks: [{ name: 'Notebook A', value: 'link-a' }] } as any} />);
+    const { rerender } = render(
+      <HitNotebooks analytic={{ notebooks: [{ name: 'Notebook A', value: 'link-a' }] } as any} />
+    );
     expect(screen.queryByText('hit.notebook.tooltip')).not.toBeInTheDocument();
 
     configValue = { configuration: { features: { notebook: true } } };
     mockDispatchApi
-      .mockResolvedValueOnce({ envs: [{ name: 'env', url: 'https://nb.example/', default: true, user_interface: 'lab' }] })
+      .mockResolvedValueOnce({
+        envs: [{ name: 'env', url: 'https://nb.example/', default: true, user_interface: 'lab' }]
+      })
       .mockResolvedValueOnce({ nb_content: { cells: [] }, name: 'Notebook A' });
-    (globalThis.fetch as any)
-      .mockResolvedValueOnce({ status: 200 })
-      .mockResolvedValueOnce({ status: 200 });
+    (globalThis.fetch as any).mockResolvedValueOnce({ status: 200 }).mockResolvedValueOnce({ status: 200 });
 
-    rerender(<HitNotebooks analytic={{ notebooks: [{ name: 'Notebook A', value: 'link-a' }] } as any} selectedNotebook="Notebook A" />);
+    rerender(
+      <HitNotebooks
+        analytic={{ notebooks: [{ name: 'Notebook A', value: 'link-a' }] } as any}
+        selectedNotebook="Notebook A"
+      />
+    );
 
     fireEvent.click(screen.getByRole('button', { name: /hit\.notebook\.tooltip/i }));
     await waitFor(() => expect(mockDispatchApi).toHaveBeenCalledTimes(2));
@@ -185,9 +205,11 @@ describe('HitNotebooks', () => {
     fireEvent.click(screen.getByText('hit.notebook.goTo'));
 
     await waitFor(() => expect(mockShowModal).toHaveBeenCalled());
-    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledWith(
-      'https://nb.example/post/Notebook A.ipynb',
-      expect.objectContaining({ method: 'post' })
-    ));
+    await waitFor(() =>
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        'https://nb.example/post/Notebook A.ipynb',
+        expect.objectContaining({ method: 'post' })
+      )
+    );
   });
 });

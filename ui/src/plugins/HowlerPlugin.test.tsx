@@ -87,7 +87,9 @@ describe('HowlerPlugin', () => {
     plugin.addLead('markdown', vi.fn(), vi.fn());
 
     expect(addFunction).not.toHaveBeenCalledWith('lead.markdown', expect.any(Function));
-    expect(errorSpy).toHaveBeenCalledWith('Lead format markdown already configured, not enabling for plugin demo@1.2.3');
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Lead format markdown already configured, not enabling for plugin demo@1.2.3'
+    );
   });
 
   it('adds pivots, routes, menu items, and operations through the plugin store', () => {
@@ -105,7 +107,11 @@ describe('HowlerPlugin', () => {
     expect(mockHowlerPluginStore.addPivot).toHaveBeenCalledWith('link');
     expect(addFunction).toHaveBeenCalledWith('pivot.link', expect.any(Function));
     expect(addFunction).toHaveBeenCalledWith('pivot.link.form', expect.any(Function));
-    expect(mockHowlerPluginStore.addUserMenuItem).toHaveBeenCalledWith({ i18nKey: 'menu.user', route: '/me', icon: element });
+    expect(mockHowlerPluginStore.addUserMenuItem).toHaveBeenCalledWith({
+      i18nKey: 'menu.user',
+      route: '/me',
+      icon: element
+    });
     expect(mockHowlerPluginStore.addAdminMenuItem).toHaveBeenCalledWith({
       i18nKey: 'menu.admin',
       route: '/admin',

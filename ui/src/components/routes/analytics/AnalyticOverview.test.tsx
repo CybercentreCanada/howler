@@ -83,7 +83,12 @@ describe('AnalyticOverview', () => {
   it('shows an empty-state warning when no hits match the analytic', async () => {
     mockCountPost.mockResolvedValueOnce({ count: 0 });
 
-    render(<AnalyticOverview analytic={{ analytic_id: 'an-1', name: 'Alpha', description: 'desc' } as any} setAnalytic={vi.fn()} />);
+    render(
+      <AnalyticOverview
+        analytic={{ analytic_id: 'an-1', name: 'Alpha', description: 'desc' } as any}
+        setAnalytic={vi.fn()}
+      />
+    );
 
     await waitFor(() => expect(mockCountPost).toHaveBeenCalledWith({ query: 'howler.analytic:"Alpha"' }));
     expect(screen.getByText('route.analytics.overview.empty.title')).toBeInTheDocument();
@@ -95,7 +100,12 @@ describe('AnalyticOverview', () => {
     mockCountPost.mockResolvedValueOnce({ count: 2 });
     mockDispatchApi.mockResolvedValueOnce({ analytic_id: 'an-1', description: 'updated' });
 
-    render(<AnalyticOverview analytic={{ analytic_id: 'an-1', name: 'Alpha', description: 'original' } as any} setAnalytic={setAnalytic} />);
+    render(
+      <AnalyticOverview
+        analytic={{ analytic_id: 'an-1', name: 'Alpha', description: 'original' } as any}
+        setAnalytic={setAnalytic}
+      />
+    );
 
     await waitFor(() => expect(screen.getByText('created')).toBeInTheDocument());
     expect(screen.getByText('assessment')).toBeInTheDocument();

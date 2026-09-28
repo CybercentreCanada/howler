@@ -73,7 +73,9 @@ vi.mock('./ColumnHeader', () => ({
 }));
 
 vi.mock('./RecordRow', () => ({
-  default: ({ record, analyticIds }: any) => <div>{`row:${record.howler.id}:${analyticIds[record.howler.analytic] ?? ''}`}</div>
+  default: ({ record, analyticIds }: any) => (
+    <div>{`row:${record.howler.id}:${analyticIds[record.howler.analytic] ?? ''}`}</div>
+  )
 }));
 
 vi.mock('react', async importOriginal => {

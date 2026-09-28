@@ -15,7 +15,9 @@ const Consumer = () => {
   const modal = useContext(ModalContext);
   return (
     <div>
-      <button onClick={() => modal.showModal(<div>modal-body</div>, { disableClose: true, maxWidth: 'xl' })}>show</button>
+      <button onClick={() => modal.showModal(<div>modal-body</div>, { disableClose: true, maxWidth: 'xl' })}>
+        show
+      </button>
       <button onClick={() => modal.withConfirmDeleteModal(vi.fn(), true, false)}>confirm-wrapper</button>
       <button onClick={() => modal.close()}>close</button>
       <div>{String(modal.options?.disableClose)}</div>

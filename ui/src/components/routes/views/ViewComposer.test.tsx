@@ -91,7 +91,11 @@ vi.mock('components/app/providers/ViewProvider', () => ({
 }));
 
 vi.mock('components/elements/addons/buttons/CustomButton', () => ({
-  default: ({ children, onClick, disabled }: any) => <button onClick={onClick} disabled={disabled}>{children}</button>
+  default: ({ children, onClick, disabled }: any) => (
+    <button onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  )
 }));
 
 vi.mock('components/elements/addons/layout/FlexOne', () => ({
@@ -119,7 +123,12 @@ vi.mock('components/elements/addons/search/SearchTotal', () => ({
 }));
 
 vi.mock('components/elements/display/ChipPopper', () => ({
-  default: ({ children, label }: any) => <div>{label}{children}</div>
+  default: ({ children, label }: any) => (
+    <div>
+      {label}
+      {children}
+    </div>
+  )
 }));
 
 vi.mock('components/elements/event/EventCard', () => ({
@@ -194,7 +203,8 @@ vi.mock('react-router', () => ({
 
 vi.mock('use-context-selector', () => ({
   useContextSelector: (context: any, selector: any) => {
-    if (context === viewContextToken) return selector({ addView: mockAddView, editView: mockEditView, getCurrentViews: mockGetCurrentViews });
+    if (context === viewContextToken)
+      return selector({ addView: mockAddView, editView: mockEditView, getCurrentViews: mockGetCurrentViews });
     if (context === parameterContextToken) return selector(parameterContextValue);
     if (context === recordContextToken) return selector({ loadRecords: mockLoadRecords });
     if (context === recordSearchContextToken) return selector(recordSearchContextValue);
@@ -242,17 +252,27 @@ describe('ViewComposer', () => {
     };
     parameterContextValue = {
       indexes: undefined,
-      setIndexes: vi.fn((value: any) => { parameterContextValue.indexes = value; }),
+      setIndexes: vi.fn((value: any) => {
+        parameterContextValue.indexes = value;
+      }),
       query: '',
-      setQuery: vi.fn((value: any) => { parameterContextValue.query = value; }),
+      setQuery: vi.fn((value: any) => {
+        parameterContextValue.query = value;
+      }),
       sort: 'created desc',
-      setSort: vi.fn((value: any) => { parameterContextValue.sort = value; }),
+      setSort: vi.fn((value: any) => {
+        parameterContextValue.sort = value;
+      }),
       span: '24h',
-      setSpan: vi.fn((value: any) => { parameterContextValue.span = value; })
+      setSpan: vi.fn((value: any) => {
+        parameterContextValue.span = value;
+      })
     };
     recordSearchContextValue = {
       displayType: 'grid',
-      setDisplayType: vi.fn((value: any) => { recordSearchContextValue.displayType = value; })
+      setDisplayType: vi.fn((value: any) => {
+        recordSearchContextValue.displayType = value;
+      })
     };
     const columns = ['col1'];
     gridColumnsContextValue = {

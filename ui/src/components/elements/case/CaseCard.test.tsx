@@ -91,25 +91,33 @@ describe('CaseCard', () => {
       targets: ['target-1'],
       indicators: ['indicator-1'],
       threats: ['threat-1'],
-      tasks: [{ id: 't1', summary: 'done task', complete: true }, { id: 't2', summary: 'todo task', complete: false }]
+      tasks: [
+        { id: 't1', summary: 'done task', complete: true },
+        { id: 't2', summary: 'todo task', complete: false }
+      ]
     });
 
     const { rerender } = render(
       <CaseCard
-        case={{
-          case_id: 'case-1',
-          title: 'Case title',
-          status: 'resolved',
-          updated: '2024-01-01T00:00:00Z',
-          start: '2024-01-01',
-          end: '2024-01-02',
-          summary: 'First line\nSecond line',
-          participants: ['alice', 'bob'],
-          targets: ['target-1'],
-          indicators: ['indicator-1'],
-          threats: ['threat-1'],
-          tasks: [{ id: 't1', summary: 'done task', complete: true }, { id: 't2', summary: 'todo task', complete: false }]
-        } as any}
+        case={
+          {
+            case_id: 'case-1',
+            title: 'Case title',
+            status: 'resolved',
+            updated: '2024-01-01T00:00:00Z',
+            start: '2024-01-01',
+            end: '2024-01-02',
+            summary: 'First line\nSecond line',
+            participants: ['alice', 'bob'],
+            targets: ['target-1'],
+            indicators: ['indicator-1'],
+            threats: ['threat-1'],
+            tasks: [
+              { id: 't1', summary: 'done task', complete: true },
+              { id: 't2', summary: 'todo task', complete: false }
+            ]
+          } as any
+        }
       />
     );
 

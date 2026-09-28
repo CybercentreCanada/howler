@@ -2,10 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockHget = vi.hoisted(() => vi.fn());
 const mockHpost = vi.hoisted(() => vi.fn());
-const mockJoinUri = vi.hoisted(() => vi.fn((_base: string, _part: string, params?: URLSearchParams) => {
-  const base = '/api/v1/auth/login';
-  return params ? `${base}?${params.toString()}` : base;
-}));
+const mockJoinUri = vi.hoisted(() =>
+  vi.fn((_base: string, _part: string, params?: URLSearchParams) => {
+    const base = '/api/v1/auth/login';
+    return params ? `${base}?${params.toString()}` : base;
+  })
+);
 
 vi.mock('api', () => ({
   hget: mockHget,

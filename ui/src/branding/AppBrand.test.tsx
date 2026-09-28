@@ -35,6 +35,9 @@ describe('AppBrand', () => {
 
     rerender(<AppBrand application="analyticalplatform" variant="banner-vertical" size="xsmall" />);
     expect(container.firstChild).toHaveAttribute('data-direction', 'column');
-    expect(screen.getByAltText('analyticalplatform')).toHaveAttribute('src', '/branding/analyticalplatform/name-dark.svg');
+    expect(screen.getByAltText('analyticalplatform')).toHaveAttribute(
+      'src',
+      '/branding/analyticalplatform/name-dark.svg'
+    );
   });
 });

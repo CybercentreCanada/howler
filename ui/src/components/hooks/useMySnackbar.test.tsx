@@ -31,7 +31,10 @@ describe('useMySnackbar', () => {
         preventDuplicate: true
       })
     );
-    expect(mockEnqueueSnackbar).toHaveBeenCalledWith('warn', expect.objectContaining({ variant: 'warning', autoHideDuration: 2000 }));
+    expect(mockEnqueueSnackbar).toHaveBeenCalledWith(
+      'warn',
+      expect.objectContaining({ variant: 'warning', autoHideDuration: 2000 })
+    );
   });
 
   it('merges custom snackbar click handlers with the default close handler', () => {

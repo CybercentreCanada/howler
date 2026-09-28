@@ -58,7 +58,9 @@ const Consumer = () => {
       <button onClick={() => addRecordToSelection('missing')}>select-missing</button>
       <button onClick={() => removeRecordFromSelection('h1')}>remove</button>
       <button onClick={() => clearSelectedRecords('h2')}>clear-except</button>
-      <button onClick={() => void getRecord('missing').then(r => (document.body.dataset.record = r.howler.id))}>fetch</button>
+      <button onClick={() => void getRecord('missing').then(r => (document.body.dataset.record = r.howler.id))}>
+        fetch
+      </button>
       <span>{Object.keys(records).join(',')}</span>
       <span>{selected.map((item: any) => item.howler.id).join(',')}</span>
     </div>

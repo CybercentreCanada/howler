@@ -46,7 +46,12 @@ vi.mock('@mui/icons-material', async importOriginal => {
 });
 
 vi.mock('@mui/material', () => ({
-  Alert: ({ children, action }: any) => <div>{children}{action}</div>,
+  Alert: ({ children, action }: any) => (
+    <div>
+      {children}
+      {action}
+    </div>
+  ),
   AlertTitle: ({ children }: any) => <div>{children}</div>,
   CircularProgress: () => <div>loading</div>,
   Grid: ({ children }: any) => <div>{children}</div>,
@@ -83,7 +88,11 @@ vi.mock('components/app/providers/AppBarProvider', () => ({
 }));
 
 vi.mock('components/elements/addons/buttons/CustomButton', () => ({
-  default: ({ children, onClick, disabled }: any) => <button disabled={disabled} onClick={onClick}>{children}</button>
+  default: ({ children, onClick, disabled }: any) => (
+    <button disabled={disabled} onClick={onClick}>
+      {children}
+    </button>
+  )
 }));
 
 vi.mock('components/hooks/useMyApi', () => ({
@@ -192,9 +201,7 @@ describe('Home', () => {
 
   it('renders the empty state and updated-hit alert actions', async () => {
     searchResult = { total: 2 };
-    render(
-      <Home />
-    );
+    render(<Home />);
 
     await waitFor(() => expect(screen.getByText('route.home.alert.updated.description:2')).toBeInTheDocument());
     expect(screen.getByText('route.home.title')).toBeInTheDocument();
@@ -215,9 +222,7 @@ describe('Home', () => {
       ]
     };
 
-    render(
-      <Home />
-    );
+    render(<Home />);
 
     await waitFor(() => expect(screen.getByText('view:view-1')).toBeInTheDocument());
     expect(screen.getByText('analytic:a1:created')).toBeInTheDocument();

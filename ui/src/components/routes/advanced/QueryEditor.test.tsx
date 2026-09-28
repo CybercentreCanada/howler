@@ -143,7 +143,9 @@ describe('QueryEditor', () => {
     };
 
     const setQuery = vi.fn();
-    const { container } = render(<QueryEditor query="test" setQuery={setQuery} fontSize={18} editorOptions={{ wordWrap: 'on' }} />);
+    const { container } = render(
+      <QueryEditor query="test" setQuery={setQuery} fontSize={18} editorOptions={{ wordWrap: 'on' }} />
+    );
 
     expect(mockRegisterCompletionItemProvider).toHaveBeenCalledWith('lucene', mockHistoryCompletion);
     expect(mockRegisterCompletionItemProvider).not.toHaveBeenCalledWith('yaml', mockYamlCompletion);

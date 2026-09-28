@@ -51,9 +51,23 @@ vi.mock('@mui/material', () => ({
   ),
   Chip: ({ label }: any) => <div>{label}</div>,
   CircularProgress: () => <div>loading</div>,
-  FormControlLabel: ({ control, label }: any) => <div>{control}{label}</div>,
-  IconButton: ({ children, onClick, disabled }: any) => <button onClick={onClick} disabled={disabled}>{children}</button>,
-  ListItemText: ({ primary, secondary }: any) => <div>{primary}{secondary}</div>,
+  FormControlLabel: ({ control, label }: any) => (
+    <div>
+      {control}
+      {label}
+    </div>
+  ),
+  IconButton: ({ children, onClick, disabled }: any) => (
+    <button onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  ),
+  ListItemText: ({ primary, secondary }: any) => (
+    <div>
+      {primary}
+      {secondary}
+    </div>
+  ),
   Slider: ({ onChange }: any) => <button onClick={() => onChange?.(null, 3)}>rows-slider</button>,
   Stack: ({ children, onKeyDown }: any) => <div onKeyDown={onKeyDown}>{children}</div>,
   TextField: ({ label }: any) => <div>{label}</div>,
@@ -92,7 +106,11 @@ vi.mock('components/app/providers/FieldProvider', () => ({
 }));
 
 vi.mock('components/elements/addons/buttons/CustomButton', () => ({
-  default: ({ children, onClick, disabled, to }: any) => <button onClick={onClick} disabled={disabled} data-to={to}>{children}</button>
+  default: ({ children, onClick, disabled, to }: any) => (
+    <button onClick={onClick} disabled={disabled} data-to={to}>
+      {children}
+    </button>
+  )
 }));
 
 vi.mock('components/elements/addons/layout/FlexOne', () => ({
@@ -164,31 +182,43 @@ describe('QueryBuilder', () => {
     await waitFor(() => expect(mockGetHitFields).toHaveBeenCalled());
 
     fireEvent.click(screen.getByText('route.actions.execute'));
-    await waitFor(() => expect(mockLucenePost).toHaveBeenCalledWith({ query: '# Match any howler.id value howler.id:* AND # Hits must be open howler.status:open', fl: undefined, rows: 5 }));
+    await waitFor(() =>
+      expect(mockLucenePost).toHaveBeenCalledWith({
+        query: '# Match any howler.id value howler.id:* AND # Hits must be open howler.status:open',
+        fl: undefined,
+        rows: 5
+      })
+    );
 
     fireEvent.click(screen.getByText('facet'));
     fireEvent.click(screen.getByText('route.actions.execute'));
-    await waitFor(() => expect(mockFacetPost).toHaveBeenCalledWith({
-      query: '# Match any howler.id value howler.id:* AND # Hits must be open howler.status:open',
-      rows: 5,
-      fields: ['howler.id']
-    }));
+    await waitFor(() =>
+      expect(mockFacetPost).toHaveBeenCalledWith({
+        query: '# Match any howler.id value howler.id:* AND # Hits must be open howler.status:open',
+        rows: 5,
+        fields: ['howler.id']
+      })
+    );
 
     fireEvent.click(screen.getByText('groupby'));
     expect(screen.getByText('route.actions.execute')).toBeDisabled();
     fireEvent.click(screen.getAllByText('howler.id')[0]!);
     fireEvent.click(screen.getByText('route.actions.execute'));
-    await waitFor(() => expect(mockGroupedPost).toHaveBeenCalledWith('howler.id', {
-      query: '# Match any howler.id value howler.id:* AND # Hits must be open howler.status:open',
-      fl: undefined,
-      rows: 5
-    }));
+    await waitFor(() =>
+      expect(mockGroupedPost).toHaveBeenCalledWith('howler.id', {
+        query: '# Match any howler.id value howler.id:* AND # Hits must be open howler.status:open',
+        fl: undefined,
+        rows: 5
+      })
+    );
 
     fireEvent.click(screen.getByText('explain'));
     fireEvent.click(screen.getByText('route.actions.execute'));
-    await waitFor(() => expect(mockExplainPost).toHaveBeenCalledWith({
-      query: '# Match any howler.id value howler.id:* AND # Hits must be open howler.status:open'
-    }));
+    await waitFor(() =>
+      expect(mockExplainPost).toHaveBeenCalledWith({
+        query: '# Match any howler.id value howler.id:* AND # Hits must be open howler.status:open'
+      })
+    );
   });
 
   it('switches query types, resets monaco content, and executes eql and sigma searches', async () => {
@@ -198,22 +228,26 @@ describe('QueryBuilder', () => {
     fireEvent.click(screen.getByText('eql'));
     await waitFor(() => expect(mockSetValue).toHaveBeenCalled());
     fireEvent.click(screen.getByText('route.actions.execute'));
-    await waitFor(() => expect(mockEqlPost).toHaveBeenCalledWith({
-      eql_query: '# Match any howler.id value howler.id:* AND # Hits must be open howler.status:open',
-      fl: undefined,
-      rows: 50
-    }));
+    await waitFor(() =>
+      expect(mockEqlPost).toHaveBeenCalledWith({
+        eql_query: '# Match any howler.id value howler.id:* AND # Hits must be open howler.status:open',
+        fl: undefined,
+        rows: 50
+      })
+    );
 
     fireEvent.click(screen.getByText('yaml'));
     fireEvent.click(screen.getByText('set-query'));
     fireEvent.click(screen.getByText('route.actions.execute'));
-    await waitFor(() => expect(mockSigmaPost).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sigma: 'updated query',
-        fl: undefined,
-        rows: 50
-      })
-    ));
+    await waitFor(() =>
+      expect(mockSigmaPost).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sigma: 'updated query',
+          fl: undefined,
+          rows: 50
+        })
+      )
+    );
   });
 
   it('shows errors when a search fails', async () => {

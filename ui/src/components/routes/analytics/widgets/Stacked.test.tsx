@@ -51,7 +51,9 @@ describe('Stacked', () => {
 
     render(<Stacked analytic={{ name: 'Alpha' } as any} field="howler.status" color={value => `${value}-color`} />);
 
-    await waitFor(() => expect(mockFacetPost).toHaveBeenCalledWith({ query: 'howler.analytic:("Alpha")', fields: ['howler.status'] }));
+    await waitFor(() =>
+      expect(mockFacetPost).toHaveBeenCalledWith({ query: 'howler.analytic:("Alpha")', fields: ['howler.status'] })
+    );
     await waitFor(() => expect(mockHistogramPost).toHaveBeenCalledTimes(2));
 
     const output = screen.getByText(/route.analytics.status.title/).textContent ?? '';

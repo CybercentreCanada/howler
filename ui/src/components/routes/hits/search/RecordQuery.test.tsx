@@ -55,7 +55,11 @@ vi.mock('components/app/providers/RecordSearchProvider', () => ({
 }));
 
 vi.mock('components/elements/addons/buttons/CustomIconButton', () => ({
-  default: ({ children, onClick, disabled }: any) => <button onClick={onClick} disabled={disabled}>{children}</button>
+  default: ({ children, onClick, disabled }: any) => (
+    <button onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  )
 }));
 
 vi.mock('components/routes/advanced/QueryEditor', () => ({
@@ -134,7 +138,9 @@ describe('RecordQuery', () => {
     );
     fireEvent.click(screen.getByText('mount-editor'));
 
-    expect(screen.getAllByRole('button').filter(button => button.hasAttribute('disabled')).length).toBeGreaterThanOrEqual(3);
+    expect(
+      screen.getAllByRole('button').filter(button => button.hasAttribute('disabled')).length
+    ).toBeGreaterThanOrEqual(3);
 
     parameterContextValue.query = 'priority:high';
     locationValue = { search: '' };

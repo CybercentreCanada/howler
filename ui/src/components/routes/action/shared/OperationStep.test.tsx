@@ -83,14 +83,16 @@ describe('OperationStep', () => {
         query="status:open"
         values={'{"option":"initial","text":"value"}'}
         setValues={setValues}
-        step={{
-          args: { option: true, text: true },
-          options: { option: ['chosen'] },
-          validation: {
-            warn: { query: 'warn-query', message: 'warn.message' },
-            error: { query: 'error-query', message: 'error.message' }
-          }
-        } as any}
+        step={
+          {
+            args: { option: true, text: true },
+            options: { option: ['chosen'] },
+            validation: {
+              warn: { query: 'warn-query', message: 'warn.message' },
+              error: { query: 'error-query', message: 'error.message' }
+            }
+          } as any
+        }
       />
     );
 
@@ -113,10 +115,12 @@ describe('OperationStep', () => {
         query="status:open"
         values={'{"name":"demo"}'}
         readonly
-        step={{
-          args: { name: true },
-          validation: { warn: { query: 'warn-query' } }
-        } as any}
+        step={
+          {
+            args: { name: true },
+            validation: { warn: { query: 'warn-query' } }
+          } as any
+        }
       />
     );
 

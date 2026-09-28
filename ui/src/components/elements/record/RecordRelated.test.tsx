@@ -10,7 +10,11 @@ vi.mock('@mui/material', () => ({
     <div>
       {Array.isArray(children)
         ? children.map((child: any) =>
-            child ? <button key={child.props.value} onClick={() => onChange?.(null, child.props.value)}>{child}</button> : null
+            child ? (
+              <button key={child.props.value} onClick={() => onChange?.(null, child.props.value)}>
+                {child}
+              </button>
+            ) : null
           )
         : children}
     </div>
@@ -32,11 +36,14 @@ vi.mock('components/hooks/useRelatedRecords', () => ({
 
 vi.mock('lodash-es', () => ({
   groupBy: (records: any[], key: string) =>
-    records.reduce((acc, item) => {
-      const group = item[key];
-      acc[group] = [...(acc[group] ?? []), item];
-      return acc;
-    }, {} as Record<string, any[]>)
+    records.reduce(
+      (acc, item) => {
+        const group = item[key];
+        acc[group] = [...(acc[group] ?? []), item];
+        return acc;
+      },
+      {} as Record<string, any[]>
+    )
 }));
 
 vi.mock('react-i18next', () => ({
@@ -75,14 +82,16 @@ describe('RecordRelated', () => {
   it('renders links and switches between hit, case, and event related records', () => {
     render(
       <RecordRelated
-        record={{
-          __index: 'hit',
-          howler: {
-            id: 'hit-1',
-            related: ['ref-1'],
-            links: [{ title: 'Example', href: 'https://example.com' }]
-          }
-        } as any}
+        record={
+          {
+            __index: 'hit',
+            howler: {
+              id: 'hit-1',
+              related: ['ref-1'],
+              links: [{ title: 'Example', href: 'https://example.com' }]
+            }
+          } as any
+        }
       />
     );
 

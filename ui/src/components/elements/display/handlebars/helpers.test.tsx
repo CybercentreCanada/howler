@@ -86,7 +86,9 @@ describe('handlebars helpers', () => {
     expect(helperMap.entries.callback?.({ a: 1 }, options)).toEqual([{ key: 'a', value: 1 }]);
     expect(String(helperMap.entries.callback?.(null, options))).toBe('Invalid Object.');
     expect(helperMap.replace.callback?.('alpha beta', 'beta', 'gamma', options)).toBe('alpha gamma');
-    expect(() => helperMap.replace.callback?.('alpha', undefined, 'x', options)).toThrow('Replace expects three arguments');
+    expect(() => helperMap.replace.callback?.('alpha', undefined, 'x', options)).toThrow(
+      'Replace expects three arguments'
+    );
 
     global.fetch = vi.fn(() =>
       Promise.resolve({
@@ -94,9 +96,15 @@ describe('handlebars helpers', () => {
       } as Response)
     ) as any;
 
-    await expect(helperMap.fetch.callback?.('https://example.com/data', 'nested.value', options)).resolves.toBe('cached');
-    await expect(helperMap.fetch.callback?.('https://example.com/data', 'nested.value', options)).resolves.toBe('cached');
-    await expect(helperMap.fetch.callback?.('https://example.com/data', 'missing.value', options)).resolves.toBeUndefined();
+    await expect(helperMap.fetch.callback?.('https://example.com/data', 'nested.value', options)).resolves.toBe(
+      'cached'
+    );
+    await expect(helperMap.fetch.callback?.('https://example.com/data', 'nested.value', options)).resolves.toBe(
+      'cached'
+    );
+    await expect(
+      helperMap.fetch.callback?.('https://example.com/data', 'missing.value', options)
+    ).resolves.toBeUndefined();
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 
@@ -115,14 +123,16 @@ describe('handlebars helpers', () => {
     render(helperMap.render_json.componentCallback?.({ enabled: true }, {}) as any);
     expect(screen.getByText('{"enabled":true}')).toBeInTheDocument();
 
-    render(helperMap.table.componentCallback?.(
-      [
-        { column: 'first_name', row: '1', value: 'Ada' },
-        { column: 'last-name', row: '1', value: 'Lovelace' },
-        { column: 'first_name', row: '2', value: 'Grace' }
-      ],
-      {}
-    ) as any);
+    render(
+      helperMap.table.componentCallback?.(
+        [
+          { column: 'first_name', row: '1', value: 'Ada' },
+          { column: 'last-name', row: '1', value: 'Lovelace' },
+          { column: 'first_name', row: '2', value: 'Grace' }
+        ],
+        {}
+      ) as any
+    );
     expect(screen.getByText('First Name')).toBeInTheDocument();
     expect(screen.getByText('Last Name')).toBeInTheDocument();
     expect(screen.getByText('N/A')).toBeInTheDocument();

@@ -17,15 +17,17 @@ describe('HitLinksDocumentation', () => {
   it('injects configured application names into the help markdown', () => {
     render(
       <ApiConfigContext.Provider
-        value={{
-          config: {
-            configuration: {
-              ui: {
-                apps: [{ name: 'Alpha' }, { name: 'Beta' }]
+        value={
+          {
+            config: {
+              configuration: {
+                ui: {
+                  apps: [{ name: 'Alpha' }, { name: 'Beta' }]
+                }
               }
             }
-          }
-        } as any}
+          } as any
+        }
       >
         <HitLinksDocumentation />
       </ApiConfigContext.Provider>

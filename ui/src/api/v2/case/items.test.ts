@@ -36,7 +36,10 @@ describe('v2 case items API', () => {
 
     expect(mockHpost).toHaveBeenCalledWith('/api/v2/case/case-1/items', { id: 'item-1', name: 'Item' });
     expect(mockHdelete).toHaveBeenNthCalledWith(1, '/api/v2/case/case-1/items', { ids: ['item-1'], force: false });
-    expect(mockHdelete).toHaveBeenNthCalledWith(2, '/api/v2/case/case-1/items', { ids: ['item-1', 'item-2'], force: true });
+    expect(mockHdelete).toHaveBeenNthCalledWith(2, '/api/v2/case/case-1/items', {
+      ids: ['item-1', 'item-2'],
+      force: true
+    });
     expect(mockHput).toHaveBeenCalledWith('/api/v2/case/case-1/items', { id: 'item-3', name: 'Updated' });
   });
 });

@@ -97,11 +97,7 @@ describe('api root module', () => {
     mockGetLocalStored.mockImplementation((key: string) => (key === 'app_token' ? 'token' : undefined));
     mockGetSessionStored.mockReturnValue({ 'hit/hit123': '"old-etag"' });
     mockGetXSRFCookie.mockReturnValue('csrf');
-    mockClientFetch.mockResolvedValue([
-      { api_response: { ok: true } },
-      200,
-      { etag: '"new-etag"' }
-    ]);
+    mockClientFetch.mockResolvedValue([{ api_response: { ok: true } }, 200, { etag: '"new-etag"' }]);
 
     await expect(hfetch('hit/hit123', 'post', { key: 'value' })).resolves.toEqual({ ok: true });
 
@@ -121,11 +117,9 @@ describe('api root module', () => {
   });
 
   it('returns undefined for empty payloads and accepts 304 responses', async () => {
-    mockClientFetch.mockResolvedValueOnce([undefined, 204, {}]).mockResolvedValueOnce([
-      { api_response: { unchanged: true } },
-      304,
-      {}
-    ]);
+    mockClientFetch
+      .mockResolvedValueOnce([undefined, 204, {}])
+      .mockResolvedValueOnce([{ api_response: { unchanged: true } }, 304, {}]);
 
     await expect(hfetch('/analytic/1')).resolves.toBeUndefined();
     await expect(hfetch('/analytic/1')).resolves.toEqual({ unchanged: true });

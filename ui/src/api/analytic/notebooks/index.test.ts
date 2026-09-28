@@ -27,7 +27,11 @@ describe('analytic notebooks API', () => {
     expect(uri('an-1')).toBe('/api/v1/analytic/an-1/notebooks');
     await post('an-1', { detection: 'det', value: 'link', name: 'Notebook' });
     await del('an-1', ['n-1']);
-    expect(mockHpost).toHaveBeenCalledWith('/api/v1/analytic/an-1/notebooks', { detection: 'det', value: 'link', name: 'Notebook' });
+    expect(mockHpost).toHaveBeenCalledWith('/api/v1/analytic/an-1/notebooks', {
+      detection: 'det',
+      value: 'link',
+      name: 'Notebook'
+    });
     expect(mockHdelete).toHaveBeenCalledWith('/api/v1/analytic/an-1/notebooks', ['n-1']);
   });
 });
