@@ -76,14 +76,14 @@ async def test_call_rejects_missing_api_response_envelope():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("content_type", "response_content", "logged_response"),
+    ("content_type", "response_content"),
     [
-        ("application/json", b'{"api_error_message":"invalid query"}', '{"api_error_message":"invalid query"}'),
-        ("application/json", b"not json", "not json"),
-        ("text/plain", b"invalid query", "invalid query"),
+        ("application/json", b'{"api_error_message":"classified detail"}'),
+        ("application/json", b"not json"),
+        ("text/plain", b"classified detail"),
     ],
 )
-async def test_call_logs_http_error_response(caplog, content_type, response_content, logged_response):
+async def test_call_does_not_log_http_error_response_body(caplog, content_type, response_content):
     request = httpx.Request("GET", "https://api/whoami")
     response = httpx.Response(
         400,
@@ -100,7 +100,8 @@ async def test_call_logs_http_error_response(caplog, content_type, response_cont
     with caplog.at_level("WARNING", logger="howler_mcp.api"), pytest.raises(httpx.HTTPStatusError):
         await api_client.call(FAKE_TOKEN, "/whoami", "GET")
 
-    assert f"response={logged_response}" in caplog.text
+    assert "api_request_http_error method=GET route=/whoami status_code=400 outcome=http_4xx" in caplog.text
+    assert response_content.decode("utf-8", errors="replace") not in caplog.text
 
 
 @pytest.mark.asyncio

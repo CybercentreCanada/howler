@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Any
 
@@ -61,7 +62,10 @@ class JSONWebTokenVerifier(TokenVerifier):
             valid, or ``None`` if validation fails for any reason.
         """
         try:
-            signing_key = self.jwks_client.get_signing_key_from_jwt(token)
+            # PyJWKClient performs synchronous network I/O on cache misses and
+            # key refreshes; run it in a worker thread so a slow identity
+            # provider does not block the event loop.
+            signing_key = await asyncio.to_thread(self.jwks_client.get_signing_key_from_jwt, token)
 
             claims: dict[str, Any] = jwt.decode(
                 token,

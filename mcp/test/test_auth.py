@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from jwt.exceptions import InvalidTokenError, PyJWKClientError
@@ -46,6 +46,26 @@ async def test_verify_token_returns_none_on_invalid_token_error(verifier):
         result = await verifier.verify_token("raw-token")
 
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_verify_token_fetches_jwks_key_in_worker_thread(verifier):
+    with (
+        patch.object(
+            verifier.jwks_client,
+            "get_signing_key_from_jwt",
+            return_value=SimpleNamespace(key="fake-key"),
+        ) as get_signing_key,
+        patch(
+            "howler_mcp.auth.asyncio.to_thread",
+            new=AsyncMock(return_value=SimpleNamespace(key="fake-key")),
+        ) as to_thread,
+        patch("howler_mcp.auth.jwt.decode", side_effect=InvalidTokenError("bad signature")),
+    ):
+        result = await verifier.verify_token("raw-token")
+
+    assert result is None
+    to_thread.assert_awaited_once_with(get_signing_key, "raw-token")
 
 
 @pytest.mark.asyncio

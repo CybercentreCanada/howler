@@ -138,10 +138,7 @@ class HowlerApiClient:
             status_code = code
             status_class = _status_class(code)
             outcome = f"http_{status_class}"
-            logger.warning(
-                f"api_request_http_error method={method} route={route} status_code={code} "
-                f"outcome={outcome} response={e.response.content.decode()}"
-            )
+            logger.warning(f"api_request_http_error method={method} route={route} status_code={code} outcome={outcome}")
             raise
 
         except httpx.TimeoutException:
