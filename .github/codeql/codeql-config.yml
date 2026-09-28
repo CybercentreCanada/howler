@@ -1,5 +1,10 @@
 name: "Howler CodeQL config"
 
+# Run the full security and quality suite so this config retains the existing
+# maintainability/reliability coverage in addition to security queries.
+queries:
+  - uses: security-and-quality
+
 # CodeQL query filters cannot target individual `...` overload stubs. Excluding
 # this query silences all Python "statement has no effect" alerts; inline
 # suppressions are preferred when retaining the rest of the query is desired.
