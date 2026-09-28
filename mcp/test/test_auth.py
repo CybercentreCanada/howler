@@ -177,6 +177,31 @@ async def test_verify_token_accepts_all_required_scopes():
 
 
 @pytest.mark.asyncio
+async def test_verify_token_accepts_scp_array_scope_claim(verifier):
+    claims = {
+        "exp": 9999999999,
+        "iat": 1111111111,
+        "iss": "https://issuer.example/realms/howler",
+        "aud": "howler",
+        "scp": ["openid", "offline_access", "profile", "", 123],
+        "azp": "cli-a",
+    }
+
+    with (
+        patch.object(
+            verifier.jwks_client,
+            "get_signing_key_from_jwt",
+            return_value=SimpleNamespace(key="fake-key"),
+        ),
+        patch("howler_mcp.auth.jwt.decode", return_value=claims),
+    ):
+        token = await verifier.verify_token("raw-token")
+
+    assert token is not None
+    assert token.scopes == ["openid", "offline_access", "profile"]
+
+
+@pytest.mark.asyncio
 async def test_verify_token_rejects_non_integer_expiry(verifier):
     claims = {
         "exp": "not-a-timestamp",
