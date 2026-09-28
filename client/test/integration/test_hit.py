@@ -297,6 +297,7 @@ def test_delete(client: Client):
 
     res = client.hit.create_from_map(TOOL_NAME, MAP, HITS)
 
-    assert client.hit.delete([new_hit["id"] for new_hit in res]) is None
+    delete_result = client.hit.delete([new_hit["id"] for new_hit in res])
+    assert delete_result is None
 
     assert total == client.search.hit("howler.id:*")["total"]
