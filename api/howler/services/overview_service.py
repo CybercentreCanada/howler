@@ -13,11 +13,13 @@ logger = get_logger(__file__)
 @overload
 def get_matching_overviews(
     hits: list[Hit] | list[dict[str, Any]], as_odm: Literal[False] = False
-) -> list[dict[str, Any]]: ...
+) -> list[dict[str, Any]]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_matching_overviews(hits: list[Hit] | list[dict[str, Any]], as_odm: Literal[True]) -> list[Overview]: ...
+def get_matching_overviews(
+    hits: list[Hit] | list[dict[str, Any]], as_odm: Literal[True]
+) -> list[Overview]: ...  # codeql[py/ineffectual-statement]
 
 
 def get_matching_overviews(hits: list[Hit] | list[dict[str, Any]], as_odm=False):

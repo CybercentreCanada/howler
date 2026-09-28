@@ -8,15 +8,15 @@ _T = TypeVar("_T")
 
 
 @overload
-def chunk(items: bytes, n: int) -> Generator[bytes, None, None]: ...
+def chunk(items: bytes, n: int) -> Generator[bytes, None, None]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def chunk(items: str, n: int) -> Generator[str, None, None]: ...
+def chunk(items: str, n: int) -> Generator[str, None, None]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def chunk(items: Sequence[_T], n: int) -> Generator[Sequence[_T], None, None]: ...
+def chunk(items: Sequence[_T], n: int) -> Generator[Sequence[_T], None, None]: ...  # codeql[py/ineffectual-statement]
 
 
 def chunk(items, n: int):

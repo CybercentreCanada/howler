@@ -37,31 +37,35 @@ def exists(id: str) -> bool:
 @overload
 def get_event(
     id: str, as_odm: Literal[True], version: Literal[True], user: User | None = None
-) -> tuple[Event, str]: ...
+) -> tuple[Event, str]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_event(id: str, as_odm: Literal[True], version: Literal[False]) -> Event: ...
+def get_event(id: str, as_odm: Literal[True], version: Literal[False]) -> Event: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_event(id: str, as_odm: Literal[True]) -> Event: ...
+def get_event(id: str, as_odm: Literal[True]) -> Event: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_event(id: str) -> Event: ...
+def get_event(id: str) -> Event: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_event(id: str, as_odm: Literal[False], version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+def get_event(
+    id: str, as_odm: Literal[False], version: Literal[True]
+) -> tuple[dict[str, Any], str]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_event(id: str, as_odm: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+def get_event(
+    id: str, as_odm: Literal[False], version: Literal[False]
+) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_event(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
+def get_event(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
 
 
 @tracer.start_as_current_span(f"{__name__}.get_event")

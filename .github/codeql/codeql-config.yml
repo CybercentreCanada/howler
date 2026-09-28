@@ -1,0 +1,8 @@
+name: "Howler CodeQL config"
+
+# CodeQL query filters cannot target individual `...` overload stubs. Excluding
+# this query silences all Python "statement has no effect" alerts; inline
+# suppressions are preferred when retaining the rest of the query is desired.
+query-filters:
+  - exclude:
+      id: py/ineffectual-statement
