@@ -186,3 +186,6 @@ fabric.properties
 
 # remove mcp tokens
 .vscode/mcp.json
+
+# Parallel agent worktrees (each is a separate Git checkout)
+.worktrees/
