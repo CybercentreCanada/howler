@@ -101,7 +101,7 @@ class HowlerApiClient:
         api_response = None
         status_code: int = -1  # Initialised to known impossible answer value
         route = f"/{path.lstrip('/')}"
-        logger.info(f"api_request_sroutetart method={method} route={route} timeout={self.timeout:.2f}")
+        logger.info(f"api_request_start method={method} route={route} timeout={self.timeout:.2f}")
 
         try:
             if method in {"GET", "OPTIONS"} and body is not None:
@@ -123,7 +123,7 @@ class HowlerApiClient:
             status_code = response.status_code
             response.raise_for_status()
             _json = response.json()
-            if "api_response" not in _json:
+            if not isinstance(_json, dict) or "api_response" not in _json:
                 outcome = "invalid_envelope"
                 logger.error(
                     f"api_request_invalid_envelope method={method} route={route} status={response.status_code}"
@@ -152,7 +152,8 @@ class HowlerApiClient:
             raise
 
         except ValueError:
-            outcome = "value_error"
+            if outcome == "unknown":
+                outcome = "value_error"
             logger.warning(f"api_request_value_error method={method} route={route} outcome={outcome}")
             raise
 

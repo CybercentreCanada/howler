@@ -158,9 +158,13 @@ class JSONWebTokenVerifier(TokenVerifier):
             list[str]: List of individual scope strings, or an empty list if
             no scope claim is present.
         """
-        scope_value = claims.get("scope", claims.get("scp", ""))
+        scope_value = claims.get("scope")
+        if scope_value is None:
+            scope_value = claims.get("scp", "")
         if isinstance(scope_value, str) and scope_value.strip():
             return scope_value.strip().split()
+        if isinstance(scope_value, list):
+            return [scope.strip() for scope in scope_value if isinstance(scope, str) and scope.strip()]
         return []
 
     def _extract_client_id(self, claims: dict[str, Any]) -> str:
@@ -189,7 +193,7 @@ class JSONWebTokenVerifier(TokenVerifier):
 class AuthProvider:
     """Manage backend API access tokens using token pass-through.
 
-    The MCP client token verified by ``KeycloakTokenVerifier`` is already
+    The MCP client token verified by ``JSONWebTokenVerifier`` is already
     fully qualified for the downstream Howler API, so no additional token
     exchange is required.
     """
@@ -204,6 +208,6 @@ class AuthProvider:
             str: Token to use as the ``Authorization`` header value when
             calling the Howler API.
         """
-        # Token Pass-through: The token verified by KeycloakTokenVerifier
+        # Token Pass-through: The token verified by JSONWebTokenVerifier
         # is already fully qualified for the downstream backend API.
         return user_token
