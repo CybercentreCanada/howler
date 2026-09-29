@@ -148,9 +148,11 @@ const CreateCaseModal: FC<{ records: (Hit | Event)[] }> = ({ records }) => {
                       secondary={participantUsers[userId]?.email}
                     />
                     <FlexOne />
+                    {/* <Tooltip title={`${t('button.delete')}`}> */}
                     <IconButton disabled={submitting} onClick={() => handleRemoveParticipant(userId)}>
-                      <Delete color="error" />
+                      <Delete color="error" aria-label={`${t('button.delete')}`}/>
                     </IconButton>
+                    {/* </Tooltip> */}
                   </Stack>
                 </ListItem>
               ))}
