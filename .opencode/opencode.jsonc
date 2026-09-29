@@ -1,0 +1,61 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "github-copilot/gpt-6-sol",
+  "default_agent": "orchestrator",
+  "worktree": {
+    "directory": ".worktrees"
+  },
+  "agents": {
+    "orchestrator": {
+      "description": "Coordinates large Howler tasks, disjoint worktrees, adversarial review, and approved patch application",
+      "mode": "primary",
+      "model": "github-copilot/gpt-6-sol#high",
+      "system": "Read and follow `.agents/agents/orchestrator/agent.md` as the canonical role instructions before acting.",
+      "permissions": [
+        { "action": "subagent", "resource": "*", "effect": "deny" },
+        { "action": "subagent", "resource": "architect", "effect": "allow" },
+        { "action": "subagent", "resource": "frontend", "effect": "allow" },
+        { "action": "subagent", "resource": "qa", "effect": "allow" },
+        { "action": "subagent", "resource": "implementer", "effect": "allow" },
+        { "action": "subagent", "resource": "reviewer", "effect": "allow" }
+      ]
+    },
+    "architect": {
+      "description": "Produces repository-aware architecture decisions and staged plans for high-risk changes",
+      "mode": "subagent",
+      "model": "github-copilot/gpt-6-astra#xhigh",
+      "system": "Read and follow `.agents/agents/architect/agent.md` as the canonical role instructions before acting.",
+      "permissions": [
+        { "action": "edit", "resource": "*", "effect": "deny" },
+        { "action": "shell", "resource": "*", "effect": "deny" }
+      ]
+    },
+    "frontend": {
+      "description": "Implements a bounded Howler frontend or API-client task in an assigned worktree",
+      "mode": "subagent",
+      "model": "github-copilot/gpt-6-sol#high",
+      "system": "Read and follow `.agents/agents/frontend/agent.md` as the canonical role instructions before acting."
+    },
+    "qa": {
+      "description": "Designs and implements scoped Howler tests with rigorous edge-case verification",
+      "mode": "subagent",
+      "model": "github-copilot/gpt-6-astra#xhigh",
+      "system": "Read and follow `.agents/agents/qa/agent.md` as the canonical role instructions before acting."
+    },
+    "implementer": {
+      "description": "Implements a scoped Howler change and its tests within exclusive worktree boundaries",
+      "mode": "subagent",
+      "model": "github-copilot/gpt-6-luna#xhigh",
+      "system": "Read and follow `.agents/agents/implementer/agent.md` as the canonical role instructions before acting."
+    },
+    "reviewer": {
+      "description": "Adversarially reviews a Howler diff without editing files",
+      "mode": "subagent",
+      "system": "Read and follow `.agents/agents/reviewer/agent.md` as the canonical role instructions before acting.",
+      "permissions": [
+        { "action": "edit", "resource": "*", "effect": "deny" },
+        { "action": "shell", "resource": "*", "effect": "deny" }
+      ]
+    }
+  }
+}
