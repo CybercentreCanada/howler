@@ -13,13 +13,13 @@ logger = get_logger(__file__)
 @overload
 def get_matching_templates(
     hits: list[Hit] | list[dict[str, Any]], as_odm: Literal[False] = False, uname: str | None = None
-) -> list[dict[str, Any]]: ...
+) -> list[dict[str, Any]]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
 def get_matching_templates(
     hits: list[Hit] | list[dict[str, Any]], as_odm: Literal[True], uname: str | None = None
-) -> list[Analytic]: ...
+) -> list[Analytic]: ...  # codeql[py/ineffectual-statement]
 
 
 def get_matching_templates(

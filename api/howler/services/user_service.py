@@ -20,27 +20,35 @@ tracer = trace.get_tracer(__name__)
 
 
 @overload
-def get_user(id: str, as_odm: Literal[True], version: Literal[True]) -> tuple[User, str]: ...
+def get_user(
+    id: str, as_odm: Literal[True], version: Literal[True]
+) -> tuple[User, str]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_user(id: str, *, as_odm: Literal[True], version: Literal[True], user: User | None) -> tuple[User, str]: ...
+def get_user(
+    id: str, *, as_odm: Literal[True], version: Literal[True], user: User | None
+) -> tuple[User, str]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_user(id: str, as_odm: Literal[True], version: Literal[False]) -> User: ...
+def get_user(id: str, as_odm: Literal[True], version: Literal[False]) -> User: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_user(id: str, as_odm: Literal[False], version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+def get_user(
+    id: str, as_odm: Literal[False], version: Literal[True]
+) -> tuple[dict[str, Any], str]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_user(id: str, as_odm: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+def get_user(
+    id: str, as_odm: Literal[False], version: Literal[False]
+) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_user(id: str) -> dict[str, Any]: ...
+def get_user(id: str) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
 
 
 def get_user(

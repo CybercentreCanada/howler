@@ -25,7 +25,7 @@ import useMyApi from 'components/hooks/useMyApi';
 import useMyActionFunctions from 'components/routes/action/useMyActionFunctions';
 import AddRecordToCaseModal from 'components/routes/cases/modals/AddRecordToCaseModal';
 import CreateCaseModal from 'components/routes/cases/modals/CreateCaseModal';
-import { capitalize, get, groupBy, isEmpty, toString } from 'lodash-es';
+import { capitalize, get, groupBy, isEmpty, toString, uniq } from 'lodash-es';
 import type { Action } from 'models/entities/generated/Action';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -268,7 +268,12 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
         }))
       });
 
-      if (!isEmpty(template?.keys ?? []) && setQuery) {
+      const filterKeys = uniq([
+        ...(template?.keys ?? []),
+        ...Object.keys(record.howler.outline ?? {}).map(key => `howler.outline.${key}`)
+      ]);
+
+      if (!isEmpty(filterKeys) && setQuery) {
         result.push({ kind: 'divider', id: 'filter-divider' });
 
         result.push({
@@ -276,7 +281,7 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
           id: 'excludes',
           icon: <RemoveCircleOutline />,
           label: t('hit.panel.exclude'),
-          items: (template?.keys ?? []).flatMap(key => {
+          items: filterKeys.flatMap(key => {
             let newQuery = '';
             if (query !== DEFAULT_QUERY) {
               newQuery = `(${query}) AND `;
@@ -305,7 +310,7 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
           id: 'includes',
           icon: <AddCircleOutline />,
           label: t('hit.panel.include'),
-          items: (template?.keys ?? []).flatMap(key => {
+          items: filterKeys.flatMap(key => {
             let newQuery = `(${query}) AND `;
             const value = get(record, key);
             if (!value) {

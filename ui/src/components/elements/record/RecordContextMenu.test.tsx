@@ -909,7 +909,7 @@ describe('HitContextMenu', () => {
       });
     });
 
-    it('should not render exclusion menu when template has no keys', async () => {
+    it('should render outline fields in the exclusion menu when template has no keys', async () => {
       mockGetMatchingTemplate.mockResolvedValue(
         createMockTemplate({
           keys: []
@@ -933,7 +933,15 @@ describe('HitContextMenu', () => {
         expect(screen.getByRole('menu')).toBeInTheDocument();
       });
 
-      expect(screen.queryByText('Exclude By')).toBeNull();
+      expect(screen.getByText('Exclude By')).toBeInTheDocument();
+
+      act(() => {
+        fireEvent.mouseEnter(screen.getByText('Exclude By'));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('excludes-submenu').textContent).toContain('howler.outline.indicators');
+      });
     });
 
     it('should skip null field values in exclusion menu', async () => {
@@ -1103,7 +1111,7 @@ describe('HitContextMenu', () => {
       });
     });
 
-    it('should not render inclusion menu when template has no keys', async () => {
+    it('should render outline fields in the inclusion menu when template has no keys', async () => {
       mockGetMatchingTemplate.mockResolvedValue(
         createMockTemplate({
           keys: []
@@ -1127,7 +1135,21 @@ describe('HitContextMenu', () => {
         expect(screen.getByRole('menu')).toBeInTheDocument();
       });
 
-      expect(screen.queryByText('Include By')).toBeNull();
+      act(() => {
+        fireEvent.mouseEnter(screen.getByText('Include By'));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('includes-submenu').textContent).toContain('howler.outline.indicators');
+      });
+
+      await act(async () => {
+        await user.click(screen.getByText('howler.outline.indicators'));
+      });
+
+      expect(mockParameterContext.setQuery).toHaveBeenCalledWith(
+        expect.stringContaining('howler.outline.indicators:("a" OR "b" OR "c")')
+      );
     });
 
     it('should skip null field values in inclusion menu', async () => {
@@ -1259,7 +1281,7 @@ describe('HitContextMenu', () => {
       expect(screen.queryByRole('menu')).toBeInTheDocument();
     });
 
-    it('should not render exclusion menu when template is null', async () => {
+    it('should render exclusion menu for outline fields when template is null', async () => {
       mockGetMatchingTemplate.mockResolvedValue(null);
 
       rerender(
@@ -1279,12 +1301,10 @@ describe('HitContextMenu', () => {
         expect(screen.getByRole('menu')).toBeInTheDocument();
       });
 
-      await waitFor(() => {
-        expect(screen.queryByText('Exclude By')).toBeNull();
-      });
+      expect(screen.getByText('Exclude By')).toBeInTheDocument();
     });
 
-    it('should not render inclusion menu when template is null', async () => {
+    it('should render inclusion menu for outline fields when template is null', async () => {
       mockGetMatchingTemplate.mockResolvedValue(null);
 
       rerender(
@@ -1304,9 +1324,7 @@ describe('HitContextMenu', () => {
         expect(screen.getByRole('menu')).toBeInTheDocument();
       });
 
-      await waitFor(() => {
-        expect(screen.queryByText('Include By')).toBeNull();
-      });
+      expect(screen.getByText('Include By')).toBeInTheDocument();
     });
 
     it('should handle API failure gracefully', async () => {

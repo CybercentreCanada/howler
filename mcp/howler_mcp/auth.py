@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Any
 
@@ -61,7 +62,10 @@ class JSONWebTokenVerifier(TokenVerifier):
             valid, or ``None`` if validation fails for any reason.
         """
         try:
-            signing_key = self.jwks_client.get_signing_key_from_jwt(token)
+            # PyJWKClient performs synchronous network I/O on cache misses and
+            # key refreshes; run it in a worker thread so a slow identity
+            # provider does not block the event loop.
+            signing_key = await asyncio.to_thread(self.jwks_client.get_signing_key_from_jwt, token)
 
             claims: dict[str, Any] = jwt.decode(
                 token,
@@ -154,9 +158,13 @@ class JSONWebTokenVerifier(TokenVerifier):
             list[str]: List of individual scope strings, or an empty list if
             no scope claim is present.
         """
-        scope_value = claims.get("scope", claims.get("scp", ""))
+        scope_value = claims.get("scope")
+        if scope_value is None:
+            scope_value = claims.get("scp", "")
         if isinstance(scope_value, str) and scope_value.strip():
             return scope_value.strip().split()
+        if isinstance(scope_value, list):
+            return [scope.strip() for scope in scope_value if isinstance(scope, str) and scope.strip()]
         return []
 
     def _extract_client_id(self, claims: dict[str, Any]) -> str:
@@ -185,7 +193,7 @@ class JSONWebTokenVerifier(TokenVerifier):
 class AuthProvider:
     """Manage backend API access tokens using token pass-through.
 
-    The MCP client token verified by ``KeycloakTokenVerifier`` is already
+    The MCP client token verified by ``JSONWebTokenVerifier`` is already
     fully qualified for the downstream Howler API, so no additional token
     exchange is required.
     """
@@ -200,6 +208,6 @@ class AuthProvider:
             str: Token to use as the ``Authorization`` header value when
             calling the Howler API.
         """
-        # Token Pass-through: The token verified by KeycloakTokenVerifier
+        # Token Pass-through: The token verified by JSONWebTokenVerifier
         # is already fully qualified for the downstream backend API.
         return user_token

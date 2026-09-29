@@ -55,31 +55,39 @@ def exists(dossier_id: str) -> bool:
 
 
 @overload
-def get_dossier(id: str, as_odm: Literal[True], version: Literal[True]) -> tuple[Dossier, str]: ...
+def get_dossier(
+    id: str, as_odm: Literal[True], version: Literal[True]
+) -> tuple[Dossier, str]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_dossier(id: str, as_odm: Literal[True], version: Literal[False]) -> Dossier: ...
+def get_dossier(
+    id: str, as_odm: Literal[True], version: Literal[False]
+) -> Dossier: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_dossier(id: str, as_odm: Literal[True]) -> Dossier: ...
+def get_dossier(id: str, as_odm: Literal[True]) -> Dossier: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_dossier(id: str) -> Dossier: ...
+def get_dossier(id: str) -> Dossier: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_dossier(id: str, as_odm: Literal[False], version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+def get_dossier(
+    id: str, as_odm: Literal[False], version: Literal[True]
+) -> tuple[dict[str, Any], str]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_dossier(id: str, as_odm: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+def get_dossier(
+    id: str, as_odm: Literal[False], version: Literal[False]
+) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_dossier(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
+def get_dossier(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
 
 
 def get_dossier(
