@@ -405,6 +405,35 @@ describe('RecordSearchContext', () => {
       });
     });
 
+    it('should forward positive and negative grouped filters without changing their clauses', async () => {
+      mockParameterContext.filters = [
+        'event.provider:"azure"',
+        '-howler.outline.indicators:("a" OR "b")',
+        'event.provider:"\\*"',
+        '-event.provider:"\\*"'
+      ];
+
+      const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.search), { wrapper: Wrapper });
+
+      act(() => {
+        hook.result.current('test query');
+      });
+
+      await waitFor(() => {
+        expect(hpost).toHaveBeenCalledWith(
+          '/api/v2/search/hit',
+          expect.objectContaining({
+            filters: expect.arrayContaining([
+              'event.provider:"azure"',
+              '-howler.outline.indicators:("a" OR "b")',
+              'event.provider:"\\*"',
+              '-event.provider:"\\*"'
+            ])
+          })
+        );
+      });
+    });
+
     it('should reset offset if response total is less than current offset', async () => {
       mockParameterContext.offset = 100;
 

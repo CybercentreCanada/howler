@@ -173,7 +173,7 @@ const mockRecordContext: Partial<RecordContextType> = {
   },
   selectedRecords: [] as Hit[]
 };
-const mockParameterContext = { query: DEFAULT_QUERY, setQuery: vi.fn() };
+const mockParameterContext = { query: DEFAULT_QUERY, setQuery: vi.fn(), addFilter: vi.fn() };
 
 // Test wrapper
 const Wrapper = ({ children }: PropsWithChildren) => {
@@ -205,6 +205,7 @@ describe('HitContextMenu', () => {
       'test-hit-1': createMockHit()
     };
     mockGetSelectedId.mockReturnValue('test-hit-1');
+    mockParameterContext.query = DEFAULT_QUERY;
 
     mockGetMatchingAnalytic.mockResolvedValue(createMockAnalytic());
     mockGetMatchingTemplate.mockResolvedValue(createMockTemplate());
@@ -839,7 +840,8 @@ describe('HitContextMenu', () => {
       });
 
       await waitFor(() => {
-        expect(mockParameterContext.setQuery).toHaveBeenCalledWith('-howler.detection:"Test Detection"');
+        expect(mockParameterContext.addFilter).toHaveBeenCalledWith('-howler.detection:"Test Detection"');
+        expect(mockParameterContext.setQuery).not.toHaveBeenCalled();
       });
     });
 
@@ -878,7 +880,7 @@ describe('HitContextMenu', () => {
       });
 
       await waitFor(() => {
-        expect(mockParameterContext.setQuery).toHaveBeenCalledWith('-howler.outline.indicators:("a" OR "b" OR "c")');
+        expect(mockParameterContext.addFilter).toHaveBeenCalledWith('-howler.outline.indicators:("a" OR "b" OR "c")');
       });
     });
 
@@ -903,9 +905,9 @@ describe('HitContextMenu', () => {
       });
 
       await waitFor(() => {
-        expect(mockParameterContext.setQuery).toHaveBeenCalledWith(
-          '(howler.status:open) AND -howler.detection:"Test Detection"'
-        );
+        expect(mockParameterContext.addFilter).toHaveBeenCalledWith('-howler.detection:"Test Detection"');
+        expect(mockParameterContext.query).toBe('howler.status:open');
+        expect(mockParameterContext.setQuery).not.toHaveBeenCalled();
       });
     });
 
@@ -1013,6 +1015,8 @@ describe('HitContextMenu', () => {
     });
 
     it('should generate inclusion query for single value', async () => {
+      mockParameterContext.query = 'howler.status:open';
+      mockRecordContext.records['test-hit-1'].howler.detection = 'Test "Detection"';
       act(() => {
         const contextMenuWrapper = screen.getByText('Test Content').parentElement;
         fireEvent.contextMenu(contextMenuWrapper);
@@ -1037,9 +1041,9 @@ describe('HitContextMenu', () => {
       });
 
       await waitFor(() => {
-        expect(mockParameterContext.setQuery).toHaveBeenCalledWith(
-          '(howler.status:open) AND howler.detection:"Test Detection"'
-        );
+        expect(mockParameterContext.addFilter).toHaveBeenCalledWith('howler.detection:"Test \\"Detection\\""');
+        expect(mockParameterContext.query).toBe('howler.status:open');
+        expect(mockParameterContext.setQuery).not.toHaveBeenCalled();
       });
     });
 
@@ -1078,9 +1082,7 @@ describe('HitContextMenu', () => {
       });
 
       await waitFor(() => {
-        expect(mockParameterContext.setQuery).toHaveBeenCalledWith(
-          '(howler.status:open) AND howler.outline.indicators:("a" OR "b" OR "c")'
-        );
+        expect(mockParameterContext.addFilter).toHaveBeenCalledWith('howler.outline.indicators:("a" OR "b" OR "c")');
       });
     });
 
@@ -1105,9 +1107,9 @@ describe('HitContextMenu', () => {
       });
 
       await waitFor(() => {
-        expect(mockParameterContext.setQuery).toHaveBeenCalledWith(
-          '(howler.status:open) AND howler.detection:"Test Detection"'
-        );
+        expect(mockParameterContext.addFilter).toHaveBeenCalledWith('howler.detection:"Test Detection"');
+        expect(mockParameterContext.query).toBe('howler.status:open');
+        expect(mockParameterContext.setQuery).not.toHaveBeenCalled();
       });
     });
 
@@ -1147,7 +1149,7 @@ describe('HitContextMenu', () => {
         await user.click(screen.getByText('howler.outline.indicators'));
       });
 
-      expect(mockParameterContext.setQuery).toHaveBeenCalledWith(
+      expect(mockParameterContext.addFilter).toHaveBeenCalledWith(
         expect.stringContaining('howler.outline.indicators:("a" OR "b" OR "c")')
       );
     });

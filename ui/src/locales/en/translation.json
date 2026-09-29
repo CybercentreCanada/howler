@@ -243,6 +243,8 @@
   "hit.search.filter.add": "Add filter",
   "hit.search.filter.button": "Use lookup filters with predefined values",
   "hit.search.filter.fields": "Fields",
+  "hit.search.filter.exclude": "Exclude this filter",
+  "hit.search.filter.include": "Include this filter",
   "hit.search.filter.label": "Lookup Filters",
   "hit.search.filter.values": "Values",
   "hit.search.index": "Indexes",
