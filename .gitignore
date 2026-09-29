@@ -185,3 +185,8 @@ fabric.properties
 
 # remove mcp tokens
 .vscode/mcp.json
+
+# Isolated agent and developer worktrees
+.worktrees/
+
+TASK.md
