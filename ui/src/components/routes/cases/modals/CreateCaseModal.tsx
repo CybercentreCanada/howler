@@ -150,9 +150,9 @@ const CreateCaseModal: FC<{ records: (Hit | Event)[] }> = ({ records }) => {
                     />
                     <FlexOne />
                     <Tooltip title={`${t('button.delete')}`}>
-                    <IconButton disabled={submitting} onClick={() => handleRemoveParticipant(userId)}>
-                      <Delete color="error"/>
-                    </IconButton>
+                      <IconButton disabled={submitting} onClick={() => handleRemoveParticipant(userId)}>
+                        <Delete color="error" />
+                      </IconButton>
                     </Tooltip>
                   </Stack>
                 </ListItem>

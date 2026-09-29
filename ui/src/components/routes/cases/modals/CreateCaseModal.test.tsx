@@ -26,7 +26,15 @@ vi.mock('components/hooks/useMyApi', () => ({
 
 // UserList relies on UserListContext; stub it and expose its onChange so tests can add participants.
 vi.mock('components/elements/UserList', () => ({
-  default: ({ onChange, except, disabled }: { onChange: (ids: string[]) => void; except?: string[]; disabled?: boolean }) => {
+  default: ({
+    onChange,
+    except,
+    disabled
+  }: {
+    onChange: (ids: string[]) => void;
+    except?: string[];
+    disabled?: boolean;
+  }) => {
     mockUserList.onChange = onChange;
     return <div id="user-list" data-except={JSON.stringify(except ?? [])} data-disabled={String(!!disabled)} />;
   }
