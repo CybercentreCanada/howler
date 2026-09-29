@@ -10,6 +10,7 @@ import {
   ListItemText,
   Stack,
   TextField,
+  Tooltip,
   Typography
 } from '@mui/material';
 import api from 'api';
@@ -148,11 +149,11 @@ const CreateCaseModal: FC<{ records: (Hit | Event)[] }> = ({ records }) => {
                       secondary={participantUsers[userId]?.email}
                     />
                     <FlexOne />
-                    {/* <Tooltip title={`${t('button.delete')}`}> */}
+                    <Tooltip title={`${t('button.delete')}`}>
                     <IconButton disabled={submitting} onClick={() => handleRemoveParticipant(userId)}>
-                      <Delete color="error" aria-label={`${t('button.delete')}`}/>
+                      <Delete color="error"/>
                     </IconButton>
-                    {/* </Tooltip> */}
+                    </Tooltip>
                   </Stack>
                 </ListItem>
               ))}
