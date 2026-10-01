@@ -571,7 +571,25 @@ def update_rule(
 @case_api.route("/<id>/rules/<rule_id>/backfill/count", methods=["POST"])
 @api_login(required_priv=["R"])
 def count_rule_backfill(id: str, rule_id: str, user: User, **kwargs):
-    """Count accessible records matching a case rule since a timestamp."""
+    """Count accessible records matching a case rule since a timestamp.
+
+    Variables:
+    id        => The id of the case
+    rule_id   => The id of the rule to count matches for
+
+    Arguments:
+    None
+
+    Data Block:
+    {
+        "since": "2026-01-01T00:00:00Z"
+    }
+
+    Result Example:
+    {
+        "count": 42
+    }
+    """
     body = request.json
     if not isinstance(body, dict):
         return bad_request(err="Request body must contain a 'since' datetime.")
@@ -592,7 +610,25 @@ def count_rule_backfill(id: str, rule_id: str, user: User, **kwargs):
 @case_api.route("/<id>/rules/<rule_id>/backfill", methods=["POST"])
 @api_login(required_priv=["W"])
 def backfill_rule(id: str, rule_id: str, user: User, **kwargs):
-    """Queue accessible historical matches for a case rule."""
+    """Queue accessible historical matches for a case rule.
+
+    Variables:
+    id        => The id of the case
+    rule_id   => The id of the rule to backfill
+
+    Arguments:
+    None
+
+    Data Block:
+    {
+        "since": "2026-01-01T00:00:00Z"
+    }
+
+    Result Example:
+    {
+        "queued": 42
+    }
+    """
     body = request.json
     if not isinstance(body, dict):
         return bad_request(err="Request body must contain a 'since' datetime.")

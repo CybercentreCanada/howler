@@ -266,6 +266,10 @@ class TestCreateEndpoint:
             result: Response = create(index="hit")
 
             assert result.status_code == 201
+            body = result.get_json()
+            assert body["api_response"] == ["hit-001"]
+            assert "Correlation processing could not be scheduled." in body["api_warning"]
+            mock_hit_svc.create_hits.assert_called_once_with([mock_hit], user.uname, overwrite=False, refresh=None)
 
 
 # ---------------------------------------------------------------------------
