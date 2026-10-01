@@ -172,7 +172,7 @@ describe('AnalyticDetails', () => {
     expect(screen.getByText('owner@example.com')).toBeInTheDocument();
     expect(screen.getByText('avatar:user-2')).toBeInTheDocument();
     expect(screen.getByText('overview-tab')).toBeInTheDocument();
-    expect(mockSearchUsers).toHaveBeenCalledWith('uname:"owner1"');
+    await waitFor(() => expect(mockSearchUsers).toHaveBeenCalledWith('uname:"owner1"'));
 
     fireEvent.click(screen.getByText('switch-comments'));
     await waitFor(() => expect(screen.getByText('comments-tab')).toBeInTheDocument());
