@@ -14,13 +14,13 @@ from test.conftest import get_api_data
 usernames = ["donald", "huey", "louie", "dewey"]
 HIT_ID = "transition_test"
 transition_test_hit = {
+    "classification": CLASSIFICATION.UNRESTRICTED,
     "howler": {
         "id": "transition_test",
         "analytic": "transition_test-on-hold",
         "assignment": "unassigned",
         "hash": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bc",
         "score": "0",
-        "classification": CLASSIFICATION.UNRESTRICTED,
     },
 }
 

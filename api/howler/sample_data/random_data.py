@@ -88,6 +88,14 @@ def _get_ownership_data(users: list[User], owner: str) -> dict[str, Any]:
     }
 
 
+def _registered_hit_model(ds: HowlerDatastore) -> type[Hit]:
+    """Return the registered Hit model, failing clearly for a schema-less collection."""
+    model = ds.hit.model_class
+    if model is None or not isinstance(model, type) or not issubclass(model, Hit):
+        raise RuntimeError("The hit collection must be registered with a Hit model to generate sample data")
+    return model
+
+
 def create_users(ds):
     """Create  number of user accounts"""
     admin_pass = os.getenv("DEV_ADMIN_PASS", "admin") or "admin"
@@ -346,8 +354,9 @@ def wipe_users(ds):
 
 def create_templates(ds: HowlerDatastore):
     """Create some random templates"""
+    hit_model = _registered_hit_model(ds)
     for i in range(2):
-        keys = sample(list(model_registry.flat_fields(ds.hit.model_class)), 5)
+        keys = sample(list(model_registry.flat_fields(hit_model)), 5)
 
         for detection in ["Detection 1", "Detection 2"]:
             template = Template.model_validate(
@@ -422,8 +431,9 @@ def wipe_templates(ds):
 
 def create_overviews(ds: HowlerDatastore):
     """Create some random overviews"""
+    hit_model = _registered_hit_model(ds)
     for i in range(2):
-        keys = sample(list(model_registry.flat_fields(ds.hit.model_class)), 5)
+        keys = sample(list(model_registry.flat_fields(hit_model)), 5)
 
         for detection in ["Detection 1", "Detection 2"]:
             content = "\n\n".join(f"{{{key}}}" for key in keys)
@@ -500,6 +510,7 @@ def wipe_overviews(ds):
 def create_views(ds: HowlerDatastore):
     """Create some random views"""
     users = ds.user.search("*:*", as_obj=True)["items"]
+    hit_model = _registered_hit_model(ds)
 
     view = View.model_validate(
         {
@@ -517,7 +528,7 @@ def create_views(ds: HowlerDatastore):
         view,
     )
 
-    fields = model_registry.flat_fields(ds.hit.model_class)
+    fields = model_registry.flat_fields(hit_model)
     key_list = [key for key, field in fields.items() if field.metadata and field.metadata.kind == "Keyword"]
     for _ in range(10):
         query = f"{choice(key_list)}:*{choice(VALID_CHARS)}* OR {choice(key_list)}:*{choice(VALID_CHARS)}*"
@@ -570,6 +581,7 @@ def create_events(ds: HowlerDatastore, event_count: int = 200):
 
 def create_hits(ds: HowlerDatastore, hit_count: int = 200):
     """Create some random records"""
+    hit_model = _registered_hit_model(ds)
     lookups = loader.get_lookups()
     users = ds.user.search("*:*")["items"]
     event_ids = [obs["howler"]["id"] for obs in ds.event.search("howler.id:*", rows=200, as_obj=False)["items"]]
@@ -582,7 +594,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
             prune_hit=False,
             hit_ids=created_hit_ids,
             event_ids=event_ids,
-            model=ds.hit.model_class,
+            model=hit_model,
         )
 
         # Ensure the first 20 hits have unrestricted classification for test access
@@ -697,6 +709,7 @@ def random_event_categories():
 
 def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
     """Create some random analytics"""
+    hit_model = _registered_hit_model(ds)
     users = [user.uname for user in ds.user.search("*:*")["items"]]
 
     for analytic in ds.analytic.search("*:*", fl="*")["items"]:
@@ -735,7 +748,7 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
 
         ds.analytic.save(analytic.analytic_id, analytic)
 
-    fields = model_registry.flat_fields(ds.hit.model_class)
+    fields = model_registry.flat_fields(hit_model)
     key_list = [key for key, field in fields.items() if field.metadata and field.metadata.kind == "Keyword"]
     assessments = Assessment.list()
     for _ in range(num_analytics):
@@ -821,7 +834,8 @@ def wipe_analytics(ds):
 
 def create_actions(ds: HowlerDatastore, num_actions: int = 30):
     """Create random actions"""
-    fields = model_registry.flat_fields(ds.hit.model_class)
+    hit_model = _registered_hit_model(ds)
+    fields = model_registry.flat_fields(hit_model)
     key_list = [key for key, field in fields.items() if field.metadata and field.metadata.kind == "Keyword"]
     users = ds.user.search("*:*")["items"]
 

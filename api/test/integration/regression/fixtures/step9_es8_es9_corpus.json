@@ -1,0 +1,82 @@
+{
+  "source_provenance": {
+    "path": "api/test/integration/regression/fixtures/step9_search_corpus.json",
+    "sha256": "9cb08b813f99ebbb5f9f339ed7bf70f9e16891df3d7df9420fa9967ba100f6dd",
+    "reference_test": "api/test/integration/regression/test_step9_fixed_corpus.py",
+    "reference_test_sha256": "8cb9af27ccb80bfe2eb628c934fa6ba112554ff8693e48483582c768eea591c7",
+    "base_commit": "3071fc4ea45d4b2dd44a7ee1646095426097d061",
+    "source_state": "Copied from uncommitted primary-worktree files on 2026-10-01; not present in base HEAD. All original corpus fields retained unchanged."
+  },
+  "target_version": "9.5.2",
+  "oracle_provenance": "Hand-authored from the eight documents and query semantics, not captured from search output. Equal-length message fields make phishing term-frequency ranking a > b > c = g. This is an ES9 acceptance oracle, not an observed ES8 relevance baseline.",
+  "documents": [
+    {"key": "a", "message": "phishing phishing phishing", "status": "open", "owner": "alice", "severity": 90, "tags": ["email", "urgent"], "observed": "2025-01-01T00:00:00Z"},
+    {"key": "b", "message": "phishing phishing login", "status": "open", "owner": "bob", "severity": 70, "tags": ["email"], "observed": "2025-01-01T12:00:00Z"},
+    {"key": "c", "message": "phishing login alert", "status": "closed", "owner": "alice", "severity": 70, "tags": ["endpoint", "urgent"], "observed": "2025-01-02T00:00:00Z"},
+    {"key": "d", "message": "malware network alert", "status": "open", "owner": "alice", "severity": 40, "tags": ["endpoint"], "observed": "2025-01-02T12:00:00Z"},
+    {"key": "e", "message": "routine login success", "status": "closed", "owner": "bob", "severity": 20, "tags": ["email"], "observed": "2025-01-03T00:00:00Z"},
+    {"key": "f", "message": "harmless network traffic", "status": "open", "owner": null, "severity": 0, "tags": [], "observed": "2025-01-03T12:00:00Z"},
+    {"key": "g", "message": "phishing login alert", "status": "open", "owner": "alice", "severity": 70, "tags": ["email", "urgent"], "observed": "2025-01-04T00:00:00Z"},
+    {"key": "h", "message": "malware login alert", "status": "closed", "owner": "charlie", "severity": 40, "tags": ["endpoint"], "observed": "2025-01-04T12:00:00Z"}
+  ],
+  "searches": [
+    {"name": "all-severity-with-ties", "query": "*:*", "sort": ["severity desc", "key asc"], "total": 8, "ids": ["a", "b", "c", "g", "d", "h", "e", "f"]},
+    {"name": "text-relevance-with-tie-break", "query": "message:phishing", "sort": ["_score desc", "key asc"], "total": 4, "ids": ["a", "b", "c", "g"]},
+    {"name": "default-copy-to-text", "query": "phishing", "sort": ["key asc"], "total": 4, "ids": ["a", "b", "c", "g"]},
+    {"name": "phrase-and-filter", "query": "message:\"phishing login\"", "filters": ["status:open"], "sort": ["key asc"], "total": 2, "ids": ["b", "g"]},
+    {"name": "conjunctive-filters-and-access", "query": "message:phishing", "filters": ["status:open", "severity:[70 TO 90]"], "access_control": "owner:alice", "sort": ["key asc"], "total": 2, "ids": ["a", "g"]},
+    {"name": "inclusive-range-boundaries", "query": "severity:[40 TO 70]", "sort": ["severity asc", "key desc"], "total": 5, "ids": ["h", "d", "g", "c", "b"]},
+    {"name": "exclusive-range-boundaries", "query": "severity:{40 TO 90}", "sort": ["key asc"], "total": 3, "ids": ["b", "c", "g"]},
+    {"name": "multivalue-intersection", "query": "tags:email AND tags:urgent", "sort": ["key desc"], "total": 2, "ids": ["g", "a"]},
+    {"name": "missing-owner", "query": "NOT _exists_:owner", "sort": ["key asc"], "total": 1, "ids": ["f"]},
+    {"name": "date-boundary", "query": "observed:[2025-01-02T00:00:00Z TO 2025-01-03T00:00:00Z]", "sort": ["observed desc", "key asc"], "total": 3, "ids": ["e", "d", "c"]},
+    {"name": "empty-intersection", "query": "message:malware", "filters": ["tags:email"], "sort": ["key asc"], "total": 0, "ids": []}
+  ],
+  "pagination": {
+    "query": "*:*", "sort": ["severity desc", "key asc"], "rows": 3, "total": 8,
+    "pages": [["a", "b", "c"], ["g", "d", "h"], ["e", "f"], []]
+  },
+  "aggregation_request": {
+    "statuses": {"terms": {"field": "status", "size": 10, "order": {"_key": "asc"}}},
+    "tags": {"terms": {"field": "tags", "size": 10, "order": {"_key": "asc"}}},
+    "severity": {"stats": {"field": "severity"}},
+    "missing_owner": {"missing": {"field": "owner"}},
+    "severity_buckets": {"histogram": {"field": "severity", "interval": 20, "min_doc_count": 0}},
+    "open_only": {"filter": {"term": {"status": "open"}}, "aggs": {"severity": {"stats": {"field": "severity"}}}}
+  },
+  "aggregations": [
+    {
+      "name": "all-documents", "query": "*:*", "total": 8,
+      "expected": {
+        "statuses": {"doc_count_error_upper_bound": 0, "sum_other_doc_count": 0, "buckets": [{"key": "closed", "doc_count": 3}, {"key": "open", "doc_count": 5}]},
+        "tags": {"doc_count_error_upper_bound": 0, "sum_other_doc_count": 0, "buckets": [{"key": "email", "doc_count": 4}, {"key": "endpoint", "doc_count": 3}, {"key": "urgent", "doc_count": 3}]},
+        "severity": {"count": 8, "min": 0.0, "max": 90.0, "avg": 50.0, "sum": 400.0},
+        "missing_owner": {"doc_count": 1},
+        "severity_buckets": {"buckets": [{"key": 0.0, "doc_count": 1}, {"key": 20.0, "doc_count": 1}, {"key": 40.0, "doc_count": 2}, {"key": 60.0, "doc_count": 3}, {"key": 80.0, "doc_count": 1}]},
+        "open_only": {"doc_count": 5, "severity": {"count": 5, "min": 0.0, "max": 90.0, "avg": 54.0, "sum": 270.0}}
+      }
+    },
+    {
+      "name": "filtered-documents", "query": "*:*", "filters": ["status:open"], "total": 5,
+      "expected": {
+        "statuses": {"doc_count_error_upper_bound": 0, "sum_other_doc_count": 0, "buckets": [{"key": "open", "doc_count": 5}]},
+        "tags": {"doc_count_error_upper_bound": 0, "sum_other_doc_count": 0, "buckets": [{"key": "email", "doc_count": 3}, {"key": "endpoint", "doc_count": 1}, {"key": "urgent", "doc_count": 2}]},
+        "severity": {"count": 5, "min": 0.0, "max": 90.0, "avg": 54.0, "sum": 270.0},
+        "missing_owner": {"doc_count": 1},
+        "severity_buckets": {"buckets": [{"key": 0.0, "doc_count": 1}, {"key": 20.0, "doc_count": 0}, {"key": 40.0, "doc_count": 1}, {"key": 60.0, "doc_count": 2}, {"key": 80.0, "doc_count": 1}]},
+        "open_only": {"doc_count": 5, "severity": {"count": 5, "min": 0.0, "max": 90.0, "avg": 54.0, "sum": 270.0}}
+      }
+    },
+    {
+      "name": "empty-documents", "query": "key:does-not-exist", "total": 0,
+      "expected": {
+        "statuses": {"doc_count_error_upper_bound": 0, "sum_other_doc_count": 0, "buckets": []},
+        "tags": {"doc_count_error_upper_bound": 0, "sum_other_doc_count": 0, "buckets": []},
+        "severity": {"count": 0, "min": null, "max": null, "avg": null, "sum": 0.0},
+        "missing_owner": {"doc_count": 0},
+        "severity_buckets": {"buckets": []},
+        "open_only": {"doc_count": 0, "severity": {"count": 0, "min": null, "max": null, "avg": null, "sum": 0.0}}
+      }
+    }
+  ]
+}

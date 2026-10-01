@@ -1,0 +1,39 @@
+{
+  "approved_differences": {
+    "rationale": "A standalone legacy Sentinel model has a catch-all refusal template. When attached to Hit, the extension inherits Hit document-level dynamic policy and must not add a second standalone fallback.",
+    "standalone_refusal_template": "refuse_all_implicit_mappings"
+  },
+  "elasticsearch": {
+    "dynamic_templates": [
+      {
+        "refuse_all_implicit_mappings": {
+          "mapping": {
+            "ignore_malformed": true,
+            "index": false
+          },
+          "match": "*"
+        }
+      }
+    ],
+    "properties": {
+      "id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      }
+    }
+  },
+  "flat_fields": [
+    "id"
+  ],
+  "flat_fields_with_compounds": [
+    "id"
+  ],
+  "provenance": {
+    "generator": "legacy Model.flat_fields and howler.odm.mapping.build_mapping executed from source at source_commit",
+    "source_commit": "3071fc4ea45d4b2dd44a7ee1646095426097d061",
+    "source_path": "plugins/sentinel/sentinel/odm/models/sentinel.py",
+    "source_sha256": "5d3dd7753f76ba8095e6f998f5d4f58e6731472baef6fa75804f00c1974a0487"
+  }
+}

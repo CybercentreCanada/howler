@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - "mcp/**"
-      - api/test/unit/config.yml
+      - "api/**"
       - client/test/config/classification.yml
       - .github/workflows/mcp-workflow.yml
       - .github/workflows/release-validation.yml
@@ -18,7 +18,7 @@ on:
       - main
     paths:
       - "mcp/**"
-      - api/test/unit/config.yml
+      - "api/**"
       - client/test/config/classification.yml
       - .github/workflows/mcp-workflow.yml
       - .github/workflows/release-validation.yml
@@ -90,6 +90,11 @@ jobs:
 
     needs: formatting
 
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+
     env:
       AUTH_CLIENT_ID: howler
       AUTH_CLIENT_SECRET: 09RhSF7tp0ShDdDMCszqI4zk8HMroTTZ
@@ -125,11 +130,16 @@ jobs:
       - name: Install Dependencies
         run: poetry install --verbose --with dev
 
+      - name: Set up chainctl with howler identity
+        uses: chainguard-dev/setup-chainctl@main
+        with:
+          identity: 42b9b0076fcee50f3ee6d013eadb93841a051303/7799abfc569cf293
+
       - name: Spin up full test dependencies
         id: compose-start
         working-directory: .
         run: >-
-          docker compose --profile full -f mcp/docker-compose.yml up -d
+          docker compose --profile full -f mcp/docker-compose.yml up -d --build
           howler-api elasticsearch redis keycloak
 
       - name: Seed Howler API test hits

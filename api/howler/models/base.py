@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import types
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import Annotated, Any, Literal, TypeVar, Union, cast, get_args, get_origin
 
@@ -198,9 +199,147 @@ def _expand_compound_list(value: dict[str, Any]) -> list[dict[str, Any]]:
 class HowlerModelValidationError(HowlerValueError):
     """Stable Howler error wrapping Pydantic's implementation-specific error."""
 
-    def __init__(self, error: ValidationError):
+    def __init__(self, error: ValidationError, model_type: type[BaseModel] | None = None):
         self.errors = error.errors(include_url=False)
-        super().__init__(str(error), cause=error)
+        root_name = model_type.__name__ if model_type is not None else error.title
+        messages: list[str] = []
+        for item in self.errors:
+            try:
+                location = _public_error_location(model_type, root_name, item.get("loc", ()))
+            except Exception:
+                location = root_name.lower()
+            try:
+                detail = _public_error_message(item)
+            except Exception:
+                detail = "Invalid value"
+            messages.append(f"[{location}] {detail}")
+        message = "\n".join(messages)
+        super().__init__(message, cause=error)
+
+
+def _alias_paths(alias: Any) -> list[tuple[Any, ...]]:
+    """Return the location spellings accepted for a Pydantic field alias."""
+    if isinstance(alias, str):
+        return [(alias,)]
+
+    choices = getattr(alias, "choices", None)
+    if choices is not None:
+        return [path for choice in choices for path in _alias_paths(choice)]
+
+    path = getattr(alias, "path", None)
+    if isinstance(path, (tuple, list)) and path:
+        return [tuple(path)]
+
+    return []
+
+
+def _field_location_aliases(python_name: str, info: Any) -> list[tuple[Any, ...]]:
+    """Return the accepted validation and Python names for a model field."""
+    aliases: list[tuple[Any, ...]] = [(python_name,)]
+    for alias in (info.alias, info.validation_alias, info.serialization_alias):
+        for path in _alias_paths(alias):
+            if path not in aliases:
+                aliases.append(path)
+    return aliases
+
+
+def _public_error_location(
+    model_type: type[BaseModel] | None,
+    root_name: str,
+    location: tuple[Any, ...] | list[Any],
+) -> str:
+    """Translate Pydantic locations to stable Howler serialized field paths."""
+    components = [root_name.lower()]
+    current: Any = model_type
+    position = 0
+
+    while position < len(location):
+        token = location[position]
+        unwrapped = unwrap_annotation(current) if current is not None else None
+        origin = get_origin(unwrapped)
+        arguments = get_args(unwrapped)
+
+        if isinstance(unwrapped, type) and issubclass(unwrapped, BaseModel) and isinstance(token, str):
+            matching_field: tuple[str, Any, int] | None = None
+            for python_name, info in unwrapped.model_fields.items():
+                for alias_path in _field_location_aliases(python_name, info):
+                    path_end = position + len(alias_path)
+                    if tuple(location[position:path_end]) == alias_path:
+                        matching_field = (python_name, info, len(alias_path))
+                        break
+                if matching_field is not None:
+                    break
+
+            if matching_field is not None:
+                python_name, info, consumed = matching_field
+                serialized_name = info.serialization_alias or info.alias or python_name.rstrip("_")
+                components.append(str(serialized_name))
+                current = info.annotation
+                position += consumed
+                continue
+
+        if origin is list and isinstance(token, int) and arguments:
+            components.append(str(token))
+            current = arguments[0]
+            position += 1
+            continue
+
+        if origin is dict and len(arguments) == 2:
+            components.append(str(token))
+            current = arguments[1]
+            position += 1
+            continue
+
+        components.append(str(token))
+        position += 1
+
+    return ".".join(components)
+
+
+def _public_error_message(error: Mapping[str, Any]) -> str:
+    """Return an input-free, stable explanation selected by Pydantic's error type."""
+    error_type = error.get("type")
+    if not isinstance(error_type, str):
+        return "Invalid value"
+
+    if error_type == "value_error":
+        message = error.get("msg")
+        static_domain_messages = {
+            "Rule timeframe must be a positive integer or None",
+            "Rule cannot expire after resolved when no timeframe is set",
+            "Case items must be root-level (parent must be null)",
+        }
+        for safe_message in static_domain_messages:
+            if message == f"Value error, {safe_message}":
+                return safe_message
+        if message == "Value error, Empty strings are not allowed without defaults":
+            return "Empty strings are not allowed without defaults"
+        if isinstance(message, str) and message.startswith(
+            "Value error, If no explanation provided, you must provide the following values: "
+        ):
+            return "An explanation or complete change details are required"
+        return "Invalid value"
+
+    messages: dict[str, str] = {
+        "missing": "Field required",
+        "extra_forbidden": "Extra inputs are not permitted",
+        "int_type": "Input should be a valid integer",
+        "int_parsing": "Input should be a valid integer",
+        "int_from_float": "Input should be a valid integer",
+        "float_type": "Input should be a valid number",
+        "float_parsing": "Input should be a valid number",
+        "finite_number": "Input should be a finite number",
+        "string_type": "Input should be a valid string",
+        "bool_type": "Input should be a valid boolean",
+        "bool_parsing": "Input should be a valid boolean",
+        "list_type": "Input should be a valid list",
+        "tuple_type": "Input should be a valid tuple",
+        "dict_type": "Input should be a valid dictionary",
+        "set_type": "Input should be a valid set",
+        "model_type": "Input should be a valid object",
+        "model_attributes_type": "Input should be a valid object",
+    }
+    return messages.get(error_type, "Invalid value")
 
 
 class HowlerModelMixin:
@@ -245,7 +384,7 @@ class HowlerModelMixin:
         try:
             return cast(Self, model_type.model_validate(data))
         except ValidationError as error:
-            raise HowlerModelValidationError(error) from error
+            raise HowlerModelValidationError(error, model_type) from error
 
     def as_primitives(
         self,
@@ -403,7 +542,7 @@ def construct_partial(
     try:
         values = _partial_values(model_type, nested, ignore_unknown=ignore_unknown)
     except ValidationError as error:
-        raise HowlerModelValidationError(error) from error
+        raise HowlerModelValidationError(error, model_type) from error
 
     if "meta" in model_type.model_fields:
         meta_info = model_type.model_fields["meta"]
@@ -640,7 +779,7 @@ class HowlerDocumentAdapter:
                 }
             )
         except ValidationError as error:
-            raise HowlerModelValidationError(error) from error
+            raise HowlerModelValidationError(error, model_type) from error
 
 
 document_adapter = HowlerDocumentAdapter()

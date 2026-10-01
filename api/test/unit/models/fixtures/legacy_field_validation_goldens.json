@@ -1,0 +1,499 @@
+{
+  "capture": {
+    "command": "One-off api/.venv/bin/python capture: run each original test_fields.py legacy_field.check(input), serialize normalized accepted values/errors, and freeze the output before deleting the implementation.",
+    "source": "Legacy ODM inputs and validation outcomes before api/howler/odm removal.",
+    "source_head": "3071fc4ea45d4b2dd44a7ee1646095426097d061"
+  },
+  "default_cases": {
+    "ClassificationString": {
+      "expected": {
+        "accepted": true,
+        "normalized": "UNRESTRICTED"
+      },
+      "input": ""
+    },
+    "Enum": {
+      "expected": {
+        "accepted": true,
+        "normalized": "one"
+      },
+      "input": null
+    },
+    "Float": {
+      "expected": {
+        "accepted": true,
+        "normalized": 1.5
+      },
+      "input": 0
+    },
+    "Integer": {
+      "expected": {
+        "accepted": true,
+        "normalized": 7
+      },
+      "input": ""
+    },
+    "Keyword": {
+      "expected": {
+        "accepted": true,
+        "normalized": "fallback"
+      },
+      "input": ""
+    },
+    "Text": {
+      "expected": {
+        "accepted": true,
+        "normalized": "fallback"
+      },
+      "input": null
+    }
+  },
+  "fixture_version": 1,
+  "nullable_cases": {
+    "Date": {
+      "expected": {
+        "accepted": true,
+        "normalized": null
+      },
+      "input": null
+    },
+    "Domain": {
+      "expected": {
+        "accepted": true,
+        "normalized": null
+      },
+      "input": ""
+    },
+    "Email": {
+      "expected": {
+        "accepted": true,
+        "normalized": null
+      },
+      "input": ""
+    },
+    "IP": {
+      "expected": {
+        "accepted": true,
+        "normalized": null
+      },
+      "input": null
+    },
+    "URI": {
+      "expected": {
+        "accepted": true,
+        "normalized": null
+      },
+      "input": ""
+    }
+  },
+  "primitive_cases": {
+    "Any": {
+      "invalid": {
+        "accepted": true,
+        "normalized": null
+      },
+      "invalid_input": null,
+      "valid": {
+        "accepted": true,
+        "normalized": {
+          "anything": "<object>"
+        }
+      },
+      "valid_input": {
+        "anything": {
+          "$object": true
+        }
+      }
+    },
+    "Boolean": {
+      "invalid": {
+        "accepted": true,
+        "normalized": false
+      },
+      "invalid_input": null,
+      "valid": {
+        "accepted": true,
+        "normalized": true
+      },
+      "valid_input": "value"
+    },
+    "CaseInsensitiveKeyword": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": {
+        "$bytes": "bytes"
+      },
+      "valid": {
+        "accepted": true,
+        "normalized": "MiXeD"
+      },
+      "valid_input": "MiXeD"
+    },
+    "Classification": {
+      "invalid": {
+        "accepted": false,
+        "error": "InvalidClassification"
+      },
+      "invalid_input": "D//BOB//REL TO SOUP",
+      "valid": {
+        "accepted": true,
+        "normalized": "UNRESTRICTED//ANY"
+      },
+      "valid_input": "U//REL TO D1"
+    },
+    "ClassificationString": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": "D//BOB//REL TO SOUP",
+      "valid": {
+        "accepted": true,
+        "normalized": "UNRESTRICTED"
+      },
+      "valid_input": "UNRESTRICTED"
+    },
+    "Date": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": "not-a-date",
+      "valid": {
+        "accepted": true,
+        "normalized": "2024-01-02T03:04:05+00:00"
+      },
+      "valid_input": "2024-01-02T03:04:05.000000Z"
+    },
+    "Domain": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": "invalid!domain",
+      "valid": {
+        "accepted": true,
+        "normalized": "example.com"
+      },
+      "valid_input": "EXAMPLE.com"
+    },
+    "Email": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": "not-an-email",
+      "valid": {
+        "accepted": true,
+        "normalized": "example@example.com"
+      },
+      "valid_input": "Example@example.com"
+    },
+    "EmptyableKeyword": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": {
+        "$bytes": "bytes"
+      },
+      "valid": {
+        "accepted": true,
+        "normalized": ""
+      },
+      "valid_input": ""
+    },
+    "Enum": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": "three",
+      "valid": {
+        "accepted": true,
+        "normalized": "one"
+      },
+      "valid_input": "one"
+    },
+    "Float": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": "not-a-float",
+      "valid": {
+        "accepted": true,
+        "normalized": 1.5
+      },
+      "valid_input": "1.5"
+    },
+    "HowlerHash": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": "G",
+      "valid": {
+        "accepted": true,
+        "normalized": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "valid_input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "IP": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": "999.0.0.1",
+      "valid": {
+        "accepted": true,
+        "normalized": "127.0.0.1"
+      },
+      "valid_input": "127.0.0.1"
+    },
+    "IndexText": {
+      "invalid": {
+        "accepted": true,
+        "normalized": "None"
+      },
+      "invalid_input": null,
+      "valid": {
+        "accepted": true,
+        "normalized": "123"
+      },
+      "valid_input": 123
+    },
+    "Integer": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": 4,
+      "valid": {
+        "accepted": true,
+        "normalized": 2
+      },
+      "valid_input": "2"
+    },
+    "Json": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": {
+        "$set": [
+          1,
+          2
+        ]
+      },
+      "valid": {
+        "accepted": true,
+        "normalized": "{\"key\": \"value\"}"
+      },
+      "valid_input": {
+        "key": "value"
+      }
+    },
+    "Keyword": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": {
+        "$bytes": "bytes"
+      },
+      "valid": {
+        "accepted": true,
+        "normalized": "123"
+      },
+      "valid_input": 123
+    },
+    "Long": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": 4,
+      "valid": {
+        "accepted": true,
+        "normalized": 2
+      },
+      "valid_input": "2"
+    },
+    "LowerKeyword": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": {
+        "$bytes": "bytes"
+      },
+      "valid": {
+        "accepted": true,
+        "normalized": "mixed"
+      },
+      "valid_input": "MiXeD"
+    },
+    "MAC": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": "not-a-mac",
+      "valid": {
+        "accepted": true,
+        "normalized": "aa:bb:cc:dd:ee:ff"
+      },
+      "valid_input": "aa:bb:cc:dd:ee:ff"
+    },
+    "MD5": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "valid": {
+        "accepted": true,
+        "normalized": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "valid_input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "PhoneNumber": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": "not-a-phone",
+      "valid": {
+        "accepted": true,
+        "normalized": "613-555-0123"
+      },
+      "valid_input": "613-555-0123"
+    },
+    "Platform": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": "BSD",
+      "valid": {
+        "accepted": true,
+        "normalized": "Linux"
+      },
+      "valid_input": "Linux"
+    },
+    "Processor": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": "arm64",
+      "valid": {
+        "accepted": true,
+        "normalized": "x64"
+      },
+      "valid_input": "x64"
+    },
+    "SHA1": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "valid": {
+        "accepted": true,
+        "normalized": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "valid_input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "SHA256": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "valid": {
+        "accepted": true,
+        "normalized": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "valid_input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "SSDeepHash": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": "invalid",
+      "valid": {
+        "accepted": true,
+        "normalized": "3:abc:def"
+      },
+      "valid_input": "3:abc:def"
+    },
+    "Text": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": "",
+      "valid": {
+        "accepted": true,
+        "normalized": "some text"
+      },
+      "valid_input": "some text"
+    },
+    "URI": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": "not a uri",
+      "valid": {
+        "accepted": true,
+        "normalized": "https://example.com/path"
+      },
+      "valid_input": "HTTPS://Example.com/path"
+    },
+    "URIPath": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": "path",
+      "valid": {
+        "accepted": true,
+        "normalized": "/path?q=1"
+      },
+      "valid_input": "/path?q=1"
+    },
+    "UpperKeyword": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": {
+        "$bytes": "bytes"
+      },
+      "valid": {
+        "accepted": true,
+        "normalized": "MIXED"
+      },
+      "valid_input": "MiXeD"
+    },
+    "ValidatedKeyword": {
+      "invalid": {
+        "accepted": false,
+        "error": "HowlerValueError"
+      },
+      "invalid_input": "INVALID",
+      "valid": {
+        "accepted": true,
+        "normalized": "valid"
+      },
+      "valid_input": "valid"
+    }
+  },
+  "source": "Legacy ODM acceptance and normalization outcomes frozen before package deletion"
+}

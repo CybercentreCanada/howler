@@ -34,13 +34,12 @@ def test_config_models_cold_import_does_not_load_legacy_odm():
     )
 
 
-def test_legacy_config_import_reexports_application_singleton():
+def test_application_config_is_the_config_models_singleton():
     from howler.config_models import Config as ApplicationConfig
     from howler.config_models import config as application_config
-    from howler.odm.models.config import config as legacy_config
 
     assert Config is ApplicationConfig
-    assert legacy_config is application_config
+    assert isinstance(application_config, ApplicationConfig)
 
 
 def test_builtin_config_mapping():

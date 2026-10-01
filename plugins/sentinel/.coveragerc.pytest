@@ -7,7 +7,6 @@ omit =
     howler/patched.py
     howler/external/*
     howler/helper/ws.py
-    howler/odm/models/*
     howler/sample_data/random_data.py
 
 [report]
