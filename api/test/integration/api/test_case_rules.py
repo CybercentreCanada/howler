@@ -211,3 +211,40 @@ class TestUpdateRule:
         )
 
         assert resp.status_code == 404
+
+
+class TestRuleBackfill:
+    """Integration tests for rule backfill preview and submission."""
+
+    def test_backfill_count_requires_valid_since(self, test_case):
+        case_id, session, host = test_case
+        add_resp = get_api_data(
+            session,
+            f"{host}/api/v2/case/{case_id}/rules",
+            method="POST",
+            data=json.dumps({"query": "*:*", "destination": "alerts/all"}),
+        )
+        rule_id = add_resp["rules"][0]["rule_id"]
+
+        response = get_api_data(
+            session,
+            f"{host}/api/v2/case/{case_id}/rules/{rule_id}/backfill/count",
+            method="POST",
+            data=json.dumps({"since": "not-a-date"}),
+            raw=True,
+        )
+
+        assert response.status_code == 400
+
+    def test_backfill_count_unknown_rule_returns_404(self, test_case):
+        case_id, session, host = test_case
+
+        response = get_api_data(
+            session,
+            f"{host}/api/v2/case/{case_id}/rules/nonexistent/backfill/count",
+            method="POST",
+            data=json.dumps({"since": "2026-01-01T00:00:00Z"}),
+            raw=True,
+        )
+
+        assert response.status_code == 404
