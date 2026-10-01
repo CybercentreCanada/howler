@@ -358,7 +358,8 @@ class TestILMVersionedOperations:
         col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
         concrete_index = f"{col.name}-000001"
 
-        assert col.delete("document-id", version=f"{concrete_index}---5---2") is False
+        deleted = col.delete("document-id", version=f"{concrete_index}---5---2")
+        assert deleted is False
 
         delete_kwargs = mock_datastore.client.delete.call_args.kwargs
         assert delete_kwargs["index"] == concrete_index
