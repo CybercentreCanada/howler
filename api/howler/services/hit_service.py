@@ -361,31 +361,37 @@ def exists(id: str) -> bool:
 
 
 @overload
-def get_hit(id: str, as_odm: Literal[True], version: Literal[True], user: User | None = None) -> tuple[Hit, str]: ...
+def get_hit(
+    id: str, as_odm: Literal[True], version: Literal[True], user: User | None = None
+) -> tuple[Hit, str]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_hit(id: str, as_odm: Literal[True], version: Literal[False]) -> Hit: ...
+def get_hit(id: str, as_odm: Literal[True], version: Literal[False]) -> Hit: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_hit(id: str, as_odm: Literal[True]) -> Hit: ...
+def get_hit(id: str, as_odm: Literal[True]) -> Hit: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_hit(id: str) -> Hit: ...
+def get_hit(id: str) -> Hit: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_hit(id: str, as_odm: Literal[False], version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+def get_hit(
+    id: str, as_odm: Literal[False], version: Literal[True]
+) -> tuple[dict[str, Any], str]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_hit(id: str, as_odm: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+def get_hit(
+    id: str, as_odm: Literal[False], version: Literal[False]
+) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_hit(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
+def get_hit(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
 
 
 @tracer.start_as_current_span(f"{__name__}.get_hit")
@@ -812,7 +818,7 @@ def search(
     deep_paging_id: str | None = None,
     track_total_hits: bool = False,
     filters: list[str] | None = None,
-) -> SearchResult[Hit]: ...
+) -> SearchResult[Hit]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
@@ -827,7 +833,7 @@ def search(
     deep_paging_id: str | None = None,
     track_total_hits: bool = False,
     filters: list[str] | None = None,
-) -> SearchResult[dict[str, Any]]: ...
+) -> SearchResult[dict[str, Any]]: ...  # codeql[py/ineffectual-statement]
 
 
 @tracer.start_as_current_span(f"{__name__}.search")

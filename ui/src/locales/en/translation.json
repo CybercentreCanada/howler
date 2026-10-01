@@ -323,6 +323,7 @@
   "membership.message.error": "There was an error when updating permissions.",
   "membership.message.success": "Permissions updated.",
   "membership.message.warning": "No users selected.",
+  "membership.role": "Role",
   "membership.privilege.admins": "Administrator",
   "membership.privilege.manage": "Manage Privileges",
   "membership.privilege.members": "Member",

@@ -168,7 +168,7 @@ def test_personal_view_permission_levels_control_editing(datastore: HowlerDatast
             owner_session,
             f"{host}/api/v1/view/{view_id}/permission",
             method="PUT",
-            data=json.dumps({"privilege": "admins", "user_ids": [member_uname]}),
+            data=json.dumps([{"privilege": "admins", "user_id": member_uname}]),
         )
 
         admin_update = get_api_data(
@@ -183,13 +183,13 @@ def test_personal_view_permission_levels_control_editing(datastore: HowlerDatast
             owner_session,
             f"{host}/api/v1/view/{view_id}/permission",
             method="DELETE",
-            data=json.dumps({"privilege": "admins", "user_ids": [member_uname]}),
+            data=json.dumps([{"privilege": "admins", "user_id": member_uname}]),
         )
         get_api_data(
             owner_session,
             f"{host}/api/v1/view/{view_id}/permission",
             method="PUT",
-            data=json.dumps({"privilege": "members", "user_ids": [member_uname]}),
+            data=json.dumps([{"privilege": "members", "user_id": member_uname}]),
         )
 
         with pytest.raises(APIError):
@@ -222,7 +222,7 @@ def test_visibility_change_allowed_for_shared_view(datastore: HowlerDatastore, u
             owner_session,
             f"{host}/api/v1/view/{view_id}/permission",
             method="PUT",
-            data=json.dumps({"privilege": "members", "user_ids": [member_uname]}),
+            data=json.dumps([{"privilege": "members", "user_id": member_uname}]),
         )
 
         updated_view = get_api_data(
@@ -309,12 +309,7 @@ def test_give_remove_membership(
             member_session,
             f"{host}/api/v1/view/{create_res['view_id']}/permission",
             method="PUT",
-            data=json.dumps(
-                {
-                    "privilege": "members",
-                    "user_ids": [member_uname],
-                }
-            ),
+            data=json.dumps([{"privilege": "members", "user_id": member_uname}]),
         )
 
     assert "403" in str(err.value)
@@ -325,12 +320,7 @@ def test_give_remove_membership(
             owner_session,
             f"{host}/api/v1/view/{create_res['view_id']}/permission",
             method="PUT",
-            data=json.dumps(
-                {
-                    "privilege": privilege,
-                    "user_ids": [member_uname],
-                }
-            ),
+            data=json.dumps([{"privilege": privilege, "user_id": member_uname}]),
         )
         assert member_uname in updated_view[privilege]
 
@@ -338,12 +328,7 @@ def test_give_remove_membership(
             owner_session,
             f"{host}/api/v1/view/{create_res['view_id']}/permission",
             method="DELETE",
-            data=json.dumps(
-                {
-                    "privilege": privilege,
-                    "user_ids": [member_uname],
-                }
-            ),
+            data=json.dumps([{"privilege": privilege, "user_id": member_uname}]),
         )
         assert member_uname not in updated_view[privilege]
 

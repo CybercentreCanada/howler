@@ -1,7 +1,8 @@
 // eslint-disable-next-line import/no-cycle
 import { hdelete, hput, joinAllUri } from 'api';
 
-export type PermissionData = { privilege: string; user_ids: string[] };
+export type PermissionEntry = { privilege: string; user_id: string };
+export type PermissionData = PermissionEntry[];
 
 type ParentUri = (id: string) => string;
 

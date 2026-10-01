@@ -1,10 +1,11 @@
 import { Chip, type ChipProps } from '@mui/material';
 import type { Hit } from 'models/entities/generated/Hit';
 import howlerPluginStore from 'plugins/store';
-import type { FC, ReactNode } from 'react';
+import { createElement, type FC, type ReactNode } from 'react';
 import { usePluginStore } from 'react-pluggable';
 
-export type PluginChipProps = ChipProps & {
+export type PluginChipProps = Omit<ChipProps, 'children'> & {
+  children?: ReactNode;
   value: string;
   context: string;
   field?: string;
@@ -29,7 +30,7 @@ const PluginChip: FC<PluginChipProps> = ({ children, value, context, field, hit,
     }
   }
 
-  return <Chip {...props}>{children}</Chip>;
+  return createElement(Chip, { ...props, children } as any);
 };
 
 export default PluginChip;

@@ -1,19 +1,20 @@
 import { Delete, PersonAdd } from '@mui/icons-material';
 import {
-  Box,
   Button,
   Dialog,
   DialogContent,
   DialogTitle,
   Divider,
+  FormControl,
   IconButton,
+  InputLabel,
   List,
   ListItem,
   ListItemText,
+  MenuItem,
+  Select,
   Stack,
   TextField,
-  ToggleButton,
-  ToggleButtonGroup,
   type ButtonProps
 } from '@mui/material';
 import { useAppUser } from '@tui/core';
@@ -54,7 +55,7 @@ export const MembershipManagement = <T extends Ownership>({
 
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [memberQuery, setMemberQuery] = useState('');
-  const [privilege, setPrivilege] = useState<MemberItem[1]>('members');
+  const [pendingMembers, setPendingMembers] = useState<{ user_id: string; privilege: MemberItem[1] }[]>([]);
   const [open, setOpen] = useState(false);
 
   const canManageMembership =
@@ -63,40 +64,42 @@ export const MembershipManagement = <T extends Ownership>({
     (entity.owner === user.username || entity.admins?.includes(user.username) || !!user.roles?.includes('admin'));
 
   const members = getAllMembers(entity);
-  const users = useMyUserList(members.map(([member]) => member));
+  const users = useMyUserList([...members.map(([member]) => member), ...pendingMembers.map(({ user_id }) => user_id)]);
+
+  const handleQueueMember = useCallback(([user_id]: string[]) => {
+    if (!user_id) {
+      return;
+    }
+
+    setPendingMembers(current => [...current, { user_id, privilege: 'members' }]);
+    setSelectedUserIds([]);
+  }, []);
 
   const handleAddMember = useCallback(async () => {
-    if (selectedUserIds.length === 0) {
+    if (pendingMembers.length === 0) {
       showWarningMessage(t('membership.message.warning'));
       return;
     }
 
     try {
-      const updatedEntity = (await dispatchApi(
-        api[type].permission.put(params.id!, {
-          privilege,
-          user_ids: selectedUserIds
-        })
-      )) as T | undefined;
+      const updatedEntity = (await dispatchApi(api[type].permission.put(params.id!, pendingMembers))) as T | undefined;
 
       if (!updatedEntity) {
         throw new Error('Updated Entity was not returned.');
       }
 
-      showSuccessMessage(t('membership.message.success'));
-
       onChange(updatedEntity);
 
-      setSelectedUserIds([]);
-      setMemberQuery('');
+      showSuccessMessage(t('membership.message.success'));
+
+      setPendingMembers([]);
     } catch {
       showErrorMessage(t('membership.message.error'));
     }
   }, [
     dispatchApi,
     params.id,
-    selectedUserIds,
-    privilege,
+    pendingMembers,
     t,
     showSuccessMessage,
     showErrorMessage,
@@ -110,10 +113,7 @@ export const MembershipManagement = <T extends Ownership>({
     async (user_id: string, targetPrivilege: string) => {
       try {
         const updatedEntity = (await dispatchApi(
-          api[type].permission.delete(params.id!, {
-            privilege: targetPrivilege,
-            user_ids: [user_id]
-          }),
+          api[type].permission.delete(params.id!, [{ privilege: targetPrivilege, user_id }]),
           {
             throwError: false
           }
@@ -136,9 +136,8 @@ export const MembershipManagement = <T extends Ownership>({
   useEffect(() => {
     if (open) {
       // Reset modal state each time it opens to avoid leaking stale UI state.
-      setSelectedUserIds([]);
       setMemberQuery('');
-      setPrivilege('members');
+      setPendingMembers([]);
     }
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -190,7 +189,9 @@ export const MembershipManagement = <T extends Ownership>({
       </CustomButton>
       <Dialog open={open} onClose={() => setOpen(false)} slotProps={{ paper: { sx: { maxWidth: '50vw' } } }}>
         <DialogTitle>{t('membership.manage')}</DialogTitle>
-        <DialogContent sx={{ minHeight: '300px', maxWidth: '80vw', display: 'flex', flexDirection: 'column' }}>
+        <DialogContent
+          sx={{ minHeight: '300px', minWidth: '840px', maxWidth: '80vw', display: 'flex', flexDirection: 'column' }}
+        >
           <Stack
             direction="row"
             divider={<Divider orientation="vertical" flexItem />}
@@ -199,7 +200,7 @@ export const MembershipManagement = <T extends Ownership>({
             alignItems="stretch"
             pt={0.5}
           >
-            <Stack spacing={1}>
+            <Stack spacing={1} flex={1}>
               <TextField
                 fullWidth
                 size="small"
@@ -232,43 +233,87 @@ export const MembershipManagement = <T extends Ownership>({
                 ))}
               </List>
             </Stack>
-            <Stack spacing={1}>
-              <ToggleButtonGroup
-                exclusive
-                value={privilege}
-                onChange={(_e, _privilege: MemberItem[1]) => setPrivilege(_privilege)}
-              >
-                {availablePrivileges.map(k => (
-                  <ToggleButton key={k} value={k}>
-                    {getPrivilegeLabel(k)}
-                  </ToggleButton>
-                ))}
-              </ToggleButtonGroup>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <UserList
-                  variant="list"
-                  multiple
-                  i18nLabel={t('page.login.username')}
-                  userIds={selectedUserIds}
-                  onChange={setSelectedUserIds}
-                  except={members
-                    .filter(([_, _privilege]) => _privilege === 'owner' || privilege === _privilege)
-                    .map(([member]) => member)}
-                />
-              </Box>
+            <Stack spacing={1} flex={1}>
+              <UserList
+                variant="list"
+                i18nLabel={t('page.login.username')}
+                userIds={selectedUserIds}
+                onChange={handleQueueMember}
+                except={[...members.map(([member]) => member), ...pendingMembers.map(({ user_id }) => user_id)]}
+                disabled={!params.id}
+                showEmptyInput
+              />
+              <List>
+                {pendingMembers.map(({ user_id, privilege }) => {
+                  const roleLabelId = `pending-member-role-${user_id}`;
+                  const hasPendingOwner = pendingMembers.some(
+                    member => member.user_id !== user_id && member.privilege === 'owner'
+                  );
+
+                  return (
+                    <ListItem
+                      key={user_id}
+                      disableGutters
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: 'minmax(0, 1fr) auto',
+                        gridTemplateRows: 'auto auto',
+                        columnGap: 1,
+                        rowGap: 1
+                      }}
+                    >
+                      <Stack direction="row" sx={{ gridColumn: 1, gridRow: 1 }}>
+                        <HowlerAvatar userId={user_id || 'Unknown'} />
+                        <ListItemText
+                          primary={users[user_id]?.name || user_id}
+                          secondary={users[user_id]?.email}
+                          sx={{ mx: 1 }}
+                        />
+                      </Stack>
+                      <FormControl size="small" sx={{ minWidth: 150, gridColumn: 1, gridRow: 2 }}>
+                        <InputLabel id={roleLabelId}>{t('membership.role')}</InputLabel>
+                        <Select
+                          labelId={roleLabelId}
+                          label={t('membership.role')}
+                          value={privilege}
+                          onChange={event =>
+                            setPendingMembers(current =>
+                              current.map(member =>
+                                member.user_id === user_id
+                                  ? { ...member, privilege: event.target.value as MemberItem[1] }
+                                  : member
+                              )
+                            )
+                          }
+                        >
+                          {availablePrivileges.map(option => (
+                            <MenuItem key={option} value={option} disabled={option === 'owner' && hasPendingOwner}>
+                              {getPrivilegeLabel(option)}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <IconButton
+                        aria-label={t('button.delete')}
+                        sx={{ gridColumn: 2, gridRow: 1 }}
+                        onClick={() =>
+                          setPendingMembers(current => current.filter(member => member.user_id !== user_id))
+                        }
+                      >
+                        <Delete color="error" />
+                      </IconButton>
+                    </ListItem>
+                  );
+                })}
+              </List>
               <Button
                 onClick={handleAddMember}
                 sx={{ mt: 3 }}
                 variant="contained"
                 fullWidth
-                disabled={
-                  !params.id ||
-                  selectedUserIds.length === 0 ||
-                  !privilege ||
-                  (privilege === 'owner' && selectedUserIds.length > 1)
-                }
+                disabled={!params.id || pendingMembers.length === 0}
               >
-                {t('add')}
+                {t('button.save')}
               </Button>
             </Stack>
           </Stack>

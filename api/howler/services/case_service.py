@@ -39,35 +39,43 @@ CREATED_CASES = Counter(f"{APP_NAME.replace('-', '_')}_created_cases_total", "Th
 @overload
 def get_case(
     id: str, as_odm: Literal[True], version: Literal[True], user: User | None = None
-) -> tuple[Case | None, str]: ...
+) -> tuple[Case | None, str]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_case(id: str, as_odm: Literal[True], version: Literal[False]) -> Case | None: ...
+def get_case(
+    id: str, as_odm: Literal[True], version: Literal[False]
+) -> Case | None: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_case(id: str, as_odm: Literal[True], version: Literal[False], user: User | None = None) -> Case | None: ...
+def get_case(
+    id: str, as_odm: Literal[True], version: Literal[False], user: User | None = None
+) -> Case | None: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_case(id: str, as_odm: Literal[True]) -> Case | None: ...
+def get_case(id: str, as_odm: Literal[True]) -> Case | None: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_case(id: str) -> Case | None: ...
+def get_case(id: str) -> Case | None: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_case(id: str, as_odm: Literal[False], version: Literal[True]) -> tuple[dict[str, Any] | None, str]: ...
+def get_case(
+    id: str, as_odm: Literal[False], version: Literal[True]
+) -> tuple[dict[str, Any] | None, str]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_case(id: str, as_odm: Literal[False], version: Literal[False]) -> dict[str, Any] | None: ...
+def get_case(
+    id: str, as_odm: Literal[False], version: Literal[False]
+) -> dict[str, Any] | None: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_case(id: str, as_odm: Literal[False]) -> dict[str, Any] | None: ...
+def get_case(id: str, as_odm: Literal[False]) -> dict[str, Any] | None: ...  # codeql[py/ineffectual-statement]
 
 
 def get_case(id: str, as_odm=False, version=False, user: User | None = None):
@@ -497,7 +505,7 @@ def append_case_item(
     item_name: str | None = None,
     *,
     user: User | None = None,
-) -> Case: ...
+) -> Case: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
@@ -510,7 +518,7 @@ def append_case_item(
     item_name: str | None = ...,
     *,
     user: User | None = None,
-) -> Case: ...
+) -> Case: ...  # codeql[py/ineffectual-statement]
 
 
 def append_case_item(  # noqa: C901

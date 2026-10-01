@@ -1,9 +1,8 @@
 import { CheckCircleOutline, HourglassBottom, RadioButtonUnchecked, UpdateOutlined } from '@mui/icons-material';
-import { Chip, Divider, Grid, Skeleton, Stack, Tooltip, Typography, useTheme, type CardProps } from '@mui/material';
+import { Chip, Divider, Skeleton, Stack, Tooltip, Typography, useTheme, type CardProps } from '@mui/material';
 import api from 'api';
 import StatusIcon from 'components/elements/case/StatusIcon';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
-import PluginChip from 'components/elements/PluginChip';
 import useMyApi from 'components/hooks/useMyApi';
 import dayjs from 'dayjs';
 import { countBy } from 'lodash-es';
@@ -23,9 +22,9 @@ const CaseCard: FC<{
   className?: string;
   slotProps?: { card?: CardProps };
 }> = ({ case: providedCase, caseId, className, slotProps }) => {
-  const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
   const theme = useTheme();
+  const { t } = useTranslation();
 
   const [_case, setCase] = useState(providedCase);
 
@@ -56,7 +55,11 @@ const CaseCard: FC<{
       key={_case.case_id}
       {...slotProps?.card}
       sx={[
-        { p: 1, mb: 1, borderColor: statusColor ? theme.palette[statusColor].main : undefined },
+        {
+          p: 1,
+          mb: 1,
+          borderColor: statusColor ? theme.palette[statusColor].main : undefined
+        },
         ...(Array.isArray(slotProps?.card?.sx) ? slotProps.card.sx : slotProps?.card?.sx ? [slotProps.card.sx] : [])
       ]}
       className={className}
@@ -98,57 +101,6 @@ const CaseCard: FC<{
               </Stack>
             </>
           )}
-          <Divider flexItem />
-          <Grid
-            container
-            spacing={0.5}
-            sx={{ ml: `${theme.spacing(-0.5)} !important`, mt: `${theme.spacing(0.5)} !important` }}
-          >
-            {_case.targets?.map(indicator => (
-              <Grid key={indicator}>
-                <PluginChip
-                  size="small"
-                  color="primary"
-                  context="casecard"
-                  variant="outlined"
-                  value={indicator}
-                  label={indicator}
-                />
-              </Grid>
-            ))}
-
-            {(_case.targets?.length ?? 0) > 0 &&
-              ((_case.indicators?.length ?? 0) > 0 || (_case.threats?.length ?? 0) > 0) && (
-                <Grid>
-                  <Divider orientation="vertical" />
-                </Grid>
-              )}
-
-            {_case.indicators?.map(indicator => (
-              <Grid key={indicator}>
-                <PluginChip variant="outlined" context="casecard" value={indicator} label={indicator} />
-              </Grid>
-            ))}
-
-            {(_case.indicators?.length ?? 0) > 0 && (_case.threats?.length ?? 0) > 0 && (
-              <Grid>
-                <Divider orientation="vertical" />
-              </Grid>
-            )}
-
-            {_case.threats?.map(indicator => (
-              <Grid key={indicator}>
-                <PluginChip
-                  size="small"
-                  color="warning"
-                  variant="outlined"
-                  context="casecard"
-                  value={indicator}
-                  label={indicator}
-                />
-              </Grid>
-            ))}
-          </Grid>
 
           {(_case.tasks?.length ?? 0) > 0 && (
             <>
