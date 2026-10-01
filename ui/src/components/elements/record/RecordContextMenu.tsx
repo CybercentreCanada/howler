@@ -280,12 +280,12 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
           icon: <RemoveCircleOutline />,
           label: t('hit.panel.exclude'),
           items: filterKeys.flatMap(key => {
-            let filter: string = '';
             const value = get(record, key);
             if (!value) {
               return [];
             }
 
+            let filter: string = '';
             if (Array.isArray(value) && value.length > 0) {
               const sanitizedValues = value
                 .map(toString)
@@ -320,30 +320,31 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
             const value = get(record, key);
             if (!value) {
               return [];
-            } else if (Array.isArray(value)) {
+            }
+
+            let filter: string = '';
+            if (Array.isArray(value) && value.length > 0) {
               const sanitizedValues = value
                 .map(toString)
                 .filter(val => !!val)
                 .map(val => `"${sanitizeLuceneQuery(val)}"`);
-              if (sanitizedValues.length < 1) {
-                return [];
-              }
-              return [
-                {
-                  key,
-                  label: key,
-                  onClick: () => addFilter(`${key}:(${sanitizedValues.join(' OR ')})`)
-                }
-              ];
-            } else {
-              return [
-                {
-                  key,
-                  label: key,
-                  onClick: () => addFilter(`${key}:"${sanitizeLuceneQuery(value.toString())}"`)
-                }
-              ];
+
+              filter = `${key}:(${sanitizedValues.join(' OR ')})`;
+            } else if (!Array.isArray(value)) {
+              filter = `${key}:"${sanitizeLuceneQuery(value.toString())}"`;
             }
+
+            if (!filter) {
+              return [];
+            }
+
+            return [
+              {
+                key,
+                label: key,
+                onClick: () => addFilter(filter)
+              }
+            ];
           })
         });
       }
