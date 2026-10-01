@@ -6,7 +6,7 @@ import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import ChipPopper from 'components/elements/display/ChipPopper';
 import useMyApi from 'components/hooks/useMyApi';
-import { uniq } from 'lodash-es';
+import { isNil, uniq } from 'lodash-es';
 import type { APILookups } from 'models/entities/generated/ApiType';
 import type { FC } from 'react';
 import { memo, useCallback, useContext, useEffect, useState } from 'react';
@@ -21,11 +21,15 @@ const ACCEPTED_LOOKUPS = [
   'howler.detection',
   'event.provider',
   'organization.name'
-];
+] as const;
+
+type AcceptedLookup = (typeof ACCEPTED_LOOKUPS)[number];
+
+type ApiAcceptedLookup = Extract<AcceptedLookup, keyof APILookups>;
 
 interface ParsedFilter {
   raw: string;
-  category: string | null;
+  category: AcceptedLookup | null;
   rawClause: string;
   values: string[];
   negated: boolean;
@@ -37,7 +41,7 @@ const parseFilter = (value: string): ParsedFilter => {
   const negated = value.startsWith('-');
   const positiveValue = negated ? value.slice(1) : value;
   const separator = positiveValue.indexOf(':');
-  const category = separator > 0 ? positiveValue.slice(0, separator) : null;
+  const category = separator > 0 ? (positiveValue.slice(0, separator) as AcceptedLookup) : null;
   const rawClause = category ? positiveValue.slice(separator + 1) : positiveValue;
   const parsed: ParsedFilter = {
     raw: value,
@@ -110,43 +114,48 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
     setPreviousValue(value);
     setParsedFilter(parseFilter(value));
   }
-  const { category, values: filterValues, editable, negated } = parsedFilter;
   const [customLookups, setCustomLookups] = useState<{ category: string | null; options: string[] }>({
     category: null,
     options: []
   });
-  const configuredLookup = category ? config.lookups?.[category as keyof APILookups] : undefined;
-  const needsLookups = Boolean(category && editable && !Array.isArray(configuredLookup));
+
+  const { category, values: filterValues, editable, negated } = parsedFilter;
+  const configuredLookup = category ? config.lookups?.[category as ApiAcceptedLookup] : undefined;
+  const needsLookups = !!category && editable && !Array.isArray(configuredLookup);
   const loading = needsLookups && customLookups.category !== category;
 
   useEffect(() => {
-    if (value) setSavedFilter(id, value);
+    if (value) {
+      setSavedFilter(id, value);
+    }
   }, [id, setSavedFilter, value]);
 
   useEffect(() => {
-    if (!category || !editable || Array.isArray(configuredLookup)) {
+    if (!category || !editable || !isNil(configuredLookup)) {
       return;
     }
 
     // Ignore responses from a previous field or an unmounted editor.
     let active = true;
-    const fetchLookups = async () => {
+    void (async () => {
       try {
         const facets = await dispatchApi(
           api.search.facet.hit.post({ query: `${category}:*`, fields: [category], rows: 100 }),
           { throwError: false }
         );
 
-        if (active) {
-          setCustomLookups({ category, options: Object.keys((facets ?? {})[category] ?? {}) });
+        if (!active) {
+          return;
         }
-      } catch {
-        // A failed suggestion request must not prevent free-text filter editing.
-        if (active) setCustomLookups({ category, options: [] });
-      }
-    };
 
-    void fetchLookups();
+        setCustomLookups({ category, options: Object.keys((facets ?? {})[category] ?? {}) });
+      } catch {
+        if (active) {
+          setCustomLookups({ category, options: [] });
+        }
+      }
+    })();
+
     return () => {
       active = false;
     };
@@ -169,9 +178,11 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
 
   const onValuesChange: UseAutocompleteProps<string, true, false, true>['onChange'] = useCallback(
     (_, newValues) => {
-      if (category) {
-        commitFilter(serializeFilter(category, newValues, negated));
+      if (!category) {
+        return;
       }
+
+      commitFilter(serializeFilter(category, newValues, negated));
     },
     [category, commitFilter, negated]
   );
@@ -180,17 +191,12 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
     (event: React.ChangeEvent<HTMLInputElement>, nextNegated: boolean) => {
       event.stopPropagation();
       // Toggle only the leading sign, including for opaque clauses the editor cannot parse.
-      const positiveValue = negated ? parsedFilter.raw.slice(1) : parsedFilter.raw;
-      commitFilter(`${nextNegated ? '-' : ''}${positiveValue}`);
+      commitFilter(parsedFilter.raw.replace(/^-?/, nextNegated ? '-' : ''));
     },
-    [commitFilter, negated, parsedFilter.raw]
+    [commitFilter, parsedFilter.raw]
   );
 
-  const lookupOptions = Array.isArray(configuredLookup)
-    ? configuredLookup
-    : customLookups.category === category
-      ? customLookups.options
-      : [];
+  const lookupOptions = configuredLookup ?? (customLookups.category === category ? customLookups.options : []);
   const chipLabel = `${parsedFilter.category ? `${parsedFilter.category}:` : ''}${parsedFilter.rawClause}`;
 
   return (
@@ -225,7 +231,7 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
             disableClearable
             disabled={!editable}
             size={size ?? 'small'}
-            value={category ?? ''}
+            value={category ?? ACCEPTED_LOOKUPS[0]}
             options={ACCEPTED_LOOKUPS}
             renderInput={_params => <TextField {..._params} label={t('hit.search.filter.fields')} />}
             onChange={onCategoryChange}

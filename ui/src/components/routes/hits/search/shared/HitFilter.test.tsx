@@ -225,6 +225,7 @@ describe('HitFilter', () => {
     await waitFor(() => expect(values).toHaveAttribute('data-loading', 'false'));
     expect(values).not.toBeDisabled();
     expect(values).toHaveAttribute('data-options', '[]');
+    expect(mockSetSavedFilter).toHaveBeenCalledWith(18, 'event.provider:*');
   });
 
   it('ignores stale lookup responses after switching to a configured field', async () => {
