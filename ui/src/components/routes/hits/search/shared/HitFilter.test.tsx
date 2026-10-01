@@ -163,15 +163,40 @@ describe('HitFilter', () => {
     await waitFor(() => expect(mockSetSavedFilter).toHaveBeenCalledWith(2, 'howler.assessment:*'));
   });
 
-  it('preserves duplicate literal spellings and quoted OR text', () => {
+  it('deduplicates decoded literals while preserving quoted OR text', () => {
     const clause = String.raw`event.provider:("a" OR "\a" OR "text OR more" OR "escaped\"quote")`;
     render(<HitFilter id={15} value={clause} />);
     fireEvent.click(screen.getByRole('button', { name: /event.provider:/ }));
     mockAutocompleteSelection.value = 'unchanged';
     fireEvent.click(screen.getAllByText('change-filter')[1]);
 
-    expect(mockSetSavedFilter).toHaveBeenLastCalledWith(15, clause);
+    expect(mockSetSavedFilter).toHaveBeenLastCalledWith(
+      15,
+      String.raw`event.provider:("a" OR "text OR more" OR "escaped\"quote")`
+    );
   });
+
+  it('collapses duplicate values to a canonical scalar while preserving negation', () => {
+    render(<HitFilter id={20} value={String.raw`-event.provider:("\a" OR "a" OR "a")`} />);
+    fireEvent.click(screen.getByRole('button', { name: /event.provider:/ }));
+    mockAutocompleteSelection.value = 'unchanged';
+    fireEvent.click(screen.getAllByText('change-filter')[1]);
+
+    expect(mockSetSavedFilter).toHaveBeenLastCalledWith(20, '-event.provider:"a"');
+  });
+
+  it.each(['plain', String.raw`"\plain"`, '"constructor"', '"__proto__"'])(
+    'canonically quotes a decoded scalar from %s',
+    literal => {
+      render(<HitFilter id={21} value={`event.provider:${literal}`} />);
+      fireEvent.click(screen.getByRole('button', { name: /event.provider:/ }));
+      mockAutocompleteSelection.value = 'unchanged';
+      fireEvent.click(screen.getAllByText('change-filter')[1]);
+
+      const expected = literal.includes('plain') ? 'plain' : literal.slice(1, -1);
+      expect(mockSetSavedFilter).toHaveBeenLastCalledWith(21, `event.provider:"${expected}"`);
+    }
+  );
 
   it('accepts whitespace-separated quoted OR values', () => {
     render(<HitFilter id={16} value={'event.provider:( "a"\tOR\n"b" )'} />);
@@ -335,13 +360,13 @@ describe('HitFilter', () => {
     expect(mockSetSavedFilter).toHaveBeenLastCalledWith(4, '-event.provider:("a" OR "changed two")');
   });
 
-  it('round-trips an untouched escaped backslash when editing a grouped filter', () => {
+  it('canonically escapes paths without losing literal backslashes when editing a grouped filter', () => {
     const clause = String.raw`-event.provider:("C:\\logs" OR "other")`;
     render(<HitFilter id={8} value={clause} />);
 
     fireEvent.click(screen.getByRole('button', { name: /event.provider:/ }));
     fireEvent.click(screen.getAllByText('change-filter')[1]);
 
-    expect(mockSetSavedFilter).toHaveBeenLastCalledWith(8, String.raw`-event.provider:("C:\\logs" OR "new\\path")`);
+    expect(mockSetSavedFilter).toHaveBeenLastCalledWith(8, String.raw`-event.provider:("C\:\\logs" OR "new\\path")`);
   });
 });

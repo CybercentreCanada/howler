@@ -6,12 +6,13 @@ import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import ChipPopper from 'components/elements/display/ChipPopper';
 import useMyApi from 'components/hooks/useMyApi';
+import { uniq } from 'lodash-es';
 import type { APILookups } from 'models/entities/generated/ApiType';
 import type { FC } from 'react';
 import { memo, useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
-import { sanitizeLuceneQuery } from 'utils/stringUtils';
+import { parseQuotedValues, sanitizeLuceneQuery } from 'utils/stringUtils';
 
 const ACCEPTED_LOOKUPS = [
   'howler.assessment',
@@ -27,38 +28,10 @@ interface ParsedFilter {
   category: string | null;
   rawClause: string;
   values: string[];
-  rawValues: string[];
   negated: boolean;
   editable: boolean;
   wildcard: boolean;
 }
-
-const unescapeLucene = (value: string) => value.replace(/\\(.)/gs, '$1');
-
-// Sticky matching consumes every character without repeatedly slicing the remaining clause.
-const parseQuotedValues = (value: string, grouped: boolean) => {
-  const parts: { value: string; raw: string }[] = [];
-  const quoted = /"((?:\\.|[^"\\])*)"/sy;
-  const separator = /\s+OR\s+/y;
-  let offset = 0;
-
-  while (offset < value.length) {
-    quoted.lastIndex = offset;
-    const match = quoted.exec(value);
-    if (!match) return null;
-
-    parts.push({ value: unescapeLucene(match[1] ?? ''), raw: match[0] });
-    offset = quoted.lastIndex;
-    if (offset === value.length) return parts;
-    if (!grouped) return null;
-
-    separator.lastIndex = offset;
-    if (!separator.exec(value)) return null;
-    offset = separator.lastIndex;
-  }
-
-  return null;
-};
 
 const parseFilter = (value: string): ParsedFilter => {
   const negated = value.startsWith('-');
@@ -71,44 +44,55 @@ const parseFilter = (value: string): ParsedFilter => {
     category,
     rawClause,
     values: [],
-    rawValues: [],
     negated,
     editable: false,
     wildcard: false
   };
 
   // Only the editor's literal subset is safe to rewrite; leave arbitrary Lucene clauses opaque.
-  if (!category || !/^[A-Za-z_][A-Za-z0-9_.]*$/.test(category)) return parsed;
+  if (!category || !/^[A-Za-z_][A-Za-z0-9_.]*$/.test(category)) {
+    return parsed;
+  }
+
+  parsed.editable = true;
+
   if (rawClause === '*') {
-    return { ...parsed, editable: true, wildcard: true };
+    parsed.wildcard = true;
+    return parsed;
   }
 
   if (/^[A-Za-z_][A-Za-z0-9_.]*$/.test(rawClause) && !/^(true|false|AND|OR|NOT)$/i.test(rawClause)) {
-    return { ...parsed, values: [rawClause], rawValues: [rawClause], editable: true };
+    parsed.values = [rawClause];
+    return parsed;
   }
 
-  const grouped = rawClause.startsWith('(') && rawClause.endsWith(')');
-  const parts = parseQuotedValues(grouped ? rawClause.slice(1, -1).trim() : rawClause, grouped);
-  return parts
-    ? { ...parsed, values: parts.map(item => item.value), rawValues: parts.map(item => item.raw), editable: true }
-    : parsed;
+  const parts = parseQuotedValues(rawClause);
+  if (!parts) {
+    parsed.editable = false;
+    return parsed;
+  }
+
+  parsed.values = parts;
+  return parsed;
 };
 
-const serializeFilter = (category: string, values: string[], previous: ParsedFilter) => {
-  // Per-value queues preserve distinct spellings of duplicate literals in linear time.
-  const originals = new Map<string, { raw: string[]; used: number }>();
-  previous.values.forEach((item, index) => {
-    const raw = previous.rawValues[index] ?? `"${sanitizeLuceneQuery(item)}"`;
-    const existing = originals.get(item);
-    if (existing) existing.raw.push(raw);
-    else originals.set(item, { raw: [raw], used: 0 });
-  });
-  const serializedValues = values.map(item => {
-    const original = originals.get(item);
-    return original?.raw[original.used++] ?? `"${sanitizeLuceneQuery(item)}"`;
-  });
-  const clause = values.length > 1 ? `(${serializedValues.join(' OR ')})` : (serializedValues[0] ?? '*');
-  return `${previous.negated ? '-' : ''}${category}:${clause}`;
+const serializeFilter = (category: string, values: string[], negated: boolean) => {
+  const filter: string[] = [];
+
+  if (negated) {
+    filter.push('-');
+  }
+
+  filter.push(category + ':');
+
+  const serializedValues = uniq(values).map(item => `"${sanitizeLuceneQuery(item)}"`);
+  if (serializedValues.length > 1) {
+    filter.push(`(${serializedValues.join(' OR ')})`);
+  } else {
+    filter.push(serializedValues[0] ?? '*');
+  }
+
+  return filter.join('');
 };
 
 const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = ({ size, id, value }) => {
@@ -186,10 +170,10 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
   const onValuesChange: UseAutocompleteProps<string, true, false, true>['onChange'] = useCallback(
     (_, newValues) => {
       if (category) {
-        commitFilter(serializeFilter(category, newValues, parsedFilter));
+        commitFilter(serializeFilter(category, newValues, negated));
       }
     },
-    [category, commitFilter, parsedFilter]
+    [category, commitFilter, negated]
   );
 
   const toggleNegation = useCallback(
