@@ -90,22 +90,31 @@ describe('handlebars helpers', () => {
       'Replace expects three arguments'
     );
 
-    global.fetch = vi.fn(() =>
-      Promise.resolve({
-        json: () => Promise.resolve({ nested: { value: 'cached' } })
-      } as Response)
-    ) as any;
+    const mockFetch = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ nested: { value: 'cached' } }), {
+        headers: { 'Content-Type': 'application/json' }
+      })
+    );
 
-    await expect(helperMap.fetch.callback?.('https://example.com/data', 'nested.value', options)).resolves.toBe(
-      'cached'
-    );
-    await expect(helperMap.fetch.callback?.('https://example.com/data', 'nested.value', options)).resolves.toBe(
-      'cached'
-    );
-    await expect(
-      helperMap.fetch.callback?.('https://example.com/data', 'missing.value', options)
-    ).resolves.toBeUndefined();
-    expect(global.fetch).toHaveBeenCalledTimes(1);
+    const originalFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = mockFetch;
+
+      await expect(helperMap.fetch.callback?.('https://example.com/data', 'nested.value', options)).resolves.toBe(
+        'cached'
+      );
+      await expect(helperMap.fetch.callback?.('https://example.com/data', 'nested.value', options)).resolves.toBe(
+        'cached'
+      );
+      await expect(
+        helperMap.fetch.callback?.('https://example.com/data', 'missing.value', options)
+      ).resolves.toBeUndefined();
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+
+    expect(globalThis.fetch).toBe(originalFetch);
   });
 
   it('renders component-backed helpers', () => {

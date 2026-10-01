@@ -1,6 +1,16 @@
 import { createContext, forwardRef, useContext } from 'react';
-import { vi } from 'vitest';
+import type { useSearchParams } from 'react-router';
+import { vi, type Mock } from 'vitest';
 import MockLocalStorage from './MockLocalStorage';
+
+type SearchParamsSetter = ReturnType<typeof useSearchParams>[1];
+
+type ReactRouterMock = {
+  mockSearchParams: URLSearchParams;
+  mockSetParams: Mock<SearchParamsSetter>;
+  mockLocation: { pathname: string; search: string };
+  mockParams: { id: string | undefined };
+};
 
 /**
  * Sets up a mock for use-context-selector that uses React's native context
@@ -27,11 +37,11 @@ export const setupContextSelectorMock = () => {
  * Sets up a mock for react-router with common defaults
  * @param options - Override specific router behavior
  */
-export const setupReactRouterMock = () => {
-  const mockLocation = vi.hoisted(() => ({ pathname: '/hits', search: '' }));
-  const mockParams = vi.hoisted(() => ({ id: undefined }));
+export const setupReactRouterMock = (): ReactRouterMock => {
+  const mockLocation = vi.hoisted((): ReactRouterMock['mockLocation'] => ({ pathname: '/hits', search: '' }));
+  const mockParams = vi.hoisted((): ReactRouterMock['mockParams'] => ({ id: undefined }));
   const mockSearchParams = vi.hoisted(() => new URLSearchParams());
-  const mockSetParams = vi.hoisted(() => vi.fn());
+  const mockSetParams = vi.hoisted(() => vi.fn<SearchParamsSetter>());
 
   beforeAll(() => {
     vi.mock('react-router', async () => {

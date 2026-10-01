@@ -10,7 +10,7 @@ import type { FC, PropsWithChildren } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { MemoryRouter } from 'react-router';
 import { createMockCase, createMockHit } from 'tests/utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import ResolveModal from './ResolveModal';
 
 // ---------------------------------------------------------------------------
@@ -151,11 +151,11 @@ const fillForm = async (user: UserEvent, assessment = 'legitimate', rationale = 
 
 describe('ResolveModal', () => {
   let user: UserEvent;
-  let mockOnConfirm: ReturnType<typeof vi.fn>;
+  let mockOnConfirm: Mock<() => void>;
 
   beforeEach(() => {
     user = userEvent.setup();
-    mockOnConfirm = vi.fn();
+    mockOnConfirm = vi.fn<() => void>();
     vi.clearAllMocks();
     // Default: resolve immediately with an empty items list
     mockDispatchApi.mockResolvedValue({ items: [] });

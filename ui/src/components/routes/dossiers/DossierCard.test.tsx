@@ -6,7 +6,7 @@ import i18n from 'i18n';
 import React, { act } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { createMockDossier } from 'tests/utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import DossierCard from './DossierCard';
 
 // Mock react-router
@@ -41,11 +41,11 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => {
 
 describe('DossierCard', () => {
   let user: UserEvent;
-  let mockOnDelete: ReturnType<typeof vi.fn>;
+  let mockOnDelete: Mock<(e: React.MouseEvent<HTMLButtonElement, MouseEvent>, id: string) => void>;
 
   beforeEach(() => {
     user = userEvent.setup();
-    mockOnDelete = vi.fn();
+    mockOnDelete = vi.fn<(e: React.MouseEvent<HTMLButtonElement, MouseEvent>, id: string) => void>();
     vi.clearAllMocks();
   });
 

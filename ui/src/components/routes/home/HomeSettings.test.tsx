@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import i18n from 'i18n';
 import { I18nextProvider } from 'react-i18next';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import HomeSettings from './HomeSettings';
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -11,12 +11,12 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 describe('HomeSettings', () => {
-  let onRefreshRateChange: ReturnType<typeof vi.fn>;
-  let onEdit: ReturnType<typeof vi.fn>;
+  let onRefreshRateChange: Mock<(rate: number) => void>;
+  let onEdit: Mock<() => void>;
 
   beforeEach(() => {
-    onRefreshRateChange = vi.fn();
-    onEdit = vi.fn();
+    onRefreshRateChange = vi.fn<(rate: number) => void>();
+    onEdit = vi.fn<() => void>();
     vi.clearAllMocks();
   });
 
