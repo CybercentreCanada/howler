@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -61,6 +60,7 @@ vi.mock('@mui/material', () => ({
     </button>
   ),
   Stack: ({ children }: any) => <div>{children}</div>,
+  Box: ({ children }: any) => <div>{children}</div>,
   Typography: ({ children }: any) => <div>{children}</div>
 }));
 
