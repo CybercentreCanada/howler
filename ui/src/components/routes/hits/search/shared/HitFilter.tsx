@@ -1,6 +1,15 @@
 import { AddCircleOutline, FilterList, RemoveCircleOutline } from '@mui/icons-material';
 import type { UseAutocompleteProps } from '@mui/material';
-import { Autocomplete, Checkbox, FormControlLabel, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import {
+  Autocomplete,
+  Checkbox,
+  FormControlLabel,
+  isEmpty,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography
+} from '@mui/material';
 import api from 'api';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
@@ -89,7 +98,9 @@ const serializeFilter = (category: string, values: string[], negated: boolean) =
 
   filter.push(category + ':');
 
-  const serializedValues = uniq(values).map(item => `"${sanitizeLuceneQuery(item)}"`);
+  const serializedValues = uniq(values)
+    .map(item => `"${sanitizeLuceneQuery(item)}"`)
+    .filter(item => !isEmpty(item));
   if (serializedValues.length > 1) {
     filter.push(`(${serializedValues.join(' OR ')})`);
   } else {
