@@ -40,7 +40,9 @@ services:
       MCP_AUDIENCE: ${MCP_AUDIENCE:-howler}
 
   howler-api:
-    image: cccs/howler-api:latest
+    build:
+      context: ../api
+      dockerfile: Dockerfile
     profiles:
       - full
     ports:

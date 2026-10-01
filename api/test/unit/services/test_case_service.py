@@ -694,14 +694,55 @@ class TestAppendCaseItemRouting:
         with pytest.raises(InvalidDataException):
             case_service.append_case_item("case-001", item_value="some-id")
 
+    @pytest.mark.parametrize(
+        ("item_type", "expected_type"),
+        [
+            ("hit", case_service.CaseItemTypes.HIT),
+            (case_service.CaseItemTypes.HIT, case_service.CaseItemTypes.HIT),
+            ("reference", case_service.CaseItemTypes.REFERENCE),
+            (case_service.CaseItemTypes.REFERENCE, case_service.CaseItemTypes.REFERENCE),
+            ("folder", case_service.CaseItemTypes.FOLDER),
+            (case_service.CaseItemTypes.FOLDER, case_service.CaseItemTypes.FOLDER),
+        ],
+    )
+    def test_append_case_item_accepts_string_and_enum_types(self, item_type, expected_type):
+        """append_case_item accepts valid item type strings and their enum members."""
+        mock_ds = MagicMock()
+        mock_case = MagicMock()
+        mock_case.items = []
+        mock_ds.case.get.return_value = mock_case
+
+        with (
+            patch("howler.services.case_service.datastore", return_value=mock_ds),
+            patch("howler.services.case_service._save_case", return_value=True) as mock_save_case,
+            patch("howler.services.case_service.append_hit", return_value=mock_case) as mock_append_hit,
+        ):
+            result = case_service.append_case_item("case-001", item_type=item_type, item_value="some-id")
+
+        assert result is mock_case
+        if expected_type == case_service.CaseItemTypes.HIT:
+            appended_item = mock_append_hit.call_args.args[1]
+            mock_append_hit.assert_called_once_with(mock_case, appended_item, None)
+            mock_save_case.assert_not_called()
+        else:
+            assert len(mock_case.items) == 1
+            appended_item = mock_case.items[0]
+            mock_save_case.assert_called_once_with(mock_case, refresh=None)
+        assert appended_item.type == expected_type
+
+    @pytest.mark.parametrize("item_type", ["unicorn", 123, ["unicorn"]])
     @patch("howler.services.case_service.datastore")
-    def test_append_case_item_invalid_type_raises(self, mock_ds_fn):
-        """append_case_item raises InvalidDataException when item_type is unrecognized."""
+    def test_append_case_item_invalid_type_raises(self, mock_ds_fn, item_type):
+        """Invalid item types raise InvalidDataException with the supported values."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        with pytest.raises(InvalidDataException):
-            case_service.append_case_item("case-001", item_type="unicorn", item_value="some-id")
+        with pytest.raises(InvalidDataException) as exc_info:
+            case_service.append_case_item("case-001", item_type=item_type, item_value="some-id")
+
+        assert str(exc_info.value) == (
+            f"Invalid item type: {item_type}, valid types are: event, hit, case, reference, folder, markdown"
+        )
 
     @pytest.mark.parametrize("item_type", ["table", "lead"])
     @patch("howler.services.case_service.datastore")

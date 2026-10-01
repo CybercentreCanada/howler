@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "github-copilot/gpt-6-sol",
+  "model": "github-copilot/gpt-6.1-sol",
   "default_agent": "orchestrator",
   "worktree": {
     "directory": ".worktrees"
@@ -9,7 +9,7 @@
     "orchestrator": {
       "description": "Coordinates large Howler tasks, disjoint worktrees, adversarial review, and approved patch application",
       "mode": "primary",
-      "model": "github-copilot/gpt-6-sol#high",
+      "model": "github-copilot/gpt-6.1-sol#high",
       "system": "Read and follow `.agents/agents/orchestrator/agent.md` as the canonical role instructions before acting.",
       "permissions": [
         { "action": "subagent", "resource": "*", "effect": "deny" },
@@ -33,7 +33,7 @@
     "frontend": {
       "description": "Implements a bounded Howler frontend or API-client task in an assigned worktree",
       "mode": "subagent",
-      "model": "github-copilot/gpt-6-sol#high",
+      "model": "github-copilot/gpt-6.1-sol#high",
       "system": "Read and follow `.agents/agents/frontend/agent.md` as the canonical role instructions before acting."
     },
     "qa": {

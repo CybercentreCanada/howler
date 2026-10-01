@@ -1,4 +1,4 @@
-"""Deterministic normalized-contract comparisons for the new model schema builder.
+"""Frozen-contract comparisons for the new model schema builder.
 
 Compares complete generated index contracts (settings, mappings/properties, dynamic templates,
 ILM composable templates) for every one of the 11 Howler collections against the frozen legacy
@@ -6,20 +6,20 @@ ODM contract fixture (``odm_contract_inventory.json``), plus focused unit tests 
 recursive dynamic-template builder's edge cases (compound/list-in-mapping) that are not
 exercised by any of today's real top-level models.
 
-The comparison includes dynamic-template order because Elasticsearch applies the first matching
-template. Generation follows canonical registry field order rather than the DSL mapping tree's
-process-dependent iteration order.
+Elasticsearch applies the first matching dynamic template, so this suite compares that sequence
+exactly. Mapping properties and settings are JSON objects, so their key order is intentionally
+normalized and is not treated as a storage contract.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from howler import odm
 from howler.models import (
     HowlerEmbeddedModel,
     HowlerESModel,
@@ -40,6 +40,7 @@ from howler.models.overview import Overview
 from howler.models.template import Template
 from howler.models.user import User
 from howler.models.view import View
+from test.unit.models._goldens import TEMPLATE_ORDER_GOLDEN_PATH, template_order_golden
 
 CONTRACT_PATH = Path(__file__).parents[1] / "odm/fixtures/odm_contract_inventory.json"
 FIXTURE: dict[str, Any] = json.loads(CONTRACT_PATH.read_text())
@@ -58,6 +59,9 @@ COLLECTION_MODELS: dict[str, Any] = {
     "user_avatar": None,
 }
 ILM_ENABLED = {"hit", "event", "case"}
+TEMPLATE_ORDER = template_order_golden()
+TEMPLATE_ORDER_GOLDEN_SHA256 = "e930ab5613d4d319e272e23a5db9846eec9604ebad45293a3b24fd5faf3a26b3"
+SYNTHETIC_ACCESS_FIELDS = {"__access_lvl__", "__access_req__", "__access_grp1__", "__access_grp2__"}
 
 
 # Module-level (not test-method-local) ad hoc models for the recursion edge-case tests below:
@@ -72,14 +76,6 @@ class EdgeChild(HowlerEmbeddedModel):
 
     value: keyword()
     label: keyword()
-
-
-@odm.model()
-class LegacyEdgeChild(odm.Model):
-    """Legacy counterpart of ``EdgeChild`` for differential dynamic-template comparison."""
-
-    value = odm.Keyword()
-    label = odm.Keyword()
 
 
 @register_model(index=True, store=True, id_field="key")
@@ -135,6 +131,34 @@ def test_dynamic_template_order_matches_legacy_contract(name: str) -> None:
     actual = schema.document_mapping(COLLECTION_MODELS[name])["dynamic_templates"]
     expected = FIXTURE["collections"][name]["legacy_index"]["mappings"]["dynamic_templates"]
     assert [next(iter(template)) for template in actual] == [next(iter(template)) for template in expected]
+    assert [next(iter(template)) for template in actual] == TEMPLATE_ORDER["collections"][name][
+        "dynamic_template_order"
+    ]
+
+
+def _property_paths(properties: dict[str, Any], prefix: str = "") -> set[str]:
+    paths: set[str] = set()
+    for name, definition in properties.items():
+        if not prefix and name in SYNTHETIC_ACCESS_FIELDS:
+            # The Pydantic collection overlays these generated ACL fields after its declared
+            # model properties. Their values are checked elsewhere; field presence is independent
+            # of dictionary insertion order.
+            continue
+        path = f"{prefix}.{name}" if prefix else name
+        paths.add(path)
+        children = definition.get("properties") if isinstance(definition, dict) else None
+        if isinstance(children, dict):
+            paths.update(_property_paths(children, path))
+    return paths
+
+
+@pytest.mark.parametrize("name", sorted(COLLECTION_MODELS))
+def test_generated_mapping_properties_match_frozen_paths_order_insensitive(name: str) -> None:
+    """Mapping property coverage is compared as JSON object content, without key-order parity."""
+    actual = _property_paths(schema.document_mapping(COLLECTION_MODELS[name])["properties"])
+    legacy_mapping = FIXTURE["collections"][name]["legacy_index"]["mappings"]["properties"]
+    expected = _property_paths(legacy_mapping) - SYNTHETIC_ACCESS_FIELDS
+    assert actual == expected
 
 
 def test_flat_field_count_matches_legacy_total_fields_heuristic() -> None:
@@ -143,6 +167,12 @@ def test_flat_field_count_matches_legacy_total_fields_heuristic() -> None:
     assert schema.total_fields_limit(Hit) == max(1500, schema.flat_field_count(Hit) + 500)
     # Hit has hundreds of ECS fields but stays under the 1500 default floor today.
     assert schema.flat_field_count(Hit) < 1000
+
+
+def test_dynamic_template_order_fixture_has_pinned_capture_provenance() -> None:
+    assert TEMPLATE_ORDER["fixture_version"] == 1
+    assert TEMPLATE_ORDER["capture"]["source_head"] == "3071fc4ea45d4b2dd44a7ee1646095426097d061"
+    assert hashlib.sha256(TEMPLATE_ORDER_GOLDEN_PATH.read_bytes()).hexdigest() == TEMPLATE_ORDER_GOLDEN_SHA256
 
 
 def test_schema_less_collection_uses_default_dynamic_templates() -> None:
@@ -176,50 +206,43 @@ def test_document_mapping_stays_dynamic_true_when_templates_exist() -> None:
     assert mappings["dynamic"] is True
 
 
-def _legacy_dynamic_templates_for(legacy_field) -> list[dict[str, Any]]:
-    from howler.odm.mapping import build_templates
-
-    return build_templates("edge_case.*", legacy_field, nested_template=False, index=True)
-
-
 class TestDynamicTemplateRecursionEdgeCases:
     """Compound/list-in-mapping combinations not exercised by any real top-level model today.
 
-    These verify the recursive ``schema._dynamic_templates`` helper against the legacy
-    ``build_templates`` algorithm directly (rather than a real registered model), since no
-    current Howler model nests a ``Compound`` or ``List`` inside an *indexed* ``Mapping``
-    dynamic-key value.
+    These verify the recursive ``schema._dynamic_templates`` helper against frozen expected
+    output captured from the legacy ``build_templates`` algorithm, since no current Howler model
+    nests a ``Compound`` or ``List`` inside an *indexed* ``Mapping`` dynamic-key value.
     """
 
-    def test_mapping_of_compound_matches_legacy_recursion(self) -> None:
+    def test_mapping_of_compound_matches_frozen_legacy_recursion(self) -> None:
         new_templates = schema._dynamic_templates(
             "edge_case.*", compound(EdgeChild), inherited_index=True, nested_template=False
         )
-        legacy_field = odm.Mapping(odm.Compound(LegacyEdgeChild), index=True)
-        legacy_field.apply_defaults(index=True, store=True)
-        legacy_templates = _legacy_dynamic_templates_for(legacy_field)
+        assert new_templates == [
+            {
+                "edge_case.*.value_tpl": {
+                    "path_match": "edge_case.*.value",
+                    "mapping": {"type": "keyword", "index": True},
+                }
+            },
+            {
+                "edge_case.*.label_tpl": {
+                    "path_match": "edge_case.*.label",
+                    "mapping": {"type": "keyword", "index": True},
+                }
+            },
+        ]
 
-        key = lambda templates: sorted(next(iter(t)) for t in templates)  # noqa: E731
-        assert key(new_templates) == key(legacy_templates)
-        new_by_key = {next(iter(t)): t[next(iter(t))] for t in new_templates}
-        legacy_by_key = {next(iter(t)): t[next(iter(t))] for t in legacy_templates}
-        assert new_by_key == legacy_by_key
-
-    def test_mapping_of_list_matches_legacy_recursion(self) -> None:
+    def test_mapping_of_list_matches_frozen_legacy_recursion(self) -> None:
         new_templates = schema._dynamic_templates(
             "edge_case.*", list[keyword()], inherited_index=True, nested_template=False
         )
-        legacy_field = odm.Mapping(odm.List(odm.Keyword()), index=True)
-        legacy_templates = _legacy_dynamic_templates_for(legacy_field)
-        assert new_templates == legacy_templates
         assert new_templates == [{"nested_edge_case.*": {"match": "edge_case.*", "mapping": {"type": "nested"}}}]
 
-    def test_mapping_of_mapping_matches_legacy_recursion(self) -> None:
+    def test_mapping_of_mapping_matches_frozen_legacy_recursion(self) -> None:
         new_templates = schema._dynamic_templates(
             "edge_case.*", mapping(keyword()), inherited_index=True, nested_template=False
         )
-        legacy_templates = _legacy_dynamic_templates_for(odm.Mapping(odm.Keyword()))
-        assert new_templates == legacy_templates
         assert new_templates == [{"nested_edge_case.*": {"match": "edge_case.*", "mapping": {"type": "nested"}}}]
 
     def test_mapping_of_any_is_disabled_regardless_of_index(self) -> None:

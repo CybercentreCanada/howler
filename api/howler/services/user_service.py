@@ -325,6 +325,10 @@ def save_user_account(
     avatar = data.pop("avatar", None)
     data.pop("security_token_enabled", None)
     data.pop("has_password", None)
+    # These are presentation aliases emitted by GET /user/<username>, not User model fields.
+    # In particular, never map the client-editable `roles` alias back to the privileged `type` field.
+    data.pop("roles", None)
+    data.pop("username", None)
 
     data = cast(Any, User).validate_howler(data).as_primitives()
 

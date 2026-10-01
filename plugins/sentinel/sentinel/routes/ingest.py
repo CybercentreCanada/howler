@@ -193,14 +193,14 @@ def _create_alert_hits(alerts: list[dict[str, Any]], tenant_id: str, alert_mappe
         try:
             mapped_hit = alert_mapper.map_alert(alert, tenant_id)
             if mapped_hit:
-                alert_hit_odm, _ = hit_service.convert_hit(mapped_hit, unique=True, ignore_extra_values=True)
-                if alert_hit_odm.event is not None:
-                    alert_hit_odm.event.id = alert_hit_odm.howler.id
-                logger.info("Creating individual alert hit %s with ID %s", i, alert_hit_odm.howler.id)
-                hit_service.create_hit(alert_hit_odm.howler.id, alert_hit_odm, user="system")
-                analytic_service.save_from_hits(alert_hit_odm, SYSTEM_USER)
-                child_hit_ids.append(alert_hit_odm.howler.id)
-                logger.debug("Successfully created alert hit %s: %s", i, alert_hit_odm.howler.id)
+                alert_hit, _ = hit_service.convert_hit(mapped_hit, unique=True, ignore_extra_values=True)
+                if alert_hit.event is not None:
+                    alert_hit.event.id = alert_hit.howler.id
+                logger.info("Creating individual alert hit %s with ID %s", i, alert_hit.howler.id)
+                hit_service.create_hit(alert_hit.howler.id, alert_hit, user="system")
+                analytic_service.save_from_hits(alert_hit, SYSTEM_USER)
+                child_hit_ids.append(alert_hit.howler.id)
+                logger.debug("Successfully created alert hit %s: %s", i, alert_hit.howler.id)
             else:
                 logger.warning("Alert mapper returned None for alert %s: %s", i, alert.get("id", "unknown"))
         except Exception:
@@ -234,28 +234,28 @@ def _create_new_incident(
             bundle_hit["howler"].pop("bundle_size", None)
             bundle_hit["howler"].pop("bundles", None)
 
-        bundle_odm, _ = hit_service.convert_hit(bundle_hit, unique=True, ignore_extra_values=True)
+        bundle_model, _ = hit_service.convert_hit(bundle_hit, unique=True, ignore_extra_values=True)
 
-        if bundle_odm.event is not None:
-            bundle_odm.event.id = bundle_odm.howler.id
+        if bundle_model.event is not None:
+            bundle_model.event.id = bundle_model.howler.id
 
-        logger.info("Creating incident hit with ID %s", bundle_odm.howler.id)
-        hit_service.create_hit(bundle_odm.howler.id, bundle_odm, user="system")
-        analytic_service.save_from_hits(bundle_odm, SYSTEM_USER)
+        logger.info("Creating incident hit with ID %s", bundle_model.howler.id)
+        hit_service.create_hit(bundle_model.howler.id, bundle_model, user="system")
+        analytic_service.save_from_hits(bundle_model, SYSTEM_USER)
 
         # Create a case linking root hit and children
         if child_hit_ids:
-            analytic = bundle_odm.howler.analytic or "Sentinel"
-            detection = bundle_odm.howler.detection or "XDR Incident"
+            analytic = bundle_model.howler.analytic or "Sentinel"
+            detection = bundle_model.howler.detection or "XDR Incident"
             case = case_service.create_case(
-                {"title": f"{analytic} - {detection}", "summary": f"Sentinel incident {bundle_odm.howler.id}"},
+                {"title": f"{analytic} - {detection}", "summary": f"Sentinel incident {bundle_model.howler.id}"},
                 user=SYSTEM_USER,
             )
 
             case_service.append_case_item(
                 case.case_id,
                 item_type="hit",
-                item_value=bundle_odm.howler.id,
+                item_value=bundle_model.howler.id,
                 item_name=analytic,
             )
 
@@ -285,12 +285,12 @@ def _create_new_incident(
         datastore().hit.commit()
 
         if child_hit_ids:
-            action_service.bulk_execute_on_query(f"howler.id:{bundle_odm.howler.id}", user=SYSTEM_USER)
+            action_service.bulk_execute_on_query(f"howler.id:{bundle_model.howler.id}", user=SYSTEM_USER)
 
         logger.info("Successfully completed XDR incident ingestion")
         response_body = {
             "success": True,
-            "bundle_hit_id": bundle_odm.howler.id,
+            "bundle_hit_id": bundle_model.howler.id,
             "bundle_id": bundle_hit["howler"].get("xdr.incident.id"),
             "individual_hit_ids": child_hit_ids,
             "total_hits_created": len(child_hit_ids) + 1,

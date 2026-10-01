@@ -1,7 +1,7 @@
 [project]
 name = "howler-evidence-plugin"
 version = "0.1.0"
-description = "A howler plugin to add additional nested ECS fields to the Howler ODM"
+description = "A Howler plugin to add additional nested ECS fields to Hit records"
 authors = [{ name = "CCCS", email = "analysis-development@cyber.gc.ca" }]
 license = { text = "MIT" }
 readme = "README.md"
@@ -51,24 +51,12 @@ disable_error_code = "no-redef"
 exclude = "test"
 
 [[tool.mypy.overrides]]
-module = "howler.odm.models.*"
-disable_error_code = "assignment"
-
-[[tool.mypy.overrides]]
 module = ["evidence.models", "evidence.models.*"]
 disable_error_code = ["valid-type", "var-annotated", "metaclass"]
 
 [[tool.mypy.overrides]]
-module = ["howler.odm.base", "test", "test.*"]
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "howler.security"
 disable_error_code = "attr-defined"
-
-[[tool.mypy.overrides]]
-module = "howler.odm.helper"
-disable_error_code = "union-attr"
 
 [[tool.mypy.overrides]]
 module = "howler.common.classification"
@@ -126,7 +114,6 @@ suppress-none-returning = true
 [tool.ruff.lint.per-file-ignores]
 "evidence/**/__init__.py" = ["F401"]
 "evidence/odm/hit.py" = ["S311"]
-"evidence/odm/models/*" = ["D", "ANN", "C901"]
 "test/*" = ["D", "ANN", "S", "N818", "TRY", "PIE", "E402"]
 "build_scripts/*" = ["D", "ANN", "S", "N818", "T20", "TRY"]
 

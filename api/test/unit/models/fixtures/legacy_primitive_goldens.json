@@ -1,0 +1,364 @@
+{
+  "capture": {
+    "command": "One-off api/.venv/bin/python capture: instantiate each retired differential test case with its howler.odm model and freeze as_primitives() results, removing only generated timestamp keys explicitly ignored by the prior tests.",
+    "source": "Legacy ODM constructors and test input cases at Step 9 cutover before package deletion.",
+    "source_head": "3071fc4ea45d4b2dd44a7ee1646095426097d061"
+  },
+  "cases": {
+    "action": {
+      "action_id": "a-1",
+      "name": "My Action",
+      "operations": [
+        {
+          "operation_id": "op-1"
+        }
+      ],
+      "owner_id": "user-1",
+      "query": "howler.id:*",
+      "triggers": [
+        "create",
+        "promote"
+      ]
+    },
+    "analytic": {
+      "analytic_id": "an-1",
+      "comment": [],
+      "contributors": [],
+      "detections": [],
+      "name": "My Analytic",
+      "notebooks": [],
+      "triage_settings": {
+        "dossiers": [],
+        "rationales": [],
+        "skip_rationale": false,
+        "valid_assessments": [
+          "ambiguous",
+          "security",
+          "development",
+          "false-positive",
+          "legitimate",
+          "trivial",
+          "recon",
+          "attempt",
+          "compromise",
+          "mitigated"
+        ]
+      }
+    },
+    "case": {
+      "__index": "case",
+      "case_id": "c-1",
+      "classification": "UNRESTRICTED",
+      "enrichments": [],
+      "escalation": "normal",
+      "indicators": [],
+      "items": [],
+      "log": [],
+      "participants": [],
+      "rules": [],
+      "status": "open",
+      "summary": "A summary",
+      "targets": [],
+      "tasks": [],
+      "threats": [],
+      "title": "Case Title",
+      "visible": true
+    },
+    "case_item.folder": {
+      "classification": "UNRESTRICTED",
+      "id": "i-1",
+      "name": "My Folder",
+      "type": "folder",
+      "value": "My Folder",
+      "visible": true
+    },
+    "case_log.complete": {
+      "new_value": "x",
+      "timestamp": "2024-01-01T00:00:00.000000Z",
+      "user": "me"
+    },
+    "case_log.explanation": {
+      "explanation": "manual change",
+      "timestamp": "2024-01-01T00:00:00.000000Z",
+      "user": "me"
+    },
+    "case_rule.defaults": {
+      "author": "a",
+      "destination": "d",
+      "enabled": true,
+      "expire_after_resolved": false,
+      "indexes": [
+        "hit"
+      ],
+      "query": "q",
+      "rule_id": "r-2"
+    },
+    "dossier": {
+      "dossier_id": "d-1",
+      "leads": [
+        {
+          "content": "# Some content",
+          "format": "markdown",
+          "label": {
+            "en": "English label",
+            "fr": "Etiquette francaise"
+          }
+        }
+      ],
+      "owner": "me",
+      "pivots": [
+        {
+          "format": "url",
+          "label": {
+            "en": "Pivot label",
+            "fr": "Etiquette de pivot"
+          },
+          "mappings": [
+            {
+              "field": "howler.id",
+              "key": "id"
+            }
+          ],
+          "value": "some-value"
+        }
+      ],
+      "title": "My Dossier",
+      "type": "personal"
+    },
+    "ecs.agent": {
+      "id": "agent-1",
+      "name": "sensor",
+      "type": "endpoint",
+      "version": "1.0"
+    },
+    "ecs.agent.empty": {},
+    "ecs.dns": {
+      "answers": [
+        {
+          "class": "IN",
+          "name": "example.com"
+        }
+      ],
+      "resolved_ip": [
+        "127.0.0.1",
+        "2001:db8::1"
+      ]
+    },
+    "ecs.dns_answer": {
+      "class": "IN",
+      "data": "1.2.3.4",
+      "ttl": 30,
+      "type": "A"
+    },
+    "ecs.hashes": {
+      "md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "sha1": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "ecs.related": {
+      "hash": [],
+      "hosts": [],
+      "id": "abc",
+      "ids": [
+        "xyz",
+        "abc"
+      ],
+      "ip": [],
+      "user": []
+    },
+    "ecs.related.empty": {
+      "hash": [],
+      "hosts": [],
+      "ids": [],
+      "ip": [],
+      "user": []
+    },
+    "ecs.threat": {
+      "technique": {
+        "id": "T1000",
+        "name": "Something"
+      }
+    },
+    "event": {
+      "__index": "event",
+      "classification": "UNRESTRICTED",
+      "ecs": {
+        "version": "8.3.0"
+      },
+      "howler": {
+        "comment": [],
+        "data": [],
+        "escalation": "hit",
+        "hash": "abcd1234",
+        "id": "event-1",
+        "log": [],
+        "related": [],
+        "score": 0
+      },
+      "labels": {},
+      "message": "",
+      "tags": [],
+      "timestamp": "2024-01-02T03:04:05.000000Z"
+    },
+    "hit": {
+      "__index": "hit",
+      "classification": "UNRESTRICTED",
+      "ecs": {
+        "version": "8.3.0"
+      },
+      "howler": {
+        "analytic": "My Analytic",
+        "assignment": "unassigned",
+        "comment": [],
+        "data": [],
+        "dossier": [],
+        "escalation": "hit",
+        "hash": "abcd1234",
+        "id": "hit-1",
+        "incidents": [],
+        "labels": {
+          "assignments": [],
+          "campaign": [],
+          "generic": [],
+          "insight": [],
+          "mitigation": [],
+          "operation": [],
+          "threat": [],
+          "tuning": [],
+          "victim": []
+        },
+        "links": [],
+        "log": [],
+        "related": [],
+        "score": 0,
+        "scrutiny": "unseen",
+        "status": "open",
+        "votes": {
+          "benign": [],
+          "malicious": [],
+          "obscure": []
+        }
+      },
+      "labels": {},
+      "message": "",
+      "related": {
+        "hash": [],
+        "hosts": [],
+        "ids": [],
+        "ip": [
+          "127.0.0.1"
+        ],
+        "user": []
+      },
+      "tags": [],
+      "timestamp": "2024-01-02T03:04:05.000000Z"
+    },
+    "hit.source": {
+      "__index": "hit",
+      "classification": "UNRESTRICTED",
+      "ecs": {
+        "version": "8.3.0"
+      },
+      "howler": {
+        "analytic": "My Analytic",
+        "assignment": "unassigned",
+        "comment": [],
+        "data": [],
+        "dossier": [],
+        "escalation": "hit",
+        "hash": "abcd1234",
+        "id": "hit-1",
+        "incidents": [],
+        "labels": {
+          "assignments": [],
+          "campaign": [],
+          "generic": [],
+          "insight": [],
+          "mitigation": [],
+          "operation": [],
+          "threat": [],
+          "tuning": [],
+          "victim": []
+        },
+        "links": [],
+        "log": [],
+        "related": [],
+        "score": 0,
+        "scrutiny": "unseen",
+        "status": "open",
+        "votes": {
+          "benign": [],
+          "malicious": [],
+          "obscure": []
+        }
+      },
+      "labels": {},
+      "message": "",
+      "related": {
+        "hash": [],
+        "hosts": [],
+        "ids": [],
+        "ip": [
+          2130706433
+        ],
+        "user": []
+      },
+      "source": {
+        "ip": 2130706433,
+        "original": {
+          "domain": "example.com"
+        }
+      },
+      "tags": [],
+      "timestamp": "2024-01-02T03:04:05.000000Z"
+    },
+    "overview": {
+      "analytic": "an-1",
+      "content": "# Title",
+      "overview_id": "o-1"
+    },
+    "template": {
+      "analytic": "an-1",
+      "keys": [
+        "howler.id",
+        "howler.status"
+      ],
+      "template_id": "t-1",
+      "type": "global"
+    },
+    "user": {
+      "api_quota": 25,
+      "apikeys": {},
+      "classification": "UNRESTRICTED",
+      "dashboard": [],
+      "favourite_analytics": [],
+      "favourite_views": [],
+      "groups": [
+        "USERS"
+      ],
+      "is_active": true,
+      "name": "Test User",
+      "password": "hashed-password",
+      "refresh_rate": 15,
+      "type": [
+        "user",
+        "actionrunner_basic"
+      ],
+      "uname": "test"
+    },
+    "view": {
+      "indexes": [
+        "hit"
+      ],
+      "query": "*:*",
+      "settings": {
+        "advance_on_triage": false
+      },
+      "title": "My View",
+      "type": "personal",
+      "view_id": "v-1"
+    }
+  },
+  "fixture_version": 1,
+  "source": "Frozen legacy ODM outputs captured at Pydantic cutover"
+}

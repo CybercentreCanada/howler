@@ -51,7 +51,7 @@ def test_add_user(datastore, login_session):
 
     datastore.user.commit()
     new_user = datastore.user.get(u.uname)
-    assert new_user == u
+    assert new_user.as_primitives() == u.as_primitives()
 
 
 # noinspection PyUnusedLocal

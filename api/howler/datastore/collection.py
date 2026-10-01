@@ -2655,11 +2655,15 @@ class ESCollection(Generic[ModelType]):
         elif isinstance(filters, str):
             filters = [filters]
 
+        filter_queries = [{"query_string": {"query": ff}} for ff in filters]
+        if access_control:
+            filter_queries.append({"query_string": {"query": access_control}})
+
         query_body: dict[str, Any] = {
             "query": {
                 "bool": {
                     "must": {"query_string": {"query": query}},
-                    "filter": [{"query_string": {"query": ff}} for ff in filters],
+                    "filter": filter_queries,
                 }
             }
         }

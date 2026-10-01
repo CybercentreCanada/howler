@@ -99,6 +99,16 @@ def hit_list(datastore_connection):
     return hits
 
 
+def _hit_post_payload(hits: list[Hit]) -> list[dict[str, Any]]:
+    """Return generated hits in the shape accepted by the public Hit POST API."""
+    payload = []
+    for hit in hits:
+        primitives = hit.as_primitives()
+        primitives.pop("__index", None)
+        payload.append(primitives)
+    return payload
+
+
 @pytest.fixture(scope="function")
 def hit_ids(hit_list: list[Hit], datastore_connection):
     for hit in hit_list:
@@ -298,7 +308,7 @@ def test_hit_post_refresh_forwards_all_writes(test_client, datastore_connection,
         test_client,
         endpoint=endpoint,
         method=method,
-        data=json.dumps([hit.as_primitives() for hit in hit_list]),
+        data=json.dumps(_hit_post_payload(hit_list)),
     )
 
     assert response.status_code == 201, response.data.decode("utf-8")
@@ -323,7 +333,7 @@ def test_hit_post_force_refresh_mixed_by_index(test_client, datastore_connection
         test_client,
         endpoint=endpoint,
         method=method,
-        data=json.dumps([hit.as_primitives() for hit in hit_list]),
+        data=json.dumps(_hit_post_payload(hit_list)),
     )
 
     assert response.status_code == 201, response.data.decode("utf-8")

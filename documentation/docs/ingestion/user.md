@@ -10,7 +10,7 @@ on the same machine Howler is hosted on:
 
 ```python
 from howler.common.logging import get_logger
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.security.utils import get_password_hash
 from howler.common.loader import datastore
 
@@ -23,12 +23,10 @@ def create_user(name: str, email: str, username: str):
     ds = datastore()
 
     user_data = User(
-        {
-            "name": name,
-            "email": email,
-            "password": get_password_hash(username),
-            "uname": f"{username}",
-        }
+        name=name,
+        email=email,
+        password=get_password_hash(username),
+        uname=username,
     )
     ds.user.save(username, user_data)
     logger.info(f"{username}:{username}")

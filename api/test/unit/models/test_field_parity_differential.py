@@ -1,12 +1,4 @@
-"""Comprehensive flat-field parity differential test.
-
-For every migrated model group, compares the canonical dotted field-path registry
-(``model_registry.flat_fields``) against the legacy ODM's ``flat_fields()``. This is the
-broadest differential signal available: it catches missing/renamed/extra fields across the
-entire migrated schema (shared enums/primitives, all ECS field sets, Record/Hit/Event/Case,
-and the remaining action/analytic/provider/dossier/overview/template/user/view models) without
-requiring one bespoke test per field.
-"""
+"""Compare every migrated model's field paths with the frozen cutover contract."""
 
 from __future__ import annotations
 
@@ -15,6 +7,7 @@ import importlib
 import pytest
 
 from howler.models import model_registry
+from test.unit.models._goldens import contract_golden
 
 # (legacy module, new module, [class names]) triples covering every migrated model group.
 MODEL_GROUPS: list[tuple[str, str, list[str]]] = [
@@ -127,23 +120,13 @@ def _flattened_cases() -> list[tuple[str, str, str]]:
     ids=[f"{new_module.rsplit('.', 1)[-1]}.{name}" for legacy_module, new_module, name in _flattened_cases()],
 )
 def test_flat_field_parity(legacy_module: str, new_module: str, name: str) -> None:
-    """Every migrated model's dotted field paths exactly match the legacy ODM's.
-
-    ``Hit`` is special-cased: other session-scoped tests/fixtures (e.g. the
-    ``HowlerDatastore`` fixture in ``test/conftest.py``) call the legacy
-    ``Hit.add_namespace("clue", ...)`` without a matching ``remove_namespace`` in every path,
-    which can permanently mutate the shared legacy ``Hit`` class for the rest of the test
-    session depending on run order. The new model intentionally excludes Clue from the base
-    ``Hit`` schema (it is an opt-in extension applied through ``howler.models.extensions``),
-    so ``clue.*`` paths are excluded from this comparison rather than asserting on legacy
-    global mutable state outside this module's control.
-    """
-    legacy_cls = getattr(importlib.import_module(legacy_module), name)
+    """Field coverage remains anchored to the immutable pre-cutover model inventory."""
     new_cls = getattr(importlib.import_module(new_module), name)
-
-    legacy_fields = {
-        field for field in legacy_cls.flat_fields().keys() if not (name == "Hit" and field.startswith("clue"))
-    }
+    frozen_fields = contract_golden()["models"][f"{legacy_module}.{name}"]["flat_fields"]
+    # The old API reports intermediate Compound nodes in ``flat_fields``; the Pydantic
+    # registry reports the serialized leaf paths. Compare leaf coverage and let the full
+    # collection mapping golden assert compound/object placement and mapping order.
+    legacy_fields = {path for path, definition in frozen_fields.items() if not definition["type"].endswith("Compound")}
     new_fields = set(model_registry.flat_fields(new_cls).keys())
 
     assert new_fields == legacy_fields

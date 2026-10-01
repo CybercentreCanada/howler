@@ -239,7 +239,86 @@ def _annotated(
 
 
 def _make_annotated(annotation: TypingAny, *metadata: TypingAny) -> TypingAny:
-    return getattr(Annotated, "__class_getitem__")((annotation, *metadata))
+    return Annotated[(annotation, *metadata)]
+
+
+def _is_mapped_field_metadata(metadata: TypingAny) -> bool:
+    """Return whether metadata is an Elasticsearch DSL mapped-field dictionary."""
+    return isinstance(metadata, dict) and set(metadata) >= {"_field", "_es_name", "exclude"}
+
+
+def _rebuild_generic_alias(annotation: TypingAny, origin: TypingAny, arguments: list[TypingAny]) -> TypingAny:
+    """Rebuild a generic annotation after one or more nested metadata items move."""
+    if origin is types.UnionType:
+        rebuilt = arguments[0]
+        for argument in arguments[1:]:
+            rebuilt = rebuilt | argument
+        return rebuilt
+    if origin is Union:
+        return Union[tuple(arguments)]
+    if isinstance(annotation, types.GenericAlias):
+        return types.GenericAlias(origin, tuple(arguments))
+
+    # ``optional`` is normally given annotations from this module's built-in
+    # list/dict factories. Retain support for other public generic aliases by
+    # reconstructing them through their public origin subscription.
+    subscription = arguments[0] if len(arguments) == 1 else tuple(arguments)
+    return origin[subscription]
+
+
+def _strip_annotated_mapped_field_metadata(
+    annotation: TypingAny,
+) -> tuple[TypingAny, list[dict[str, TypingAny]]]:
+    """Extract mapped-field metadata directly attached to an Annotated alias."""
+    original_nested, *metadata = get_args(annotation)
+    nested, nested_mappings = _strip_mapped_field_metadata(original_nested)
+    mapping_metadata = [item for item in metadata if _is_mapped_field_metadata(item)]
+    remaining_metadata = [item for item in metadata if not _is_mapped_field_metadata(item)]
+
+    if not mapping_metadata and not nested_mappings and nested is original_nested:
+        return annotation, []
+
+    if mapping_metadata:
+        # CPython considers union equality order-insensitive when caching Annotated
+        # aliases, but Pydantic's left_to_right union mode is order-sensitive. The
+        # source mapping dict was unhashable (and therefore never cacheable); retain
+        # that distinction with a unique immutable metadata marker after lifting it.
+        remaining_metadata.append(object())
+
+    safe_annotation = _make_annotated(nested, *remaining_metadata) if remaining_metadata else nested
+    return safe_annotation, [*mapping_metadata, *nested_mappings]
+
+
+def _strip_mapped_field_metadata(annotation: TypingAny) -> tuple[TypingAny, list[dict[str, TypingAny]]]:
+    """Move DSL mapping metadata outside a nullable union's hashable type arguments.
+
+    Python 3.10's ``typing.Union`` hashes its members while constructing a union. The
+    elasticsearch-dsl ``mapped_field`` metadata is a dict subclass and is deliberately
+    unhashable, so a child ``Annotated`` containing it cannot be used directly as a
+    union member. Keep Pydantic metadata (including child validators) in place and move
+    only those DSL metadata dictionaries to the outer ``Annotated`` wrapper.
+    """
+    origin = get_origin(annotation)
+    if origin is Annotated:
+        return _strip_annotated_mapped_field_metadata(annotation)
+
+    arguments = get_args(annotation)
+    if not arguments:
+        return annotation, []
+
+    safe_arguments: list[TypingAny] = []
+    mapped_metadata: list[dict[str, TypingAny]] = []
+    changed = False
+    for argument in arguments:
+        safe_argument, nested_mappings = _strip_mapped_field_metadata(argument)
+        safe_arguments.append(safe_argument)
+        mapped_metadata.extend(nested_mappings)
+        changed = changed or safe_argument is not argument
+
+    if not changed:
+        return annotation, mapped_metadata
+
+    return _rebuild_generic_alias(annotation, origin, safe_arguments), mapped_metadata
 
 
 def _field_metadata(annotation: TypingAny) -> HowlerFieldMetadata | None:
@@ -895,9 +974,14 @@ def optional(child_type: TypingAny, **kwargs: TypingAny) -> TypingAny:
         if child_metadata.options:
             kwargs.setdefault("options", dict(child_metadata.options))
     kwargs.setdefault("default", None)
-    return _annotated(
-        child_type | None, child_metadata.kind if child_metadata is not None else "Optional", None, **kwargs
+    safe_child_type, mapped_field_metadata = _strip_mapped_field_metadata(child_type)
+    nullable_field = _annotated(
+        safe_child_type | None,
+        child_metadata.kind if child_metadata is not None else "Optional",
+        None,
+        **kwargs,
     )
+    return _make_annotated(nullable_field, *mapped_field_metadata) if mapped_field_metadata else nullable_field
 
 
 def ip_to_primitive(value: str, output_format: str | None) -> str | int:

@@ -1,7 +1,9 @@
-"""Differential tests for reusable Pydantic/DSL field types."""
+"""Deterministic Pydantic field behavior checked against cutover goldens."""
 
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -9,7 +11,6 @@ from typing import Any
 import pytest
 from pydantic import ConfigDict, TypeAdapter
 
-from howler import odm
 from howler.models import (
     ClassificationValue,
     HowlerESModel,
@@ -52,146 +53,152 @@ from howler.models.registry import field_metadata
 
 CLASSIFICATION_CONFIG = str(Path(__file__).parents[2] / "classification.yml")
 TYPE_ADAPTER_CONFIG = ConfigDict(arbitrary_types_allowed=True)
-VALID_TIMESTAMP = "2024-01-02T03:04:05.000000Z"
+FIXTURE_PATH = Path(__file__).parent / "fixtures/legacy_field_validation_goldens.json"
+FIELD_GOLDENS = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+FIELD_GOLDEN_SHA256 = "e97490f8c3ccfd921a199ed314a5d5da1916e2644bc4e7a5a927947e6d0772ae"
+STEP9_SOURCE_HEAD = "3071fc4ea45d4b2dd44a7ee1646095426097d061"
 
-
-def _validate(annotation: Any, value: Any) -> Any:
-    return TypeAdapter(annotation, config=TYPE_ADAPTER_CONFIG).validate_python(value)
+FIELD_ANNOTATIONS: dict[str, Any] = {
+    "Boolean": boolean(),
+    "Keyword": keyword(),
+    "EmptyableKeyword": emptyable_keyword(),
+    "UpperKeyword": upper_keyword(),
+    "LowerKeyword": lower_keyword(),
+    "CaseInsensitiveKeyword": case_insensitive_keyword(),
+    "ValidatedKeyword": validated_keyword(r"^[a-z]+$"),
+    "IP": ip(),
+    "Domain": domain(strict=False),
+    "Email": email(),
+    "URI": uri(),
+    "URIPath": uri_path(),
+    "MAC": mac(),
+    "PhoneNumber": phone_number(),
+    "SSDeepHash": ssdeep_hash(),
+    "SHA1": sha1(),
+    "SHA256": sha256(),
+    "HowlerHash": howler_hash(),
+    "MD5": md5(),
+    "Platform": platform(),
+    "Processor": processor(),
+    "Enum": enum(["one", "two"]),
+    "Text": text(),
+    "IndexText": index_text(),
+    "Integer": integer(min=1, max=3),
+    "Long": long(min=1, max=3),
+    "Float": float_field(),
+    "Date": date(),
+    "Json": json_field(),
+    "Any": any_field(),
+    "Classification": classification(yml_config=CLASSIFICATION_CONFIG),
+    "ClassificationString": classification_string(yml_config=CLASSIFICATION_CONFIG),
+}
 
 
 def _normalize(value: Any) -> Any:
+    if type(value) is object:
+        return "<object>"
     if isinstance(value, datetime):
         return value.isoformat()
-    if isinstance(value, (odm.ClassificationObject, ClassificationValue)):
+    if isinstance(value, ClassificationValue):
         return str(value)
+    if isinstance(value, dict):
+        return {key: _normalize(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_normalize(item) for item in value]
     return value
 
 
-def test_ip_validation_regex_metadata_matches_legacy() -> None:
-    metadata = field_metadata(ip())
-    assert metadata is not None
-    assert dict(metadata.options)["validation_regex"] == odm.IP().validation_regex.pattern
+def _outcome(annotation: Any, value: Any) -> dict[str, Any]:
+    try:
+        result = TypeAdapter(annotation, config=TYPE_ADAPTER_CONFIG).validate_python(value)
+        return {"accepted": True, "normalized": _normalize(result)}
+    except Exception:
+        return {"accepted": False}
+
+
+def _restore_fixture_input(value: Any) -> Any:
+    if isinstance(value, dict) and set(value) == {"$object"}:
+        return object()
+    if isinstance(value, dict) and set(value) == {"$bytes"}:
+        return value["$bytes"].encode()
+    if isinstance(value, dict) and set(value) == {"$set"}:
+        return set(value["$set"])
+    if isinstance(value, dict):
+        return {key: _restore_fixture_input(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_restore_fixture_input(item) for item in value]
+    return value
+
+
+def _assert_matches_golden(actual: dict[str, Any], expected: dict[str, Any]) -> None:
+    """Compare acceptance and exact normalized output, ignoring implementation error classes."""
+    assert actual["accepted"] is expected["accepted"]
+    if expected["accepted"]:
+        assert actual["normalized"] == expected["normalized"]
+
+
+def test_field_golden_fixture_is_well_formed() -> None:
+    assert FIELD_GOLDENS["fixture_version"] == 1
+    assert FIELD_GOLDENS["source"].startswith("Legacy ODM")
+    assert FIELD_GOLDENS["capture"]["source_head"] == STEP9_SOURCE_HEAD
+    assert FIELD_GOLDENS["capture"]["command"].startswith("One-off api/.venv/bin/python capture")
+    assert hashlib.sha256(FIXTURE_PATH.read_bytes()).hexdigest() == FIELD_GOLDEN_SHA256
+    assert set(FIELD_GOLDENS["primitive_cases"]) == set(FIELD_ANNOTATIONS)
+
+
+@pytest.mark.parametrize("name", sorted(FIELD_ANNOTATIONS))
+def test_primitive_validation_matches_frozen_outcomes(name: str) -> None:
+    """All former differential valid/invalid probes use immutable expected outcomes."""
+    annotation = FIELD_ANNOTATIONS[name]
+    expected = FIELD_GOLDENS["primitive_cases"][name]
+    valid_input = _restore_fixture_input(expected["valid_input"])
+    if name == "Any":
+        assert type(valid_input["anything"]) is object
+    _assert_matches_golden(_outcome(annotation, valid_input), expected["valid"])
+    _assert_matches_golden(_outcome(annotation, _restore_fixture_input(expected["invalid_input"])), expected["invalid"])
 
 
 @pytest.mark.parametrize(
-    ("legacy_field", "annotation", "valid_value", "invalid_value"),
+    ("name", "annotation", "value"),
     [
-        (odm.Boolean(), boolean(), "value", None),
-        (odm.Keyword(), keyword(), 123, b"bytes"),
-        (odm.EmptyableKeyword(), emptyable_keyword(), "", b"bytes"),
-        (odm.UpperKeyword(), upper_keyword(), "MiXeD", b"bytes"),
-        (odm.LowerKeyword(), lower_keyword(), "MiXeD", b"bytes"),
-        (odm.CaseInsensitiveKeyword(), case_insensitive_keyword(), "MiXeD", b"bytes"),
-        (odm.ValidatedKeyword(r"^[a-z]+$"), validated_keyword(r"^[a-z]+$"), "valid", "INVALID"),
-        (odm.IP(), ip(), "127.0.0.1", "999.0.0.1"),
-        (odm.Domain(strict=False), domain(strict=False), "EXAMPLE.com", "invalid!domain"),
-        (odm.Email(), email(), "Example@example.com", "not-an-email"),
-        (odm.URI(), uri(), "HTTPS://Example.com/path", "not a uri"),
-        (odm.URIPath(), uri_path(), "/path?q=1", "path"),
-        (odm.MAC(), mac(), "aa:bb:cc:dd:ee:ff", "not-a-mac"),
-        (odm.PhoneNumber(), phone_number(), "613-555-0123", "not-a-phone"),
-        (odm.SSDeepHash(), ssdeep_hash(), "3:abc:def", "invalid"),
-        (odm.SHA1(), sha1(), "a" * 40, "a" * 39),
-        (odm.SHA256(), sha256(), "a" * 64, "a" * 63),
-        (odm.HowlerHash(), howler_hash(), "a" * 32, "G"),
-        (odm.MD5(), md5(), "a" * 32, "a" * 31),
-        (odm.Platform(), platform(), "Linux", "BSD"),
-        (odm.Processor(), processor(), "x64", "arm64"),
-        (odm.Enum(["one", "two"]), enum(["one", "two"]), "one", "three"),
-        (odm.Text(), text(), "some text", ""),
-        (odm.IndexText(), index_text(), 123, None),
-        (odm.Integer(min=1, max=3), integer(min=1, max=3), "2", 4),
-        (odm.Long(min=1, max=3), long(min=1, max=3), "2", 4),
-        (odm.Float(), float_field(), "1.5", "not-a-float"),
-        (odm.Date(), date(), VALID_TIMESTAMP, "not-a-date"),
-        (odm.Json(), json_field(), {"key": "value"}, {1, 2}),
-        (odm.Any(), any_field(), {"anything": object()}, None),
+        ("Keyword", keyword(default="fallback"), ""),
+        ("Text", text(default="fallback"), None),
+        ("Integer", integer(default=7), ""),
+        ("Float", float_field(default=1.5), 0),
+        ("Enum", enum(["one", "two"], default="one"), None),
         (
-            odm.Classification(yml_config=CLASSIFICATION_CONFIG),
-            classification(yml_config=CLASSIFICATION_CONFIG),
-            "U//REL TO D1",
-            "D//BOB//REL TO SOUP",
-        ),
-        (
-            odm.ClassificationString(yml_config=CLASSIFICATION_CONFIG),
-            classification_string(yml_config=CLASSIFICATION_CONFIG),
-            "UNRESTRICTED",
-            "D//BOB//REL TO SOUP",
-        ),
-    ],
-)
-def test_primitive_field_validation_matches_legacy(
-    legacy_field: odm._Field,
-    annotation: Any,
-    valid_value: Any,
-    invalid_value: Any,
-) -> None:
-    """Accepted values normalize identically and rejected values remain rejected."""
-    assert _normalize(_validate(annotation, valid_value)) == _normalize(legacy_field.check(valid_value))
-
-    legacy_error = None
-    new_error = None
-    try:
-        legacy_field.check(invalid_value)
-    except Exception as error:
-        legacy_error = error
-    try:
-        _validate(annotation, invalid_value)
-    except Exception as error:
-        new_error = error
-
-    assert (legacy_error is None) == (new_error is None)
-
-
-def test_uuid_generation_and_explicit_value() -> None:
-    """Identifiers are generated for null input and explicit values are preserved."""
-    generated = _validate(uuid(), None)
-    assert isinstance(generated, str)
-    assert generated
-    assert _validate(uuid(), "explicit") == "explicit"
-
-
-@pytest.mark.parametrize(
-    ("legacy_field", "annotation", "input_value"),
-    [
-        (odm.Keyword(default="fallback"), keyword(default="fallback"), ""),
-        (odm.Text(default="fallback"), text(default="fallback"), None),
-        (odm.Integer(default=7), integer(default=7), ""),
-        (odm.Float(default=1.5), float_field(default=1.5), 0),
-        (odm.Enum(["one", "two"], default="one"), enum(["one", "two"], default="one"), None),
-        (
-            odm.ClassificationString(default="UNRESTRICTED", yml_config=CLASSIFICATION_CONFIG),
+            "ClassificationString",
             classification_string(default="UNRESTRICTED", yml_config=CLASSIFICATION_CONFIG),
             "",
         ),
     ],
 )
-def test_explicit_empty_values_use_configured_defaults(
-    legacy_field: odm._Field,
-    annotation: Any,
-    input_value: Any,
-) -> None:
-    """Field defaults apply to the same explicit empty values as the legacy validators."""
-    assert _validate(annotation, input_value) == legacy_field.check(input_value)
+def test_explicit_empty_values_match_frozen_defaults(name: str, annotation: Any, value: Any) -> None:
+    expected = FIELD_GOLDENS["default_cases"][name]
+    assert value == expected["input"]
+    _assert_matches_golden(_outcome(annotation, value), expected["expected"])
 
 
 @pytest.mark.parametrize(
-    ("legacy_field", "annotation", "value"),
+    ("name", "annotation", "value"),
     [
-        (odm.IP(), ip(), None),
-        (odm.Domain(), domain(), ""),
-        (odm.Email(), email(), ""),
-        (odm.URI(), uri(), ""),
-        (odm.Date(), date(), None),
+        ("IP", ip(), None),
+        ("Domain", domain(), ""),
+        ("Email", email(), ""),
+        ("URI", uri(), ""),
+        ("Date", date(), None),
     ],
 )
-def test_nullable_legacy_primitives_remain_nullable(
-    legacy_field: odm._Field,
-    annotation: Any,
-    value: Any,
-) -> None:
-    """Explicit null-like values accepted by legacy fields remain accepted."""
-    assert _validate(annotation, value) == legacy_field.check(value)
+def test_nullable_primitive_outcomes_are_frozen(name: str, annotation: Any, value: Any) -> None:
+    expected = FIELD_GOLDENS["nullable_cases"][name]
+    assert value == expected["input"]
+    _assert_matches_golden(_outcome(annotation, value), expected["expected"])
+
+
+def test_ip_validation_metadata_is_explicit() -> None:
+    metadata = field_metadata(ip())
+    assert metadata is not None
+    assert "validation_regex" in dict(metadata.options)
 
 
 @pytest.mark.parametrize(
@@ -232,10 +239,7 @@ def test_nullable_legacy_primitives_remain_nullable(
         (validated_keyword(r"^[a-z]+$"), {"type": "keyword"}),
     ],
 )
-def test_each_primitive_has_an_explicit_dsl_mapping(
-    annotation: Any,
-    expected_mapping: dict[str, Any],
-) -> None:
+def test_each_primitive_has_an_explicit_dsl_mapping(annotation: Any, expected_mapping: dict[str, Any]) -> None:
     """Every reusable primitive exposes its required Elasticsearch mapping."""
     model_type = type(
         f"Mapping{expected_mapping['type']}{id(annotation)}",

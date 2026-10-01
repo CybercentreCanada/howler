@@ -265,6 +265,10 @@ def overwrite(index: str, id: str, **kwargs):
     if not record:
         return not_found(err="Record %s does not exist" % id)
 
+    # The datastore may include the backing index as a synthetic root-level field.
+    # It is not part of the stored document and must not be merged into the model.
+    record = {key: value for key, value in record.items() if key != "__index"}
+
     new_fields = request.json
     if not isinstance(new_fields, dict):
         return bad_request(err="The JSON payload must be a subset of a valid record.")

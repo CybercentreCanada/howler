@@ -505,7 +505,9 @@ def append_case_item(  # noqa: C901
         if not all([item_type, item_value]):
             raise InvalidDataException("item_type and item_value are required if item is not provided")
 
-        if item_type not in CaseItemTypes:
+        try:
+            item_type = CaseItemTypes(item_type)
+        except (TypeError, ValueError):
             raise InvalidDataException(f"Invalid item type: {item_type}, valid types are: {', '.join(CaseItemTypes)}")
 
         data: dict = {"type": item_type, "value": item_value, "parent": item_parent}

@@ -1,10 +1,9 @@
 import base64
-import re
 from datetime import timedelta
 from ipaddress import ip_address
 
 import pytest
-from howler import odm
+from howler.models.fields import IP_ONLY_REGEX
 
 _TEST_TOKEN = f"Basic {base64.b64encode(b'admin:devkey:admin').decode('utf-8')}"
 
@@ -119,9 +118,7 @@ def test_hit_diffs_ip_str_format(test_client, current_time):
     assert response.status_code == 200
     hits = response.json.get("api_response")["items"]
     for hit in hits:
-        assert re.match(odm.IP_ONLY_REGEX, hit["source"]["ip"]), (
-            f"IP address {hit['source']['ip']} is not valid string format"
-        )
+        assert IP_ONLY_REGEX.match(hit["source"]["ip"]), f"IP address {hit['source']['ip']} is not valid string format"
 
 
 def test_hit_schema(test_client):

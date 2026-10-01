@@ -344,21 +344,23 @@ def generate_useful_hit(  # noqa: C901
             if hit.howler.analytic.lower() != "assemblyline":
                 hit.assemblyline = None
             else:
-                verdict = choice(["info", "malicious", "safe", "suspicious"])
-                for host in hit.assemblyline.antivirus:
-                    host.verdict = verdict
-                for host in hit.assemblyline.behaviour:
-                    host.verdict = verdict
-                for host in hit.assemblyline.heuristic:
-                    host.verdict = verdict
-                for host in hit.assemblyline.yara:
-                    host.verdict = verdict
-                for host in hit.assemblyline.attribution:
-                    host.verdict = verdict
-                for item in hit.assemblyline.mitre.tactic:
-                    item.verdict = verdict
-                for item in hit.assemblyline.mitre.technique:
-                    item.verdict = verdict
+                assemblyline = hit.assemblyline
+                if assemblyline is not None:
+                    verdict = choice(["info", "malicious", "safe", "suspicious"])
+                    for host in assemblyline.antivirus:
+                        host.verdict = verdict
+                    for host in assemblyline.behaviour:
+                        host.verdict = verdict
+                    for host in assemblyline.heuristic:
+                        host.verdict = verdict
+                    for host in assemblyline.yara:
+                        host.verdict = verdict
+                    for host in assemblyline.attribution:
+                        host.verdict = verdict
+                    for item in assemblyline.mitre.tactic:
+                        item.verdict = verdict
+                    for item in assemblyline.mitre.technique:
+                        item.verdict = verdict
 
                 if key in ["related", "file"]:
                     continue

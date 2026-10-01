@@ -23,7 +23,6 @@ from howler.models.case import Case as SchemaCase
 from howler.models.event import Event as SchemaEvent
 from howler.models.hit import Hit as SchemaHit
 from howler.models.user import User as SchemaUser
-from howler.odm.models.action import Action as LegacyAction
 
 
 @pytest.fixture(autouse=True)
@@ -138,9 +137,9 @@ class TestPydanticPersistence:
         with pytest.raises(HowlerModelValidationError):
             col.save("document-id", {**_action_data(), "unknown": True})
 
-    def test_save_accepts_legacy_model_during_step_8_handoff(self, mock_datastore):
+    def test_save_accepts_native_model_instance(self, mock_datastore):
         col = _make_collection(mock_datastore, schema_model=SchemaAction, model_class=SchemaAction)
-        action = LegacyAction(_action_data())
+        action = SchemaAction.model_validate(_action_data())
 
         assert col.save("document-id", action) is True
         assert json.loads(mock_datastore.client.index.call_args.kwargs["document"]) == {
