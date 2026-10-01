@@ -590,7 +590,7 @@ def count_rule_backfill(id: str, rule_id: str, user: User, **kwargs):
 
 @generate_swagger_docs()
 @case_api.route("/<id>/rules/<rule_id>/backfill", methods=["POST"])
-@api_login(required_priv=["R", "W"])
+@api_login(required_priv=["W"])
 def backfill_rule(id: str, rule_id: str, user: User, **kwargs):
     """Queue accessible historical matches for a case rule."""
     body = request.json
