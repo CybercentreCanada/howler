@@ -1,4 +1,5 @@
 {
+  "chat.useAgentsMdFile": true,
   "[css]": {
     "editor.defaultFormatter": "oxc.oxc-vscode"
   },

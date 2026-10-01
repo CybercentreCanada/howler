@@ -18,7 +18,8 @@ def test_hash(redis_connection):
             assert h.keys() == ["key"]
             assert h.length() == 1
             assert h.items() == {"key": "new-value"}
-            assert h.pop("key") == "new-value"
+            popped_value = h.pop("key")
+            assert popped_value == "new-value"
             assert h.length() == 0
             assert h.add("key", "value") == 1
             assert h.conditional_remove("key", "value1") is False
@@ -33,7 +34,8 @@ def test_hash(redis_connection):
             assert h.length() == 2
             assert h.limited_add("c", 1, 2) is None
             assert h.length() == 2
-            assert h.pop("a")
+            popped_a = h.pop("a")
+            assert popped_a
 
             # Can we increment integer values in the hash
             assert h.increment("a") == 1
@@ -149,7 +151,8 @@ def test_sets(redis_connection):
 
             for pop_val in s.pop_all():
                 assert pop_val in values or pop_val in ["cat", "dog"]
-            assert s.pop() is None
+            popped_val = s.pop()
+            assert popped_val is None
             assert s.length() == 0
 
 
@@ -215,13 +218,16 @@ def test_priority_queue(redis_connection):
         assert pq.rank(a_key) == 0
         assert pq.rank(z_key) == pq.length() - 1
 
-        assert pq.pop() == "a"
+        popped_val = pq.pop()
+        assert popped_val == "a"
         assert pq.unpush() == "z"
         assert pq.count(100, 100) == 10
-        assert pq.pop() == 0
+        popped_val = pq.pop()
+        assert popped_val == 0
         assert pq.unpush() == 9
         assert pq.length() == 8
-        assert pq.pop(4) == [1, 2, 3, 4]
+        popped_vals = pq.pop(4)
+        assert popped_vals == [1, 2, 3, 4]
         assert pq.unpush(3) == [8, 7, 6]
         assert pq.length() == 1  # Should be [<100, 5>] at this point
 
@@ -273,13 +279,16 @@ def test_unique_priority_queue(redis_connection):
         pq.push(101, "a")
         pq.push(99, "z")
 
-        assert pq.pop() == "a"
+        popped_val = pq.pop()
+        assert popped_val == "a"
         assert pq.unpush() == "z"
         assert pq.count(100, 100) == 10
-        assert pq.pop() == 0
+        popped_val = pq.pop()
+        assert popped_val == 0
         assert pq.unpush() == 9
         assert pq.length() == 8
-        assert pq.pop(4) == [1, 2, 3, 4]
+        popped_vals = pq.pop(4)
+        assert popped_vals == [1, 2, 3, 4]
         assert pq.unpush(3) == [8, 7, 6]
         assert pq.length() == 1  # Should be [<100, 5>] at this point
 
@@ -325,7 +334,9 @@ def test_named_queue(redis_connection):
             nq.push(*list(range(5)))
             assert nq.length() == 10
 
-            assert nq.peek_next() == nq.pop()
+            peeked_val = nq.peek_next()
+            popped_val = nq.pop()
+            assert peeked_val == popped_val
             assert nq.peek_next() == 1
             v = nq.pop()
             assert v == 1
@@ -364,8 +375,10 @@ def test_multi_queue(redis_connection):
         assert mq.length("test-multi-q1") == 5
         assert mq.length("test-multi-q2") == 5
 
-        assert mq.pop("test-multi-q1") == 1
-        assert mq.pop("test-multi-q2") == 6
+        popped_val1 = mq.pop("test-multi-q1")
+        assert popped_val1 == 1
+        popped_val2 = mq.pop("test-multi-q2")
+        assert popped_val2 == 6
 
         assert mq.length("test-multi-q1") == 4
         assert mq.length("test-multi-q2") == 4

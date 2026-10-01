@@ -1210,13 +1210,15 @@ class ESCollection(Generic[ModelType]):
         return out
 
     @overload
-    def normalize(self: Self, data) -> ModelType | None: ...
+    def normalize(self: Self, data) -> ModelType | None: ...  # codeql[py/ineffectual-statement]
 
     @overload
-    def normalize(self: Self, data, as_obj: Literal[True]) -> ModelType | None: ...
+    def normalize(self: Self, data, as_obj: Literal[True]) -> ModelType | None: ...  # codeql[py/ineffectual-statement]
 
     @overload
-    def normalize(self: Self, data, as_obj: Literal[False]) -> dict[str, Any] | None: ...
+    def normalize(
+        self: Self, data, as_obj: Literal[False]
+    ) -> dict[str, Any] | None: ...  # codeql[py/ineffectual-statement]
 
     def normalize(self: Self, data, as_obj=True):
         """Normalize the data using the model class
@@ -1285,10 +1287,14 @@ class ESCollection(Generic[ModelType]):
         raise elasticsearch.exceptions.NotFoundError(f"Document with id {key} not found", meta, result)
 
     @overload
-    def _get(self: Self, key, retries, version: Literal[False]) -> dict[str, Any]: ...
+    def _get(
+        self: Self, key, retries, version: Literal[False]
+    ) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
 
     @overload
-    def _get(self: Self, key, retries, version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+    def _get(
+        self: Self, key, retries, version: Literal[True]
+    ) -> tuple[dict[str, Any], str]: ...  # codeql[py/ineffectual-statement]
 
     def _get(self: Self, key, retries, version=False):
         """Versioned get-save for atomic update has two paths:
@@ -1368,25 +1374,33 @@ class ESCollection(Generic[ModelType]):
         raise DataStoreException(f"Invalid version token for {self.name}: {version!r}")
 
     @overload
-    def get(self: Self, key, as_obj: Literal[True], version: Literal[True]) -> tuple[ModelType | None, str]: ...
+    def get(
+        self: Self, key, as_obj: Literal[True], version: Literal[True]
+    ) -> tuple[ModelType | None, str]: ...  # codeql[py/ineffectual-statement]
 
     @overload
-    def get(self: Self, key, as_obj: Literal[True], version: Literal[False]) -> ModelType | None: ...
+    def get(
+        self: Self, key, as_obj: Literal[True], version: Literal[False]
+    ) -> ModelType | None: ...  # codeql[py/ineffectual-statement]
 
     @overload
-    def get(self: Self, key, as_obj: Literal[True]) -> ModelType | None: ...
+    def get(self: Self, key, as_obj: Literal[True]) -> ModelType | None: ...  # codeql[py/ineffectual-statement]
 
     @overload
-    def get(self: Self, key) -> ModelType | None: ...
+    def get(self: Self, key) -> ModelType | None: ...  # codeql[py/ineffectual-statement]
 
     @overload
-    def get(self: Self, key, as_obj: Literal[False], version: Literal[True]) -> tuple[dict[str, Any] | None, str]: ...
+    def get(
+        self: Self, key, as_obj: Literal[False], version: Literal[True]
+    ) -> tuple[dict[str, Any] | None, str]: ...  # codeql[py/ineffectual-statement]
 
     @overload
-    def get(self: Self, key, as_obj: Literal[False], version: Literal[False]) -> dict[str, Any] | None: ...
+    def get(
+        self: Self, key, as_obj: Literal[False], version: Literal[False]
+    ) -> dict[str, Any] | None: ...  # codeql[py/ineffectual-statement]
 
     @overload
-    def get(self: Self, key, as_obj: Literal[False]) -> dict[str, Any] | None: ...
+    def get(self: Self, key, as_obj: Literal[False]) -> dict[str, Any] | None: ...  # codeql[py/ineffectual-statement]
 
     def get(self: Self, key, as_obj=True, version=False):
         """Get a document from the datastore, retry a few times if not found and normalize the
@@ -1407,27 +1421,35 @@ class ESCollection(Generic[ModelType]):
         return self.normalize(data, as_obj=as_obj)
 
     @overload
-    def get_if_exists(self: Self, key: str, as_obj: Literal[True], version: Literal[True]) -> tuple[ModelType, str]: ...
+    def get_if_exists(
+        self: Self, key: str, as_obj: Literal[True], version: Literal[True]
+    ) -> tuple[ModelType, str]: ...  # codeql[py/ineffectual-statement]
 
     @overload
-    def get_if_exists(self: Self, key: str, as_obj: Literal[True], version: Literal[False]) -> ModelType: ...
+    def get_if_exists(
+        self: Self, key: str, as_obj: Literal[True], version: Literal[False]
+    ) -> ModelType: ...  # codeql[py/ineffectual-statement]
 
     @overload
-    def get_if_exists(self: Self, key: str, as_obj: Literal[True]) -> ModelType: ...
+    def get_if_exists(self: Self, key: str, as_obj: Literal[True]) -> ModelType: ...  # codeql[py/ineffectual-statement]
 
     @overload
-    def get_if_exists(self: Self, key: str) -> ModelType: ...
+    def get_if_exists(self: Self, key: str) -> ModelType: ...  # codeql[py/ineffectual-statement]
 
     @overload
     def get_if_exists(
         self: Self, key: str, as_obj: Literal[False], version: Literal[True]
-    ) -> tuple[dict[str, Any], str]: ...
+    ) -> tuple[dict[str, Any], str]: ...  # codeql[py/ineffectual-statement]
 
     @overload
-    def get_if_exists(self: Self, key: str, as_obj: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+    def get_if_exists(
+        self: Self, key: str, as_obj: Literal[False], version: Literal[False]
+    ) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
 
     @overload
-    def get_if_exists(self: Self, key: str, as_obj: Literal[False]) -> dict[str, Any]: ...
+    def get_if_exists(
+        self: Self, key: str, as_obj: Literal[False]
+    ) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
 
     def get_if_exists(self: Self, key: str, as_obj=True, version=False):
         """Get a document from the datastore but do not retry if not found.
@@ -2095,7 +2117,7 @@ class ESCollection(Generic[ModelType]):
         script_fields: list[str] = [],
         *,
         aggregations: None = None,
-    ) -> SearchResult[ModelType]: ...
+    ) -> SearchResult[ModelType]: ...  # codeql[py/ineffectual-statement]
 
     @overload
     def search(
@@ -2114,7 +2136,7 @@ class ESCollection(Generic[ModelType]):
         script_fields: list[str] = [],
         *,
         aggregations: None = None,
-    ) -> SearchResult[dict[str, typing.Any]]: ...
+    ) -> SearchResult[dict[str, typing.Any]]: ...  # codeql[py/ineffectual-statement]
 
     @overload
     def search(
@@ -2133,7 +2155,7 @@ class ESCollection(Generic[ModelType]):
         script_fields: list[str] = [],
         *,
         aggregations: list[tuple[str, dict]],
-    ) -> AggSearchResult[ModelType]: ...
+    ) -> AggSearchResult[ModelType]: ...  # codeql[py/ineffectual-statement]
 
     @overload
     def search(
@@ -2152,7 +2174,7 @@ class ESCollection(Generic[ModelType]):
         script_fields: list[str] = [],
         *,
         aggregations: list[tuple[str, dict]],
-    ) -> AggSearchResult[dict[str, typing.Any]]: ...
+    ) -> AggSearchResult[dict[str, typing.Any]]: ...  # codeql[py/ineffectual-statement]
 
     def search(
         self: Self,
@@ -2316,7 +2338,7 @@ class ESCollection(Generic[ModelType]):
         item_buffer_size: int = 200,
         *,
         as_obj: Literal[True] = True,
-    ) -> typing.Generator[ModelType, None, None]: ...
+    ) -> typing.Generator[ModelType, None, None]: ...  # codeql[py/ineffectual-statement]
 
     @overload
     def stream_search(
@@ -2328,7 +2350,7 @@ class ESCollection(Generic[ModelType]):
         item_buffer_size: int = 200,
         *,
         as_obj: Literal[False],
-    ) -> typing.Generator[dict[str, typing.Any], None, None]: ...
+    ) -> typing.Generator[dict[str, typing.Any], None, None]: ...  # codeql[py/ineffectual-statement]
 
     def stream_search(
         self: Self,

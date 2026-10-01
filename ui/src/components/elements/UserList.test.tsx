@@ -151,6 +151,30 @@ describe('UserList', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
+  it('renders an inline picker for an empty list variant single mode when enabled', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(<UserList i18nLabel="user.list.label" userIds={[]} onChange={onChange} variant="list" showEmptyInput />, {
+      wrapper: createWrapper(defaultUsers)
+    });
+
+    const combo = screen.getByRole('combobox', { name: 'user.list.label' });
+    await user.click(combo);
+    const listbox = await screen.findByRole('listbox');
+    await user.click(within(listbox).getByText('Bob Analyst'));
+
+    expect(onChange).toHaveBeenCalledWith(['analystB']);
+  });
+
+  it('does not render an empty picker in list variant single mode by default', () => {
+    render(<UserList i18nLabel="user.list.label" userIds={[]} onChange={vi.fn()} variant="list" />, {
+      wrapper: createWrapper(defaultUsers)
+    });
+
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+  });
+
   it('does not open popover when disabled', async () => {
     const onChange = vi.fn();
 

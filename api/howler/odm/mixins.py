@@ -29,10 +29,14 @@ class _ObjectsDescriptor(Generic[ModelType]):
     """
 
     @overload
-    def __get__(self: Self, obj: None, objtype: type[ModelType]) -> ESCollection[ModelType]: ...
+    def __get__(
+        self: Self, obj: None, objtype: type[ModelType]
+    ) -> ESCollection[ModelType]: ...  # codeql[py/ineffectual-statement]
 
     @overload
-    def __get__(self: Self, obj: ModelType, objtype: type[ModelType]) -> ESCollection[ModelType]: ...
+    def __get__(
+        self: Self, obj: ModelType, objtype: type[ModelType]
+    ) -> ESCollection[ModelType]: ...  # codeql[py/ineffectual-statement]
 
     def __get__(self, obj: ModelType | None, objtype: type[ModelType] | None = None) -> ESCollection[ModelType]:
         """Return the ESCollection for the owner class.

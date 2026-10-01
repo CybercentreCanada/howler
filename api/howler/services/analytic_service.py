@@ -19,31 +19,39 @@ def does_analytic_exist(analytic_id: str) -> bool:
 
 
 @overload
-def get_analytic(id: str, as_odm: Literal[True], version: Literal[True]) -> tuple[Analytic, str]: ...
+def get_analytic(
+    id: str, as_odm: Literal[True], version: Literal[True]
+) -> tuple[Analytic, str]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_analytic(id: str, as_odm: Literal[True], version: Literal[False]) -> Analytic: ...
+def get_analytic(
+    id: str, as_odm: Literal[True], version: Literal[False]
+) -> Analytic: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_analytic(id: str, as_odm: Literal[True]) -> Analytic: ...
+def get_analytic(id: str, as_odm: Literal[True]) -> Analytic: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_analytic(id: str) -> Analytic: ...
+def get_analytic(id: str) -> Analytic: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_analytic(id: str, as_odm: Literal[False], version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+def get_analytic(
+    id: str, as_odm: Literal[False], version: Literal[True]
+) -> tuple[dict[str, Any], str]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_analytic(id: str, as_odm: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+def get_analytic(
+    id: str, as_odm: Literal[False], version: Literal[False]
+) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_analytic(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
+def get_analytic(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
 
 
 def get_analytic(

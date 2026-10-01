@@ -31,10 +31,12 @@ def add_access_control_endpoints(api: Blueprint, odm: type[Ownership]):
         refresh => ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
 
         Data Block:
-        {
-            "privilege": "members",       # The permission level: 'owner', 'admins', or 'members'
-            "user_ids": ["username"]       # The users receiving the permission
-        }
+        [
+            {
+                "privilege": "members",   # The permission level: 'owner', 'admins', or 'members'
+                "user_id": "username"      # The user receiving the permission
+            }
+        ]
 
         Result Example:
         {
@@ -42,7 +44,7 @@ def add_access_control_endpoints(api: Blueprint, odm: type[Ownership]):
         }
         """
         try:
-            result = permission_service.give_privilege(id, user, odm, refresh=kwargs.get("refresh"))
+            result = permission_service.give_privileges(id, user, odm, refresh=kwargs.get("refresh"))
         except VersionConflictException:
             return conflict(err="Someone has updated this item. Please try again")
         except ForbiddenException as e:
@@ -67,13 +69,21 @@ def add_access_control_endpoints(api: Blueprint, odm: type[Ownership]):
         Optional Arguments:
         refresh => ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
 
+        Data Block:
+        [
+            {
+                "privilege": "members",   # The permission level: 'admins' or 'members'
+                "user_id": "username"      # The user losing the permission
+            }
+        ]
+
         Result Example:
         {
             ...object   # The updated action, dossier, or view
         }
         """
         try:
-            result = permission_service.remove_privilege(id, user, odm, refresh=kwargs.get("refresh"))
+            result = permission_service.remove_privileges(id, user, odm, refresh=kwargs.get("refresh"))
         except VersionConflictException:
             return conflict(err="Someone has updated this item. Please try again")
         except ForbiddenException as e:

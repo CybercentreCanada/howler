@@ -69,7 +69,10 @@ vi.mock('./display/HowlerAvatar', () => ({
 
 vi.mock('./UserList', () => ({
   default: ({ onChange }: { onChange: (userIds: string[]) => void }) => (
-    <button onClick={() => onChange(['analyst'])}>Select analyst</button>
+    <>
+      <button onClick={() => onChange(['analyst'])}>Select analyst</button>
+      <button onClick={() => onChange(['member'])}>Select member</button>
+    </>
   )
 }));
 
@@ -90,6 +93,12 @@ describe('MembershipManagement', () => {
               name: 'Analyst',
               type: [],
               username: 'analyst'
+            },
+            member: {
+              email: 'member@example.com',
+              name: 'Member',
+              type: [],
+              username: 'member'
             }
           },
           fetchUsers: vi.fn(),
@@ -138,18 +147,23 @@ describe('MembershipManagement', () => {
     });
   });
 
-  it('grants a selected member with the batched permission payload', async () => {
+  it('adds a selected user immediately and saves the selected privilege', async () => {
     const user = userEvent.setup();
     const onChange = renderMembershipManagement();
 
     await user.click(screen.getByRole('button', { name: 'membership.manage' }));
     await user.click(screen.getByRole('button', { name: 'Select analyst' }));
-    await user.click(screen.getByRole('button', { name: 'add' }));
+    await user.click(screen.getByRole('button', { name: 'Select member' }));
 
-    expect(permissionPutMock).toHaveBeenCalledWith('action-id', {
-      privilege: 'members',
-      user_ids: ['analyst']
-    });
+    const roleSelects = screen.getAllByRole('combobox');
+    await user.click(roleSelects[0]);
+    await user.click(screen.getByRole('option', { name: 'membership.privilege.admins' }));
+    await user.click(screen.getByRole('button', { name: 'button.save' }));
+
+    expect(permissionPutMock).toHaveBeenCalledWith('action-id', [
+      { privilege: 'admins', user_id: 'analyst' },
+      { privilege: 'members', user_id: 'member' }
+    ]);
     await waitFor(() => expect(onChange).toHaveBeenCalledWith({ owner: 'owner', admins: [], members: ['analyst'] }));
     expect(showSuccessMessageMock).toHaveBeenCalledWith('membership.message.success');
   });
@@ -164,14 +178,11 @@ describe('MembershipManagement', () => {
 
     await user.click(within(analystRow!).getByRole('button'));
 
-    expect(permissionDeleteMock).toHaveBeenCalledWith('action-id', {
-      privilege: 'admins',
-      user_ids: ['analyst']
-    });
+    expect(permissionDeleteMock).toHaveBeenCalledWith('action-id', [{ privilege: 'admins', user_id: 'analyst' }]);
     expect(dispatchApiMock).toHaveBeenCalledWith(
       {
         request: 'remove-permission',
-        data: { privilege: 'admins', user_ids: ['analyst'] }
+        data: [{ privilege: 'admins', user_id: 'analyst' }]
       },
       { throwError: false }
     );
@@ -184,7 +195,9 @@ describe('MembershipManagement', () => {
     renderMembershipManagement();
 
     await user.click(screen.getByRole('button', { name: 'membership.manage' }));
-    expect(screen.getByRole('button', { name: 'membership.privilege.owner' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Select analyst' }));
+    await user.click(screen.getAllByRole('combobox')[0]);
+    expect(screen.getByRole('option', { name: 'membership.privilege.owner' })).toBeInTheDocument();
   });
 
   it('does not offer owner transfer to a local admin', async () => {
@@ -198,7 +211,9 @@ describe('MembershipManagement', () => {
 
     renderMembershipManagement({ admins: ['admin'] });
     await user.click(screen.getByRole('button', { name: 'membership.manage' }));
-    expect(screen.queryByRole('button', { name: 'membership.privilege.owner' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Select analyst' }));
+    await user.click(screen.getAllByRole('combobox')[0]);
+    expect(screen.queryByRole('option', { name: 'membership.privilege.owner' })).not.toBeInTheDocument();
   });
 
   it('does not render membership controls for an unrelated user', () => {
@@ -221,7 +236,7 @@ describe('MembershipManagement', () => {
 
     await user.click(screen.getByRole('button', { name: 'membership.manage' }));
     await user.click(screen.getByRole('button', { name: 'Select analyst' }));
-    await user.click(screen.getByRole('button', { name: 'add' }));
+    await user.click(screen.getByRole('button', { name: 'button.save' }));
 
     await waitFor(() => expect(showErrorMessageMock).toHaveBeenCalledWith('membership.message.error'));
     expect(showSuccessMessageMock).not.toHaveBeenCalled();

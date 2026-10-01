@@ -77,16 +77,16 @@ def test_is_allowed_to_change_allows_owner_and_local_admin_updates():
 
 
 def test_build_permissions_request_returns_valid_payload(app):
-    with app.test_request_context(json={"privilege": "members", "user_ids": ["analyst"]}):
+    with app.test_request_context(json=[{"privilege": "members", "user_id": "analyst"}]):
         permission_request = permission_service._build_permissions_request()
 
-    assert permission_request.privilege == "members"
-    assert permission_request.user_ids == ["analyst"]
+    assert permission_request[0].privilege == "members"
+    assert permission_request[0].user_id == "analyst"
 
 
 def test_build_permissions_request_rejects_non_object_payload(app):
-    with app.test_request_context(json=["not", "an", "object"]):
-        with pytest.raises(InvalidDataException, match="Request body must be a JSON object"):
+    with app.test_request_context(json={"privilege": "members", "user_id": "analyst"}):
+        with pytest.raises(InvalidDataException, match="Request body must be a JSON array"):
             permission_service._build_permissions_request()
 
 
@@ -96,7 +96,7 @@ def test_build_permissions_request_maps_model_validation_errors(app, monkeypatch
 
     monkeypatch.setattr(permission_service, "PermissionRequest", raise_value_error)
 
-    with app.test_request_context(json={"privilege": "members", "user_ids": ["analyst"]}):
+    with app.test_request_context(json=[{"privilege": "members", "user_id": "analyst"}]):
         with pytest.raises(InvalidDataException, match="invalid payload"):
             permission_service._build_permissions_request()
 
@@ -104,22 +104,23 @@ def test_build_permissions_request_maps_model_validation_errors(app, monkeypatch
 @pytest.mark.parametrize(
     "payload",
     [
-        {"privilege": "members", "user_ids": []},
-        {"privilege": "members"},
+        [],
+        [{"privilege": "members", "user_id": ""}],
+        [{"privilege": "members"}],
     ],
 )
-def test_build_permissions_request_rejects_empty_user_ids(app, payload):
+def test_build_permissions_request_rejects_empty_user_id(app, payload):
     with app.test_request_context(json=payload):
-        with pytest.raises(InvalidDataException, match="at least one user"):
+        with pytest.raises(InvalidDataException, match="user_id|at least one permission"):
             permission_service._build_permissions_request()
 
 
-@pytest.mark.parametrize("operation", [permission_service.give_privilege, permission_service.remove_privilege])
-def test_permission_operations_reject_empty_user_ids(app, monkeypatch, operation):
+@pytest.mark.parametrize("operation", [permission_service.give_privileges, permission_service.remove_privileges])
+def test_permission_operations_reject_empty_user_id(app, monkeypatch, operation):
     collection, _ = mock_datastore(monkeypatch, DummyOwnership(members=["analyst"]))
 
-    with app.test_request_context(json={"privilege": "members", "user_ids": []}):
-        with pytest.raises(InvalidDataException, match="at least one user"):
+    with app.test_request_context(json=[{"privilege": "members", "user_id": ""}]):
+        with pytest.raises(InvalidDataException, match="user_id"):
             operation("dummy-id", make_user(), DummyOwnership)
 
     collection.save.assert_not_called()
@@ -128,9 +129,9 @@ def test_permission_operations_reject_empty_user_ids(app, monkeypatch, operation
 def test_give_privilege_rejects_missing_object(app, monkeypatch):
     collection, _ = mock_datastore(monkeypatch, None)
 
-    with app.test_request_context(json={"privilege": "members", "user_ids": ["analyst"]}):
+    with app.test_request_context(json=[{"privilege": "members", "user_id": "analyst"}]):
         with pytest.raises(InvalidDataException, match="Dummyownership dummy-id does not exist"):
-            permission_service.give_privilege("dummy-id", make_user(), DummyOwnership)
+            permission_service.give_privileges("dummy-id", make_user(), DummyOwnership)
 
     collection.save.assert_not_called()
 
@@ -139,20 +140,9 @@ def test_give_privilege_rejects_unauthorized_requester(app, monkeypatch):
     ownership = DummyOwnership()
     collection, _ = mock_datastore(monkeypatch, ownership)
 
-    with app.test_request_context(json={"privilege": "members", "user_ids": ["analyst"]}):
+    with app.test_request_context(json=[{"privilege": "members", "user_id": "analyst"}]):
         with pytest.raises(ForbiddenException, match="not allowed"):
-            permission_service.give_privilege("dummy-id", make_user("other"), DummyOwnership)
-
-    collection.save.assert_not_called()
-
-
-def test_give_privilege_requires_one_owner(app, monkeypatch):
-    ownership = DummyOwnership()
-    collection, _ = mock_datastore(monkeypatch, ownership)
-
-    with app.test_request_context(json={"privilege": "owner", "user_ids": ["one", "two"]}):
-        with pytest.raises(InvalidDataException, match="must be a single entry"):
-            permission_service.give_privilege("dummy-id", make_user(), DummyOwnership)
+            permission_service.give_privileges("dummy-id", make_user("other"), DummyOwnership)
 
     collection.save.assert_not_called()
 
@@ -161,8 +151,8 @@ def test_give_privilege_transfers_owner(app, monkeypatch):
     ownership = DummyOwnership()
     collection, _ = mock_datastore(monkeypatch, ownership)
 
-    with app.test_request_context(json={"privilege": "owner", "user_ids": ["new-owner"]}):
-        result = permission_service.give_privilege("dummy-id", make_user(), DummyOwnership, refresh="wait_for")
+    with app.test_request_context(json=[{"privilege": "owner", "user_id": "new-owner"}]):
+        result = permission_service.give_privileges("dummy-id", make_user(), DummyOwnership, refresh="wait_for")
 
     assert result["owner"] == "new-owner"
     collection.save.assert_called_once_with("dummy-id", ownership, version="dummy-version", refresh="wait_for")
@@ -176,8 +166,8 @@ def test_give_privilege_switches_non_owner_privilege(app, monkeypatch, requested
     ownership = DummyOwnership(**{existing_privilege: ["analyst"]})
     collection, _ = mock_datastore(monkeypatch, ownership)
 
-    with app.test_request_context(json={"privilege": requested_privilege, "user_ids": ["analyst"]}):
-        result = permission_service.give_privilege("dummy-id", make_user(), DummyOwnership)
+    with app.test_request_context(json=[{"privilege": requested_privilege, "user_id": "analyst"}]):
+        result = permission_service.give_privileges("dummy-id", make_user(), DummyOwnership)
 
     assert result[existing_privilege] == []
     assert result[requested_privilege] == ["analyst"]
@@ -189,8 +179,8 @@ def test_give_privilege_does_not_implicitly_remove_owner(app, monkeypatch):
     ownership = DummyOwnership()
     collection, _ = mock_datastore(monkeypatch, ownership)
 
-    with app.test_request_context(json={"privilege": "members", "user_ids": ["owner"]}):
-        result = permission_service.give_privilege("dummy-id", make_user(), DummyOwnership)
+    with app.test_request_context(json=[{"privilege": "members", "user_id": "owner"}]):
+        result = permission_service.give_privileges("dummy-id", make_user(), DummyOwnership)
 
     assert result["owner"] == "owner"
     assert result["members"] == ["owner"]
@@ -204,49 +194,72 @@ def test_give_privilege_does_not_implicitly_remove_owner(app, monkeypatch):
         (["analyst"], True, "User analyst already has permission members"),
     ],
 )
-def test_give_privilege_rejects_invalid_batch_entries(
-    app, monkeypatch, existing_members, user_exists, expected_message
-):
+def test_give_privilege_rejects_invalid_entries(app, monkeypatch, existing_members, user_exists, expected_message):
     ownership = DummyOwnership(members=existing_members)
     collection, user_collection = mock_datastore(monkeypatch, ownership)
     user_collection.exists.return_value = user_exists
 
-    with app.test_request_context(json={"privilege": "members", "user_ids": ["analyst"]}):
+    with app.test_request_context(json=[{"privilege": "members", "user_id": "analyst"}]):
         with pytest.raises(InvalidDataException, match=expected_message):
-            permission_service.give_privilege("dummy-id", make_user(), DummyOwnership)
+            permission_service.give_privileges("dummy-id", make_user(), DummyOwnership)
 
     collection.save.assert_not_called()
 
 
-def test_give_privilege_adds_multiple_users_after_validating_batch(app, monkeypatch):
+def test_give_privilege_adds_multiple_users_with_independent_privileges(app, monkeypatch):
     ownership = DummyOwnership()
     collection, _ = mock_datastore(monkeypatch, ownership)
 
-    with app.test_request_context(json={"privilege": "members", "user_ids": ["one", "two"]}):
-        result = permission_service.give_privilege("dummy-id", make_user(), DummyOwnership, refresh="true")
+    with app.test_request_context(
+        json=[
+            {"privilege": "members", "user_id": "one"},
+            {"privilege": "admins", "user_id": "two"},
+        ]
+    ):
+        result = permission_service.give_privileges("dummy-id", make_user(), DummyOwnership, refresh="true")
 
-    assert result["members"] == ["one", "two"]
+    assert result["members"] == ["one"]
+    assert result["admins"] == ["two"]
     collection.save.assert_called_once_with("dummy-id", ownership, version="dummy-version", refresh="true")
 
 
-def test_give_privilege_deduplicates_user_ids(app, monkeypatch):
-    ownership = DummyOwnership()
+def test_give_privilege_rejects_duplicate_privilege(app, monkeypatch):
+    ownership = DummyOwnership(members=["analyst"])
     collection, user_collection = mock_datastore(monkeypatch, ownership)
 
-    with app.test_request_context(json={"privilege": "members", "user_ids": ["analyst", "analyst"]}):
-        result = permission_service.give_privilege("dummy-id", make_user(), DummyOwnership)
+    with app.test_request_context(json=[{"privilege": "members", "user_id": "analyst"}]):
+        with pytest.raises(InvalidDataException, match="already has permission members"):
+            permission_service.give_privileges("dummy-id", make_user(), DummyOwnership)
 
-    assert result["members"] == ["analyst"]
     user_collection.exists.assert_called_once_with("analyst")
-    collection.save.assert_called_once_with("dummy-id", ownership, version="dummy-version", refresh=None)
+    collection.save.assert_not_called()
+
+
+def test_give_privilege_validates_the_entire_batch_before_applying(app, monkeypatch):
+    ownership = DummyOwnership()
+    collection, user_collection = mock_datastore(monkeypatch, ownership)
+    user_collection.exists.side_effect = lambda user_id: user_id == "one"
+
+    with app.test_request_context(
+        json=[
+            {"privilege": "members", "user_id": "one"},
+            {"privilege": "admins", "user_id": "missing"},
+        ]
+    ):
+        with pytest.raises(InvalidDataException, match="User missing does not exist"):
+            permission_service.give_privileges("dummy-id", make_user(), DummyOwnership)
+
+    assert ownership.members == []
+    assert ownership.admins == []
+    collection.save.assert_not_called()
 
 
 def test_remove_privilege_rejects_missing_object(app, monkeypatch):
     collection, _ = mock_datastore(monkeypatch, None)
 
-    with app.test_request_context(json={"privilege": "members", "user_ids": ["analyst"]}):
+    with app.test_request_context(json=[{"privilege": "members", "user_id": "analyst"}]):
         with pytest.raises(InvalidDataException, match="Dummyownership dummy-id does not exist"):
-            permission_service.remove_privilege("dummy-id", make_user(), DummyOwnership)
+            permission_service.remove_privileges("dummy-id", make_user(), DummyOwnership)
 
     collection.save.assert_not_called()
 
@@ -255,9 +268,9 @@ def test_remove_privilege_rejects_unauthorized_requester(app, monkeypatch):
     ownership = DummyOwnership(members=["analyst"])
     collection, _ = mock_datastore(monkeypatch, ownership)
 
-    with app.test_request_context(json={"privilege": "members", "user_ids": ["analyst"]}):
+    with app.test_request_context(json=[{"privilege": "members", "user_id": "analyst"}]):
         with pytest.raises(ForbiddenException, match="not allowed"):
-            permission_service.remove_privilege("dummy-id", make_user("other"), DummyOwnership)
+            permission_service.remove_privileges("dummy-id", make_user("other"), DummyOwnership)
 
     collection.save.assert_not_called()
 
@@ -266,9 +279,9 @@ def test_remove_privilege_rejects_owner_removal(app, monkeypatch):
     ownership = DummyOwnership()
     collection, _ = mock_datastore(monkeypatch, ownership)
 
-    with app.test_request_context(json={"privilege": "owner", "user_ids": ["owner"]}):
+    with app.test_request_context(json=[{"privilege": "owner", "user_id": "owner"}]):
         with pytest.raises(InvalidDataException, match="Only transfer is allowed"):
-            permission_service.remove_privilege("dummy-id", make_user(), DummyOwnership)
+            permission_service.remove_privileges("dummy-id", make_user(), DummyOwnership)
 
     collection.save.assert_not_called()
 
@@ -283,9 +296,9 @@ def test_remove_privilege_rejects_owner_removal(app, monkeypatch):
 def test_remove_privilege_requires_existing_privilege(app, monkeypatch, privilege, ownership):
     collection, _ = mock_datastore(monkeypatch, ownership)
 
-    with app.test_request_context(json={"privilege": privilege, "user_ids": ["analyst"]}):
+    with app.test_request_context(json=[{"privilege": privilege, "user_id": "analyst"}]):
         with pytest.raises(InvalidDataException, match=f"does not have the '{privilege}' privilege"):
-            permission_service.remove_privilege("dummy-id", make_user(), DummyOwnership)
+            permission_service.remove_privileges("dummy-id", make_user(), DummyOwnership)
 
     collection.save.assert_not_called()
 
@@ -295,8 +308,8 @@ def test_remove_privilege_removes_missing_target_user_without_validating_user(ap
     collection, user_collection = mock_datastore(monkeypatch, ownership)
     user_collection.exists.return_value = False
 
-    with app.test_request_context(json={"privilege": "members", "user_ids": ["analyst"]}):
-        result = permission_service.remove_privilege("dummy-id", make_user(), DummyOwnership)
+    with app.test_request_context(json=[{"privilege": "members", "user_id": "analyst"}]):
+        result = permission_service.remove_privileges("dummy-id", make_user(), DummyOwnership)
 
     assert result["members"] == []
     user_collection.exists.assert_not_called()
@@ -308,8 +321,8 @@ def test_remove_privilege_uses_the_privilege_collection_for_removal(app, monkeyp
     ownership.permissions["members"] = ownership.members
     collection, _ = mock_datastore(monkeypatch, ownership)
 
-    with app.test_request_context(json={"privilege": "members", "user_ids": ["analyst"]}):
-        result = permission_service.remove_privilege("dummy-id", make_user(), DummyOwnership)
+    with app.test_request_context(json=[{"privilege": "members", "user_id": "analyst"}]):
+        result = permission_service.remove_privileges("dummy-id", make_user(), DummyOwnership)
 
     assert result["members"] == []
     collection.save.assert_called_once_with("dummy-id", ownership, version="dummy-version", refresh=None)
@@ -323,20 +336,36 @@ def test_remove_privilege_removes_users_and_saves(app, monkeypatch, privilege):
     )
     collection, _ = mock_datastore(monkeypatch, ownership)
 
-    with app.test_request_context(json={"privilege": privilege, "user_ids": ["analyst"]}):
-        result = permission_service.remove_privilege("dummy-id", make_user(), DummyOwnership, refresh="wait_for")
+    with app.test_request_context(json=[{"privilege": privilege, "user_id": "analyst"}]):
+        result = permission_service.remove_privileges("dummy-id", make_user(), DummyOwnership, refresh="wait_for")
 
     assert result[privilege] == []
     collection.save.assert_called_once_with("dummy-id", ownership, version="dummy-version", refresh="wait_for")
 
 
-def test_remove_privilege_deduplicates_user_ids(app, monkeypatch):
+def test_remove_privilege_removes_user(app, monkeypatch):
     ownership = DummyOwnership(members=["analyst"])
     collection, user_collection = mock_datastore(monkeypatch, ownership)
 
-    with app.test_request_context(json={"privilege": "members", "user_ids": ["analyst", "analyst"]}):
-        result = permission_service.remove_privilege("dummy-id", make_user(), DummyOwnership)
+    with app.test_request_context(json=[{"privilege": "members", "user_id": "analyst"}]):
+        result = permission_service.remove_privileges("dummy-id", make_user(), DummyOwnership)
 
     assert result["members"] == []
     user_collection.exists.assert_not_called()
+    collection.save.assert_called_once_with("dummy-id", ownership, version="dummy-version", refresh=None)
+
+
+def test_remove_privilege_removes_multiple_users(app, monkeypatch):
+    ownership = DummyOwnership(members=["one", "two"])
+    collection, _ = mock_datastore(monkeypatch, ownership)
+
+    with app.test_request_context(
+        json=[
+            {"privilege": "members", "user_id": "one"},
+            {"privilege": "members", "user_id": "two"},
+        ]
+    ):
+        result = permission_service.remove_privileges("dummy-id", make_user(), DummyOwnership)
+
+    assert result["members"] == []
     collection.save.assert_called_once_with("dummy-id", ownership, version="dummy-version", refresh=None)

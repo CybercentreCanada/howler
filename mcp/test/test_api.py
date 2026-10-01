@@ -75,15 +75,71 @@ async def test_call_rejects_missing_api_response_envelope():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("response_json", [None, "scalar response", 123, ["not", "a", "dict"]])
+async def test_call_rejects_non_mapping_api_response_envelope(response_json):
+    http_client = Mock()
+    http_client.request = AsyncMock()
+    http_client.aclose = AsyncMock()
+    http_client.request.return_value = Mock(json=Mock(return_value=response_json), status_code=200)
+    auth_provider = Mock()
+    auth_provider.get_howler_token = AsyncMock(return_value="howler-token")
+
+    with patch("howler_mcp.api.httpx.AsyncClient", return_value=http_client):
+        api_client = HowlerApiClient(auth_provider=auth_provider)
+        await api_client.start()
+
+    with pytest.raises(ValueError, match="expected format"):
+        await api_client.call(FAKE_TOKEN, "/whoami", "GET")
+
+
+@pytest.mark.asyncio
+async def test_call_logs_request_start_event_name(caplog):
+    http_client = Mock()
+    http_client.request = AsyncMock()
+    http_client.aclose = AsyncMock()
+    http_client.request.return_value = Mock(json=Mock(return_value={"api_response": {"status": "ok"}}), status_code=200)
+    auth_provider = Mock()
+    auth_provider.get_howler_token = AsyncMock(return_value="howler-token")
+    api_client = HowlerApiClient(auth_provider=auth_provider, client=http_client)
+
+    with caplog.at_level("INFO", logger="howler_mcp.api"):
+        await api_client.call(FAKE_TOKEN, "/whoami", "GET")
+
+    assert "api_request_start method=GET route=/whoami timeout=" in caplog.text
+    assert "api_request_sroutetart" not in caplog.text
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("content_type", "response_content", "logged_response"),
+    ("body", "response_json", "expected_outcome"),
     [
-        ("application/json", b'{"api_error_message":"invalid query"}', '{"api_error_message":"invalid query"}'),
-        ("application/json", b"not json", "not json"),
-        ("text/plain", b"invalid query", "invalid query"),
+        ({"not": "allowed"}, {"api_response": {"status": "ok"}}, "body_error"),
+        (None, {"wrong": "shape"}, "invalid_envelope"),
     ],
 )
-async def test_call_logs_http_error_response(caplog, content_type, response_content, logged_response):
+async def test_call_preserves_specific_value_error_outcomes(caplog, body, response_json, expected_outcome):
+    http_client = Mock()
+    http_client.request = AsyncMock(return_value=Mock(json=Mock(return_value=response_json), status_code=200))
+    auth_provider = Mock()
+    auth_provider.get_howler_token = AsyncMock(return_value="howler-token")
+    api_client = HowlerApiClient(auth_provider=auth_provider, client=http_client)
+
+    with caplog.at_level("WARNING", logger="howler_mcp.api"), pytest.raises(ValueError):
+        await api_client.call(FAKE_TOKEN, "/whoami", "GET", body=body)
+
+    assert f"api_request_value_error method=GET route=/whoami outcome={expected_outcome}" in caplog.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("content_type", "response_content"),
+    [
+        ("application/json", b'{"api_error_message":"classified detail"}'),
+        ("application/json", b"not json"),
+        ("text/plain", b"classified detail"),
+    ],
+)
+async def test_call_does_not_log_http_error_response_body(caplog, content_type, response_content):
     request = httpx.Request("GET", "https://api/whoami")
     response = httpx.Response(
         400,
@@ -100,7 +156,8 @@ async def test_call_logs_http_error_response(caplog, content_type, response_cont
     with caplog.at_level("WARNING", logger="howler_mcp.api"), pytest.raises(httpx.HTTPStatusError):
         await api_client.call(FAKE_TOKEN, "/whoami", "GET")
 
-    assert f"response={logged_response}" in caplog.text
+    assert "api_request_http_error method=GET route=/whoami status_code=400 outcome=http_4xx" in caplog.text
+    assert response_content.decode("utf-8", errors="replace") not in caplog.text
 
 
 @pytest.mark.asyncio

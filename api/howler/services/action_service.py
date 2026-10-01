@@ -38,31 +38,37 @@ _action_queues: dict[str, NamedQueue[TriggeredAction]] = {}
 @overload
 def get_action(
     id: str, as_odm: Literal[True], version: Literal[True], user: User | None = None
-) -> tuple[Action, str]: ...
+) -> tuple[Action, str]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_action(id: str, as_odm: Literal[True], version: Literal[False]) -> Action: ...
+def get_action(
+    id: str, as_odm: Literal[True], version: Literal[False]
+) -> Action: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_action(id: str, as_odm: Literal[True]) -> Action: ...
+def get_action(id: str, as_odm: Literal[True]) -> Action: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_action(id: str) -> Action: ...
+def get_action(id: str) -> Action: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_action(id: str, as_odm: Literal[False], version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+def get_action(
+    id: str, as_odm: Literal[False], version: Literal[True]
+) -> tuple[dict[str, Any], str]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_action(id: str, as_odm: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+def get_action(
+    id: str, as_odm: Literal[False], version: Literal[False]
+) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
-def get_action(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
+def get_action(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
 
 
 def get_action(id: str, as_odm=False, version=False, user: User | None = None):

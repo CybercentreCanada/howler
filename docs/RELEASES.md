@@ -5,16 +5,34 @@
 - **Strict TypeScript Checking** _(technical update)_: Enabled strict TypeScript checking for the UI and updated application code, API clients, hooks, components, plugins, and tests to use explicit, type-safe definitions.
 - **Clue Database Configuration** _(bugfix)_: Exposed Clue storage and replication options so deployments can configure database behavior instead of always using the previous replicated in-memory setup.
 - **Alert Detail Outside Close** _(bugfix)_: Reset alert selection when closing the details pane by clicking outside it, allowing the same alert card to be opened again.
+- **Shared Ownership Controls** _(new feature)_: Added UI controls to manage owners, administrators, and members for actions, dossiers, and views ([#582](https://github.com/CybercentreCanada/howler/pull/582), [#605](https://github.com/CybercentreCanada/howler/pull/605)).
+- **Grouped Dossier Pivots** _(new feature)_: Added configurable nested pivot groups, group suggestions, and navigable pivot menus, with a user preference to disable grouping ([#574](https://github.com/CybercentreCanada/howler/pull/574)).
+- **Interactive Case Aggregates** _(improvement)_: Case dashboard aggregate cards now support selecting individual values and copying selected values to the clipboard ([#600](https://github.com/CybercentreCanada/howler/pull/600)).
+- **Clue Plugin Customization** _(improvement)_: Exposed configuration for the Clue service URL, API token, Iconify settings, execution context, timeouts, and chunk size.
+- **Invalid Detection Overviews** _(bugfix)_: Flagged overviews whose detection is no longer available and added a way to remove them ([#555](https://github.com/CybercentreCanada/howler/pull/555)).
 
 ## Howler MCP `v0.1.1`
 
 - **HTTP Client Lifecycle** _(bugfix)_: Prevented an MCP session shutdown from closing the shared Howler API client while other sessions are still running.
 - **HTTPX Connection Pool Limits** _(new feature)_: Added configurable concurrent connection, keepalive pool, and idle expiry limits for the shared Howler API client.
+- **Lucene Search and Dossier Management** _(new feature)_: Added validated Lucene hit searches with searchable field and value discovery, plus tools to create and update dossiers and manage hit labels ([#549](https://github.com/CybercentreCanada/howler/pull/549)).
+- **Direct Dossier Leads and Howler Links** _(new feature)_: Added tools to append dossier leads to a specific hit and generate links that open records in the Howler UI.
+- **HTTP Deployment Support** _(bugfix)_: Allowed MCP to connect to HTTP Howler deployments, including local Docker Compose and Kubernetes environments.
+- **JWT Verification Diagnostics** _(improvement)_: Improved JWKS key retrieval and authentication diagnostics while avoiding API response-body logging.
 
 ## Howler API `v4.1.0`
 
 - **Classification Access Control** _(bugfix)_: Enforced classification authorization consistently across direct updates, ingestion, bundle compatibility endpoints, and case references without exposing inaccessible records.
 - **Action Retrieval Endpoint** _(new feature)_: Added an authenticated endpoint for retrieving individual actions with ETag support and conditional `304 Not Modified` responses.
+- **Ownership and Permission Management** _(new feature)_: Added owners, administrators, and members for actions, dossiers, and views, including permission grant/revoke endpoints and a migration for legacy action ownership ([#582](https://github.com/CybercentreCanada/howler/pull/582)).
+- **Pivot Group Support** _(new feature)_: Added grouped dossier pivots and an authenticated endpoint for suggesting existing pivot groups ([#574](https://github.com/CybercentreCanada/howler/pull/574)).
+- **Data Synchronization Plugin** _(new feature)_: Added a first-party sync plugin with authenticated incremental hit-diff retrieval and hit-schema endpoints for downstream data synchronization ([#502](https://github.com/CybercentreCanada/howler/pull/502)).
+- **Retention Reference Cleanup** _(bugfix)_: Retention now removes expiring hits from case items and related-hit references before deleting them, preventing stale references.
+- **Queued Action Token Batching** _(bugfix)_: Grouped queued actions by encrypted authorization token before decryption so requests with undecryptable tokens are handled reliably.
+
+## Howler Client `v3.1.0`
+
+- **Refresh Controls for Write Operations** _(new feature)_: Added optional Elasticsearch index refresh controls, including `wait_for`, to hit, user, case, and ingest write methods ([#565](https://github.com/CybercentreCanada/howler/pull/565)).
 
 ## Howler API `v4.0.11`
 

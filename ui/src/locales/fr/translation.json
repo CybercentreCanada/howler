@@ -323,6 +323,7 @@
   "membership.message.error": "Il y a eu une erreur durant la mise a jours des permissions",
   "membership.message.success": "Permissions misse à jours.",
   "membership.message.warning": "Aucun utilisateur sélectionné",
+  "membership.role": "Rôle",
   "membership.privilege.admins": "Administrateur",
   "membership.privilege.manage": "Gérer privilèges",
   "membership.privilege.members": "Membre",
