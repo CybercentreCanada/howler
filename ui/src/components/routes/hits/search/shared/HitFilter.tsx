@@ -244,7 +244,7 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
 
   const onGroupedValueChange: UseAutocompleteProps<string, true, false, true>['onChange'] = useCallback(
     (_, newValues) => {
-      const isWildcard = newValues.length === 0 || (newValues.length === 1 && newValues[0] === WILDCARD_OPTION);
+      const isWildcard = newValues.length === 0 || newValues.includes(WILDCARD_OPTION);
       const values = isWildcard ? [] : newValues.filter(newValue => newValue !== WILDCARD_OPTION);
       setFilterValues(values);
       setWildcard(isWildcard);

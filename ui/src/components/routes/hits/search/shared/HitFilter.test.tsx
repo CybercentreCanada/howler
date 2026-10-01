@@ -27,7 +27,9 @@ vi.mock('@mui/material', async importOriginal => {
           onChange(
             null,
             mockAutocompleteSelection.value === 'wildcard'
-              ? options.at(-1)
+              ? multiple
+                ? [...(value ?? []), options.at(-1)]
+                : options.at(-1)
               : mockAutocompleteSelection.value === 'clear'
                 ? null
                 : multiple
@@ -140,6 +142,16 @@ describe('HitFilter', () => {
     mockAutocompleteSelection.value = 'clear';
     fireEvent.click(screen.getAllByText('change-filter')[1]);
     expect(mockSetSavedFilter).toHaveBeenLastCalledWith(9, 'howler.assessment:*');
+  });
+
+  it('resets grouped values when the wildcard option is selected', () => {
+    render(<HitFilter id={10} value={'event.provider:("a" OR "b")'} />);
+    fireEvent.click(screen.getByRole('button', { name: /event.provider:/ }));
+
+    mockAutocompleteSelection.value = 'wildcard';
+    fireEvent.click(screen.getAllByText('change-filter')[1]);
+
+    expect(mockSetSavedFilter).toHaveBeenLastCalledWith(10, 'event.provider:*');
   });
 
   it('toggles negation without losing a grouped OR clause', async () => {
