@@ -93,7 +93,7 @@ class TestCreateEndpoint:
             body = result.get_json()
             assert body["api_response"] == ["hit-001"]
             mock_hit_svc.create_hits.assert_called_once_with([mock_hit], user.uname, overwrite=False, refresh=None)
-            mock_queue_fn.return_value.push.assert_called_once_with("hit-001")
+            mock_queue_fn.return_value.push.assert_called_once_with({"id": "hit-001", "rule_id": None})
 
     @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.event_service")
@@ -209,7 +209,10 @@ class TestCreateEndpoint:
             body = result.get_json()
             assert body["api_response"] == ["hit-001", "hit-002"]
             assert "warning1" in body["api_warning"]
-            mock_queue_fn.return_value.push.assert_called_once_with("hit-001", "hit-002")
+            mock_queue_fn.return_value.push.assert_called_once_with(
+                {"id": "hit-001", "rule_id": None},
+                {"id": "hit-002", "rule_id": None},
+            )
 
     @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.hit_service")
@@ -621,7 +624,10 @@ class TestIngestionQueueing:
 
             create(index="hit")
 
-            mock_queue_fn.return_value.push.assert_called_once_with("hit-a", "hit-b")
+            mock_queue_fn.return_value.push.assert_called_once_with(
+                {"id": "hit-a", "rule_id": None},
+                {"id": "hit-b", "rule_id": None},
+            )
 
     @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.event_service")
@@ -645,7 +651,7 @@ class TestIngestionQueueing:
 
             create(index="event")
 
-            mock_queue_fn.return_value.push.assert_called_once_with("event-a")
+            mock_queue_fn.return_value.push.assert_called_once_with({"id": "event-a", "rule_id": None})
 
     @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.hit_service")

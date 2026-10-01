@@ -286,6 +286,15 @@ class TestEnqueueForCorrelation:
             {"id": "hit-2", "rule_id": "rule-1"},
         )
 
+    @patch("howler.services.correlation_service._get_ingestion_queue")
+    def test_enqueue_failure_raises_howler_runtime_error(self, mock_get_queue):
+        queue = MagicMock()
+        queue.push.side_effect = RuntimeError("redis unavailable")
+        mock_get_queue.return_value = queue
+
+        with pytest.raises(HowlerRuntimeError, match="Failed to enqueue record IDs for correlation"):
+            correlation_service.enqueue_for_correlation(["hit-1"])
+
 
 class TestRuleScopedCorrelation:
     @patch("howler.services.correlation_service.case_service.get_case")
@@ -389,6 +398,27 @@ class TestRuleScopedCorrelation:
         assert mock_enqueue.call_args_list[0].kwargs == {"rule_id": "rule-1"}
         assert mock_enqueue.call_args_list[1].args == (["hit-2"],)
         assert mock_enqueue.call_args_list[1].kwargs == {"rule_id": "rule-1"}
+
+    @patch("howler.services.correlation_service.enqueue_for_correlation")
+    @patch("howler.services.correlation_service.search_service.search")
+    @patch("howler.services.correlation_service.get_backfill_rule")
+    def test_enqueue_backfill_propagates_queue_failure(self, mock_get_rule, mock_search, mock_enqueue):
+        user = MagicMock()
+        rule = _make_rule(query="event.kind:alert", indexes=["hit"])
+        rule.rule_id = "rule-1"
+        since_value = "2026-01-01T00:00:00Z"
+        since = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        mock_get_rule.return_value = (rule, since)
+        mock_search.side_effect = [
+            {"items": [{"howler": {"id": "hit-1"}}], "next_deep_paging_id": "scroll-1"},
+            {"items": [{"howler": {"id": "hit-2"}}]},
+        ]
+        mock_enqueue.side_effect = [None, HowlerRuntimeError("queue unavailable")]
+
+        with pytest.raises(HowlerRuntimeError, match="queue unavailable"):
+            correlation_service.enqueue_backfill("case-1", "rule-1", since_value, user)
+
+        assert [call.args[0] for call in mock_enqueue.call_args_list] == [["hit-1"], ["hit-2"]]
 
     @patch("howler.services.correlation_service.case_service")
     @patch("howler.services.correlation_service.datastore")

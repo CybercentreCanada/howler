@@ -232,8 +232,9 @@ def enqueue_for_correlation(ids: list[str], rule_id: str | None = None) -> None:
         # should evaluate the record against all currently active rules.
         jobs: list[CorrelationJob] = [{"id": record_id, "rule_id": rule_id} for record_id in ids]
         _get_ingestion_queue().push(*jobs)
-    except Exception:
+    except Exception as e:
         logger.exception("Error on queuing for correlation")
+        raise HowlerRuntimeError("Failed to enqueue record IDs for correlation.", e) from e
 
 
 def count_backfill_matches(case_id: str, rule_id: str, since_value: object, user: User) -> int:

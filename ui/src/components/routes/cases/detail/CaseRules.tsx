@@ -45,12 +45,12 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
   const [dialogOpen, setDialogOpen] = useState(false);
   const [backfillRule, setBackfillRule] = useState<Rule>();
   const [backfillSince, setBackfillSince] = useState<Dayjs>(dayjs().subtract(30, 'day'));
-  const [backfillCount, setBackfillCount] = useState<number>();
+  const [backfillCount, setBackfillCount] = useState<number | null>(null);
   const [backfillLoading, setBackfillLoading] = useState(false);
 
   const handleBackfillDialogClose = useCallback(() => {
     setBackfillRule(undefined);
-    setBackfillCount(undefined);
+    setBackfillCount(null);
     setBackfillSince(dayjs().subtract(30, 'day'));
   }, []);
 
@@ -276,7 +276,7 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
                   }
 
                   setBackfillSince(value);
-                  setBackfillCount(undefined);
+                  setBackfillCount(null);
                 }}
                 maxDateTime={dayjs()}
                 ampm={false}
