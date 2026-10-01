@@ -36,7 +36,7 @@ MODELS_TO_EXPORT = [
     ),
 ]
 EXTRA_MODELS = (AssemblyLine, Lead, ParentProcess)
-PUBLISHED_NAMES = {ECSEvent: "Event"}
+PUBLISHED_NAMES: dict[type[BaseModel], str] = {ECSEvent: "Event"}
 
 
 intro_data = """

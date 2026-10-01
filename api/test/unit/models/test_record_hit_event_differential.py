@@ -8,8 +8,7 @@ from pydantic import ValidationError
 from howler.models import model_registry
 from howler.models.event import Event as NewEvent
 from howler.models.hit import Hit as NewHit
-from howler.odm.models.event import Event as LegacyEvent
-from howler.odm.models.hit import Hit as LegacyHit
+from test.unit.models._goldens import primitive_golden, serialization_golden
 
 HIT_DATA = {
     "timestamp": "2024-01-02T03:04:05.000000Z",
@@ -30,28 +29,19 @@ EVENT_DATA = {
 
 def test_hit_id_field_and_primitives_match_legacy() -> None:
     """``howler.id`` is the id field, and stored primitives match the legacy ODM."""
-    legacy = LegacyHit(HIT_DATA)
     new = NewHit.model_validate(HIT_DATA)
 
     assert model_registry.metadata(NewHit).id_field == "howler.id"
-    assert LegacyHit._Model__id_field == "howler.id"
 
-    legacy_primitives = legacy.as_primitives()
     new_primitives = new.as_primitives()
 
-    assert new_primitives["__index"] == legacy_primitives["__index"] == "hit"
-    assert new_primitives["howler"]["id"] == legacy_primitives["howler"]["id"]
-    assert new_primitives["related"]["ip"] == legacy_primitives["related"]["ip"]
-    assert new_primitives["ecs"] == legacy_primitives["ecs"]
-    assert new_primitives["classification"] == legacy_primitives["classification"]
+    assert new_primitives["__index"] == "hit"
+    assert new_primitives == primitive_golden("hit")
 
 
 def test_hit_rejects_unknown_fields_like_legacy() -> None:
     """Unknown top-level fields are rejected by both implementations."""
     bad_data = {**HIT_DATA, "not_a_real_field": True}
-
-    with pytest.raises(Exception):  # legacy raises HowlerValueError  # noqa: B017, PT011
-        LegacyHit(bad_data, ignore_extra_values=False)
 
     with pytest.raises(ValidationError):
         NewHit.model_validate(bad_data)
@@ -59,29 +49,27 @@ def test_hit_rejects_unknown_fields_like_legacy() -> None:
 
 def test_event_id_field_and_primitives_match_legacy() -> None:
     """``howler.id`` is the id field for events too, and primitives match."""
-    legacy = LegacyEvent(EVENT_DATA)
     new = NewEvent.model_validate(EVENT_DATA)
 
     assert model_registry.metadata(NewEvent).id_field == "howler.id"
 
-    legacy_primitives = legacy.as_primitives()
     new_primitives = new.as_primitives()
-    assert new_primitives["__index"] == legacy_primitives["__index"] == "event"
-    assert new_primitives["howler"]["id"] == legacy_primitives["howler"]["id"]
+    assert new_primitives["__index"] == "event"
+    assert new_primitives == primitive_golden("event")
 
 
 def test_hit_default_ecs_score_and_classification_match_legacy() -> None:
     """Default values (ECS version, score, classification) match the legacy ODM."""
     minimal = {"howler": {"id": "hit-2", "analytic": "a", "hash": "abcd"}}
-    legacy = LegacyHit(minimal)
     new = NewHit.model_validate(minimal)
 
-    legacy_primitives = legacy.as_primitives()
     new_primitives = new.as_primitives()
-    # "NOW" timestamps are independently generated, so compare everything else exactly.
-    legacy_primitives.pop("timestamp")
+    # "NOW" timestamps are intentionally not frozen; all remaining fields are exact.
     new_primitives.pop("timestamp")
-    assert new_primitives == legacy_primitives
+    assert new_primitives["__index"] == "hit"
+    assert new_primitives["ecs"]["version"] == "8.3.0"
+    assert new_primitives["classification"] == "UNRESTRICTED"
+    assert new_primitives == serialization_golden()["hit_default_without_timestamp"]
 
 
 def test_hit_mapping_list_of_compound_is_object_not_nested() -> None:
@@ -113,13 +101,12 @@ def test_optional_ip_and_original_domain_serialization_match_legacy() -> None:
             "original": {"domain": "Example.COM"},
         },
     }
-    legacy = LegacyHit(data)
     new = NewHit.model_validate(data)
 
     assert new.source is not None
     assert new.source.original is not None
     assert new.source.original.domain == "example.com"
-    assert new.as_primitives(ip_format="int")["source"] == legacy.as_primitives(ip_format="int")["source"]
+    assert new.as_primitives(ip_format="int")["source"] == primitive_golden("hit.source")["source"]
 
 
 def test_hit_classification_access_fields_generated() -> None:

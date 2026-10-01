@@ -32,8 +32,8 @@ valid_hit_data = [
             "hash": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
             "labels": {"assignments": ["test", "test2"], "generic": ["test", "test2"]},
             "votes": {"benign": [], "obscure": [], "malicious": []},
-            "source": {"address": "test", "geo": {"city_name": "test_city", "continent_code": "TT"}, "packets": 64},
         },
+        "source": {"address": "test", "geo": {"city_name": "test_city", "continent_code": "TT"}, "packets": 64},
     },
     {
         "howler": {

@@ -32,7 +32,7 @@ def datastore(datastore_connection):
 def test_comments_analytic(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
-    analytic: Analytic = datastore.analytic.search("analytic_id:*")["items"][0]
+    analytic: Analytic = datastore.analytic.search("analytic_id:*", fl="*")["items"][0]
 
     new_comments = []
     for c in analytic.comment:
@@ -76,7 +76,7 @@ def test_comments_analytic(datastore: HowlerDatastore, login_session):
 def test_reactions_analytic(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
-    analytic: Analytic = datastore.analytic.search("analytic_id:*")["items"][0]
+    analytic: Analytic = datastore.analytic.search("analytic_id:*", fl="*")["items"][0]
 
     new_comments = []
     for c in analytic.comment:
@@ -118,7 +118,7 @@ def test_reactions_analytic(datastore: HowlerDatastore, login_session):
 def test_comments_hit(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
-    hit: Hit = datastore.hit.search("howler.id:*")["items"][0]
+    hit: Hit = datastore.hit.search("howler.id:*", fl="*")["items"][0]
 
     new_comments = []
     for c in hit.howler.comment:
@@ -162,7 +162,7 @@ def test_comments_hit(datastore: HowlerDatastore, login_session):
 def test_reactions_hit(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
-    hit: Hit = datastore.hit.search("howler.id:*")["items"][1]
+    hit: Hit = datastore.hit.search("howler.id:*", fl="*")["items"][1]
 
     new_comments = []
     for c in hit.howler.comment:

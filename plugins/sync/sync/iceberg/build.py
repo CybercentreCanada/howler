@@ -30,7 +30,7 @@ def _is_optional(annotation: Any) -> bool:
 
 
 def _nullable(field: FieldDefinition) -> bool:
-    """As with legacy ODM, only a non-null default makes a field non-nullable."""
+    """Required fields and fields without a default or factory are nullable in the sync schema."""
     return field.required or (field.default is None and field.default_factory is None)
 
 

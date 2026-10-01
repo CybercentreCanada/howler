@@ -347,10 +347,15 @@ def overwrite_hit(
         return bad_request(err="The JSON payload must be a subset of a valid Hit object.")
 
     try:
+        cached_hit = cast(Any, record).as_primitives()
+        # __index is added by read-side serialization for legacy consumers, but is not a Hit field.
+        # Strip only this cached helper; caller-supplied fields remain subject to strict validation.
+        cached_hit.pop("__index", None)
+
         new_hit = cast(
             dict[str, Any],
             merge(
-                hit_service.flatten(cast(Any, record).as_primitives(), odm=Hit),
+                hit_service.flatten(cached_hit, odm=Hit),
                 hit_service.flatten(new_fields),
                 strategy=Strategy.REPLACE
                 if bool(request.args.get("replace", False, type=lambda v: v.lower() == "true"))

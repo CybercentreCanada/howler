@@ -1,0 +1,100 @@
+{
+  "fixture_version": 1,
+  "capture": {
+    "source_head": "3071fc4ea45d4b2dd44a7ee1646095426097d061",
+    "source": "Legacy ODM contract generator executed before api/howler/odm deletion.",
+    "command": "With api/.venv/bin/python and base-commit legacy source, run build_contract_inventory() and record each collection legacy_index.mappings.dynamic_templates key sequence; object properties/settings are compared order-insensitively."
+  },
+  "collections": {
+    "action": {
+      "dynamic_template_order": [
+        "strings_as_keywords",
+        "refuse_all_implicit_mappings"
+      ]
+    },
+    "analytic": {
+      "dynamic_template_order": [
+        "strings_as_keywords",
+        "comment.reactions.*_tpl"
+      ]
+    },
+    "case": {
+      "dynamic_template_order": [
+        "strings_as_keywords",
+        "refuse_all_implicit_mappings"
+      ]
+    },
+    "dossier": {
+      "dynamic_template_order": [
+        "strings_as_keywords",
+        "refuse_all_implicit_mappings"
+      ]
+    },
+    "event": {
+      "dynamic_template_order": [
+        "strings_as_keywords",
+        "labels.*_tpl",
+        "container.labels.*_tpl",
+        "process.env_vars.*_tpl",
+        "process.parent.env_vars.*_tpl",
+        "process.parent.parent.env_vars.*_tpl",
+        "howler.comment.reactions.*_tpl"
+      ]
+    },
+    "hit": {
+      "dynamic_template_order": [
+        "strings_as_keywords",
+        "labels.*_tpl",
+        "container.labels.*_tpl",
+        "process.env_vars.*_tpl",
+        "process.parent.env_vars.*_tpl",
+        "process.parent.parent.env_vars.*_tpl",
+        "howler.comment.reactions.*_tpl"
+      ]
+    },
+    "overview": {
+      "dynamic_template_order": [
+        "strings_as_keywords",
+        "refuse_all_implicit_mappings"
+      ]
+    },
+    "template": {
+      "dynamic_template_order": [
+        "strings_as_keywords",
+        "refuse_all_implicit_mappings"
+      ]
+    },
+    "user": {
+      "dynamic_template_order": [
+        "strings_as_keywords",
+        "refuse_all_implicit_mappings"
+      ]
+    },
+    "user_avatar": {
+      "dynamic_template_order": [
+        "int",
+        "ints",
+        "long",
+        "longs",
+        "double",
+        "doubles",
+        "float",
+        "floats",
+        "string",
+        "strings",
+        "text",
+        "texts",
+        "boolean",
+        "booleans",
+        "date",
+        "date"
+      ]
+    },
+    "view": {
+      "dynamic_template_order": [
+        "strings_as_keywords",
+        "refuse_all_implicit_mappings"
+      ]
+    }
+  }
+}

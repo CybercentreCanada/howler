@@ -1,0 +1,338 @@
+{
+  "capture": {
+    "command": "Using api/.venv/bin/python with the base-commit api/howler/odm source available, construct the TestModel probes from the retired test/unit/odm/test_as_primitives.py and serialize the named format variants; construct Hit and Related with the retired test/unit/odm/test_related.py inputs.",
+    "source": "Legacy ODM implementation and probes copied from the Step 9 base before api/howler/odm deletion.",
+    "source_head": "3071fc4ea45d4b2dd44a7ee1646095426097d061"
+  },
+  "fixture_version": 1,
+  "hit_default_without_timestamp": {
+    "__index": "hit",
+    "classification": "UNRESTRICTED",
+    "ecs": {
+      "version": "8.3.0"
+    },
+    "howler": {
+      "analytic": "a",
+      "assignment": "unassigned",
+      "comment": [],
+      "data": [],
+      "dossier": [],
+      "escalation": "hit",
+      "hash": "abcd",
+      "id": "hit-2",
+      "incidents": [],
+      "labels": {
+        "assignments": [],
+        "campaign": [],
+        "generic": [],
+        "insight": [],
+        "mitigation": [],
+        "operation": [],
+        "threat": [],
+        "tuning": [],
+        "victim": []
+      },
+      "links": [],
+      "log": [],
+      "related": [],
+      "score": 0,
+      "scrutiny": "unseen",
+      "status": "open",
+      "votes": {
+        "benign": [],
+        "malicious": [],
+        "obscure": []
+      }
+    },
+    "labels": {},
+    "message": "",
+    "tags": []
+  },
+  "hit_related": {
+    "hash": [],
+    "hosts": [],
+    "id": "indicator-3",
+    "ids": [
+      "indicator-3"
+    ],
+    "ip": [],
+    "user": []
+  },
+  "primitives": {
+    "default": {
+      "inner_model_field": {
+        "nested_ip_field": "10.0.0.1",
+        "nested_keyword_field": "nested_test_keyword_containing_a_2026-01-01T00:00:00.000000Z_timestamp",
+        "nested_timestamp_field": "2026-01-01T00:00:00.000000Z"
+      },
+      "ip_as_optional": "192.168.0.1",
+      "ip_field": "127.0.0.1",
+      "ips_in_list": [
+        "1.1.1.1",
+        "ff02::1"
+      ],
+      "keyword_field": "test_keyword_containing_an_127.0.0.1_ip_address",
+      "list_of_ip_like_strings": [
+        "127.0.0.1",
+        "192.168.0.1"
+      ],
+      "optional_ip_like_string": "1.1.1.1",
+      "timestamp_field": "2026-01-01T00:00:00.000000Z",
+      "timestamp_in_mapping": {
+        "key": "2026-01-01T00:00:00.000000Z"
+      }
+    },
+    "ip.encoded_bytes": {
+      "inner_model_field": {
+        "nested_ip_field": "CgAAAQ==",
+        "nested_keyword_field": "nested_test_keyword_containing_a_2026-01-01T00:00:00.000000Z_timestamp",
+        "nested_timestamp_field": "2026-01-01T00:00:00.000000Z"
+      },
+      "ip_as_optional": "wKgAAQ==",
+      "ip_field": "fwAAAQ==",
+      "ips_in_list": [
+        "AQEBAQ==",
+        "/wIAAAAAAAAAAAAAAAAAAQ=="
+      ],
+      "keyword_field": "test_keyword_containing_an_127.0.0.1_ip_address",
+      "list_of_ip_like_strings": [
+        "127.0.0.1",
+        "192.168.0.1"
+      ],
+      "optional_ip_like_string": "1.1.1.1",
+      "timestamp_field": "2026-01-01T00:00:00.000000Z",
+      "timestamp_in_mapping": {
+        "key": "2026-01-01T00:00:00.000000Z"
+      }
+    },
+    "ip.int": {
+      "inner_model_field": {
+        "nested_ip_field": 167772161,
+        "nested_keyword_field": "nested_test_keyword_containing_a_2026-01-01T00:00:00.000000Z_timestamp",
+        "nested_timestamp_field": "2026-01-01T00:00:00.000000Z"
+      },
+      "ip_as_optional": 3232235521,
+      "ip_field": 2130706433,
+      "ips_in_list": [
+        16843009,
+        338963523518870617245727861364146307073
+      ],
+      "keyword_field": "test_keyword_containing_an_127.0.0.1_ip_address",
+      "list_of_ip_like_strings": [
+        "127.0.0.1",
+        "192.168.0.1"
+      ],
+      "optional_ip_like_string": "1.1.1.1",
+      "timestamp_field": "2026-01-01T00:00:00.000000Z",
+      "timestamp_in_mapping": {
+        "key": "2026-01-01T00:00:00.000000Z"
+      }
+    },
+    "ip.invalid_fallback": {
+      "inner_model_field": {
+        "nested_ip_field": "10.0.0.1",
+        "nested_keyword_field": "nested_test_keyword_containing_a_2026-01-01T00:00:00.000000Z_timestamp",
+        "nested_timestamp_field": "2026-01-01T00:00:00.000000Z"
+      },
+      "ip_as_optional": "192.168.0.1",
+      "ip_field": "127.0.0.1",
+      "ips_in_list": [
+        "1.1.1.1",
+        "ff02::1"
+      ],
+      "keyword_field": "test_keyword_containing_an_127.0.0.1_ip_address",
+      "list_of_ip_like_strings": [
+        "127.0.0.1",
+        "192.168.0.1"
+      ],
+      "optional_ip_like_string": "1.1.1.1",
+      "timestamp_field": "2026-01-01T00:00:00.000000Z",
+      "timestamp_in_mapping": {
+        "key": "2026-01-01T00:00:00.000000Z"
+      }
+    },
+    "ip.none_fallback": {
+      "inner_model_field": {
+        "nested_ip_field": "10.0.0.1",
+        "nested_keyword_field": "nested_test_keyword_containing_a_2026-01-01T00:00:00.000000Z_timestamp",
+        "nested_timestamp_field": "2026-01-01T00:00:00.000000Z"
+      },
+      "ip_as_optional": "192.168.0.1",
+      "ip_field": "127.0.0.1",
+      "ips_in_list": [
+        "1.1.1.1",
+        "ff02::1"
+      ],
+      "keyword_field": "test_keyword_containing_an_127.0.0.1_ip_address",
+      "list_of_ip_like_strings": [
+        "127.0.0.1",
+        "192.168.0.1"
+      ],
+      "optional_ip_like_string": "1.1.1.1",
+      "timestamp_field": "2026-01-01T00:00:00.000000Z",
+      "timestamp_in_mapping": {
+        "key": "2026-01-01T00:00:00.000000Z"
+      }
+    },
+    "ip.str": {
+      "inner_model_field": {
+        "nested_ip_field": "10.0.0.1",
+        "nested_keyword_field": "nested_test_keyword_containing_a_2026-01-01T00:00:00.000000Z_timestamp",
+        "nested_timestamp_field": "2026-01-01T00:00:00.000000Z"
+      },
+      "ip_as_optional": "192.168.0.1",
+      "ip_field": "127.0.0.1",
+      "ips_in_list": [
+        "1.1.1.1",
+        "ff02::1"
+      ],
+      "keyword_field": "test_keyword_containing_an_127.0.0.1_ip_address",
+      "list_of_ip_like_strings": [
+        "127.0.0.1",
+        "192.168.0.1"
+      ],
+      "optional_ip_like_string": "1.1.1.1",
+      "timestamp_field": "2026-01-01T00:00:00.000000Z",
+      "timestamp_in_mapping": {
+        "key": "2026-01-01T00:00:00.000000Z"
+      }
+    },
+    "timestamp.invalid_fallback": {
+      "inner_model_field": {
+        "nested_ip_field": "10.0.0.1",
+        "nested_keyword_field": "nested_test_keyword_containing_a_2026-01-01T00:00:00.000000Z_timestamp",
+        "nested_timestamp_field": "2026-01-01T00:00:00.000000Z"
+      },
+      "ip_as_optional": "192.168.0.1",
+      "ip_field": "127.0.0.1",
+      "ips_in_list": [
+        "1.1.1.1",
+        "ff02::1"
+      ],
+      "keyword_field": "test_keyword_containing_an_127.0.0.1_ip_address",
+      "list_of_ip_like_strings": [
+        "127.0.0.1",
+        "192.168.0.1"
+      ],
+      "optional_ip_like_string": "1.1.1.1",
+      "timestamp_field": "2026-01-01T00:00:00.000000Z",
+      "timestamp_in_mapping": {
+        "key": "2026-01-01T00:00:00.000000Z"
+      }
+    },
+    "timestamp.iso": {
+      "inner_model_field": {
+        "nested_ip_field": "10.0.0.1",
+        "nested_keyword_field": "nested_test_keyword_containing_a_2026-01-01T00:00:00.000000Z_timestamp",
+        "nested_timestamp_field": "2026-01-01T00:00:00+00:00"
+      },
+      "ip_as_optional": "192.168.0.1",
+      "ip_field": "127.0.0.1",
+      "ips_in_list": [
+        "1.1.1.1",
+        "ff02::1"
+      ],
+      "keyword_field": "test_keyword_containing_an_127.0.0.1_ip_address",
+      "list_of_ip_like_strings": [
+        "127.0.0.1",
+        "192.168.0.1"
+      ],
+      "optional_ip_like_string": "1.1.1.1",
+      "timestamp_field": "2026-01-01T00:00:00+00:00",
+      "timestamp_in_mapping": {
+        "key": "2026-01-01T00:00:00+00:00"
+      }
+    },
+    "timestamp.none_fallback": {
+      "inner_model_field": {
+        "nested_ip_field": "10.0.0.1",
+        "nested_keyword_field": "nested_test_keyword_containing_a_2026-01-01T00:00:00.000000Z_timestamp",
+        "nested_timestamp_field": "2026-01-01T00:00:00.000000Z"
+      },
+      "ip_as_optional": "192.168.0.1",
+      "ip_field": "127.0.0.1",
+      "ips_in_list": [
+        "1.1.1.1",
+        "ff02::1"
+      ],
+      "keyword_field": "test_keyword_containing_an_127.0.0.1_ip_address",
+      "list_of_ip_like_strings": [
+        "127.0.0.1",
+        "192.168.0.1"
+      ],
+      "optional_ip_like_string": "1.1.1.1",
+      "timestamp_field": "2026-01-01T00:00:00.000000Z",
+      "timestamp_in_mapping": {
+        "key": "2026-01-01T00:00:00.000000Z"
+      }
+    },
+    "timestamp.posix": {
+      "inner_model_field": {
+        "nested_ip_field": "10.0.0.1",
+        "nested_keyword_field": "nested_test_keyword_containing_a_2026-01-01T00:00:00.000000Z_timestamp",
+        "nested_timestamp_field": 1767225600
+      },
+      "ip_as_optional": "192.168.0.1",
+      "ip_field": "127.0.0.1",
+      "ips_in_list": [
+        "1.1.1.1",
+        "ff02::1"
+      ],
+      "keyword_field": "test_keyword_containing_an_127.0.0.1_ip_address",
+      "list_of_ip_like_strings": [
+        "127.0.0.1",
+        "192.168.0.1"
+      ],
+      "optional_ip_like_string": "1.1.1.1",
+      "timestamp_field": 1767225600,
+      "timestamp_in_mapping": {
+        "key": 1767225600
+      }
+    }
+  },
+  "probe_input": {
+    "inner_model_field": {
+      "nested_ip_field": "10.0.0.1",
+      "nested_keyword_field": "nested_test_keyword_containing_a_2026-01-01T00:00:00.000000Z_timestamp",
+      "nested_timestamp_field": "2026-01-01T00:00:00.000000Z"
+    },
+    "ip_as_optional": "192.168.0.1",
+    "ip_field": "127.0.0.1",
+    "ips_in_list": [
+      "1.1.1.1",
+      "ff02::1"
+    ],
+    "keyword_field": "test_keyword_containing_an_127.0.0.1_ip_address",
+    "list_of_ip_like_strings": [
+      "127.0.0.1",
+      "192.168.0.1"
+    ],
+    "optional_ip_like_string": "1.1.1.1",
+    "timestamp_field": "2026-01-01T00:00:00.000000Z",
+    "timestamp_in_mapping": {
+      "key": "2026-01-01T00:00:00.000000Z"
+    }
+  },
+  "related_duplicate": {
+    "hash": [],
+    "hosts": [],
+    "id": "indicator-2",
+    "ids": [
+      "indicator-1",
+      "indicator-2"
+    ],
+    "ip": [],
+    "user": []
+  },
+  "related_tuple": {
+    "hash": [],
+    "hosts": [],
+    "id": "indicator-2",
+    "ids": [
+      "indicator-1",
+      "indicator-2"
+    ],
+    "ip": [],
+    "user": []
+  }
+}

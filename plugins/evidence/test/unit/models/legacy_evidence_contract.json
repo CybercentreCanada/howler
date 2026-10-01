@@ -1,0 +1,6184 @@
+{
+  "approved_differences": {
+    "rationale": "Pydantic flat_fields(show_compound=True) includes the 29 compound roots explicitly; the historic ODM representation only exposes their leaves. Leaf paths and Elasticsearch properties remain equal.",
+    "typed_only_compound_paths": [
+      "agent",
+      "cloud",
+      "container",
+      "destination",
+      "dns",
+      "email",
+      "error",
+      "event",
+      "faas",
+      "file",
+      "group",
+      "host",
+      "http",
+      "interface",
+      "network",
+      "observer",
+      "organization",
+      "process",
+      "registry",
+      "related",
+      "rule",
+      "server",
+      "source",
+      "threat",
+      "tls",
+      "url",
+      "user",
+      "user_agent",
+      "vulnerability"
+    ]
+  },
+  "elasticsearch": {
+    "dynamic_templates": [
+      {
+        "labels.*_tpl": {
+          "mapping": {
+            "index": true,
+            "type": "keyword"
+          },
+          "path_match": "labels.*"
+        }
+      },
+      {
+        "container.labels.*_tpl": {
+          "mapping": {
+            "index": true,
+            "type": "keyword"
+          },
+          "path_match": "container.labels.*"
+        }
+      },
+      {
+        "process.env_vars.*_tpl": {
+          "mapping": {
+            "index": true,
+            "type": "keyword"
+          },
+          "path_match": "process.env_vars.*"
+        }
+      },
+      {
+        "process.parent.env_vars.*_tpl": {
+          "mapping": {
+            "index": true,
+            "type": "keyword"
+          },
+          "path_match": "process.parent.env_vars.*"
+        }
+      },
+      {
+        "process.parent.parent.env_vars.*_tpl": {
+          "mapping": {
+            "index": true,
+            "type": "keyword"
+          },
+          "path_match": "process.parent.parent.env_vars.*"
+        }
+      }
+    ],
+    "properties": {
+      "agent.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "agent.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "agent.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "agent.version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "cloud.account.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "cloud.account.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "cloud.availability_zone": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "cloud.instance.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "cloud.instance.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "cloud.machine.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "cloud.project.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "cloud.project.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "cloud.provider": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "cloud.region": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "cloud.service.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "cloud.tenant_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "container.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "container.image.hash.all": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "container.image.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "container.image.tag": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "container.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "container.runtime": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.address": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.autonomous_systems.number": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "destination.autonomous_systems.organization_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.bytes": {
+        "doc_values": true,
+        "index": true,
+        "type": "long"
+      },
+      "destination.domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.geo.city_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.geo.continent_code": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.geo.continent_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.geo.country_iso_code": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.geo.country_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.geo.location.lat": {
+        "doc_values": true,
+        "index": true,
+        "type": "float"
+      },
+      "destination.geo.location.lon": {
+        "doc_values": true,
+        "index": true,
+        "type": "float"
+      },
+      "destination.geo.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.geo.postal_code": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.geo.region_iso_code": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.geo.region_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.geo.timezone": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.ip": {
+        "doc_values": true,
+        "index": true,
+        "type": "ip"
+      },
+      "destination.mac": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.nat.ip": {
+        "doc_values": true,
+        "index": true,
+        "type": "ip"
+      },
+      "destination.nat.port": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "destination.original.address": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.original.autonomous_systems.number": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "destination.original.autonomous_systems.organization_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.original.bytes": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "destination.original.domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.original.geo.city_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.original.geo.continent_code": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.original.geo.continent_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.original.geo.country_iso_code": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.original.geo.country_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.original.geo.location.lat": {
+        "doc_values": true,
+        "index": true,
+        "type": "float"
+      },
+      "destination.original.geo.location.lon": {
+        "doc_values": true,
+        "index": true,
+        "type": "float"
+      },
+      "destination.original.geo.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.original.geo.postal_code": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.original.geo.region_iso_code": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.original.geo.region_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.original.geo.timezone": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.original.ip": {
+        "doc_values": true,
+        "index": true,
+        "type": "ip"
+      },
+      "destination.original.mac": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.original.nat.ip": {
+        "doc_values": true,
+        "index": true,
+        "type": "ip"
+      },
+      "destination.original.nat.port": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "destination.original.packets": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "destination.original.port": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "destination.packets": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "destination.port": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "destination.user.domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.user.email": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.user.full_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.user.group.domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.user.group.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.user.group.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.user.hash": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.user.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.user.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "destination.user.roles": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "dns.answers.class": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "dns.answers.data": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "dns.answers.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "dns.answers.ttl": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "dns.answers.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "dns.header_flags": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "dns.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "dns.op_code": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "dns.question.class": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "dns.question.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "dns.question.registered_domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "dns.question.subdomain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "dns.question.top_level_domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "dns.question.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "dns.resolved_ip": {
+        "doc_values": true,
+        "index": true,
+        "type": "ip"
+      },
+      "dns.response_code": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "dns.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "ecs.version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.attachments.file.extension": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.attachments.file.hash.md5": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "email.attachments.file.hash.sha1": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "email.attachments.file.hash.sha256": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "email.attachments.file.hash.sha384": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.attachments.file.hash.sha512": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.attachments.file.hash.ssdeep": {
+        "analyzer": "text_fuzzy",
+        "index": true,
+        "type": "text"
+      },
+      "email.attachments.file.hash.tlsh": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.attachments.file.mime_type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.attachments.file.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.attachments.file.size": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "email.bcc.address": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.cc.address": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.content_type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.delivery_timestamp": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "email.direction": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.from.address": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.local_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.message_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.origination_timestamp": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "email.parent.bcc.address": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.parent.cc.address": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.parent.destination": {
+        "doc_values": true,
+        "index": true,
+        "type": "ip"
+      },
+      "email.parent.from.address": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.parent.message_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.parent.origination_timestamp": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "email.parent.source": {
+        "doc_values": true,
+        "index": true,
+        "type": "ip"
+      },
+      "email.parent.subject": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.parent.to.address": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.reply_to.address": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.sender.address": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.subject": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.to.address": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "email.x_mailer": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "error.code": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "error.message": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "event.action": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "event.category": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "event.code": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "event.count": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "event.created": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "event.dataset": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "event.duration": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "event.end": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "event.hash": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "event.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "event.ingested": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "event.kind": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "event.module": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "event.original": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "event.outcome": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "event.provider": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "event.reason": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "event.reference": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "event.risk_score": {
+        "doc_values": true,
+        "index": true,
+        "type": "float"
+      },
+      "event.risk_score_norm": {
+        "doc_values": true,
+        "index": true,
+        "type": "float"
+      },
+      "event.sequence": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "event.severity": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "event.start": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "event.timezone": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "event.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "event.url": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "faas.coldstart": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "faas.execution": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "faas.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "faas.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "faas.trigger.request_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "faas.trigger.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "faas.version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.accessed": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "file.attributes": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.code_signature.digest_algorithm": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.code_signature.exists": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "file.code_signature.signing_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.code_signature.status": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.code_signature.subject_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.code_signature.team_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.code_signature.timestamp": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "file.code_signature.trusted": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "file.code_signature.valid": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "file.created": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "file.ctime": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "file.device": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.directory": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.drive_letter": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.architecture": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.byte_order": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.cpu_type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.creation_date": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.exports": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.header.abi_version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.header.class": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.header.data": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.header.entrypoint": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "file.elf.header.object_version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.header.os_abi": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.header.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.header.version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.imports": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.sections.chi2": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "file.elf.sections.entropy": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "file.elf.sections.flags": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.sections.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.sections.physical_offset": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.sections.physical_size": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "file.elf.sections.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.sections.virtual_address": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "file.elf.sections.virtual_size": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "file.elf.segments.chi2": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "file.elf.segments.entropy": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "file.elf.segments.flags": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.segments.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.segments.physical_offset": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.segments.physical_size": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "file.elf.segments.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.segments.virtual_address": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "file.elf.segments.virtual_size": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "file.elf.shared_libraries": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.elf.telfhash": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.extension": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.fork_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.gid": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.group": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.hash.md5": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "file.hash.sha1": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "file.hash.sha256": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "file.hash.sha384": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.hash.sha512": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.hash.ssdeep": {
+        "analyzer": "text_fuzzy",
+        "index": true,
+        "type": "text"
+      },
+      "file.hash.tlsh": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.inode": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.mime_type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.mode": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.mtime": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "file.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.owner": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.path": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.pe.architecture": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.pe.company": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.pe.description": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.pe.file_version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.pe.imphash": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.pe.original_file_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.pe.pehash": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.pe.product": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.size": {
+        "doc_values": true,
+        "index": true,
+        "type": "long"
+      },
+      "file.target_path": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "file.uid": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "group.domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "group.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "group.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "host.domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "host.hostname": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "host.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "host.ip": {
+        "doc_values": true,
+        "index": true,
+        "type": "ip"
+      },
+      "host.mac": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "host.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "host.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "http.request.body.bytes": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "http.request.body.content": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "http.request.bytes": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "http.request.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "http.request.method": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "http.request.mime_type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "http.request.referrer": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "http.response.body.bytes": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "http.response.body.content": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "http.response.bytes": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "http.response.mime_type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "http.response.status_code": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "http.version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "interface.id": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "interface.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "message": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "network.direction": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "network.protocol": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "network.transport": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "observer.egress.zone": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "observer.hostname": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "observer.ingress.interface.id": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "observer.ingress.interface.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "observer.ingress.zone": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "observer.interface.id": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "observer.interface.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "observer.ip": {
+        "doc_values": true,
+        "index": true,
+        "type": "ip"
+      },
+      "observer.mac": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "observer.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "observer.product": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "observer.serial_number": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "observer.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "observer.vendor": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "observer.version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "organization.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "organization.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.args": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.args_count": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "process.code_signature.digest_algorithm": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.code_signature.exists": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "process.code_signature.signing_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.code_signature.status": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.code_signature.subject_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.code_signature.team_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.code_signature.timestamp": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "process.code_signature.trusted": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "process.code_signature.valid": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "process.command_line": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.end": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "process.entity_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.entry_meta.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.executable": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.exit_code": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "process.hash.md5": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "process.hash.sha1": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "process.hash.sha256": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "process.hash.sha384": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.hash.sha512": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.hash.ssdeep": {
+        "analyzer": "text_fuzzy",
+        "index": true,
+        "type": "text"
+      },
+      "process.hash.tlsh": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.interactive": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "process.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.args": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.args_count": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "process.parent.code_signature.digest_algorithm": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.code_signature.exists": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "process.parent.code_signature.signing_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.code_signature.status": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.code_signature.subject_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.code_signature.team_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.code_signature.timestamp": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "process.parent.code_signature.trusted": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "process.parent.code_signature.valid": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "process.parent.command_line": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.end": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "process.parent.entity_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.entry_meta.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.executable": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.exit_code": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "process.parent.hash.md5": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "process.parent.hash.sha1": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "process.parent.hash.sha256": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "process.parent.hash.sha384": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.hash.sha512": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.hash.ssdeep": {
+        "analyzer": "text_fuzzy",
+        "index": true,
+        "type": "text"
+      },
+      "process.parent.hash.tlsh": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.interactive": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "process.parent.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.args": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.args_count": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "process.parent.parent.code_signature.digest_algorithm": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.code_signature.exists": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "process.parent.parent.code_signature.signing_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.code_signature.status": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.code_signature.subject_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.code_signature.team_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.code_signature.timestamp": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "process.parent.parent.code_signature.trusted": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "process.parent.parent.code_signature.valid": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "process.parent.parent.command_line": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.end": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "process.parent.parent.entity_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.entry_meta.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.executable": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.exit_code": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "process.parent.parent.hash.md5": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "process.parent.parent.hash.sha1": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "process.parent.parent.hash.sha256": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "process.parent.parent.hash.sha384": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.hash.sha512": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.hash.ssdeep": {
+        "analyzer": "text_fuzzy",
+        "index": true,
+        "type": "text"
+      },
+      "process.parent.parent.hash.tlsh": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.interactive": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "process.parent.parent.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.pe.architecture": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.pe.company": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.pe.description": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.pe.file_version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.pe.imphash": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.pe.original_file_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.pe.pehash": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.pe.product": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.pid": {
+        "doc_values": true,
+        "index": true,
+        "type": "long"
+      },
+      "process.parent.parent.same_as_process": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "process.parent.parent.start": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "process.parent.parent.title": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.uptime": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "process.parent.parent.user.domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.user.email": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.user.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.user.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.parent.working_directory": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.pe.architecture": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.pe.company": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.pe.description": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.pe.file_version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.pe.imphash": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.pe.original_file_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.pe.pehash": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.pe.product": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.pid": {
+        "doc_values": true,
+        "index": true,
+        "type": "long"
+      },
+      "process.parent.same_as_process": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "process.parent.start": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "process.parent.title": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.uptime": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "process.parent.user.domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.user.email": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.user.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.user.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.parent.working_directory": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.pe.architecture": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.pe.company": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.pe.description": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.pe.file_version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.pe.imphash": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.pe.original_file_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.pe.pehash": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.pe.product": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.pid": {
+        "doc_values": true,
+        "index": true,
+        "type": "long"
+      },
+      "process.same_as_process": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "process.start": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "process.title": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.uptime": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "process.user.domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.user.email": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.user.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.user.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "process.working_directory": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "registry.data.bytes": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "registry.data.strings": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "registry.data.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "registry.hive": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "registry.key": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "registry.path": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "registry.value": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "related.hash": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "related.hosts": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "related.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "related.ids": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "related.ip": {
+        "doc_values": true,
+        "index": true,
+        "type": "ip"
+      },
+      "related.signature": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "related.uri": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "related.user": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "rule.author": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "rule.category": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "rule.description": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "rule.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "rule.license": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "rule.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "rule.reference": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "rule.ruleset": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "rule.uuid": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "rule.version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "server.address": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "server.domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "server.ip": {
+        "doc_values": true,
+        "index": true,
+        "type": "ip"
+      },
+      "source.address": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.autonomous_systems.number": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "source.autonomous_systems.organization_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.bytes": {
+        "doc_values": true,
+        "index": true,
+        "type": "long"
+      },
+      "source.domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.geo.city_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.geo.continent_code": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.geo.continent_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.geo.country_iso_code": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.geo.country_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.geo.location.lat": {
+        "doc_values": true,
+        "index": true,
+        "type": "float"
+      },
+      "source.geo.location.lon": {
+        "doc_values": true,
+        "index": true,
+        "type": "float"
+      },
+      "source.geo.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.geo.postal_code": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.geo.region_iso_code": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.geo.region_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.geo.timezone": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.ip": {
+        "doc_values": true,
+        "index": true,
+        "type": "ip"
+      },
+      "source.mac": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.nat.ip": {
+        "doc_values": true,
+        "index": true,
+        "type": "ip"
+      },
+      "source.nat.port": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "source.original.address": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.original.autonomous_systems.number": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "source.original.autonomous_systems.organization_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.original.bytes": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "source.original.domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.original.geo.city_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.original.geo.continent_code": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.original.geo.continent_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.original.geo.country_iso_code": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.original.geo.country_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.original.geo.location.lat": {
+        "doc_values": true,
+        "index": true,
+        "type": "float"
+      },
+      "source.original.geo.location.lon": {
+        "doc_values": true,
+        "index": true,
+        "type": "float"
+      },
+      "source.original.geo.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.original.geo.postal_code": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.original.geo.region_iso_code": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.original.geo.region_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.original.geo.timezone": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.original.ip": {
+        "doc_values": true,
+        "index": true,
+        "type": "ip"
+      },
+      "source.original.mac": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.original.nat.ip": {
+        "doc_values": true,
+        "index": true,
+        "type": "ip"
+      },
+      "source.original.nat.port": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "source.original.packets": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "source.original.port": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "source.packets": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "source.port": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "source.user.domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.user.email": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.user.full_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.user.group.domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.user.group.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.user.group.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.user.hash": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.user.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.user.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "source.user.roles": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "tags": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.confidence": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.description": {
+        "index": true,
+        "type": "text"
+      },
+      "threat.enrichments.indicator.email.address": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.accessed": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "threat.enrichments.indicator.file.attributes": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.code_signature.digest_algorithm": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.code_signature.exists": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "threat.enrichments.indicator.file.code_signature.signing_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.code_signature.status": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.code_signature.subject_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.code_signature.team_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.code_signature.timestamp": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "threat.enrichments.indicator.file.code_signature.trusted": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "threat.enrichments.indicator.file.code_signature.valid": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "threat.enrichments.indicator.file.created": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "threat.enrichments.indicator.file.ctime": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "threat.enrichments.indicator.file.device": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.directory": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.drive_letter": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.architecture": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.byte_order": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.cpu_type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.creation_date": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.exports": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.header.abi_version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.header.class": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.header.data": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.header.entrypoint": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.enrichments.indicator.file.elf.header.object_version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.header.os_abi": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.header.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.header.version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.imports": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.sections.chi2": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.enrichments.indicator.file.elf.sections.entropy": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.enrichments.indicator.file.elf.sections.flags": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.sections.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.sections.physical_offset": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.sections.physical_size": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.enrichments.indicator.file.elf.sections.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.sections.virtual_address": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.enrichments.indicator.file.elf.sections.virtual_size": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.enrichments.indicator.file.elf.segments.chi2": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.enrichments.indicator.file.elf.segments.entropy": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.enrichments.indicator.file.elf.segments.flags": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.segments.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.segments.physical_offset": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.segments.physical_size": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.enrichments.indicator.file.elf.segments.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.segments.virtual_address": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.enrichments.indicator.file.elf.segments.virtual_size": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.enrichments.indicator.file.elf.shared_libraries": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.elf.telfhash": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.extension": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.fork_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.gid": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.group": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.hash.md5": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.hash.sha1": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.hash.sha256": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.hash.sha384": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.hash.sha512": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.hash.ssdeep": {
+        "analyzer": "text_fuzzy",
+        "index": true,
+        "type": "text"
+      },
+      "threat.enrichments.indicator.file.hash.tlsh": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.inode": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.mime_type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.mode": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.mtime": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "threat.enrichments.indicator.file.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.owner": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.path": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.pe.architecture": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.pe.company": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.pe.description": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.pe.file_version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.pe.imphash": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.pe.original_file_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.pe.pehash": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.pe.product": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.size": {
+        "doc_values": true,
+        "index": true,
+        "type": "long"
+      },
+      "threat.enrichments.indicator.file.target_path": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.file.uid": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.first_seen": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "threat.enrichments.indicator.ip": {
+        "doc_values": true,
+        "index": true,
+        "type": "ip"
+      },
+      "threat.enrichments.indicator.last_seen": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "threat.enrichments.indicator.port": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.enrichments.indicator.provider": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.reference": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.indicator.scanner_stats": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.enrichments.indicator.sightings": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.enrichments.indicator.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.enrichments.matched.atomic": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.feed.dashboard_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.feed.description": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.feed.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.feed.reference": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.framework": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.group.alias": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.group.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.group.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.group.reference": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.confidence": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.description": {
+        "index": true,
+        "type": "text"
+      },
+      "threat.indicator.email.address": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.accessed": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "threat.indicator.file.attributes": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.code_signature.digest_algorithm": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.code_signature.exists": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "threat.indicator.file.code_signature.signing_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.code_signature.status": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.code_signature.subject_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.code_signature.team_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.code_signature.timestamp": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "threat.indicator.file.code_signature.trusted": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "threat.indicator.file.code_signature.valid": {
+        "doc_values": true,
+        "index": true,
+        "type": "boolean"
+      },
+      "threat.indicator.file.created": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "threat.indicator.file.ctime": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "threat.indicator.file.device": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.directory": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.drive_letter": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.architecture": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.byte_order": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.cpu_type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.creation_date": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.exports": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.header.abi_version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.header.class": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.header.data": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.header.entrypoint": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.indicator.file.elf.header.object_version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.header.os_abi": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.header.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.header.version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.imports": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.sections.chi2": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.indicator.file.elf.sections.entropy": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.indicator.file.elf.sections.flags": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.sections.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.sections.physical_offset": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.sections.physical_size": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.indicator.file.elf.sections.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.sections.virtual_address": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.indicator.file.elf.sections.virtual_size": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.indicator.file.elf.segments.chi2": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.indicator.file.elf.segments.entropy": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.indicator.file.elf.segments.flags": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.segments.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.segments.physical_offset": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.segments.physical_size": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.indicator.file.elf.segments.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.segments.virtual_address": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.indicator.file.elf.segments.virtual_size": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.indicator.file.elf.shared_libraries": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.elf.telfhash": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.extension": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.fork_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.gid": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.group": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.hash.md5": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "threat.indicator.file.hash.sha1": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "threat.indicator.file.hash.sha256": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "normalizer": "lowercase_normalizer",
+        "type": "keyword"
+      },
+      "threat.indicator.file.hash.sha384": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.hash.sha512": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.hash.ssdeep": {
+        "analyzer": "text_fuzzy",
+        "index": true,
+        "type": "text"
+      },
+      "threat.indicator.file.hash.tlsh": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.inode": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.mime_type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.mode": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.mtime": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "threat.indicator.file.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.owner": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.path": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.pe.architecture": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.pe.company": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.pe.description": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.pe.file_version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.pe.imphash": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.pe.original_file_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.pe.pehash": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.pe.product": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.size": {
+        "doc_values": true,
+        "index": true,
+        "type": "long"
+      },
+      "threat.indicator.file.target_path": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.file.uid": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.first_seen": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "threat.indicator.ip": {
+        "doc_values": true,
+        "index": true,
+        "type": "ip"
+      },
+      "threat.indicator.last_seen": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "threat.indicator.port": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.indicator.provider": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.reference": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.indicator.scanner_stats": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.indicator.sightings": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "threat.indicator.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.software.alias": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.software.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.software.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.software.platform": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.software.reference": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.software.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.tactic.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.tactic.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.tactic.reference": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.technique.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.technique.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "threat.technique.reference": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "timestamp": {
+        "doc_values": true,
+        "format": "date_optional_time||epoch_millis",
+        "index": true,
+        "type": "date"
+      },
+      "tls.client.ja3": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "tls.client.server_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "tls.server.ja3s": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "tls.version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "tls.version_protocol": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "url.domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "url.extension": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "url.fragment": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "url.full": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "url.original": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "url.password": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "url.path": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "url.port": {
+        "doc_values": true,
+        "index": true,
+        "type": "integer"
+      },
+      "url.query": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "url.registered_domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "url.scheme": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "url.subdomain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "url.top_level_domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "url.username": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user.domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user.email": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user.full_name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user.group.domain": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user.group.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user.group.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user.hash": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user.roles": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user_agent.device.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user_agent.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user_agent.original": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user_agent.os.family": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user_agent.os.full": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user_agent.os.kernel": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user_agent.os.name": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user_agent.os.platform": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user_agent.os.type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user_agent.os.version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "user_agent.version": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "vulnerability.category": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "vulnerability.classification": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "vulnerability.description": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "vulnerability.enumeration": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "vulnerability.id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "vulnerability.reference": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "vulnerability.report_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      }
+    }
+  },
+  "flat_fields": [
+    "agent.id",
+    "agent.name",
+    "agent.type",
+    "agent.version",
+    "cloud.account.id",
+    "cloud.account.name",
+    "cloud.availability_zone",
+    "cloud.instance.id",
+    "cloud.instance.name",
+    "cloud.machine.type",
+    "cloud.project.id",
+    "cloud.project.name",
+    "cloud.provider",
+    "cloud.region",
+    "cloud.service.name",
+    "cloud.tenant_id",
+    "container.id",
+    "container.image.hash.all",
+    "container.image.name",
+    "container.image.tag",
+    "container.labels",
+    "container.name",
+    "container.runtime",
+    "destination.address",
+    "destination.autonomous_systems.number",
+    "destination.autonomous_systems.organization_name",
+    "destination.bytes",
+    "destination.domain",
+    "destination.geo.city_name",
+    "destination.geo.continent_code",
+    "destination.geo.continent_name",
+    "destination.geo.country_iso_code",
+    "destination.geo.country_name",
+    "destination.geo.location.lat",
+    "destination.geo.location.lon",
+    "destination.geo.name",
+    "destination.geo.postal_code",
+    "destination.geo.region_iso_code",
+    "destination.geo.region_name",
+    "destination.geo.timezone",
+    "destination.ip",
+    "destination.mac",
+    "destination.nat.ip",
+    "destination.nat.port",
+    "destination.original.address",
+    "destination.original.autonomous_systems.number",
+    "destination.original.autonomous_systems.organization_name",
+    "destination.original.bytes",
+    "destination.original.domain",
+    "destination.original.geo.city_name",
+    "destination.original.geo.continent_code",
+    "destination.original.geo.continent_name",
+    "destination.original.geo.country_iso_code",
+    "destination.original.geo.country_name",
+    "destination.original.geo.location.lat",
+    "destination.original.geo.location.lon",
+    "destination.original.geo.name",
+    "destination.original.geo.postal_code",
+    "destination.original.geo.region_iso_code",
+    "destination.original.geo.region_name",
+    "destination.original.geo.timezone",
+    "destination.original.ip",
+    "destination.original.mac",
+    "destination.original.nat.ip",
+    "destination.original.nat.port",
+    "destination.original.packets",
+    "destination.original.port",
+    "destination.packets",
+    "destination.port",
+    "destination.user.domain",
+    "destination.user.email",
+    "destination.user.full_name",
+    "destination.user.group.domain",
+    "destination.user.group.id",
+    "destination.user.group.name",
+    "destination.user.hash",
+    "destination.user.id",
+    "destination.user.name",
+    "destination.user.roles",
+    "dns.answers.class",
+    "dns.answers.data",
+    "dns.answers.name",
+    "dns.answers.ttl",
+    "dns.answers.type",
+    "dns.header_flags",
+    "dns.id",
+    "dns.op_code",
+    "dns.question.class",
+    "dns.question.name",
+    "dns.question.registered_domain",
+    "dns.question.subdomain",
+    "dns.question.top_level_domain",
+    "dns.question.type",
+    "dns.resolved_ip",
+    "dns.response_code",
+    "dns.type",
+    "ecs.version",
+    "email.attachments.file.extension",
+    "email.attachments.file.hash.md5",
+    "email.attachments.file.hash.sha1",
+    "email.attachments.file.hash.sha256",
+    "email.attachments.file.hash.sha384",
+    "email.attachments.file.hash.sha512",
+    "email.attachments.file.hash.ssdeep",
+    "email.attachments.file.hash.tlsh",
+    "email.attachments.file.mime_type",
+    "email.attachments.file.name",
+    "email.attachments.file.size",
+    "email.bcc.address",
+    "email.cc.address",
+    "email.content_type",
+    "email.delivery_timestamp",
+    "email.direction",
+    "email.from.address",
+    "email.local_id",
+    "email.message_id",
+    "email.origination_timestamp",
+    "email.parent.bcc.address",
+    "email.parent.cc.address",
+    "email.parent.destination",
+    "email.parent.from.address",
+    "email.parent.message_id",
+    "email.parent.origination_timestamp",
+    "email.parent.source",
+    "email.parent.subject",
+    "email.parent.to.address",
+    "email.reply_to.address",
+    "email.sender.address",
+    "email.subject",
+    "email.to.address",
+    "email.x_mailer",
+    "error.code",
+    "error.message",
+    "event.action",
+    "event.category",
+    "event.code",
+    "event.count",
+    "event.created",
+    "event.dataset",
+    "event.duration",
+    "event.end",
+    "event.hash",
+    "event.id",
+    "event.ingested",
+    "event.kind",
+    "event.module",
+    "event.original",
+    "event.outcome",
+    "event.provider",
+    "event.reason",
+    "event.reference",
+    "event.risk_score",
+    "event.risk_score_norm",
+    "event.sequence",
+    "event.severity",
+    "event.start",
+    "event.timezone",
+    "event.type",
+    "event.url",
+    "faas.coldstart",
+    "faas.execution",
+    "faas.id",
+    "faas.name",
+    "faas.trigger.request_id",
+    "faas.trigger.type",
+    "faas.version",
+    "file.accessed",
+    "file.attributes",
+    "file.code_signature.digest_algorithm",
+    "file.code_signature.exists",
+    "file.code_signature.signing_id",
+    "file.code_signature.status",
+    "file.code_signature.subject_name",
+    "file.code_signature.team_id",
+    "file.code_signature.timestamp",
+    "file.code_signature.trusted",
+    "file.code_signature.valid",
+    "file.created",
+    "file.ctime",
+    "file.device",
+    "file.directory",
+    "file.drive_letter",
+    "file.elf.architecture",
+    "file.elf.byte_order",
+    "file.elf.cpu_type",
+    "file.elf.creation_date",
+    "file.elf.exports",
+    "file.elf.header.abi_version",
+    "file.elf.header.class",
+    "file.elf.header.data",
+    "file.elf.header.entrypoint",
+    "file.elf.header.object_version",
+    "file.elf.header.os_abi",
+    "file.elf.header.type",
+    "file.elf.header.version",
+    "file.elf.imports",
+    "file.elf.sections.chi2",
+    "file.elf.sections.entropy",
+    "file.elf.sections.flags",
+    "file.elf.sections.name",
+    "file.elf.sections.physical_offset",
+    "file.elf.sections.physical_size",
+    "file.elf.sections.type",
+    "file.elf.sections.virtual_address",
+    "file.elf.sections.virtual_size",
+    "file.elf.segments.chi2",
+    "file.elf.segments.entropy",
+    "file.elf.segments.flags",
+    "file.elf.segments.name",
+    "file.elf.segments.physical_offset",
+    "file.elf.segments.physical_size",
+    "file.elf.segments.type",
+    "file.elf.segments.virtual_address",
+    "file.elf.segments.virtual_size",
+    "file.elf.shared_libraries",
+    "file.elf.telfhash",
+    "file.extension",
+    "file.fork_name",
+    "file.gid",
+    "file.group",
+    "file.hash.md5",
+    "file.hash.sha1",
+    "file.hash.sha256",
+    "file.hash.sha384",
+    "file.hash.sha512",
+    "file.hash.ssdeep",
+    "file.hash.tlsh",
+    "file.inode",
+    "file.mime_type",
+    "file.mode",
+    "file.mtime",
+    "file.name",
+    "file.owner",
+    "file.path",
+    "file.pe.architecture",
+    "file.pe.company",
+    "file.pe.description",
+    "file.pe.file_version",
+    "file.pe.imphash",
+    "file.pe.original_file_name",
+    "file.pe.pehash",
+    "file.pe.product",
+    "file.size",
+    "file.target_path",
+    "file.type",
+    "file.uid",
+    "group.domain",
+    "group.id",
+    "group.name",
+    "host.domain",
+    "host.hostname",
+    "host.id",
+    "host.ip",
+    "host.mac",
+    "host.name",
+    "host.type",
+    "http.request.body.bytes",
+    "http.request.body.content",
+    "http.request.bytes",
+    "http.request.id",
+    "http.request.method",
+    "http.request.mime_type",
+    "http.request.referrer",
+    "http.response.body.bytes",
+    "http.response.body.content",
+    "http.response.bytes",
+    "http.response.mime_type",
+    "http.response.status_code",
+    "http.version",
+    "interface.id",
+    "interface.name",
+    "labels",
+    "message",
+    "network.direction",
+    "network.protocol",
+    "network.transport",
+    "observer.egress.zone",
+    "observer.hostname",
+    "observer.ingress.interface.id",
+    "observer.ingress.interface.name",
+    "observer.ingress.zone",
+    "observer.interface.id",
+    "observer.interface.name",
+    "observer.ip",
+    "observer.mac",
+    "observer.name",
+    "observer.product",
+    "observer.serial_number",
+    "observer.type",
+    "observer.vendor",
+    "observer.version",
+    "organization.id",
+    "organization.name",
+    "process.args",
+    "process.args_count",
+    "process.code_signature.digest_algorithm",
+    "process.code_signature.exists",
+    "process.code_signature.signing_id",
+    "process.code_signature.status",
+    "process.code_signature.subject_name",
+    "process.code_signature.team_id",
+    "process.code_signature.timestamp",
+    "process.code_signature.trusted",
+    "process.code_signature.valid",
+    "process.command_line",
+    "process.end",
+    "process.entity_id",
+    "process.entry_meta.type",
+    "process.env_vars",
+    "process.executable",
+    "process.exit_code",
+    "process.hash.md5",
+    "process.hash.sha1",
+    "process.hash.sha256",
+    "process.hash.sha384",
+    "process.hash.sha512",
+    "process.hash.ssdeep",
+    "process.hash.tlsh",
+    "process.interactive",
+    "process.name",
+    "process.parent.args",
+    "process.parent.args_count",
+    "process.parent.code_signature.digest_algorithm",
+    "process.parent.code_signature.exists",
+    "process.parent.code_signature.signing_id",
+    "process.parent.code_signature.status",
+    "process.parent.code_signature.subject_name",
+    "process.parent.code_signature.team_id",
+    "process.parent.code_signature.timestamp",
+    "process.parent.code_signature.trusted",
+    "process.parent.code_signature.valid",
+    "process.parent.command_line",
+    "process.parent.end",
+    "process.parent.entity_id",
+    "process.parent.entry_meta.type",
+    "process.parent.env_vars",
+    "process.parent.executable",
+    "process.parent.exit_code",
+    "process.parent.hash.md5",
+    "process.parent.hash.sha1",
+    "process.parent.hash.sha256",
+    "process.parent.hash.sha384",
+    "process.parent.hash.sha512",
+    "process.parent.hash.ssdeep",
+    "process.parent.hash.tlsh",
+    "process.parent.interactive",
+    "process.parent.name",
+    "process.parent.parent.args",
+    "process.parent.parent.args_count",
+    "process.parent.parent.code_signature.digest_algorithm",
+    "process.parent.parent.code_signature.exists",
+    "process.parent.parent.code_signature.signing_id",
+    "process.parent.parent.code_signature.status",
+    "process.parent.parent.code_signature.subject_name",
+    "process.parent.parent.code_signature.team_id",
+    "process.parent.parent.code_signature.timestamp",
+    "process.parent.parent.code_signature.trusted",
+    "process.parent.parent.code_signature.valid",
+    "process.parent.parent.command_line",
+    "process.parent.parent.end",
+    "process.parent.parent.entity_id",
+    "process.parent.parent.entry_meta.type",
+    "process.parent.parent.env_vars",
+    "process.parent.parent.executable",
+    "process.parent.parent.exit_code",
+    "process.parent.parent.hash.md5",
+    "process.parent.parent.hash.sha1",
+    "process.parent.parent.hash.sha256",
+    "process.parent.parent.hash.sha384",
+    "process.parent.parent.hash.sha512",
+    "process.parent.parent.hash.ssdeep",
+    "process.parent.parent.hash.tlsh",
+    "process.parent.parent.interactive",
+    "process.parent.parent.name",
+    "process.parent.parent.pe.architecture",
+    "process.parent.parent.pe.company",
+    "process.parent.parent.pe.description",
+    "process.parent.parent.pe.file_version",
+    "process.parent.parent.pe.imphash",
+    "process.parent.parent.pe.original_file_name",
+    "process.parent.parent.pe.pehash",
+    "process.parent.parent.pe.product",
+    "process.parent.parent.pid",
+    "process.parent.parent.same_as_process",
+    "process.parent.parent.start",
+    "process.parent.parent.title",
+    "process.parent.parent.uptime",
+    "process.parent.parent.user.domain",
+    "process.parent.parent.user.email",
+    "process.parent.parent.user.id",
+    "process.parent.parent.user.name",
+    "process.parent.parent.working_directory",
+    "process.parent.pe.architecture",
+    "process.parent.pe.company",
+    "process.parent.pe.description",
+    "process.parent.pe.file_version",
+    "process.parent.pe.imphash",
+    "process.parent.pe.original_file_name",
+    "process.parent.pe.pehash",
+    "process.parent.pe.product",
+    "process.parent.pid",
+    "process.parent.same_as_process",
+    "process.parent.start",
+    "process.parent.title",
+    "process.parent.uptime",
+    "process.parent.user.domain",
+    "process.parent.user.email",
+    "process.parent.user.id",
+    "process.parent.user.name",
+    "process.parent.working_directory",
+    "process.pe.architecture",
+    "process.pe.company",
+    "process.pe.description",
+    "process.pe.file_version",
+    "process.pe.imphash",
+    "process.pe.original_file_name",
+    "process.pe.pehash",
+    "process.pe.product",
+    "process.pid",
+    "process.same_as_process",
+    "process.start",
+    "process.title",
+    "process.uptime",
+    "process.user.domain",
+    "process.user.email",
+    "process.user.id",
+    "process.user.name",
+    "process.working_directory",
+    "registry.data.bytes",
+    "registry.data.strings",
+    "registry.data.type",
+    "registry.hive",
+    "registry.key",
+    "registry.path",
+    "registry.value",
+    "related.hash",
+    "related.hosts",
+    "related.id",
+    "related.ids",
+    "related.ip",
+    "related.signature",
+    "related.uri",
+    "related.user",
+    "rule.author",
+    "rule.category",
+    "rule.description",
+    "rule.id",
+    "rule.license",
+    "rule.name",
+    "rule.reference",
+    "rule.ruleset",
+    "rule.uuid",
+    "rule.version",
+    "server.address",
+    "server.domain",
+    "server.ip",
+    "source.address",
+    "source.autonomous_systems.number",
+    "source.autonomous_systems.organization_name",
+    "source.bytes",
+    "source.domain",
+    "source.geo.city_name",
+    "source.geo.continent_code",
+    "source.geo.continent_name",
+    "source.geo.country_iso_code",
+    "source.geo.country_name",
+    "source.geo.location.lat",
+    "source.geo.location.lon",
+    "source.geo.name",
+    "source.geo.postal_code",
+    "source.geo.region_iso_code",
+    "source.geo.region_name",
+    "source.geo.timezone",
+    "source.ip",
+    "source.mac",
+    "source.nat.ip",
+    "source.nat.port",
+    "source.original.address",
+    "source.original.autonomous_systems.number",
+    "source.original.autonomous_systems.organization_name",
+    "source.original.bytes",
+    "source.original.domain",
+    "source.original.geo.city_name",
+    "source.original.geo.continent_code",
+    "source.original.geo.continent_name",
+    "source.original.geo.country_iso_code",
+    "source.original.geo.country_name",
+    "source.original.geo.location.lat",
+    "source.original.geo.location.lon",
+    "source.original.geo.name",
+    "source.original.geo.postal_code",
+    "source.original.geo.region_iso_code",
+    "source.original.geo.region_name",
+    "source.original.geo.timezone",
+    "source.original.ip",
+    "source.original.mac",
+    "source.original.nat.ip",
+    "source.original.nat.port",
+    "source.original.packets",
+    "source.original.port",
+    "source.packets",
+    "source.port",
+    "source.user.domain",
+    "source.user.email",
+    "source.user.full_name",
+    "source.user.group.domain",
+    "source.user.group.id",
+    "source.user.group.name",
+    "source.user.hash",
+    "source.user.id",
+    "source.user.name",
+    "source.user.roles",
+    "tags",
+    "threat.enrichments.indicator.confidence",
+    "threat.enrichments.indicator.description",
+    "threat.enrichments.indicator.email.address",
+    "threat.enrichments.indicator.file.accessed",
+    "threat.enrichments.indicator.file.attributes",
+    "threat.enrichments.indicator.file.code_signature.digest_algorithm",
+    "threat.enrichments.indicator.file.code_signature.exists",
+    "threat.enrichments.indicator.file.code_signature.signing_id",
+    "threat.enrichments.indicator.file.code_signature.status",
+    "threat.enrichments.indicator.file.code_signature.subject_name",
+    "threat.enrichments.indicator.file.code_signature.team_id",
+    "threat.enrichments.indicator.file.code_signature.timestamp",
+    "threat.enrichments.indicator.file.code_signature.trusted",
+    "threat.enrichments.indicator.file.code_signature.valid",
+    "threat.enrichments.indicator.file.created",
+    "threat.enrichments.indicator.file.ctime",
+    "threat.enrichments.indicator.file.device",
+    "threat.enrichments.indicator.file.directory",
+    "threat.enrichments.indicator.file.drive_letter",
+    "threat.enrichments.indicator.file.elf.architecture",
+    "threat.enrichments.indicator.file.elf.byte_order",
+    "threat.enrichments.indicator.file.elf.cpu_type",
+    "threat.enrichments.indicator.file.elf.creation_date",
+    "threat.enrichments.indicator.file.elf.exports",
+    "threat.enrichments.indicator.file.elf.header.abi_version",
+    "threat.enrichments.indicator.file.elf.header.class",
+    "threat.enrichments.indicator.file.elf.header.data",
+    "threat.enrichments.indicator.file.elf.header.entrypoint",
+    "threat.enrichments.indicator.file.elf.header.object_version",
+    "threat.enrichments.indicator.file.elf.header.os_abi",
+    "threat.enrichments.indicator.file.elf.header.type",
+    "threat.enrichments.indicator.file.elf.header.version",
+    "threat.enrichments.indicator.file.elf.imports",
+    "threat.enrichments.indicator.file.elf.sections.chi2",
+    "threat.enrichments.indicator.file.elf.sections.entropy",
+    "threat.enrichments.indicator.file.elf.sections.flags",
+    "threat.enrichments.indicator.file.elf.sections.name",
+    "threat.enrichments.indicator.file.elf.sections.physical_offset",
+    "threat.enrichments.indicator.file.elf.sections.physical_size",
+    "threat.enrichments.indicator.file.elf.sections.type",
+    "threat.enrichments.indicator.file.elf.sections.virtual_address",
+    "threat.enrichments.indicator.file.elf.sections.virtual_size",
+    "threat.enrichments.indicator.file.elf.segments.chi2",
+    "threat.enrichments.indicator.file.elf.segments.entropy",
+    "threat.enrichments.indicator.file.elf.segments.flags",
+    "threat.enrichments.indicator.file.elf.segments.name",
+    "threat.enrichments.indicator.file.elf.segments.physical_offset",
+    "threat.enrichments.indicator.file.elf.segments.physical_size",
+    "threat.enrichments.indicator.file.elf.segments.type",
+    "threat.enrichments.indicator.file.elf.segments.virtual_address",
+    "threat.enrichments.indicator.file.elf.segments.virtual_size",
+    "threat.enrichments.indicator.file.elf.shared_libraries",
+    "threat.enrichments.indicator.file.elf.telfhash",
+    "threat.enrichments.indicator.file.extension",
+    "threat.enrichments.indicator.file.fork_name",
+    "threat.enrichments.indicator.file.gid",
+    "threat.enrichments.indicator.file.group",
+    "threat.enrichments.indicator.file.hash.md5",
+    "threat.enrichments.indicator.file.hash.sha1",
+    "threat.enrichments.indicator.file.hash.sha256",
+    "threat.enrichments.indicator.file.hash.sha384",
+    "threat.enrichments.indicator.file.hash.sha512",
+    "threat.enrichments.indicator.file.hash.ssdeep",
+    "threat.enrichments.indicator.file.hash.tlsh",
+    "threat.enrichments.indicator.file.inode",
+    "threat.enrichments.indicator.file.mime_type",
+    "threat.enrichments.indicator.file.mode",
+    "threat.enrichments.indicator.file.mtime",
+    "threat.enrichments.indicator.file.name",
+    "threat.enrichments.indicator.file.owner",
+    "threat.enrichments.indicator.file.path",
+    "threat.enrichments.indicator.file.pe.architecture",
+    "threat.enrichments.indicator.file.pe.company",
+    "threat.enrichments.indicator.file.pe.description",
+    "threat.enrichments.indicator.file.pe.file_version",
+    "threat.enrichments.indicator.file.pe.imphash",
+    "threat.enrichments.indicator.file.pe.original_file_name",
+    "threat.enrichments.indicator.file.pe.pehash",
+    "threat.enrichments.indicator.file.pe.product",
+    "threat.enrichments.indicator.file.size",
+    "threat.enrichments.indicator.file.target_path",
+    "threat.enrichments.indicator.file.type",
+    "threat.enrichments.indicator.file.uid",
+    "threat.enrichments.indicator.first_seen",
+    "threat.enrichments.indicator.ip",
+    "threat.enrichments.indicator.last_seen",
+    "threat.enrichments.indicator.port",
+    "threat.enrichments.indicator.provider",
+    "threat.enrichments.indicator.reference",
+    "threat.enrichments.indicator.scanner_stats",
+    "threat.enrichments.indicator.sightings",
+    "threat.enrichments.indicator.type",
+    "threat.enrichments.matched.atomic",
+    "threat.feed.dashboard_id",
+    "threat.feed.description",
+    "threat.feed.name",
+    "threat.feed.reference",
+    "threat.framework",
+    "threat.group.alias",
+    "threat.group.id",
+    "threat.group.name",
+    "threat.group.reference",
+    "threat.indicator.confidence",
+    "threat.indicator.description",
+    "threat.indicator.email.address",
+    "threat.indicator.file.accessed",
+    "threat.indicator.file.attributes",
+    "threat.indicator.file.code_signature.digest_algorithm",
+    "threat.indicator.file.code_signature.exists",
+    "threat.indicator.file.code_signature.signing_id",
+    "threat.indicator.file.code_signature.status",
+    "threat.indicator.file.code_signature.subject_name",
+    "threat.indicator.file.code_signature.team_id",
+    "threat.indicator.file.code_signature.timestamp",
+    "threat.indicator.file.code_signature.trusted",
+    "threat.indicator.file.code_signature.valid",
+    "threat.indicator.file.created",
+    "threat.indicator.file.ctime",
+    "threat.indicator.file.device",
+    "threat.indicator.file.directory",
+    "threat.indicator.file.drive_letter",
+    "threat.indicator.file.elf.architecture",
+    "threat.indicator.file.elf.byte_order",
+    "threat.indicator.file.elf.cpu_type",
+    "threat.indicator.file.elf.creation_date",
+    "threat.indicator.file.elf.exports",
+    "threat.indicator.file.elf.header.abi_version",
+    "threat.indicator.file.elf.header.class",
+    "threat.indicator.file.elf.header.data",
+    "threat.indicator.file.elf.header.entrypoint",
+    "threat.indicator.file.elf.header.object_version",
+    "threat.indicator.file.elf.header.os_abi",
+    "threat.indicator.file.elf.header.type",
+    "threat.indicator.file.elf.header.version",
+    "threat.indicator.file.elf.imports",
+    "threat.indicator.file.elf.sections.chi2",
+    "threat.indicator.file.elf.sections.entropy",
+    "threat.indicator.file.elf.sections.flags",
+    "threat.indicator.file.elf.sections.name",
+    "threat.indicator.file.elf.sections.physical_offset",
+    "threat.indicator.file.elf.sections.physical_size",
+    "threat.indicator.file.elf.sections.type",
+    "threat.indicator.file.elf.sections.virtual_address",
+    "threat.indicator.file.elf.sections.virtual_size",
+    "threat.indicator.file.elf.segments.chi2",
+    "threat.indicator.file.elf.segments.entropy",
+    "threat.indicator.file.elf.segments.flags",
+    "threat.indicator.file.elf.segments.name",
+    "threat.indicator.file.elf.segments.physical_offset",
+    "threat.indicator.file.elf.segments.physical_size",
+    "threat.indicator.file.elf.segments.type",
+    "threat.indicator.file.elf.segments.virtual_address",
+    "threat.indicator.file.elf.segments.virtual_size",
+    "threat.indicator.file.elf.shared_libraries",
+    "threat.indicator.file.elf.telfhash",
+    "threat.indicator.file.extension",
+    "threat.indicator.file.fork_name",
+    "threat.indicator.file.gid",
+    "threat.indicator.file.group",
+    "threat.indicator.file.hash.md5",
+    "threat.indicator.file.hash.sha1",
+    "threat.indicator.file.hash.sha256",
+    "threat.indicator.file.hash.sha384",
+    "threat.indicator.file.hash.sha512",
+    "threat.indicator.file.hash.ssdeep",
+    "threat.indicator.file.hash.tlsh",
+    "threat.indicator.file.inode",
+    "threat.indicator.file.mime_type",
+    "threat.indicator.file.mode",
+    "threat.indicator.file.mtime",
+    "threat.indicator.file.name",
+    "threat.indicator.file.owner",
+    "threat.indicator.file.path",
+    "threat.indicator.file.pe.architecture",
+    "threat.indicator.file.pe.company",
+    "threat.indicator.file.pe.description",
+    "threat.indicator.file.pe.file_version",
+    "threat.indicator.file.pe.imphash",
+    "threat.indicator.file.pe.original_file_name",
+    "threat.indicator.file.pe.pehash",
+    "threat.indicator.file.pe.product",
+    "threat.indicator.file.size",
+    "threat.indicator.file.target_path",
+    "threat.indicator.file.type",
+    "threat.indicator.file.uid",
+    "threat.indicator.first_seen",
+    "threat.indicator.ip",
+    "threat.indicator.last_seen",
+    "threat.indicator.port",
+    "threat.indicator.provider",
+    "threat.indicator.reference",
+    "threat.indicator.scanner_stats",
+    "threat.indicator.sightings",
+    "threat.indicator.type",
+    "threat.software.alias",
+    "threat.software.id",
+    "threat.software.name",
+    "threat.software.platform",
+    "threat.software.reference",
+    "threat.software.type",
+    "threat.tactic.id",
+    "threat.tactic.name",
+    "threat.tactic.reference",
+    "threat.technique.id",
+    "threat.technique.name",
+    "threat.technique.reference",
+    "timestamp",
+    "tls.client.ja3",
+    "tls.client.server_name",
+    "tls.server.ja3s",
+    "tls.version",
+    "tls.version_protocol",
+    "url.domain",
+    "url.extension",
+    "url.fragment",
+    "url.full",
+    "url.original",
+    "url.password",
+    "url.path",
+    "url.port",
+    "url.query",
+    "url.registered_domain",
+    "url.scheme",
+    "url.subdomain",
+    "url.top_level_domain",
+    "url.username",
+    "user.domain",
+    "user.email",
+    "user.full_name",
+    "user.group.domain",
+    "user.group.id",
+    "user.group.name",
+    "user.hash",
+    "user.id",
+    "user.name",
+    "user.roles",
+    "user_agent.device.name",
+    "user_agent.name",
+    "user_agent.original",
+    "user_agent.os.family",
+    "user_agent.os.full",
+    "user_agent.os.kernel",
+    "user_agent.os.name",
+    "user_agent.os.platform",
+    "user_agent.os.type",
+    "user_agent.os.version",
+    "user_agent.version",
+    "vulnerability.category",
+    "vulnerability.classification",
+    "vulnerability.description",
+    "vulnerability.enumeration",
+    "vulnerability.id",
+    "vulnerability.reference",
+    "vulnerability.report_id"
+  ],
+  "flat_fields_with_compounds": [
+    "agent.id",
+    "agent.name",
+    "agent.type",
+    "agent.version",
+    "cloud.account",
+    "cloud.account.id",
+    "cloud.account.name",
+    "cloud.availability_zone",
+    "cloud.instance",
+    "cloud.instance.id",
+    "cloud.instance.name",
+    "cloud.machine",
+    "cloud.machine.type",
+    "cloud.project",
+    "cloud.project.id",
+    "cloud.project.name",
+    "cloud.provider",
+    "cloud.region",
+    "cloud.service",
+    "cloud.service.name",
+    "cloud.tenant_id",
+    "container.id",
+    "container.image",
+    "container.image.hash",
+    "container.image.hash.all",
+    "container.image.name",
+    "container.image.tag",
+    "container.labels",
+    "container.name",
+    "container.runtime",
+    "destination.address",
+    "destination.autonomous_systems",
+    "destination.autonomous_systems.number",
+    "destination.autonomous_systems.organization_name",
+    "destination.bytes",
+    "destination.domain",
+    "destination.geo",
+    "destination.geo.city_name",
+    "destination.geo.continent_code",
+    "destination.geo.continent_name",
+    "destination.geo.country_iso_code",
+    "destination.geo.country_name",
+    "destination.geo.location",
+    "destination.geo.location.lat",
+    "destination.geo.location.lon",
+    "destination.geo.name",
+    "destination.geo.postal_code",
+    "destination.geo.region_iso_code",
+    "destination.geo.region_name",
+    "destination.geo.timezone",
+    "destination.ip",
+    "destination.mac",
+    "destination.nat",
+    "destination.nat.ip",
+    "destination.nat.port",
+    "destination.original",
+    "destination.original.address",
+    "destination.original.autonomous_systems",
+    "destination.original.autonomous_systems.number",
+    "destination.original.autonomous_systems.organization_name",
+    "destination.original.bytes",
+    "destination.original.domain",
+    "destination.original.geo",
+    "destination.original.geo.city_name",
+    "destination.original.geo.continent_code",
+    "destination.original.geo.continent_name",
+    "destination.original.geo.country_iso_code",
+    "destination.original.geo.country_name",
+    "destination.original.geo.location",
+    "destination.original.geo.location.lat",
+    "destination.original.geo.location.lon",
+    "destination.original.geo.name",
+    "destination.original.geo.postal_code",
+    "destination.original.geo.region_iso_code",
+    "destination.original.geo.region_name",
+    "destination.original.geo.timezone",
+    "destination.original.ip",
+    "destination.original.mac",
+    "destination.original.nat",
+    "destination.original.nat.ip",
+    "destination.original.nat.port",
+    "destination.original.packets",
+    "destination.original.port",
+    "destination.packets",
+    "destination.port",
+    "destination.user",
+    "destination.user.domain",
+    "destination.user.email",
+    "destination.user.full_name",
+    "destination.user.group",
+    "destination.user.group.domain",
+    "destination.user.group.id",
+    "destination.user.group.name",
+    "destination.user.hash",
+    "destination.user.id",
+    "destination.user.name",
+    "destination.user.roles",
+    "dns.answers",
+    "dns.answers.class",
+    "dns.answers.data",
+    "dns.answers.name",
+    "dns.answers.ttl",
+    "dns.answers.type",
+    "dns.header_flags",
+    "dns.id",
+    "dns.op_code",
+    "dns.question",
+    "dns.question.class",
+    "dns.question.name",
+    "dns.question.registered_domain",
+    "dns.question.subdomain",
+    "dns.question.top_level_domain",
+    "dns.question.type",
+    "dns.resolved_ip",
+    "dns.response_code",
+    "dns.type",
+    "ecs",
+    "ecs.version",
+    "email.attachments",
+    "email.attachments.file",
+    "email.attachments.file.extension",
+    "email.attachments.file.hash",
+    "email.attachments.file.hash.md5",
+    "email.attachments.file.hash.sha1",
+    "email.attachments.file.hash.sha256",
+    "email.attachments.file.hash.sha384",
+    "email.attachments.file.hash.sha512",
+    "email.attachments.file.hash.ssdeep",
+    "email.attachments.file.hash.tlsh",
+    "email.attachments.file.mime_type",
+    "email.attachments.file.name",
+    "email.attachments.file.size",
+    "email.bcc",
+    "email.bcc.address",
+    "email.cc",
+    "email.cc.address",
+    "email.content_type",
+    "email.delivery_timestamp",
+    "email.direction",
+    "email.from",
+    "email.from.address",
+    "email.local_id",
+    "email.message_id",
+    "email.origination_timestamp",
+    "email.parent",
+    "email.parent.bcc",
+    "email.parent.bcc.address",
+    "email.parent.cc",
+    "email.parent.cc.address",
+    "email.parent.destination",
+    "email.parent.from",
+    "email.parent.from.address",
+    "email.parent.message_id",
+    "email.parent.origination_timestamp",
+    "email.parent.source",
+    "email.parent.subject",
+    "email.parent.to",
+    "email.parent.to.address",
+    "email.reply_to",
+    "email.reply_to.address",
+    "email.sender",
+    "email.sender.address",
+    "email.subject",
+    "email.to",
+    "email.to.address",
+    "email.x_mailer",
+    "error.code",
+    "error.message",
+    "event.action",
+    "event.category",
+    "event.code",
+    "event.count",
+    "event.created",
+    "event.dataset",
+    "event.duration",
+    "event.end",
+    "event.hash",
+    "event.id",
+    "event.ingested",
+    "event.kind",
+    "event.module",
+    "event.original",
+    "event.outcome",
+    "event.provider",
+    "event.reason",
+    "event.reference",
+    "event.risk_score",
+    "event.risk_score_norm",
+    "event.sequence",
+    "event.severity",
+    "event.start",
+    "event.timezone",
+    "event.type",
+    "event.url",
+    "faas.coldstart",
+    "faas.execution",
+    "faas.id",
+    "faas.name",
+    "faas.trigger",
+    "faas.trigger.request_id",
+    "faas.trigger.type",
+    "faas.version",
+    "file.accessed",
+    "file.attributes",
+    "file.code_signature",
+    "file.code_signature.digest_algorithm",
+    "file.code_signature.exists",
+    "file.code_signature.signing_id",
+    "file.code_signature.status",
+    "file.code_signature.subject_name",
+    "file.code_signature.team_id",
+    "file.code_signature.timestamp",
+    "file.code_signature.trusted",
+    "file.code_signature.valid",
+    "file.created",
+    "file.ctime",
+    "file.device",
+    "file.directory",
+    "file.drive_letter",
+    "file.elf",
+    "file.elf.architecture",
+    "file.elf.byte_order",
+    "file.elf.cpu_type",
+    "file.elf.creation_date",
+    "file.elf.exports",
+    "file.elf.header",
+    "file.elf.header.abi_version",
+    "file.elf.header.class",
+    "file.elf.header.data",
+    "file.elf.header.entrypoint",
+    "file.elf.header.object_version",
+    "file.elf.header.os_abi",
+    "file.elf.header.type",
+    "file.elf.header.version",
+    "file.elf.imports",
+    "file.elf.sections",
+    "file.elf.sections.chi2",
+    "file.elf.sections.entropy",
+    "file.elf.sections.flags",
+    "file.elf.sections.name",
+    "file.elf.sections.physical_offset",
+    "file.elf.sections.physical_size",
+    "file.elf.sections.type",
+    "file.elf.sections.virtual_address",
+    "file.elf.sections.virtual_size",
+    "file.elf.segments",
+    "file.elf.segments.chi2",
+    "file.elf.segments.entropy",
+    "file.elf.segments.flags",
+    "file.elf.segments.name",
+    "file.elf.segments.physical_offset",
+    "file.elf.segments.physical_size",
+    "file.elf.segments.type",
+    "file.elf.segments.virtual_address",
+    "file.elf.segments.virtual_size",
+    "file.elf.shared_libraries",
+    "file.elf.telfhash",
+    "file.extension",
+    "file.fork_name",
+    "file.gid",
+    "file.group",
+    "file.hash",
+    "file.hash.md5",
+    "file.hash.sha1",
+    "file.hash.sha256",
+    "file.hash.sha384",
+    "file.hash.sha512",
+    "file.hash.ssdeep",
+    "file.hash.tlsh",
+    "file.inode",
+    "file.mime_type",
+    "file.mode",
+    "file.mtime",
+    "file.name",
+    "file.owner",
+    "file.path",
+    "file.pe",
+    "file.pe.architecture",
+    "file.pe.company",
+    "file.pe.description",
+    "file.pe.file_version",
+    "file.pe.imphash",
+    "file.pe.original_file_name",
+    "file.pe.pehash",
+    "file.pe.product",
+    "file.size",
+    "file.target_path",
+    "file.type",
+    "file.uid",
+    "group.domain",
+    "group.id",
+    "group.name",
+    "host.domain",
+    "host.hostname",
+    "host.id",
+    "host.ip",
+    "host.mac",
+    "host.name",
+    "host.type",
+    "http.request",
+    "http.request.body",
+    "http.request.body.bytes",
+    "http.request.body.content",
+    "http.request.bytes",
+    "http.request.id",
+    "http.request.method",
+    "http.request.mime_type",
+    "http.request.referrer",
+    "http.response",
+    "http.response.body",
+    "http.response.body.bytes",
+    "http.response.body.content",
+    "http.response.bytes",
+    "http.response.mime_type",
+    "http.response.status_code",
+    "http.version",
+    "interface.id",
+    "interface.name",
+    "labels",
+    "message",
+    "network.direction",
+    "network.protocol",
+    "network.transport",
+    "observer.egress",
+    "observer.egress.zone",
+    "observer.hostname",
+    "observer.ingress",
+    "observer.ingress.interface",
+    "observer.ingress.interface.id",
+    "observer.ingress.interface.name",
+    "observer.ingress.zone",
+    "observer.interface",
+    "observer.interface.id",
+    "observer.interface.name",
+    "observer.ip",
+    "observer.mac",
+    "observer.name",
+    "observer.product",
+    "observer.serial_number",
+    "observer.type",
+    "observer.vendor",
+    "observer.version",
+    "organization.id",
+    "organization.name",
+    "process.args",
+    "process.args_count",
+    "process.code_signature",
+    "process.code_signature.digest_algorithm",
+    "process.code_signature.exists",
+    "process.code_signature.signing_id",
+    "process.code_signature.status",
+    "process.code_signature.subject_name",
+    "process.code_signature.team_id",
+    "process.code_signature.timestamp",
+    "process.code_signature.trusted",
+    "process.code_signature.valid",
+    "process.command_line",
+    "process.end",
+    "process.entity_id",
+    "process.entry_meta",
+    "process.entry_meta.type",
+    "process.env_vars",
+    "process.executable",
+    "process.exit_code",
+    "process.hash",
+    "process.hash.md5",
+    "process.hash.sha1",
+    "process.hash.sha256",
+    "process.hash.sha384",
+    "process.hash.sha512",
+    "process.hash.ssdeep",
+    "process.hash.tlsh",
+    "process.interactive",
+    "process.name",
+    "process.parent",
+    "process.parent.args",
+    "process.parent.args_count",
+    "process.parent.code_signature",
+    "process.parent.code_signature.digest_algorithm",
+    "process.parent.code_signature.exists",
+    "process.parent.code_signature.signing_id",
+    "process.parent.code_signature.status",
+    "process.parent.code_signature.subject_name",
+    "process.parent.code_signature.team_id",
+    "process.parent.code_signature.timestamp",
+    "process.parent.code_signature.trusted",
+    "process.parent.code_signature.valid",
+    "process.parent.command_line",
+    "process.parent.end",
+    "process.parent.entity_id",
+    "process.parent.entry_meta",
+    "process.parent.entry_meta.type",
+    "process.parent.env_vars",
+    "process.parent.executable",
+    "process.parent.exit_code",
+    "process.parent.hash",
+    "process.parent.hash.md5",
+    "process.parent.hash.sha1",
+    "process.parent.hash.sha256",
+    "process.parent.hash.sha384",
+    "process.parent.hash.sha512",
+    "process.parent.hash.ssdeep",
+    "process.parent.hash.tlsh",
+    "process.parent.interactive",
+    "process.parent.name",
+    "process.parent.parent",
+    "process.parent.parent.args",
+    "process.parent.parent.args_count",
+    "process.parent.parent.code_signature",
+    "process.parent.parent.code_signature.digest_algorithm",
+    "process.parent.parent.code_signature.exists",
+    "process.parent.parent.code_signature.signing_id",
+    "process.parent.parent.code_signature.status",
+    "process.parent.parent.code_signature.subject_name",
+    "process.parent.parent.code_signature.team_id",
+    "process.parent.parent.code_signature.timestamp",
+    "process.parent.parent.code_signature.trusted",
+    "process.parent.parent.code_signature.valid",
+    "process.parent.parent.command_line",
+    "process.parent.parent.end",
+    "process.parent.parent.entity_id",
+    "process.parent.parent.entry_meta",
+    "process.parent.parent.entry_meta.type",
+    "process.parent.parent.env_vars",
+    "process.parent.parent.executable",
+    "process.parent.parent.exit_code",
+    "process.parent.parent.hash",
+    "process.parent.parent.hash.md5",
+    "process.parent.parent.hash.sha1",
+    "process.parent.parent.hash.sha256",
+    "process.parent.parent.hash.sha384",
+    "process.parent.parent.hash.sha512",
+    "process.parent.parent.hash.ssdeep",
+    "process.parent.parent.hash.tlsh",
+    "process.parent.parent.interactive",
+    "process.parent.parent.name",
+    "process.parent.parent.pe",
+    "process.parent.parent.pe.architecture",
+    "process.parent.parent.pe.company",
+    "process.parent.parent.pe.description",
+    "process.parent.parent.pe.file_version",
+    "process.parent.parent.pe.imphash",
+    "process.parent.parent.pe.original_file_name",
+    "process.parent.parent.pe.pehash",
+    "process.parent.parent.pe.product",
+    "process.parent.parent.pid",
+    "process.parent.parent.same_as_process",
+    "process.parent.parent.start",
+    "process.parent.parent.title",
+    "process.parent.parent.uptime",
+    "process.parent.parent.user",
+    "process.parent.parent.user.domain",
+    "process.parent.parent.user.email",
+    "process.parent.parent.user.id",
+    "process.parent.parent.user.name",
+    "process.parent.parent.working_directory",
+    "process.parent.pe",
+    "process.parent.pe.architecture",
+    "process.parent.pe.company",
+    "process.parent.pe.description",
+    "process.parent.pe.file_version",
+    "process.parent.pe.imphash",
+    "process.parent.pe.original_file_name",
+    "process.parent.pe.pehash",
+    "process.parent.pe.product",
+    "process.parent.pid",
+    "process.parent.same_as_process",
+    "process.parent.start",
+    "process.parent.title",
+    "process.parent.uptime",
+    "process.parent.user",
+    "process.parent.user.domain",
+    "process.parent.user.email",
+    "process.parent.user.id",
+    "process.parent.user.name",
+    "process.parent.working_directory",
+    "process.pe",
+    "process.pe.architecture",
+    "process.pe.company",
+    "process.pe.description",
+    "process.pe.file_version",
+    "process.pe.imphash",
+    "process.pe.original_file_name",
+    "process.pe.pehash",
+    "process.pe.product",
+    "process.pid",
+    "process.same_as_process",
+    "process.start",
+    "process.title",
+    "process.uptime",
+    "process.user",
+    "process.user.domain",
+    "process.user.email",
+    "process.user.id",
+    "process.user.name",
+    "process.working_directory",
+    "registry.data",
+    "registry.data.bytes",
+    "registry.data.strings",
+    "registry.data.type",
+    "registry.hive",
+    "registry.key",
+    "registry.path",
+    "registry.value",
+    "related.hash",
+    "related.hosts",
+    "related.id",
+    "related.ids",
+    "related.ip",
+    "related.signature",
+    "related.uri",
+    "related.user",
+    "rule.author",
+    "rule.category",
+    "rule.description",
+    "rule.id",
+    "rule.license",
+    "rule.name",
+    "rule.reference",
+    "rule.ruleset",
+    "rule.uuid",
+    "rule.version",
+    "server.address",
+    "server.domain",
+    "server.ip",
+    "source.address",
+    "source.autonomous_systems",
+    "source.autonomous_systems.number",
+    "source.autonomous_systems.organization_name",
+    "source.bytes",
+    "source.domain",
+    "source.geo",
+    "source.geo.city_name",
+    "source.geo.continent_code",
+    "source.geo.continent_name",
+    "source.geo.country_iso_code",
+    "source.geo.country_name",
+    "source.geo.location",
+    "source.geo.location.lat",
+    "source.geo.location.lon",
+    "source.geo.name",
+    "source.geo.postal_code",
+    "source.geo.region_iso_code",
+    "source.geo.region_name",
+    "source.geo.timezone",
+    "source.ip",
+    "source.mac",
+    "source.nat",
+    "source.nat.ip",
+    "source.nat.port",
+    "source.original",
+    "source.original.address",
+    "source.original.autonomous_systems",
+    "source.original.autonomous_systems.number",
+    "source.original.autonomous_systems.organization_name",
+    "source.original.bytes",
+    "source.original.domain",
+    "source.original.geo",
+    "source.original.geo.city_name",
+    "source.original.geo.continent_code",
+    "source.original.geo.continent_name",
+    "source.original.geo.country_iso_code",
+    "source.original.geo.country_name",
+    "source.original.geo.location",
+    "source.original.geo.location.lat",
+    "source.original.geo.location.lon",
+    "source.original.geo.name",
+    "source.original.geo.postal_code",
+    "source.original.geo.region_iso_code",
+    "source.original.geo.region_name",
+    "source.original.geo.timezone",
+    "source.original.ip",
+    "source.original.mac",
+    "source.original.nat",
+    "source.original.nat.ip",
+    "source.original.nat.port",
+    "source.original.packets",
+    "source.original.port",
+    "source.packets",
+    "source.port",
+    "source.user",
+    "source.user.domain",
+    "source.user.email",
+    "source.user.full_name",
+    "source.user.group",
+    "source.user.group.domain",
+    "source.user.group.id",
+    "source.user.group.name",
+    "source.user.hash",
+    "source.user.id",
+    "source.user.name",
+    "source.user.roles",
+    "tags",
+    "threat.enrichments",
+    "threat.enrichments.indicator",
+    "threat.enrichments.indicator.confidence",
+    "threat.enrichments.indicator.description",
+    "threat.enrichments.indicator.email",
+    "threat.enrichments.indicator.email.address",
+    "threat.enrichments.indicator.file",
+    "threat.enrichments.indicator.file.accessed",
+    "threat.enrichments.indicator.file.attributes",
+    "threat.enrichments.indicator.file.code_signature",
+    "threat.enrichments.indicator.file.code_signature.digest_algorithm",
+    "threat.enrichments.indicator.file.code_signature.exists",
+    "threat.enrichments.indicator.file.code_signature.signing_id",
+    "threat.enrichments.indicator.file.code_signature.status",
+    "threat.enrichments.indicator.file.code_signature.subject_name",
+    "threat.enrichments.indicator.file.code_signature.team_id",
+    "threat.enrichments.indicator.file.code_signature.timestamp",
+    "threat.enrichments.indicator.file.code_signature.trusted",
+    "threat.enrichments.indicator.file.code_signature.valid",
+    "threat.enrichments.indicator.file.created",
+    "threat.enrichments.indicator.file.ctime",
+    "threat.enrichments.indicator.file.device",
+    "threat.enrichments.indicator.file.directory",
+    "threat.enrichments.indicator.file.drive_letter",
+    "threat.enrichments.indicator.file.elf",
+    "threat.enrichments.indicator.file.elf.architecture",
+    "threat.enrichments.indicator.file.elf.byte_order",
+    "threat.enrichments.indicator.file.elf.cpu_type",
+    "threat.enrichments.indicator.file.elf.creation_date",
+    "threat.enrichments.indicator.file.elf.exports",
+    "threat.enrichments.indicator.file.elf.header",
+    "threat.enrichments.indicator.file.elf.header.abi_version",
+    "threat.enrichments.indicator.file.elf.header.class",
+    "threat.enrichments.indicator.file.elf.header.data",
+    "threat.enrichments.indicator.file.elf.header.entrypoint",
+    "threat.enrichments.indicator.file.elf.header.object_version",
+    "threat.enrichments.indicator.file.elf.header.os_abi",
+    "threat.enrichments.indicator.file.elf.header.type",
+    "threat.enrichments.indicator.file.elf.header.version",
+    "threat.enrichments.indicator.file.elf.imports",
+    "threat.enrichments.indicator.file.elf.sections",
+    "threat.enrichments.indicator.file.elf.sections.chi2",
+    "threat.enrichments.indicator.file.elf.sections.entropy",
+    "threat.enrichments.indicator.file.elf.sections.flags",
+    "threat.enrichments.indicator.file.elf.sections.name",
+    "threat.enrichments.indicator.file.elf.sections.physical_offset",
+    "threat.enrichments.indicator.file.elf.sections.physical_size",
+    "threat.enrichments.indicator.file.elf.sections.type",
+    "threat.enrichments.indicator.file.elf.sections.virtual_address",
+    "threat.enrichments.indicator.file.elf.sections.virtual_size",
+    "threat.enrichments.indicator.file.elf.segments",
+    "threat.enrichments.indicator.file.elf.segments.chi2",
+    "threat.enrichments.indicator.file.elf.segments.entropy",
+    "threat.enrichments.indicator.file.elf.segments.flags",
+    "threat.enrichments.indicator.file.elf.segments.name",
+    "threat.enrichments.indicator.file.elf.segments.physical_offset",
+    "threat.enrichments.indicator.file.elf.segments.physical_size",
+    "threat.enrichments.indicator.file.elf.segments.type",
+    "threat.enrichments.indicator.file.elf.segments.virtual_address",
+    "threat.enrichments.indicator.file.elf.segments.virtual_size",
+    "threat.enrichments.indicator.file.elf.shared_libraries",
+    "threat.enrichments.indicator.file.elf.telfhash",
+    "threat.enrichments.indicator.file.extension",
+    "threat.enrichments.indicator.file.fork_name",
+    "threat.enrichments.indicator.file.gid",
+    "threat.enrichments.indicator.file.group",
+    "threat.enrichments.indicator.file.hash",
+    "threat.enrichments.indicator.file.hash.md5",
+    "threat.enrichments.indicator.file.hash.sha1",
+    "threat.enrichments.indicator.file.hash.sha256",
+    "threat.enrichments.indicator.file.hash.sha384",
+    "threat.enrichments.indicator.file.hash.sha512",
+    "threat.enrichments.indicator.file.hash.ssdeep",
+    "threat.enrichments.indicator.file.hash.tlsh",
+    "threat.enrichments.indicator.file.inode",
+    "threat.enrichments.indicator.file.mime_type",
+    "threat.enrichments.indicator.file.mode",
+    "threat.enrichments.indicator.file.mtime",
+    "threat.enrichments.indicator.file.name",
+    "threat.enrichments.indicator.file.owner",
+    "threat.enrichments.indicator.file.path",
+    "threat.enrichments.indicator.file.pe",
+    "threat.enrichments.indicator.file.pe.architecture",
+    "threat.enrichments.indicator.file.pe.company",
+    "threat.enrichments.indicator.file.pe.description",
+    "threat.enrichments.indicator.file.pe.file_version",
+    "threat.enrichments.indicator.file.pe.imphash",
+    "threat.enrichments.indicator.file.pe.original_file_name",
+    "threat.enrichments.indicator.file.pe.pehash",
+    "threat.enrichments.indicator.file.pe.product",
+    "threat.enrichments.indicator.file.size",
+    "threat.enrichments.indicator.file.target_path",
+    "threat.enrichments.indicator.file.type",
+    "threat.enrichments.indicator.file.uid",
+    "threat.enrichments.indicator.first_seen",
+    "threat.enrichments.indicator.ip",
+    "threat.enrichments.indicator.last_seen",
+    "threat.enrichments.indicator.port",
+    "threat.enrichments.indicator.provider",
+    "threat.enrichments.indicator.reference",
+    "threat.enrichments.indicator.scanner_stats",
+    "threat.enrichments.indicator.sightings",
+    "threat.enrichments.indicator.type",
+    "threat.enrichments.matched",
+    "threat.enrichments.matched.atomic",
+    "threat.feed",
+    "threat.feed.dashboard_id",
+    "threat.feed.description",
+    "threat.feed.name",
+    "threat.feed.reference",
+    "threat.framework",
+    "threat.group",
+    "threat.group.alias",
+    "threat.group.id",
+    "threat.group.name",
+    "threat.group.reference",
+    "threat.indicator",
+    "threat.indicator.confidence",
+    "threat.indicator.description",
+    "threat.indicator.email",
+    "threat.indicator.email.address",
+    "threat.indicator.file",
+    "threat.indicator.file.accessed",
+    "threat.indicator.file.attributes",
+    "threat.indicator.file.code_signature",
+    "threat.indicator.file.code_signature.digest_algorithm",
+    "threat.indicator.file.code_signature.exists",
+    "threat.indicator.file.code_signature.signing_id",
+    "threat.indicator.file.code_signature.status",
+    "threat.indicator.file.code_signature.subject_name",
+    "threat.indicator.file.code_signature.team_id",
+    "threat.indicator.file.code_signature.timestamp",
+    "threat.indicator.file.code_signature.trusted",
+    "threat.indicator.file.code_signature.valid",
+    "threat.indicator.file.created",
+    "threat.indicator.file.ctime",
+    "threat.indicator.file.device",
+    "threat.indicator.file.directory",
+    "threat.indicator.file.drive_letter",
+    "threat.indicator.file.elf",
+    "threat.indicator.file.elf.architecture",
+    "threat.indicator.file.elf.byte_order",
+    "threat.indicator.file.elf.cpu_type",
+    "threat.indicator.file.elf.creation_date",
+    "threat.indicator.file.elf.exports",
+    "threat.indicator.file.elf.header",
+    "threat.indicator.file.elf.header.abi_version",
+    "threat.indicator.file.elf.header.class",
+    "threat.indicator.file.elf.header.data",
+    "threat.indicator.file.elf.header.entrypoint",
+    "threat.indicator.file.elf.header.object_version",
+    "threat.indicator.file.elf.header.os_abi",
+    "threat.indicator.file.elf.header.type",
+    "threat.indicator.file.elf.header.version",
+    "threat.indicator.file.elf.imports",
+    "threat.indicator.file.elf.sections",
+    "threat.indicator.file.elf.sections.chi2",
+    "threat.indicator.file.elf.sections.entropy",
+    "threat.indicator.file.elf.sections.flags",
+    "threat.indicator.file.elf.sections.name",
+    "threat.indicator.file.elf.sections.physical_offset",
+    "threat.indicator.file.elf.sections.physical_size",
+    "threat.indicator.file.elf.sections.type",
+    "threat.indicator.file.elf.sections.virtual_address",
+    "threat.indicator.file.elf.sections.virtual_size",
+    "threat.indicator.file.elf.segments",
+    "threat.indicator.file.elf.segments.chi2",
+    "threat.indicator.file.elf.segments.entropy",
+    "threat.indicator.file.elf.segments.flags",
+    "threat.indicator.file.elf.segments.name",
+    "threat.indicator.file.elf.segments.physical_offset",
+    "threat.indicator.file.elf.segments.physical_size",
+    "threat.indicator.file.elf.segments.type",
+    "threat.indicator.file.elf.segments.virtual_address",
+    "threat.indicator.file.elf.segments.virtual_size",
+    "threat.indicator.file.elf.shared_libraries",
+    "threat.indicator.file.elf.telfhash",
+    "threat.indicator.file.extension",
+    "threat.indicator.file.fork_name",
+    "threat.indicator.file.gid",
+    "threat.indicator.file.group",
+    "threat.indicator.file.hash",
+    "threat.indicator.file.hash.md5",
+    "threat.indicator.file.hash.sha1",
+    "threat.indicator.file.hash.sha256",
+    "threat.indicator.file.hash.sha384",
+    "threat.indicator.file.hash.sha512",
+    "threat.indicator.file.hash.ssdeep",
+    "threat.indicator.file.hash.tlsh",
+    "threat.indicator.file.inode",
+    "threat.indicator.file.mime_type",
+    "threat.indicator.file.mode",
+    "threat.indicator.file.mtime",
+    "threat.indicator.file.name",
+    "threat.indicator.file.owner",
+    "threat.indicator.file.path",
+    "threat.indicator.file.pe",
+    "threat.indicator.file.pe.architecture",
+    "threat.indicator.file.pe.company",
+    "threat.indicator.file.pe.description",
+    "threat.indicator.file.pe.file_version",
+    "threat.indicator.file.pe.imphash",
+    "threat.indicator.file.pe.original_file_name",
+    "threat.indicator.file.pe.pehash",
+    "threat.indicator.file.pe.product",
+    "threat.indicator.file.size",
+    "threat.indicator.file.target_path",
+    "threat.indicator.file.type",
+    "threat.indicator.file.uid",
+    "threat.indicator.first_seen",
+    "threat.indicator.ip",
+    "threat.indicator.last_seen",
+    "threat.indicator.port",
+    "threat.indicator.provider",
+    "threat.indicator.reference",
+    "threat.indicator.scanner_stats",
+    "threat.indicator.sightings",
+    "threat.indicator.type",
+    "threat.software",
+    "threat.software.alias",
+    "threat.software.id",
+    "threat.software.name",
+    "threat.software.platform",
+    "threat.software.reference",
+    "threat.software.type",
+    "threat.tactic",
+    "threat.tactic.id",
+    "threat.tactic.name",
+    "threat.tactic.reference",
+    "threat.technique",
+    "threat.technique.id",
+    "threat.technique.name",
+    "threat.technique.reference",
+    "timestamp",
+    "tls.client",
+    "tls.client.ja3",
+    "tls.client.server_name",
+    "tls.server",
+    "tls.server.ja3s",
+    "tls.version",
+    "tls.version_protocol",
+    "url.domain",
+    "url.extension",
+    "url.fragment",
+    "url.full",
+    "url.original",
+    "url.password",
+    "url.path",
+    "url.port",
+    "url.query",
+    "url.registered_domain",
+    "url.scheme",
+    "url.subdomain",
+    "url.top_level_domain",
+    "url.username",
+    "user.domain",
+    "user.email",
+    "user.full_name",
+    "user.group",
+    "user.group.domain",
+    "user.group.id",
+    "user.group.name",
+    "user.hash",
+    "user.id",
+    "user.name",
+    "user.roles",
+    "user_agent.device",
+    "user_agent.device.name",
+    "user_agent.name",
+    "user_agent.original",
+    "user_agent.os",
+    "user_agent.os.family",
+    "user_agent.os.full",
+    "user_agent.os.kernel",
+    "user_agent.os.name",
+    "user_agent.os.platform",
+    "user_agent.os.type",
+    "user_agent.os.version",
+    "user_agent.version",
+    "vulnerability.category",
+    "vulnerability.classification",
+    "vulnerability.description",
+    "vulnerability.enumeration",
+    "vulnerability.id",
+    "vulnerability.reference",
+    "vulnerability.report_id"
+  ],
+  "provenance": {
+    "generator": "legacy Model.flat_fields and howler.odm.mapping.build_mapping executed from source at source_commit",
+    "source_commit": "3071fc4ea45d4b2dd44a7ee1646095426097d061",
+    "source_path": "plugins/evidence/evidence/odm/models/evidence.py",
+    "source_sha256": "1ef4bc0bf73d3e94dff1634a3ad9e5d3cc54e402bba8886eb6592bdb3b0fe3f6"
+  }
+}

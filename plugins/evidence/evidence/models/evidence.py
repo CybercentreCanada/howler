@@ -1,9 +1,4 @@
-"""Evidence Pydantic model: additional nested ECS objects attached to a Hit.
-
-This mirrors ``evidence.odm.models.evidence.Evidence`` field-for-field, but is built on the
-new ``howler.models`` Pydantic/DSL foundation instead of the legacy ODM. The legacy ``odm``
-module keeps running unchanged until the Step 8 consumer/runtime cutover.
-"""
+"""Evidence Pydantic model: additional nested ECS objects attached to a Hit."""
 
 from __future__ import annotations
 
