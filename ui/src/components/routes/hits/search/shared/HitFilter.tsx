@@ -1,6 +1,6 @@
 import { AddCircleOutline, FilterList, RemoveCircleOutline } from '@mui/icons-material';
 import type { UseAutocompleteProps } from '@mui/material';
-import { Autocomplete, IconButton, Stack, TextField, Typography } from '@mui/material';
+import { Autocomplete, Checkbox, FormControlLabel, Stack, TextField, Tooltip, Typography } from '@mui/material';
 import api from 'api';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
@@ -21,14 +21,13 @@ const ACCEPTED_LOOKUPS = [
   'event.provider',
   'organization.name'
 ];
-const WILDCARD_OPTION = '\u0000howler-wildcard';
 
 interface ParsedFilter {
+  raw: string;
   category: string | null;
   rawClause: string;
   values: string[];
   rawValues: string[];
-  grouped: boolean;
   negated: boolean;
   editable: boolean;
   wildcard: boolean;
@@ -36,128 +35,80 @@ interface ParsedFilter {
 
 const unescapeLucene = (value: string) => value.replace(/\\(.)/gs, '$1');
 
-const parseQuotedValue = (value: string) => {
-  const match = value.match(/^"((?:\\.|[^"\\])*)"$/s);
-  return match ? { value: unescapeLucene(match[1] ?? ''), raw: value } : null;
-};
-
-const parseQuotedGroup = (value: string) => {
+// Sticky matching consumes every character without repeatedly slicing the remaining clause.
+const parseQuotedValues = (value: string, grouped: boolean) => {
   const parts: { value: string; raw: string }[] = [];
-  let remaining = value;
+  const quoted = /"((?:\\.|[^"\\])*)"/sy;
+  const separator = /\s+OR\s+/y;
+  let offset = 0;
 
-  while (remaining) {
-    const match = remaining.match(/^"((?:\\.|[^"\\])*)"(?: OR |$)/s);
-    if (!match) {
-      return null;
-    }
-    if (match[0].endsWith(' OR ') && match[0].length === remaining.length) {
-      return null;
-    }
+  while (offset < value.length) {
+    quoted.lastIndex = offset;
+    const match = quoted.exec(value);
+    if (!match) return null;
 
-    parts.push({
-      value: unescapeLucene(match[1] ?? ''),
-      raw: match[0].endsWith(' OR ') ? match[0].slice(0, -4) : match[0]
-    });
-    remaining = remaining.slice(match[0].length);
+    parts.push({ value: unescapeLucene(match[1] ?? ''), raw: match[0] });
+    offset = quoted.lastIndex;
+    if (offset === value.length) return parts;
+    if (!grouped) return null;
+
+    separator.lastIndex = offset;
+    if (!separator.exec(value)) return null;
+    offset = separator.lastIndex;
   }
 
-  return parts.length ? parts : null;
+  return null;
 };
 
 const parseFilter = (value: string): ParsedFilter => {
   const negated = value.startsWith('-');
   const positiveValue = negated ? value.slice(1) : value;
   const separator = positiveValue.indexOf(':');
-  if (separator <= 0) {
-    return {
-      category: null,
-      rawClause: positiveValue,
-      values: [],
-      rawValues: [],
-      grouped: false,
-      negated,
-      editable: false,
-      wildcard: false
-    };
-  }
+  const category = separator > 0 ? positiveValue.slice(0, separator) : null;
+  const rawClause = category ? positiveValue.slice(separator + 1) : positiveValue;
+  const parsed: ParsedFilter = {
+    raw: value,
+    category,
+    rawClause,
+    values: [],
+    rawValues: [],
+    negated,
+    editable: false,
+    wildcard: false
+  };
 
-  const category = positiveValue.slice(0, separator);
-  const rawClause = positiveValue.slice(separator + 1);
+  // Only the editor's literal subset is safe to rewrite; leave arbitrary Lucene clauses opaque.
+  if (!category || !/^[A-Za-z_][A-Za-z0-9_.]*$/.test(category)) return parsed;
   if (rawClause === '*') {
-    return { category, rawClause, values: [], rawValues: [], grouped: false, negated, editable: true, wildcard: true };
+    return { ...parsed, editable: true, wildcard: true };
   }
 
-  const scalar = parseQuotedValue(rawClause);
-  if (scalar !== null) {
-    return {
-      category,
-      rawClause,
-      values: [scalar.value],
-      rawValues: [scalar.raw],
-      grouped: false,
-      negated,
-      editable: true,
-      wildcard: false
-    };
+  if (/^[A-Za-z_][A-Za-z0-9_.]*$/.test(rawClause) && !/^(true|false|AND|OR|NOT)$/i.test(rawClause)) {
+    return { ...parsed, values: [rawClause], rawValues: [rawClause], editable: true };
   }
 
-  if (/^[A-Za-z_][A-Za-z0-9_.]*$/.test(rawClause) && !/^(true|false)$/i.test(rawClause)) {
-    return {
-      category,
-      rawClause,
-      values: [rawClause],
-      rawValues: [rawClause],
-      grouped: false,
-      negated,
-      editable: true,
-      wildcard: false
-    };
-  }
-
-  if (rawClause.startsWith('(') && rawClause.endsWith(')')) {
-    const groupedValues = parseQuotedGroup(rawClause.slice(1, -1));
-    if (groupedValues) {
-      return {
-        category,
-        rawClause,
-        values: groupedValues.map(item => item.value),
-        rawValues: groupedValues.map(item => item.raw),
-        grouped: true,
-        negated,
-        editable: true,
-        wildcard: false
-      };
-    }
-  }
-
-  return { category, rawClause, values: [], rawValues: [], grouped: false, negated, editable: false, wildcard: false };
+  const grouped = rawClause.startsWith('(') && rawClause.endsWith(')');
+  const parts = parseQuotedValues(grouped ? rawClause.slice(1, -1).trim() : rawClause, grouped);
+  return parts
+    ? { ...parsed, values: parts.map(item => item.value), rawValues: parts.map(item => item.raw), editable: true }
+    : parsed;
 };
 
-const serializeFilter = (
-  category: string,
-  values: string[],
-  grouped: boolean,
-  negated: boolean,
-  wildcard: boolean,
-  previousValues: string[],
-  previousRawValues: string[]
-) => {
-  const prefix = negated ? '-' : '';
-  if (wildcard) {
-    return `${prefix}${category}:*`;
-  }
-
-  const reusedValues = new Set<number>();
-  const serializedValues = values.map(item => {
-    const previousIndex = previousValues.findIndex((previous, index) => previous === item && !reusedValues.has(index));
-    if (previousIndex >= 0) {
-      reusedValues.add(previousIndex);
-      return previousRawValues[previousIndex] ?? `"${sanitizeLuceneQuery(item)}"`;
-    }
-    return `"${sanitizeLuceneQuery(item)}"`;
+const serializeFilter = (category: string, values: string[], previous: ParsedFilter) => {
+  // Per-value queues preserve distinct spellings of duplicate literals in linear time.
+  const originals = new Map<string, { raw: string[]; used: number }>();
+  previous.values.forEach((item, index) => {
+    const raw = previous.rawValues[index] ?? `"${sanitizeLuceneQuery(item)}"`;
+    const existing = originals.get(item);
+    if (existing) existing.raw.push(raw);
+    else originals.set(item, { raw: [raw], used: 0 });
   });
-  const clause = grouped ? `(${serializedValues.join(' OR ')})` : (serializedValues[0] ?? '*');
-  return `${prefix}${category}:${clause}`;
+  const serializedValues = values.map(item => {
+    const original = originals.get(item);
+    return original?.raw[original.used++] ?? `"${sanitizeLuceneQuery(item)}"`;
+  });
+  const clause = values.length > 1 ? `(${serializedValues.join(' OR ')})` : (serializedValues[0] ?? '*');
+  return `${previous.negated ? '-' : ''}${category}:${clause}`;
 };
 
 const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = ({ size, id, value }) => {
@@ -168,172 +119,148 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
   const setSavedFilter = useContextSelector(ParameterContext, ctx => ctx.setFilter);
   const removeSavedFilter = useContextSelector(ParameterContext, ctx => ctx.removeFilter);
 
-  const [rawFilter, setRawFilter] = useState(value);
-  const parsedFilter = parseFilter(rawFilter);
-  const [category, setCategory] = useState<string | null>(parsedFilter.category);
-  const [filterValues, setFilterValues] = useState<string[]>(parsedFilter.values);
-  const [rawValues, setRawValues] = useState<string[]>(parsedFilter.rawValues);
-  const [grouped, setGrouped] = useState(parsedFilter.grouped);
-  const [editable, setEditable] = useState(parsedFilter.editable);
-  const [wildcard, setWildcard] = useState(parsedFilter.wildcard);
-  const negated = parsedFilter.negated;
-  const [loading, setLoading] = useState(false);
-
-  const [customLookups, setCustomLookups] = useState<string[]>([]);
+  const [parsedFilter, setParsedFilter] = useState(() => parseFilter(value));
+  const [previousValue, setPreviousValue] = useState(value);
+  // Synchronize external replacements without resetting edits when only lookup config changes.
+  if (previousValue !== value) {
+    setPreviousValue(value);
+    setParsedFilter(parseFilter(value));
+  }
+  const { category, values: filterValues, editable, negated } = parsedFilter;
+  const [customLookups, setCustomLookups] = useState<{ category: string | null; options: string[] }>({
+    category: null,
+    options: []
+  });
+  const configuredLookup = category ? config.lookups?.[category as keyof APILookups] : undefined;
+  const needsLookups = Boolean(category && editable && !Array.isArray(configuredLookup));
+  const loading = needsLookups && customLookups.category !== category;
 
   useEffect(() => {
-    if (value) {
-      const parsed = parseFilter(value);
-      setRawFilter(value);
-      setCategory(parsed.category);
-      setFilterValues(parsed.values);
-      setRawValues(parsed.rawValues);
-      setGrouped(parsed.grouped);
-      setEditable(parsed.editable);
-      setWildcard(parsed.wildcard);
-      setSavedFilter(id, value);
-    }
+    if (value) setSavedFilter(id, value);
   }, [id, setSavedFilter, value]);
 
-  const onCategoryChange: UseAutocompleteProps<string, false, false, false>['onChange'] = useCallback(
-    async (_, _category) => {
-      setCategory(_category);
-      setFilterValues([]);
-      setRawValues([]);
-      setWildcard(false);
+  useEffect(() => {
+    if (!category || !editable || Array.isArray(configuredLookup)) {
+      return;
+    }
 
-      if (!_category) {
-        return;
-      }
-
-      if (!config.lookups?.[_category as keyof APILookups]) {
-        setLoading(true);
-
+    // Ignore responses from a previous field or an unmounted editor.
+    let active = true;
+    const fetchLookups = async () => {
+      try {
         const facets = await dispatchApi(
-          api.search.facet.hit.post({ query: 'howler.id:*', fields: [_category], rows: 100 }),
-          {
-            throwError: false
-          }
+          api.search.facet.hit.post({ query: `${category}:*`, fields: [category], rows: 100 }),
+          { throwError: false }
         );
 
-        setCustomLookups(Object.keys((facets ?? {})[_category] ?? {}));
-        setLoading(false);
-      } else {
-        setCustomLookups([]);
+        if (active) {
+          setCustomLookups({ category, options: Object.keys((facets ?? {})[category] ?? {}) });
+        }
+      } catch {
+        // A failed suggestion request must not prevent free-text filter editing.
+        if (active) setCustomLookups({ category, options: [] });
       }
+    };
+
+    void fetchLookups();
+    return () => {
+      active = false;
+    };
+  }, [category, configuredLookup, dispatchApi, editable]);
+
+  const commitFilter = useCallback(
+    (nextValue: string) => {
+      setParsedFilter(parseFilter(nextValue));
+      setSavedFilter(id, nextValue);
     },
-    [config.lookups, dispatchApi]
+    [id, setSavedFilter]
   );
 
-  const onValueChange: UseAutocompleteProps<string, false, false, true>['onChange'] = useCallback(
-    (_, newValue) => {
-      const isWildcard = !newValue || newValue === WILDCARD_OPTION;
-      const values = isWildcard ? [] : [newValue];
-      setFilterValues(values);
-      setWildcard(isWildcard);
-
-      if (category) {
-        const nextValue = serializeFilter(category, values, grouped, negated, isWildcard, filterValues, rawValues);
-        setRawValues(parseFilter(nextValue).rawValues);
-        setRawFilter(nextValue);
-        setSavedFilter(id, nextValue);
-      }
+  const onCategoryChange: UseAutocompleteProps<string, false, true, false>['onChange'] = useCallback(
+    (_, nextCategory) => {
+      commitFilter(`${negated ? '-' : ''}${nextCategory}:*`);
     },
-    [category, filterValues, grouped, id, negated, rawValues, setSavedFilter]
+    [commitFilter, negated]
   );
 
-  const onGroupedValueChange: UseAutocompleteProps<string, true, false, true>['onChange'] = useCallback(
+  const onValuesChange: UseAutocompleteProps<string, true, false, true>['onChange'] = useCallback(
     (_, newValues) => {
-      const isWildcard = newValues.length === 0 || newValues.includes(WILDCARD_OPTION);
-      const values = isWildcard ? [] : newValues.filter(newValue => newValue !== WILDCARD_OPTION);
-      setFilterValues(values);
-      setWildcard(isWildcard);
-
       if (category) {
-        const nextValue = serializeFilter(category, values, true, negated, isWildcard, filterValues, rawValues);
-        setRawValues(parseFilter(nextValue).rawValues);
-        setRawFilter(nextValue);
-        setSavedFilter(id, nextValue);
+        commitFilter(serializeFilter(category, newValues, parsedFilter));
       }
     },
-    [category, filterValues, id, negated, rawValues, setSavedFilter]
+    [category, commitFilter, parsedFilter]
   );
 
   const toggleNegation = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>) => {
+    (event: React.ChangeEvent<HTMLInputElement>, nextNegated: boolean) => {
       event.stopPropagation();
-      const nextNegated = !negated;
-      const positiveValue = rawFilter.startsWith('-') ? rawFilter.slice(1) : rawFilter;
-      const nextValue = `${nextNegated ? '-' : ''}${positiveValue}`;
-      setRawFilter(nextValue);
-      setSavedFilter(id, nextValue);
+      // Toggle only the leading sign, including for opaque clauses the editor cannot parse.
+      const positiveValue = negated ? parsedFilter.raw.slice(1) : parsedFilter.raw;
+      commitFilter(`${nextNegated ? '-' : ''}${positiveValue}`);
     },
-    [id, negated, rawFilter, setSavedFilter]
+    [commitFilter, negated, parsedFilter.raw]
   );
 
-  const configuredLookup =
-    category && category in (config.lookups ?? {}) ? config.lookups?.[category as keyof APILookups] : undefined;
-  const lookupOptions = Array.isArray(configuredLookup) ? configuredLookup : customLookups;
-  const filterOptions = [...lookupOptions, ...(wildcard || !filterValues.includes('*') ? [WILDCARD_OPTION] : [])];
-  const chipLabel = `${parsedFilter.negated ? '-' : ''}${parsedFilter.category ? `${parsedFilter.category}:` : ''}${parsedFilter.rawClause}`;
+  const lookupOptions = Array.isArray(configuredLookup)
+    ? configuredLookup
+    : customLookups.category === category
+      ? customLookups.options
+      : [];
+  const chipLabel = `${parsedFilter.category ? `${parsedFilter.category}:` : ''}${parsedFilter.rawClause}`;
 
   return (
     <Stack direction="row" alignItems="center" spacing={0.5}>
       <ChipPopper
-        icon={<FilterList fontSize="small" />}
+        icon={
+          <Stack direction="row" spacing={0.25} alignItems="center">
+            <FilterList fontSize="small" />
+            {parsedFilter.negated ? (
+              <Tooltip title={t('hit.search.filter.excluded')}>
+                <RemoveCircleOutline fontSize="small" color="error" />
+              </Tooltip>
+            ) : (
+              <Tooltip title={t('hit.search.filter.included')}>
+                <AddCircleOutline fontSize="small" color="success" />
+              </Tooltip>
+            )}
+          </Stack>
+        }
         label={<Typography variant="body2">{chipLabel}</Typography>}
         minWidth="250px"
         onDelete={() => removeSavedFilter(value)}
         slotProps={{ chip: { size: 'small', color: parsedFilter.wildcard ? 'warning' : 'default' } }}
       >
         <Stack spacing={1} sx={{ minWidth: '225px' }}>
+          <FormControlLabel
+            label={t('hit.search.filter.exclude')}
+            control={<Checkbox size="small" checked={negated} onChange={toggleNegation} />}
+          />
           <Autocomplete
             fullWidth
+            disableClearable
             disabled={!editable}
             size={size ?? 'small'}
-            value={category}
+            value={category ?? ''}
             options={ACCEPTED_LOOKUPS}
             renderInput={_params => <TextField {..._params} label={t('hit.search.filter.fields')} />}
             onChange={onCategoryChange}
           />
-          {grouped ? (
-            <Autocomplete<string, true, false, true>
-              fullWidth
-              freeSolo
-              multiple
-              disabled={!category || !editable}
-              loading={loading}
-              size={size ?? 'small'}
-              value={filterValues}
-              options={filterOptions}
-              renderInput={_params => <TextField {..._params} label={t('hit.search.filter.values')} />}
-              getOptionLabel={option => (option === WILDCARD_OPTION ? '*' : t(option))}
-              onChange={onGroupedValueChange}
-            />
-          ) : (
-            <Autocomplete<string, false, false, true>
-              fullWidth
-              freeSolo
-              disabled={!category || !editable}
-              loading={loading}
-              size={size ?? 'small'}
-              value={wildcard ? '' : (filterValues[0] ?? '')}
-              options={filterOptions}
-              renderInput={_params => <TextField {..._params} label={t('hit.search.filter.values')} />}
-              getOptionLabel={option => (option === WILDCARD_OPTION ? '*' : t(option))}
-              onChange={onValueChange}
-            />
-          )}
+          <Autocomplete<string, true, false, true>
+            fullWidth
+            freeSolo
+            multiple
+            disabled={!category || !editable}
+            loading={loading}
+            size={size ?? 'small'}
+            value={filterValues}
+            options={lookupOptions}
+            renderInput={_params => <TextField {..._params} label={t('hit.search.filter.values')} />}
+            getOptionLabel={option => t(option)}
+            onChange={onValuesChange}
+          />
         </Stack>
       </ChipPopper>
-      <IconButton
-        size="small"
-        aria-label={t(negated ? 'hit.search.filter.include' : 'hit.search.filter.exclude')}
-        title={t(negated ? 'hit.search.filter.include' : 'hit.search.filter.exclude')}
-        onClick={toggleNegation}
-      >
-        {negated ? <AddCircleOutline fontSize="small" /> : <RemoveCircleOutline fontSize="small" />}
-      </IconButton>
     </Stack>
   );
 };
