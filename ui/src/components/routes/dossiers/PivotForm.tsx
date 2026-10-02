@@ -359,7 +359,14 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
           <Typography variant="caption" color="text.secondary" sx={{ mt: `${theme.spacing(0.5)} !important` }}>
             {groupError ? t(groupError) : t('route.dossiers.pivot.explanation')}
           </Typography>
-
+          <TextField
+            size="small"
+            label={t('tooltip.pivot.description')}
+            disabled={!pivot}
+            value={pivot?.description ?? ''}
+            fullWidth
+            onChange={ev => update({ description: ev.target.value })}
+          />
           <Stack direction="row" spacing={2}>
             <TextField
               size="small"

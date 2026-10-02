@@ -63,7 +63,11 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, v
             </>
           ) : undefined
         }
-        tooltip={variant === 'menu-item' ? undefined : <PivotTooltip dossier={dossier} resolvedUrl={resolvedUrl} />}
+        tooltip={
+          variant === 'menu-item' ? undefined : (
+            <PivotTooltip dossier={dossier} pivot={pivot} resolvedUrl={resolvedUrl} />
+          )
+        }
         menuItem={variant === 'menu-item'}
         onNavigate={onNavigate}
       />
@@ -80,7 +84,7 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, v
     }
 
     return (
-      <Tooltip title={<PivotTooltip dossier={dossier} resolvedUrl={resolvedUrl} />}>
+      <Tooltip title={<PivotTooltip dossier={dossier} pivot={pivot} resolvedUrl={resolvedUrl} />}>
         <Box component="span" sx={{ display: 'inline-flex' }}>
           {pluginPivot}
         </Box>
