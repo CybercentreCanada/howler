@@ -3,10 +3,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiConfigContextToken = vi.hoisted(() => ({ name: 'api-config-context' }));
+const fieldContextToken = vi.hoisted(() => ({ name: 'field-context' }));
 const parameterContextToken = vi.hoisted(() => ({ name: 'parameter-context' }));
 const mockDispatchApi = vi.hoisted(() => vi.fn());
 const mockSetSavedFilter = vi.hoisted(() => vi.fn());
 const mockRemoveSavedFilter = vi.hoisted(() => vi.fn());
+const autocompleteProps = vi.hoisted(() => [] as any[]);
 
 let configValue: any = { lookups: { 'howler.assessment': ['malicious'] } };
 
@@ -16,14 +18,23 @@ vi.mock('@mui/icons-material', async importOriginal => {
 });
 
 vi.mock('@mui/material', () => ({
-  Autocomplete: ({ onChange, options, disabled }: any) => (
-    <button
-      disabled={disabled}
-      onClick={() => onChange(null, options.includes('event.provider') ? 'event.provider' : options[0])}
-    >
-      change-filter
-    </button>
-  ),
+  createFilterOptions:
+    () =>
+    (options: string[], { inputValue }: { inputValue: string }) =>
+      options.filter(option => option.toLowerCase().includes(inputValue.toLowerCase())),
+  Autocomplete: (props: any) => {
+    autocompleteProps.push(props);
+    return (
+      <button
+        disabled={props.disabled}
+        onClick={() =>
+          props.onChange(null, props.options.includes('event.provider') ? 'event.provider' : props.options[0])
+        }
+      >
+        change-filter
+      </button>
+    );
+  },
   Stack: ({ children }: any) => <div>{children}</div>,
   TextField: ({ label }: any) => <div>{label}</div>,
   Typography: ({ children }: any) => <div>{children}</div>
@@ -43,6 +54,10 @@ vi.mock('api', () => ({
 
 vi.mock('components/app/providers/ApiConfigProvider', () => ({
   ApiConfigContext: apiConfigContextToken
+}));
+
+vi.mock('components/app/providers/FieldProvider', () => ({
+  FieldContext: fieldContextToken
 }));
 
 vi.mock('components/app/providers/ParameterProvider', () => ({
@@ -78,6 +93,19 @@ vi.mock('react', async importOriginal => {
     ...actual,
     useContext: (context: any) => {
       if (context === apiConfigContextToken) return { config: configValue };
+      if (context === fieldContextToken) {
+        return {
+          hitFields: [
+            { key: 'howler.assessment' },
+            { key: 'howler.escalation' },
+            { key: 'howler.analytic' },
+            { key: 'howler.detection' },
+            { key: 'event.provider' },
+            { key: 'organization.name' }
+          ],
+          getHitFields: vi.fn()
+        };
+      }
       return actual.useContext(context);
     }
   };
@@ -91,6 +119,7 @@ describe('HitFilter', () => {
     mockDispatchApi.mockReset().mockImplementation(async _value => ({ 'event.provider': { azure: 2 } }));
     mockSetSavedFilter.mockReset();
     mockRemoveSavedFilter.mockReset();
+    autocompleteProps.length = 0;
   });
 
   it('initializes from value, fetches custom lookups, updates values, and removes filters', async () => {
@@ -115,5 +144,21 @@ describe('HitFilter', () => {
   it('uses configured lookups and wildcard values', async () => {
     render(<HitFilter id={2} value={'howler.assessment:*'} />);
     await waitFor(() => expect(mockSetSavedFilter).toHaveBeenCalledWith(2, 'howler.assessment:*'));
+  });
+
+  it('shows only default fields until the user searches for another indexed field', () => {
+    render(<HitFilter id={3} value="" />);
+
+    const fieldAutocomplete = autocompleteProps[0]!;
+    expect(fieldAutocomplete.filterOptions(fieldAutocomplete.options, { inputValue: '' })).toEqual([
+      'howler.assessment',
+      'howler.escalation',
+      'howler.analytic',
+      'howler.detection',
+      'event.provider'
+    ]);
+    expect(fieldAutocomplete.filterOptions(fieldAutocomplete.options, { inputValue: 'organization' })).toEqual([
+      'organization.name'
+    ]);
   });
 });

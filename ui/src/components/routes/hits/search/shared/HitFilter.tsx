@@ -1,8 +1,9 @@
 import { FilterList } from '@mui/icons-material';
 import type { UseAutocompleteProps } from '@mui/material';
-import { Autocomplete, Stack, TextField, Typography } from '@mui/material';
+import { Autocomplete, createFilterOptions, Stack, TextField, Typography } from '@mui/material';
 import api from 'api';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
+import { FieldContext } from 'components/app/providers/FieldProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import ChipPopper from 'components/elements/display/ChipPopper';
 import useMyApi from 'components/hooks/useMyApi';
@@ -13,28 +14,36 @@ import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 
-const ACCEPTED_LOOKUPS = [
+const DEFAULT_FILTER_FIELDS = [
   'howler.assessment',
   'howler.escalation',
   'howler.analytic',
   'howler.detection',
-  'event.provider',
-  'organization.name'
+  'event.provider'
 ];
+
+const filterFields = createFilterOptions<string>();
 
 const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = ({ size, id, value }) => {
   const { t } = useTranslation();
   const { config } = useContext(ApiConfigContext);
+  const { hitFields, getHitFields } = useContext(FieldContext);
   const { dispatchApi } = useMyApi();
 
   const setSavedFilter = useContextSelector(ParameterContext, ctx => ctx.setFilter);
   const removeSavedFilter = useContextSelector(ParameterContext, ctx => ctx.removeFilter);
 
-  const [category, setCategory] = useState<string | null>(value?.split(':')[0] ?? ACCEPTED_LOOKUPS[0]!);
+  const [category, setCategory] = useState<string | null>(value?.split(':')[0] ?? DEFAULT_FILTER_FIELDS[0]!);
   const [filter, setFilter] = useState<string | null>(value?.split(':')[1] ?? null);
   const [loading, setLoading] = useState(false);
 
   const [customLookups, setCustomLookups] = useState<string[]>([]);
+
+  const categoryOptions = hitFields.map(field => field.key).filter((field): field is string => !!field);
+
+  useEffect(() => {
+    void getHitFields();
+  }, [getHitFields]);
 
   useEffect(() => {
     if (value) {
@@ -113,7 +122,12 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
           fullWidth
           size={size ?? 'small'}
           value={category}
-          options={ACCEPTED_LOOKUPS}
+          options={categoryOptions}
+          filterOptions={(options, state) =>
+            state.inputValue
+              ? filterFields(options, state)
+              : options.filter(option => DEFAULT_FILTER_FIELDS.includes(option))
+          }
           renderInput={_params => <TextField {..._params} label={t('hit.search.filter.fields')} />}
           onChange={onCategoryChange}
         />
