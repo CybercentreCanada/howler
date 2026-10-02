@@ -1,11 +1,29 @@
-import { Autocomplete, Button, CircularProgress, Divider, Stack, TextField, Typography } from '@mui/material';
+import { Delete } from '@mui/icons-material';
+import {
+  Autocomplete,
+  Button,
+  CircularProgress,
+  Divider,
+  IconButton,
+  List,
+  ListItem,
+  ListItemText,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography
+} from '@mui/material';
 import api from 'api';
 import { ModalContext } from 'components/app/providers/ModalProvider';
+import FlexOne from 'components/elements/addons/layout/FlexOne';
+import HowlerAvatar from 'components/elements/display/HowlerAvatar';
 import MarkdownEditor from 'components/elements/MarkdownEditor';
+import UserList from 'components/elements/UserList';
 import useMyApi from 'components/hooks/useMyApi';
+import useMyUserList from 'components/hooks/useMyUserList';
 import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import { useContext, useMemo, useState, type FC } from 'react';
+import { useCallback, useContext, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import CaseRecordRow from './CaseRecordRow';
 import { useRecordEntries } from './hooks';
@@ -21,9 +39,24 @@ const CreateCaseModal: FC<{ records: (Hit | Event)[] }> = ({ records }) => {
   const [summary, setSummary] = useState('');
   const [overview, setOverview] = useState('');
   const [escalation, setEscalation] = useState<string | null>(null);
+  const [participants, setParticipants] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   const [entries, updateEntry] = useRecordEntries(records);
+
+  const participantUsers = useMyUserList(participants);
+
+  const handleAddParticipant = useCallback(([userId]: string[]) => {
+    if (!userId) {
+      return;
+    }
+
+    setParticipants(current => (current.includes(userId) ? current : [...current, userId]));
+  }, []);
+
+  const handleRemoveParticipant = useCallback((userId: string) => {
+    setParticipants(current => current.filter(id => id !== userId));
+  }, []);
 
   const isValid = useMemo(
     () => !!caseTitle.trim() && !!summary.trim() && entries.every(e => !!e.name.trim()),
@@ -42,7 +75,8 @@ const CreateCaseModal: FC<{ records: (Hit | Event)[] }> = ({ records }) => {
           title: caseTitle.trim(),
           summary: summary.trim(),
           ...(overview.trim() ? { overview: overview.trim() } : {}),
-          ...(escalation ? { escalation } : {})
+          ...(escalation ? { escalation } : {}),
+          ...(participants.length > 0 ? { participants } : {})
         })
       );
 
@@ -94,6 +128,38 @@ const CreateCaseModal: FC<{ records: (Hit | Event)[] }> = ({ records }) => {
             <TextField {...params} size="small" placeholder={t('modal.cases.create_case.escalation')} fullWidth />
           )}
         />
+        <Stack spacing={0.5}>
+          <UserList
+            variant="list"
+            i18nLabel="page.cases.detail.assignment"
+            userIds={[]}
+            onChange={handleAddParticipant}
+            except={participants}
+            disabled={submitting}
+            showEmptyInput
+          />
+          {participants.length > 0 && (
+            <List dense>
+              {participants.map(userId => (
+                <ListItem key={userId} disableGutters>
+                  <Stack direction="row" sx={{ alignItems: 'center', width: '100%' }} spacing={1}>
+                    <HowlerAvatar userId={userId || 'Unknown'} />
+                    <ListItemText
+                      primary={participantUsers[userId]?.name || userId}
+                      secondary={participantUsers[userId]?.email}
+                    />
+                    <FlexOne />
+                    <Tooltip title={`${t('button.delete')}`}>
+                      <IconButton disabled={submitting} onClick={() => handleRemoveParticipant(userId)}>
+                        <Delete color="error" />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </Stack>
         <Stack spacing={0.5}>
           <Typography variant="caption" color="textSecondary">
             {t('modal.cases.create_case.overview')}
