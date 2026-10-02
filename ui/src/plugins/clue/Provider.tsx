@@ -66,7 +66,7 @@ const Provider: React.FC<ProviderProps> = ({ children, options = {} }) => {
       defaultTimeout={options.defaultTimeout ?? 5}
       i18next={useTranslation('clue') as any}
       chunkSize={options.chunkSize ?? 50}
-      database={database}
+      database={database ?? undefined}
       includeContext={options.includeContext}
     >
       {children}
