@@ -2,6 +2,7 @@ import sys
 
 from howler_client.common.utils import walk_api_path
 from howler_client.connection import Connection
+from howler_client.module.action import Action
 from howler_client.module.help import Help
 from howler_client.module.hit import Hit
 from howler_client.module.search import Search
@@ -20,6 +21,7 @@ class Client(object):
     def __init__(self: Self, connection: Connection):
         self._connection: Connection = connection
 
+        self.action = Action(self._connection)
         self.help = Help(self._connection)
         self.search = Search(self._connection)
         self.hit = Hit(self._connection, self.search)
