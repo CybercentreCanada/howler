@@ -163,7 +163,8 @@ export const hfetch = async <R>(
   method: 'get' | 'post' | 'put' | 'delete' | 'patch' = 'get',
   body?: unknown,
   searchParams?: URLSearchParams,
-  requestHeaders?: HeadersInit
+  requestHeaders?: HeadersInit,
+  signal?: AbortSignal
 ): Promise<R | undefined> => {
   const authToken = getLocalStored<string>(StorageKey.APP_TOKEN);
   const xsrfToken = getXSRFCookie();
@@ -187,7 +188,8 @@ export const hfetch = async <R>(
     method,
     body,
     searchParams,
-    requestHeaders
+    requestHeaders,
+    signal
   );
 
   if (responseHeader.etag) {
@@ -218,7 +220,7 @@ export const hfetch = async <R>(
 
       if (refreshResponse) {
         saveLoginCredential(refreshResponse);
-        const result = await hfetch<R>(_uri, method, body, searchParams);
+        const result = await hfetch<R>(_uri, method, body, searchParams, undefined, signal);
 
         removeLocalStored(StorageKey.NEXT_LOCATION);
         removeLocalStored(StorageKey.NEXT_SEARCH);
@@ -252,8 +254,13 @@ export const hfetch = async <R>(
  * @param _uri - the uri to fetch.
  * @returns the `api_response` object of the returned {@link HowlerResponse}.
  */
-export const hget = <R = any>(_uri: string, searchParams?: URLSearchParams, headers: HeadersInit = {}) => {
-  return hfetch<R>(_uri, 'get', null, searchParams, headers);
+export const hget = <R = any>(
+  _uri: string,
+  searchParams?: URLSearchParams,
+  headers: HeadersInit = {},
+  signal?: AbortSignal
+) => {
+  return hfetch<R>(_uri, 'get', null, searchParams, headers, signal);
 };
 
 /**
@@ -269,9 +276,10 @@ export const hpost = <R = any>(
   _uri: string,
   body: unknown,
   headers: HeadersInit = {},
-  searchParams?: URLSearchParams
+  searchParams?: URLSearchParams,
+  signal?: AbortSignal
 ) => {
-  return hfetch<R>(_uri, 'post', body, searchParams, headers);
+  return hfetch<R>(_uri, 'post', body, searchParams, headers, signal);
 };
 
 /**

@@ -24,12 +24,15 @@ import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { FC } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { v4 as uuid } from 'uuid';
 import { useContextSelector } from 'use-context-selector';
 
 const TYPES = {
   view: ['viewId', 'limit'],
-  analytic: ['analyticId', 'type']
-};
+  analytic: ['analyticId', 'type'],
+  case: [],
+  tasks: []
+} as const;
 
 const VISUALIZATIONS = ['assessment', 'created', 'escalation', 'status', 'detection'];
 type DashboardCard = NonNullable<HowlerUser['dashboard']>[number];
@@ -42,7 +45,7 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard: Da
   const views = useContextSelector(ViewContext, ctx => ctx.views ?? {});
   const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
 
-  const [selectedType, setSelectedType] = useState<'' | 'view' | 'analytic'>('');
+  const [selectedType, setSelectedType] = useState<'' | keyof typeof TYPES>('');
   const [analytics, setAnalytics] = useState<Analytic[]>([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [config, _setConfig] = useState<{ [index: string]: any }>({});
@@ -57,7 +60,12 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard: Da
     }
 
     addCard({
-      entry_id: selectedType === 'view' ? config.viewId : `${config.analyticId}-${config.type}`,
+      entry_id:
+        selectedType === 'view'
+          ? config.viewId
+          : selectedType === 'analytic'
+            ? `${config.analyticId}-${config.type}`
+            : `${selectedType}-${uuid()}`,
       type: selectedType,
       config: JSON.stringify(config)
     });
@@ -118,6 +126,10 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard: Da
       _setConfig({
         limit: 3
       });
+    } else if (selectedType === 'case') {
+      _setConfig({ dateRange: 'date.range.all', statusFilter: [], assigneeFilter: [] });
+    } else if (selectedType === 'tasks') {
+      _setConfig({ taskFilter: 'incomplete' });
     } else {
       _setConfig({});
     }

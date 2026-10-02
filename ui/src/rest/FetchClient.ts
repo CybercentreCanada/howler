@@ -4,16 +4,18 @@ import type RestClient from 'rest';
 export default class FetchClient implements RestClient {
   public async fetch<R>(
     url: string,
-    method: 'get' | 'post' | 'put' | 'delete' = 'get',
+    method: 'get' | 'post' | 'put' | 'delete' | 'patch' = 'get',
     body?: any,
     params?: URLSearchParams,
-    headers?: HeadersInit
+    headers?: HeadersInit,
+    signal?: AbortSignal
   ): Promise<[HowlerResponse<R>, number, { [index: string]: any }] | undefined> {
     const _url = `${url}${params ? `?${params.toString()}` : ''}`;
     const request: RequestInit = {
       method,
       credentials: 'same-origin',
-      headers: headers
+      headers,
+      signal
     };
 
     if (method !== 'get' && body) {

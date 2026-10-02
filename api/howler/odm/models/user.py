@@ -8,7 +8,7 @@ from howler.config import CLASSIFICATION
 
 ACL = {"R", "W", "E", "I"}
 
-DASHBOARD_TYPES = {"view", "analytic"}
+DASHBOARD_TYPES = {"view", "analytic", "case", "tasks"}
 
 
 @odm.model(index=False, store=False, description="Model for API keys")
