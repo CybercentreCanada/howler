@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { Dayjs } from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
 import type { Rule } from 'models/entities/generated/Rule';
 import { createMockCase } from 'tests/utils';
@@ -81,6 +82,17 @@ vi.mock('./CreateRuleDialog', () => ({
   }
 }));
 
+vi.mock('@mui/x-date-pickers/DateTimePicker', async () => {
+  const { default: dayjs } = await import('dayjs');
+  return {
+    DateTimePicker: ({ onChange }: { onChange: (value: Dayjs | null) => void }) => (
+      <button id="rule-backfill-since" onClick={() => onChange(dayjs('2025-06-01'))}>
+        pick date
+      </button>
+    )
+  };
+});
+
 vi.mock('api', () => ({
   default: {
     v2: {
@@ -113,6 +125,15 @@ const makeRule = (overrides?: Partial<Rule>): Rule => ({
   indexes: ['hit'],
   ...overrides
 });
+
+const createDeferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>(resolvePromise => {
+    resolve = resolvePromise;
+  });
+
+  return { promise, resolve };
+};
 
 describe('CaseRules', () => {
   beforeEach(() => {
@@ -340,6 +361,59 @@ describe('CaseRules', () => {
       expect(mockDispatchApi).toHaveBeenCalledWith('backfill-request');
       expect(screen.queryByTestId('rule-backfill-dialog')).not.toBeInTheDocument();
     });
+  });
+
+  it('ignores a pending count response after closing and reopening for another rule', async () => {
+    const user = userEvent.setup();
+    mockCase.current = createMockCase({
+      case_id: 'case-001',
+      rules: [makeRule(), makeRule({ rule_id: 'rule-002' })]
+    }) as Case;
+    const pendingCount = createDeferred<{ count: number }>();
+    mockDispatchApi.mockReturnValueOnce(pendingCount.promise);
+    vi.mocked(api.v2.case.rules.backfill.count.post).mockReturnValue('count-backfill-request' as any);
+
+    render(<CaseRules />);
+
+    await user.click(screen.getByTestId('rule-backfill-rule-001'));
+    await user.click(screen.getByTestId('rule-backfill-count-button'));
+    await user.click(screen.getByText('cancel'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('rule-backfill-dialog')).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('rule-backfill-rule-002'));
+    await act(async () => {
+      pendingCount.resolve({ count: 23 });
+      await pendingCount.promise;
+    });
+
+    expect(screen.getByTestId('rule-backfill-count-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('rule-backfill-confirmation')).not.toBeInTheDocument();
+  });
+
+  it('ignores a pending count response after the preview date changes', async () => {
+    const user = userEvent.setup();
+    mockCase.current = createMockCase({
+      case_id: 'case-001',
+      rules: [makeRule()]
+    }) as Case;
+    const pendingCount = createDeferred<{ count: number }>();
+    mockDispatchApi.mockReturnValueOnce(pendingCount.promise);
+    vi.mocked(api.v2.case.rules.backfill.count.post).mockReturnValue('count-backfill-request' as any);
+
+    render(<CaseRules />);
+
+    await user.click(screen.getByTestId('rule-backfill-rule-001'));
+    await user.click(screen.getByTestId('rule-backfill-count-button'));
+    await user.click(screen.getByTestId('rule-backfill-since'));
+    await act(async () => {
+      pendingCount.resolve({ count: 23 });
+      await pendingCount.promise;
+    });
+
+    expect(screen.getByTestId('rule-backfill-count-button')).toBeEnabled();
+    expect(screen.queryByTestId('rule-backfill-confirmation')).not.toBeInTheDocument();
   });
 
   it('renders multiple rules', () => {

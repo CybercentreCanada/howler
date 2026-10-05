@@ -29,7 +29,7 @@ import useMyApi from 'components/hooks/useMyApi';
 import dayjs, { type Dayjs } from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
 import type { Rule } from 'models/entities/generated/Rule';
-import { useCallback, useContext, useState, type FC } from 'react';
+import { useCallback, useContext, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOutletContext } from 'react-router';
 import useCase from '../hooks/useCase';
@@ -47,30 +47,50 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
   const [backfillSince, setBackfillSince] = useState<Dayjs>(dayjs().subtract(30, 'day'));
   const [backfillCount, setBackfillCount] = useState<number | null>(null);
   const [backfillLoading, setBackfillLoading] = useState(false);
+  const backfillCountRequestId = useRef(0);
+
+  const invalidateBackfillCountRequest = useCallback(() => {
+    backfillCountRequestId.current += 1;
+    setBackfillLoading(false);
+  }, []);
 
   const handleBackfillDialogClose = useCallback(() => {
+    invalidateBackfillCountRequest();
     setBackfillRule(undefined);
     setBackfillCount(null);
     setBackfillSince(dayjs().subtract(30, 'day'));
-  }, []);
+  }, [invalidateBackfillCountRequest]);
 
   const handleCountBackfill = useCallback(async () => {
     if (!_case?.case_id || !backfillRule?.rule_id || !backfillSince?.isValid()) {
       return;
     }
 
+    const requestId = ++backfillCountRequestId.current;
     setBackfillLoading(true);
     try {
       const response = await dispatchApi(
         api.v2.case.rules.backfill.count.post(_case.case_id, backfillRule.rule_id, backfillSince.toISOString())
       );
-      if (response) {
+      if (response && requestId === backfillCountRequestId.current) {
         setBackfillCount(response.count);
       }
     } finally {
-      setBackfillLoading(false);
+      if (requestId === backfillCountRequestId.current) {
+        setBackfillLoading(false);
+      }
     }
   }, [_case?.case_id, backfillRule, backfillSince, dispatchApi]);
+
+  const handleBackfillDialogOpen = useCallback(
+    (rule: Rule) => {
+      invalidateBackfillCountRequest();
+      setBackfillRule(rule);
+      setBackfillCount(null);
+      setBackfillSince(dayjs().subtract(30, 'day'));
+    },
+    [invalidateBackfillCountRequest]
+  );
 
   const handleSubmitBackfill = useCallback(async () => {
     if (!_case?.case_id || !backfillRule?.rule_id || !backfillSince?.isValid() || backfillCount === null) {
@@ -231,7 +251,7 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
                           id={`rule-backfill-${rule.rule_id}`}
                           size="small"
                           disabled={rule.enabled === false}
-                          onClick={() => setBackfillRule(rule)}
+                          onClick={() => handleBackfillDialogOpen(rule)}
                         >
                           <History fontSize="small" />
                         </IconButton>
@@ -275,6 +295,7 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
                     return;
                   }
 
+                  invalidateBackfillCountRequest();
                   setBackfillSince(value);
                   setBackfillCount(null);
                 }}
