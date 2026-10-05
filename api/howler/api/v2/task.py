@@ -47,10 +47,30 @@ def _parse_integer_parameter(name: str, default: int, *, minimum: int, maximum: 
 def search_tasks(user: User, **kwargs):
     """Return an authenticated user's assigned tasks with pagination.
 
-    Optional query parameters:
-    offset: Zero-based task offset (default 0).
-    rows: Number of tasks to return, from 1 to 100 (default 25).
-    filter: One of all, complete, or incomplete (default incomplete).
+    Variables:
+        offset (int): Zero-based task offset. Defaults to 0.
+        rows (int): Number of tasks to return, from 1 to 100. Defaults to 25.
+        filter (str): Task completion filter: ``all``, ``complete``, or ``incomplete``.
+            Defaults to ``incomplete``.
+
+    Arguments:
+        None
+
+    Returns:
+        dict: A page of matching tasks with pagination metadata.
+
+    Result Example:
+        {
+            "items": [
+                {
+                    "task": {"id": "task-1", "complete": false},
+                    "case": {"case_id": "case-1", "title": "Example case"}
+                }
+            ],
+            "offset": 0,
+            "rows": 25,
+            "has_more": false
+        }
     """
     try:
         offset = _parse_integer_parameter("offset", 0, minimum=0)
