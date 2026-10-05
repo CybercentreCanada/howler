@@ -23,7 +23,7 @@ const EventPreview: FC<PreviewProps> = ({ event }) => {
       <Stack>
         <Stack direction="row" spacing={1} alignItems="center">
           <Typography variant="body1" fontWeight="bold">
-            {event.event!.provider}
+            {event.message || event.event!.provider}
           </Typography>
           <div style={{ flex: 1 }} />
           <Chip label={event.event!.kind} />
@@ -40,6 +40,12 @@ const EventPreview: FC<PreviewProps> = ({ event }) => {
             </IconButton>
           )}
         </Stack>
+
+        {event.message && event.event!.provider && (
+          <Typography variant="caption">
+            {t('event.provider')} - {event.event!.provider}
+          </Typography>
+        )}
 
         {event.event!.type && (
           <Typography variant="caption">
