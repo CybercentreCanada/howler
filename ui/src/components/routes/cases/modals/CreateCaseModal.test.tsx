@@ -1,5 +1,5 @@
 /// <reference types="vitest" />
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ModalContext } from 'components/app/providers/ModalProvider';
@@ -18,9 +18,34 @@ import CreateCaseModal from './CreateCaseModal';
 
 const mockDispatchApi = vi.hoisted(() => vi.fn());
 const mockClose = vi.hoisted(() => vi.fn());
+const mockUserList = vi.hoisted(() => ({ onChange: null as ((ids: string[]) => void) | null }));
 
 vi.mock('components/hooks/useMyApi', () => ({
   default: () => ({ dispatchApi: mockDispatchApi })
+}));
+
+// UserList relies on UserListContext; stub it and expose its onChange so tests can add participants.
+vi.mock('components/elements/UserList', () => ({
+  default: ({
+    onChange,
+    except,
+    disabled
+  }: {
+    onChange: (ids: string[]) => void;
+    except?: string[];
+    disabled?: boolean;
+  }) => {
+    mockUserList.onChange = onChange;
+    return <div id="user-list" data-except={JSON.stringify(except ?? [])} data-disabled={String(!!disabled)} />;
+  }
+}));
+
+vi.mock('components/hooks/useMyUserList', () => ({
+  default: () => ({})
+}));
+
+vi.mock('components/elements/display/HowlerAvatar', () => ({
+  default: ({ userId }: { userId?: string }) => <div id={`avatar-${userId ?? 'none'}`} />
 }));
 
 vi.mock('components/elements/hit/elements/EscalationChip', () => ({
@@ -108,6 +133,7 @@ describe('CreateCaseModal', () => {
   beforeEach(() => {
     user = userEvent.setup();
     vi.clearAllMocks();
+    mockUserList.onChange = null;
     // Default: case creation returns a case, item post resolves
     mockDispatchApi.mockResolvedValue({ case_id: 'new-case-id' });
   });
@@ -392,6 +418,85 @@ describe('CreateCaseModal', () => {
 
       await waitFor(() => expect(mockDispatchApi).toHaveBeenCalled());
       expect(mockClose).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Participants
+  // -------------------------------------------------------------------------
+
+  describe('participants', () => {
+    it('renders the participant picker', () => {
+      renderModal([]);
+      expect(screen.getByTestId('user-list')).toBeInTheDocument();
+    });
+
+    it('includes participants in case.post when added', async () => {
+      const api = (await import('api')).default;
+
+      renderModal([]);
+      await fillCaseMetadata(user);
+      act(() => mockUserList.onChange?.(['analystA']));
+
+      await user.click(screen.getByRole('button', { name: i18n.t('confirm') }));
+      await waitFor(() => expect(mockClose).toHaveBeenCalled());
+
+      expect(api.v2.case.post).toHaveBeenCalledWith(expect.objectContaining({ participants: ['analystA'] }));
+    });
+
+    it('does not include participants when none are added', async () => {
+      const api = (await import('api')).default;
+
+      renderModal([]);
+      await fillCaseMetadata(user);
+      await user.click(screen.getByRole('button', { name: i18n.t('confirm') }));
+      await waitFor(() => expect(mockClose).toHaveBeenCalled());
+
+      const callArg = vi.mocked(api.v2.case.post).mock.calls[0][0] as any;
+      expect(callArg).not.toHaveProperty('participants');
+    });
+
+    it('does not add duplicate participants', async () => {
+      const api = (await import('api')).default;
+
+      renderModal([]);
+      await fillCaseMetadata(user);
+      act(() => mockUserList.onChange?.(['analystA']));
+      act(() => mockUserList.onChange?.(['analystA']));
+
+      await user.click(screen.getByRole('button', { name: i18n.t('confirm') }));
+      await waitFor(() => expect(mockClose).toHaveBeenCalled());
+
+      expect(api.v2.case.post).toHaveBeenCalledWith(expect.objectContaining({ participants: ['analystA'] }));
+    });
+
+    it('excludes already-selected participants from the picker', async () => {
+      renderModal([]);
+      act(() => mockUserList.onChange?.(['analystA']));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('user-list').getAttribute('data-except')).toBe(JSON.stringify(['analystA']))
+      );
+    });
+
+    it('displays an added participant and removes it via the delete button', async () => {
+      const api = (await import('api')).default;
+
+      renderModal([]);
+      await fillCaseMetadata(user);
+      act(() => mockUserList.onChange?.(['analystA']));
+
+      const item = screen.getByText('analystA').closest('li');
+      expect(item).not.toBeNull();
+
+      await user.click(within(item as HTMLElement).getByRole('button'));
+      expect(screen.queryByText('analystA')).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: i18n.t('confirm') }));
+      await waitFor(() => expect(mockClose).toHaveBeenCalled());
+
+      const callArg = vi.mocked(api.v2.case.post).mock.calls[0][0] as any;
+      expect(callArg).not.toHaveProperty('participants');
     });
   });
 

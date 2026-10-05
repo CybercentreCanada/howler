@@ -37,7 +37,6 @@ import React, { useCallback, useContext, useEffect, useMemo, useState } from 're
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { useContextSelector } from 'use-context-selector';
-import { DEFAULT_QUERY } from 'utils/constants';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 import { isHit } from 'utils/typeUtils';
 
@@ -84,8 +83,7 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
   const { showModal } = useContext(ModalContext);
   const pluginStore = usePluginStore();
   const { getMatchingAnalytic, getMatchingTemplate } = useMatchers();
-  const query = useContextSelector(ParameterContext, ctx => ctx?.query);
-  const setQuery = useContextSelector(ParameterContext, ctx => ctx?.setQuery);
+  const addFilter = useContextSelector(ParameterContext, ctx => ctx?.addFilter);
 
   const [id, setId] = useState<string | null>(null);
 
@@ -269,11 +267,11 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
       });
 
       const filterKeys = uniq([
-        ...(template?.keys ?? []),
-        ...Object.keys(record.howler.outline ?? {}).map(key => `howler.outline.${key}`)
+        ...Object.keys(record.howler.outline ?? {}).map(key => `howler.outline.${key}`),
+        ...(template?.keys ?? [])
       ]);
 
-      if (!isEmpty(filterKeys) && setQuery) {
+      if (!isEmpty(filterKeys) && addFilter) {
         result.push({ kind: 'divider', id: 'filter-divider' });
 
         result.push({
@@ -282,26 +280,34 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
           icon: <RemoveCircleOutline />,
           label: t('hit.panel.exclude'),
           items: filterKeys.flatMap(key => {
-            let newQuery = '';
-            if (query !== DEFAULT_QUERY) {
-              newQuery = `(${query}) AND `;
-            }
             const value = get(record, key);
             if (!value) {
               return [];
-            } else if (Array.isArray(value)) {
+            }
+
+            let filter: string = '';
+            if (Array.isArray(value) && value.length > 0) {
               const sanitizedValues = value
                 .map(toString)
                 .filter(val => !!val)
                 .map(val => `"${sanitizeLuceneQuery(val)}"`);
-              if (sanitizedValues.length < 1) {
-                return [];
-              }
-              newQuery += `-${key}:(${sanitizedValues.join(' OR ')})`;
-            } else {
-              newQuery += `-${key}:"${sanitizeLuceneQuery(value.toString())}"`;
+
+              filter = `-${key}:(${sanitizedValues.join(' OR ')})`;
+            } else if (!Array.isArray(value)) {
+              filter = `-${key}:"${sanitizeLuceneQuery(value.toString())}"`;
             }
-            return [{ key, label: key, onClick: () => setQuery(newQuery) }];
+
+            if (!filter) {
+              return [];
+            }
+
+            return [
+              {
+                key,
+                label: key,
+                onClick: () => addFilter(filter)
+              }
+            ];
           })
         });
 
@@ -311,23 +317,34 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
           icon: <AddCircleOutline />,
           label: t('hit.panel.include'),
           items: filterKeys.flatMap(key => {
-            let newQuery = `(${query}) AND `;
             const value = get(record, key);
             if (!value) {
               return [];
-            } else if (Array.isArray(value)) {
+            }
+
+            let filter: string = '';
+            if (Array.isArray(value) && value.length > 0) {
               const sanitizedValues = value
                 .map(toString)
                 .filter(val => !!val)
                 .map(val => `"${sanitizeLuceneQuery(val)}"`);
-              if (sanitizedValues.length < 1) {
-                return [];
-              }
-              newQuery += `${key}:(${sanitizedValues.join(' OR ')})`;
-            } else {
-              newQuery += `${key}:"${sanitizeLuceneQuery(value.toString())}"`;
+
+              filter = `${key}:(${sanitizedValues.join(' OR ')})`;
+            } else if (!Array.isArray(value)) {
+              filter = `${key}:"${sanitizeLuceneQuery(value.toString())}"`;
             }
-            return [{ key, label: key, onClick: () => setQuery(newQuery) }];
+
+            if (!filter) {
+              return [];
+            }
+
+            return [
+              {
+                key,
+                label: key,
+                onClick: () => addFilter(filter)
+              }
+            ];
           })
         });
       }
@@ -353,7 +370,7 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
 
     return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [record, analytic, template, entries, rowStatus, actions, query, t, setQuery, executeAction, showModal, records]);
+  }, [record, analytic, template, entries, rowStatus, actions, t, addFilter, executeAction, showModal, records]);
 
   return (
     <ContextMenu

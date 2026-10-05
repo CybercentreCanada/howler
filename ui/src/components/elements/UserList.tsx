@@ -108,6 +108,7 @@ const UserList: FC<{
     options: allUserIds,
     renderInput,
     renderOption,
+    slotProps: { popper: { sx: { zIndex: 1600 } } },
     onInputChange: (_e: any, value: string) => search(value),
     getOptionDisabled: (optionUserId: string) => userIds.includes(optionUserId) || except.includes(optionUserId)
   };
