@@ -7,7 +7,7 @@ from mergedeep import Strategy, merge
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
 from howler.api.v1.utils.etag import add_etag
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
-from howler.common.exceptions import HowlerException, HowlerValueError
+from howler.common.exceptions import HowlerException, HowlerRuntimeError, HowlerValueError
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -106,7 +106,12 @@ def create(index: str, user: User, *, refresh: Literal["true", "false", "wait_fo
     # Enqueue newly created hit IDs for the correlation worker.
     ids = [odm.howler.id for odm in odms]
     if ids:
-        correlation_service.enqueue_for_correlation(ids)
+        try:
+            correlation_service.enqueue_for_correlation(ids)
+        except HowlerRuntimeError:
+            # The records are already persisted. Keep ingestion successful, but
+            # tell the caller that asynchronous correlation could not be scheduled.
+            warnings.append("Correlation processing could not be scheduled.")
 
     return created(ids, warnings=warnings)
 

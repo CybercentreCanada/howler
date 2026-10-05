@@ -4,7 +4,7 @@ from flask import request
 
 from howler.api import bad_request, created, make_subapi_blueprint
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
-from howler.common.exceptions import HowlerException
+from howler.common.exceptions import HowlerException, HowlerRuntimeError
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -234,6 +234,11 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
 
     ids = [entry["id"] for entry in out]
     action_service.enqueue_action_execution(ids, trigger="create", user=user)
-    correlation_service.enqueue_for_correlation(ids)
+    try:
+        correlation_service.enqueue_for_correlation(ids)
+    except HowlerRuntimeError:
+        # The hits have already been persisted, so return the successful ingest
+        # with a warning rather than prompting callers to retry it.
+        warnings.append("Correlation processing could not be scheduled.")
 
     return created(out, warnings=warnings)
