@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { omit } from 'lodash-es';
-import { act } from 'react';
-import { vi } from 'vitest';
+import { act, type MouseEventHandler } from 'react';
+import { vi, type Mock } from 'vitest';
 
 // Mock react-router Link
 vi.mock('react-router', () => ({
@@ -73,9 +73,13 @@ import ContextMenu, { type ContextMenuEntry } from './ContextMenu';
 
 const renderMenu = (
   items: ContextMenuEntry[],
-  opts: { onOpen?: ReturnType<typeof vi.fn>; onClose?: ReturnType<typeof vi.fn>; autoOpen?: boolean } = {}
+  opts: {
+    onOpen?: Mock<MouseEventHandler<HTMLElement>>;
+    onClose?: Mock<() => void>;
+    autoOpen?: boolean;
+  } = {}
 ) => {
-  const { autoOpen = true, onOpen = vi.fn(), onClose = vi.fn() } = opts;
+  const { autoOpen = true, onOpen = vi.fn<MouseEventHandler<HTMLElement>>(), onClose = vi.fn<() => void>() } = opts;
   const utils = render(
     <ContextMenu items={items} onOpen={onOpen} onClose={onClose} id="test-menu">
       <div id="trigger">trigger</div>

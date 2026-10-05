@@ -26,9 +26,10 @@ poetry run ruff format howler --diff
 poetry run ruff check howler --output-format=github
 poetry run type_check
 poetry run pyright --project pyproject.toml --level warning
-poetry run test
+poetry run test <specific_test_file_paths>
 ```
 
+- Avoid running the full API unit test suite during routine validation; it takes a long time. Prefer targeted tests for the affected code, and run the full suite only when explicitly requested or necessary.
 - API tests expect writable `/etc/howler/conf`, `/etc/howler/lookups`, and `/var/log/howler` directories. Copy `build_scripts/classification.yml`, `build_scripts/mappings.yml`, and `test/unit/config.yml` to the corresponding config paths, then run `poetry run mitre /etc/howler/lookups` and `poetry run sigma` before testing.
 - Start local dependencies with `docker compose -f api/dev/docker-compose.yml up --build -d`; Elasticsearch, Redis, Kibana, and Keycloak are defined there. `poetry run python build_scripts/docker_health.py` checks their health.
 - Run the backend with `poetry run server`.
@@ -46,9 +47,10 @@ python ../hooks/find_bad_imports.py
 pnpm tsc --noEmit
 pnpm oxfmt src --check
 pnpm oxlint src
-pnpm test
+pnpm test <specific_test_file_paths>
 ```
 
+- Avoid running the full UI unit test suite during routine validation; it takes a long time. Prefer targeted tests for the affected code, and run the full suite only when explicitly requested or necessary.
 - `pnpm run lint` fixes files; use the read-only commands above when checking a change.
 - Use `pnpm exec vitest run path/to/file.test.tsx` for a focused test. The default Vitest and oxlint scopes exclude `src/commons/**`; pass a `src/commons/...` path explicitly to test it.
 - `pnpm build` performs the production build; `pnpm start` runs Vite on port 3000 and proxies `/api` and `/socket` according to `VITE_API_TARGET`.

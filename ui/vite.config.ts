@@ -117,12 +117,7 @@ export default defineConfig(({ mode }) => {
       },
       sequence: { hooks: 'list' },
       pool: 'threads',
-      poolOptions: {
-        threads: {
-          maxThreads: 8,
-          minThreads: 6
-        }
-      }
+      maxWorkers: 8
     }
   };
 });

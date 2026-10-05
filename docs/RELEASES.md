@@ -32,6 +32,7 @@
 
 ## Howler Client `v3.1.0`
 
+- **Action Management** _(new feature)_: Added client methods to list, create, retrieve, and execute Howler automation actions, with unit and integration coverage.
 - **Refresh Controls for Write Operations** _(new feature)_: Added optional Elasticsearch index refresh controls, including `wait_for`, to hit, user, case, and ingest write methods ([#565](https://github.com/CybercentreCanada/howler/pull/565)).
 
 ## Howler API `v4.0.11`
