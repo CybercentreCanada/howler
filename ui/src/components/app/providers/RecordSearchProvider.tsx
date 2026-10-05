@@ -87,7 +87,10 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   });
   const [fzfSearch, setFzfSearch] = useState<boolean>(false);
 
-  const filters = useMemo(() => (allFilters ?? []).filter(filter => !filter.endsWith('*')), [allFilters]);
+  const filters = useMemo(
+    () => (allFilters ?? []).filter(filter => filter.startsWith('-') || !filter.endsWith('*')),
+    [allFilters]
+  );
 
   // On load check to filter out any queries older than one month
   useEffect(() => {

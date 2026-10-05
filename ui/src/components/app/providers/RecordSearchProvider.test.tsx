@@ -178,6 +178,19 @@ describe('RecordSearchContext', () => {
   });
 
   describe('search', () => {
+    it('should retain negated wildcard filters and omit positive placeholders', async () => {
+      mockParameterContext.filters = ['howler.assessment:*', '-howler.assessment:*'];
+
+      const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.getFilters), {
+        wrapper: Wrapper
+      });
+
+      const filters = await hook.result.current();
+
+      expect(filters).toContain('-howler.assessment:*');
+      expect(filters).not.toContain('howler.assessment:*');
+    });
+
     it('should perform a search and update response', async () => {
       const hook = renderHook(
         () =>
@@ -400,6 +413,35 @@ describe('RecordSearchContext', () => {
           '/api/v2/search/hit',
           expect.objectContaining({
             filters: expect.not.arrayContaining([expect.stringContaining('howler.escalation:*')])
+          })
+        );
+      });
+    });
+
+    it('should forward positive and negative grouped filters without changing their clauses', async () => {
+      mockParameterContext.filters = [
+        'event.provider:"azure"',
+        '-howler.outline.indicators:("a" OR "b")',
+        'event.provider:"\\*"',
+        '-event.provider:"\\*"'
+      ];
+
+      const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.search), { wrapper: Wrapper });
+
+      act(() => {
+        hook.result.current('test query');
+      });
+
+      await waitFor(() => {
+        expect(hpost).toHaveBeenCalledWith(
+          '/api/v2/search/hit',
+          expect.objectContaining({
+            filters: expect.arrayContaining([
+              'event.provider:"azure"',
+              '-howler.outline.indicators:("a" OR "b")',
+              'event.provider:"\\*"',
+              '-event.provider:"\\*"'
+            ])
           })
         );
       });
