@@ -80,6 +80,13 @@ describe('FetchClient', () => {
     expect((callArgs.headers as Record<string, string>).Authorization).toBe('******');
   });
 
+  it('forwards an abort signal to fetch', async () => {
+    const spy = mockFetch(200, {});
+    const controller = new AbortController();
+    await client.fetch('/api/v1/hit', 'get', undefined, undefined, undefined, controller.signal);
+    expect(spy.mock.calls[0][1]?.signal).toBe(controller.signal);
+  });
+
   it('returns undefined for a 204 No Content response', async () => {
     mockFetch(204, null);
     const result = await client.fetch('/api/v1/hit', 'delete');

@@ -34,7 +34,13 @@ describe('v2 search API', () => {
 
     await post('hit', { rows: 25 } as any);
 
-    expect(mockHpost).toHaveBeenCalledWith('/api/v2/search/hit', { rows: 25, query: 'howler.id:*' });
+    expect(mockHpost).toHaveBeenCalledWith(
+      '/api/v2/search/hit',
+      { rows: 25, query: 'howler.id:*' },
+      undefined,
+      undefined,
+      undefined
+    );
   });
 
   it('preserves a provided query for multiple indexes', async () => {
@@ -42,7 +48,13 @@ describe('v2 search API', () => {
 
     await post(['hit', 'case'], { query: 'status:open' } as any);
 
-    expect(mockHpost).toHaveBeenCalledWith('/api/v2/search/hit,case', { query: 'status:open' });
+    expect(mockHpost).toHaveBeenCalledWith(
+      '/api/v2/search/hit,case',
+      { query: 'status:open' },
+      undefined,
+      undefined,
+      undefined
+    );
   });
 
   it('rejects nullish, invalid, or empty indexes', async () => {

@@ -111,7 +111,8 @@ describe('api root module', () => {
         'If-Match': '"old-etag"',
         'X-XSRF-TOKEN': 'csrf',
         Authorization: expect.any(String)
-      })
+      }),
+      undefined
     );
     expect(mockSetSessionStored).toHaveBeenCalledWith('etag', { 'hit/hit123': '"new-etag"' });
   });
@@ -176,7 +177,8 @@ describe('api root module', () => {
       'get',
       null,
       new URLSearchParams({ a: '1' }),
-      expect.objectContaining({ Accept: 'json', 'Content-Type': 'application/json' })
+      expect.objectContaining({ Accept: 'json', 'Content-Type': 'application/json' }),
+      undefined
     );
     expect(mockClientFetch).toHaveBeenNthCalledWith(
       2,
@@ -184,7 +186,8 @@ describe('api root module', () => {
       'post',
       { ok: true },
       new URLSearchParams({ b: '2' }),
-      expect.objectContaining({ A: '1', 'Content-Type': 'application/json' })
+      expect.objectContaining({ A: '1', 'Content-Type': 'application/json' }),
+      undefined
     );
     expect(mockClientFetch).toHaveBeenNthCalledWith(
       3,
@@ -192,7 +195,8 @@ describe('api root module', () => {
       'put',
       { ok: true },
       new URLSearchParams({ b: '2' }),
-      expect.objectContaining({ A: '1', 'Content-Type': 'application/json' })
+      expect.objectContaining({ A: '1', 'Content-Type': 'application/json' }),
+      undefined
     );
     expect(mockClientFetch).toHaveBeenNthCalledWith(
       4,
@@ -200,7 +204,8 @@ describe('api root module', () => {
       'patch',
       { ok: true },
       new URLSearchParams({ b: '2' }),
-      expect.objectContaining({ A: '1', 'Content-Type': 'application/json' })
+      expect.objectContaining({ A: '1', 'Content-Type': 'application/json' }),
+      undefined
     );
     expect(mockClientFetch).toHaveBeenNthCalledWith(
       5,
@@ -208,7 +213,8 @@ describe('api root module', () => {
       'delete',
       { ok: true },
       new URLSearchParams({ b: '2' }),
-      expect.objectContaining({ A: '1', 'Content-Type': 'application/json' })
+      expect.objectContaining({ A: '1', 'Content-Type': 'application/json' }),
+      undefined
     );
   });
 });

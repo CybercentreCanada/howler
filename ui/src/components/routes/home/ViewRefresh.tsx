@@ -5,20 +5,21 @@ import { useTranslation } from 'react-i18next';
 
 /**
  * Imperative handle exposed to the parent via ref.
- * The parent calls `handleRefreshComplete` once each ViewCard finishes its data fetch,
- * allowing ViewRefresh to track how many cards are still in flight.
+ * The parent calls `handleRefreshComplete` once each refreshable panel finishes its data fetch,
+ * allowing ViewRefresh to track how many panels are still in flight.
  */
 export interface ViewRefreshHandle {
-  handleRefreshComplete: () => void;
+  handleRefreshComplete: (panelId: string, refreshTick: symbol) => void;
+  updateViewCardIds: (viewCardIds: string[]) => void;
+  updateRefreshRate: () => void;
 }
 
 interface ViewRefreshProps {
-  /** Auto-refresh interval in seconds (e.g. 15, 30, 60, 300). */
-  refreshRate: number;
-  /** Number of ViewCards currently on the dashboard. Used to track pending fetches. */
-  viewCardCount: number;
-  /** Called when a refresh cycle begins. Should update `refreshTick` in the parent to signal ViewCards. */
-  onRefresh: () => void;
+  /** Stable refs let the AppBar-registered node read current Home dashboard values. */
+  refreshRateRef: { current: number };
+  viewCardIdsRef: { current: string[] };
+  /** Called when a refresh cycle begins. Should update `refreshTick` in the parent to signal panels. */
+  onRefresh: (refreshTick: symbol) => void;
 }
 
 /**
@@ -27,58 +28,107 @@ interface ViewRefreshProps {
  * from causing unnecessary re-renders in the parent Home component.
  */
 const ViewRefresh = forwardRef<ViewRefreshHandle, ViewRefreshProps>(
-  ({ refreshRate, viewCardCount, onRefresh }, ref) => {
+  ({ refreshRateRef, viewCardIdsRef, onRefresh }, ref) => {
     const { t } = useTranslation();
 
     const [progress, setProgress] = useState(0);
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const pendingRefreshes = useRef(0);
+    const [refreshRateVersion, setRefreshRateVersion] = useState(0);
+    const pendingRefreshes = useRef(new Set<string>());
+    const registeredCardIds = useRef(new Set<string>());
+    const activeRefreshTick = useRef<symbol | undefined>(undefined);
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+    useEffect(() => {
+      registeredCardIds.current = new Set(viewCardIdsRef.current);
+    }, [viewCardIdsRef]);
+
     /**
-     * Called by the parent (via ref) each time a ViewCard finishes fetching.
-     * Clears the refreshing state once all cards have reported back.
+     * Called by the parent (via ref) when a refreshable dashboard panel finishes fetching.
+     * Clears the refreshing state once all pending panels have reported back.
      */
-    const handleRefreshComplete = useCallback(() => {
-      pendingRefreshes.current -= 1;
-      if (pendingRefreshes.current <= 0) {
+    const handleRefreshComplete = useCallback((panelId: string, refreshTick: symbol) => {
+      if (refreshTick !== activeRefreshTick.current || !pendingRefreshes.current.delete(panelId)) {
+        return;
+      }
+
+      if (pendingRefreshes.current.size === 0) {
+        activeRefreshTick.current = undefined;
         setIsRefreshing(false);
         setProgress(0);
       }
     }, []);
 
-    // Expose handleRefreshComplete to the parent without leaking the rest of the component's state.
-    useImperativeHandle(ref, () => ({ handleRefreshComplete }), [handleRefreshComplete]);
+    const updateViewCardIds = useCallback((viewCardIds: string[]) => {
+      const nextCardIds = new Set(viewCardIds);
+
+      if (activeRefreshTick.current) {
+        for (const pendingPanelId of pendingRefreshes.current) {
+          if (!nextCardIds.has(pendingPanelId)) {
+            pendingRefreshes.current.delete(pendingPanelId);
+          }
+        }
+
+        for (const panelId of nextCardIds) {
+          if (!registeredCardIds.current.has(panelId)) {
+            pendingRefreshes.current.add(panelId);
+          }
+        }
+
+        if (pendingRefreshes.current.size === 0) {
+          activeRefreshTick.current = undefined;
+          setIsRefreshing(false);
+          setProgress(0);
+        }
+      }
+
+      registeredCardIds.current = nextCardIds;
+    }, []);
+
+    const updateRefreshRate = useCallback(() => {
+      setRefreshRateVersion(version => version + 1);
+    }, []);
+
+    // Expose completion and synchronization methods without leaking the rest of the component's state.
+    useImperativeHandle(ref, () => ({ handleRefreshComplete, updateViewCardIds, updateRefreshRate }), [
+      handleRefreshComplete,
+      updateRefreshRate,
+      updateViewCardIds
+    ]);
 
     const triggerRefresh = useCallback(() => {
+      const refreshTick = Symbol();
+      const viewCardIds = viewCardIdsRef.current;
       setIsRefreshing(true);
-      pendingRefreshes.current = viewCardCount;
+      activeRefreshTick.current = refreshTick;
+      pendingRefreshes.current = new Set(viewCardIds);
+      registeredCardIds.current = new Set(viewCardIds);
 
-      if (viewCardCount === 0) {
+      if (viewCardIds.length === 0) {
+        activeRefreshTick.current = undefined;
         setIsRefreshing(false);
         setProgress(0);
         return;
       }
 
-      onRefresh();
-    }, [viewCardCount, onRefresh]);
+      onRefresh(refreshTick);
+    }, [onRefresh, viewCardIdsRef]);
 
     useEffect(() => {
       if (isRefreshing) return;
 
-      if (progress >= 100) {
-        triggerRefresh();
-        return;
-      }
-
       timerRef.current = setTimeout(() => {
-        setProgress(prev => prev + 1);
-      }, refreshRate * 10);
+        if (progress >= 99) {
+          triggerRefresh();
+        } else {
+          setProgress(currentProgress => currentProgress + 1);
+        }
+      }, refreshRateRef.current * 10);
 
       return () => {
         if (timerRef.current) clearTimeout(timerRef.current);
       };
-    }, [progress, isRefreshing, refreshRate, triggerRefresh]);
+    }, [progress, isRefreshing, refreshRateRef, refreshRateVersion, triggerRefresh]);
 
     return (
       <Box sx={{ position: 'relative', display: 'inline-flex' }}>

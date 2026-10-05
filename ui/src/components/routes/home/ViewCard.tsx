@@ -83,19 +83,27 @@ const DEBOUNCE_TIME = 1000; // 1 second debounce for signature changes
 export interface ViewSettings {
   viewId: string;
   limit: number;
+  panelId?: string;
   refreshTick?: symbol;
-  onRefreshComplete?: () => void;
+  onRefreshComplete?: (panelId: string, refreshTick: symbol) => void;
 }
 
-const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshComplete }: ViewSettings) => {
+const ViewCard: FC<ViewSettings> = ({
+  viewId,
+  limit,
+  panelId = viewId,
+  refreshTick,
+  onRefreshComplete
+}: ViewSettings) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
 
   const [recordIds, setRecordIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [signatureRefresh, setSignatureRefresh] = useState(0);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isRefreshing = useRef(false);
+  const activeRefreshTick = useRef<symbol | undefined>(undefined);
   const lastSignature = useRef<string>('');
 
   const view = useContextSelector(ViewContext, ctx => ctx.views[viewId]);
@@ -109,77 +117,87 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
   // Create a stable signature that only changes when relevant fields change
   const recordsSignature = useMemo(() => createSignatureFromRecords(records), [records]);
 
-  const refreshView = useCallback(async () => {
-    if (!view?.query || isRefreshing.current) {
-      onRefreshComplete?.();
-      return '';
-    }
-
-    isRefreshing.current = true;
-
-    try {
-      const res = await dispatchApi(
-        api.v2.search.post<Hit | Event>((view.indexes ?? ['hit']) as SearchIndex[], {
-          query: view.query,
-          rows: limit,
-          sort: view.sort,
-          filters: view.span ? [`event.created:${convertDateToLucene(view.span)}`] : [],
-          metadata: ['analytic']
-        })
-      );
-
-      if (!res) {
-        return;
-      }
-
-      const fetchedRecords = res.items ?? [];
-      loadRecords(fetchedRecords);
-      setRecordIds(fetchedRecords.map(r => r.howler.id));
-
-      lastSignature.current = createSignatureFromRecords(fetchedRecords);
-    } finally {
-      isRefreshing.current = false;
-      onRefreshComplete?.();
-    }
-  }, [dispatchApi, limit, view?.query, view?.indexes, view?.sort, view?.span, loadRecords, onRefreshComplete]);
-
   const debouncedRefresh = useCallback(() => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
 
     debounceTimerRef.current = setTimeout(() => {
-      void refreshView();
+      setSignatureRefresh(previous => previous + 1);
     }, DEBOUNCE_TIME);
-  }, [refreshView]);
-
-  useEffect(() => {
-    if (refreshTick) {
-      void refreshView();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshTick]);
+  }, []);
 
   useEffect(() => {
     void fetchViews([viewId]);
   }, [fetchViews, viewId]);
 
   useEffect(() => {
+    const controller = new AbortController();
+    let refreshComplete = false;
+    const completeRefresh = () => {
+      if (refreshTick && !refreshComplete) {
+        refreshComplete = true;
+        if (activeRefreshTick.current === refreshTick) {
+          activeRefreshTick.current = undefined;
+        }
+        onRefreshComplete?.(panelId, refreshTick);
+      }
+    };
+
+    if (refreshTick) {
+      activeRefreshTick.current = refreshTick;
+    }
+
     if (!view?.query) {
-      return;
+      completeRefresh();
+      return () => controller.abort();
     }
 
     const loadingTimeout = setTimeout(() => setLoading(true), 200);
+    const query = view.query;
+    const indexes = view.indexes;
+    const sort = view.sort;
+    const span = view.span;
 
-    void refreshView().finally(() => {
-      clearTimeout(loadingTimeout);
-      setLoading(false);
-    });
+    void dispatchApi(
+      api.v2.search.post<Hit | Event>(
+        (indexes ?? ['hit']) as SearchIndex[],
+        {
+          query,
+          rows: limit,
+          sort,
+          filters: span ? [`event.created:${convertDateToLucene(span)}`] : [],
+          metadata: ['analytic']
+        },
+        controller.signal
+      )
+    )
+      .then(response => {
+        if (controller.signal.aborted || !response) {
+          return;
+        }
+
+        const fetchedRecords = response.items ?? [];
+        loadRecords(fetchedRecords);
+        setRecordIds(fetchedRecords.map(record => record.howler.id));
+        lastSignature.current = createSignatureFromRecords(fetchedRecords);
+      })
+      .catch(() => {
+        // Aborted requests are expected when newer view inputs supersede this search.
+      })
+      .finally(() => {
+        clearTimeout(loadingTimeout);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+          completeRefresh();
+        }
+      });
 
     return () => {
+      controller.abort();
       clearTimeout(loadingTimeout);
     };
-  }, [view?.query, limit, refreshView]);
+  }, [dispatchApi, limit, loadRecords, onRefreshComplete, panelId, refreshTick, signatureRefresh, view]);
 
   // Monitor hits currently in the view for changes that might affect query results
   useEffect(() => {
@@ -196,13 +214,19 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
     debouncedRefresh();
   }, [recordsSignature, recordIds, debouncedRefresh]);
 
-  useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
-    };
-  }, []);
+
+      if (activeRefreshTick.current) {
+        onRefreshComplete?.(panelId, activeRefreshTick.current);
+        activeRefreshTick.current = undefined;
+      }
+    },
+    [onRefreshComplete, panelId]
+  );
 
   const onClick = useCallback((query: string) => navigate('/hits?query=' + query), [navigate]);
 

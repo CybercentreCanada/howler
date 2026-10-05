@@ -385,6 +385,7 @@ describe('ViewComposer', () => {
     expect(screen.getByText('event:event-1')).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('route.views.name'), { target: { value: 'Updated View' } });
+    fireEvent.click(screen.getByText('record-query-clean'));
     fireEvent.click(screen.getByText('checked'));
     fireEvent.click(screen.getByText('save'));
 
