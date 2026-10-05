@@ -1,5 +1,6 @@
 /// <reference types="vitest" />
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiConfigContextToken = vi.hoisted(() => ({ name: 'api-config-context' }));
@@ -24,39 +25,44 @@ vi.mock('@mui/material', async importOriginal => {
   const actual = await importOriginal<typeof import('@mui/material')>();
   return {
     ...actual,
-    Autocomplete: ({ onChange, options, disabled, multiple, value, loading }: any) => (
-      <button
-        disabled={disabled}
-        data-loading={Boolean(loading)}
-        data-options={JSON.stringify(options)}
-        onClick={() =>
-          onChange(
-            null,
-            mockAutocompleteSelection.value === 'clear'
-              ? multiple
-                ? []
-                : null
-              : multiple
-                ? mockAutocompleteSelection.value === 'unchanged'
-                  ? value
-                  : mockAutocompleteSelection.value === 'add'
-                    ? [...(value ?? []), 'added value']
-                    : mockAutocompleteSelection.value === 'single'
-                      ? (value ?? []).slice(0, 1)
-                      : (value?.length ?? 0) > 1
-                        ? [value[0], value[0]?.startsWith('C:') ? 'new\\path' : 'changed two']
-                        : [value?.[0] ?? options[0] ?? 'changed one']
-                : value === '*'
-                  ? '*'
-                  : options.includes('event.provider')
-                    ? 'event.provider'
-                    : options[0]
-          )
-        }
-      >
-        change-filter
-      </button>
-    ),
+    Autocomplete: (props: any) => {
+      autocompleteProps.push(props);
+      const { onChange, options, disabled, multiple, value, loading } = props;
+
+      return (
+        <button
+          disabled={disabled}
+          data-loading={Boolean(loading)}
+          data-options={JSON.stringify(options)}
+          onClick={() =>
+            onChange(
+              null,
+              mockAutocompleteSelection.value === 'clear'
+                ? multiple
+                  ? []
+                  : null
+                : multiple
+                  ? mockAutocompleteSelection.value === 'unchanged'
+                    ? value
+                    : mockAutocompleteSelection.value === 'add'
+                      ? [...(value ?? []), 'added value']
+                      : mockAutocompleteSelection.value === 'single'
+                        ? (value ?? []).slice(0, 1)
+                        : (value?.length ?? 0) > 1
+                          ? [value[0], value[0]?.startsWith('C:') ? 'new\\path' : 'changed two']
+                          : [value?.[0] ?? options[0] ?? 'changed one']
+                  : value === '*'
+                    ? '*'
+                    : options.includes('event.provider')
+                      ? 'event.provider'
+                      : options[0]
+            )
+          }
+        >
+          change-filter
+        </button>
+      );
+    },
     Stack: ({ children }: any) => <div>{children}</div>,
     TextField: ({ label }: any) => <div>{label}</div>,
     Typography: ({ children }: any) => <div>{children}</div>
@@ -88,13 +94,30 @@ vi.mock('components/app/providers/ParameterProvider', () => ({
 }));
 
 vi.mock('components/elements/display/ChipPopper', () => ({
-  default: ({ children, label, onDelete }: any) => (
-    <div>
-      <div>{label}</div>
-      <button onClick={onDelete}>delete-filter</button>
-      {children}
-    </div>
-  )
+  default: ({ children, icon, label, onDelete }: any) => {
+    const [open, setOpen] = useState(false);
+
+    return (
+      <div>
+        <button className="MuiChip-root" onClick={() => setOpen(current => !current)}>
+          {icon && <span className="MuiChip-icon">{icon}</span>}
+          {label}
+          {onDelete && (
+            <span
+              className="MuiChip-deleteIcon"
+              onClick={event => {
+                event.stopPropagation();
+                onDelete(event);
+              }}
+            >
+              delete-filter
+            </span>
+          )}
+        </button>
+        {open && children}
+      </div>
+    );
+  }
 }));
 
 vi.mock('components/hooks/useMyApi', () => ({
@@ -198,12 +221,17 @@ describe('HitFilter', () => {
 
   it('shows only default fields until the user searches for another indexed field', () => {
     render(<HitFilter id={3} value="howler.assessment:*" />);
+    fireEvent.click(screen.getByRole('button', { name: /howler.assessment:\*/ }));
 
     const getFieldAutocomplete = () =>
       [...autocompleteProps].reverse().find(props => props.options.includes('organization.name'))!;
+    const autocompleteState = {
+      inputValue: 'howler.assessment',
+      getOptionLabel: (option: string) => option
+    };
 
     let fieldAutocomplete = getFieldAutocomplete();
-    expect(fieldAutocomplete.filterOptions(fieldAutocomplete.options, { inputValue: 'howler.assessment' })).toEqual([
+    expect(fieldAutocomplete.filterOptions(fieldAutocomplete.options, autocompleteState)).toEqual([
       'howler.assessment',
       'howler.escalation',
       'howler.analytic',
@@ -213,13 +241,13 @@ describe('HitFilter', () => {
 
     act(() => fieldAutocomplete.onInputChange(null, 'organization', 'input'));
     fieldAutocomplete = getFieldAutocomplete();
-    expect(fieldAutocomplete.filterOptions(fieldAutocomplete.options, { inputValue: 'howler.assessment' })).toEqual([
+    expect(fieldAutocomplete.filterOptions(fieldAutocomplete.options, autocompleteState)).toEqual([
       'organization.name'
     ]);
 
     act(() => fieldAutocomplete.onInputChange(null, 'howler.assessment', 'reset'));
     fieldAutocomplete = getFieldAutocomplete();
-    expect(fieldAutocomplete.filterOptions(fieldAutocomplete.options, { inputValue: 'howler.assessment' })).toEqual([
+    expect(fieldAutocomplete.filterOptions(fieldAutocomplete.options, autocompleteState)).toEqual([
       'howler.assessment',
       'howler.escalation',
       'howler.analytic',
