@@ -61,6 +61,8 @@ const Home: FC = () => {
   const [refreshRate, setRefreshRate] = useState(user.refresh_rate ?? 15);
   const [refreshTick, setRefreshTick] = useState<symbol>();
   const viewRefreshRef = useRef<ViewRefreshHandle>(null);
+  const refreshRateRef = useRef(refreshRate);
+  const refreshableCardIdsRef = useRef<string[]>([]);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   const updateQuery = useMemo(
@@ -176,19 +178,35 @@ const Home: FC = () => {
   );
 
   useEffect(() => {
-    addToAppBar('left', 'view_spacer', <Box px={0.25} />);
+    refreshableCardIdsRef.current = refreshableCardIds;
+    viewRefreshRef.current?.updateViewCardIds(refreshableCardIds);
+  }, [refreshableCardIds]);
 
+  useEffect(() => {
+    refreshRateRef.current = refreshRate;
+    viewRefreshRef.current?.updateRefreshRate();
+  }, [refreshRate]);
+
+  useEffect(() => {
+    addToAppBar('left', 'view_spacer', <Box px={0.25} />);
     addToAppBar(
       'left',
       'view_refresh',
       <ViewRefresh
         ref={viewRefreshRef}
-        refreshRate={refreshRate}
-        viewCardIds={refreshableCardIds}
+        refreshRateRef={refreshRateRef}
+        viewCardIdsRef={refreshableCardIdsRef}
         onRefresh={handleRefresh}
       />
     );
 
+    return () => {
+      removeFromAppBar('view_spacer');
+      removeFromAppBar('view_refresh');
+    };
+  }, [addToAppBar, handleRefresh, removeFromAppBar]);
+
+  useEffect(() => {
     addToAppBar(
       'left',
       'home_settings',
@@ -201,19 +219,9 @@ const Home: FC = () => {
     );
 
     return () => {
-      removeFromAppBar('view_spacer');
-      removeFromAppBar('view_refresh');
       removeFromAppBar('home_settings');
     };
-  }, [
-    addToAppBar,
-    handleRefresh,
-    handleRefreshRateChange,
-    isEditing,
-    refreshRate,
-    refreshableCardIds,
-    removeFromAppBar
-  ]);
+  }, [addToAppBar, handleRefreshRateChange, isEditing, refreshRate, removeFromAppBar]);
 
   return (
     <PageCenter maxWidth="100%" textAlign="left" height="100%">

@@ -1,6 +1,7 @@
 import { HourglassBottom, UpdateOutlined } from '@mui/icons-material';
 import {
   Alert,
+  Button,
   Card,
   CardContent,
   Chip,
@@ -15,21 +16,27 @@ import {
 } from '@mui/material';
 import { AppListEmpty, useAppUser } from '@tui/core';
 import api from 'api';
+import type { TaskSearchFilter, TaskSearchItem } from 'api/v2/task';
 import StatusIcon from 'components/elements/case/StatusIcon';
 import useMyApi from 'components/hooks/useMyApi';
 import CaseTask from 'components/routes/cases/detail/CaseTask';
 import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
 import type { HowlerUser } from 'models/entities/HowlerUser';
+import type { Task } from 'models/entities/generated/Task';
 import { useEffect, useId, useMemo, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { sanitizeLuceneQuery } from 'utils/stringUtils';
 import { twitterShort } from 'utils/utils';
 
-const SEARCH_PAGE_SIZE = 150;
-const MAX_SEARCH_PAGES = 3;
-type TaskFilter = 'all' | 'complete' | 'incomplete';
+const TASKS_PER_PAGE = 25;
+type TaskFilter = TaskSearchFilter;
+
+const API_FILTER: Record<TaskFilter, TaskSearchFilter> = {
+  all: 'all',
+  complete: 'complete',
+  incomplete: 'incomplete'
+};
 
 export interface TasksSettings {
   taskFilter?: TaskFilter;
@@ -40,6 +47,26 @@ interface TasksPanelProps extends TasksSettings {
   refreshTick?: symbol;
   onRefreshComplete?: (panelId: string, refreshTick: symbol) => void;
 }
+
+const groupTasksByCase = (items: TaskSearchItem[]) => {
+  const groups: { case: Case; tasks: Task[] }[] = [];
+  const groupsByCaseId = new Map<string, { case: Case; tasks: Task[] }>();
+
+  items.forEach(({ task, case: _case }, index) => {
+    const caseId = _case.case_id ?? `missing-case-id-${index}`;
+    let group = groupsByCaseId.get(caseId);
+
+    if (!group) {
+      group = { case: _case, tasks: [] };
+      groupsByCaseId.set(caseId, group);
+      groups.push(group);
+    }
+
+    group.tasks.push(task);
+  });
+
+  return groups;
+};
 
 const TasksPanel: FC<TasksPanelProps> = ({
   taskFilter: initialTaskFilter = 'incomplete',
@@ -53,31 +80,34 @@ const TasksPanel: FC<TasksPanelProps> = ({
   const { dispatchApi } = useMyApi();
   const filterId = useId();
 
-  const [cases, setCases] = useState<Case[]>([]);
+  const [items, setItems] = useState<TaskSearchItem[]>([]);
   const [taskFilter, setTaskFilter] = useState<TaskFilter>(initialTaskFilter);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const activeRefreshTick = useRef<symbol | undefined>(undefined);
+  const lastReceivedRefreshTick = useRef<symbol | undefined>(undefined);
+
   useEffect(() => {
     const controller = new AbortController();
     let refreshComplete = false;
+    let retryingPreviousPage = false;
+
+    if (refreshTick && lastReceivedRefreshTick.current !== refreshTick) {
+      activeRefreshTick.current = refreshTick;
+      lastReceivedRefreshTick.current = refreshTick;
+    }
+
     const completeRefresh = () => {
-      if (refreshTick && !refreshComplete) {
+      if (refreshTick && !refreshComplete && activeRefreshTick.current === refreshTick) {
         refreshComplete = true;
-        if (activeRefreshTick.current === refreshTick) {
-          activeRefreshTick.current = undefined;
-        }
+        activeRefreshTick.current = undefined;
         onRefreshComplete?.(panelId, refreshTick);
       }
     };
 
-    if (refreshTick) {
-      activeRefreshTick.current = refreshTick;
-    }
-
     if (!username) {
-      setCases([]);
-      setLoading(false);
       completeRefresh();
       return;
     }
@@ -85,100 +115,66 @@ const TasksPanel: FC<TasksPanelProps> = ({
     setLoading(true);
     setError(false);
 
-    const loadCases = async () => {
-      const allCases: Case[] = [];
-      let offset = 0;
-      let total = 0;
-      let page = 0;
-
+    const loadTasks = async () => {
       try {
-        do {
-          const response = await dispatchApi(
-            api.v2.search.post<Case>(
-              'case',
-              {
-                query: 'case_id:*',
-                filters: [`tasks.assignment:"${sanitizeLuceneQuery(username)}"`],
-                rows: SEARCH_PAGE_SIZE,
-                offset,
-                sort: 'created desc'
-              },
-              controller.signal
-            ),
-            { showError: false }
-          );
+        const response = await dispatchApi(
+          api.v2.task.search(
+            {
+              offset,
+              rows: TASKS_PER_PAGE,
+              filter: API_FILTER[taskFilter]
+            },
+            controller.signal
+          ),
+          { showError: false }
+        );
 
-          if (controller.signal.aborted) {
-            return;
-          }
-
-          if (!response) {
-            break;
-          }
-
-          allCases.push(...response.items);
-          total = response.total;
-          offset += response.items.length;
-          page += 1;
-
-          if (response.items.length === 0) {
-            break;
-          }
-        } while (offset < total && page < MAX_SEARCH_PAGES);
-
-        if (!controller.signal.aborted) {
-          setCases(allCases);
+        if (controller.signal.aborted) {
+          return;
         }
+
+        if (offset > 0 && (response?.items.length ?? 0) === 0) {
+          retryingPreviousPage = true;
+          setOffset(currentOffset => Math.max(0, currentOffset - TASKS_PER_PAGE));
+          return;
+        }
+
+        setItems(response?.items ?? []);
+        setHasMore(response?.has_more ?? false);
       } catch {
         if (!controller.signal.aborted) {
           setError(true);
-          setCases([]);
+          setItems([]);
+          setHasMore(false);
         }
       } finally {
-        if (!controller.signal.aborted) {
+        if (!controller.signal.aborted && !retryingPreviousPage) {
           setLoading(false);
           completeRefresh();
         }
       }
     };
 
-    void loadCases();
+    void loadTasks();
 
     return () => {
       controller.abort();
     };
-  }, [dispatchApi, onRefreshComplete, panelId, refreshTick, username]);
+  }, [dispatchApi, offset, onRefreshComplete, panelId, refreshTick, taskFilter, username]);
 
   useEffect(
     () => () => {
       if (activeRefreshTick.current) {
-        onRefreshComplete?.(panelId, activeRefreshTick.current);
+        const pendingRefreshTick = activeRefreshTick.current;
         activeRefreshTick.current = undefined;
+        onRefreshComplete?.(panelId, pendingRefreshTick);
       }
     },
     [onRefreshComplete, panelId]
   );
 
-  const visibleCases = useMemo(
-    () =>
-      cases
-        .map(_case => ({
-          case: _case,
-          tasks: (_case.tasks ?? []).filter(task => {
-            if (task.assignment !== username) {
-              return false;
-            }
-
-            if (taskFilter === 'all') {
-              return true;
-            }
-
-            return taskFilter === 'complete' ? task.complete : !task.complete;
-          })
-        }))
-        .filter(group => group.tasks.length > 0),
-    [cases, taskFilter, username]
-  );
+  const groupedTasks = useMemo(() => (username ? groupTasksByCase(items) : []), [items, username]);
+  const isLoading = Boolean(username) && loading;
 
   return (
     <Card variant="outlined" sx={{ height: '100%' }}>
@@ -193,7 +189,10 @@ const TasksPanel: FC<TasksPanelProps> = ({
                 labelId={filterId}
                 value={taskFilter}
                 label={t('route.home.tasks.filter')}
-                onChange={event => setTaskFilter(event.target.value as TaskFilter)}
+                onChange={event => {
+                  setTaskFilter(event.target.value as TaskFilter);
+                  setOffset(0);
+                }}
               >
                 <MenuItem value="incomplete">{t('route.home.tasks.filter.incomplete')}</MenuItem>
                 <MenuItem value="complete">{t('route.home.tasks.filter.complete')}</MenuItem>
@@ -201,14 +200,16 @@ const TasksPanel: FC<TasksPanelProps> = ({
               </Select>
             </FormControl>
           </Stack>
-          {error ? (
+          {!username ? (
+            <AppListEmpty />
+          ) : error ? (
             <Alert severity="error">{t('route.home.tasks.error')}</Alert>
-          ) : loading ? (
+          ) : isLoading ? (
             <Stack alignItems="center" py={3}>
               <CircularProgress size={28} />
             </Stack>
-          ) : visibleCases.length > 0 ? (
-            visibleCases.map(({ case: _case, tasks }) => {
+          ) : groupedTasks.length > 0 ? (
+            groupedTasks.map(({ case: _case, tasks }) => {
               const status = _case.status ?? 'open';
 
               return (
@@ -258,6 +259,20 @@ const TasksPanel: FC<TasksPanelProps> = ({
           ) : (
             <AppListEmpty />
           )}
+          <Stack direction="row" justifyContent="space-between">
+            <Button
+              disabled={!username || isLoading || offset === 0}
+              onClick={() => setOffset(currentOffset => Math.max(0, currentOffset - TASKS_PER_PAGE))}
+            >
+              {t('route.home.tasks.previous')}
+            </Button>
+            <Button
+              disabled={!username || isLoading || !hasMore}
+              onClick={() => setOffset(currentOffset => currentOffset + TASKS_PER_PAGE)}
+            >
+              {t('route.home.tasks.next')}
+            </Button>
+          </Stack>
         </Stack>
       </CardContent>
     </Card>

@@ -229,6 +229,9 @@ describe('Home', () => {
     expect(mockAddToAppBar).toHaveBeenCalledWith('left', 'view_refresh', expect.anything());
     expect(mockAddToAppBar).toHaveBeenCalledWith('left', 'home_settings', expect.anything());
 
+    const viewRefreshNode = mockAddToAppBar.mock.calls.find(([, key]) => key === 'view_refresh')![2];
+    expect(viewRefreshNode.props.viewCardIdsRef.current).toEqual(['view-entry']);
+
     const homeSettings = mockAddToAppBar.mock.calls.find(([, key]) => key === 'home_settings')![2];
 
     await act(async () => {
@@ -241,8 +244,14 @@ describe('Home', () => {
       await new Promise(resolve => setTimeout(resolve, 550));
     });
     expect(mockSetRefreshRateBackend).toHaveBeenCalledWith(30);
+    expect(viewRefreshNode.props.refreshRateRef.current).toBe(30);
+    expect(mockRemoveFromAppBar).not.toHaveBeenCalledWith('view_refresh');
+    expect(mockAddToAppBar.mock.calls.filter(([, key]) => key === 'view_refresh')).toHaveLength(1);
 
     fireEvent.click(screen.getByText('add-card'));
+    await waitFor(() => expect(viewRefreshNode.props.viewCardIdsRef.current).toEqual(['view-entry', 'new-entry']));
+    expect(mockRemoveFromAppBar).not.toHaveBeenCalledWith('view_refresh');
+    expect(mockAddToAppBar.mock.calls.filter(([, key]) => key === 'view_refresh')).toHaveLength(1);
     const saveButton = screen.getByText('save');
     expect(saveButton).not.toBeDisabled();
     fireEvent.click(saveButton);

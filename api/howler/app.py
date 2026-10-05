@@ -52,6 +52,7 @@ from howler.api.v2.case import case_api
 from howler.api.v2.fuzzy import fuzzy_api
 from howler.api.v2.ingest import ingest_api
 from howler.api.v2.search import search_api as v2_search_api
+from howler.api.v2.task import task_api
 from howler.common.logging import get_logger
 from howler.config import (
     DEBUG,
@@ -163,6 +164,7 @@ if HWL_USE_REST_API or DEBUG:
     app.register_blueprint(fuzzy_api)
     app.register_blueprint(ingest_api)
     app.register_blueprint(v2_search_api)
+    app.register_blueprint(task_api)
 
     if config.core.notebook.enabled:
         from howler.api.v1.notebook import notebook_api
