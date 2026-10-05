@@ -428,8 +428,9 @@ describe('RecordSearchContext', () => {
       });
 
       await waitFor(() => {
-        expect(hpost).toHaveBeenCalledWith(
-          '/api/v2/search/hit',
+        const searchRequest = vi.mocked(hpost).mock.calls.find(([url]) => url === '/api/v2/search/hit')?.[1];
+
+        expect(searchRequest).toEqual(
           expect.objectContaining({
             filters: expect.arrayContaining([
               'event.provider:"azure"',
