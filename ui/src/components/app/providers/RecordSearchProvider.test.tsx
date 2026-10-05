@@ -178,6 +178,19 @@ describe('RecordSearchContext', () => {
   });
 
   describe('search', () => {
+    it('should retain negated wildcard filters and omit positive placeholders', async () => {
+      mockParameterContext.filters = ['howler.assessment:*', '-howler.assessment:*'];
+
+      const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.getFilters), {
+        wrapper: Wrapper
+      });
+
+      const filters = await hook.result.current();
+
+      expect(filters).toContain('-howler.assessment:*');
+      expect(filters).not.toContain('howler.assessment:*');
+    });
+
     it('should perform a search and update response', async () => {
       const hook = renderHook(
         () =>

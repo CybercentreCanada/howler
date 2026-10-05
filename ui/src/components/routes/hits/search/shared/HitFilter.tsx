@@ -1,21 +1,12 @@
 import { AddCircleOutline, FilterList, RemoveCircleOutline } from '@mui/icons-material';
 import type { UseAutocompleteProps } from '@mui/material';
-import {
-  Autocomplete,
-  Checkbox,
-  FormControlLabel,
-  isEmpty,
-  Stack,
-  TextField,
-  Tooltip,
-  Typography
-} from '@mui/material';
+import { Autocomplete, Checkbox, FormControlLabel, Stack, TextField, Tooltip, Typography } from '@mui/material';
 import api from 'api';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import ChipPopper from 'components/elements/display/ChipPopper';
 import useMyApi from 'components/hooks/useMyApi';
-import { isNil, uniq } from 'lodash-es';
+import { isEmpty, isNil, uniq } from 'lodash-es';
 import type { APILookups } from 'models/entities/generated/ApiType';
 import type { FC } from 'react';
 import { memo, useCallback, useContext, useEffect, useState } from 'react';

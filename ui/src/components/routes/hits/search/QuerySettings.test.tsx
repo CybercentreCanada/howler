@@ -265,6 +265,21 @@ describe('QuerySettings', () => {
       expect(mockAddFilter).toHaveBeenCalledTimes(1);
     });
 
+    it('should allow adding a filter when only negated wildcard filters exist', async () => {
+      mockParameterContext.filters = ['-howler.assessment:*'];
+      const { rerender } = render(<QuerySettings />, { wrapper: Wrapper });
+
+      await user.click(screen.getByRole('button'));
+
+      const addFilterButton = screen.getByLabelText(i18n.t('hit.search.filter.add'));
+      expect(addFilterButton).toBeEnabled();
+
+      mockParameterContext = { ...mockParameterContext, filters: ['howler.assessment:*'] };
+      rerender(<QuerySettings />);
+
+      expect(addFilterButton).toBeDisabled();
+    });
+
     it('should call fetchViews and addView when Add View button clicked', async () => {
       mockViewContext.views = {
         'view-1': createMockView({ view_id: 'view-1' })
