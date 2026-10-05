@@ -1,8 +1,18 @@
 import { AddCircleOutline, FilterList, RemoveCircleOutline } from '@mui/icons-material';
 import type { UseAutocompleteProps } from '@mui/material';
-import { Autocomplete, Checkbox, FormControlLabel, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import {
+  Autocomplete,
+  Checkbox,
+  createFilterOptions,
+  FormControlLabel,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography
+} from '@mui/material';
 import api from 'api';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
+import { FieldContext } from 'components/app/providers/FieldProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import ChipPopper from 'components/elements/display/ChipPopper';
 import useMyApi from 'components/hooks/useMyApi';
@@ -22,6 +32,14 @@ const ACCEPTED_LOOKUPS = [
   'event.provider',
   'organization.name'
 ] as const;
+
+const DEFAULT_FILTER_FIELDS = [
+  'howler.assessment',
+  'howler.escalation',
+  'howler.analytic',
+  'howler.detection',
+  'event.provider'
+];
 
 type AcceptedLookup = (typeof ACCEPTED_LOOKUPS)[number];
 
@@ -101,9 +119,12 @@ const serializeFilter = (category: string, values: string[], negated: boolean) =
   return filter.join('');
 };
 
+const filterFields = createFilterOptions<string>();
+
 const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = ({ size, id, value }) => {
   const { t } = useTranslation();
   const { config } = useContext(ApiConfigContext);
+  const { hitFields, getHitFields } = useContext(FieldContext);
   const { dispatchApi } = useMyApi();
 
   const setSavedFilter = useContextSelector(ParameterContext, ctx => ctx.setFilter);
@@ -120,11 +141,17 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
     category: null,
     options: []
   });
+  const [categorySearchInput, setCategorySearchInput] = useState('');
 
   const { category, values: filterValues, editable, negated } = parsedFilter;
   const configuredLookup = category ? config.lookups?.[category as ApiAcceptedLookup] : undefined;
   const needsLookups = !!category && editable && !Array.isArray(configuredLookup);
   const loading = needsLookups && customLookups.category !== category;
+  const categoryOptions = hitFields.map(field => field.key).filter((field): field is string => !!field);
+
+  useEffect(() => {
+    void getHitFields();
+  }, [getHitFields]);
 
   useEffect(() => {
     if (value) {
@@ -234,9 +261,15 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
             disabled={!editable}
             size={size ?? 'small'}
             value={category ?? ACCEPTED_LOOKUPS[0]}
-            options={ACCEPTED_LOOKUPS}
+            options={categoryOptions}
+            filterOptions={(options, state) =>
+              categorySearchInput
+                ? filterFields(options, { ...state, inputValue: categorySearchInput })
+                : options.filter(option => DEFAULT_FILTER_FIELDS.includes(option))
+            }
             renderInput={_params => <TextField {..._params} label={t('hit.search.filter.fields')} />}
             onChange={onCategoryChange}
+            onInputChange={(_event, inputValue, reason) => setCategorySearchInput(reason === 'input' ? inputValue : '')}
           />
           <Autocomplete<string, true, false, true>
             fullWidth

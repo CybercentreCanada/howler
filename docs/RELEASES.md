@@ -2,6 +2,7 @@
 
 ## Howler UI `v3.1.0`
 
+- **Searchable Hit Filter Fields** _(improvement)_: Hit search now displays the default filter fields initially while allowing users to search and select any indexed Howler field.
 - **Strict TypeScript Checking** _(technical update)_: Enabled strict TypeScript checking for the UI and updated application code, API clients, hooks, components, plugins, and tests to use explicit, type-safe definitions.
 - **Clue Database Configuration** _(bugfix)_: Exposed Clue storage and replication options so deployments can configure database behavior instead of always using the previous replicated in-memory setup.
 - **Alert Detail Outside Close** _(bugfix)_: Reset alert selection when closing the details pane by clicking outside it, allowing the same alert card to be opened again.
