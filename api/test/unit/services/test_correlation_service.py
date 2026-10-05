@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta, timezone
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -233,6 +233,28 @@ class TestCorrelationWorker:
             correlation_service.run_worker()
 
         mock_process_batch.assert_called_once_with(["hit-1"], rule_id="rule-1")
+
+    @patch("howler.services.correlation_service.process_batch")
+    @patch("howler.services.correlation_service._get_ingestion_queue")
+    @patch.object(correlation_service, "BATCH_TIMEOUT", 1)
+    @patch.object(correlation_service, "BATCH_SIZE", 2)
+    def test_continues_processing_groups_after_a_group_failure(self, mock_get_queue, mock_process_batch):
+        queue = MagicMock()
+        queue.pop.side_effect = [
+            {"id": "hit-1", "rule_id": "failing-rule"},
+            {"id": "hit-2", "rule_id": "healthy-rule"},
+            KeyboardInterrupt,
+        ]
+        mock_get_queue.return_value = queue
+        mock_process_batch.side_effect = [RuntimeError("datastore unavailable"), 1]
+
+        with pytest.raises(KeyboardInterrupt):
+            correlation_service.run_worker()
+
+        assert mock_process_batch.call_args_list == [
+            call(["hit-1"], rule_id="failing-rule"),
+            call(["hit-2"], rule_id="healthy-rule"),
+        ]
 
     @patch("howler.services.correlation_service.process_batch")
     @patch("howler.services.correlation_service._get_ingestion_queue")

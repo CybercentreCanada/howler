@@ -486,6 +486,30 @@ def process_batch(record_ids: list[str], rule_id: str | None = None) -> int:  # 
     return added
 
 
+def _process_correlation_groups(batch: list[CorrelationJob]) -> None:
+    """Process each rule-scoped group independently after it leaves the queue."""
+    grouped_ids: dict[str | None, list[str]] = {}
+    for queued_item in batch:
+        grouped_ids.setdefault(queued_item["rule_id"], []).append(queued_item["id"])
+
+    for queued_rule_id, record_ids in grouped_ids.items():
+        try:
+            added = process_batch(record_ids, rule_id=queued_rule_id)
+            logger.info(
+                "Correlation batch complete: %d case item(s) added for %d record(s)",
+                added,
+                len(record_ids),
+            )
+        except Exception:
+            # Each group has already been removed from Redis. Continue processing
+            # unrelated rules if one batch fails.
+            logger.exception(
+                "Error processing correlation group for rule %s: %s",
+                queued_rule_id,
+                record_ids,
+            )
+
+
 def run_worker() -> None:  # pragma: no cover – long-running loop, tested via process_batch
     """Block on the ingestion queue and process batches of record IDs.
 
@@ -520,17 +544,7 @@ def run_worker() -> None:  # pragma: no cover – long-running loop, tested via 
                 try:
                     # A batch can contain regular ingestion and backfill jobs.
                     # Separate them so each group gets the correct rule selection.
-                    grouped_ids: dict[str | None, list[str]] = {}
-                    for queued_item in finalized_batch:
-                        grouped_ids.setdefault(queued_item["rule_id"], []).append(queued_item["id"])
-
-                    for queued_rule_id, record_ids in grouped_ids.items():
-                        added = process_batch(record_ids, rule_id=queued_rule_id)
-                        logger.info(
-                            "Correlation batch complete: %d case item(s) added for %d record(s)",
-                            added,
-                            len(record_ids),
-                        )
+                    _process_correlation_groups(finalized_batch)
                 except Exception:
                     logger.exception("Error processing correlation batch %s", finalized_batch)
         except Exception:
