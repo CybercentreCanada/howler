@@ -1,7 +1,7 @@
 /// <reference types="vitest" />
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useContext } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockDispatchApi = vi.hoisted(() => vi.fn());
 
@@ -26,6 +26,10 @@ const Consumer = () => {
 };
 
 describe('FieldProvider', () => {
+  beforeEach(() => {
+    mockDispatchApi.mockReset();
+  });
+
   it('loads hit fields once and reuses the cached value', async () => {
     mockDispatchApi.mockResolvedValue([{ name: 'field-a' }]);
     render(
@@ -40,5 +44,30 @@ describe('FieldProvider', () => {
 
     await act(async () => screen.getByText('load').click());
     expect(mockDispatchApi).toHaveBeenCalledTimes(1);
+  });
+
+  it('coalesces concurrent hit-field requests', async () => {
+    let resolveFields: ((fields: { name: string }[]) => void) | undefined;
+    mockDispatchApi.mockReturnValue(
+      new Promise(resolve => {
+        resolveFields = resolve;
+      })
+    );
+
+    render(
+      <FieldProvider>
+        <Consumer />
+      </FieldProvider>
+    );
+
+    fireEvent.click(screen.getByText('load'));
+    fireEvent.click(screen.getByText('load'));
+    expect(mockDispatchApi).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveFields?.([{ name: 'field-a' }]);
+      await Promise.resolve();
+    });
+    expect(screen.getByText('1')).toBeInTheDocument();
   });
 });

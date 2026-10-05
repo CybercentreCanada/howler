@@ -34,6 +34,7 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
   const removeSavedFilter = useContextSelector(ParameterContext, ctx => ctx.removeFilter);
 
   const [category, setCategory] = useState<string | null>(value?.split(':')[0] ?? DEFAULT_FILTER_FIELDS[0]!);
+  const [categorySearchInput, setCategorySearchInput] = useState('');
   const [filter, setFilter] = useState<string | null>(value?.split(':')[1] ?? null);
   const [loading, setLoading] = useState(false);
 
@@ -66,6 +67,7 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
   const onCategoryChange: UseAutocompleteProps<string, false, false, false>['onChange'] = useCallback(
     async (_, _category) => {
       setCategory(_category);
+      setCategorySearchInput('');
       setFilter(null);
 
       if (!_category) {
@@ -124,12 +126,13 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
           value={category}
           options={categoryOptions}
           filterOptions={(options, state) =>
-            state.inputValue
-              ? filterFields(options, state)
+            categorySearchInput
+              ? filterFields(options, { ...state, inputValue: categorySearchInput })
               : options.filter(option => DEFAULT_FILTER_FIELDS.includes(option))
           }
           renderInput={_params => <TextField {..._params} label={t('hit.search.filter.fields')} />}
           onChange={onCategoryChange}
+          onInputChange={(_event, inputValue, reason) => setCategorySearchInput(reason === 'input' ? inputValue : '')}
         />
         <Autocomplete
           fullWidth

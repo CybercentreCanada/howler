@@ -1,5 +1,5 @@
 /// <reference types="vitest" />
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiConfigContextToken = vi.hoisted(() => ({ name: 'api-config-context' }));
@@ -147,18 +147,34 @@ describe('HitFilter', () => {
   });
 
   it('shows only default fields until the user searches for another indexed field', () => {
-    render(<HitFilter id={3} value="" />);
+    render(<HitFilter id={3} value="howler.assessment:*" />);
 
-    const fieldAutocomplete = autocompleteProps[0]!;
-    expect(fieldAutocomplete.filterOptions(fieldAutocomplete.options, { inputValue: '' })).toEqual([
+    const getFieldAutocomplete = () =>
+      [...autocompleteProps].reverse().find(props => props.options.includes('organization.name'))!;
+
+    let fieldAutocomplete = getFieldAutocomplete();
+    expect(fieldAutocomplete.filterOptions(fieldAutocomplete.options, { inputValue: 'howler.assessment' })).toEqual([
       'howler.assessment',
       'howler.escalation',
       'howler.analytic',
       'howler.detection',
       'event.provider'
     ]);
-    expect(fieldAutocomplete.filterOptions(fieldAutocomplete.options, { inputValue: 'organization' })).toEqual([
+
+    act(() => fieldAutocomplete.onInputChange(null, 'organization', 'input'));
+    fieldAutocomplete = getFieldAutocomplete();
+    expect(fieldAutocomplete.filterOptions(fieldAutocomplete.options, { inputValue: 'howler.assessment' })).toEqual([
       'organization.name'
+    ]);
+
+    act(() => fieldAutocomplete.onInputChange(null, 'howler.assessment', 'reset'));
+    fieldAutocomplete = getFieldAutocomplete();
+    expect(fieldAutocomplete.filterOptions(fieldAutocomplete.options, { inputValue: 'howler.assessment' })).toEqual([
+      'howler.assessment',
+      'howler.escalation',
+      'howler.analytic',
+      'howler.detection',
+      'event.provider'
     ]);
   });
 });

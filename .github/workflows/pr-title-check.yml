@@ -41,6 +41,7 @@ jobs:
             style
             chore
             release
+            improvement
 
           requireScope: false
           subjectPattern: '^[-a-z0-9.-_/, ]+$'
