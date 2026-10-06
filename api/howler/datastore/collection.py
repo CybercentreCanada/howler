@@ -666,9 +666,22 @@ class ESCollection(Generic[ModelType]):
 
         has_errors = False
         for response in responses:
-            if response["errors"]:
-                has_errors = True
-                logger.error("Errors on bulk plan: %s", response["errors"])
+            if not response["errors"]:
+                continue
+
+            has_errors = True
+            for item in response.get("items", []):
+                for action, result in item.items():
+                    error = result.get("error")
+                    if error:
+                        logger.error(
+                            "Bulk %s failed for index %s document %s (status %s): %s",
+                            action,
+                            result.get("_index"),
+                            result.get("_id"),
+                            result.get("status"),
+                            error,
+                        )
 
         return not has_errors
 
