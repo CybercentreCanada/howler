@@ -23,6 +23,7 @@
 
 ## Howler API `v4.1.0`
 
+- **Correlation Backfill** _(bugfix)_: It is now possible to backfill case rules to add historical alerts and events to the case.
 - **Action List Result Cap** _(bugfix)_: Action listing now streams up to 250 results, avoiding default-page truncation while bounding the response size.
 - **Classification Access Control** _(bugfix)_: Enforced classification authorization consistently across direct updates, ingestion, bundle compatibility endpoints, and case references without exposing inaccessible records.
 - **Action Retrieval Endpoint** _(new feature)_: Added an authenticated endpoint for retrieving individual actions with ETag support and conditional `304 Not Modified` responses.

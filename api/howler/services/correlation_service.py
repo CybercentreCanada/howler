@@ -146,7 +146,7 @@ def _resolve_backing_object(
             raise InvalidDataException(f"Invalid index type {item_type} provided. Must be one of hit,event")
 
     backing_obj, backing_obj_version = backing_cache[key]
-    if not backing_obj:
+    if not backing_obj or backing_obj_version == "create":
         raise NotFoundException(f"{item_type.capitalize()} {record_id} not found, cannot be added to case")
 
     return backing_obj, backing_obj_version
@@ -406,7 +406,7 @@ def process_batch(record_ids: list[str], rule_id: str | None = None) -> int:  # 
 
     # Cases and their backing hit/event objects are fetched once per batch and mutated in
     # memory; they're only written to the datastore after every rule has been evaluated.
-    case_cache: dict[str, Case | None] = {}
+    case_cache: dict[str, tuple[Case | None, str]] = {}
     case_original_item_counts: dict[str, int] = {}
     backing_cache: dict[tuple[Literal["hit", "event"], str], tuple[Hit | Event | None, str]] = {}
     dirty_backing_keys: set[tuple[Literal["hit", "event"], str]] = set()
@@ -415,13 +415,15 @@ def process_batch(record_ids: list[str], rule_id: str | None = None) -> int:  # 
         indexes: list[str] = list(rule.indexes) if rule.indexes else [RuleIndexTypes.HIT]
 
         if case_id not in case_cache:
-            case = ds.case.get(case_id)
+            case, case_version = ds.case.get(case_id, as_obj=True, version=True)
+            # A create token is not a version of an existing case and cannot be
+            # used to route a partial correlation update.
             if case:
                 case_original_item_counts[case_id] = len(case.items)
 
-            case_cache[case_id] = case
+            case_cache[case_id] = case, case_version
 
-        case = case_cache[case_id]
+        case = case_cache[case_id][0]
         if case is None:
             logger.warning("Case %s not found during correlation", case_id)
             continue
@@ -446,9 +448,15 @@ def process_batch(record_ids: list[str], rule_id: str | None = None) -> int:  # 
     backing_bulk_plans = {item_type: ds[item_type].get_bulk_plan() for item_type, _ in dirty_backing_keys}
 
     for item_type, record_id in dirty_backing_keys:
-        backing_obj = backing_cache[(item_type, record_id)][0]
+        backing_obj, backing_version = backing_cache[(item_type, record_id)]
         if backing_obj:
-            backing_bulk_plans[item_type].add_update_operation(record_id, backing_obj, fields=["howler.related"])
+            # The read token determines only which concrete index (or legacy
+            # alias) receives this partial update. Keep the existing concurrency
+            # behavior: do not turn correlation writes into seq/primary-term CAS.
+            target_index = ds[item_type].get_version_write_target(backing_version)[0]
+            backing_bulk_plans[item_type].add_update_operation(
+                record_id, backing_obj, index=target_index, fields=["howler.related"]
+            )
 
     for item_type, bulk_plan in backing_bulk_plans.items():
         if not ds[item_type].bulk(bulk_plan):
@@ -457,17 +465,27 @@ def process_batch(record_ids: list[str], rule_id: str | None = None) -> int:  # 
     # Cases are only considered modified when an item was actually appended;
     # duplicate matches are ignored by _add_record_to_case.
     modified_cases = [
-        case for cid, case in case_cache.items() if case and len(case.items) != case_original_item_counts[cid]
+        (case, _version)
+        for cid, (case, _version) in case_cache.items()
+        if case and len(case.items) != case_original_item_counts[cid]
     ]
     bulk_plan = ds.case.get_bulk_plan()
 
     logger.info("Modified cases: %s", len(modified_cases))
     if modified_cases:
-        for case in modified_cases:
+        for case, case_version in modified_cases:
             case_service.recompute_case_metadata(case)
             # Partial update: only touch fields derived from items, so concurrent user edits
             # to the case (title, summary, rules, ...) aren't clobbered by a stale in-memory copy.
-            bulk_plan.add_update_operation(case.case_id, case, fields=["items", "targets", "threats", "indicators"])
+            # As above, the version is used for routing only; correlation does not
+            # add optimistic-concurrency conditions to its bulk operation.
+            target_index = ds.case.get_version_write_target(case_version)[0]
+            bulk_plan.add_update_operation(
+                case.case_id,
+                case,
+                index=target_index,
+                fields=["items", "targets", "threats", "indicators"],
+            )
 
     if bulk_plan.empty:
         logger.info(
@@ -480,7 +498,7 @@ def process_batch(record_ids: list[str], rule_id: str | None = None) -> int:  # 
             raise HowlerRuntimeError("Bulk case update reported errors while flushing correlation batch")
 
     # Notify connected clients after persistence so case views can refresh promptly.
-    for case in modified_cases:
+    for case, _ in modified_cases:
         comms_service.emit("cases", {"case": case.as_primitives()})
 
     return added
