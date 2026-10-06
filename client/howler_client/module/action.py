@@ -32,7 +32,7 @@ class Action(object):
         return self._connection.get(api_path("action", action_id))
 
     def list(self: Self) -> list[dict[str, Any]]:
-        """Return every action visible to the current user."""
+        """Return up to 250 actions visible to the current user."""
         return self._connection.get(api_path("action/"))
 
     def create(

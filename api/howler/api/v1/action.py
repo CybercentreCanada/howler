@@ -1,4 +1,6 @@
 import json
+from contextlib import closing
+from itertools import islice
 
 from flask import Response, request
 
@@ -18,6 +20,7 @@ from howler.security.login import api_login
 from howler.services import action_service
 
 SUB_API = "action"
+MAX_ACTION_RESULTS = 250
 classification_definition = CLASSIFICATION.get_parsed_classification_definition()
 
 action_api = make_subapi_blueprint(SUB_API, api_version=1)
@@ -41,12 +44,15 @@ def get_actions(**_) -> Response:
     Optional Arguments:
     None
 
+    The result is capped at 250 actions.
+
     Result Example:
     [
         ...actions    # A list of actions the user can see
     ]
     """
-    return ok(datastore().action.search("*:*", as_obj=False)["items"])
+    with closing(datastore().action.stream_search("*:*", as_obj=False)) as action_stream:
+        return ok(list(islice(action_stream, MAX_ACTION_RESULTS)))
 
 
 @generate_swagger_docs()
