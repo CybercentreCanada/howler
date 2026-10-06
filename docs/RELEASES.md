@@ -23,6 +23,7 @@
 
 ## Howler API `v4.1.0`
 
+- **Action List Result Cap** _(bugfix)_: Action listing now streams up to 250 results, avoiding default-page truncation while bounding the response size.
 - **Classification Access Control** _(bugfix)_: Enforced classification authorization consistently across direct updates, ingestion, bundle compatibility endpoints, and case references without exposing inaccessible records.
 - **Action Retrieval Endpoint** _(new feature)_: Added an authenticated endpoint for retrieving individual actions with ETag support and conditional `304 Not Modified` responses.
 - **Ownership and Permission Management** _(new feature)_: Added owners, administrators, and members for actions, dossiers, and views, including permission grant/revoke endpoints and a migration for legacy action ownership ([#582](https://github.com/CybercentreCanada/howler/pull/582)).
@@ -33,6 +34,7 @@
 
 ## Howler Client `v3.1.0`
 
+- **Action Index Search** _(new feature)_: Added `client.search.action` for searching actions with Lucene queries and the standard search options.
 - **Action Management** _(new feature)_: Added client methods to list, create, retrieve, and execute Howler automation actions, with unit and integration coverage.
 - **Refresh Controls for Write Operations** _(new feature)_: Added optional Elasticsearch index refresh controls, including `wait_for`, to hit, user, case, and ingest write methods ([#565](https://github.com/CybercentreCanada/howler/pull/565)).
 

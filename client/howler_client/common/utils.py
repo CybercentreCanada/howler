@@ -5,7 +5,7 @@ from typing import cast
 from urllib.parse import quote
 
 INVALID_STREAM_SEARCH_PARAMS = ("deep_paging_id", "rows", "sort")
-SEARCHABLE = ["hit"]
+SEARCHABLE = ["hit", "action"]
 API = "v1"
 
 
