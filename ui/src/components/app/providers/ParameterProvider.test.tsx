@@ -12,11 +12,27 @@ const Wrapper = ({ children }) => {
   return <ParameterProvider>{children}</ParameterProvider>;
 };
 
+const setMockUrl = (searchParams: URLSearchParams) => {
+  for (const key of [...mockSearchParams.keys()]) {
+    mockSearchParams.delete(key);
+  }
+  searchParams.forEach((value, key) => mockSearchParams.append(key, value));
+  const search = mockSearchParams.toString();
+  mockLocation.search = search ? `?${search}` : '';
+};
+
+const makeMockSetParamsUpdateUrl = () => {
+  mockSetParams.mockImplementation(nextParams => {
+    const replacement = typeof nextParams === 'function' ? nextParams(mockSearchParams) : nextParams;
+    setMockUrl(new URLSearchParams(replacement));
+  });
+};
+
 beforeEach(() => {
   for (const key of [...mockSearchParams.keys()]) {
     mockSearchParams.delete(key);
   }
-  mockSetParams.mockClear();
+  mockSetParams.mockReset();
   mockLocation.pathname = '/hits';
   mockLocation.search = '';
   mockParams.id = undefined;
@@ -668,6 +684,234 @@ describe('ParameterContext', () => {
           const urlParams = typeof call[0] === 'function' ? call[0](mockSearchParams) : call[0];
           expect(urlParams.getAll('filter')).toEqual(['z', 'a', 'm']);
         });
+      });
+    });
+  });
+
+  describe('disabled filters in URL', () => {
+    it('restores copied links with disabled positive, negative, and opaque clauses', () => {
+      const filters = ['event.provider:"azure"', '-howler.outline.indicators:("a" OR "b")', 'opaque clause [x TO y]'];
+      const url = new URLSearchParams();
+      filters.forEach(filter => url.append('filter', filter));
+      filters.forEach(filter => url.append('disabled_filter', filter));
+      setMockUrl(url);
+
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            filters: ctx.filters,
+            disabledFilterIndexes: ctx.disabledFilterIndexes
+          })),
+        { wrapper: Wrapper }
+      );
+
+      expect(hook.result.current.filters).toEqual(filters);
+      expect(hook.result.current.disabledFilterIndexes).toEqual([0, 1, 2]);
+    });
+
+    it('keeps old links without disabled_filter markers fully enabled', () => {
+      mockSearchParams.append('filter', 'legacy clause');
+      mockLocation.search = '?filter=legacy+clause';
+
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            filters: ctx.filters,
+            disabledFilterIndexes: ctx.disabledFilterIndexes
+          })),
+        { wrapper: Wrapper }
+      );
+
+      expect(hook.result.current.filters).toEqual(['legacy clause']);
+      expect(hook.result.current.disabledFilterIndexes).toEqual([]);
+    });
+
+    it('supports mixed enabled and disabled filters and ignores stale marker definitions', async () => {
+      const filters = ['positive clause', '-negative clause', 'opaque clause', 'enabled clause'];
+      const url = new URLSearchParams();
+      filters.forEach(filter => url.append('filter', filter));
+      url.append('disabled_filter', filters[0]);
+      url.append('disabled_filter', filters[2]);
+      url.append('disabled_filter', 'stale clause');
+      setMockUrl(url);
+      makeMockSetParamsUpdateUrl();
+
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            filters: ctx.filters,
+            disabledFilterIndexes: ctx.disabledFilterIndexes
+          })),
+        { wrapper: Wrapper }
+      );
+
+      expect(hook.result.current.filters).toEqual(filters);
+      expect(hook.result.current.disabledFilterIndexes).toEqual([0, 2]);
+      await waitFor(() => expect(mockSearchParams.getAll('disabled_filter')).toEqual([filters[0], filters[2]]));
+      expect(mockSearchParams.getAll('filter')).toEqual(filters);
+    });
+
+    it('adds and removes disabled_filter markers without removing filter definitions', async () => {
+      mockSearchParams.append('filter', 'event.provider:"azure"');
+      mockSearchParams.append('filter', '-howler.assessment:*');
+      mockLocation.search = '?filter=event.provider%3A%22azure%22&filter=-howler.assessment%3A*';
+      makeMockSetParamsUpdateUrl();
+
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            filters: ctx.filters,
+            disabledFilterIndexes: ctx.disabledFilterIndexes,
+            setFilterDisabled: ctx.setFilterDisabled
+          })),
+        { wrapper: Wrapper }
+      );
+
+      await act(async () => hook.result.current.setFilterDisabled(0, true));
+      await waitFor(() => expect(mockSearchParams.getAll('disabled_filter')).toEqual(['event.provider:"azure"']));
+      expect(hook.result.current.filters).toEqual(['event.provider:"azure"', '-howler.assessment:*']);
+      expect(mockSearchParams.getAll('filter')).toEqual(['event.provider:"azure"', '-howler.assessment:*']);
+      hook.rerender();
+
+      await act(async () => hook.result.current.setFilterDisabled(0, false));
+      await waitFor(() => expect(mockSearchParams.getAll('disabled_filter')).toEqual([]));
+      expect(mockSearchParams.getAll('filter')).toEqual(['event.provider:"azure"', '-howler.assessment:*']);
+      expect(hook.result.current.disabledFilterIndexes).toEqual([]);
+    });
+
+    it('applies URL-only disabled-state navigation and re-enables filters when markers are removed', async () => {
+      mockSearchParams.append('filter', 'filter:a');
+      mockLocation.search = '?filter=filter%3Aa';
+
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            filters: ctx.filters,
+            disabledFilterIndexes: ctx.disabledFilterIndexes
+          })),
+        { wrapper: Wrapper }
+      );
+
+      expect(hook.result.current.disabledFilterIndexes).toEqual([]);
+      mockSearchParams.append('disabled_filter', 'filter:a');
+      mockLocation.search = '?filter=filter%3Aa&disabled_filter=filter%3Aa';
+      hook.rerender();
+
+      await waitFor(() => expect(hook.result.current.disabledFilterIndexes).toEqual([0]));
+      mockSearchParams.delete('disabled_filter');
+      mockLocation.search = '?filter=filter%3Aa';
+      hook.rerender();
+
+      await waitFor(() => expect(hook.result.current.disabledFilterIndexes).toEqual([]));
+      expect(hook.result.current.filters).toEqual(['filter:a']);
+    });
+
+    it('preserves disabled state when query and sort change in the URL', async () => {
+      mockSearchParams.append('filter', 'disabled clause');
+      mockSearchParams.append('disabled_filter', 'disabled clause');
+      mockLocation.search = '?filter=disabled+clause&disabled_filter=disabled+clause';
+
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            query: ctx.query,
+            sort: ctx.sort,
+            filters: ctx.filters,
+            disabledFilterIndexes: ctx.disabledFilterIndexes
+          })),
+        { wrapper: Wrapper }
+      );
+
+      const url = new URLSearchParams(mockSearchParams);
+      url.set('query', 'new query');
+      url.set('sort', 'event.provider asc');
+      setMockUrl(url);
+      hook.rerender();
+
+      await waitFor(() => {
+        expect(hook.result.current.query).toBe('new query');
+        expect(hook.result.current.sort).toBe('event.provider asc');
+        expect(hook.result.current.disabledFilterIndexes).toEqual([0]);
+      });
+      expect(mockSearchParams.getAll('filter')).toEqual(['disabled clause']);
+      expect(mockSearchParams.getAll('disabled_filter')).toEqual(['disabled clause']);
+    });
+
+    it('keeps disabled state attached through edits and removal, and reset removes both URL param sets', async () => {
+      const url = new URLSearchParams();
+      ['first', 'second', 'third'].forEach(filter => url.append('filter', filter));
+      url.append('disabled_filter', 'second');
+      setMockUrl(url);
+      makeMockSetParamsUpdateUrl();
+
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            filters: ctx.filters,
+            disabledFilterIndexes: ctx.disabledFilterIndexes,
+            setFilter: ctx.setFilter,
+            removeFilter: ctx.removeFilter,
+            resetFilters: ctx.resetFilters
+          })),
+        { wrapper: Wrapper }
+      );
+
+      await act(async () => hook.result.current.setFilter(1, 'edited'));
+      await waitFor(() => expect(mockSearchParams.getAll('disabled_filter')).toEqual(['edited']));
+      expect(mockSearchParams.getAll('filter')).toEqual(['first', 'edited', 'third']);
+      expect(hook.result.current.disabledFilterIndexes).toEqual([1]);
+      hook.rerender();
+
+      await act(async () => hook.result.current.removeFilter('first'));
+      await waitFor(() => expect(mockSearchParams.getAll('filter')).toEqual(['edited', 'third']));
+      expect(mockSearchParams.getAll('disabled_filter')).toEqual(['edited']);
+      expect(hook.result.current.disabledFilterIndexes).toEqual([0]);
+      hook.rerender();
+
+      await act(async () => hook.result.current.resetFilters());
+      await waitFor(() => {
+        expect(mockSearchParams.getAll('filter')).toEqual([]);
+        expect(mockSearchParams.getAll('disabled_filter')).toEqual([]);
+      });
+      expect(hook.result.current.disabledFilterIndexes).toEqual([]);
+    });
+
+    it('normalizes duplicate filter definitions jointly with their disabled markers', async () => {
+      const url = new URLSearchParams();
+      url.append('filter', 'duplicate');
+      url.append('filter', 'duplicate');
+      url.append('filter', 'other');
+      url.append('disabled_filter', 'duplicate');
+      url.append('disabled_filter', 'other');
+      setMockUrl(url);
+      makeMockSetParamsUpdateUrl();
+
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            filters: ctx.filters,
+            disabledFilterIndexes: ctx.disabledFilterIndexes
+          })),
+        { wrapper: Wrapper }
+      );
+
+      expect(hook.result.current.filters).toEqual(['duplicate', 'other']);
+      expect(hook.result.current.disabledFilterIndexes).toEqual([1]);
+      await waitFor(() => expect(mockSearchParams.getAll('filter')).toEqual(['duplicate', 'other']));
+      expect(mockSearchParams.getAll('disabled_filter')).toEqual(['other']);
+
+      const allDisabledUrl = new URLSearchParams();
+      allDisabledUrl.append('filter', 'duplicate');
+      allDisabledUrl.append('filter', 'duplicate');
+      allDisabledUrl.append('disabled_filter', 'duplicate');
+      allDisabledUrl.append('disabled_filter', 'duplicate');
+      setMockUrl(allDisabledUrl);
+      hook.rerender();
+
+      await waitFor(() => {
+        expect(hook.result.current.filters).toEqual(['duplicate']);
+        expect(hook.result.current.disabledFilterIndexes).toEqual([0]);
+        expect(mockSearchParams.getAll('disabled_filter')).toEqual(['duplicate']);
       });
     });
   });

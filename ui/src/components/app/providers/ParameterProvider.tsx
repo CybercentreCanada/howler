@@ -1,5 +1,5 @@
 import type { SearchIndex } from 'api/v2/search';
-import { identity, isEmpty, isEqual, isNil, isUndefined, omitBy, uniq } from 'lodash-es';
+import { has, identity, isEmpty, isEqual, isNil, isUndefined, omitBy, uniq } from 'lodash-es';
 import type { Dispatch, FC, PropsWithChildren, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useParams, useSearchParams } from 'react-router';
@@ -17,6 +17,7 @@ export interface ParameterContextType {
   span?: string;
   indexes?: SearchIndex[];
   filters?: string[];
+  disabledFilterIndexes: number[];
   startDate?: string | null;
   endDate?: string | null;
   views?: string[];
@@ -31,6 +32,7 @@ export interface ParameterContextType {
   addFilter: (filter: string) => void;
   removeFilter: (filter: string) => void;
   setFilter: (index: number, filter: string) => void;
+  setFilterDisabled: (index: number, disabled: boolean) => void;
   resetFilters: () => void;
 
   addIndex: (index: SearchIndex) => void;
@@ -52,6 +54,7 @@ interface SearchValues {
   span: string;
   indexes: SearchIndex[];
   filters: string[];
+  disabledFilterIndexes: number[];
   views: string[];
   startDate: string | null;
   endDate: string | null;
@@ -72,6 +75,7 @@ const DEFAULT_PARAMETER_CONTEXT: ParameterContextType = {
   offset: 0,
   trackTotalHits: false,
   filters: [],
+  disabledFilterIndexes: [],
   startDate: null,
   endDate: null,
   views: [],
@@ -84,6 +88,7 @@ const DEFAULT_PARAMETER_CONTEXT: ParameterContextType = {
   addFilter: () => missingContext('ParameterContext'),
   removeFilter: () => missingContext('ParameterContext'),
   setFilter: () => missingContext('ParameterContext'),
+  setFilterDisabled: () => missingContext('ParameterContext'),
   resetFilters: () => missingContext('ParameterContext'),
   addIndex: () => missingContext('ParameterContext'),
   removeIndex: () => missingContext('ParameterContext'),
@@ -119,7 +124,7 @@ const ARRAY_PARAMS: ArrayParamDescriptor[] = [
   { urlKey: 'index', stateKey: 'indexes' }
 ];
 
-const ARRAY_URL_KEYS = new Set(ARRAY_PARAMS.map(p => p.urlKey));
+const ARRAY_URL_KEYS = new Set([...ARRAY_PARAMS.map(p => p.urlKey), 'disabled_filter']);
 
 const WRITE_THROTTLER = new Throttler(100);
 
@@ -209,6 +214,52 @@ const useListHandlers = <T,>(
   return { add, remove, setAt, setAll, reset };
 };
 
+const normalizeFilters = (filters: string[], disabledIndexes: number[]) => {
+  const indexesByFilter = new Map<string, number>();
+  const normalizedFilters: string[] = [];
+  const normalizedDisabled: boolean[] = [];
+
+  filters.forEach((filter, index) => {
+    const normalizedIndex = indexesByFilter.get(filter);
+    const isDisabled = disabledIndexes.includes(index);
+    if (normalizedIndex === undefined) {
+      const nextIndex = normalizedFilters.length;
+      indexesByFilter.set(filter, nextIndex);
+      normalizedFilters.push(filter);
+      normalizedDisabled[nextIndex] = isDisabled;
+      return;
+    }
+
+    normalizedDisabled[normalizedIndex] = normalizedDisabled[normalizedIndex] && isDisabled;
+  });
+
+  return {
+    filters: normalizedFilters,
+    disabledFilterIndexes: normalizedDisabled.flatMap((isDisabled, index) => (isDisabled ? [index] : []))
+  };
+};
+
+const getFilterStateFromUrl = (params: URLSearchParams) => {
+  const rawFilters = params.getAll('filter');
+  const disabledFilterCounts = new Map<string, number>();
+  const filterCounts = new Map<string, number>();
+
+  params.getAll('disabled_filter').forEach(filter => {
+    disabledFilterCounts.set(filter, (disabledFilterCounts.get(filter) ?? 0) + 1);
+  });
+  rawFilters.forEach(filter => {
+    filterCounts.set(filter, (filterCounts.get(filter) ?? 0) + 1);
+  });
+
+  const filters = uniq(rawFilters);
+  return {
+    filters,
+    disabledFilterIndexes: filters.flatMap((filter, index) =>
+      (disabledFilterCounts.get(filter) ?? 0) >= (filterCounts.get(filter) ?? 0) ? [index] : []
+    )
+  };
+};
+
 /**
  * Synchronizes SearchValues state with the URL search string, and vice-versa.
  */
@@ -222,8 +273,11 @@ const useUrlSync = (
   search: string,
   routeId?: string
 ) => {
+  const lastProcessedLocation = useRef({ pathname, search, routeId });
+
   const getUrlFromState = useCallback(() => {
     const changes: Record<string, unknown> = {};
+    const filterState = normalizeFilters(values.filters, values.disabledFilterIndexes);
 
     // Scalar params: write if changed from URL, remove if back to default
     PARAM_MAPPINGS.forEach(([urlKey, stateKey]) => {
@@ -242,7 +296,7 @@ const useUrlSync = (
 
     // Array params: skip when state equals default and URL is already empty
     ARRAY_PARAMS.forEach(({ urlKey, stateKey }) => {
-      const stateArr = values[stateKey] as string[];
+      const stateArr = (stateKey === 'filters' ? filterState.filters : values[stateKey]) as string[];
       const urlArr = params.getAll(urlKey);
       const defaultValue = stateKey === 'indexes' ? defaults.indexes : undefined;
       if (isEqual(stateArr, urlArr)) {
@@ -256,6 +310,12 @@ const useUrlSync = (
         changes[urlKey] = null; // state is default but URL isn't — remove
       }
     });
+
+    // Store disabled definitions separately so links retain every filter and its enabled state.
+    const disabledFilterParams = filterState.disabledFilterIndexes.map(index => filterState.filters[index]);
+    if (!isEqual(disabledFilterParams, params.getAll('disabled_filter'))) {
+      changes.disabled_filter = disabledFilterParams.length === 0 ? null : disabledFilterParams;
+    }
 
     // selected
     if (pathname.startsWith('/bundles') && (!params.has('selected') || values.selected === params.get('selected'))) {
@@ -275,6 +335,7 @@ const useUrlSync = (
 
   const getStateFromUrl = useCallback(() => {
     const changes: Partial<SearchValues> = {};
+    const filterState = getFilterStateFromUrl(params);
 
     // Scalar params: fall back to default when absent from URL
     PARAM_MAPPINGS.forEach(([urlKey, stateKey]) => {
@@ -290,6 +351,16 @@ const useUrlSync = (
 
     // Array params: fall back to their declared default when absent from URL
     ARRAY_PARAMS.forEach(({ urlKey, stateKey }) => {
+      if (stateKey === 'filters') {
+        if (!isEqual(filterState.filters, values.filters)) {
+          changes.filters = filterState.filters;
+        }
+        if (!isEqual(filterState.disabledFilterIndexes, values.disabledFilterIndexes)) {
+          changes.disabledFilterIndexes = filterState.disabledFilterIndexes;
+        }
+        return;
+      }
+
       const raw = params.getAll(urlKey);
       const defaultValue = stateKey === 'indexes' ? defaults.indexes : undefined;
       const resolved = (isEmpty(raw) && defaultValue ? defaultValue : uniq(raw)) as SearchValues[typeof stateKey];
@@ -315,6 +386,10 @@ const useUrlSync = (
 
   // State → URL
   useEffect(() => {
+    if (!isEqual(lastProcessedLocation.current, { pathname, search, routeId })) {
+      return;
+    }
+
     const changes = getUrlFromState();
     if (isEmpty(changes)) {
       return;
@@ -335,13 +410,14 @@ const useUrlSync = (
         });
         return newParams;
       },
-      { replace: !changes.query && !Object.keys(changes).includes('offset') }
+      { replace: !changes.query && !has(changes, 'offset') }
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [values]);
 
   // URL → State
   useEffect(() => {
+    lastProcessedLocation.current = { pathname, search, routeId };
     const changes = getStateFromUrl();
     if (isEmpty(changes)) {
       return;
@@ -372,7 +448,7 @@ const ParameterProvider: FC<PropsWithChildren<{ defaults?: Partial<SearchValues>
     sort: params.get('sort') ?? defaults.sort!,
     span: params.get('span') ?? defaults.span!,
     indexes: params.has('index') ? uniq(params.getAll('index') as SearchIndex[]).filter(identity) : defaults.indexes!,
-    filters: params.getAll('filter'),
+    ...getFilterStateFromUrl(params),
     views: params.getAll('view'),
     startDate: params.get('start_date'),
     endDate: params.get('end_date'),
@@ -423,6 +499,78 @@ const ParameterProvider: FC<PropsWithChildren<{ defaults?: Partial<SearchValues>
   const indexes = useListHandlers<SearchIndex>('indexes', _setValues);
   const views = useListHandlers<string>('views', _setValues);
 
+  const setFilter = useCallback(
+    (index: number, filter: string) =>
+      _setValues(current => {
+        if (!Number.isInteger(index) || index < 0 || index >= current.filters.length) {
+          return current;
+        }
+
+        const filters = [...current.filters];
+        filters[index] = filter;
+        const normalized = normalizeFilters(filters, current.disabledFilterIndexes);
+        return isEqual(normalized.filters, current.filters) &&
+          isEqual(normalized.disabledFilterIndexes, current.disabledFilterIndexes)
+          ? current
+          : { ...current, ...normalized };
+      }),
+    []
+  );
+
+  const removeFilter = useCallback(
+    (filter: string) =>
+      _setValues(current => {
+        const index = current.filters.indexOf(filter);
+        if (index === -1) {
+          return current;
+        }
+
+        return {
+          ...current,
+          ...normalizeFilters(
+            current.filters.filter((_, currentIndex) => currentIndex !== index),
+            current.disabledFilterIndexes.flatMap(disabledIndex => {
+              if (disabledIndex === index) {
+                return [];
+              }
+              return [disabledIndex > index ? disabledIndex - 1 : disabledIndex];
+            })
+          )
+        };
+      }),
+    []
+  );
+
+  const setFilterDisabled = useCallback(
+    (index: number, disabled: boolean) =>
+      _setValues(current => {
+        if (!Number.isInteger(index) || index < 0 || index >= current.filters.length) {
+          return current;
+        }
+
+        const isDisabled = current.disabledFilterIndexes.includes(index);
+        if (isDisabled === disabled) {
+          return current;
+        }
+
+        const disabledFilterIndexes = disabled
+          ? [...current.disabledFilterIndexes, index].sort((a, b) => a - b)
+          : current.disabledFilterIndexes.filter(disabledIndex => disabledIndex !== index);
+        return { ...current, ...normalizeFilters(current.filters, disabledFilterIndexes) };
+      }),
+    []
+  );
+
+  const resetFilters = useCallback(
+    () =>
+      _setValues(current =>
+        current.filters.length === 0 && current.disabledFilterIndexes.length === 0
+          ? current
+          : { ...current, filters: [], disabledFilterIndexes: [] }
+      ),
+    []
+  );
+
   return (
     <ParameterContext.Provider
       value={{
@@ -437,9 +585,10 @@ const ParameterProvider: FC<PropsWithChildren<{ defaults?: Partial<SearchValues>
         setSpan: useMemo(() => set('span'), [set]),
 
         addFilter: filters.add,
-        removeFilter: filters.remove,
-        setFilter: filters.setAt,
-        resetFilters: filters.reset,
+        removeFilter,
+        setFilter,
+        setFilterDisabled,
+        resetFilters,
 
         addIndex: indexes.add,
         removeIndex: indexes.remove,

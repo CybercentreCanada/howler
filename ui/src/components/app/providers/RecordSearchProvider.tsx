@@ -52,6 +52,7 @@ export interface RecordSearchContextType {
 export const RecordSearchContext = createContext<RecordSearchContextType>(null!);
 
 const THROTTLER = new Throttler(500);
+const isEffectiveFilter = (filter: string) => filter.startsWith('-') || !filter.endsWith('*');
 
 const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const { get } = useMyLocalStorage();
@@ -71,6 +72,7 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
   const indexes = useContextSelector(ParameterContext, ctx => ctx.indexes);
   const allFilters = useContextSelector(ParameterContext, ctx => ctx.filters);
+  const disabledFilterIndexes = useContextSelector(ParameterContext, ctx => ctx.disabledFilterIndexes);
   const startDate = useContextSelector(ParameterContext, ctx => ctx.startDate);
   const endDate = useContextSelector(ParameterContext, ctx => ctx.endDate);
   const views = useContextSelector(ParameterContext, ctx => ctx.views);
@@ -88,8 +90,14 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const [fzfSearch, setFzfSearch] = useState<boolean>(false);
 
   const filters = useMemo(
-    () => (allFilters ?? []).filter(filter => filter.startsWith('-') || !filter.endsWith('*')),
-    [allFilters]
+    () =>
+      (allFilters ?? []).filter(
+        (filter, index) => !disabledFilterIndexes?.includes(index) && isEffectiveFilter(filter)
+      ),
+    [allFilters, disabledFilterIndexes]
+  );
+  const hasDisabledFilters = (allFilters ?? []).some(
+    (filter, index) => disabledFilterIndexes?.includes(index) && isEffectiveFilter(filter)
   );
 
   // On load check to filter out any queries older than one month
@@ -232,14 +240,27 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       return;
     }
 
-    if (views?.length || (query && query !== DEFAULT_QUERY) || offset > 0 || filters.length > 0) {
+    if (views?.length || (query && query !== DEFAULT_QUERY) || offset > 0 || filters.length > 0 || hasDisabledFilters) {
       void search(query);
     } else {
       setResponse(null);
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offset, pageCount, sort, span, indexes, location.pathname, startDate, endDate, filters, query, views]);
+  }, [
+    offset,
+    pageCount,
+    sort,
+    span,
+    indexes,
+    location.pathname,
+    startDate,
+    endDate,
+    filters,
+    query,
+    views,
+    hasDisabledFilters
+  ]);
 
   return (
     <RecordSearchContext.Provider

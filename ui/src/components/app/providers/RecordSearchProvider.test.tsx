@@ -5,7 +5,7 @@ import { cloneDeep } from 'lodash-es';
 import { setupContextSelectorMock, setupLocalStorageMock } from 'tests/mocks';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, MY_LOCAL_STORAGE_PREFIX, StorageKey } from 'utils/constants';
-import { ParameterContext, type ParameterContextType } from './ParameterProvider';
+import ParameterProvider, { ParameterContext, type ParameterContextType } from './ParameterProvider';
 import { RecordContext, type RecordContextType } from './RecordProvider';
 import RecordSearchProvider, { RecordSearchContext } from './RecordSearchProvider';
 import { ViewContext, type ViewContextType } from './ViewProvider';
@@ -20,6 +20,7 @@ import { useLocation, useParams, useSearchParams } from 'react-router';
 const mockSetParams = vi.fn();
 const mockParams = vi.mocked(useParams);
 const mockLocation = vi.mocked(useLocation());
+let mockSearchParams = new URLSearchParams();
 
 const mockViewContext: Partial<ViewContextType> = {
   getCurrentViews: ({ views } = {}) =>
@@ -30,6 +31,7 @@ let mockParameterContext: Partial<ParameterContextType> = {
   span: 'date.range.1.week',
   sort: 'event.created desc',
   query: 'howler.analytic:*',
+  disabledFilterIndexes: [],
   setQuery: query => (mockParameterContext.query = query),
   offset: 0,
   setOffset: offset => {
@@ -63,13 +65,25 @@ const Wrapper = ({ children }) => {
   );
 };
 
+const ParameterProviderWrapper = ({ children }) => {
+  return (
+    <ViewContext.Provider value={mockViewContext as any}>
+      <ParameterProvider>
+        <RecordContext.Provider value={mockHitContext as any}>
+          <RecordSearchProvider>{children}</RecordSearchProvider>
+        </RecordContext.Provider>
+      </ParameterProvider>
+    </ViewContext.Provider>
+  );
+};
+
 beforeEach(() => {
   mockParameterContext = cloneDeep(originalMockParameterContext);
   vi.mocked(originalMockParameterContext.addView).mockClear();
 
   mockLocalStorage.clear();
 
-  mockSetParams.mockClear();
+  mockSetParams.mockReset();
 
   mockLocation.pathname = '/hits';
   mockLocation.search = '';
@@ -78,7 +92,7 @@ beforeEach(() => {
 
   vi.mocked(hpost).mockClear();
 
-  let mockSearchParams = new URLSearchParams();
+  mockSearchParams = new URLSearchParams();
   vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
 });
 
@@ -89,6 +103,18 @@ const expectSearchRequest = request => {
     .map(([, body]) => body);
 
   expect(requests).toEqual(expect.arrayContaining([expect.objectContaining(request)]));
+};
+
+const makeMockSetParamsUpdateUrl = () => {
+  mockSetParams.mockImplementation(nextParams => {
+    const replacement = typeof nextParams === 'function' ? nextParams(mockSearchParams) : nextParams;
+    const updatedParams = new URLSearchParams(replacement);
+    for (const key of [...mockSearchParams.keys()]) {
+      mockSearchParams.delete(key);
+    }
+    updatedParams.forEach((value, key) => mockSearchParams.append(key, value));
+    mockLocation.search = `?${mockSearchParams.toString()}`;
+  });
 };
 
 describe('RecordSearchContext', () => {
@@ -198,6 +224,234 @@ describe('RecordSearchContext', () => {
 
       expect(filters).toContain('-howler.assessment:*');
       expect(filters).not.toContain('howler.assessment:*');
+    });
+
+    it('should omit disabled filters from the effective search request without changing enabled negative filters', async () => {
+      mockParameterContext.filters = ['howler.status:open', '-howler.assessment:*'];
+      mockParameterContext.disabledFilterIndexes = [0];
+
+      const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.search), { wrapper: Wrapper });
+
+      act(() => {
+        hook.result.current('test query');
+      });
+
+      await waitFor(() => {
+        expectSearchRequest({
+          query: 'test query',
+          filters: expect.arrayContaining(['-howler.assessment:*'])
+        });
+        expectSearchRequest({ filters: expect.not.arrayContaining(['howler.status:open']) });
+      });
+    });
+
+    it('applies copied-link disabled markers to the effective search on load', async () => {
+      const filters = [
+        'event.provider:"azure"',
+        '-howler.outline.indicators:("a" OR "b")',
+        'opaque clause [x TO y]',
+        'howler.status:open'
+      ];
+      filters.forEach(filter => mockSearchParams.append('filter', filter));
+      filters.slice(0, 3).forEach(filter => mockSearchParams.append('disabled_filter', filter));
+      mockLocation.search = `?${mockSearchParams.toString()}`;
+
+      const hook = renderHook(
+        () => ({
+          filters: useContextSelector(ParameterContext, ctx => ctx.filters),
+          disabledFilterIndexes: useContextSelector(ParameterContext, ctx => ctx.disabledFilterIndexes),
+          getFilters: useContextSelector(RecordSearchContext, ctx => ctx.getFilters),
+          search: useContextSelector(RecordSearchContext, ctx => ctx.search)
+        }),
+        { wrapper: ParameterProviderWrapper }
+      );
+
+      expect(hook.result.current.filters).toEqual(filters);
+      expect(hook.result.current.disabledFilterIndexes).toEqual([0, 1, 2]);
+      const effectiveFilters = await hook.result.current.getFilters();
+      expect(effectiveFilters).toContain('howler.status:open');
+      filters.slice(0, 3).forEach(filter => expect(effectiveFilters).not.toContain(filter));
+
+      await waitFor(() => {
+        expectSearchRequest({
+          query: DEFAULT_QUERY,
+          filters: expect.arrayContaining(['howler.status:open'])
+        });
+        expectSearchRequest({
+          filters: expect.not.arrayContaining(filters.slice(0, 3))
+        });
+      });
+    });
+
+    it('runs the default search when a copied link loads with only disabled effective filters', async () => {
+      const filter = 'howler.status:open';
+      mockSearchParams.append('filter', filter);
+      mockSearchParams.append('disabled_filter', filter);
+      mockLocation.search = `?${mockSearchParams.toString()}`;
+
+      const hook = renderHook(
+        () => ({
+          filters: useContextSelector(ParameterContext, ctx => ctx.filters),
+          disabledFilterIndexes: useContextSelector(ParameterContext, ctx => ctx.disabledFilterIndexes)
+        }),
+        { wrapper: ParameterProviderWrapper }
+      );
+
+      expect(hook.result.current.filters).toEqual([filter]);
+      expect(hook.result.current.disabledFilterIndexes).toEqual([0]);
+      await waitFor(() => {
+        expectSearchRequest({
+          query: DEFAULT_QUERY,
+          filters: expect.not.arrayContaining([filter])
+        });
+      });
+    });
+
+    it('gives an immutable marker-only URL navigation precedence over a debounced query update', async () => {
+      mockSearchParams.append('filter', 'filter:a');
+      mockSearchParams.append('filter', 'filter:b');
+      mockSearchParams.set('query', 'incoming query');
+      mockLocation.search = `?${mockSearchParams.toString()}`;
+
+      const writes: string[] = [];
+      const snapshots: URLSearchParams[] = [];
+      vi.mocked(useSearchParams).mockImplementation(() => {
+        const snapshot = new URLSearchParams(mockLocation.search);
+        snapshots.push(snapshot);
+        const setParamsForSnapshot = nextParams => {
+          const next = typeof nextParams === 'function' ? nextParams(snapshot) : nextParams;
+          writes.push(new URLSearchParams(next).toString());
+        };
+        return [snapshot, setParamsForSnapshot] as any;
+      });
+
+      const hook = renderHook(
+        () => ({
+          query: useContextSelector(ParameterContext, ctx => ctx.query),
+          filters: useContextSelector(ParameterContext, ctx => ctx.filters),
+          disabledFilterIndexes: useContextSelector(ParameterContext, ctx => ctx.disabledFilterIndexes),
+          setQuery: useContextSelector(ParameterContext, ctx => ctx.setQuery),
+          getFilters: useContextSelector(RecordSearchContext, ctx => ctx.getFilters)
+        }),
+        { wrapper: ParameterProviderWrapper }
+      );
+
+      act(() => hook.result.current.setQuery('local query'));
+      const incomingUrl = new URLSearchParams(mockLocation.search);
+      incomingUrl.append('disabled_filter', 'filter:a');
+      mockLocation.search = `?${incomingUrl.toString()}`;
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 150));
+      });
+
+      expect(hook.result.current.query).toBe('incoming query');
+      expect(hook.result.current.filters).toEqual(['filter:a', 'filter:b']);
+      expect(hook.result.current.disabledFilterIndexes).toEqual([0]);
+      const effectiveFilters = await hook.result.current.getFilters();
+      expect(effectiveFilters).toContain('filter:b');
+      expect(effectiveFilters).not.toContain('filter:a');
+      expect(writes).toEqual([]);
+
+      await waitFor(() => {
+        expectSearchRequest({
+          query: 'incoming query',
+          filters: expect.arrayContaining(['filter:b'])
+        });
+        expectSearchRequest({ filters: expect.not.arrayContaining(['filter:a']) });
+      });
+
+      hook.rerender();
+      hook.rerender();
+      expect(mockLocation.search).toBe(`?${incomingUrl.toString()}`);
+      expect(hook.result.current.disabledFilterIndexes).toEqual([0]);
+      expect(writes).toEqual([]);
+      expect(snapshots.length).toBeGreaterThan(1);
+      expect(snapshots[snapshots.length - 1]).not.toBe(snapshots[snapshots.length - 2]);
+    });
+
+    it('keeps the surviving disabled filter excluded after an edit creates duplicate definitions', async () => {
+      mockSearchParams.append('filter', 'filter:a');
+      mockSearchParams.append('filter', 'filter:b');
+      mockLocation.search = '?filter=filter%3Aa&filter=filter%3Ab';
+      makeMockSetParamsUpdateUrl();
+
+      const hook = renderHook(
+        () => ({
+          filters: useContextSelector(ParameterContext, ctx => ctx.filters),
+          disabledFilterIndexes: useContextSelector(ParameterContext, ctx => ctx.disabledFilterIndexes),
+          setFilterDisabled: useContextSelector(ParameterContext, ctx => ctx.setFilterDisabled),
+          setFilter: useContextSelector(ParameterContext, ctx => ctx.setFilter),
+          search: useContextSelector(RecordSearchContext, ctx => ctx.search)
+        }),
+        { wrapper: ParameterProviderWrapper }
+      );
+
+      await act(async () => {
+        hook.result.current.setFilterDisabled(0, true);
+        hook.result.current.setFilterDisabled(1, true);
+        hook.result.current.setFilter(0, 'filter:b');
+      });
+      await act(async () => hook.rerender());
+
+      await waitFor(() => {
+        expect(hook.result.current.filters).toEqual(['filter:b']);
+        expect(hook.result.current.disabledFilterIndexes).toEqual([0]);
+        expect(mockSearchParams.getAll('filter')).toEqual(['filter:b']);
+        expect(mockSearchParams.getAll('disabled_filter')).toEqual(['filter:b']);
+      });
+
+      vi.mocked(hpost).mockClear();
+      act(() => {
+        hook.result.current.search();
+      });
+
+      await waitFor(() => {
+        expectSearchRequest({ filters: expect.not.arrayContaining(['filter:b']) });
+      });
+    });
+
+    it('keeps a duplicate filter effective when any collapsed occurrence was enabled', async () => {
+      mockSearchParams.append('filter', 'filter:a');
+      mockSearchParams.append('filter', 'filter:b');
+      mockLocation.search = '?filter=filter%3Aa&filter=filter%3Ab';
+      makeMockSetParamsUpdateUrl();
+
+      const hook = renderHook(
+        () => ({
+          filters: useContextSelector(ParameterContext, ctx => ctx.filters),
+          disabledFilterIndexes: useContextSelector(ParameterContext, ctx => ctx.disabledFilterIndexes),
+          setFilterDisabled: useContextSelector(ParameterContext, ctx => ctx.setFilterDisabled),
+          setFilter: useContextSelector(ParameterContext, ctx => ctx.setFilter),
+          getFilters: useContextSelector(RecordSearchContext, ctx => ctx.getFilters),
+          search: useContextSelector(RecordSearchContext, ctx => ctx.search)
+        }),
+        { wrapper: ParameterProviderWrapper }
+      );
+
+      await act(async () => {
+        hook.result.current.setFilterDisabled(0, true);
+        hook.result.current.setFilter(0, 'filter:b');
+      });
+      await act(async () => hook.rerender());
+
+      await waitFor(() => {
+        expect(hook.result.current.filters).toEqual(['filter:b']);
+        expect(hook.result.current.disabledFilterIndexes).toEqual([]);
+        expect(mockSearchParams.getAll('filter')).toEqual(['filter:b']);
+        expect(mockSearchParams.getAll('disabled_filter')).toEqual([]);
+      });
+
+      expect(await hook.result.current.getFilters()).toContain('filter:b');
+
+      vi.mocked(hpost).mockClear();
+      act(() => {
+        hook.result.current.search();
+      });
+
+      await waitFor(() => {
+        expectSearchRequest({ filters: expect.arrayContaining(['filter:b']) });
+      });
     });
 
     it('should perform a search and update response', async () => {
@@ -516,6 +770,52 @@ describe('RecordSearchContext', () => {
         },
         { timeout: 2000 }
       );
+    });
+
+    it('should refresh results when disabling the last effective filter', async () => {
+      mockParameterContext.query = DEFAULT_QUERY;
+      mockParameterContext.views = [];
+      mockParameterContext.filters = ['howler.status:open'];
+
+      const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.response), { wrapper: Wrapper });
+
+      await waitFor(() => {
+        expectSearchRequest({ filters: expect.arrayContaining(['howler.status:open']) });
+      });
+
+      vi.mocked(hpost).mockClear();
+      mockParameterContext.disabledFilterIndexes = [0];
+      hook.rerender();
+
+      await waitFor(() => {
+        expectSearchRequest({
+          query: DEFAULT_QUERY,
+          filters: expect.not.arrayContaining(['howler.status:open'])
+        });
+      });
+
+      vi.mocked(hpost).mockClear();
+      mockParameterContext.disabledFilterIndexes = [];
+      hook.rerender();
+
+      await waitFor(() => {
+        expectSearchRequest({
+          query: DEFAULT_QUERY,
+          filters: expect.arrayContaining(['howler.status:open'])
+        });
+      });
+    });
+
+    it('does not search when only a disabled positive wildcard placeholder remains', async () => {
+      mockParameterContext.query = DEFAULT_QUERY;
+      mockParameterContext.views = [];
+      mockParameterContext.filters = ['howler.assessment:*'];
+      mockParameterContext.disabledFilterIndexes = [0];
+
+      renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.response), { wrapper: Wrapper });
+
+      await new Promise(resolve => setTimeout(resolve, 600));
+      expect(hpost).not.toHaveBeenCalled();
     });
 
     it('should not trigger search when query is DEFAULT_QUERY', async () => {

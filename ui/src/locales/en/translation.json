@@ -247,6 +247,8 @@
   "hit.search.custom": "Custom Sort",
   "hit.search.filter.add": "Add filter",
   "hit.search.filter.button": "Use lookup filters with predefined values",
+  "hit.search.filter.disable": "Temporarily disable filter",
+  "hit.search.filter.enable": "Re-enable filter",
   "hit.search.filter.exclude": "Omit by this filter",
   "hit.search.filter.excluded": "Omitting by",
   "hit.search.filter.fields": "Fields",

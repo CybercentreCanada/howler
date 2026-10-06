@@ -129,6 +129,9 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
 
   const setSavedFilter = useContextSelector(ParameterContext, ctx => ctx.setFilter);
   const removeSavedFilter = useContextSelector(ParameterContext, ctx => ctx.removeFilter);
+  const disabledFilterIndexes = useContextSelector(ParameterContext, ctx => ctx.disabledFilterIndexes);
+  const setFilterDisabled = useContextSelector(ParameterContext, ctx => ctx.setFilterDisabled);
+  const disabled = disabledFilterIndexes?.includes(id) ?? false;
 
   const [parsedFilter, setParsedFilter] = useState(() => parseFilter(value));
   const [previousValue, setPreviousValue] = useState(value);
@@ -231,6 +234,7 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
   return (
     <Stack direction="row" alignItems="center" spacing={0.5}>
       <ChipPopper
+        dimmed={disabled}
         icon={
           <Stack direction="row" spacing={0.25} alignItems="center">
             <FilterList fontSize="small" />
@@ -251,6 +255,16 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
         slotProps={{ chip: { size: 'small', color: parsedFilter.wildcard ? 'warning' : 'default' } }}
       >
         <Stack spacing={1} sx={{ minWidth: '225px' }}>
+          <FormControlLabel
+            label={t(disabled ? 'hit.search.filter.enable' : 'hit.search.filter.disable')}
+            control={
+              <Checkbox
+                size="small"
+                checked={disabled}
+                onChange={(_event, checked) => setFilterDisabled(id, checked)}
+              />
+            }
+          />
           <FormControlLabel
             label={t('hit.search.filter.exclude')}
             control={<Checkbox size="small" checked={negated} onChange={toggleNegation} />}
