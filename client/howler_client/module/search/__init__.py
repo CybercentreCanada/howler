@@ -100,7 +100,7 @@ class Search(object):
         offset            : Offset at which the query items should start (integer)
         rows              : Number of records to return (integer)
         sort              : Field used for sorting with direction (string: ex. 'name asc')
-        timeout           : Max amount of miliseconds the query will run (integer)
+        timeout           : Max amount of milliseconds the query will run (integer)
         track_total_hits  : Number of actions to track (default: 10k)
 
         Returns the matching actions and search metadata.
