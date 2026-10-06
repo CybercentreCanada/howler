@@ -181,7 +181,7 @@ describe('HitSummary', () => {
       .mockResolvedValueOnce({ analytic: 'Analytic A', detection: 'Rule B', keys: ['event.created'] });
     mockDispatchApi
       .mockResolvedValueOnce({
-        severity: { high: 2, low: 1 },
+        severity: { high: 2, low: 1, 'critical:high': 3 },
         'event.created': { '2026-01-01T00:00:00Z': 1, '2026-01-02T00:00:00Z': 1 }
       })
       .mockResolvedValueOnce({
@@ -219,6 +219,8 @@ describe('HitSummary', () => {
 
     fireEvent.click(screen.getByText('high (2)'));
     expect(mockAddFilter).toHaveBeenCalledWith('severity:"high"');
+    fireEvent.click(screen.getByText('critical:high (3)'));
+    expect(mockAddFilter).toHaveBeenCalledWith('severity:"critical\\:high"');
     expect(mockSetQuery).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByLabelText('date-aggregation-chip'));
