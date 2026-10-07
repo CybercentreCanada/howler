@@ -111,7 +111,7 @@ describe('Clue Provider', () => {
         chunkSize: 25,
         replicate: true,
         storageType: 'memory'
-      } //
+      }
     );
 
     await waitFor(() => {
