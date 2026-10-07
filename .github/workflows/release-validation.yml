@@ -1,0 +1,93 @@
+name: Validate native release metadata
+
+on:
+  workflow_call:
+    inputs:
+      component:
+        description: Native package name
+        required: true
+        type: string
+      component_dir:
+        description: Repository path containing the package metadata
+        required: true
+        type: string
+      tag_prefix:
+        description: Component-specific stable release tag prefix
+        required: true
+        type: string
+      allow_main_preview:
+        description: Validate main pushes for preview artifact publication
+        required: false
+        default: false
+        type: boolean
+      publish_release:
+        description: Publish stable artifacts from a verified native component tag
+        required: false
+        default: false
+        type: boolean
+    outputs:
+      channel:
+        description: Validated publication channel (none, preview, or stable)
+        value: ${{ jobs.release_validation.outputs.channel }}
+      version:
+        description: Validated native component version
+        value: ${{ jobs.release_validation.outputs.version }}
+      tag:
+        description: Validated stable component tag
+        value: ${{ jobs.release_validation.outputs.tag }}
+
+permissions:
+  contents: read
+
+jobs:
+  release_validation:
+    name: Validate native release metadata
+    if: >-
+      (github.event_name == 'push' && github.event.deleted != true &&
+        ((github.ref == 'refs/heads/main' && inputs.allow_main_preview) ||
+          startsWith(github.ref, format('refs/tags/{0}', inputs.tag_prefix)))) ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish_release)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      channel: ${{ steps.resolve.outputs.channel }}
+      version: ${{ steps.resolve.outputs.version }}
+      tag: ${{ steps.resolve.outputs.tag }}
+    steps:
+      - name: Checkout exact workflow revision and full history
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate native version and release ref
+        id: resolve
+        env:
+          COMPONENT: ${{ inputs.component }}
+          COMPONENT_DIR: ${{ inputs.component_dir }}
+          TAG_PREFIX: ${{ inputs.tag_prefix }}
+          ALLOW_MAIN_PREVIEW: ${{ inputs.allow_main_preview }}
+          GITHUB_EVENT_DELETED: ${{ github.event.deleted }}
+          PUBLISH_RELEASE: ${{ inputs.publish_release }}
+        run: python "$GITHUB_WORKSPACE/scripts/validate_release.py"
+      - name: Verify published GitHub Release for explicit dispatch
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release
+        uses: actions/github-script@v7
+        env:
+          RELEASE_TAG: ${{ steps.resolve.outputs.tag }}
+        with:
+          script: |
+            const tag = process.env.RELEASE_TAG;
+            if (!tag) throw new Error('Explicit stable dispatch did not resolve a native tag');
+            const { data: release } = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag,
+            });
+            if (release.tag_name !== tag || release.draft || release.prerelease || !release.published_at) {
+              throw new Error(`GitHub Release for ${tag} is not an exact, published stable release`);
+            }

@@ -1,57 +1,66 @@
 name: Howler UI
 
-# Trigger this workflow on:
-# - Push to main/develop/rc/patch branches when UI files change
-# - Pull requests targeting those branches with UI changes
-# - Manual workflow dispatch
-# - Version tags (v*)
 on:
   push:
     branches:
       - main
-      - develop
-      - rc/*
-      - patch/*
-    paths:
-      # Only run when UI-related files change
-      - "ui/**"
-      - "!ui/LICENSE"          # Ignore license changes
-      - "!ui/README.md"        # Ignore readme changes
-      - .github/workflows/ui-workflow.yml  # Run when this workflow changes
     tags:
-      - v*  # Run on version tags
-  pull_request:
-    branches:
-      - main
-      - develop
-      - rc/*
-      - patch/*
+      - ui-v*
     paths:
-      # Same path filters as push events
       - "ui/**"
       - "!ui/LICENSE"
       - "!ui/README.md"
-      - .github/workflows/ui-workflow.yml  # Run when this workflow changes
-  workflow_dispatch: {}  # Allow manual triggering
+      - .github/workflows/ui-workflow.yml
+      - .github/workflows/release-validation.yml
+      - scripts/validate_release.py
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "ui/**"
+      - "!ui/LICENSE"
+      - "!ui/README.md"
+      - .github/workflows/ui-workflow.yml
+      - .github/workflows/release-validation.yml
+      - scripts/validate_release.py
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: Publish stable artifacts from a verified native component tag
+        required: false
+        type: boolean
+        default: false
 
-# Required permissions for the workflow
 permissions:
-  contents: read           # Read repository contents
-  pull-requests: write     # Write coverage reports to PRs
+  contents: read
 
 jobs:
-  # Job 1: Code Quality Validation
-  # Runs linting, type checking, formatting checks, and unit tests
+  release_validation:
+    uses: ./.github/workflows/release-validation.yml
+    with:
+      component: ui
+      component_dir: ui
+      tag_prefix: ui-v
+      allow_main_preview: true
+      publish_release: ${{ inputs.publish_release }}
+    permissions:
+      contents: read
+
   formatting:
     name: Validate Howler UI Code Quality
-
+    if: github.event.deleted != true
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     defaults:
       run:
-        working-directory: ui  # All commands run in the ui/ directory
+        working-directory: ui
     steps:
       - name: Checkout current ref
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Install Node v24
         uses: actions/setup-node@v4
@@ -65,14 +74,14 @@ jobs:
 
       - name: Get pnpm store path
         id: pnpm-cache-dir
-        run: echo "PNPM_CACHE_DIR=$(pnpm store path)" >> $GITHUB_OUTPUT
+        run: echo "PNPM_CACHE_DIR=$(pnpm store path)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache@v4
         name: Define a cache for node_modules
         with:
           path: |
             ${{ steps.pnpm-cache-dir.outputs.PNPM_CACHE_DIR }}
-            ~/.pnpm-store # Fallback for older pnpm versions or specific configurations
+            ~/.pnpm-store
             ui/node_modules
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
@@ -96,234 +105,190 @@ jobs:
       - name: Run oxlint checks
         run: pnpm oxlint src
 
-      - name: Run unit Tests
+      - name: Run unit tests
         run: pnpm test
 
-      - name: Report Coverage
+      - name: Report coverage
+        if: github.event_name == 'pull_request'
         uses: davelosert/vitest-coverage-report-action@v2
         with:
           json-summary-path: ui/target/coverage/coverage-summary.json
           json-final-path: ui/target/coverage/coverage-final.json
 
-  # Job 2: NPM Package Publishing
-  # Builds and publishes the UI library to NPM registry
-  # Only runs on push events (not PRs) and after code quality validation passes
   push_npm_package:
-    if: github.event_name != 'pull_request'  # Skip for pull requests
-
+    if: needs.release_validation.outputs.channel == 'preview' || needs.release_validation.outputs.channel == 'stable'
     runs-on: ubuntu-latest
-
-    name: Publish Howler UI to NPM
-
+    name: Publish Howler UI to npm
     needs:
-      - formatting  # Wait for code quality job to complete successfully
-
+      - release_validation
+      - formatting
     defaults:
       run:
-        working-directory: ./ui
-
+        working-directory: ui
     permissions:
-      id-token: write       # Required for NPM provenance
-      contents: read        # Read repository contents
-      attestations: write   # Write build attestations
-
+      id-token: write
+      contents: read
+      attestations: write
     steps:
       - name: Checkout current ref
         uses: actions/checkout@v4
-
-      - name: Install pnpm v11
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11
-
       - name: Install Node v24
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          registry-url: 'https://registry.npmjs.org'  # Configure for NPM publishing
-
+      - name: Install pnpm v11
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - name: Set UI npm publication version
+        id: npm-version
+        env:
+          CHANNEL: ${{ needs.release_validation.outputs.channel }}
+          NATIVE_VERSION: ${{ needs.release_validation.outputs.version }}
+          RUN_NUMBER: ${{ github.run_number }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'package.json';
+          const pkg = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const stable = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
+          if (pkg.version !== process.env.NATIVE_VERSION || !stable.test(pkg.version)) {
+            throw new Error(`UI manifest ${pkg.version} does not match validated native version ${process.env.NATIVE_VERSION}`);
+          }
+          let version = pkg.version;
+          let npmTag = 'latest';
+          if (process.env.CHANNEL === 'preview') {
+            const [major, minor, patch] = version.split('.').map(BigInt);
+            version = `${major}.${minor}.${patch + 1n}-dev.${process.env.RUN_NUMBER}.${process.env.RUN_ATTEMPT}`;
+            pkg.version = version;
+            fs.writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`, 'utf8');
+            npmTag = 'development';
+          }
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\nnpm_tag=${npmTag}\n`);
+          NODE
       - name: Get pnpm store path
         id: pnpm-cache-dir
-        run: echo "PNPM_CACHE_DIR=$(pnpm store path)" >> $GITHUB_OUTPUT
-
+        run: echo "PNPM_CACHE_DIR=$(pnpm store path)" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v4
         name: Define a cache for node_modules
         with:
           path: |
             ${{ steps.pnpm-cache-dir.outputs.PNPM_CACHE_DIR }}
-            ~/.pnpm-store # Fallback for older pnpm versions or specific configurations
+            ~/.pnpm-store
             ui/node_modules
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
-
-      - name: Set Package Version
-        run: |
-          python scripts/set_version.py
-        env:
-          BRANCH: ${{ github.ref }}
-          BUILD_ID: ${{ github.run_number }}
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Build UI
+      - name: Clean previous library build output
+        run: rm -rf dist
+      - name: Build UI library
         run: pnpm build-lib
         env:
-          NODE_OPTIONS: --max-old-space-size=16384  # Increase memory for large builds
-
-      - name: Check Package Version Type
-        id: version-check
+          NODE_OPTIONS: --max-old-space-size=16384
+      - name: Verify built package version
+        env:
+          EXPECTED_VERSION: ${{ steps.npm-version.outputs.version }}
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION"
-
-          # Check for specific prerelease identifiers and set appropriate npm tag
-          if echo "$VERSION" | grep -qE '\-dev'; then
-            echo "is_prerelease=true" >> $GITHUB_OUTPUT
-            echo "npm_tag=development" >> $GITHUB_OUTPUT
-            echo "Detected development version: $VERSION (will publish with --tag development)"
-          elif echo "$VERSION" | grep -qE '\-rc'; then
-            echo "is_prerelease=true" >> $GITHUB_OUTPUT
-            echo "npm_tag=release-candidate" >> $GITHUB_OUTPUT
-            echo "Detected release candidate version: $VERSION (will publish with --tag release-candidate)"
-          elif echo "$VERSION" | grep -qE '\-patch'; then
-            echo "is_prerelease=true" >> $GITHUB_OUTPUT
-            echo "npm_tag=patch-prerelease" >> $GITHUB_OUTPUT
-            echo "Detected patch prerelease version: $VERSION (will publish with --tag patch-prerelease)"
-          elif echo "$VERSION" | grep -qE '\-cases'; then
-            echo "is_prerelease=true" >> $GITHUB_OUTPUT
-            echo "npm_tag=cases" >> $GITHUB_OUTPUT
-            echo "Detected cases version: $VERSION (will publish with --tag cases)"
-          else
-            echo "is_prerelease=false" >> $GITHUB_OUTPUT
-            echo "npm_tag=latest" >> $GITHUB_OUTPUT
-            echo "Detected standard release version: $VERSION (will publish with --tag latest)"
-          fi
+          node <<'NODE'
+          const fs = require('node:fs');
+          const expected = process.env.EXPECTED_VERSION;
+          const actual = JSON.parse(fs.readFileSync('dist/package.json', 'utf8')).version;
+          if (actual !== expected) throw new Error(`Built package version ${actual} does not match ${expected}`);
+          NODE
+      - name: Publish built package
+        run: pnpm publish --access public --no-git-checks --provenance --tag "$NPM_TAG"
         working-directory: ui/dist
+        env:
+          NPM_TAG: ${{ steps.npm-version.outputs.npm_tag }}
 
-      - name: Publish Built Package
-        run: |
-          npm publish --access public --tag ${{ steps.version-check.outputs.npm_tag }}
-        working-directory: ui/dist  # Publish from the built dist directory
-
-  # Job 3: Docker Image Build and Push
-  # Builds the UI application and creates a Docker image for deployment
-  # Only runs on push events (not PRs) and after code quality validation passes
   push_docker_image:
-    if: github.event_name != 'pull_request'  # Skip for pull requests
-
+    if: needs.release_validation.outputs.channel == 'preview' || needs.release_validation.outputs.channel == 'stable'
     runs-on: ubuntu-latest
-
     name: Build Howler UI Docker Image
-
     needs:
-      - formatting  # Wait for code quality job to complete successfully
-
+      - release_validation
+      - formatting
     defaults:
       run:
-        working-directory: ./ui
-
+        working-directory: ui
     permissions:
-      id-token: write       # Required for build attestations
-      contents: read        # Read repository contents
-      attestations: write   # Write build provenance attestations
-
+      id-token: write
+      contents: read
+      attestations: write
     steps:
-      - name: Checkout current ref
+      - name: Checkout validated revision
         uses: actions/checkout@v4
-
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
       - name: Install Node v24
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          registry-url: 'https://registry.npmjs.org'
-
       - name: Install pnpm v11
         uses: pnpm/action-setup@v4
         with:
           version: 11
-
       - name: Get pnpm store path
         id: pnpm-cache-dir
-        run: echo "PNPM_CACHE_DIR=$(pnpm store path)" >> $GITHUB_OUTPUT
-
+        run: echo "PNPM_CACHE_DIR=$(pnpm store path)" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v4
         name: Define a cache for node_modules
         with:
           path: |
             ${{ steps.pnpm-cache-dir.outputs.PNPM_CACHE_DIR }}
-            ~/.pnpm-store # Fallback for older pnpm versions or specific configurations
+            ~/.pnpm-store
             ui/node_modules
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
-
-      - name: Set Package Version
-        run: |
-          python scripts/set_version.py
-        env:
-          BRANCH: ${{ github.ref }}
-          BUILD_ID: ${{ github.run_number }}
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Build UI
-        run: |
-          pnpm build
+        run: pnpm build
         env:
-          VITE_BRANCH: ${{ github.ref }}           # Embed branch info in build
-          VITE_COMMIT_HASH: ${{ github.sha }}      # Embed commit hash in build
-          NODE_OPTIONS: --max-old-space-size=16384 # Increase memory for large builds
-
+          VITE_BRANCH: ${{ github.ref }}
+          VITE_COMMIT_HASH: ${{ github.sha }}
+          NODE_OPTIONS: --max-old-space-size=16384
       - name: Set up chainctl with howler identity
         uses: chainguard-dev/setup-chainctl@main
         with:
           identity: 42b9b0076fcee50f3ee6d013eadb93841a051303/7799abfc569cf293
-
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract Howler UI version
-        id: version
-        run: python -c "import json;v=json.load(open('package.json','r'))['version'];print('version='+v.split('-')[0])" >> $GITHUB_OUTPUT
-
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v6
         with:
           images: cccs/howler-ui
+          flavor: latest=${{ needs.release_validation.outputs.channel == 'stable' }}
           tags: |
-            type=raw,event=branch,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
-            type=raw,event=branch,value=nightly,enable=${{ github.ref == format('refs/heads/{0}', 'develop') }}
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags') }}
-            type=raw,value=${{steps.version.outputs.version}}_{{branch}}
-            type=raw,value=${{steps.version.outputs.version}}_{{branch}}_{{sha}}
-
+            type=raw,value=${{ needs.release_validation.outputs.version }},enable=${{ needs.release_validation.outputs.channel == 'stable' }}
+            type=raw,value=nightly,enable=${{ needs.release_validation.outputs.channel == 'preview' }}
+            type=sha,format=short
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
-
       - name: Build and push UI Docker image
         id: push
         uses: docker/build-push-action@v6
         with:
-          context: ui              # Build context is the ui/ directory
-          file: ui/Dockerfile      # Dockerfile location
-          push: true               # Push to registry after building
+          context: ui
+          file: ui/Dockerfile
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            version=${{ steps.meta.outputs.version }}
+            version=${{ needs.release_validation.outputs.version }}
             branch=${{ github.ref }}
             commit=${{ github.sha }}
-
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
         with:

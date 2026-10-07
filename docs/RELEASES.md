@@ -1,4 +1,6 @@
-# Howler Releases
+# Historical Howler Releases
+
+This is the read-only archive of release notes published before native, independent package changelogs were introduced. New notes are generated in the package changelogs: [API](../api/CHANGELOG.md), [UI](../ui/CHANGELOG.md), [Client](../client/CHANGELOG.md), [MCP](../mcp/CHANGELOG.md), [Evidence](../plugins/evidence/CHANGELOG.md), [Sentinel](../plugins/sentinel/CHANGELOG.md), and [Sync](../plugins/sync/CHANGELOG.md). The initial native baselines are recorded in those files without generating a new release entry.
 
 ## Howler UI `v3.1.0`
 

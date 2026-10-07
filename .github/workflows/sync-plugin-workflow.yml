@@ -1,24 +1,24 @@
-name: Howler Plugin - Evidence
+name: Howler Plugin - Sync
 
 on:
   push:
     branches:
       - main
     tags:
-      - evidence-v*
+      - sync-v*
     paths:
-      - "plugins/evidence/**"
+      - "plugins/sync/**"
       - "api/**"
-      - ".github/workflows/evidence-plugin-workflow.yml"
+      - ".github/workflows/sync-plugin-workflow.yml"
       - .github/workflows/release-validation.yml
       - scripts/validate_release.py
   pull_request:
     branches:
       - main
     paths:
-      - "plugins/evidence/**"
+      - "plugins/sync/**"
       - "api/**"
-      - ".github/workflows/evidence-plugin-workflow.yml"
+      - ".github/workflows/sync-plugin-workflow.yml"
       - .github/workflows/release-validation.yml
       - scripts/validate_release.py
   workflow_dispatch:
@@ -37,20 +37,20 @@ jobs:
   release_validation:
     uses: ./.github/workflows/release-validation.yml
     with:
-      component: evidence
-      component_dir: plugins/evidence
-      tag_prefix: evidence-v
+      component: sync
+      component_dir: plugins/sync
+      tag_prefix: sync-v
       allow_main_preview: false
       publish_release: ${{ inputs.publish_release }}
     permissions:
       contents: read
 
   formatting:
-    name: Validate Howler Evidence Plugin Code Quality
+    name: Validate Howler Sync Plugin Code Quality
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: plugins/evidence
+        working-directory: plugins/sync
     steps:
       - name: Checkout current ref
         uses: actions/checkout@v4
@@ -66,47 +66,54 @@ jobs:
       - name: Cache Poetry environment
         uses: actions/cache@v4
         with:
-          path: plugins/evidence/.venv
-          key: ${{ runner.os }}-poetry-3.12-evidence-${{ hashFiles('plugins/evidence/poetry.lock') }}
+          path: plugins/sync/.venv
+          key: ${{ runner.os }}-poetry-3.12-sync-${{ hashFiles('plugins/sync/poetry.lock') }}
       - name: Check Poetry configuration
         run: poetry check --lock
       - name: Install dependencies
         run: poetry install --verbose --with dev,types
       - name: Run Ruff formatting checks
-        run: poetry run ruff format evidence --diff
+        run: poetry run ruff format sync --diff
       - name: Run Ruff lint checks
-        run: poetry run ruff check evidence --output-format=github
+        run: poetry run ruff check sync --output-format=github
       - name: Run type checking
-        run: poetry run type_check
+        # PyYAML's external stubs are absent; suppress only that missing-stub diagnostic.
+        run: poetry run python -m mypy --disable-error-code=import-untyped sync
 
   test:
     runs-on: ubuntu-latest
-    name: Run Howler Evidence Plugin Unit Tests
+    name: Run Howler Sync Plugin Unit and Integration Tests
     needs: formatting
     defaults:
       run:
-        working-directory: plugins/evidence
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        working-directory: plugins/sync
     steps:
       - name: Checkout current ref
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
+      - name: Set up Java 17 for Spark
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Start isolated API test dependencies
+        uses: hoverkraft-tech/compose-action@v2.6.0
+        with:
+          compose-file: api/dev/docker-compose.yml
+          up-flags: --build
       - name: Install Poetry
         uses: abatilo/actions-poetry@v4
       - name: Cache Poetry environment
         uses: actions/cache@v4
         with:
-          path: plugins/evidence/.venv
-          key: ${{ runner.os }}-poetry-${{ matrix.python-version }}-evidence-${{ hashFiles('plugins/evidence/poetry.lock') }}
+          path: plugins/sync/.venv
+          key: ${{ runner.os }}-poetry-3.12-sync-${{ hashFiles('plugins/sync/poetry.lock') }}
       - name: Set up Howler API configuration
         working-directory: api
         run: |
@@ -120,8 +127,26 @@ jobs:
           poetry install --verbose --with dev,types
           poetry run mitre /etc/howler/lookups
           poetry run sigma
-      - name: Run tests
-        run: poetry run pytest --cov=evidence --cov-branch -rP -vv
+      - name: Verify Elasticsearch and Redis readiness
+        run: |
+          ready=false
+          attempt=0
+          while (( attempt < 60 )); do
+            attempt=$((attempt + 1))
+            if python -c 'import json; from urllib.request import urlopen; health = json.load(urlopen("http://127.0.0.1:9200/_cluster/health", timeout=3)); assert health.get("status") in {"green", "yellow"} and health.get("number_of_nodes", 0) >= 1' \
+              && python -c 'import socket; redis = socket.create_connection(("127.0.0.1", 6379), timeout=3); redis.sendall(b"PING\r\n"); response = redis.recv(16); redis.close(); assert response.startswith(b"+PONG")'; then
+              ready=true
+              echo "Elasticsearch and Redis are ready"
+              break
+            fi
+            sleep 3
+          done
+          if [[ "$ready" != "true" ]]; then
+            echo "Elasticsearch or Redis did not become healthy within 180 seconds" >&2
+            exit 1
+          fi
+      - name: Run unit and integration tests
+        run: poetry run pytest --cov=sync --cov-branch -rP -vv test/unit test/integration
       - name: Prepare pull request diff for coverage
         if: github.event_name == 'pull_request'
         env:
@@ -131,12 +156,12 @@ jobs:
       - name: Generate coverage report
         run: poetry run python build_scripts/coverage_reports.py
       - name: Add coverage PR comment
-        if: github.event_name == 'pull_request' && matrix.python-version == '3.12'
+        if: github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@v2
         continue-on-error: true
         with:
-          path: plugins/evidence/coverage-results.md
-          header: evidence
+          path: plugins/sync/coverage-results.md
+          header: sync
 
   publish:
     if: needs.release_validation.outputs.channel == 'stable'
@@ -145,12 +170,12 @@ jobs:
       - formatting
       - test
     runs-on: ubuntu-latest
-    name: Build and publish stable Howler Evidence Plugin
+    name: Build and publish stable Howler Sync Plugin
     permissions:
       contents: read
     defaults:
       run:
-        working-directory: plugins/evidence
+        working-directory: plugins/sync
     steps:
       - name: Checkout validated revision
         uses: actions/checkout@v4

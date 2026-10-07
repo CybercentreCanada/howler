@@ -27,7 +27,7 @@ def generate_badge(title, percentage, color):
 def main():
     print(f"Running on branch {os.environ.get('GIT_BRANCH', 'unknown')}")
 
-    diff_exists = Path(__file__).parents[1] / "diff.txt"
+    diff_exists = (Path(__file__).parents[1] / "diff.txt").exists()
 
     print("Has Diff:", diff_exists)
 

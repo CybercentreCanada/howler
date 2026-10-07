@@ -1,7 +1,5 @@
-import os
 import platform
 import re
-import shlex
 import subprocess
 import sys
 import textwrap
@@ -25,107 +23,72 @@ def generate_badge(title, percentage, color):
 
 
 def main():
-    print(f"Running on branch {os.environ.get('GIT_BRANCH', 'unknown')}")
-
-    develop = "develop" in os.environ.get("GIT_BRANCH", "unknown")
-    rc_or_main = any(
-        x in os.environ.get("GIT_BRANCH", "unknown")
-        for x in ["patch", "rc", "main", "master", "sync"]
-    )
-
     try:
-        report_result = subprocess.check_output(
-            shlex.split("coverage report --data-file=.coverage")
-        ).decode()
-        subprocess.check_output(shlex.split("coverage xml --data-file=.coverage"))
-        subprocess.check_output(shlex.split("coverage html --data-file=.coverage"))
-
+        report_result = subprocess.check_output(["coverage", "report", "--data-file=.coverage"]).decode()
+        subprocess.check_output(["coverage", "xml", "--data-file=.coverage"])
+        subprocess.check_output(["coverage", "html", "--data-file=.coverage"])
         print(report_result)
 
-        if not develop and not rc_or_main:
+        diff_markdown = ""
+        diff_badge = ""
+        diff_file = Path("diff.txt")
+        if diff_file.is_file():
             diff_report_result = subprocess.check_output(
-                shlex.split(
-                    "diff-cover coverage.xml --diff-file diff.txt --markdown-report diff-cover-report.md"
-                )
+                [
+                    "diff-cover",
+                    "coverage.xml",
+                    "--diff-file",
+                    str(diff_file),
+                    "--markdown-report",
+                    "diff-cover-report.md",
+                ]
             ).decode()
             print(diff_report_result)
 
-        total_percentage = report_result.splitlines().pop().split(" ").pop()
-        total_percentage_int = int(total_percentage.replace("%", ""))
-        total_color = get_color(total_percentage_int)
+            coverage_line = next((line for line in diff_report_result.splitlines() if "Coverage:" in line), None)
+            diff_percentage = coverage_line.split()[-1] if coverage_line else "NA%"
+            diff_color = get_color(int(diff_percentage.rstrip("%"))) if diff_percentage.rstrip("%").isdigit() else "red"
+            diff_badge = generate_badge("Diff Coverage", diff_percentage, diff_color)
 
-        if not develop and not rc_or_main:
-            try:
-                diff_percentage = (
-                    [
-                        line
-                        for line in diff_report_result.splitlines()
-                        if "Coverage:" in line
-                    ].pop()
-                    .split(" ")
-                    .pop()
-                )
-                diff_percentage_int = int(diff_percentage.replace("%", ""))
-            except IndexError:
-                diff_percentage = "NA%"
-                diff_percentage_int = 0
+            report_path = Path("diff-cover-report.md")
+            if report_path.is_file():
+                diff_markdown = report_path.read_text().replace("# ", "## ")
+                diff_markdown = diff_markdown.replace("__init__.py", r"\_\_init\_\_.py")
+                diff_markdown = re.sub(r"### (.+py)", r"<details>\n<summary>\1</summary>\n", diff_markdown)
+                diff_markdown = re.sub(r"\n---(\n+<details>)", r"\n</details>\1", diff_markdown)
+                diff_markdown += "\n</details>"
 
-            diff_color = get_color(diff_percentage_int)
-
-            with open("diff-cover-report.md") as diff_report:
-                diff_result = (
-                    diff_report.read()
-                    .replace("# ", "## ")
-                    .replace("__init__.py", "\\_\\_init\\_\\_.py")
-                )
-
-                diff_result = re.sub(
-                    r"### (.+py)", r"<details>\n<summary>\1</summary>\n", diff_result
-                )
-                diff_result = re.sub(
-                    r"\n---(\n+<details>)", r"\n</details>\1", diff_result
-                )
-
-                diff_result += "\n</details>"
-
-        badge = (
-            generate_badge("Diff Coverage", diff_percentage, diff_color)
-            if (not develop and not rc_or_main)
-            else ""
-        )
-
+        total_percentage = report_result.splitlines()[-1].split()[-1]
+        total_color = get_color(int(total_percentage.rstrip("%")))
         newline = "\n"
         markdown_output = textwrap.dedent(
             f"""
-        ![Static Badge](https://img.shields.io/badge/Build%20(Python%20{platform.python_version()})-passing-brightgreen)
+            ![Static Badge](https://img.shields.io/badge/Build%20(Python%20{platform.python_version()})-passing-brightgreen)
 
-        # Howler Sync Plugin - Coverage Results
-        {generate_badge("Total Coverage", total_percentage, total_color)} {badge}
+            # Howler Sync Plugin - Coverage Results
+            {generate_badge("Total Coverage", total_percentage, total_color)} {diff_badge}
 
-{newline.join([(" " * 8) + line for line in diff_result.splitlines()]) if (not develop and not rc_or_main) else ""}
+            {diff_markdown}
 
-        ## Full Coverage Report
-        <details>
-            <summary>Expand</summary>
+            ## Full Coverage Report
+            <details>
+                <summary>Expand</summary>
 
-{newline.join([(" " * 12) + line for line in report_result.splitlines()])}
-        </details>
-        """
+            {newline.join([(" " * 12) + line for line in report_result.splitlines()])}
+            </details>
+            """
         ).strip()
 
         print("Markdown result:")
         print(markdown_output)
-
         output_path = Path(__file__).parent.parent / "coverage-results.md"
         print("Writing to:", str(output_path))
         output_path.write_text(markdown_output)
-    except subprocess.CalledProcessError as e:
-        print(" ".join(e.cmd), "failed.")
-
-        if e.output:
-            print(e.output.decode())
-
-        sys.exit(e.returncode)
+    except subprocess.CalledProcessError as error:
+        print(" ".join(error.cmd), "failed.")
+        if error.output:
+            print(error.output.decode())
+        sys.exit(error.returncode)
 
 
 if __name__ == "__main__":
