@@ -84,7 +84,7 @@ describe('Clue Provider', () => {
 
     expect(mocks.buildDatabase).not.toHaveBeenCalled();
     expect(getProviderProps().enabled).toBe(false);
-    expect(getProviderProps().database).toBeNull();
+    expect(getProviderProps().database).toBeUndefined();
     expect(getProviderProps().getToken?.()).toBe('');
   });
 
@@ -111,7 +111,7 @@ describe('Clue Provider', () => {
         chunkSize: 25,
         replicate: true,
         storageType: 'memory'
-      }
+      } //
     );
 
     await waitFor(() => {
@@ -165,6 +165,6 @@ describe('Clue Provider', () => {
       resolveDatabase({ name: 'late' });
     });
 
-    expect(getProviderProps().database).toBeNull();
+    expect(getProviderProps().database).toBeUndefined();
   });
 });
