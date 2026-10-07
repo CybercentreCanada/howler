@@ -226,15 +226,16 @@ describe('HitFilter', () => {
     const disabledChip = screen.getByRole('button', { name: /howler.assessment:/ });
     expect(disabledChip).toHaveAttribute('data-dimmed', 'true');
     expect(disabledChip).toHaveStyle({ opacity: '0.5' });
-    expect(screen.getByRole('checkbox', { name: 'hit.search.filter.enable' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'hit.search.filter.disable' })).toBeChecked();
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'hit.search.filter.enable' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'hit.search.filter.disable' }));
     expect(mockSetFilterDisabled).toHaveBeenLastCalledWith(13, false);
 
     rerender(<HitFilter id={13} value={value} />);
     const reenabledChip = screen.getByRole('button', { name: /howler.assessment:/ });
     expect(reenabledChip).toHaveAttribute('data-dimmed', 'false');
     expect(reenabledChip).toHaveStyle({ opacity: '1' });
+    expect(screen.getByRole('checkbox', { name: 'hit.search.filter.disable' })).not.toBeChecked();
     expect(mockSetSavedFilter).toHaveBeenLastCalledWith(13, value);
   });
 

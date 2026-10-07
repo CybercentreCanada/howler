@@ -256,7 +256,7 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
       >
         <Stack spacing={1} sx={{ minWidth: '225px' }}>
           <FormControlLabel
-            label={t(disabled ? 'hit.search.filter.enable' : 'hit.search.filter.disable')}
+            label={t('hit.search.filter.disable')}
             control={
               <Checkbox
                 size="small"

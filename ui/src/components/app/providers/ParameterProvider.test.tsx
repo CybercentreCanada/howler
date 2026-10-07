@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { setupReactRouterMock } from 'tests/mocks';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY } from 'utils/constants';
+import { vi } from 'vitest';
 import ParameterProvider, { ParameterContext } from './ParameterProvider';
 
 // Mock dependencies
@@ -1077,6 +1078,41 @@ describe('ParameterContext', () => {
       await waitFor(() => {
         expect(hook.result.current).toBe('updated query');
       });
+    });
+
+    it('should discard pending state writes when browser navigation changes the URL', () => {
+      vi.useFakeTimers();
+      try {
+        mockSearchParams.set('query', 'initial query');
+        mockLocation.search = '?query=initial%20query';
+        makeMockSetParamsUpdateUrl();
+
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              query: ctx.query,
+              setQuery: ctx.setQuery
+            })),
+          { wrapper: Wrapper }
+        );
+
+        act(() => hook.result.current.setQuery('pending query'));
+
+        setMockUrl(new URLSearchParams({ query: 'navigated query' }));
+        hook.rerender();
+
+        expect(hook.result.current.query).toBe('navigated query');
+
+        act(() => {
+          vi.advanceTimersByTime(100);
+        });
+
+        expect(hook.result.current.query).toBe('navigated query');
+        expect(mockSearchParams.get('query')).toBe('navigated query');
+        expect(mockSetParams).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('should handle bundle context - selected param synchronization', async () => {

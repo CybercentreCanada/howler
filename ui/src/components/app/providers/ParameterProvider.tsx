@@ -1,11 +1,10 @@
 import type { SearchIndex } from 'api/v2/search';
 import { has, identity, isEmpty, isEqual, isNil, isUndefined, omitBy, uniq } from 'lodash-es';
 import type { Dispatch, FC, PropsWithChildren, SetStateAction } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useParams, useSearchParams } from 'react-router';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY } from 'utils/constants';
-import Throttler from 'utils/Throttler';
 import { missingContext } from './contextUtils';
 
 export interface ParameterContextType {
@@ -126,7 +125,7 @@ const ARRAY_PARAMS: ArrayParamDescriptor[] = [
 
 const ARRAY_URL_KEYS = new Set([...ARRAY_PARAMS.map(p => p.urlKey), 'disabled_filter']);
 
-const WRITE_THROTTLER = new Throttler(100);
+const WRITE_DELAY_MS = 100;
 
 /**
  * Helper function to convert a number/string representation of a number into a valid offset.
@@ -441,6 +440,7 @@ const ParameterProvider: FC<PropsWithChildren<{ defaults?: Partial<SearchValues>
   const defaults = useMemo<Partial<SearchValues>>(() => ({ ...DEFAULT_VALUES, ..._defaults }), [_defaults]);
 
   const pendingChanges = useRef<Partial<SearchValues>>({});
+  const writeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [values, _setValues] = useState<SearchValues>({
     selected: getSelectedValue(params, location.pathname, routeParams.id),
@@ -455,6 +455,21 @@ const ParameterProvider: FC<PropsWithChildren<{ defaults?: Partial<SearchValues>
     offset: parseOffset(params.get('offset')),
     trackTotalHits: (params.get('track_total_hits') ?? 'false') !== 'false'
   });
+
+  useLayoutEffect(() => {
+    if (writeTimeout.current !== null) {
+      clearTimeout(writeTimeout.current);
+      writeTimeout.current = null;
+    }
+    pendingChanges.current = {};
+
+    return () => {
+      if (writeTimeout.current !== null) {
+        clearTimeout(writeTimeout.current);
+        writeTimeout.current = null;
+      }
+    };
+  }, [location.pathname, location.search, routeParams.id]);
 
   // TODO: SELECTING A BUNDLE STILL CAUSES A FREAKOUT
   useUrlSync(values, defaults, _setValues, params, setParams, location.pathname, location.search, routeParams.id);
@@ -477,10 +492,15 @@ const ParameterProvider: FC<PropsWithChildren<{ defaults?: Partial<SearchValues>
           pendingChanges.current.endDate = null;
         }
 
-        WRITE_THROTTLER.debounce(() => {
-          _setValues(c => ({ ...c, ...pendingChanges.current }));
+        if (writeTimeout.current !== null) {
+          clearTimeout(writeTimeout.current);
+        }
+        writeTimeout.current = setTimeout(() => {
+          writeTimeout.current = null;
+          const changes = pendingChanges.current;
           pendingChanges.current = {};
-        });
+          _setValues(c => ({ ...c, ...changes }));
+        }, WRITE_DELAY_MS);
       },
     [values, defaults]
   );
