@@ -7,18 +7,16 @@ on:
     tags:
       - evidence-v*
     paths:
-      - "plugins/evidence/**"
-      - "api/**"
-      - ".github/workflows/evidence-plugin-workflow.yml"
+      - plugins/evidence/**
+      - .github/workflows/evidence-plugin-workflow.yml
       - .github/workflows/release-validation.yml
       - scripts/validate_release.py
   pull_request:
     branches:
       - main
     paths:
-      - "plugins/evidence/**"
-      - "api/**"
-      - ".github/workflows/evidence-plugin-workflow.yml"
+      - plugins/evidence/**
+      - .github/workflows/evidence-plugin-workflow.yml
       - .github/workflows/release-validation.yml
       - scripts/validate_release.py
   workflow_dispatch:

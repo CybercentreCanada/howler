@@ -7,20 +7,16 @@ on:
     tags:
       - sentinel-v*
     paths:
-      - "plugins/sentinel/**"
-      - "plugins/evidence/**"
-      - "api/**"
-      - ".github/workflows/sentinel-plugin-workflow.yml"
+      - plugins/sentinel/**
+      - .github/workflows/sentinel-plugin-workflow.yml
       - .github/workflows/release-validation.yml
       - scripts/validate_release.py
   pull_request:
     branches:
       - main
     paths:
-      - "plugins/sentinel/**"
-      - "plugins/evidence/**"
-      - "api/**"
-      - ".github/workflows/sentinel-plugin-workflow.yml"
+      - plugins/sentinel/**
+      - .github/workflows/sentinel-plugin-workflow.yml
       - .github/workflows/release-validation.yml
       - scripts/validate_release.py
   workflow_dispatch:

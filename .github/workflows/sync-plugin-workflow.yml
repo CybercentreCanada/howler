@@ -7,18 +7,16 @@ on:
     tags:
       - sync-v*
     paths:
-      - "plugins/sync/**"
-      - "api/**"
-      - ".github/workflows/sync-plugin-workflow.yml"
+      - plugins/sync/**
+      - .github/workflows/sync-plugin-workflow.yml
       - .github/workflows/release-validation.yml
       - scripts/validate_release.py
   pull_request:
     branches:
       - main
     paths:
-      - "plugins/sync/**"
-      - "api/**"
-      - ".github/workflows/sync-plugin-workflow.yml"
+      - plugins/sync/**
+      - .github/workflows/sync-plugin-workflow.yml
       - .github/workflows/release-validation.yml
       - scripts/validate_release.py
   workflow_dispatch:
