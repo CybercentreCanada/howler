@@ -75,7 +75,7 @@ const HelpDashboard = () => {
                   <CardActions>
                     {tabs[link.id as keyof typeof tabs].map((tab: string) => (
                       <Button key={tab} size="small" component={Link} to={`${link.route}?tab=${tab}`}>
-                        {tab}
+                        {t(`${link.id}.${tab}.title`, { defaultValue: tab })}
                       </Button>
                     ))}
                   </CardActions>
