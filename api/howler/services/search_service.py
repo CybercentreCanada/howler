@@ -233,7 +233,7 @@ def clear_scroll(scroll_id: str) -> dict[str, Any]:
     client: Elasticsearch = datastore().ds.client
 
     try:
-        return dict(client.clear_scroll(scroll_id=scroll_id))
+        return dict(client.clear_scroll(scroll_id=scroll_id).body)
     except (elasticsearch.exceptions.ConnectionError, elasticsearch.exceptions.ConnectionTimeout) as error:
         raise SearchRetryException(f"scroll_id: {scroll_id}, error: {str(error)}") from error
     except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.RequestError) as error:

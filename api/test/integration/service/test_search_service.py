@@ -812,7 +812,7 @@ class TestSearch:
         mock_ds = MagicMock()
         mock_ds.ds.client = mock_client
         mock_ds_fn.return_value = mock_ds
-        mock_client.clear_scroll.return_value = {"succeeded": True, "num_freed": 1}
+        mock_client.clear_scroll.return_value.body = {"succeeded": True, "num_freed": 1}
 
         result = search_service.clear_scroll("scroll-abc")
 
