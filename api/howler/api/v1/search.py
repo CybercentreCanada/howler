@@ -14,10 +14,14 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException
+from howler.datastore.utils import expand_field_patterns
 from howler.helper.search import get_collection, get_default_sort, has_access_control, list_all_fields
+from howler.odm.base import BANNED_FIELDS
+from howler.odm.base import Mapping as OdmMapping
 from howler.odm.models.user import User
 from howler.security.login import api_login
-from howler.services import hit_service, lucene_service
+from howler.services import hit_service, lucene_service, search_service
+from howler.utils.dict_utils import prune
 from howler.utils.net_utils import generate_params
 
 SUB_API = "search"
@@ -27,6 +31,81 @@ search_api._doc = "Perform search queries"  # type: ignore
 logger = get_logger(__file__)
 
 SENSITIVE_USER_FIELDS = ["password", "apikeys", "*"]
+
+
+def _select_safe_user_scroll_fields(search_collection: Any, fl: Any) -> tuple[list[str], list[str], bool]:
+    """Select user scroll fields using the same stored-field allowlist as ESCollection."""
+    stored_fields = search_collection.stored_fields
+    safe_fields = [
+        field_name for field_name, field in stored_fields.items() if field.store and field_name not in BANNED_FIELDS
+    ]
+
+    if isinstance(fl, str):
+        requested_fields = [value.strip() for value in fl.split(",") if value.strip()]
+    elif isinstance(fl, list):
+        requested_fields = [
+            field.strip() for value in fl if isinstance(value, str) for field in value.split(",") if field.strip()
+        ]
+    else:
+        requested_fields = []
+
+    if not requested_fields:
+        selected_fields = safe_fields
+        include_id = True
+    else:
+        expanded_fields = expand_field_patterns(search_collection.model_class, requested_fields, preserve_all=True)
+        selected_fields = (
+            safe_fields if "*" in expanded_fields else [field for field in safe_fields if field in expanded_fields]
+        )
+        include_id = "*" in expanded_fields or "id" in expanded_fields
+
+    source_fields = list(selected_fields)
+    if include_id and "id" not in source_fields:
+        source_fields.append("id")
+
+    return source_fields, selected_fields, include_id
+
+
+def _prune_user_scroll_items(
+    items: list[dict[str, Any]], search_collection: Any, allowed_fields: list[str], include_id: bool
+) -> list[dict[str, Any]]:
+    """Apply the collection's stored-field projection to service-formatted user items."""
+    safe_items: list[dict[str, Any]] = []
+    for item in items:
+        item_id = item.get("id") if include_id else None
+        source = {key: value for key, value in item.items() if key not in BANNED_FIELDS | {"__index", "id"}}
+        safe_item = prune(source, allowed_fields, search_collection.stored_fields, OdmMapping)
+
+        if include_id and item_id is not None:
+            safe_item["id"] = item_id
+        if "__index" in item:
+            safe_item["__index"] = item["__index"]
+
+        safe_items.append(safe_item)
+
+    return safe_items
+
+
+@generate_swagger_docs()
+@search_api.route("/scroll", methods=["DELETE"])
+@api_login(required_priv=["R"])
+def clear_scroll(user: User, **kwargs):
+    """Clear an Elasticsearch scroll context.
+
+    Data Block:
+    {"scroll_id": "scroll-id"}
+    """
+    del user, kwargs
+
+    data = request.get_json(silent=True)
+    scroll_id = data.get("scroll_id") if isinstance(data, dict) else None
+    if not isinstance(scroll_id, str) or not scroll_id:
+        return bad_request(err="A scroll_id must be provided.")
+
+    try:
+        return ok(search_service.clear_scroll(scroll_id))
+    except (SearchException, BadRequestError) as e:
+        return bad_request(err=f"SearchException: {e}")
 
 
 @generate_swagger_docs()
@@ -43,6 +122,7 @@ def search(index: str, user: User, **kwargs):
 
     Optional Arguments:
     deep_paging_id      =>   ID of the next page or * to start deep paging
+    scroll              =>   Scroll keep-alive duration for deep paging (default: 5m)
     filters             =>   List of additional filter queries limit the data
     offset              =>   Offset in the results
     rows                =>   Number of results per page
@@ -60,6 +140,7 @@ def search(index: str, user: User, **kwargs):
      "sort": "field asc",       # How to sort the results
      "fl": "id,score",          # List of fields to return
      "timeout": 1000,           # Maximum execution time (ms)
+     "scroll": "5m",           # Scroll keep-alive duration for deep paging
      "filters": ['fq'],         # List of additional filter queries limit the data
      "metadata": ["dossiers"]}  # List of additional features to add to the search
 
@@ -84,11 +165,15 @@ def search(index: str, user: User, **kwargs):
         "fl",
         "timeout",
         "deep_paging_id",
+        "scroll",
         "track_total_hits",
     ]
     multi_fields = ["filters", "metadata"]
 
     params, req_data = generate_params(request, fields, multi_fields)
+
+    scroll_requested = "scroll" in params
+    scroll = params.pop("scroll", None)
 
     if has_access_control(index):
         params.update({"access_control": user.access_control})
@@ -108,7 +193,32 @@ def search(index: str, user: User, **kwargs):
 
     try:
         metadata = params.pop("metadata", [])
-        result = collection().search(query, as_obj=False, **params)
+        if scroll_requested and params.get("deep_paging_id") is not None:
+            params.pop("access_control", None)
+            user_scroll_collection = None
+            user_scroll_fields: list[str] = []
+            include_user_id = False
+            if index == "user":
+                user_scroll_collection = collection()
+                params["fl"], user_scroll_fields, include_user_id = _select_safe_user_scroll_fields(
+                    user_scroll_collection, params.get("fl")
+                )
+
+            result = search_service.search(
+                indexes=index,
+                query=query,
+                user=user,
+                scroll=scroll,
+                include_id=include_user_id,
+                **params,
+            )
+
+            if user_scroll_collection is not None:
+                result["items"] = _prune_user_scroll_items(
+                    result["items"], user_scroll_collection, user_scroll_fields, include_user_id
+                )
+        else:
+            result = collection().search(query, as_obj=False, **params)
 
         if index == "hit" and len(metadata) > 0:
             hit_service.augment_metadata(result["items"], metadata, user)

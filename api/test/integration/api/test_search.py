@@ -70,6 +70,135 @@ def test_deep_search(datastore, login_session):
         assert len(res) >= TEST_SIZE
 
 
+def test_search_scroll_keepalive_until_terminal_batch(datastore, login_session):
+    """The v1 endpoint can advance a custom scroll until Elasticsearch returns a terminal batch."""
+    session, host = login_session
+
+    count = get_api_data(
+        session,
+        f"{host}/api/v1/search/count/user/",
+        method="POST",
+        data=json.dumps({"query": "id:*"}),
+    )["count"]
+    assert count > 0
+
+    params = {"query": "id:*", "rows": count, "deep_paging_id": "*", "scroll": "1m"}
+    first_page = get_api_data(
+        session,
+        f"{host}/api/v1/search/user/",
+        method="POST",
+        data=json.dumps(params),
+    )
+    first_page_items = first_page["items"]
+    assert len(first_page_items) == count
+    assert first_page.get("next_deep_paging_id")
+
+    item_count = len(first_page_items)
+    for item in first_page_items:
+        assert "id" in item
+        assert "uname" in item
+        assert "password" not in item
+        assert "apikeys" not in item
+        assert "apikeys.password" not in item
+
+    params["deep_paging_id"] = first_page["next_deep_paging_id"]
+    received_empty_batch = False
+    while True:
+        response = get_api_data(
+            session,
+            f"{host}/api/v1/search/user/",
+            method="POST",
+            data=json.dumps(params),
+        )
+
+        page_items = response["items"]
+        item_count += len(page_items)
+        for item in page_items:
+            assert "id" in item
+            assert "uname" in item
+            assert "password" not in item
+            assert "apikeys" not in item
+            assert "apikeys.password" not in item
+
+        if not page_items:
+            received_empty_batch = True
+            break
+
+        next_scroll_id = response.get("next_deep_paging_id")
+        if not next_scroll_id:
+            break
+
+        params["deep_paging_id"] = next_scroll_id
+
+    assert received_empty_batch
+    assert item_count == count
+
+
+@pytest.mark.parametrize("fl", [["uname", "apikeys.password"], ["uname", "apikeys.*"]])
+def test_scroll_user_field_selection_excludes_unstored_credentials(datastore, login_session, fl):
+    """Scroll results apply the user collection's stored-field filtering to lists and wildcards."""
+    session, host = login_session
+
+    response = get_api_data(
+        session,
+        f"{host}/api/v1/search/user/",
+        method="POST",
+        data=json.dumps({"query": "id:*", "rows": 1, "deep_paging_id": "*", "scroll": "1m", "fl": fl}),
+    )
+
+    assert response["items"]
+    for item in response["items"]:
+        assert item["uname"]
+        assert "password" not in item
+        assert "apikeys" not in item
+        assert "apikeys.password" not in item
+
+    scroll_id = response.get("next_deep_paging_id")
+    if scroll_id:
+        get_api_data(
+            session,
+            f"{host}/api/v1/search/scroll",
+            method="DELETE",
+            data=json.dumps({"scroll_id": scroll_id}),
+        )
+
+
+def test_clear_scroll(datastore, login_session):
+    """A caller can clear an open scroll using the v1 clear endpoint."""
+    session, host = login_session
+
+    opened_scroll = get_api_data(
+        session,
+        f"{host}/api/v1/search/user/",
+        method="POST",
+        data=json.dumps({"query": "id:*", "rows": 1, "deep_paging_id": "*", "scroll": "1m"}),
+    )
+    scroll_id = opened_scroll.get("next_deep_paging_id")
+    assert scroll_id
+
+    clear_result = get_api_data(
+        session,
+        f"{host}/api/v1/search/scroll",
+        method="DELETE",
+        data=json.dumps({"scroll_id": scroll_id}),
+    )
+    assert clear_result["succeeded"] is True
+
+
+def test_clear_scroll_requires_scroll_id(datastore, login_session):
+    session, host = login_session
+
+    with pytest.raises(APIError) as api_err:
+        get_api_data(
+            session,
+            f"{host}/api/v1/search/scroll",
+            method="DELETE",
+            data=json.dumps({}),
+        )
+
+    assert "400" in str(api_err)
+
+
 def test_facet_search(datastore, login_session):
     session, host = login_session
 

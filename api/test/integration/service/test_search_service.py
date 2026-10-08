@@ -759,8 +759,91 @@ class TestSearch:
 
         search_service.search("hit", query="*:*", deep_paging_id="scroll-abc", rows=100)
 
-        mock_client.scroll.assert_called_once()
+        mock_client.scroll.assert_called_once_with(scroll_id="scroll-abc", scroll=search_service.SCROLL_TIMEOUT)
         mock_client.search.assert_not_called()
+
+    @patch("howler.services.search_service.datastore")
+    def test_deep_paging_scroll_keepalive_is_passed_when_opening(self, mock_ds_fn):
+        """A requested keep-alive is passed through unchanged when opening a scroll."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.search.return_value = {
+            "hits": {
+                "total": {"value": 2},
+                "hits": [{"_source": {"howler": {"id": "h1"}}, "_index": "howler-hit"}],
+            },
+            "_scroll_id": "scroll-next",
+        }
+
+        result = search_service.search("hit", query="*:*", deep_paging_id="*", scroll="37s", rows=1)
+
+        assert mock_client.search.call_args.kwargs["scroll"] == "37s"
+        assert result["next_deep_paging_id"] == "scroll-next"
+
+    @patch("howler.services.search_service.datastore")
+    def test_deep_paging_scroll_keepalive_is_passed_when_advancing(self, mock_ds_fn):
+        """A requested keep-alive is passed through unchanged for scroll continuation."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.scroll.return_value = {
+            "hits": {
+                "total": {"value": 2},
+                "hits": [{"_source": {"howler": {"id": "h1"}}, "_index": "howler-hit"}],
+            },
+            "_scroll_id": "scroll-next",
+        }
+
+        result = search_service.search("hit", query="*:*", deep_paging_id="scroll-current", scroll="37s", rows=1)
+
+        mock_client.scroll.assert_called_once_with(scroll_id="scroll-current", scroll="37s")
+        assert mock_client.search.call_count == 0
+        assert result["next_deep_paging_id"] == "scroll-next"
+
+    @patch("howler.services.search_service.datastore")
+    def test_clear_scroll_returns_elasticsearch_result(self, mock_ds_fn):
+        """Clearing a scroll returns the response from Elasticsearch."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+        mock_client.clear_scroll.return_value = {"succeeded": True, "num_freed": 1}
+
+        result = search_service.clear_scroll("scroll-abc")
+
+        mock_client.clear_scroll.assert_called_once_with(scroll_id="scroll-abc")
+        assert result == {"succeeded": True, "num_freed": 1}
+
+    @patch("howler.services.search_service.datastore")
+    def test_clear_scroll_connection_error_raises_retry(self, mock_ds_fn):
+        """Connection failures while clearing a scroll use the retryable search error."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+        mock_client.clear_scroll.side_effect = elasticsearch.exceptions.ConnectionError(
+            "N/A", "scroll service unavailable"
+        )
+
+        with pytest.raises(SearchRetryException):
+            search_service.clear_scroll("scroll-abc")
+
+    @patch("howler.services.search_service.datastore")
+    def test_clear_scroll_transport_error_raises_search_exception(self, mock_ds_fn):
+        """Elasticsearch request failures while clearing a scroll use SearchException."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+        mock_client.clear_scroll.side_effect = elasticsearch.exceptions.TransportError("bad request")
+
+        with pytest.raises(SearchException, match="bad request"):
+            search_service.clear_scroll("scroll-abc")
 
     @patch("howler.services.search_service.datastore")
     def test_deep_paging_clears_scroll_when_exhausted(self, mock_ds_fn):
