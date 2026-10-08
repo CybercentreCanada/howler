@@ -54,17 +54,17 @@ importers:
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.49.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@tui/a11y':
-        specifier: file:./tui/a11y-4.0.10.tgz
-        version: file:tui/a11y-4.0.10.tgz(8c880e22f4071a1f561c62dcf53f099e)
+        specifier: file:./tui/a11y-4.0.12.tgz
+        version: file:tui/a11y-4.0.12.tgz(c07282f5a09c729df1531848a7d57b2c)
       '@tui/apps':
-        specifier: file:./tui/apps-4.0.10.tgz
-        version: file:tui/apps-4.0.10.tgz(@mui/icons-material@7.3.11(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@types/react@19.3.0)(react@19.3.0))(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)
+        specifier: file:./tui/apps-4.0.12.tgz
+        version: file:tui/apps-4.0.12.tgz(@mui/icons-material@7.3.11(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@types/react@19.3.0)(react@19.3.0))(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)
       '@tui/core':
-        specifier: file:./tui/core-4.0.10.tgz
-        version: file:tui/core-4.0.10.tgz(22ac7f4b3502704ef441c1a6aa129194)
+        specifier: file:./tui/core-4.0.12.tgz
+        version: file:tui/core-4.0.12.tgz(22ac7f4b3502704ef441c1a6aa129194)
       '@tui/drawer':
-        specifier: file:./tui/drawer-4.0.10.tgz
-        version: file:tui/drawer-4.0.10.tgz(@mui/icons-material@7.3.11(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@types/react@19.3.0)(react@19.3.0))(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(i18next@25.10.10(typescript@7.0.2))(react-i18next@16.6.6(i18next@25.10.10(typescript@7.0.2))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))(react@19.3.0)
+        specifier: file:./tui/drawer-4.0.12.tgz
+        version: file:tui/drawer-4.0.12.tgz(@mui/icons-material@7.3.11(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@types/react@19.3.0)(react@19.3.0))(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(i18next@25.10.10(typescript@7.0.2))(react-i18next@16.6.6(i18next@25.10.10(typescript@7.0.2))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))(react@19.3.0)
       ajv:
         specifier: ^8.20.0
         version: 8.20.0
@@ -1906,9 +1906,9 @@ packages:
     peerDependencies:
       '@testing-library/dom': '>=7.21.4'
 
-  '@tui/a11y@file:tui/a11y-4.0.10.tgz':
-    resolution: {integrity: sha512-JbTMgpQmzzg2S6N7rcu1djRldcAOaCfqhvjCN/umXoc8xrekpCVGfpYNjm2cVaiN7jOE1eVZD9cJUkiAFcedgw==, tarball: file:tui/a11y-4.0.10.tgz}
-    version: 4.0.10
+  '@tui/a11y@file:tui/a11y-4.0.12.tgz':
+    resolution: {integrity: sha512-FoLD+SMevi/waO/eCtEQUDHrlVUTH+BgGVLCKjI+3ueP6sDLeG5omes8qMcjRhlQZiw87DEXfYP2SYkRalCHtg==, tarball: file:tui/a11y-4.0.12.tgz}
+    version: 4.0.12
     peerDependencies:
       '@mui/icons-material': ^7
       '@mui/material': ^7
@@ -1918,17 +1918,17 @@ packages:
       react: ^19.2
       react-i18next: '>=16'
 
-  '@tui/apps@file:tui/apps-4.0.10.tgz':
-    resolution: {integrity: sha512-flW6euoO9VydGejUbjpEFqMZaOUzQl1/eiQe5hE5saZZ59kYmLbSodVjZ0a4lCr4GvVeP+GkMNrAfVcLCsJYqg==, tarball: file:tui/apps-4.0.10.tgz}
-    version: 4.0.10
+  '@tui/apps@file:tui/apps-4.0.12.tgz':
+    resolution: {integrity: sha512-lNhu5dbCSFsZqSNVJ6+W7sEgOgLP2HNHfBXJg2ylAIq0WNDMVH3DdsyqLI27M4d+MEMe+a5SIrpX+O6Z+2v0ag==, tarball: file:tui/apps-4.0.12.tgz}
+    version: 4.0.12
     peerDependencies:
       '@mui/icons-material': ^7
       '@mui/material': ^7
       react: ^19.2
 
-  '@tui/core@file:tui/core-4.0.10.tgz':
-    resolution: {integrity: sha512-8AHBIL5d1qcKPhw76lqzYz7yRhpdECrSdV6dhlP+KR71+E9yLwTh9M7FCh+/qk4tCYh8VD5LCPc+EM4557Ayiw==, tarball: file:tui/core-4.0.10.tgz}
-    version: 4.0.10
+  '@tui/core@file:tui/core-4.0.12.tgz':
+    resolution: {integrity: sha512-B8jhftWaC1EVvTElb7Wdsiki0iE9yt9oWqSsh3ngOp1Yp8KEhKS7HOOeYK8SzHbZztAF7i477yuc4ilr2FpuBg==, tarball: file:tui/core-4.0.12.tgz}
+    version: 4.0.12
     peerDependencies:
       '@mui/icons-material': ^7
       '@mui/material': ^7
@@ -1938,9 +1938,9 @@ packages:
       react-i18next: '>=16'
       zustand: '>=5'
 
-  '@tui/drawer@file:tui/drawer-4.0.10.tgz':
-    resolution: {integrity: sha512-HOBvEODkiK2PQ9/zoan6AORwpByGhqTyVnp/7tNnxccBt0SK5u1aok4sfLrDnF35dsQbCPiHuWTFAiqc9H43+g==, tarball: file:tui/drawer-4.0.10.tgz}
-    version: 4.0.10
+  '@tui/drawer@file:tui/drawer-4.0.12.tgz':
+    resolution: {integrity: sha512-3gZcn9CJYKrjmJiAen1y65EPO9ZTwWgxzEx9GDaSl6XBeE8fXCW4xmnMt0T5tckK5DJeG0eqkcjik55wyW2VfQ==, tarball: file:tui/drawer-4.0.12.tgz}
+    version: 4.0.12
     peerDependencies:
       '@mui/icons-material': ^7
       '@mui/material': ^7
@@ -6530,23 +6530,23 @@ snapshots:
     dependencies:
       '@testing-library/dom': 10.4.2
 
-  '@tui/a11y@file:tui/a11y-4.0.10.tgz(8c880e22f4071a1f561c62dcf53f099e)':
+  '@tui/a11y@file:tui/a11y-4.0.12.tgz(c07282f5a09c729df1531848a7d57b2c)':
     dependencies:
       '@mui/icons-material': 7.3.11(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@types/react@19.3.0)(react@19.3.0)
       '@mui/material': 7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      '@tui/core': file:tui/core-4.0.10.tgz(22ac7f4b3502704ef441c1a6aa129194)
-      '@tui/drawer': file:tui/drawer-4.0.10.tgz(@mui/icons-material@7.3.11(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@types/react@19.3.0)(react@19.3.0))(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(i18next@25.10.10(typescript@7.0.2))(react-i18next@16.6.6(i18next@25.10.10(typescript@7.0.2))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))(react@19.3.0)
+      '@tui/core': file:tui/core-4.0.12.tgz(22ac7f4b3502704ef441c1a6aa129194)
+      '@tui/drawer': file:tui/drawer-4.0.12.tgz(@mui/icons-material@7.3.11(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@types/react@19.3.0)(react@19.3.0))(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(i18next@25.10.10(typescript@7.0.2))(react-i18next@16.6.6(i18next@25.10.10(typescript@7.0.2))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))(react@19.3.0)
       i18next: 25.10.10(typescript@7.0.2)
       react: 19.3.0
       react-i18next: 16.6.6(i18next@25.10.10(typescript@7.0.2))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2)
 
-  '@tui/apps@file:tui/apps-4.0.10.tgz(@mui/icons-material@7.3.11(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@types/react@19.3.0)(react@19.3.0))(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)':
+  '@tui/apps@file:tui/apps-4.0.12.tgz(@mui/icons-material@7.3.11(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@types/react@19.3.0)(react@19.3.0))(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)':
     dependencies:
       '@mui/icons-material': 7.3.11(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@types/react@19.3.0)(react@19.3.0)
       '@mui/material': 7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react: 19.3.0
 
-  '@tui/core@file:tui/core-4.0.10.tgz(22ac7f4b3502704ef441c1a6aa129194)':
+  '@tui/core@file:tui/core-4.0.12.tgz(22ac7f4b3502704ef441c1a6aa129194)':
     dependencies:
       '@mui/icons-material': 7.3.11(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@types/react@19.3.0)(react@19.3.0)
       '@mui/material': 7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -6559,7 +6559,7 @@ snapshots:
       react-i18next: 16.6.6(i18next@25.10.10(typescript@7.0.2))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2)
       zustand: 5.0.14(@types/react@19.3.0)(react@19.3.0)(use-sync-external-store@1.6.0(react@19.3.0))
 
-  '@tui/drawer@file:tui/drawer-4.0.10.tgz(@mui/icons-material@7.3.11(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@types/react@19.3.0)(react@19.3.0))(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(i18next@25.10.10(typescript@7.0.2))(react-i18next@16.6.6(i18next@25.10.10(typescript@7.0.2))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))(react@19.3.0)':
+  '@tui/drawer@file:tui/drawer-4.0.12.tgz(@mui/icons-material@7.3.11(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@types/react@19.3.0)(react@19.3.0))(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(i18next@25.10.10(typescript@7.0.2))(react-i18next@16.6.6(i18next@25.10.10(typescript@7.0.2))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))(react@19.3.0)':
     dependencies:
       '@mui/icons-material': 7.3.11(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@types/react@19.3.0)(react@19.3.0)
       '@mui/material': 7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
