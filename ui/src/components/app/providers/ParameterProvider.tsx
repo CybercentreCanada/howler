@@ -524,6 +524,20 @@ const ParameterProvider: FC<PropsWithChildren<{ defaults?: Partial<SearchValues>
     };
   }, [location.pathname, location.search, routeParams.id]);
 
+  const setValuesImmediately = useCallback<Dispatch<SetStateAction<SearchValues>>>(update => {
+    if (writeTimeout.current !== null) {
+      clearTimeout(writeTimeout.current);
+      writeTimeout.current = null;
+    }
+
+    const pending = pendingChanges.current;
+    pendingChanges.current = {};
+    _setValues(current => {
+      const withPending = { ...current, ...pending };
+      return typeof update === 'function' ? update(withPending) : { ...withPending, ...update };
+    });
+  }, []);
+
   // TODO: SELECTING A BUNDLE STILL CAUSES A FREAKOUT
   useUrlSync(values, defaults, _setValues, params, setParams, location.pathname, location.search, routeParams.id);
 
@@ -559,18 +573,18 @@ const ParameterProvider: FC<PropsWithChildren<{ defaults?: Partial<SearchValues>
   );
 
   const setOffset = useCallback(
-    (_offset: string | number) => _setValues(c => ({ ...c, offset: parseOffset(_offset) })),
-    []
+    (_offset: string | number) => setValuesImmediately(c => ({ ...c, offset: parseOffset(_offset) })),
+    [setValuesImmediately]
   );
 
   const setCustomSpan = useCallback(
-    (startDate: string, endDate: string) => _setValues(c => ({ ...c, startDate, endDate })),
-    []
+    (startDate: string, endDate: string) => setValuesImmediately(c => ({ ...c, startDate, endDate })),
+    [setValuesImmediately]
   );
 
-  const filters = useListHandlers<string>('filters', _setValues);
-  const indexes = useListHandlers<SearchIndex>('indexes', _setValues);
-  const views = useListHandlers<string>('views', _setValues);
+  const filters = useListHandlers<string>('filters', setValuesImmediately);
+  const indexes = useListHandlers<SearchIndex>('indexes', setValuesImmediately);
+  const views = useListHandlers<string>('views', setValuesImmediately);
 
   return (
     <ParameterContext.Provider

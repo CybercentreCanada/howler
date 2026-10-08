@@ -1292,6 +1292,74 @@ describe('ParameterContext', () => {
       }
     });
 
+    it('should preserve pending scalar edits when adding a filter updates the URL', () => {
+      vi.useFakeTimers();
+      try {
+        mockSearchParams.set('query', 'initial query');
+        mockLocation.search = '?query=initial%20query';
+        makeMockSetParamsUpdateUrl();
+
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              query: ctx.query,
+              filters: ctx.filters,
+              setQuery: ctx.setQuery,
+              addFilter: ctx.addFilter
+            })),
+          { wrapper: Wrapper }
+        );
+
+        act(() => hook.result.current.setQuery('pending query'));
+        act(() => hook.result.current.addFilter('status:open'));
+        hook.rerender();
+
+        expect(hook.result.current.query).toBe('pending query');
+        act(() => vi.advanceTimersByTime(100));
+
+        expect(hook.result.current.query).toBe('pending query');
+        expect(mockSearchParams.get('query')).toBe('pending query');
+        expect(mockSearchParams.getAll('filter')).toEqual(['status:open']);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('should preserve pending scalar edits when disabling a filter updates the URL', () => {
+      vi.useFakeTimers();
+      try {
+        mockSearchParams.set('query', 'initial query');
+        mockSearchParams.set('filter', 'status:open');
+        mockLocation.search = '?query=initial%20query&filter=status%3Aopen';
+        makeMockSetParamsUpdateUrl();
+
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              query: ctx.query,
+              disabledFilterIndexes: ctx.disabledFilterIndexes,
+              setQuery: ctx.setQuery,
+              disableFilter: ctx.disableFilter
+            })),
+          { wrapper: Wrapper }
+        );
+
+        act(() => hook.result.current.setQuery('pending query'));
+        act(() => hook.result.current.disableFilter(0));
+        hook.rerender();
+
+        expect(hook.result.current.query).toBe('pending query');
+        act(() => vi.advanceTimersByTime(100));
+
+        expect(hook.result.current.query).toBe('pending query');
+        expect(mockSearchParams.get('query')).toBe('pending query');
+        expect(mockSearchParams.getAll('filter')).toEqual(['status:open']);
+        expect(mockSearchParams.getAll('disabled_filter')).toEqual(['status:open']);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it('should handle bundle context - selected param synchronization', async () => {
       mockLocation.pathname = '/bundles/bundle_123';
       mockParams.id = 'bundle_123';
