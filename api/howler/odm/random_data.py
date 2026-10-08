@@ -24,6 +24,7 @@ from random import choice, randint, sample
 from typing import Any, Callable, cast
 
 import yaml
+from pydantic import ValidationError
 
 from howler.common import loader
 from howler.common.logging import get_logger
@@ -827,6 +828,7 @@ def create_actions(ds: HowlerDatastore, num_actions: int = 30):
             for module in module_path.iterdir()
             if module.suffix == ".py" and module.name != "__init__.py"
         )
+        if hasattr(operation, "OPERATION_ID")
     }
 
     operation_options = list(available_operations.keys())
@@ -838,10 +840,11 @@ def create_actions(ds: HowlerDatastore, num_actions: int = 30):
         operation_ids = sample(operation_options, k=randint(1, len(operation_options)))
         for operation_id in operation_ids:
             action_data = {}
+            specification = available_operations[operation_id].specification()
 
-            for step in available_operations[operation_id].specification()["steps"]:
-                for key in step["args"].keys():
-                    potential_values = step.get("options", {}).get(key, None)
+            for step in specification.steps:
+                for key in step.args.keys():
+                    potential_values = step.options.get(key, None)
                     if potential_values:
                         if isinstance(potential_values, dict):
                             try:
@@ -856,7 +859,16 @@ def create_actions(ds: HowlerDatastore, num_actions: int = 30):
             if operation_id == "prioritization":
                 action_data["value"] = float(random.randint(0, 10000)) / 10
 
+            try:
+                specification.validate_arguments(action_data)
+            except ValidationError:
+                # Random values can break conditional rules, i.e. an evidence promotion without an assessment
+                continue
+
             operations.append({"operation_id": operation_id, "data_json": json.dumps((action_data))})
+
+        if not operations:
+            continue
 
         owner = choice([user.uname for user in users])
         action = Action(

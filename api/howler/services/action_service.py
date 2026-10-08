@@ -5,8 +5,10 @@ from typing import Any, Literal, Optional, TypedDict, overload
 
 from cryptography.exceptions import InvalidTag
 from flask import Response, has_request_context, request
+from pydantic import ValidationError
 
 from howler import actions
+from howler.actions.models import ActionModel, format_validation_error
 from howler.api import bad_request
 from howler.common.exceptions import HowlerValueError
 from howler.common.loader import datastore
@@ -243,6 +245,25 @@ def validate_action(new_action: Any) -> Optional[Response]:  # noqa: C901
     if set(new_action.get("triggers", [])) - set(VALID_TRIGGERS):
         return bad_request(err="Invalid trigger provided.")
 
+    try:
+        action = ActionModel.model_validate(new_action)
+    except ValidationError as e:
+        return bad_request(err=format_validation_error(e))
+
+    for operation in action.operations:
+        specification = actions.get_specification(operation.operation_id)
+        if specification is None:
+            return bad_request(
+                err=f"The operation ID provided ({operation.operation_id}) does not match any enabled operations."
+            )
+
+        try:
+            specification.validate_arguments(operation.data)
+        except ValidationError as e:
+            return bad_request(
+                err=f"Invalid arguments for operation {operation.operation_id}: {format_validation_error(e)}"
+            )
+
     return None
 
 
@@ -298,6 +319,7 @@ def bulk_execute_on_query(
                 operation_id=operation.operation_id,
                 query=intersected_query,
                 user=user,
+                ignore_extra_arguments=True,
                 **parsed_data,
             )
 
