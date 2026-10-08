@@ -47,7 +47,7 @@ jobs:
       component_dir: api
       tag_prefix: api-v
       allow_main_preview: true
-      publish_release: ${{ inputs.publish_release }}
+      publish_release: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_release }}
     permissions:
       contents: read
 

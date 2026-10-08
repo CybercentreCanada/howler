@@ -39,7 +39,7 @@ jobs:
       component_dir: plugins/sentinel
       tag_prefix: sentinel-v
       allow_main_preview: false
-      publish_release: ${{ inputs.publish_release }}
+      publish_release: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_release }}
     permissions:
       contents: read
 
