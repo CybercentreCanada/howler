@@ -1,12 +1,12 @@
 import { Article, Language, Link as LinkIcon, Person } from '@mui/icons-material';
 import { Box, Chip, Paper, Stack, Tab, Typography, useMediaQuery, useTheme } from '@mui/material';
-import PageCenter from 'commons/components/pages/PageCenter';
+import { PageCenter } from '@tui/core';
 import Markdown from 'components/elements/display/Markdown';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
 import type { FC } from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import HelpTabs from './components/HelpTabs';
 import LEADS_EN from './markdown/en/dossiersLeads.md';
 import OVERVIEW_EN from './markdown/en/dossiersOverview.md';
@@ -25,19 +25,19 @@ const DossierDocumentation: FC = () => {
   const useHorizontal = useMediaQuery(theme.breakpoints.down(1700));
   useScrollRestoration();
 
+  const sections = ['overview', 'query', 'leads', 'pivots', 'usage'] as const;
   const [searchParams, setSearchParams] = useSearchParams();
-  const [tab, setTab] = useState(searchParams.get('tab') ?? 'overview');
+  const tab = sections.find(section => section === searchParams.get('tab')) ?? 'overview';
 
   const onChange = useCallback(
-    (nextTab: string) => {
-      setTab(nextTab);
-      searchParams.set('tab', nextTab);
-      setSearchParams(new URLSearchParams(searchParams));
+    (nextTab: (typeof sections)[number]) => {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set('tab', nextTab);
+      setSearchParams(nextParams);
     },
     [searchParams, setSearchParams]
   );
 
-  const sections = ['overview', 'query', 'leads', 'pivots', 'usage'] as const;
   const documentation = useMemo(
     () =>
       i18n.language === 'en'

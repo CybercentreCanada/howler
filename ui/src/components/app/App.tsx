@@ -630,7 +630,7 @@ const createRouter = () =>
           handle: {
             breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
               crumb('/help', 'route.help', <Help />),
-              selfCrumb(match, 'route.help.advanced', <Topic />)
+              selfCrumb(match, 'route.help.dossiers', <Topic />)
             ]
           }
         },

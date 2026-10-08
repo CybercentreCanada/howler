@@ -13,13 +13,13 @@ import {
   UnfoldLess
 } from '@mui/icons-material';
 import { Box, Chip, Paper, Stack, Tab, Typography, useMediaQuery, useTheme } from '@mui/material';
-import PageCenter from 'commons/components/pages/PageCenter';
+import { PageCenter } from '@tui/core';
 import Markdown from 'components/elements/display/Markdown';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
 import type { FC } from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import HelpTabs from './components/HelpTabs';
 import FOLDERS_EN from './markdown/en/casesFolders.md';
 import ITEMS_EN from './markdown/en/casesItems.md';
@@ -44,19 +44,19 @@ const CaseDocumentation: FC = () => {
   const useHorizontal = useMediaQuery(theme.breakpoints.down(1700));
   useScrollRestoration();
 
+  const sections = ['overview', 'sidebar', 'summary', 'folders', 'records', 'items', 'investigation', 'rules'] as const;
   const [searchParams, setSearchParams] = useSearchParams();
-  const [tab, setTab] = useState(searchParams.get('tab') ?? 'overview');
+  const tab = sections.find(section => section === searchParams.get('tab')) ?? 'overview';
 
   const onChange = useCallback(
-    (nextTab: string) => {
-      setTab(nextTab);
-      searchParams.set('tab', nextTab);
-      setSearchParams(new URLSearchParams(searchParams));
+    (nextTab: (typeof sections)[number]) => {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set('tab', nextTab);
+      setSearchParams(nextParams);
     },
     [searchParams, setSearchParams]
   );
 
-  const sections = ['overview', 'sidebar', 'summary', 'folders', 'records', 'items', 'investigation', 'rules'] as const;
   const documentation = useMemo(
     () =>
       i18n.language === 'en'
@@ -193,11 +193,11 @@ const CaseDocumentation: FC = () => {
         <Stack spacing={0.5}>
           <Typography variant="caption">{t('page.cases.rules.query')}</Typography>
           <Typography variant="body2" fontFamily="monospace">
-            howler.analytic:Suspicious*
+            {'howler.analytic:Suspicious*'}
           </Typography>
           <Typography variant="caption">{t('page.cases.rules.destination')}</Typography>
           <Typography variant="body2" fontFamily="monospace">
-            alerts/{'{{howler.analytic}}'}
+            {'alerts/{{howler.analytic}}'}
           </Typography>
         </Stack>
       </Paper>
