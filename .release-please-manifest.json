@@ -4,6 +4,6 @@
   "mcp": "0.1.1",
   "plugins/evidence": "0.1.0",
   "plugins/sentinel": "0.2.0",
-  "plugins/sync": "0.0.1",
+  "plugins/sync": "0.0.2",
   "ui": "3.1.0"
 }
