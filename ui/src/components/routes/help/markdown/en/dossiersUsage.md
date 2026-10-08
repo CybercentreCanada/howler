@@ -14,4 +14,4 @@ Before saving a new or changed dossier, verify all of the following:
 4. Links and dynamic Markdown render correctly for a representative hit.
 5. The visibility scope is appropriate for the content.
 
-Deleting a dossier removes its reusable leads and pivots from future matching hits. It does not delete the hits themselves or alter existing cases. Use the confirmation dialog carefully, especially for global dossiers that support a shared workflow.
+Deleting a dossier removes its reusable leads and pivots from matching hit views, including existing hits when they are next loaded. It does not delete the hits themselves or alter existing cases. Use the confirmation dialog carefully, especially for global dossiers that support a shared workflow.

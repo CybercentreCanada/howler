@@ -14,4 +14,4 @@ Avant d'enregistrer un dossier nouveau ou modifié, vérifiez les éléments sui
 4. Les liens et le Markdown dynamique sont corrects pour un hit représentatif.
 5. La portée de visibilité convient au contenu.
 
-La suppression d'un dossier retire ses pistes et pivots réutilisables des futurs hits correspondants. Elle ne supprime pas les hits eux-mêmes et ne modifie pas les cas existants. Utilisez attentivement la boîte de confirmation, en particulier pour les dossiers globaux qui soutiennent un flux de travail partagé.
+La suppression d'un dossier retire ses pistes et pivots réutilisables de l'affichage des hits correspondants, y compris ceux qui existaient déjà lorsqu'ils sont rechargés. Elle ne supprime pas les hits eux-mêmes et ne modifie pas les cas existants. Utilisez attentivement la boîte de confirmation, en particulier pour les dossiers globaux qui soutiennent un flux de travail partagé.
