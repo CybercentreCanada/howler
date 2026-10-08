@@ -272,10 +272,6 @@ keywords = [
     "cccs",
 ]
 include = [
-    { path = "VERSION", format = [
-        "sdist",
-        "wheel",
-    ] },
     { path = "howler/odm/charter.txt", format = [
         "sdist",
         "wheel",

@@ -1,7 +1,10 @@
-# Howler Releases
+# Historical Howler Releases
+
+This is the read-only archive of release notes published before native, independent package changelogs were introduced. New notes are generated in the package changelogs: [API](../api/CHANGELOG.md), [UI](../ui/CHANGELOG.md), [Client](../client/CHANGELOG.md), [MCP](../mcp/CHANGELOG.md), [Evidence](../plugins/evidence/CHANGELOG.md), [Sentinel](../plugins/sentinel/CHANGELOG.md), and [Sync](../plugins/sync/CHANGELOG.md). The initial native baselines are recorded in those files without generating a new release entry.
 
 ## Howler UI `v3.1.0`
 
+- **Searchable Hit Filter Fields** _(improvement)_: Hit search now displays the default filter fields initially while allowing users to search and select any indexed Howler field.
 - **Strict TypeScript Checking** _(technical update)_: Enabled strict TypeScript checking for the UI and updated application code, API clients, hooks, components, plugins, and tests to use explicit, type-safe definitions.
 - **Clue Database Configuration** _(bugfix)_: Exposed Clue storage and replication options so deployments can configure database behavior instead of always using the previous replicated in-memory setup.
 - **Alert Detail Outside Close** _(bugfix)_: Reset alert selection when closing the details pane by clicking outside it, allowing the same alert card to be opened again.
@@ -22,6 +25,8 @@
 
 ## Howler API `v4.1.0`
 
+- **Correlation Backfill** _(bugfix)_: It is now possible to backfill case rules to add historical alerts and events to the case.
+- **Action List Result Cap** _(bugfix)_: Action listing now streams up to 250 results, avoiding default-page truncation while bounding the response size.
 - **Classification Access Control** _(bugfix)_: Enforced classification authorization consistently across direct updates, ingestion, bundle compatibility endpoints, and case references without exposing inaccessible records.
 - **Action Retrieval Endpoint** _(new feature)_: Added an authenticated endpoint for retrieving individual actions with ETag support and conditional `304 Not Modified` responses.
 - **Ownership and Permission Management** _(new feature)_: Added owners, administrators, and members for actions, dossiers, and views, including permission grant/revoke endpoints and a migration for legacy action ownership ([#582](https://github.com/CybercentreCanada/howler/pull/582)).
@@ -32,6 +37,8 @@
 
 ## Howler Client `v3.1.0`
 
+- **Action Index Search** _(new feature)_: Added `client.search.action` for searching actions with Lucene queries and the standard search options.
+- **Action Management** _(new feature)_: Added client methods to list, create, retrieve, and execute Howler automation actions, with unit and integration coverage.
 - **Refresh Controls for Write Operations** _(new feature)_: Added optional Elasticsearch index refresh controls, including `wait_for`, to hit, user, case, and ingest write methods ([#565](https://github.com/CybercentreCanada/howler/pull/565)).
 
 ## Howler API `v4.0.11`

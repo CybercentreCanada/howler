@@ -77,3 +77,42 @@ class Search(object):
             timeout=timeout,
             track_total_hits=track_total_hits,
         )
+
+    def action(
+        self,
+        query,
+        filters=None,
+        fl=None,
+        offset=0,
+        rows=25,
+        sort=None,
+        timeout=None,
+        track_total_hits=None,
+    ):
+        """Search actions with a lucene query.
+
+        Required:
+        query   : lucene query (string)
+
+        Optional:
+        filters           : Additional lucene queries used to filter the data (list of strings)
+        fl                : List of fields to return (comma separated string of fields)
+        offset            : Offset at which the query items should start (integer)
+        rows              : Number of records to return (integer)
+        sort              : Field used for sorting with direction (string: ex. 'name asc')
+        timeout           : Max amount of milliseconds the query will run (integer)
+        track_total_hits  : Number of actions to track (default: 10k)
+
+        Returns the matching actions and search metadata.
+        """
+        return self._do_search(
+            "action",
+            query,
+            filters=filters,
+            fl=fl,
+            offset=offset,
+            rows=rows,
+            sort=sort,
+            timeout=timeout,
+            track_total_hits=track_total_hits,
+        )

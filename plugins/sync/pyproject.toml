@@ -1,6 +1,6 @@
 [project]
 name = "howler-sync-plugin"
-version = "0.0.0"
+version = "0.0.1"
 description = "A howler plugin for syncing hit data"
 authors = [{ name = "CCCS", email = "analysis-development@cyber.gc.ca" }]
 license = { text = "MIT" }
@@ -151,7 +151,7 @@ packages = [{ include = "sync" }]
 
 
 [tool.poetry.dependencies]
-pyspark = "3.5.6"
+pyspark = "3.5.8"
 
 
 [tool.poetry.group.dev.dependencies]

@@ -4,15 +4,9 @@ on:
   push:
     branches:
       - main
-      - develop
-      - rc/*
-      - patch/*
   pull_request:
     branches:
       - main
-      - develop
-      - rc/*
-      - patch/*
   schedule:
     - cron: "23 6 * * 1"
   workflow_dispatch: {}

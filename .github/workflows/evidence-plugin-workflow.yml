@@ -4,199 +4,166 @@ on:
   push:
     branches:
       - main
-      - develop
-      - rc/*
-      - patch/*
-    paths:
-      - "plugins/evidence/**"
-      - "!plugins/evidence/README.md"
-      - .github/workflows/evidence-plugin-workflow.yml
     tags:
-      - v*
+      - evidence-v*
+    paths:
+      - plugins/evidence/**
+      - .github/workflows/evidence-plugin-workflow.yml
+      - .github/workflows/release-validation.yml
+      - scripts/validate_release.py
   pull_request:
     branches:
       - main
-      - develop
-      - rc/*
-      - patch/*
     paths:
-      - "plugins/evidence/**"
-      - "!plugins/evidence/README.md"
+      - plugins/evidence/**
       - .github/workflows/evidence-plugin-workflow.yml
-  workflow_dispatch: {}
+      - .github/workflows/release-validation.yml
+      - scripts/validate_release.py
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: Publish stable artifacts from a verified native component tag
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
   pull-requests: write
 
 jobs:
+  release_validation:
+    uses: ./.github/workflows/release-validation.yml
+    with:
+      component: evidence
+      component_dir: plugins/evidence
+      tag_prefix: evidence-v
+      allow_main_preview: false
+      publish_release: ${{ inputs.publish_release }}
+    permissions:
+      contents: read
+
   formatting:
     name: Validate Howler Evidence Plugin Code Quality
-
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: plugins/evidence
     steps:
-      - name: Checkout develop
-        uses: actions/checkout@v4
-        with:
-          ref: develop
       - name: Checkout current ref
         uses: actions/checkout@v4
-      - name: Setup Python 3.12
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Install Poetry
         uses: abatilo/actions-poetry@v4
-      - uses: actions/cache@v4
-        name: Define a cache for the virtual environment based on the dependencies lock file
+      - name: Cache Poetry environment
+        uses: actions/cache@v4
         with:
-          path: ./plugins/evidence/.venv
-          key: venv-${{ hashFiles('plugins/evidence/poetry.lock') }}
-      - name: Check for poetry config integrity
-        run: |
-          poetry --version
-          poetry env use 3.12
-          poetry check
-          poetry env info
-      - name: Install Dependencies
-        run: |
-          poetry install --verbose --with dev
-      - name: Run ruff formatting checks
-        run: |
-          poetry run ruff format evidence --diff
-      - name: Run ruff linter checks
-        run: |
-          poetry run ruff check evidence --output-format=github
+          path: plugins/evidence/.venv
+          key: ${{ runner.os }}-poetry-3.12-evidence-${{ hashFiles('plugins/evidence/poetry.lock') }}
+      - name: Check Poetry configuration
+        run: poetry check --lock
+      - name: Install dependencies
+        run: poetry install --verbose --with dev,types
+      - name: Run Ruff formatting checks
+        run: poetry run ruff format evidence --diff
+      - name: Run Ruff lint checks
+        run: poetry run ruff check evidence --output-format=github
       - name: Run type checking
-        run: |
-          poetry run type_check
-      - name: "Update poetry version"
-        run: |
-          poetry run python build_scripts/set_version.py
-        env:
-          BRANCH: ${{ github.ref }}
-          BUILD_ID: ${{ github.run_number }}
+        run: poetry run type_check
+
   test:
     runs-on: ubuntu-latest
-
     name: Run Howler Evidence Plugin Unit Tests
-
     needs: formatting
-
     defaults:
       run:
         working-directory: plugins/evidence
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
-      - name: Get base depth of PR
-        if: github.event_name == 'pull_request'
-        id: base-depth
-        working-directory: .
-        run: |
-          echo "base-depth=$(expr ${{ github.event.pull_request.commits }} + 1)" >> $GITHUB_OUTPUT
       - name: Checkout current ref
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: ${{ steps.base-depth.outputs.base-depth }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install Poetry
         uses: abatilo/actions-poetry@v4
-      - uses: actions/cache@v4
-        name: Define a cache for the virtual environment based on the dependencies lock file
+      - name: Cache Poetry environment
+        uses: actions/cache@v4
         with:
-          path: ./plugins/evidence/.venv
-          key: venv-${{ hashFiles('plugins/evidence/poetry.lock') }}
-      - name: Setup Environment
-        run: |
-          sudo mkdir -p /etc/howler/conf/
-          sudo mkdir -p /etc/howler/lookups/
-          sudo mkdir -p /var/log/howler
-          sudo chmod a+rw /etc/howler/conf/
-          sudo chmod a+rw /etc/howler/lookups/
-          sudo chmod a+rw /var/log/howler
-          cp build_scripts/classification.yml /etc/howler/conf/classification.yml
-          cp test/unit/config.yml /etc/howler/conf/config.yml
+          path: plugins/evidence/.venv
+          key: ${{ runner.os }}-poetry-${{ matrix.python-version }}-evidence-${{ hashFiles('plugins/evidence/poetry.lock') }}
+      - name: Set up Howler API configuration
         working-directory: api
-      - name: Install Dependencies
         run: |
-          poetry install --verbose --with dev
+          sudo mkdir -p /etc/howler/conf /etc/howler/lookups /var/log/howler
+          sudo chmod a+rw /etc/howler/conf /etc/howler/lookups /var/log/howler
+          cp build_scripts/classification.yml /etc/howler/conf/classification.yml
+          cp build_scripts/mappings.yml /etc/howler/conf/mappings.yml
+          cp test/unit/config.yml /etc/howler/conf/config.yml
+      - name: Install dependencies and prepare lookups
+        run: |
+          poetry install --verbose --with dev,types
           poetry run mitre /etc/howler/lookups
           poetry run sigma
       - name: Run tests
-        run: |
-          poetry run pytest --cov=evidence --cov-branch -rP -vv
-      - name: Coverage Results
-        run: |
-          git diff --name-only $(git merge-base $BASE_SHA $HEAD_SHA)..$HEAD_SHA
-          git diff $(git merge-base $BASE_SHA $HEAD_SHA)..$HEAD_SHA > diff.txt
-          poetry run coverage_report
+        run: poetry run pytest --cov=evidence --cov-branch -rP -vv
+      - name: Prepare pull request diff for coverage
+        if: github.event_name == 'pull_request'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          GIT_BRANCH: ${{ github.event.pull_request.head.ref }}
-
-      - name: Add Coverage PR Comment
-        uses: marocchino/sticky-pull-request-comment@v2
+        run: git diff "$BASE_SHA...$HEAD_SHA" > diff.txt
+      - name: Generate coverage report
+        run: poetry run python build_scripts/coverage_reports.py
+      - name: Add coverage PR comment
         if: github.event_name == 'pull_request' && matrix.python-version == '3.12'
-        # https://github.com/marocchino/sticky-pull-request-comment/issues/227
+        uses: marocchino/sticky-pull-request-comment@v2
         continue-on-error: true
         with:
           path: plugins/evidence/coverage-results.md
           header: evidence
-  push_to_pypi:
-    if: github.event_name != 'pull_request'
 
-    runs-on: ubuntu-latest
-
-    name: Build Howler Evidence Plugin Python Package
-
+  publish:
+    if: needs.release_validation.outputs.channel == 'stable'
     needs:
+      - release_validation
       - formatting
       - test
-
+    runs-on: ubuntu-latest
+    name: Build and publish stable Howler Evidence Plugin
+    permissions:
+      contents: read
     defaults:
       run:
-        working-directory: ./plugins/evidence
-
+        working-directory: plugins/evidence
     steps:
-      - name: Checkout develop
+      - name: Checkout validated revision
         uses: actions/checkout@v4
         with:
-          ref: develop
-      - name: Checkout current ref
-        uses: actions/checkout@v4
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - name: Install Poetry
         uses: abatilo/actions-poetry@v4
-      - uses: actions/cache@v4
-        name: Define a cache for the virtual environment based on the dependencies lock file
-        with:
-          path: ./plugins/evidence/.venv
-          key: venv-${{ hashFiles('plugins/evidence/poetry.lock') }}
-      - name: Install Dependencies
-        run: |
-          poetry install
-      - name: "Update poetry version"
-        run: |
-          poetry run python build_scripts/set_version.py
+      - name: Build package
+        run: poetry build
+      - name: Publish stable package to PyPI
         env:
-          BRANCH: ${{ github.ref }}
-          BUILD_ID: ${{ github.run_number }}
-      - name: Build Package
-        run: |
-          poetry install
-          poetry build
-      - name: Configure Poetry for PyPI
-        run: poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
-      - name: Publish the package to PyPI
-        if: github.event_name != 'pull_request'
-        run: |
-          poetry publish
+          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
+        run: poetry publish

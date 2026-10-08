@@ -1,0 +1,91 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  actions: write
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: release-please-main
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create or update package release PRs
+        id: release
+        uses: googleapis/release-please-action@v5
+        with:
+          target-branch: main
+          config-file: .release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - name: Dispatch stable publication workflows
+        if: steps.release.outputs.releases_created == 'true'
+        uses: actions/github-script@v7
+        env:
+          PATHS_RELEASED: ${{ steps.release.outputs.paths_released }}
+          RELEASE_OUTPUTS: ${{ toJSON(steps.release.outputs) }}
+        with:
+          script: |
+            const paths = JSON.parse(process.env.PATHS_RELEASED || '[]');
+            const outputs = JSON.parse(process.env.RELEASE_OUTPUTS || '{}');
+            const components = {
+              api: { workflow: 'api-workflow.yml', tagPrefix: 'api-v' },
+              ui: { workflow: 'ui-workflow.yml', tagPrefix: 'ui-v' },
+              client: { workflow: 'client-workflow.yml', tagPrefix: 'client-v' },
+              mcp: { workflow: 'mcp-workflow.yml', tagPrefix: 'mcp-v' },
+              'plugins/evidence': {
+                workflow: 'evidence-plugin-workflow.yml',
+                tagPrefix: 'evidence-v',
+              },
+              'plugins/sentinel': {
+                workflow: 'sentinel-plugin-workflow.yml',
+                tagPrefix: 'sentinel-v',
+              },
+              'plugins/sync': {
+                workflow: 'sync-plugin-workflow.yml',
+                tagPrefix: 'sync-v',
+              },
+            };
+            const stableVersion = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
+
+            if (!Array.isArray(paths)) {
+              throw new Error('Release Please paths_released output was not an array');
+            }
+
+            const dispatches = [];
+            for (const path of paths) {
+              const component = components[path];
+              if (!component) {
+                throw new Error(`Unexpected Release Please package path: ${path}`);
+              }
+              const tag = outputs[`${path}--tag_name`];
+              if (typeof tag !== 'string' || !tag.startsWith(component.tagPrefix)) {
+                throw new Error(`Missing or mismatched native tag for ${path}: ${tag}`);
+              }
+              const version = tag.slice(component.tagPrefix.length);
+              if (!stableVersion.test(version)) {
+                throw new Error(`Non-canonical stable tag for ${path}: ${tag}`);
+              }
+
+              dispatches.push({ workflow: component.workflow, tag });
+            }
+
+            for (const { workflow, tag } of dispatches) {
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: workflow,
+                ref: tag,
+                inputs: { publish_release: 'true' },
+              });
+            }

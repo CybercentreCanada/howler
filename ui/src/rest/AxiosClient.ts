@@ -56,7 +56,8 @@ export default class AxiosClient implements RestClient {
     method: 'get' | 'post' | 'put' | 'delete' | 'patch' = 'get',
     body?: any,
     params?: URLSearchParams,
-    headers?: HeadersInit
+    headers?: HeadersInit,
+    signal?: AbortSignal
   ): Promise<[HowlerResponse<R>, number, { [index: string]: any }]> {
     const config: AxiosRequestConfig = {
       url,
@@ -64,7 +65,8 @@ export default class AxiosClient implements RestClient {
       method,
       withCredentials: true,
       data: JSON.stringify(body),
-      headers: headers as AxiosRequestHeaders
+      headers: headers as AxiosRequestHeaders,
+      signal
     };
 
     try {

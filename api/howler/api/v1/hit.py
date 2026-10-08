@@ -18,7 +18,13 @@ from howler.api import (
 )
 from howler.api.v1.utils.etag import add_etag
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
-from howler.common.exceptions import HowlerException, HowlerValueError, InvalidDataException, NotFoundException
+from howler.common.exceptions import (
+    HowlerException,
+    HowlerRuntimeError,
+    HowlerValueError,
+    InvalidDataException,
+    NotFoundException,
+)
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -135,7 +141,12 @@ def create_hits(user: User, refresh: Literal["true", "false", "wait_for"] | None
             analytic_service.save_from_hits(odms, user, refresh=refresh)
             ids = [odm.howler.id for odm in odms]
             action_service.enqueue_action_execution(ids, trigger="create", user=user)
-            correlation_service.enqueue_for_correlation(ids)
+            try:
+                correlation_service.enqueue_for_correlation(ids)
+            except HowlerRuntimeError:
+                # Hits have already been persisted. Do not make a successful
+                # ingest retryable merely because asynchronous correlation is down.
+                warnings.append("Correlation processing could not be scheduled.")
 
         response_body["warnings"] = warnings
 

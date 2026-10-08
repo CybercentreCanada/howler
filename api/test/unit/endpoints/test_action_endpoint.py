@@ -91,3 +91,43 @@ def test_get_action_not_found(
 
     assert result.status_code == 404
     assert result.get_json()["api_error_message"] == "The specified action does not exist"
+
+
+@patch("howler.security.login.audit")
+@patch("howler.security.login.QUOTA_TRACKER")
+@patch("howler.security.login.auth_service")
+@patch("howler.api.v1.action.datastore")
+def test_get_actions_caps_results(
+    mock_datastore,
+    mock_auth_service,
+    mock_quota_tracker,
+    mock_audit,
+    request_context: Flask,
+):
+    stream_closed = False
+
+    def action_stream():
+        nonlocal stream_closed
+        try:
+            for index in range(300):
+                yield {"action_id": str(index)}
+        finally:
+            stream_closed = True
+
+    mock_datastore.return_value.action.stream_search.return_value = action_stream()
+    _configure_auth(mock_auth_service, mock_quota_tracker)
+
+    with request_context.test_request_context(
+        "/api/v1/action/",
+        headers={"Authorization": "Bearer ."},
+    ):
+        from howler.api.v1.action import get_actions
+
+        result: Response = get_actions()
+
+    actions = result.get_json()["api_response"]
+    assert result.status_code == 200
+    assert len(actions) == 250
+    assert actions[-1]["action_id"] == "249"
+    assert stream_closed
+    mock_datastore.return_value.action.stream_search.assert_called_once_with("*:*", as_obj=False)

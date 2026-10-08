@@ -1,5 +1,6 @@
 import json
 from typing import cast
+from uuid import uuid4
 
 import pytest
 
@@ -92,6 +93,60 @@ def test_search(datastore, login_session):
     for collection in collections:
         resp = get_api_data(session, f"{host}/api/v2/search/{collection}", params={"query": "id:*"})
         assert TEST_SIZE <= resp["total"] >= len(resp["items"])
+
+
+def test_hit_search_negative_filter(datastore: HowlerDatastore, login_session):
+    """A standalone negative filter excludes hits without rewriting the positive query."""
+    session, host = login_session
+    analytic = f"negative-filter-{uuid4()}"
+    excluded_id, retained_id = str(uuid4()), str(uuid4())
+    query = f'howler.analytic:"{analytic}"'
+
+    try:
+        for hit_id, provider, hit_hash in (
+            (excluded_id, "excluded-provider", "a" * 64),
+            (retained_id, "retained-provider", "b" * 64),
+        ):
+            datastore.hit.save(
+                hit_id,
+                {
+                    "howler": {"id": hit_id, "analytic": analytic, "hash": hit_hash},
+                    "event": {"provider": provider},
+                },
+            )
+        datastore.hit.commit()
+
+        baseline = get_api_data(
+            session,
+            f"{host}/api/v2/search/hit",
+            method="POST",
+            data=json.dumps({"query": query, "filters": []}),
+        )
+        assert baseline["total"] == 2
+        assert len(baseline["items"]) == 2
+        assert {item["howler"]["id"] for item in baseline["items"]} == {excluded_id, retained_id}
+
+        excluded = get_api_data(
+            session,
+            f"{host}/api/v2/search/hit",
+            method="POST",
+            data=json.dumps({"query": query, "filters": ['-event.provider:"excluded-provider"']}),
+        )
+        assert excluded["total"] == 1
+        assert [item["howler"]["id"] for item in excluded["items"]] == [retained_id]
+
+        included = get_api_data(
+            session,
+            f"{host}/api/v2/search/hit",
+            method="POST",
+            data=json.dumps({"query": query, "filters": ['event.provider:"excluded-provider"']}),
+        )
+        assert included["total"] == 1
+        assert [item["howler"]["id"] for item in included["items"]] == [excluded_id]
+    finally:
+        datastore.hit.delete(excluded_id)
+        datastore.hit.delete(retained_id)
+        datastore.hit.commit()
 
 
 def test_count(datastore, login_session):

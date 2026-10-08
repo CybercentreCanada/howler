@@ -15,9 +15,38 @@ commit_msg = commit_file.read_text()
 
 commit = ConventionalCommit(
     commit_msg=commit_msg,
-    types=ConventionalCommit.DEFAULT_TYPES + ["release"],
+    types=[
+        "feat",
+        "fix",
+        "perf",
+        "test",
+        "tests",
+        "docs",
+        "deps",
+        "refactor",
+        "infra",
+        "ci",
+        "build",
+        "revert",
+        "style",
+        "chore",
+        "release",
+        "improvement",
+    ],
     scope_optional=True,
-    scopes=["api", "client", "ui", "ci", "demo", "helm", "mcp"],
+    scopes=[
+        "api",
+        "client",
+        "ui",
+        "ci",
+        "demo",
+        "helm",
+        "mcp",
+        "evidence",
+        "sentinel",
+        "sync",
+        "main",
+    ],
 )
 
 
@@ -48,17 +77,12 @@ if issue not in commit_msg:
 
 
 if not commit.is_valid():
-    if (
-        current_branch in ["main", "develop"]
-        or current_branch.startswith("patch")
-        or current_branch.startswith("rc")
-    ):
+    if current_branch == "main":
         print(fail(commit))
         sys.exit(1)
 
     console.print(
-        "Your commit message does not follow Conventional Commits formatting. Allowing as branch is not main, develop, "
-        "patch/* or rc/*",
+        "Your commit message does not follow Conventional Commits formatting. Allowing as branch is not main.",
         style="yellow bold",
     )
 

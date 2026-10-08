@@ -59,6 +59,7 @@ pnpm test <specific_test_file_paths>
 - `MockLocalStorage` defines a non-writable `key` method; do not use `key` as a storage key in tests. Clear the mock and its spies in `beforeEach` when using `setupLocalStorageMock()`.
 - Import the explicit `@fontsource/roboto/index.css` entry; the package-root side-effect import can fail TypeScript resolution.
 - UI lint requires type-only imports and prefers expression/arrow-style functions. Keep braces around control-flow bodies.
+- Keep UI API endpoints in modules that mirror their URL/resource hierarchy: nested resources get their own directory with an `index.ts` barrel, and deeper endpoints live in their own modules (for example, `api/v2/case/rules/backfill/index.ts` and `count.ts`). Export nested modules as namespaces so callers use paths such as `api.v2.case.rules.backfill.post(...)` and `api.v2.case.rules.backfill.count.post(...)`; avoid adding nested endpoint methods inline to a parent module.
 
 ## Client, Plugins, And MCP
 
@@ -72,10 +73,10 @@ pnpm test <specific_test_file_paths>
 ## Cross-Cutting Workflow
 
 - Root pre-commit hooks cover Ruff, Actionlint, oxfmt, changed-file oxlint/TypeScript checks, Poetry lock integrity, translation/import checks, and commit messages. Install with `pre-commit install` and run all hooks with `pre-commit run --all-files`.
-- Commit messages are Conventional Commits. Valid scopes enforced by the hook are `api`, `client`, `ui`, `ci`, `demo`, `helm`, and `mcp`; the hook links issue-like branch names and lowercases the summary.
+- Commit messages use the Conventional Commit types configured in `.release-please-config.json` and the commit-message hook. Valid scopes are `api`, `client`, `ui`, `ci`, `demo`, `helm`, `mcp`, `evidence`, `sentinel`, `sync`, and `main` (for Release Please titles); the hook links issue-like branch names and lowercases the summary.
 - GPG signing is broken in this environment. Whenever the agent creates a local commit, explicitly bypass signing for that invocation, e.g. `git -C <repo-or-worktree> -c commit.gpgsign=false commit ...`; never run bare `git commit` and do not change global or repository signing configuration.
 - PR titles are semantic and their subjects must be lowercase; accepted types are defined in `.github/workflows/pr-title-check.yml`.
-- If a verified bug fix is made on `main`, `develop`, `patch/*`, or `rc/*`, add a matching entry under the appropriate version in `docs/RELEASES.md` using `- **Short Title** _(bugfix)_: description.`
+- Release Please creates independent package release PRs from `main` and generates each package's `CHANGELOG.md`. Do not manually add new entries to `docs/RELEASES.md`; it is a read-only archive of historical releases. Keep each package's initial native baseline note and archive link in its local changelog.
 
 ## Agentic Development And Git Worktrees
 

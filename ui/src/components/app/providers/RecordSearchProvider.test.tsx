@@ -82,6 +82,15 @@ beforeEach(() => {
   vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
 });
 
+const expectSearchRequest = request => {
+  const requests = vi
+    .mocked(hpost)
+    .mock.calls.filter(([url]) => url === '/api/v2/search/hit')
+    .map(([, body]) => body);
+
+  expect(requests).toEqual(expect.arrayContaining([expect.objectContaining(request)]));
+};
+
 describe('RecordSearchContext', () => {
   it('should initialize with default values', async () => {
     const hook = renderHook(
@@ -178,6 +187,19 @@ describe('RecordSearchContext', () => {
   });
 
   describe('search', () => {
+    it('should retain negated wildcard filters and omit positive placeholders', async () => {
+      mockParameterContext.filters = ['howler.assessment:*', '-howler.assessment:*'];
+
+      const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.getFilters), {
+        wrapper: Wrapper
+      });
+
+      const filters = await hook.result.current();
+
+      expect(filters).toContain('-howler.assessment:*');
+      expect(filters).not.toContain('howler.assessment:*');
+    });
+
     it('should perform a search and update response', async () => {
       const hook = renderHook(
         () =>
@@ -195,12 +217,7 @@ describe('RecordSearchContext', () => {
       });
 
       await waitFor(() => {
-        expect(hpost).toHaveBeenCalledWith(
-          '/api/v2/search/hit',
-          expect.objectContaining({
-            query: expect.stringContaining('test query')
-          })
-        );
+        expectSearchRequest({ query: expect.stringContaining('test query') });
       });
     });
 
@@ -356,12 +373,9 @@ describe('RecordSearchContext', () => {
       });
 
       await waitFor(() => {
-        expect(hpost).toHaveBeenCalledWith(
-          '/api/v2/search/hit',
-          expect.objectContaining({
-            filters: expect.arrayContaining([expect.stringContaining('event.created:')])
-          })
-        );
+        expectSearchRequest({
+          filters: expect.arrayContaining([expect.stringContaining('event.created:')])
+        });
       });
     });
 
@@ -377,12 +391,9 @@ describe('RecordSearchContext', () => {
       });
 
       await waitFor(() => {
-        expect(hpost).toHaveBeenCalledWith(
-          '/api/v2/search/hit',
-          expect.objectContaining({
-            filters: expect.arrayContaining([expect.stringContaining('event.created:')])
-          })
-        );
+        expectSearchRequest({
+          filters: expect.arrayContaining([expect.stringContaining('event.created:')])
+        });
       });
     });
 
@@ -396,10 +407,37 @@ describe('RecordSearchContext', () => {
       });
 
       await waitFor(() => {
-        expect(hpost).toHaveBeenCalledWith(
-          '/api/v2/search/hit',
+        expectSearchRequest({
+          filters: expect.not.arrayContaining([expect.stringContaining('howler.escalation:*')])
+        });
+      });
+    });
+
+    it('should forward positive and negative grouped filters without changing their clauses', async () => {
+      mockParameterContext.filters = [
+        'event.provider:"azure"',
+        '-howler.outline.indicators:("a" OR "b")',
+        'event.provider:"\\*"',
+        '-event.provider:"\\*"'
+      ];
+
+      const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.search), { wrapper: Wrapper });
+
+      act(() => {
+        hook.result.current('test query');
+      });
+
+      await waitFor(() => {
+        const searchRequest = vi.mocked(hpost).mock.calls.find(([url]) => url === '/api/v2/search/hit')?.[1];
+
+        expect(searchRequest).toEqual(
           expect.objectContaining({
-            filters: expect.not.arrayContaining([expect.stringContaining('howler.escalation:*')])
+            filters: expect.arrayContaining([
+              'event.provider:"azure"',
+              '-howler.outline.indicators:("a" OR "b")',
+              'event.provider:"\\*"',
+              '-event.provider:"\\*"'
+            ])
           })
         );
       });
@@ -573,13 +611,10 @@ describe('RecordSearchContext', () => {
         });
 
         await waitFor(() => {
-          expect(hpost).toHaveBeenCalledWith(
-            '/api/v2/search/hit',
-            expect.objectContaining({
-              query: 'test query',
-              filters: expect.arrayContaining(['howler.status:open', 'howler.priority:high'])
-            })
-          );
+          expectSearchRequest({
+            query: 'test query',
+            filters: expect.arrayContaining(['howler.status:open', 'howler.priority:high'])
+          });
         });
       });
 
@@ -599,18 +634,15 @@ describe('RecordSearchContext', () => {
         });
 
         await waitFor(() => {
-          expect(hpost).toHaveBeenCalledWith(
-            '/api/v2/search/hit',
-            expect.objectContaining({
-              query: 'test query',
-              filters: [
-                'event.created:[now-1w TO now]',
-                'howler.status:open',
-                'howler.priority:high',
-                'howler.analytic:sigma'
-              ]
-            })
-          );
+          expectSearchRequest({
+            query: 'test query',
+            filters: [
+              'event.created:[now-1w TO now]',
+              'howler.status:open',
+              'howler.priority:high',
+              'howler.analytic:sigma'
+            ]
+          });
         });
       });
     });
@@ -677,13 +709,10 @@ describe('RecordSearchContext', () => {
 
         await waitFor(
           () => {
-            expect(hpost).toHaveBeenCalledWith(
-              '/api/v2/search/hit',
-              expect.objectContaining({
-                query: expect.stringContaining('test query'),
-                filters: ['event.created:[now-1w TO now]']
-              })
-            );
+            expectSearchRequest({
+              query: expect.stringContaining('test query'),
+              filters: ['event.created:[now-1w TO now]']
+            });
           },
           { timeout: 2000 }
         );
@@ -704,13 +733,10 @@ describe('RecordSearchContext', () => {
         });
 
         await waitFor(() => {
-          expect(hpost).toHaveBeenCalledWith(
-            '/api/v2/search/hit',
-            expect.objectContaining({
-              query: 'test query',
-              filters: ['event.created:[now-1w TO now]', 'howler.status:open', 'howler.priority:high']
-            })
-          );
+          expectSearchRequest({
+            query: 'test query',
+            filters: ['event.created:[now-1w TO now]', 'howler.status:open', 'howler.priority:high']
+          });
         });
       });
     });

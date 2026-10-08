@@ -4,11 +4,13 @@ import {
   maxLenStr,
   nameToInitials,
   parsePixelSizeStringToInt,
+  parseQuotedValues,
   safeFieldValue,
   safeFieldValueURI,
   safeStringPropertyCompare,
   sanitizeLuceneQuery,
   sanitizeMultilineLucene,
+  unescapeLucene,
   validateRegex
 } from './stringUtils';
 
@@ -134,6 +136,51 @@ describe('sanitizeLuceneQuery', () => {
 
   it('leaves a plain alphanumeric string unchanged', () => {
     expect(sanitizeLuceneQuery('plainterm')).toBe('plainterm');
+  });
+});
+
+describe('unescapeLucene', () => {
+  it.each([
+    '',
+    'plain text',
+    '^"~*?:\\/()[]{}-!',
+    'a && b && c || d || e',
+    String.raw`C:\logs\file`,
+    String.raw`backslash before quote: \"`,
+    'line\nbreak',
+    'trailing\\'
+  ])('reverses sanitizeLuceneQuery for %j', value => {
+    expect(unescapeLucene(sanitizeLuceneQuery(value))).toBe(value);
+  });
+
+  it('decodes noncanonical escapes to their literal value', () => {
+    expect(unescapeLucene(String.raw`\a\*`)).toBe('a*');
+  });
+
+  it('decodes an escaped newline', () => {
+    expect(unescapeLucene('\\\n')).toBe('\n');
+  });
+
+  it('leaves a trailing unmatched backslash unchanged', () => {
+    expect(unescapeLucene('trailing\\')).toBe('trailing\\');
+  });
+});
+
+describe('parseQuotedValues', () => {
+  it('parses and unescapes a quoted scalar', () => {
+    expect(parseQuotedValues(String.raw`"escaped\"quote"`)).toEqual(['escaped"quote']);
+  });
+
+  it('parses grouped alternatives without splitting OR inside a quoted value', () => {
+    expect(parseQuotedValues('( "a"\tOR\n"text OR more" )')).toEqual(['a', 'text OR more']);
+  });
+
+  it.each(['"a" OR "b"', '"a" OR "b" '])('rejects ungrouped alternatives: %j', clause => {
+    expect(parseQuotedValues(clause)).toBeNull();
+  });
+
+  it.each(['()', '("a" OR)', '("a" "b")', '("unterminated)'])('rejects malformed groups: %j', clause => {
+    expect(parseQuotedValues(clause)).toBeNull();
   });
 });
 

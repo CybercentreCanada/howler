@@ -141,13 +141,17 @@ describe('ViewCard', () => {
     await waitFor(() => expect(mockDispatchApi).toHaveBeenCalled());
 
     expect(mockFetchViews).toHaveBeenCalledWith(['view-1']);
-    expect(mockSearchPost).toHaveBeenCalledWith(['hit'], {
-      query: mockView.query,
-      rows: 3,
-      sort: mockView.sort,
-      filters: [`event.created:[now-1M TO now]`],
-      metadata: ['analytic']
-    });
+    expect(mockSearchPost).toHaveBeenCalledWith(
+      ['hit'],
+      {
+        query: mockView.query,
+        rows: 3,
+        sort: mockView.sort,
+        filters: [`event.created:[now-1M TO now]`],
+        metadata: ['analytic']
+      },
+      expect.any(AbortSignal)
+    );
   });
 
   it('renders the empty state when the search has no records', async () => {
@@ -186,13 +190,48 @@ describe('ViewCard', () => {
     );
 
     await waitFor(() => expect(mockDispatchApi).toHaveBeenCalledTimes(1));
-    expect(onRefreshComplete).toHaveBeenCalledTimes(2);
+    expect(onRefreshComplete).toHaveBeenCalledTimes(1);
 
     rerender(
       <ViewCard viewId="view-1" limit={3} refreshTick={Symbol('second')} onRefreshComplete={onRefreshComplete} />
     );
 
     await waitFor(() => expect(mockDispatchApi).toHaveBeenCalledTimes(2));
-    expect(onRefreshComplete).toHaveBeenCalledTimes(3);
+    expect(onRefreshComplete).toHaveBeenCalledTimes(2);
+  });
+
+  it('aborts a superseded search and ignores its late response', async () => {
+    let resolveFirst: ((value: { items: (typeof hit)[] }) => void) | undefined;
+    let resolveSecond: ((value: { items: (typeof hit)[] }) => void) | undefined;
+    mockDispatchApi
+      .mockReturnValueOnce(new Promise(resolve => (resolveFirst = resolve)))
+      .mockReturnValueOnce(new Promise(resolve => (resolveSecond = resolve)));
+
+    const { rerender } = render(<ViewCard viewId="view-1" limit={3} />, { wrapper: Wrapper });
+    await waitFor(() => expect(mockDispatchApi).toHaveBeenCalledTimes(1));
+    const firstSignal = mockSearchPost.mock.calls[0][2] as AbortSignal;
+
+    rerender(<ViewCard viewId="view-1" limit={4} />);
+    await waitFor(() => expect(mockDispatchApi).toHaveBeenCalledTimes(2));
+    expect(firstSignal.aborted).toBe(true);
+
+    resolveSecond?.({ items: [{ ...hit, howler: { ...hit.howler, id: 'latest-hit' } }] });
+    expect(await screen.findByText('Hit: latest-hit')).toBeInTheDocument();
+
+    resolveFirst?.({ items: [hit] });
+    await waitFor(() => expect(screen.queryByText('Hit: hit-1')).not.toBeInTheDocument());
+    expect(screen.getByText('Hit: latest-hit')).toBeInTheDocument();
+  });
+
+  it('aborts its search when unmounted', async () => {
+    mockDispatchApi.mockReturnValue(new Promise(() => {}));
+
+    const { unmount } = render(<ViewCard viewId="view-1" limit={3} />, { wrapper: Wrapper });
+    await waitFor(() => expect(mockDispatchApi).toHaveBeenCalledTimes(1));
+    const signal = mockSearchPost.mock.calls[0][2] as AbortSignal;
+
+    unmount();
+
+    expect(signal.aborted).toBe(true);
   });
 });

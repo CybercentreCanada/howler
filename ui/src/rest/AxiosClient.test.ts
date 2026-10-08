@@ -123,6 +123,13 @@ describe('AxiosClient', () => {
       expect(config.headers).toEqual(headers);
     });
 
+    it('forwards an abort signal', async () => {
+      mockAxiosInstance.mockResolvedValueOnce({ data: {}, status: 200, headers: {} });
+      const controller = new AbortController();
+      await client.fetch('/api/v1/hit', 'get', undefined, undefined, undefined, controller.signal);
+      expect(mockAxiosInstance.mock.calls[0][0].signal).toBe(controller.signal);
+    });
+
     it('sets withCredentials to true', async () => {
       mockAxiosInstance.mockResolvedValueOnce({ data: {}, status: 200, headers: {} });
       await client.fetch('/api/v1/hit');
