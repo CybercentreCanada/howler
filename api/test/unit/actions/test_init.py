@@ -20,7 +20,7 @@ def test_specifications():
     files: list[Path] = []
 
     for folder in folders:
-        files += list(path for path in folder.glob("*.py") if path.stem != "__init__")
+        files += list(path for path in folder.glob("*.py") if path.stem not in ("__init__", "models"))
 
     # We ignore the example action, which isn't included in the list of valid actions
     assert len(result) == len(files) - 1

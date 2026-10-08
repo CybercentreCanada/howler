@@ -325,6 +325,7 @@ def execute_action(id: str, **kwargs) -> Response:
             request_id=execute_req["request_id"],
             query=query,
             user=current_user,
+            ignore_extra_arguments=True,
             **op_data,
         )
 

@@ -3,6 +3,7 @@
 from typing import Optional
 
 from howler.actions import check_hit_limit
+from howler.actions.models import ActionArguments, ActionDescription, ActionSpecification, ActionStep, NonEmptyStr
 from howler.common.exceptions import NotFoundException
 from howler.common.loader import datastore
 from howler.odm.models.action import VALID_TRIGGERS
@@ -14,6 +15,12 @@ OPERATION_ID = "remove_from_bundle"
 MAX_HITS_BASIC = 10
 MAX_HITS_ADVANCED = 1000
 SKIP_CENTRAL_LIMIT = True  # This operation transforms the query, handles limit check locally
+
+
+class RemoveFromBundleArguments(ActionArguments):
+    """Arguments of the remove_from_bundle operation."""
+
+    bundle_id: NonEmptyStr
 
 
 def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = None, **kwargs):  # noqa: C901
@@ -144,23 +151,18 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
     return report
 
 
-def specification():
+def specification() -> ActionSpecification:
     """Specify various properties of the action, such as title, descriptions, permissions and input steps."""
-    return {
-        "id": OPERATION_ID,
-        "title": "Remove from Bundle (Deprecated)",
-        "priority": 5,
-        "i18nKey": f"operations.{OPERATION_ID}",
-        "description": {
-            "short": "Remove a set of hits from a bundle (deprecated — uses cases)",
-            "long": execute.__doc__,
-        },
-        "roles": ["automation_basic", "actionrunner_basic"],
-        "steps": [
-            {
-                "args": {"bundle_id": []},
-                "options": {},
-            }
-        ],
-        "triggers": VALID_TRIGGERS,
-    }
+    return ActionSpecification(
+        id=OPERATION_ID,
+        title="Remove from Bundle (Deprecated)",
+        priority=5,
+        i18n_key=f"operations.{OPERATION_ID}",
+        description=ActionDescription(
+            short="Remove a set of hits from a bundle (deprecated — uses cases)", long=execute.__doc__
+        ),
+        roles=["automation_basic", "actionrunner_basic"],
+        steps=[ActionStep(args={"bundle_id": []})],
+        triggers=VALID_TRIGGERS,
+        arguments=RemoveFromBundleArguments,
+    )
