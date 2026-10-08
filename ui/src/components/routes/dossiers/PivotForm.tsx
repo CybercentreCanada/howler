@@ -361,6 +361,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
           </Typography>
           <TextField
             size="small"
+            multiline
             label={t('tooltip.pivot.description')}
             disabled={!pivot}
             value={pivot?.description ?? ''}

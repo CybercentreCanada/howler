@@ -29,6 +29,7 @@ export interface PivotLinkProps {
 }
 const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, variant = 'card', onNavigate }) => {
   const { i18n } = useTranslation();
+  const description = pivot.description?.trim();
 
   const helpers = useHelpers({ async: false, components: false });
   const pluginStore = usePluginStore();
@@ -57,6 +58,11 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, v
               <Typography variant="caption" display="block" color="text.secondary" noWrap>
                 {[dossier.title, dossier.owner].filter(Boolean).join(' • ')}
               </Typography>
+              {description && (
+                <Typography variant="caption" display="block" color="text.secondary" noWrap sx={{ maxWidth: 260 }}>
+                  {description}
+                </Typography>
+              )}
               <Typography variant="caption" display="block" color="text.secondary" noWrap sx={{ maxWidth: 260 }}>
                 {resolvedUrl}
               </Typography>

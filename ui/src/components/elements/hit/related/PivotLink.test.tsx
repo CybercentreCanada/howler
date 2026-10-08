@@ -84,6 +84,49 @@ describe('PivotLink', () => {
     );
   });
 
+  it('shows the description inline for a menu-item link pivot', () => {
+    const pivot = {
+      format: 'link',
+      value: resolvedUrl,
+      description: '  Pivot-specific description  ',
+      label: { en: 'Link pivot', fr: 'Link pivot' },
+      mappings: []
+    } as Pivot;
+
+    render(
+      <BrowserRouter>
+        <PivotLink pivot={pivot} hit={hit} dossier={dossier} variant="menu-item" />
+      </BrowserRouter>
+    );
+
+    const menuItem = within(screen.getByRole('menuitem'));
+    expect(menuItem.getByText('Pivot-specific description')).toBeInTheDocument();
+    expect(menuItem.getByText('Test Dossier • test-owner')).toBeInTheDocument();
+    expect(menuItem.getByText(resolvedUrl)).toBeInTheDocument();
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  });
+
+  it.each([undefined, '', '   '])('omits the menu-item description when it is %j', description => {
+    const pivot = {
+      format: 'link',
+      value: resolvedUrl,
+      description,
+      label: { en: 'Link pivot', fr: 'Link pivot' },
+      mappings: []
+    } as Pivot;
+
+    render(
+      <BrowserRouter>
+        <PivotLink pivot={pivot} hit={hit} dossier={dossier} variant="menu-item" />
+      </BrowserRouter>
+    );
+
+    const menuItem = screen.getByRole('menuitem');
+    expect(within(menuItem).getByText('Test Dossier • test-owner')).toBeInTheDocument();
+    expect(within(menuItem).getByText(resolvedUrl)).toBeInTheDocument();
+    expect(menuItem.querySelectorAll('.MuiTypography-caption')).toHaveLength(2);
+  });
+
   it('omits the description header when the pivot description is blank', async () => {
     const user = userEvent.setup();
     const pivot = {
