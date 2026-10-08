@@ -457,6 +457,7 @@ const useUrlSync = (
           } else if (isNil(value)) {
             newParams.delete(key);
           } else {
+            // oxlint-disable-next-line typescript/no-base-to-string
             newParams.set(key, String(value));
           }
         });
