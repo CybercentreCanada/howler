@@ -75,7 +75,8 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const disabledFilterIndexes = useContextSelector(ParameterContext, ctx => ctx.disabledFilterIndexes);
   const startDate = useContextSelector(ParameterContext, ctx => ctx.startDate);
   const endDate = useContextSelector(ParameterContext, ctx => ctx.endDate);
-  const views = useContextSelector(ParameterContext, ctx => ctx.views);
+  const allViews = useContextSelector(ParameterContext, ctx => ctx.views);
+  const disabledViewIndexes = useContextSelector(ParameterContext, ctx => ctx.disabledViewIndexes);
   const addView = useContextSelector(ParameterContext, ctx => ctx.addView);
 
   const loadHits = useContextSelector(RecordContext, ctx => ctx.loadRecords);
@@ -99,6 +100,11 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const hasDisabledFilters = (allFilters ?? []).some(
     (filter, index) => disabledFilterIndexes?.includes(index) && isEffectiveFilter(filter)
   );
+  const views = useMemo(
+    () => (allViews ?? []).filter((_, index) => !disabledViewIndexes?.includes(index)),
+    [allViews, disabledViewIndexes]
+  );
+  const hasDisabledViews = (allViews ?? []).some((_, index) => disabledViewIndexes?.includes(index));
 
   // On load check to filter out any queries older than one month
   useEffect(() => {
@@ -110,10 +116,10 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
   // Inject default view into URL when no views present
   useEffect(() => {
-    if (views?.length === 0 && defaultView) {
+    if (allViews?.length === 0 && defaultView) {
       addView(defaultView);
     }
-  }, [views?.length, defaultView, addView]);
+  }, [allViews?.length, defaultView, addView]);
 
   const getFilters = useCallback(async () => {
     const _filters: string[] = cloneDeep(filters);
@@ -127,7 +133,7 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
     // Fetch all view queries
     if (views?.length) {
-      const viewObjects = await getCurrentViews({ views });
+      const viewObjects = await getCurrentViews({ views, ignoreParams: true });
 
       // Filter out null/undefined views and extract queries
       viewObjects.forEach(view => {
@@ -240,7 +246,14 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       return;
     }
 
-    if (views?.length || (query && query !== DEFAULT_QUERY) || offset > 0 || filters.length > 0 || hasDisabledFilters) {
+    if (
+      views.length ||
+      hasDisabledViews ||
+      (query && query !== DEFAULT_QUERY) ||
+      offset > 0 ||
+      filters.length > 0 ||
+      hasDisabledFilters
+    ) {
       void search(query);
     } else {
       setResponse(null);
@@ -259,6 +272,7 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     filters,
     query,
     views,
+    hasDisabledViews,
     hasDisabledFilters
   ]);
 

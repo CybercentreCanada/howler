@@ -141,7 +141,8 @@ vi.mock('use-context-selector', () => ({
       setFilter: mockSetSavedFilter,
       removeFilter: mockRemoveSavedFilter,
       disabledFilterIndexes: mockFilterState.disabledFilterIndexes,
-      setFilterDisabled: mockSetFilterDisabled
+      enableFilter: (index: number) => mockSetFilterDisabled(index, false),
+      disableFilter: (index: number) => mockSetFilterDisabled(index, true)
     })
 }));
 

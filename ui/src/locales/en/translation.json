@@ -280,6 +280,7 @@
   "hit.search.view.add": "Add view",
   "hit.search.view.current": "Current View",
   "hit.search.view.default": "(Default)",
+  "hit.search.view.disable": "Temporarily disable view",
   "hit.search.view.remove": "Remove View",
   "hit.search.view.select": "Select View",
   "hit.summary.adhoc": "Add Custom Field",

@@ -11,7 +11,18 @@ import {
   SelectAll,
   Warning
 } from '@mui/icons-material';
-import { Autocomplete, Chip, CircularProgress, IconButton, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import {
+  Autocomplete,
+  Checkbox,
+  Chip,
+  CircularProgress,
+  FormControlLabel,
+  IconButton,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography
+} from '@mui/material';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
@@ -32,6 +43,10 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
   const sort = useContextSelector(ParameterContext, ctx => ctx.sort);
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
   const currentViews = useContextSelector(ParameterContext, ctx => ctx.views);
+  const disabledViewIndexes = useContextSelector(ParameterContext, ctx => ctx.disabledViewIndexes);
+  const enableView = useContextSelector(ParameterContext, ctx => ctx.enableView);
+  const disableView = useContextSelector(ParameterContext, ctx => ctx.disableView);
+  const disabled = disabledViewIndexes?.includes(id) ?? false;
 
   const removeView = useContextSelector(ParameterContext, ctx => ctx.removeView);
   const setParamView = useContextSelector(ParameterContext, ctx => ctx.setView);
@@ -136,6 +151,7 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
 
   return (
     <ChipPopper
+      dimmed={disabled}
       slotProps={{ chip: { size: 'small' } }}
       icon={
         <Tooltip title={t(`route.views.manager.${view.type}`)}>
@@ -169,35 +185,47 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
       }
       onDelete={() => removeView(viewId)}
     >
-      <Stack direction="row" spacing={0.5} alignItems="center">
-        <Tooltip title={view ? t('route.views.edit') : t('route.views.create')}>
-          <IconButton
-            aria-label={view ? t('route.views.edit') : t('route.views.create')}
-            size="small"
-            component={Link}
-            disabled={(!view && !query) || span?.endsWith('custom')}
-            to={viewUrl}
-            role="link"
-          >
-            {view ? <Edit fontSize="small" /> : <SavedSearch />}
-          </IconButton>
-        </Tooltip>
-        <Tooltip title={t('view.refresh')}>
-          <IconButton size="small" onClick={() => search(query!)} aria-label={t('view.refresh')}>
-            <Refresh fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title={t('view.open')}>
-          <IconButton
-            size="small"
-            component={Link}
-            to={`/search?query=${view.query}`}
-            aria-label={t('view.open')}
-            role="link"
-          >
-            <OpenInNew fontSize="small" />
-          </IconButton>
-        </Tooltip>
+      <Stack spacing={1}>
+        <FormControlLabel
+          label={t('hit.search.view.disable')}
+          control={
+            <Checkbox
+              size="small"
+              checked={disabled}
+              onChange={(_event, checked) => (checked ? disableView : enableView)(id)}
+            />
+          }
+        />
+        <Stack direction="row" spacing={0.5} alignItems="center">
+          <Tooltip title={view ? t('route.views.edit') : t('route.views.create')}>
+            <IconButton
+              aria-label={view ? t('route.views.edit') : t('route.views.create')}
+              size="small"
+              component={Link}
+              disabled={(!view && !query) || span?.endsWith('custom')}
+              to={viewUrl}
+              role="link"
+            >
+              {view ? <Edit fontSize="small" /> : <SavedSearch />}
+            </IconButton>
+          </Tooltip>
+          <Tooltip title={t('view.refresh')}>
+            <IconButton size="small" onClick={() => search(query!)} aria-label={t('view.refresh')}>
+              <Refresh fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title={t('view.open')}>
+            <IconButton
+              size="small"
+              component={Link}
+              to={`/search?query=${view.query}`}
+              aria-label={t('view.open')}
+              role="link"
+            >
+              <OpenInNew fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Stack>
       </Stack>
     </ChipPopper>
   );

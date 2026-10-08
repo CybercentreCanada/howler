@@ -280,6 +280,7 @@
   "hit.search.view.add": "Ajouter une vue",
   "hit.search.view.current": "Vue courante",
   "hit.search.view.default": "(Défaut)",
+  "hit.search.view.disable": "Désactiver temporairement la vue",
   "hit.search.view.remove": "Supprimer la vue",
   "hit.search.view.select": "Sélectionner une vue",
   "hit.summary.adhoc": "Ajouter une clé personnalisée",

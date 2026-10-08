@@ -763,18 +763,19 @@ describe('ParameterContext', () => {
           useContextSelector(ParameterContext, ctx => ({
             filters: ctx.filters,
             disabledFilterIndexes: ctx.disabledFilterIndexes,
-            setFilterDisabled: ctx.setFilterDisabled
+            enableFilter: ctx.enableFilter,
+            disableFilter: ctx.disableFilter
           })),
         { wrapper: Wrapper }
       );
 
-      await act(async () => hook.result.current.setFilterDisabled(0, true));
+      await act(async () => hook.result.current.disableFilter(0));
       await waitFor(() => expect(mockSearchParams.getAll('disabled_filter')).toEqual(['event.provider:"azure"']));
       expect(hook.result.current.filters).toEqual(['event.provider:"azure"', '-howler.assessment:*']);
       expect(mockSearchParams.getAll('filter')).toEqual(['event.provider:"azure"', '-howler.assessment:*']);
       hook.rerender();
 
-      await act(async () => hook.result.current.setFilterDisabled(0, false));
+      await act(async () => hook.result.current.enableFilter(0));
       await waitFor(() => expect(mockSearchParams.getAll('disabled_filter')).toEqual([]));
       expect(mockSearchParams.getAll('filter')).toEqual(['event.provider:"azure"', '-howler.assessment:*']);
       expect(hook.result.current.disabledFilterIndexes).toEqual([]);
@@ -915,6 +916,182 @@ describe('ParameterContext', () => {
         expect(mockSearchParams.getAll('disabled_filter')).toEqual(['duplicate']);
       });
     });
+  });
+
+  describe.each([
+    {
+      key: 'filters',
+      urlKey: 'filter',
+      disabledKey: 'disabledFilterIndexes',
+      disabledUrlKey: 'disabled_filter',
+      add: 'addFilter',
+      remove: 'removeFilter',
+      set: 'setFilter',
+      enable: 'enableFilter',
+      disable: 'disableFilter',
+      reset: 'resetFilters'
+    },
+    {
+      key: 'views',
+      urlKey: 'view',
+      disabledKey: 'disabledViewIndexes',
+      disabledUrlKey: 'disabled_view',
+      add: 'addView',
+      remove: 'removeView',
+      set: 'setView',
+      enable: 'enableView',
+      disable: 'disableView',
+      reset: 'resetViews'
+    }
+  ])('shared disabled list handling for $key', descriptor => {
+    const { key, urlKey, disabledKey, disabledUrlKey, add, remove, set, enable, disable, reset } = descriptor;
+
+    it('preserves disabled definitions through adding, editing, removing and resetting entries', async () => {
+      setMockUrl(
+        new URLSearchParams([
+          [urlKey, 'first'],
+          [urlKey, 'second'],
+          [disabledUrlKey, 'second']
+        ])
+      );
+      makeMockSetParamsUpdateUrl();
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx), { wrapper: Wrapper });
+
+      expect(hook.result.current[disabledKey]).toEqual([1]);
+      await act(async () => hook.result.current[add]('second'));
+      expect(hook.result.current[key]).toEqual(['first', 'second']);
+      expect(hook.result.current[disabledKey]).toEqual([1]);
+
+      await act(async () => hook.result.current[set](1, 'edited'));
+      expect(mockSearchParams.getAll(disabledUrlKey)).toEqual(['edited']);
+      hook.rerender();
+
+      await act(async () => hook.result.current[remove]('first'));
+      expect(hook.result.current[disabledKey]).toEqual([0]);
+      expect(mockSearchParams.getAll(urlKey)).toEqual(['edited']);
+      hook.rerender();
+
+      await act(async () => hook.result.current[add]('third'));
+      expect(hook.result.current[disabledKey]).toEqual([0]);
+      hook.rerender();
+
+      await act(async () => hook.result.current[reset]());
+      expect(hook.result.current[key]).toEqual([]);
+      expect(hook.result.current[disabledKey]).toEqual([]);
+      expect(mockSearchParams.getAll(urlKey)).toEqual([]);
+      expect(mockSearchParams.getAll(disabledUrlKey)).toEqual([]);
+    });
+
+    it('toggles only disabled markers and retains stable handlers', async () => {
+      setMockUrl(
+        new URLSearchParams([
+          [urlKey, 'first'],
+          [urlKey, 'second']
+        ])
+      );
+      makeMockSetParamsUpdateUrl();
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx), { wrapper: Wrapper });
+      const handlers = [add, remove, set, enable, disable, reset].map(method => hook.result.current[method]);
+
+      await act(async () => {
+        hook.result.current[disable](1);
+        hook.result.current[disable](0);
+      });
+      expect(hook.result.current[disabledKey]).toEqual([0, 1]);
+      expect(mockSearchParams.getAll(disabledUrlKey)).toEqual(['first', 'second']);
+      expect(mockSearchParams.getAll(urlKey)).toEqual(['first', 'second']);
+      hook.rerender();
+
+      await act(async () => hook.result.current[enable](0));
+      expect(hook.result.current[disabledKey]).toEqual([1]);
+      expect(mockSearchParams.getAll(disabledUrlKey)).toEqual(['second']);
+      expect([add, remove, set, enable, disable, reset].map(method => hook.result.current[method])).toEqual(handlers);
+    });
+
+    it('ignores invalid positions and redundant toggles', async () => {
+      setMockUrl(new URLSearchParams([[urlKey, 'first']]));
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx), { wrapper: Wrapper });
+
+      await act(async () => {
+        for (const index of [-1, 1, 0.5, NaN, Infinity]) {
+          hook.result.current[disable](index);
+          hook.result.current[enable](index);
+          hook.result.current[set](index, 'changed');
+        }
+        hook.result.current[enable](0);
+      });
+      expect(hook.result.current[key]).toEqual(['first']);
+      expect(hook.result.current[disabledKey]).toEqual([]);
+      expect(mockSetParams).not.toHaveBeenCalled();
+    });
+
+    it.each([false, true])(
+      'merges duplicate edits with enabled occurrences winning (all disabled: %s)',
+      async allDisabled => {
+        setMockUrl(
+          new URLSearchParams([
+            [urlKey, 'first'],
+            [urlKey, 'second']
+          ])
+        );
+        const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx), { wrapper: Wrapper });
+
+        await act(async () => {
+          hook.result.current[disable](0);
+          if (allDisabled) {
+            hook.result.current[disable](1);
+          }
+          hook.result.current[set](0, 'second');
+        });
+        expect(hook.result.current[key]).toEqual(['second']);
+        expect(hook.result.current[disabledKey]).toEqual(allDisabled ? [0] : []);
+      }
+    );
+
+    it('restores URL-only marker navigation and removes stale markers', async () => {
+      setMockUrl(
+        new URLSearchParams([
+          [urlKey, 'first'],
+          [urlKey, 'second'],
+          [urlKey, 'second'],
+          [disabledUrlKey, 'second']
+        ])
+      );
+      makeMockSetParamsUpdateUrl();
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx), { wrapper: Wrapper });
+      expect(hook.result.current[key]).toEqual(['first', 'second']);
+      expect(hook.result.current[disabledKey]).toEqual([]);
+      hook.rerender();
+
+      setMockUrl(
+        new URLSearchParams([
+          [urlKey, 'first'],
+          [disabledUrlKey, 'first'],
+          [disabledUrlKey, 'stale']
+        ])
+      );
+      hook.rerender();
+      await waitFor(() => {
+        expect(hook.result.current[disabledKey]).toEqual([0]);
+        expect(mockSearchParams.getAll(disabledUrlKey)).toEqual(['first']);
+      });
+
+      setMockUrl(new URLSearchParams([[urlKey, 'first']]));
+      hook.rerender();
+      expect(hook.result.current[disabledKey]).toEqual([]);
+      expect(hook.result.current[key]).toEqual(['first']);
+    });
+  });
+
+  it('ignores disabled index markers without affecting index list operations', async () => {
+    setMockUrl(new URLSearchParams({ index: 'event', disabled_index: 'event' }));
+    const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx), { wrapper: Wrapper });
+
+    expect(hook.result.current.indexes).toEqual(['event']);
+    await act(async () => hook.result.current.addIndex('hit'));
+    expect(hook.result.current.indexes).toEqual(['event', 'hit']);
+    expect(hook.result.current.disabledFilterIndexes).toEqual([]);
+    expect(hook.result.current.disabledViewIndexes).toEqual([]);
   });
 
   describe('setSelected', () => {

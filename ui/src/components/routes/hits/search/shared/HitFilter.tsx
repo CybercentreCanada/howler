@@ -130,7 +130,8 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
   const setSavedFilter = useContextSelector(ParameterContext, ctx => ctx.setFilter);
   const removeSavedFilter = useContextSelector(ParameterContext, ctx => ctx.removeFilter);
   const disabledFilterIndexes = useContextSelector(ParameterContext, ctx => ctx.disabledFilterIndexes);
-  const setFilterDisabled = useContextSelector(ParameterContext, ctx => ctx.setFilterDisabled);
+  const enableFilter = useContextSelector(ParameterContext, ctx => ctx.enableFilter);
+  const disableFilter = useContextSelector(ParameterContext, ctx => ctx.disableFilter);
   const disabled = disabledFilterIndexes?.includes(id) ?? false;
 
   const [parsedFilter, setParsedFilter] = useState(() => parseFilter(value));
@@ -261,7 +262,7 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
               <Checkbox
                 size="small"
                 checked={disabled}
-                onChange={(_event, checked) => setFilterDisabled(id, checked)}
+                onChange={(_event, checked) => (checked ? disableFilter : enableFilter)(id)}
               />
             }
           />

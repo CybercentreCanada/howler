@@ -26,12 +26,14 @@ const mockViewContext: Partial<ViewContextType> = {
   getCurrentViews: ({ views } = {}) =>
     Promise.resolve([{ view_id: views?.[0] || 'test_view_id', query: 'howler.id:*' }])
 };
+const originalMockViewContext = cloneDeep(mockViewContext);
 let mockParameterContext: Partial<ParameterContextType> = {
   filters: [],
   span: 'date.range.1.week',
   sort: 'event.created desc',
   query: 'howler.analytic:*',
   disabledFilterIndexes: [],
+  disabledViewIndexes: [],
   setQuery: query => (mockParameterContext.query = query),
   offset: 0,
   setOffset: offset => {
@@ -78,6 +80,7 @@ const ParameterProviderWrapper = ({ children }) => {
 };
 
 beforeEach(() => {
+  Object.assign(mockViewContext, originalMockViewContext, { defaultView: undefined });
   mockParameterContext = cloneDeep(originalMockParameterContext);
   vi.mocked(originalMockParameterContext.addView).mockClear();
 
@@ -380,7 +383,7 @@ describe('RecordSearchContext', () => {
         () => ({
           filters: useContextSelector(ParameterContext, ctx => ctx.filters),
           disabledFilterIndexes: useContextSelector(ParameterContext, ctx => ctx.disabledFilterIndexes),
-          setFilterDisabled: useContextSelector(ParameterContext, ctx => ctx.setFilterDisabled),
+          disableFilter: useContextSelector(ParameterContext, ctx => ctx.disableFilter),
           setFilter: useContextSelector(ParameterContext, ctx => ctx.setFilter),
           search: useContextSelector(RecordSearchContext, ctx => ctx.search)
         }),
@@ -388,8 +391,8 @@ describe('RecordSearchContext', () => {
       );
 
       await act(async () => {
-        hook.result.current.setFilterDisabled(0, true);
-        hook.result.current.setFilterDisabled(1, true);
+        hook.result.current.disableFilter(0);
+        hook.result.current.disableFilter(1);
         hook.result.current.setFilter(0, 'filter:b');
       });
       await act(async () => hook.rerender());
@@ -421,7 +424,7 @@ describe('RecordSearchContext', () => {
         () => ({
           filters: useContextSelector(ParameterContext, ctx => ctx.filters),
           disabledFilterIndexes: useContextSelector(ParameterContext, ctx => ctx.disabledFilterIndexes),
-          setFilterDisabled: useContextSelector(ParameterContext, ctx => ctx.setFilterDisabled),
+          disableFilter: useContextSelector(ParameterContext, ctx => ctx.disableFilter),
           setFilter: useContextSelector(ParameterContext, ctx => ctx.setFilter),
           getFilters: useContextSelector(RecordSearchContext, ctx => ctx.getFilters),
           search: useContextSelector(RecordSearchContext, ctx => ctx.search)
@@ -430,7 +433,7 @@ describe('RecordSearchContext', () => {
       );
 
       await act(async () => {
-        hook.result.current.setFilterDisabled(0, true);
+        hook.result.current.disableFilter(0);
         hook.result.current.setFilter(0, 'filter:b');
       });
       await act(async () => hook.rerender());
@@ -895,6 +898,93 @@ describe('RecordSearchContext', () => {
   });
 
   describe('multiple views support', () => {
+    describe('disabled views', () => {
+      beforeEach(() => {
+        mockViewContext.getCurrentViews = vi.fn(async ({ views = [], ignoreParams = false } = {}) => {
+          const ids = ignoreParams ? views : [...new Set([...views, ...mockSearchParams.getAll('view')])];
+          return ids.map(id => ({ view_id: id, query: `howler.analytic:${id}` }));
+        });
+      });
+
+      it('restores disabled views from copied links without reintroducing them from URL params', async () => {
+        mockSearchParams.append('view', 'disabled_view');
+        mockSearchParams.append('view', 'enabled_view');
+        mockSearchParams.append('disabled_view', 'disabled_view');
+        mockSearchParams.append('filter', '-howler.assessment:*');
+        mockSearchParams.set('disabled_index', 'hit');
+        mockLocation.search = `?${mockSearchParams.toString()}`;
+
+        const hook = renderHook(
+          () => ({
+            views: useContextSelector(ParameterContext, ctx => ctx.views),
+            disabledViewIndexes: useContextSelector(ParameterContext, ctx => ctx.disabledViewIndexes)
+          }),
+          { wrapper: ParameterProviderWrapper }
+        );
+
+        expect(hook.result.current.views).toEqual(['disabled_view', 'enabled_view']);
+        expect(hook.result.current.disabledViewIndexes).toEqual([0]);
+        await waitFor(() => {
+          expectSearchRequest({
+            query: DEFAULT_QUERY,
+            filters: ['-howler.assessment:*', 'event.created:[now-1M TO now]', 'howler.analytic:enabled_view']
+          });
+        });
+        expect(mockViewContext.getCurrentViews).toHaveBeenCalledWith({ views: ['enabled_view'], ignoreParams: true });
+      });
+
+      it('searches with only disabled views and does not inject or resolve a default view', async () => {
+        mockViewContext.defaultView = 'default_view';
+        mockSearchParams.append('view', 'disabled_view');
+        mockSearchParams.append('disabled_view', 'disabled_view');
+        mockLocation.search = `?${mockSearchParams.toString()}`;
+        makeMockSetParamsUpdateUrl();
+
+        renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.response), {
+          wrapper: ParameterProviderWrapper
+        });
+
+        await waitFor(() => {
+          expectSearchRequest({ query: DEFAULT_QUERY, filters: ['event.created:[now-1M TO now]'] });
+        });
+        expect(mockViewContext.getCurrentViews).not.toHaveBeenCalled();
+        expect(mockSearchParams.getAll('view')).toEqual(['disabled_view']);
+        expect(mockSearchParams.getAll('disabled_view')).toEqual(['disabled_view']);
+      });
+
+      it('refreshes the effective search when the last view is disabled and re-enabled', async () => {
+        mockSearchParams.append('view', 'first_view');
+        mockLocation.search = `?${mockSearchParams.toString()}`;
+        makeMockSetParamsUpdateUrl();
+        const hook = renderHook(
+          () => ({
+            enableView: useContextSelector(ParameterContext, ctx => ctx.enableView),
+            disableView: useContextSelector(ParameterContext, ctx => ctx.disableView)
+          }),
+          { wrapper: ParameterProviderWrapper }
+        );
+
+        await waitFor(() => {
+          expectSearchRequest({ filters: expect.arrayContaining(['howler.analytic:first_view']) });
+        });
+        vi.mocked(hpost).mockClear();
+        await act(async () => hook.result.current.disableView(0));
+        hook.rerender();
+        await waitFor(() => {
+          expectSearchRequest({ filters: ['event.created:[now-1M TO now]'] });
+        });
+
+        vi.mocked(hpost).mockClear();
+        await act(async () => hook.result.current.enableView(0));
+        hook.rerender();
+        await waitFor(() => {
+          expectSearchRequest({ filters: expect.arrayContaining(['howler.analytic:first_view']) });
+        });
+        expect(mockSearchParams.getAll('view')).toEqual(['first_view']);
+        expect(mockSearchParams.getAll('disabled_view')).toEqual([]);
+      });
+    });
+
     describe('AND logic for multiple view queries', () => {
       it('should combine two view queries with AND logic', async () => {
         mockParameterContext.views = ['view_1', 'view_2'];
