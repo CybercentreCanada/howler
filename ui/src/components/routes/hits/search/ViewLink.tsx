@@ -7,7 +7,6 @@ import {
   OpenInNew,
   Person,
   Refresh,
-  SavedSearch,
   SelectAll,
   Warning
 } from '@mui/icons-material';
@@ -197,16 +196,16 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
           }
         />
         <Stack direction="row" spacing={0.5} alignItems="center">
-          <Tooltip title={view ? t('route.views.edit') : t('route.views.create')}>
+          <Tooltip title={t('route.views.edit')}>
             <IconButton
-              aria-label={view ? t('route.views.edit') : t('route.views.create')}
+              aria-label={t('route.views.edit')}
               size="small"
               component={Link}
-              disabled={(!view && !query) || span?.endsWith('custom')}
+              disabled={span?.endsWith('custom')}
               to={viewUrl}
               role="link"
             >
-              {view ? <Edit fontSize="small" /> : <SavedSearch />}
+              <Edit fontSize="small" />
             </IconButton>
           </Tooltip>
           <Tooltip title={t('view.refresh')}>
