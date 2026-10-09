@@ -1,7 +1,7 @@
 {
   "api": "4.1.0",
   "client": "3.1.0",
-  "mcp": "0.1.1",
+  "mcp": "4.2.0",
   "plugins/evidence": "0.1.0",
   "plugins/sentinel": "0.2.0",
   "plugins/sync": "0.0.2",
