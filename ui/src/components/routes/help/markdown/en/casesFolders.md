@@ -12,4 +12,6 @@ Folders can be nested to reflect an investigation's workstreams. Expand or colla
 
 Drag an item onto a folder to move it, or use the root drop zone to remove its parent. Item names must be unique among siblings, so rename an item before moving it if its destination already has the same name.
 
-Right-click a folder or item to rename it or remove it. Removing a folder also removes its contents, so review its tree before confirming. Linked cases always remain at the case root and cannot be placed inside a folder.
+Right-click a folder or item to rename it or remove it. **Removal is immediate, with no confirmation dialog.** Before selecting **Remove folder**, review its entire tree: the folder, nested folders, notes, references, and evidence items inside it are removed from the case. Underlying hit and event records are not deleted, but their associations with this case are removed. Notes and references stored in the removed items are deleted.
+
+Linked cases always remain at the case root and cannot be placed inside a folder.

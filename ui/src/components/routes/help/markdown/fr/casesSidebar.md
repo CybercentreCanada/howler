@@ -18,6 +18,8 @@ La résolution d'un cas ouvre un examen des hits non résolus. Vous pouvez éval
 
 ## Commandes de la barre latérale
 
-Utilisez la barre d'outils sous la navigation pour ajouter un élément, créer un dossier, actualiser le cas ou réduire tous les dossiers. Glissez des éléments sur un dossier pour les déplacer; une bordure en surbrillance indique une cible valide. Pendant le glissement, la zone de dépôt racine au bas permet de ramener un élément au niveau supérieur.
+Utilisez la barre d'outils sous la navigation pour ajouter un événement, ajouter un élément, créer un dossier, actualiser le cas ou réduire tous les dossiers. **Ajouter un événement** ouvre la boîte de dialogue de saisie manuelle d'un élément de preuve, alors qu'**Ajouter un élément** crée une référence ou une note Markdown. Consultez [Ajouter des enregistrements aux cas](/help/cases?tab=records) pour connaître les champs requis de l'événement et le choix facultatif d'un dossier.
+
+Glissez des éléments sur un dossier pour les déplacer; une bordure en surbrillance indique une cible valide. Pendant le glissement, la zone de dépôt racine au bas permet de ramener un élément au niveau supérieur.
 
 `case_controls`

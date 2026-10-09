@@ -87,4 +87,29 @@ describe('AdvancedDocumentation', () => {
     expect(previewLabel).toBeInTheDocument();
     expect(previewLabel.closest('p')).toBeNull();
   });
+
+  it.each([
+    { language: 'en', heading: 'Explain' },
+    { language: 'fr', heading: 'Expliquer' }
+  ])('renders the query validation guide and JSON example in $language', async ({ language, heading }) => {
+    mockLanguage.value = language;
+    mockSearchParams.value = new URLSearchParams({ tab: 'lucene' });
+
+    render(<AdvancedDocumentation />);
+
+    expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
+    expect(await screen.findByText('explanations')).toBeInTheDocument();
+  });
+
+  it.each([
+    { language: 'en', exception: 'EQL is an exception:' },
+    { language: 'fr', exception: 'EQL fait exception :' }
+  ])('renders the EQL field-selection exception in $language', ({ language, exception }) => {
+    mockLanguage.value = language;
+    mockSearchParams.value = new URLSearchParams({ tab: 'results' });
+
+    render(<AdvancedDocumentation />);
+
+    expect(screen.getByText(exception, { selector: 'strong' })).toBeInTheDocument();
+  });
 });

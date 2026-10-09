@@ -16,6 +16,19 @@ Les règles sont activées par défaut. Une expiration finie est mesurée en jou
 
 **Démarrer l'expiration après la résolution du cas** est disponible seulement lorsqu'une expiration finie est définie. Lorsqu'elle est activée, le compte à rebours commence à la résolution la plus récente du cas; si le cas n'a jamais été résolu, le délai ne commence pas. Désactivez une règle pour interrompre les correspondances sans supprimer sa configuration.
 
+## Rattraper les correspondances historiques
+
+La création d'une règle n'ajoute pas automatiquement les enregistrements historiques. Pour l'appliquer aux éléments de preuve existants :
+
+1. Activez la règle, puis sélectionnez sa commande **Rattraper les alertes**, représentée par une icône d'historique dans le tableau des règles.
+2. Choisissez **Alertes depuis**. La limite initiale correspond à 30 jours auparavant; Howler recherche dans les index `hit` et/ou `event` configurés pour la règle les correspondances accessibles dont le champ `timestamp` est égal ou postérieur à cette limite. Ce filtre n'utilise ni `event.created` ni l'heure d'ingestion.
+3. Sélectionnez **Aperçu des correspondances** et examinez le compte. Une modification de la limite exige un nouvel aperçu.
+4. S'il y a des correspondances, sélectionnez **Soumettre à la corrélation** pour les placer en file d'attente pour un traitement en arrière-plan avec le modèle de destination de cette règle.
+
+Le rattrapage exige une règle activée, mais peut exécuter explicitement une règle dont l'expiration normale est passée. Le compte de l'aperçu inclut toutes les correspondances accessibles, y compris les enregistrements déjà attachés au cas; il ne garantit pas l'ajout de ce nombre de nouveaux éléments. Les enregistrements en double sont ignorés, et les mises à jour du cas peuvent apparaître après la fin du traitement en arrière-plan.
+
 ## Automatiser une recherche existante
 
-L'action **Ajouter au cas** est offerte aux utilisateurs autorisés pour l'automatisation. Elle exécute une requête de hit pour le cas sélectionné et utilise une destination Mustache telle que `related/{{howler.analytic}} ({{howler.id}})`. Cette action est utile pour ajouter un groupe existant d'alertes correspondantes et les organiser dans des dossiers générés, tandis que les règles de corrélation traitent les enregistrements au moment de leur ingestion.
+L'action **Ajouter au cas** est offerte aux utilisateurs autorisés pour l'automatisation. Elle exécute une requête de hit pour le cas sélectionné et utilise une destination Mustache telle que `related/{{howler.analytic}} ({{howler.id}})`. Cette action est utile pour ajouter un groupe existant d'alertes correspondantes et les organiser dans des dossiers générés, tandis que les règles de corrélation traitent les enregistrements au moment de leur ingestion ou par rattrapage explicite.
+
+Cette opération d'automatisation récupère au plus **1 000 hits correspondants par exécution**; un ensemble plus grand n'est pas ajouté au complet. Limitez la requête à des lots distincts ou utilisez le rattrapage d'une règle, qui parcourt les correspondances historiques par pages et prend en charge les index hit et event.

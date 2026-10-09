@@ -39,8 +39,14 @@ vi.mock('components/hooks/useScrollRestoration', () => ({
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     i18n: { language: mockLanguage.value },
-    t: (key: string) =>
-      key === 'modal.cases.add_to_case' ? (mockLanguage.value === 'fr' ? 'Ajouter au cas' : 'Add to Case') : key
+    t: (key: string) => {
+      const labels: Record<string, { en: string; fr: string }> = {
+        'modal.cases.add_to_case': { en: 'Add to Case', fr: 'Ajouter au cas' },
+        'page.cases.sidebar.add_event': { en: 'Add event', fr: 'Ajouter un événement' }
+      };
+
+      return labels[key]?.[mockLanguage.value as 'en' | 'fr'] ?? key;
+    }
   })
 }));
 
@@ -87,5 +93,31 @@ describe('CaseDocumentation', () => {
     const previewLabel = screen.getByText('Ajouter au cas', { selector: '.MuiTypography-body2' });
     expect(previewLabel).toBeInTheDocument();
     expect(previewLabel.parentElement?.closest('p')).toBeNull();
+  });
+
+  it.each([
+    { language: 'en', label: 'Add event', link: 'Adding records to cases' },
+    { language: 'fr', label: 'Ajouter un événement', link: 'Ajouter des enregistrements aux cas' }
+  ])('renders the event control and records guide link in $language', ({ language, label, link }) => {
+    mockLanguage.value = language;
+    mockSearchParams.value = new URLSearchParams({ tab: 'sidebar' });
+
+    render(<CaseDocumentation />);
+
+    expect(screen.getByText(label, { selector: '.MuiChip-label' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: link })).toHaveAttribute('href', '/help/cases?tab=records');
+  });
+
+  it.each([
+    { language: 'en', heading: 'Backfill historical matches', control: 'Submit to correlation' },
+    { language: 'fr', heading: 'Rattraper les correspondances historiques', control: 'Soumettre à la corrélation' }
+  ])('renders the historical backfill guide in $language', ({ language, heading, control }) => {
+    mockLanguage.value = language;
+    mockSearchParams.value = new URLSearchParams({ tab: 'rules' });
+
+    render(<CaseDocumentation />);
+
+    expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
+    expect(screen.getByText(control, { selector: 'strong' })).toBeInTheDocument();
   });
 });

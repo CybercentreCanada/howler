@@ -4,6 +4,7 @@ import {
   Dashboard,
   Dataset,
   Description,
+  Event as EventIcon,
   Folder,
   Link as LinkIcon,
   People,
@@ -104,7 +105,8 @@ const CaseDocumentation: FC = () => {
       </Paper>
     ),
     case_controls: (
-      <Stack direction="row" spacing={1}>
+      <Stack direction="row" spacing={1} flexWrap="wrap">
+        <Chip icon={<EventIcon />} label={t('page.cases.sidebar.add_event')} />
         <Chip icon={<Description />} label={t('page.cases.sidebar.add_item')} />
         <Chip icon={<Folder />} label={t('page.cases.sidebar.add_folder')} />
         <Chip icon={<Refresh />} label={t('page.cases.sidebar.refresh')} />

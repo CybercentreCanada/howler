@@ -1,6 +1,6 @@
 # Vue d'ensemble de la recherche avancée
 
-La recherche avancée est un espace de travail pour les requêtes de hit. Elle permet de tester une requête, d'inspecter sa réponse brute et de choisir un langage de requête ou un mode d'exécution Lucene. Utilisez-la lorsque la page de recherche habituelle ne suffit pas pour examiner des valeurs de champ, des données regroupées, des séquences EQL, des règles Sigma ou la requête Elasticsearch derrière une recherche Lucene.
+La recherche avancée est un espace de travail pour les requêtes de hit. Elle permet de tester une requête, d'inspecter sa réponse brute et de choisir un langage de requête ou un mode d'exécution Lucene. Utilisez-la lorsque la page de recherche habituelle ne suffit pas pour examiner des valeurs de champ, des données regroupées, des séquences EQL, des règles Sigma ou la représentation d'une requête Lucene analysée par Elasticsearch.
 
 `advanced_languages`
 

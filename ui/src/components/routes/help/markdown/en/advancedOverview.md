@@ -1,6 +1,6 @@
 # Advanced Search overview
 
-Advanced Search is a hit-query workbench for testing a query, inspecting its raw response, and choosing a query language or Lucene execution mode. Use it when the regular Search page is not enough for investigating field values, grouped data, EQL sequences, Sigma rules, or the Elasticsearch request behind a Lucene search.
+Advanced Search is a hit-query workbench for testing a query, inspecting its raw response, and choosing a query language or Lucene execution mode. Use it when the regular Search page is not enough for investigating field values, grouped data, EQL sequences, Sigma rules, or Elasticsearch's parsed representation of a Lucene query.
 
 `advanced_languages`
 

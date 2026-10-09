@@ -18,6 +18,8 @@ Resolving a case opens a review of unresolved hits. You can assess selected hits
 
 ## Sidebar controls
 
-Use the toolbar below the navigation to add an item, create a folder, refresh the case, or collapse all folders. Drag items onto a folder to move them; a highlighted border indicates a valid drop target. While dragging, the root drop zone at the bottom moves an item back to the top level.
+Use the toolbar below the navigation to add an event, add an item, create a folder, refresh the case, or collapse all folders. **Add event** opens the manual evidence-entry dialog, while **Add item** creates a reference or Markdown note. See [Adding records to cases](/help/cases?tab=records) for the event's required fields and optional folder placement.
+
+Drag items onto a folder to move them; a highlighted border indicates a valid drop target. While dragging, the root drop zone at the bottom moves an item back to the top level.
 
 `case_controls`

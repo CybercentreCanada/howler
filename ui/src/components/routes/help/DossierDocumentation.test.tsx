@@ -88,4 +88,17 @@ describe('DossierDocumentation', () => {
     expect(previewLabel).toBeInTheDocument();
     expect(previewLabel.closest('p')).toBeNull();
   });
+
+  it.each([
+    { language: 'en', heading: 'Organize pivot groups' },
+    { language: 'fr', heading: 'Organiser les groupes de pivots' }
+  ])('renders the pivot grouping guide in $language', ({ language, heading }) => {
+    mockLanguage.value = language;
+    mockSearchParams.value = new URLSearchParams({ tab: 'pivots' });
+
+    render(<DossierDocumentation />);
+
+    expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
+    expect(screen.getByText('SIEM/Hosts', { selector: 'code' })).toBeInTheDocument();
+  });
 });
