@@ -9,6 +9,8 @@ const parameterContextToken = vi.hoisted(() => ({ name: 'parameter-context' }));
 const mockDispatchApi = vi.hoisted(() => vi.fn());
 const mockSetSavedFilter = vi.hoisted(() => vi.fn());
 const mockRemoveSavedFilter = vi.hoisted(() => vi.fn());
+const mockSetFilterDisabled = vi.hoisted(() => vi.fn());
+const mockFilterState = vi.hoisted(() => ({ disabledFilterIndexes: [] as number[] }));
 const autocompleteProps = vi.hoisted(() => [] as any[]);
 const mockAutocompleteSelection = vi.hoisted(() => ({
   value: 'normal' as 'normal' | 'clear' | 'add' | 'single' | 'unchanged'
@@ -94,12 +96,17 @@ vi.mock('components/app/providers/ParameterProvider', () => ({
 }));
 
 vi.mock('components/elements/display/ChipPopper', () => ({
-  default: ({ children, icon, label, onDelete }: any) => {
+  default: ({ children, icon, label, onDelete, dimmed }: any) => {
     const [open, setOpen] = useState(false);
 
     return (
       <div>
-        <button className="MuiChip-root" onClick={() => setOpen(current => !current)}>
+        <button
+          className="MuiChip-root"
+          data-dimmed={String(Boolean(dimmed))}
+          style={{ opacity: dimmed ? 0.5 : 1 }}
+          onClick={() => setOpen(current => !current)}
+        >
           {icon && <span className="MuiChip-icon">{icon}</span>}
           {label}
           {onDelete && (
@@ -130,7 +137,13 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('use-context-selector', () => ({
   useContextSelector: (_context: any, selector: any) =>
-    selector({ setFilter: mockSetSavedFilter, removeFilter: mockRemoveSavedFilter })
+    selector({
+      setFilter: mockSetSavedFilter,
+      removeFilter: mockRemoveSavedFilter,
+      disabledFilterIndexes: mockFilterState.disabledFilterIndexes,
+      enableFilter: (index: number) => mockSetFilterDisabled(index, false),
+      disableFilter: (index: number) => mockSetFilterDisabled(index, true)
+    })
 }));
 
 vi.mock('react', async importOriginal => {
@@ -165,6 +178,10 @@ describe('HitFilter', () => {
     mockDispatchApi.mockReset().mockImplementation(async _value => ({ 'event.provider': { azure: 2 } }));
     mockSetSavedFilter.mockReset();
     mockRemoveSavedFilter.mockReset();
+    mockSetFilterDisabled.mockReset().mockImplementation((index: number, disabled: boolean) => {
+      mockFilterState.disabledFilterIndexes = disabled ? [index] : [];
+    });
+    mockFilterState.disabledFilterIndexes = [];
     autocompleteProps.length = 0;
     mockAutocompleteSelection.value = 'normal';
   });
@@ -190,6 +207,37 @@ describe('HitFilter', () => {
     expect(deleteIcon).not.toBeNull();
     fireEvent.click(deleteIcon!);
     expect(mockRemoveSavedFilter).toHaveBeenCalledWith('howler.assessment:*');
+  });
+
+  it('temporarily disables and re-enables the chip without editing its saved filter', () => {
+    const value = 'howler.assessment:"malicious"';
+    const { rerender } = render(<HitFilter id={13} value={value} />);
+    const chip = screen.getByRole('button', { name: /howler.assessment:/ });
+
+    expect(chip).toHaveStyle({ opacity: '1' });
+    fireEvent.click(chip);
+
+    const disableControl = screen.getByRole('checkbox', { name: 'hit.search.filter.disable' });
+    expect(disableControl).not.toBeChecked();
+    fireEvent.click(disableControl);
+    expect(mockSetFilterDisabled).toHaveBeenLastCalledWith(13, true);
+    expect(mockFilterState.disabledFilterIndexes).toEqual([13]);
+
+    rerender(<HitFilter id={13} value={value} size="medium" />);
+    const disabledChip = screen.getByRole('button', { name: /howler.assessment:/ });
+    expect(disabledChip).toHaveAttribute('data-dimmed', 'true');
+    expect(disabledChip).toHaveStyle({ opacity: '0.5' });
+    expect(screen.getByRole('checkbox', { name: 'hit.search.filter.disable' })).toBeChecked();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'hit.search.filter.disable' }));
+    expect(mockSetFilterDisabled).toHaveBeenLastCalledWith(13, false);
+
+    rerender(<HitFilter id={13} value={value} />);
+    const reenabledChip = screen.getByRole('button', { name: /howler.assessment:/ });
+    expect(reenabledChip).toHaveAttribute('data-dimmed', 'false');
+    expect(reenabledChip).toHaveStyle({ opacity: '1' });
+    expect(screen.getByRole('checkbox', { name: 'hit.search.filter.disable' })).not.toBeChecked();
+    expect(mockSetSavedFilter).toHaveBeenLastCalledWith(13, value);
   });
 
   it('commits a field change immediately while retaining negation', () => {

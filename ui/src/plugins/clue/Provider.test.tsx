@@ -121,6 +121,7 @@ describe('Clue Provider', () => {
         baseURL: 'https://howler.example/api/v1/clue',
         getToken
       });
+      expect(getProviderProps().database).toBe(database);
     });
 
     expect(getProviderProps()).toMatchObject({

@@ -76,6 +76,7 @@ module = "requests"
 ignore_missing_imports = true
 
 [tool.pyright]
+extraPaths = ["../scripts"]
 exclude = [
     "**/build",
     "**/.venv",

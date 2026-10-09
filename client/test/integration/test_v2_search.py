@@ -2,7 +2,9 @@
 
 import hashlib
 import random
+import string
 import time
+from typing import Literal
 
 from howler_client.client import Client
 
@@ -11,7 +13,11 @@ def _random_hash() -> str:
     return hashlib.sha256(random.randbytes(128)).hexdigest()
 
 
-def _create_hit(client: Client, analytic: str = "Search Integration Test") -> str:
+def _create_hit(
+    client: Client,
+    analytic: str = "Search Integration Test",
+    refresh: bool | Literal["true", "false", "wait_for"] = False,
+) -> str:
     """Create a hit and return its howler.id."""
     result: list[str] = client.v2.ingest.create(
         "hit",
@@ -23,6 +29,7 @@ def _create_hit(client: Client, analytic: str = "Search Integration Test") -> st
                 "score": 0,
             },
         },
+        refresh=refresh,
     )
     return result[0]
 
@@ -65,16 +72,17 @@ def test_search_with_sort(client: Client):
 
 
 def test_search_with_offset(client: Client):
-    _create_hit(client)
-    _create_hit(client)
-    time.sleep(1)
+    analytic = f"Offset Pagination {''.join(random.choices(string.ascii_letters, k=16))}"
+    _create_hit(client, analytic=analytic, refresh="wait_for")
+    _create_hit(client, analytic=analytic, refresh="wait_for")
 
-    page1 = client.v2.search("hit", "*:*", rows=1, offset=0)
-    page2 = client.v2.search("hit", "*:*", rows=1, offset=1)
+    query = f'howler.analytic:"{analytic}"'
+    page1 = client.v2.search("hit", query, rows=1, offset=0)
+    page2 = client.v2.search("hit", query, rows=1, offset=1)
 
-    assert page1["total"] == page2["total"]
-    if page1["total"] > 1:
-        assert page1["items"][0]["howler"]["id"] != page2["items"][0]["howler"]["id"]
+    assert page1["total"] == 2
+    assert page2["total"] == 2
+    assert page1["items"][0]["howler"]["id"] != page2["items"][0]["howler"]["id"]
 
 
 # ---------------------------------------------------------------------------

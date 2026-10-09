@@ -203,6 +203,15 @@ class XDRAlert:
         # Get classification for conditional assessment
         classification = graph_alert.get("classification")
 
+        outline = {
+            "summary": graph_alert.get("description", ""),
+            "indicators": [],
+            "threat": graph_alert.get("threatDisplayName", ""),
+        }
+        computer_dns_name = graph_alert.get("computerDnsName")
+        if isinstance(computer_dns_name, str) and computer_dns_name.strip():
+            outline["target"] = computer_dns_name
+
         howler_hit = {
             "timestamp": created,
             "message": graph_alert.get("recommendedActions", ""),
@@ -212,12 +221,7 @@ class XDRAlert:
                 "score": severity / 100.0,
                 "status": status,
                 "detection": display_name,
-                "outline": {
-                    "summary": graph_alert.get("description", ""),
-                    "indicators": [],
-                    "threat": graph_alert.get("threatDisplayName", ""),
-                    "target": graph_alert.get("computerDnsName", ""),
-                },
+                "outline": outline,
                 "assignment": assigned_to,
                 "escalation": "hit",
                 "is_bundle": False,

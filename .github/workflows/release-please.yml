@@ -28,7 +28,7 @@ jobs:
           config-file: .release-please-config.json
           manifest-file: .release-please-manifest.json
 
-      - name: Dispatch stable publication workflows
+      - name: Set friendly release names and dispatch publication workflows
         if: steps.release.outputs.releases_created == 'true'
         uses: actions/github-script@v7
         env:
@@ -39,21 +39,40 @@ jobs:
             const paths = JSON.parse(process.env.PATHS_RELEASED || '[]');
             const outputs = JSON.parse(process.env.RELEASE_OUTPUTS || '{}');
             const components = {
-              api: { workflow: 'api-workflow.yml', tagPrefix: 'api-v' },
-              ui: { workflow: 'ui-workflow.yml', tagPrefix: 'ui-v' },
-              client: { workflow: 'client-workflow.yml', tagPrefix: 'client-v' },
-              mcp: { workflow: 'mcp-workflow.yml', tagPrefix: 'mcp-v' },
+              api: {
+                workflow: 'api-workflow.yml',
+                tagPrefix: 'api-v',
+                releaseName: 'Howler API',
+              },
+              ui: {
+                workflow: 'ui-workflow.yml',
+                tagPrefix: 'ui-v',
+                releaseName: 'Howler UI',
+              },
+              client: {
+                workflow: 'client-workflow.yml',
+                tagPrefix: 'client-v',
+                releaseName: 'Howler Client',
+              },
+              mcp: {
+                workflow: 'mcp-workflow.yml',
+                tagPrefix: 'mcp-v',
+                releaseName: 'Howler MCP',
+              },
               'plugins/evidence': {
                 workflow: 'evidence-plugin-workflow.yml',
                 tagPrefix: 'evidence-v',
+                releaseName: 'Howler Evidence Plugin',
               },
               'plugins/sentinel': {
                 workflow: 'sentinel-plugin-workflow.yml',
                 tagPrefix: 'sentinel-v',
+                releaseName: 'Howler Sentinel Plugin',
               },
               'plugins/sync': {
                 workflow: 'sync-plugin-workflow.yml',
                 tagPrefix: 'sync-v',
+                releaseName: 'Howler Sync Plugin',
               },
             };
             const stableVersion = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
@@ -76,6 +95,18 @@ jobs:
               if (!stableVersion.test(version)) {
                 throw new Error(`Non-canonical stable tag for ${path}: ${tag}`);
               }
+
+              const release = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              });
+              await github.rest.repos.updateRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: release.data.id,
+                name: `${component.releaseName} v${version}`,
+              });
 
               dispatches.push({ workflow: component.workflow, tag });
             }
