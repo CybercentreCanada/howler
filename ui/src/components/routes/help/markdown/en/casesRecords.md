@@ -1,6 +1,6 @@
 # Adding records to cases
 
-Hits and events can be added as case items without duplicating the underlying record. Their current escalation is reflected in the sidebar, and opening an item displays the record in the case workspace.
+Hits and events can be added as case items without duplicating the underlying record. A hit's current escalation is reflected in the sidebar, and opening an item displays the record in the case workspace.
 
 ## Add selected records
 

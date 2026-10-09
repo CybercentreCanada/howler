@@ -17,11 +17,19 @@ vi.mock('@mui/material', async importOriginal => {
 });
 
 vi.mock('@tui/core', () => ({
-  PageCenter: ({ children }: any) => <div>{children}</div>
+  PageCenter: ({ children }: any) => <div>{children}</div>,
+  useAppTheme: () => ({ isDark: false })
 }));
 
-vi.mock('components/elements/display/Markdown', () => ({
-  default: ({ md }: { md: string }) => <div id="markdown-content">{md}</div>
+vi.mock('mermaid', () => ({
+  default: {
+    initialize: vi.fn(),
+    run: vi.fn()
+  }
+}));
+
+vi.mock('components/elements/display/Notebook', () => ({
+  Notebook: () => null
 }));
 
 vi.mock('components/hooks/useScrollRestoration', () => ({
@@ -31,11 +39,13 @@ vi.mock('components/hooks/useScrollRestoration', () => ({
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     i18n: { language: mockLanguage.value },
-    t: (key: string) => key
+    t: (key: string) =>
+      key === 'route.dossiers.manager.tabs.leads' ? (mockLanguage.value === 'fr' ? 'Pistes' : 'Leads') : key
   })
 }));
 
 vi.mock('react-router', () => ({
+  Link: ({ children, to }: any) => <a href={to}>{children}</a>,
   useSearchParams: () => [mockSearchParams.value, mockSetSearchParams]
 }));
 
@@ -57,7 +67,7 @@ describe('DossierDocumentation', () => {
 
     render(<DossierDocumentation />);
 
-    expect(screen.getByTestId('markdown-content')).toHaveTextContent('Manage and use dossiers');
+    expect(screen.getByRole('heading', { name: 'Manage and use dossiers' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'help.dossiers.query.title' }));
 
@@ -67,11 +77,15 @@ describe('DossierDocumentation', () => {
     expect(nextParams.get('keep')).toBe('value');
   });
 
-  it('renders Markdown in the selected UI language', () => {
+  it('renders localized Markdown and translated preview components', () => {
     mockLanguage.value = 'fr';
+    mockSearchParams.value = new URLSearchParams({ tab: 'overview' });
 
     render(<DossierDocumentation />);
 
-    expect(screen.getByTestId('markdown-content')).toHaveTextContent('Gérer et utiliser les dossiers');
+    expect(screen.getByRole('heading', { name: "Vue d'ensemble des dossiers" })).toBeInTheDocument();
+    const previewLabel = screen.getByText('Pistes', { selector: '.MuiChip-label' });
+    expect(previewLabel).toBeInTheDocument();
+    expect(previewLabel.closest('p')).toBeNull();
   });
 });

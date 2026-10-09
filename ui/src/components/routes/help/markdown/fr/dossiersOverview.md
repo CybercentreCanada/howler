@@ -16,4 +16,4 @@ Créez des dossiers depuis la page [Dossiers](/dossiers) dans la navigation de g
 
 `dossier_scope`
 
-Le créateur reste le propriétaire. Seul le propriétaire ou un administrateur peut modifier un dossier, y compris un dossier global.
+Le créateur est initialement désigné comme propriétaire, mais la propriété peut être transférée. Le propriétaire du dossier, les utilisateurs désignés comme administrateurs du dossier et les administrateurs système peuvent le modifier, y compris s'il est global.

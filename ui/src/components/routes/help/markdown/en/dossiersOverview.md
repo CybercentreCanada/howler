@@ -16,4 +16,4 @@ Create dossiers from the [Dossiers](/dossiers) page in the left navigation. A **
 
 `dossier_scope`
 
-The creator remains the owner. Only the owner or an administrator can update a dossier, including a global one.
+The creator is initially assigned as the owner, but ownership can be transferred. The dossier owner, users listed as dossier administrators, and system administrators can update a dossier, including a global one.

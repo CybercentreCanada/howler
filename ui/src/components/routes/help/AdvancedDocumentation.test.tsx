@@ -17,11 +17,19 @@ vi.mock('@mui/material', async importOriginal => {
 });
 
 vi.mock('@tui/core', () => ({
-  PageCenter: ({ children }: any) => <div>{children}</div>
+  PageCenter: ({ children }: any) => <div>{children}</div>,
+  useAppTheme: () => ({ isDark: false })
 }));
 
-vi.mock('components/elements/display/Markdown', () => ({
-  default: ({ md }: { md: string }) => <div id="markdown-content">{md}</div>
+vi.mock('mermaid', () => ({
+  default: {
+    initialize: vi.fn(),
+    run: vi.fn()
+  }
+}));
+
+vi.mock('components/elements/display/Notebook', () => ({
+  Notebook: () => null
 }));
 
 vi.mock('components/hooks/useScrollRestoration', () => ({
@@ -31,11 +39,13 @@ vi.mock('components/hooks/useScrollRestoration', () => ({
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     i18n: { language: mockLanguage.value },
-    t: (key: string) => key
+    t: (key: string) =>
+      key === 'route.advanced.query.lucene' ? (mockLanguage.value === 'fr' ? 'Requête Lucene' : 'Lucene Query') : key
   })
 }));
 
 vi.mock('react-router', () => ({
+  Link: ({ children, to }: any) => <a href={to}>{children}</a>,
   useSearchParams: () => [mockSearchParams.value, mockSetSearchParams]
 }));
 
@@ -57,7 +67,7 @@ describe('AdvancedDocumentation', () => {
 
     render(<AdvancedDocumentation />);
 
-    expect(screen.getByTestId('markdown-content')).toHaveTextContent('Choose a query language');
+    expect(screen.getByRole('heading', { name: 'Choose a query language' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'help.advanced.lucene.title' }));
 
@@ -67,11 +77,14 @@ describe('AdvancedDocumentation', () => {
     expect(nextParams.get('keep')).toBe('value');
   });
 
-  it('renders Markdown in the selected UI language', () => {
+  it('renders localized Markdown and translated preview components', () => {
     mockLanguage.value = 'fr';
 
     render(<AdvancedDocumentation />);
 
-    expect(screen.getByTestId('markdown-content')).toHaveTextContent('Choisir un langage de requête');
+    expect(screen.getByRole('heading', { name: 'Choisir un langage de requête' })).toBeInTheDocument();
+    const previewLabel = screen.getByText('Requête Lucene', { selector: '.MuiChip-label' });
+    expect(previewLabel).toBeInTheDocument();
+    expect(previewLabel.closest('p')).toBeNull();
   });
 });

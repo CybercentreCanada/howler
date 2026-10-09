@@ -17,11 +17,19 @@ vi.mock('@mui/material', async importOriginal => {
 });
 
 vi.mock('@tui/core', () => ({
-  PageCenter: ({ children }: any) => <div>{children}</div>
+  PageCenter: ({ children }: any) => <div>{children}</div>,
+  useAppTheme: () => ({ isDark: false })
 }));
 
-vi.mock('components/elements/display/Markdown', () => ({
-  default: ({ md }: { md: string }) => <div id="markdown-content">{md}</div>
+vi.mock('mermaid', () => ({
+  default: {
+    initialize: vi.fn(),
+    run: vi.fn()
+  }
+}));
+
+vi.mock('components/elements/display/Notebook', () => ({
+  Notebook: () => null
 }));
 
 vi.mock('components/hooks/useScrollRestoration', () => ({
@@ -31,11 +39,13 @@ vi.mock('components/hooks/useScrollRestoration', () => ({
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     i18n: { language: mockLanguage.value },
-    t: (key: string) => key
+    t: (key: string) =>
+      key === 'modal.cases.add_to_case' ? (mockLanguage.value === 'fr' ? 'Ajouter au cas' : 'Add to Case') : key
   })
 }));
 
 vi.mock('react-router', () => ({
+  Link: ({ children, to }: any) => <a href={to}>{children}</a>,
   useSearchParams: () => [mockSearchParams.value, mockSetSearchParams]
 }));
 
@@ -57,7 +67,7 @@ describe('CaseDocumentation', () => {
 
     render(<CaseDocumentation />);
 
-    expect(screen.getByTestId('markdown-content')).toHaveTextContent('Case summary');
+    expect(screen.getByRole('heading', { name: 'Case summary' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'help.cases.rules.title' }));
 
@@ -67,11 +77,15 @@ describe('CaseDocumentation', () => {
     expect(nextParams.get('keep')).toBe('value');
   });
 
-  it('renders Markdown in the selected UI language', () => {
+  it('renders localized Markdown and translated preview components', () => {
     mockLanguage.value = 'fr';
+    mockSearchParams.value = new URLSearchParams({ tab: 'records' });
 
     render(<CaseDocumentation />);
 
-    expect(screen.getByTestId('markdown-content')).toHaveTextContent('Résumé du cas');
+    expect(screen.getByRole('heading', { name: 'Ajouter des enregistrements aux cas' })).toBeInTheDocument();
+    const previewLabel = screen.getByText('Ajouter au cas', { selector: '.MuiTypography-body2' });
+    expect(previewLabel).toBeInTheDocument();
+    expect(previewLabel.parentElement?.closest('p')).toBeNull();
   });
 });

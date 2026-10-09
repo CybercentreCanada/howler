@@ -1,6 +1,6 @@
 # Ajouter des enregistrements aux cas
 
-Les résultats et les événements peuvent être ajoutés comme éléments de cas sans dupliquer l'enregistrement sous-jacent. Leur niveau d'escalade actuel est reflété dans la barre latérale, et l'ouverture d'un élément affiche l'enregistrement dans l'espace de travail du cas.
+Les résultats et les événements peuvent être ajoutés comme éléments de cas sans dupliquer l'enregistrement sous-jacent. Le niveau d'escalade actuel d'un hit est reflété dans la barre latérale, et l'ouverture d'un élément affiche l'enregistrement dans l'espace de travail du cas.
 
 ## Ajouter des enregistrements sélectionnés
 
