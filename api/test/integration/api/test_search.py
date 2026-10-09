@@ -169,10 +169,14 @@ def test_scroll_hit_default_fields_exclude_unstored_data(datastore, login_sessio
     """A hit scroll without fl returns stored fields only and preserves the document ID."""
     session, host = login_session
 
-    hit = datastore.hit.search("howler.id:*", rows=1, as_obj=True)["items"][0]
-    hit_id = hit.howler.id
-    hit.howler.data = ["scroll projection regression secret"]
-    datastore.hit.save(hit_id, hit, refresh="wait_for")
+    hit = datastore.hit.search("howler.id:*", rows=1, as_obj=False)["items"][0]
+    hit_id = hit["howler"]["id"]
+    datastore.hit.datastore.client.update(
+        index=datastore.hit.name,
+        id=hit_id,
+        doc={"howler": {"data": ["scroll projection regression secret"]}},
+        refresh="wait_for",
+    )
 
     raw_hit = datastore.hit.datastore.client.get(index=datastore.hit.name, id=hit_id)
     assert raw_hit["_source"]["howler"]["data"] == ["scroll projection regression secret"]
