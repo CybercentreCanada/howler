@@ -178,7 +178,17 @@ def search(indexes: str, user: User, **kwargs):
 @search_api.route("/scroll", methods=["DELETE"])
 @api_login(required_priv=["R"])
 def clear_scroll(user: User, **kwargs):
-    """Clear an Elasticsearch scroll context."""
+    """Clear an Elasticsearch scroll context.
+
+    Variables:
+    None
+
+    Arguments:
+    scroll_id => Scroll ID of the context to clear, provided in the request body
+
+    Result Example:
+    {"succeeded": true, "num_freed": 1}
+    """
     del user, kwargs
 
     data = request.get_json(silent=True)

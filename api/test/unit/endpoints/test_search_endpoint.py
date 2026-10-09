@@ -318,7 +318,7 @@ class TestSearch:
         user = _build_user()
         mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
         mock_quota_tracker.begin.return_value = True
-        mock_get_collection.return_value = lambda: MagicMock()
+        mock_get_collection.return_value = MagicMock
 
         with request_context.test_request_context(
             method="POST",
