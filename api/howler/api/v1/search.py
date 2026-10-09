@@ -10,18 +10,15 @@ from sigma.rule import SigmaRule
 from yaml.scanner import ScannerError
 
 from howler.api import bad_request, forbidden, make_subapi_blueprint, ok
+from howler.api.search_utils import prune_scroll_items, select_safe_scroll_fields
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException
-from howler.datastore.utils import expand_field_patterns
 from howler.helper.search import get_collection, get_default_sort, has_access_control, list_all_fields
-from howler.odm.base import BANNED_FIELDS
-from howler.odm.base import Mapping as OdmMapping
 from howler.odm.models.user import User
 from howler.security.login import api_login
 from howler.services import hit_service, lucene_service, search_service
-from howler.utils.dict_utils import prune
 from howler.utils.net_utils import generate_params
 
 SUB_API = "search"
@@ -31,70 +28,6 @@ search_api._doc = "Perform search queries"  # type: ignore
 logger = get_logger(__file__)
 
 SENSITIVE_USER_FIELDS = ["password", "apikeys", "*"]
-
-
-def _select_safe_scroll_fields(search_collection: Any, fl: Any) -> tuple[list[str], list[str], bool]:
-    """Select scroll fields using the collection's stored-field allowlist."""
-    stored_fields = search_collection.stored_fields
-    safe_fields = [
-        field_name for field_name, field in stored_fields.items() if field.store and field_name not in BANNED_FIELDS
-    ]
-
-    if isinstance(fl, str):
-        requested_fields = [value.strip() for value in fl.split(",") if value.strip()]
-    elif isinstance(fl, list):
-        requested_fields = [
-            field.strip() for value in fl if isinstance(value, str) for field in value.split(",") if field.strip()
-        ]
-    else:
-        requested_fields = []
-
-    if not requested_fields:
-        selected_fields = safe_fields
-        include_id = True
-    else:
-        expanded_fields = expand_field_patterns(search_collection.model_class, requested_fields, preserve_all=True)
-        selected_fields = (
-            safe_fields if "*" in expanded_fields else [field for field in safe_fields if field in expanded_fields]
-        )
-        include_id = "*" in expanded_fields or "id" in expanded_fields
-
-    source_fields = list(selected_fields)
-    if include_id and "id" not in source_fields:
-        source_fields.append("id")
-
-    return source_fields, selected_fields, include_id
-
-
-def _remove_banned_scroll_fields(value: Any) -> Any:
-    """Remove banned field names at every level of a scroll result."""
-    if isinstance(value, dict):
-        return {key: _remove_banned_scroll_fields(item) for key, item in value.items() if key not in BANNED_FIELDS}
-    if isinstance(value, list):
-        return [_remove_banned_scroll_fields(item) for item in value]
-    return value
-
-
-def _prune_scroll_items(
-    items: list[dict[str, Any]], search_collection: Any, allowed_fields: list[str], include_id: bool
-) -> list[dict[str, Any]]:
-    """Apply the collection's stored-field projection to service-formatted scroll items."""
-    safe_items: list[dict[str, Any]] = []
-    for item in items:
-        item_id = item.get("id") if include_id else None
-        source = _remove_banned_scroll_fields(
-            {key: value for key, value in item.items() if key not in {"__index", "id"}}
-        )
-        safe_item = prune(source, allowed_fields, search_collection.stored_fields, OdmMapping)
-
-        if include_id and item_id is not None:
-            safe_item["id"] = item_id
-        if "__index" in item:
-            safe_item["__index"] = item["__index"]
-
-        safe_items.append(safe_item)
-
-    return safe_items
 
 
 @generate_swagger_docs()
@@ -214,9 +147,9 @@ def search(index: str, user: User, **kwargs):
         metadata = params.pop("metadata", [])
         if scroll_requested and params.get("deep_paging_id") is not None:
             params.pop("access_control", None)
-            scroll_collection = collection()
-            params["fl"], scroll_fields, include_scroll_id = _select_safe_scroll_fields(
-                scroll_collection, params.get("fl")
+            scroll_collections = {index: collection()}
+            params["fl"], scroll_fields, include_scroll_id = select_safe_scroll_fields(
+                scroll_collections, params.get("fl")
             )
 
             result = search_service.search(
@@ -228,7 +161,7 @@ def search(index: str, user: User, **kwargs):
                 **params,
             )
 
-            result["items"] = _prune_scroll_items(result["items"], scroll_collection, scroll_fields, include_scroll_id)
+            result["items"] = prune_scroll_items(result["items"], scroll_fields, include_scroll_id)
         else:
             result = collection().search(query, as_obj=False, **params)
 

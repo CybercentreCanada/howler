@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from howler.api.v1.search import _prune_scroll_items
+from howler.api.search_utils import prune_scroll_items
 from howler.datastore.collection import ESCollection
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.base import BANNED_FIELDS
@@ -238,8 +238,6 @@ def test_scroll_item_pruning_removes_top_level_and_nested_banned_fields():
     assert top_level_banned in BANNED_FIELDS
     assert nested_banned in BANNED_FIELDS
 
-    search_collection = MagicMock()
-    search_collection.stored_fields = {"name": MagicMock(), "nested.name": MagicMock()}
     items = [
         {
             "id": "scroll-hit-id",
@@ -247,15 +245,26 @@ def test_scroll_item_pruning_removes_top_level_and_nested_banned_fields():
             "name": "allowed top-level value",
             top_level_banned: "restricted",
             "nested": {"name": "allowed nested value", nested_banned: "restricted"},
+            "action": {
+                "operations": [
+                    {"operation_id": "add_label", "data_json": "restricted"},
+                    {"operation_id": "promote", "data_json": "also restricted"},
+                ]
+            },
         }
     ]
 
-    pruned_items = _prune_scroll_items(items, search_collection, ["name", "nested.name"], include_id=True)
+    pruned_items = prune_scroll_items(
+        items,
+        {"hit": ["name", "nested.name", "action.operations.operation_id"]},
+        include_id=True,
+    )
 
     assert pruned_items == [
         {
             "name": "allowed top-level value",
             "nested": {"name": "allowed nested value"},
+            "action": {"operations": [{"operation_id": "add_label"}, {"operation_id": "promote"}]},
             "id": "scroll-hit-id",
             "__index": "hit",
         }
