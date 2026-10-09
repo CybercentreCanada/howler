@@ -39,7 +39,8 @@ class Scroll(object):
             index: Searchable index to query (``hit`` or ``action``).
             query: Lucene query string.
             keep_alive: How long the scroll should remain available between requests.
-            **kwargs: Search options retained for subsequent pages, such as ``rows``, ``filters``, and ``fl``.
+            **kwargs: Search options such as ``rows``, ``filters``, and ``fl``. ``timeout`` applies only to the
+                opening search and is not retained for subsequent pages.
 
         Returns:
             The exact search response mapping. If it contains
@@ -59,7 +60,9 @@ class Scroll(object):
 
         scroll_id = response.get("next_deep_paging_id")
         if isinstance(scroll_id, str) and scroll_id:
-            context = _ScrollContext(index, query, search_kwargs)
+            context_kwargs = deepcopy(search_kwargs)
+            context_kwargs.pop("timeout", None)
+            context = _ScrollContext(index, query, context_kwargs)
             with self._contexts_lock:
                 current_context = self._contexts.get(scroll_id)
                 if current_context is not None and current_context is not context:

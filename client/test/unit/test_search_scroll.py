@@ -56,11 +56,13 @@ def test_scroll_next_uses_latest_identifier_and_keep_alive():
         rows=10,
         filters=["howler.status:open"],
         fl="howler.id",
+        timeout=2500,
     )
     advanced = search.scroll.next(opened["next_deep_paging_id"], "3m")
     result = search.scroll.next(advanced["next_deep_paging_id"], "4m")
 
     assert advanced is second_page
+    assert json.loads(connection.post.call_args_list[0].kwargs["data"])["timeout"] == 2500
     with pytest.raises(ClientError, match="Unknown or expired scroll ID: scroll-1"):
         search.scroll.next("scroll-1", "3m")
     assert result is final_page

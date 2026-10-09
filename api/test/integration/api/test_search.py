@@ -4,8 +4,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from howler.api.v1.search import _prune_scroll_items
 from howler.datastore.collection import ESCollection
 from howler.datastore.howler_store import HowlerDatastore
+from howler.odm.base import BANNED_FIELDS
 from howler.odm.models.hit import Hit
 from howler.odm.random_data import (
     create_hits,
@@ -163,6 +165,99 @@ def test_scroll_user_field_selection_excludes_unstored_credentials(datastore, lo
         )
 
 
+def test_scroll_hit_default_fields_exclude_unstored_data(datastore, login_session):
+    """A hit scroll without fl returns stored fields only and preserves the document ID."""
+    session, host = login_session
+
+    hit = datastore.hit.search("howler.id:*", rows=1, as_obj=True)["items"][0]
+    hit_id = hit.howler.id
+    hit.howler.data = ["scroll projection regression secret"]
+    datastore.hit.save(hit_id, hit, refresh="wait_for")
+
+    raw_hit = datastore.hit.datastore.client.get(index=datastore.hit.name, id=hit_id)
+    assert raw_hit["_source"]["howler"]["data"] == ["scroll projection regression secret"]
+
+    response = get_api_data(
+        session,
+        f"{host}/api/v1/search/hit/",
+        method="POST",
+        data=json.dumps({"query": f"howler.id:{hit_id}", "rows": 1, "deep_paging_id": "*", "scroll": "1m"}),
+    )
+    scroll_id = response.get("next_deep_paging_id")
+    if scroll_id:
+        get_api_data(
+            session,
+            f"{host}/api/v1/search/scroll",
+            method="DELETE",
+            data=json.dumps({"scroll_id": scroll_id}),
+        )
+
+    assert response["items"]
+    item = response["items"][0]
+    assert item["id"] == hit_id
+    assert "data" not in item.get("howler", {})
+
+
+@pytest.mark.parametrize("fl,include_id", [("howler.id", False), ("id,howler.id", True)])
+def test_scroll_hit_explicit_fields_follow_collection_projection(datastore, login_session, fl, include_id):
+    """An explicit scroll field list keeps the collection's projection and ID behavior."""
+    session, host = login_session
+    hit_id = datastore.hit.search("howler.id:*", rows=1, as_obj=False)["items"][0]["howler"]["id"]
+
+    response = get_api_data(
+        session,
+        f"{host}/api/v1/search/hit/",
+        method="POST",
+        data=json.dumps({"query": f"howler.id:{hit_id}", "rows": 1, "deep_paging_id": "*", "scroll": "1m", "fl": fl}),
+    )
+    scroll_id = response.get("next_deep_paging_id")
+    if scroll_id:
+        get_api_data(
+            session,
+            f"{host}/api/v1/search/scroll",
+            method="DELETE",
+            data=json.dumps({"scroll_id": scroll_id}),
+        )
+
+    assert response["items"]
+    item = response["items"][0]
+    assert item["howler"] == {"id": hit_id}
+    assert ("id" in item) is include_id
+    if include_id:
+        assert item["id"] == hit_id
+
+
+def test_scroll_item_pruning_removes_top_level_and_nested_banned_fields():
+    """The scroll response pruner removes banned keys recursively without losing allowed fields."""
+    top_level_banned = "__access_lvl__"
+    nested_banned = "__access_req__"
+    assert top_level_banned in BANNED_FIELDS
+    assert nested_banned in BANNED_FIELDS
+
+    search_collection = MagicMock()
+    search_collection.stored_fields = {"name": MagicMock(), "nested.name": MagicMock()}
+    items = [
+        {
+            "id": "scroll-hit-id",
+            "__index": "hit",
+            "name": "allowed top-level value",
+            top_level_banned: "restricted",
+            "nested": {"name": "allowed nested value", nested_banned: "restricted"},
+        }
+    ]
+
+    pruned_items = _prune_scroll_items(items, search_collection, ["name", "nested.name"], include_id=True)
+
+    assert pruned_items == [
+        {
+            "name": "allowed top-level value",
+            "nested": {"name": "allowed nested value"},
+            "id": "scroll-hit-id",
+            "__index": "hit",
+        }
+    ]
+
+
 def test_clear_scroll(datastore, login_session):
     """A caller can clear an open scroll using the v1 clear endpoint."""
     session, host = login_session
@@ -197,6 +292,21 @@ def test_clear_scroll_requires_scroll_id(datastore, login_session):
         )
 
     assert "400" in str(api_err)
+
+
+def test_clear_scroll_rejects_reserved_all_id(datastore, login_session):
+    session, host = login_session
+
+    with pytest.raises(APIError) as api_err:
+        get_api_data(
+            session,
+            f"{host}/api/v1/search/scroll",
+            method="DELETE",
+            data=json.dumps({"scroll_id": "_all"}),
+        )
+
+    assert "400" in str(api_err)
+    assert "reserved scroll ID" in str(api_err.value)
 
 
 def test_facet_search(datastore, login_session):

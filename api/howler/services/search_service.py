@@ -167,7 +167,7 @@ def search(  # noqa: C901
     elif track_total_hits:
         params["track_total_hits"] = True
 
-    if timeout is not None:
+    if timeout is not None and deep_paging_id in (None, "*"):
         params["timeout"] = f"{timeout}ms"
 
     query_body: dict[str, Any] = {

@@ -739,10 +739,11 @@ class TestSearch:
             "_scroll_id": "scroll-abc",
         }
 
-        result = search_service.search("hit", query="*:*", deep_paging_id="*", rows=1)
+        result = search_service.search("hit", query="*:*", deep_paging_id="*", rows=1, timeout=2500)
 
         call_kwargs = mock_client.search.call_args
         assert call_kwargs.kwargs["scroll"] == search_service.SCROLL_TIMEOUT
+        assert call_kwargs.kwargs["timeout"] == "2500ms"
         assert result["next_deep_paging_id"] == "scroll-abc"
 
     @patch("howler.services.search_service.datastore")
@@ -804,6 +805,21 @@ class TestSearch:
         mock_client.scroll.assert_called_once_with(scroll_id="scroll-current", scroll="37s")
         assert mock_client.search.call_count == 0
         assert result["next_deep_paging_id"] == "scroll-next"
+
+    @patch("howler.services.search_service.datastore")
+    def test_deep_paging_continuation_does_not_pass_timeout_to_scroll(self, mock_ds_fn):
+        """A timeout is a search option and must not be forwarded to Elasticsearch.scroll."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.scroll.return_value = {"hits": {"total": {"value": 1}, "hits": []}}
+
+        search_service.search("hit", query="*:*", deep_paging_id="scroll-current", timeout=2500)
+
+        mock_client.scroll.assert_called_once_with(scroll_id="scroll-current", scroll=search_service.SCROLL_TIMEOUT)
+        mock_client.search.assert_not_called()
 
     @patch("howler.services.search_service.datastore")
     def test_clear_scroll_returns_elasticsearch_result(self, mock_ds_fn):
