@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.2.0](https://github.com/CybercentreCanada/howler/compare/sync-v0.0.2...sync-v4.2.0) (2026-10-09)
+
+
+### Miscellaneous Chores
+
+* **api:** bump release to 4.2.0 ([2627c49](https://github.com/CybercentreCanada/howler/commit/2627c491cbaaabaffb6713e008868b7afe76e12d))
+
 ## [0.0.2](https://github.com/CybercentreCanada/howler/compare/sync-v0.0.1...sync-v0.0.2) (2026-10-08)
 
 
