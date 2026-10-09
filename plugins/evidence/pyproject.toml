@@ -1,6 +1,6 @@
 [project]
 name = "howler-evidence-plugin"
-version = "0.1.0"
+version = "4.2.0"
 description = "A howler plugin to add additional nested ECS fields to the Howler ODM"
 authors = [{ name = "CCCS", email = "analysis-development@cyber.gc.ca" }]
 license = { text = "MIT" }
