@@ -29,6 +29,9 @@ const HelpDashboard = () => {
 
   const tabs = useMemo(
     () => ({
+      'help.advanced': ['overview', 'languages', 'lucene', 'results'],
+      'help.cases': ['overview', 'sidebar', 'summary', 'folders', 'records', 'items', 'investigation', 'rules'],
+      'help.dossiers': ['overview', 'query', 'leads', 'pivots', 'usage'],
       'help.hit': ['schema', 'header', 'bundle', 'links'],
       'help.actions': ['introduction', ...howlerPluginStore.operations]
     }),
@@ -72,7 +75,7 @@ const HelpDashboard = () => {
                   <CardActions>
                     {tabs[link.id as keyof typeof tabs].map((tab: string) => (
                       <Button key={tab} size="small" component={Link} to={`${link.route}?tab=${tab}`}>
-                        {tab}
+                        {t(`${link.id}.${tab}.title`, { defaultValue: tab })}
                       </Button>
                     ))}
                   </CardActions>
