@@ -29,6 +29,7 @@ export interface PivotLinkProps {
 }
 const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, variant = 'card', onNavigate }) => {
   const { i18n } = useTranslation();
+  const description = pivot.description?.trim();
 
   const helpers = useHelpers({ async: false, components: false });
   const pluginStore = usePluginStore();
@@ -57,13 +58,22 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, v
               <Typography variant="caption" display="block" color="text.secondary" noWrap>
                 {[dossier.title, dossier.owner].filter(Boolean).join(' • ')}
               </Typography>
+              {description && (
+                <Typography variant="caption" display="block" color="text.secondary" noWrap sx={{ maxWidth: 260 }}>
+                  {description}
+                </Typography>
+              )}
               <Typography variant="caption" display="block" color="text.secondary" noWrap sx={{ maxWidth: 260 }}>
                 {resolvedUrl}
               </Typography>
             </>
           ) : undefined
         }
-        tooltip={variant === 'menu-item' ? undefined : <PivotTooltip dossier={dossier} resolvedUrl={resolvedUrl} />}
+        tooltip={
+          variant === 'menu-item' ? undefined : (
+            <PivotTooltip dossier={dossier} pivot={pivot} resolvedUrl={resolvedUrl} />
+          )
+        }
         menuItem={variant === 'menu-item'}
         onNavigate={onNavigate}
       />
@@ -80,7 +90,7 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, v
     }
 
     return (
-      <Tooltip title={<PivotTooltip dossier={dossier} resolvedUrl={resolvedUrl} />}>
+      <Tooltip title={<PivotTooltip dossier={dossier} pivot={pivot} resolvedUrl={resolvedUrl} />}>
         <Box component="span" sx={{ display: 'inline-flex' }}>
           {pluginPivot}
         </Box>

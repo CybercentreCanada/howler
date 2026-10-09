@@ -52,6 +52,7 @@ class Pivot(odm.Model):
         index=True,
         coerce=False,
     )
+    description: str | None = odm.Text(description="An optional description for the pivot.", optional=True)
     label: LocalizedLabel = odm.Compound(LocalizedLabel, description="Labels for the pivot in the UI.")
     value: str = odm.Keyword(description="The link/plugin information to pivot on.")
     format: str = odm.Keyword(description="The format of the pivot.")

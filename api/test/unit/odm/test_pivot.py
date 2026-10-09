@@ -20,6 +20,7 @@ def test_pivot_accepts_case_item_style_group_paths(group):
     assert Pivot(pivot_data(group=group)).group == group
 
 
+
 @pytest.mark.parametrize("group", ["", "/group", "group/", "group//child"])
 def test_pivot_rejects_empty_group_segments(group):
     with pytest.raises(HowlerValueError):

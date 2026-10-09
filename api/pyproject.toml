@@ -96,6 +96,10 @@ venvPath = "."
 venv = ".venv"
 
 [[tool.pyright.executionEnvironments]]
+extraPaths = [".", "../scripts"]
+root = "build_scripts"
+
+[[tool.pyright.executionEnvironments]]
 extraPaths = ["."]
 reportArgumentType = "none"
 reportAssignmentType = "none"
