@@ -102,18 +102,12 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
-      - name: Get base depth of PR
-        if: github.event_name == 'pull_request'
-        id: base-depth
-        working-directory: .
-        run: |
-          echo "base-depth=$((${{ github.event.pull_request.commits }} + 1))" >> "$GITHUB_OUTPUT"
-
       - name: Checkout current ref
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: ${{ steps.base-depth.outputs.base-depth || 1 }}
+          # Coverage diffs require the common ancestor, even when the base branch has advanced.
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -190,7 +184,7 @@ jobs:
         if: steps.tests.outcome == 'success'
         run: |
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-            git fetch --depth=1 origin "$BASE_SHA"
+            git fetch origin "$BASE_SHA"
             merge_base="$(git merge-base "$BASE_SHA" "$HEAD_SHA")"
             git diff --name-only "$merge_base..$HEAD_SHA"
             git diff "$merge_base..$HEAD_SHA" > diff.txt

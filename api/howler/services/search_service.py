@@ -29,7 +29,9 @@ class SensitiveUserFieldsException(SearchException):
     """Raised when a user search requests protected source fields."""
 
 
-def _format_items(hits: list[dict[str, Any]], user_classification: str | None) -> list[dict[str, Any]]:
+def _format_items(
+    hits: list[dict[str, Any]], user_classification: str | None, include_id: bool = False
+) -> list[dict[str, Any]]:
     """Formats Elasticsearch search hits into a standardized item format.
 
     Extracts the _source content from each hit.
@@ -44,7 +46,7 @@ def _format_items(hits: list[dict[str, Any]], user_classification: str | None) -
     for hit in hits:
         source = hit.get("_source")
 
-        if source:
+        if source is not None:
             raw_index = hit.get("_index", None)
 
             if raw_index:
@@ -53,7 +55,11 @@ def _format_items(hits: list[dict[str, Any]], user_classification: str | None) -
             if source.get("__index") == "case" and user_classification:
                 case_service.filter_case_items_by_classification(source, user_classification)
 
-            items.append(source)
+            if include_id and hit.get("_id") is not None:
+                source["id"] = hit["_id"]
+
+            if source or include_id:
+                items.append(source)
 
     return items
 
@@ -71,6 +77,8 @@ def search(  # noqa: C901
     track_total_hits: bool = False,
     metadata: list[str] | None = None,
     user: User | None = None,
+    scroll: str | None = None,
+    include_id: bool = False,
 ) -> SearchResult[dict[str, Any]]:
     """Search through specified index for a given query. Uses lucene search syntax for query.
 
@@ -80,6 +88,8 @@ def search(  # noqa: C901
     Arguments:
     query: Query to search for
     deep_paging_id   : ID of the next page or * to start deep paging
+    scroll           : Scroll keep-alive duration (defaults to 5m for deep paging)
+    include_id       : Include Elasticsearch's document ID in each formatted item
     filters          : List of additional filter queries limit the data
     offset           : Offset in the results
     rows             : Number of results per page
@@ -153,11 +163,11 @@ def search(  # noqa: C901
 
     params: dict[str, Any] = {}
     if deep_paging_id is not None:
-        params["scroll"] = SCROLL_TIMEOUT
+        params["scroll"] = scroll if scroll is not None else SCROLL_TIMEOUT
     elif track_total_hits:
         params["track_total_hits"] = True
 
-    if timeout is not None:
+    if timeout is not None and deep_paging_id in (None, "*"):
         params["timeout"] = f"{timeout}ms"
 
     query_body: dict[str, Any] = {
@@ -194,7 +204,7 @@ def search(  # noqa: C901
         "offset": int(offset),
         "rows": len(hits),
         "total": int(total),
-        "items": _format_items(hits, user.classification if user else None),
+        "items": _format_items(hits, user.classification if user else None, include_id=include_id),
     }
 
     next_deep_paging_id = result.get("_scroll_id")
@@ -216,6 +226,20 @@ def search(  # noqa: C901
         response["next_deep_paging_id"] = next_deep_paging_id
 
     return response
+
+
+def clear_scroll(scroll_id: str) -> dict[str, Any]:
+    """Clear an Elasticsearch scroll context and return Elasticsearch's response."""
+    client: Elasticsearch = datastore().ds.client
+
+    try:
+        return dict(client.clear_scroll(scroll_id=scroll_id).body)
+    except (elasticsearch.exceptions.ConnectionError, elasticsearch.exceptions.ConnectionTimeout) as error:
+        raise SearchRetryException(f"scroll_id: {scroll_id}, error: {str(error)}") from error
+    except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.RequestError) as error:
+        raise SearchException(str(error)) from error
+    except Exception as error:
+        raise SearchException(f"scroll_id: {scroll_id}, error: {str(error)}") from error
 
 
 def _parse_index_list(indexes: str | list[str]) -> list[str]:
