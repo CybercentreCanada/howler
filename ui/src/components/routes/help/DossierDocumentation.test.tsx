@@ -53,6 +53,10 @@ vi.mock('./components/HelpTabs', () => ({
   default: ({ children }: any) => <div>{children}</div>
 }));
 
+vi.mock('../hits/search/RecordQuery', () => ({
+  default: () => <div id="record-query-preview" />
+}));
+
 import DossierDocumentation from './DossierDocumentation';
 
 describe('DossierDocumentation', () => {
@@ -84,9 +88,17 @@ describe('DossierDocumentation', () => {
     render(<DossierDocumentation />);
 
     expect(screen.getByRole('heading', { name: "Vue d'ensemble des dossiers" })).toBeInTheDocument();
-    const previewLabel = screen.getByText('Pistes', { selector: '.MuiChip-label' });
-    expect(previewLabel).toBeInTheDocument();
-    expect(previewLabel.closest('p')).toBeNull();
+    expect(screen.getByRole('tab', { name: "Guide d'investigation" })).toBeInTheDocument();
+    expect(screen.getByRole('group')).toBeInTheDocument();
+  });
+
+  it('uses the dossier query control from the search route', () => {
+    mockSearchParams.value = new URLSearchParams({ tab: 'query' });
+
+    render(<DossierDocumentation />);
+
+    expect(screen.getByRole('heading', { name: 'Define the matching query' })).toBeInTheDocument();
+    expect(document.getElementById('record-query-preview')).toBeInTheDocument();
   });
 
   it.each([

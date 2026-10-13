@@ -1,12 +1,22 @@
-import { Code, DataObject, GroupWork, PlayArrowOutlined, Search } from '@mui/icons-material';
-import { Box, Chip, Paper, Stack, Tab, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Box, Stack, Tab, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { PageCenter } from '@tui/core';
 import Markdown from 'components/elements/display/Markdown';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
 import type { FC } from 'react';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
+import {
+  ExecuteQueryButton,
+  FieldsControl,
+  GroupByFieldSelect,
+  type LuceneQueryType,
+  LuceneQueryTypeSelect,
+  OpenInSearchButton,
+  QueryLanguageSelect,
+  type QueryLanguage,
+  RowsControl
+} from '../advanced/QueryBuilderControls';
 import HelpTabs from './components/HelpTabs';
 import LANGUAGES_EN from './markdown/en/advancedLanguages.md';
 import LUCENE_EN from './markdown/en/advancedLucene.md';
@@ -21,7 +31,22 @@ const AdvancedDocumentation: FC = () => {
   const { i18n, t } = useTranslation();
   const theme = useTheme();
   const useHorizontal = useMediaQuery(theme.breakpoints.down(1700));
+  const compactLayout = useMediaQuery('(max-width:870px)');
   useScrollRestoration();
+
+  const [queryLanguage, setQueryLanguage] = useState<QueryLanguage>('lucene');
+  const [queryType, setQueryType] = useState<LuceneQueryType>('default');
+  const [groupByField, setGroupByField] = useState('howler.id');
+  const [rows, setRows] = useState(1);
+  const [allFields, setAllFields] = useState(true);
+  const [fields, setFields] = useState<string[]>(['howler.id']);
+
+  const onQueryLanguageChange = useCallback((language: QueryLanguage) => {
+    setQueryLanguage(language);
+    if (language !== 'lucene') {
+      setQueryType('default');
+    }
+  }, []);
 
   const sections = ['overview', 'languages', 'lucene', 'results'] as const;
   const [searchParams, setSearchParams] = useSearchParams();
@@ -56,43 +81,45 @@ const AdvancedDocumentation: FC = () => {
 
   const documentationComponents = {
     advanced_languages: (
-      <Stack direction="row" spacing={1} flexWrap="wrap">
-        <Chip icon={<Code />} label={t('route.advanced.query.lucene')} />
-        <Chip icon={<Code />} label={t('route.advanced.query.eql')} />
-        <Chip icon={<Code />} label={t('route.advanced.query.yaml')} />
-      </Stack>
+      <QueryLanguageSelect value={queryLanguage} onChange={onQueryLanguageChange} compactLayout={compactLayout} />
     ),
     advanced_execute: (
-      <Paper variant="outlined" sx={{ p: 1, maxWidth: 500 }}>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <PlayArrowOutlined color="success" />
-          <Typography variant="body2">{t('route.actions.execute')}</Typography>
-          <Typography variant="caption" color="text.secondary">
-            {t('help.advanced.shortcut')}
-          </Typography>
-        </Stack>
-      </Paper>
+      <Stack direction="row" spacing={1} alignItems="center">
+        <ExecuteQueryButton
+          loading={false}
+          searchDisabled={queryType === 'groupby' && !groupByField}
+          onExecute={() => {}}
+        />
+        <Typography variant="caption" color="text.secondary">
+          {t('help.advanced.shortcut')}
+        </Typography>
+      </Stack>
     ),
     advanced_modes: (
-      <Stack direction="row" spacing={1} flexWrap="wrap">
-        {['default', 'facet', 'groupby', 'explain'].map(mode => (
-          <Chip
-            key={mode}
-            icon={mode === 'groupby' ? <GroupWork /> : <DataObject />}
-            label={t(`route.advanced.query.type.${mode}`)}
+      <Stack direction={compactLayout ? 'column' : 'row'} spacing={1} flexWrap="wrap">
+        <LuceneQueryTypeSelect value={queryType} onChange={setQueryType} />
+        {queryType === 'groupby' && (
+          <GroupByFieldSelect
+            options={['howler.id', 'howler.status', 'howler.analytic']}
+            value={groupByField}
+            onChange={setGroupByField}
           />
-        ))}
+        )}
       </Stack>
     ),
     advanced_results: (
-      <Paper variant="outlined" sx={{ p: 1, maxWidth: 500 }}>
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-          <DataObject fontSize="small" />
-          <Chip size="small" label={t('route.advanced.fields.all')} />
-          <Chip size="small" label={t('route.advanced.rows')} />
-          <Chip size="small" icon={<Search />} label={t('route.advanced.open')} />
-        </Stack>
-      </Paper>
+      <Stack direction={compactLayout ? 'column' : 'row'} spacing={1} alignItems="center" flexWrap="wrap">
+        <RowsControl value={rows} onChange={setRows} />
+        <FieldsControl
+          allFields={allFields}
+          onAllFieldsChange={setAllFields}
+          queryType={queryType}
+          fieldOptions={['howler.id', 'howler.status', 'howler.analytic']}
+          fields={fields}
+          onFieldsChange={setFields}
+        />
+        <OpenInSearchButton query="howler.status:open" hasResponse />
+      </Stack>
     )
   };
 

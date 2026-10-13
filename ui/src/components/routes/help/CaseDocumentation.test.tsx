@@ -32,6 +32,10 @@ vi.mock('components/elements/display/Notebook', () => ({
   Notebook: () => null
 }));
 
+vi.mock('components/elements/UserList', () => ({
+  default: ({ userIds }: any) => <div>{userIds.join(',')}</div>
+}));
+
 vi.mock('components/hooks/useScrollRestoration', () => ({
   useScrollRestoration: vi.fn()
 }));
@@ -52,6 +56,7 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('react-router', () => ({
   Link: ({ children, to }: any) => <a href={to}>{children}</a>,
+  useLocation: () => ({ pathname: '/cases/example-case', search: '' }),
   useSearchParams: () => [mockSearchParams.value, mockSetSearchParams]
 }));
 
@@ -90,9 +95,8 @@ describe('CaseDocumentation', () => {
     render(<CaseDocumentation />);
 
     expect(screen.getByRole('heading', { name: 'Ajouter des enregistrements aux cas' })).toBeInTheDocument();
-    const previewLabel = screen.getByText('Ajouter au cas', { selector: '.MuiTypography-body2' });
+    const previewLabel = screen.getByRole('heading', { name: 'Ajouter au cas' });
     expect(previewLabel).toBeInTheDocument();
-    expect(previewLabel.parentElement?.closest('p')).toBeNull();
   });
 
   it.each([
@@ -104,7 +108,7 @@ describe('CaseDocumentation', () => {
 
     render(<CaseDocumentation />);
 
-    expect(screen.getByText(label, { selector: '.MuiChip-label' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: link })).toHaveAttribute('href', '/help/cases?tab=records');
   });
 
@@ -119,5 +123,25 @@ describe('CaseDocumentation', () => {
 
     expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
     expect(screen.getByText(control, { selector: 'strong' })).toBeInTheDocument();
+  });
+
+  it.each([
+    { tab: 'folders', example: 'Investigation' },
+    { tab: 'investigation', example: 'page.cases.search' },
+    { tab: 'rules', example: 'alerts/{{howler.analytic}}' }
+  ])('renders the actual $tab example control', ({ tab, example }) => {
+    mockSearchParams.value = new URLSearchParams({ tab });
+
+    render(<CaseDocumentation />);
+
+    expect(screen.getAllByText(example).length).toBeGreaterThan(0);
+  });
+
+  it('renders the actual item-type selector in the items guide', () => {
+    mockSearchParams.value = new URLSearchParams({ tab: 'items' });
+
+    render(<CaseDocumentation />);
+
+    expect(screen.getByRole('combobox', { name: 'modal.cases.add_item.type' })).toBeInTheDocument();
   });
 });

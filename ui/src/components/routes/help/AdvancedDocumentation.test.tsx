@@ -83,9 +83,17 @@ describe('AdvancedDocumentation', () => {
     render(<AdvancedDocumentation />);
 
     expect(screen.getByRole('heading', { name: 'Choisir un langage de requête' })).toBeInTheDocument();
-    const previewLabel = screen.getByText('Requête Lucene', { selector: '.MuiChip-label' });
-    expect(previewLabel).toBeInTheDocument();
-    expect(previewLabel.closest('p')).toBeNull();
+    expect(screen.getByDisplayValue('Requête Lucene')).toBeInTheDocument();
+    expect(screen.queryByText('Requête Lucene', { selector: '.MuiChip-label' })).not.toBeInTheDocument();
+  });
+
+  it('renders the actual rows and field-selection controls in the results guide', () => {
+    mockSearchParams.value = new URLSearchParams({ tab: 'results' });
+
+    render(<AdvancedDocumentation />);
+
+    expect(screen.getByRole('slider')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox')).toBeInTheDocument();
   });
 
   it.each([

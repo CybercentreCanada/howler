@@ -1,19 +1,4 @@
-import {
-  AddCircle,
-  CalendarMonth,
-  Dashboard,
-  Dataset,
-  Description,
-  Event as EventIcon,
-  Folder,
-  Link as LinkIcon,
-  People,
-  Refresh,
-  Rule,
-  Search,
-  UnfoldLess
-} from '@mui/icons-material';
-import { Box, Chip, Paper, Stack, Tab, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Box, Stack, Tab, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { PageCenter } from '@tui/core';
 import Markdown from 'components/elements/display/Markdown';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
@@ -21,6 +6,18 @@ import type { FC } from 'react';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
+import {
+  AddRecordsPreview,
+  CaseControlsPreview,
+  CaseDashboardPreview,
+  CaseDetailsPreview,
+  CaseFolderTreePreview,
+  CaseInvestigationViewsPreview,
+  CaseItemTypesPreview,
+  CaseNavigationPreview,
+  CaseTasksPreview,
+  CorrelationRulePreview
+} from './components/CaseDocumentationPreviews';
 import HelpTabs from './components/HelpTabs';
 import FOLDERS_EN from './markdown/en/casesFolders.md';
 import ITEMS_EN from './markdown/en/casesItems.md';
@@ -83,134 +80,17 @@ const CaseDocumentation: FC = () => {
           },
     [i18n.language]
   );
-  const navigationItems = [
-    { Icon: Dashboard, label: t('page.cases.dashboard') },
-    { Icon: Search, label: t('page.cases.search') },
-    { Icon: Dataset, label: t('page.cases.observables') },
-    { Icon: CalendarMonth, label: t('page.cases.timeline') },
-    { Icon: Rule, label: t('page.cases.rules') }
-  ];
-
   const documentationComponents = {
-    case_navigation: (
-      <Paper variant="outlined" sx={{ p: 1, maxWidth: 350 }}>
-        <Stack spacing={0.5}>
-          {navigationItems.map(({ Icon, label }) => (
-            <Stack key={label} direction="row" spacing={1} alignItems="center">
-              <Icon fontSize="small" />
-              <Typography variant="body2">{label}</Typography>
-            </Stack>
-          ))}
-        </Stack>
-      </Paper>
-    ),
-    case_controls: (
-      <Stack direction="row" spacing={1} flexWrap="wrap">
-        <Chip icon={<EventIcon />} label={t('page.cases.sidebar.add_event')} />
-        <Chip icon={<Description />} label={t('page.cases.sidebar.add_item')} />
-        <Chip icon={<Folder />} label={t('page.cases.sidebar.add_folder')} />
-        <Chip icon={<Refresh />} label={t('page.cases.sidebar.refresh')} />
-        <Chip icon={<UnfoldLess />} label={t('page.cases.sidebar.collapse_all')} />
-      </Stack>
-    ),
-    case_details: (
-      <Paper variant="outlined" sx={{ p: 1, maxWidth: 350 }}>
-        <Stack spacing={1}>
-          <Stack direction="row" spacing={0.5} flexWrap="wrap">
-            <Chip size="small" label={t('page.cases.status.open')} />
-            <Chip size="small" color="warning" label={t('page.cases.status.in-progress')} />
-            <Chip size="small" color="success" label={t('page.cases.status.resolved')} />
-          </Stack>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <People fontSize="small" />
-            <Typography variant="body2">{t('page.cases.detail.participants')}</Typography>
-          </Stack>
-        </Stack>
-      </Paper>
-    ),
-    case_dashboard: (
-      <Paper variant="outlined" sx={{ p: 2, maxWidth: 600 }}>
-        <Typography variant="h6">{t('modal.cases.create_case.title')}</Typography>
-        <Typography variant="body2" color="text.secondary">
-          {t('modal.cases.create_case.summary')}
-        </Typography>
-        <Typography variant="body2" sx={{ mt: 2 }}>
-          {t('modal.cases.create_case.overview')}
-        </Typography>
-      </Paper>
-    ),
-    folder_tree: (
-      <Paper variant="outlined" sx={{ p: 1, maxWidth: 350 }}>
-        <Stack spacing={0.5}>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Folder fontSize="small" />
-            <Typography variant="body2">{t('help.cases.example.investigation')}</Typography>
-          </Stack>
-          <Stack direction="row" spacing={1} alignItems="center" pl={3}>
-            <Folder fontSize="small" />
-            <Typography variant="body2">{t('help.cases.example.evidence')}</Typography>
-          </Stack>
-          <Stack direction="row" spacing={1} alignItems="center" pl={6}>
-            <Description fontSize="small" />
-            <Typography variant="body2">{t('help.cases.example.analyst_notes')}</Typography>
-          </Stack>
-        </Stack>
-      </Paper>
-    ),
-    add_records: (
-      <Paper variant="outlined" sx={{ p: 1, maxWidth: 500 }}>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <AddCircle color="primary" />
-          <Typography variant="body2">{t('modal.cases.add_to_case')}</Typography>
-        </Stack>
-      </Paper>
-    ),
-    case_tasks: (
-      <Paper variant="outlined" sx={{ p: 1, maxWidth: 500 }}>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <AddCircle color="primary" />
-          <Typography variant="body2">{t('page.cases.dashboard.tasks.add')}</Typography>
-          <Chip size="small" label={t('page.cases.dashboard.tasks.child_cases')} />
-        </Stack>
-      </Paper>
-    ),
-    investigation_views: (
-      <Paper variant="outlined" sx={{ p: 1, maxWidth: 400 }}>
-        <Stack direction="row" spacing={2}>
-          {[
-            { Icon: Search, label: t('page.cases.search') },
-            { Icon: Dataset, label: t('page.cases.observables') },
-            { Icon: CalendarMonth, label: t('page.cases.timeline') }
-          ].map(({ Icon, label }) => (
-            <Stack key={label} alignItems="center" spacing={0.5}>
-              <Icon fontSize="small" />
-              <Typography variant="caption">{label}</Typography>
-            </Stack>
-          ))}
-        </Stack>
-      </Paper>
-    ),
-    correlation_rule: (
-      <Paper variant="outlined" sx={{ p: 1, maxWidth: 600 }}>
-        <Stack spacing={0.5}>
-          <Typography variant="caption">{t('page.cases.rules.query')}</Typography>
-          <Typography variant="body2" fontFamily="monospace">
-            {'howler.analytic:Suspicious*'}
-          </Typography>
-          <Typography variant="caption">{t('page.cases.rules.destination')}</Typography>
-          <Typography variant="body2" fontFamily="monospace">
-            {'alerts/{{howler.analytic}}'}
-          </Typography>
-        </Stack>
-      </Paper>
-    ),
-    case_item_types: (
-      <Stack direction="row" spacing={1} flexWrap="wrap">
-        <Chip icon={<Description />} label={t('modal.cases.add_item.type.markdown')} />
-        <Chip icon={<LinkIcon />} label={t('modal.cases.add_item.type.link')} />
-        <Chip icon={<Folder />} label={t('page.cases.sidebar.add_folder')} />
-      </Stack>
-    )
+    case_navigation: <CaseNavigationPreview />,
+    case_controls: <CaseControlsPreview />,
+    case_details: <CaseDetailsPreview />,
+    case_dashboard: <CaseDashboardPreview />,
+    folder_tree: <CaseFolderTreePreview />,
+    add_records: <AddRecordsPreview />,
+    case_tasks: <CaseTasksPreview />,
+    investigation_views: <CaseInvestigationViewsPreview />,
+    correlation_rule: <CorrelationRulePreview />,
+    case_item_types: <CaseItemTypesPreview />
   };
 
   return (

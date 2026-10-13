@@ -7,12 +7,8 @@ import useMyApi from 'components/hooks/useMyApi';
 import type { Case } from 'models/entities/generated/Case';
 import { useContext, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import CaseItemTypeSelect, { CASE_ITEM_TYPES, type CaseItemType } from './CaseItemTypeSelect';
 import { useFolderOptions } from './hooks';
-
-const ITEM_TYPES = [
-  { value: 'reference', labelKey: 'modal.cases.add_item.type.link' },
-  { value: 'markdown', labelKey: 'modal.cases.add_item.type.markdown' }
-] as const;
 
 interface AddItemToCaseModalProps {
   case: Case;
@@ -27,7 +23,7 @@ const AddToCaseModal: FC<AddItemToCaseModalProps> = ({ case: _case, parentId, on
   const { dispatchApi } = useMyApi();
   const { close } = useContext(ModalContext);
 
-  const [itemType, setItemType] = useState<(typeof ITEM_TYPES)[number]>(ITEM_TYPES[0]);
+  const [itemType, setItemType] = useState<CaseItemType>(CASE_ITEM_TYPES[0]);
   const [title, setTitle] = useState('');
   const [value, setValue] = useState('');
   const [selectedParent, setSelectedParent] = useState<string | undefined>(parentId);
@@ -85,22 +81,7 @@ const AddToCaseModal: FC<AddItemToCaseModalProps> = ({ case: _case, parentId, on
       <Typography variant="h4">{t('modal.cases.add_item')}</Typography>
 
       <Stack direction="row" spacing={1}>
-        <Autocomplete
-          value={itemType}
-          onChange={(_, option) => {
-            if (option) {
-              setItemType(option);
-            }
-          }}
-          options={ITEM_TYPES}
-          getOptionLabel={opt => t(opt.labelKey)}
-          isOptionEqualToValue={(option, choice) => option.value === choice.value}
-          disablePortal
-          disableClearable
-          renderInput={params => (
-            <TextField {...params} size="small" label={t('modal.cases.add_item.type')} sx={{ minWidth: '175px' }} />
-          )}
-        />
+        <CaseItemTypeSelect value={itemType} onChange={setItemType} />
 
         <TextField
           size="small"
