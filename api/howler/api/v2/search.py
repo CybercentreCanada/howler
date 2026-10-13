@@ -8,7 +8,7 @@ from elasticsearch._sync.client.indices import IndicesClient
 from flask import request
 
 from howler.api import bad_request, forbidden, internal_error, make_subapi_blueprint, ok
-from howler.api.search_utils import prune_scroll_items, select_safe_scroll_fields
+from howler.api.search_utils import InvalidScrollTokenException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.logging.audit import audit
@@ -18,7 +18,7 @@ from howler.helper.search import get_collection, has_access_control
 from howler.odm.models.user import User
 from howler.security.login import api_login
 from howler.services import hit_service, lucene_service, search_service
-from howler.services.search_service import SENSITIVE_USER_FIELDS, SensitiveUserFieldsException
+from howler.services.search_service import SensitiveUserFieldsException
 from howler.utils.net_utils import generate_params
 
 SUB_API = "search"
@@ -31,43 +31,6 @@ logger = get_logger(__file__)
 def _audit_request(user: User, func: Callable[..., Any], **fields):
     """Emit an audit event with search-specific request details."""
     audit([], fields, user["uname"], user, func)
-
-
-def _search_with_scroll(
-    indexes: str,
-    index_list: list[str],
-    query: str,
-    user: User,
-    params: dict[str, Any],
-    scroll: Any,
-    metadata: list[str],
-) -> Any:
-    """Run a scroll search with per-index stored-field projections."""
-    requested_fl = params.get("fl")
-    if (
-        "user" in index_list
-        and requested_fl is not None
-        and any(sensitive_field in requested_fl for sensitive_field in SENSITIVE_USER_FIELDS)
-    ):
-        return forbidden(err="Invalid fields to retrieve.")
-
-    scroll_collections: dict[str, Any] = {}
-    for index in index_list:
-        collection = get_collection(index, user)
-        if collection is None:
-            return bad_request(err=f"Not a valid index to search in: {index}")
-        scroll_collections[index] = collection()
-
-    scroll_params = params.copy()
-    scroll_params["fl"], scroll_fields, include_scroll_id = select_safe_scroll_fields(scroll_collections, requested_fl)
-    scroll_params["include_id"] = include_scroll_id
-
-    result = search_service.search(indexes, query, user=user, scroll=scroll, **scroll_params)
-    result["items"] = prune_scroll_items(result["items"], scroll_fields, include_scroll_id)
-    if metadata and "hit" in index_list:
-        hit_service.augment_metadata(result["items"], metadata, user)
-
-    return ok(result)
 
 
 @generate_swagger_docs()
@@ -84,7 +47,7 @@ def search(indexes: str, user: User, **kwargs):
 
     Optional Arguments:
     deep_paging_id      =>   ID of the next page or * to start deep paging
-    scroll              =>   Scroll keep-alive duration for deep paging (default: 5m)
+    scroll              =>   Scroll keep-alive duration for deep paging (default: 5m, max: 10m)
     filters             =>   List of additional filter queries limit the data
     offset              =>   Offset in the results
     rows                =>   Number of results per page
@@ -156,11 +119,13 @@ def search(indexes: str, user: User, **kwargs):
 
     try:
         if params.get("deep_paging_id") is not None:
-            return _search_with_scroll(indexes, index_list, query, user, params, scroll, metadata)
-
-        result = search_service.search(indexes, query, user=user, **params)
+            result = search_service.scroll_search(indexes, query, user, params, scroll)
+        else:
+            result = search_service.search(indexes, query, user=user, **params)
     except SensitiveUserFieldsException as e:
         return forbidden(err=e.message)
+    except InvalidScrollTokenException:
+        return forbidden(err="Invalid scroll ID for this user or search.")
     except (SearchException, BadRequestError) as e:
         logger.exception(f"SearchException on query {query}")
         return bad_request(err=f"SearchException on query {query}: {str(e)}")
@@ -184,22 +149,20 @@ def clear_scroll(user: User, **kwargs):
     None
 
     Arguments:
-    scroll_id => Scroll ID of the context to clear, provided in the request body
+    scroll_id => Scroll token returned as next_deep_paging_id by a search, provided in the request body
 
     Result Example:
     {"succeeded": true, "num_freed": 1}
     """
-    del user, kwargs
-
     data = request.get_json(silent=True)
     scroll_id = data.get("scroll_id") if isinstance(data, dict) else None
     if not isinstance(scroll_id, str) or not scroll_id:
         return bad_request(err="A scroll_id must be provided.")
-    if scroll_id == "_all":
-        return bad_request(err="The reserved scroll ID '_all' cannot be cleared.")
 
     try:
-        return ok(search_service.clear_scroll(scroll_id))
+        return ok(search_service.clear_owned_scroll(user, scroll_id))
+    except InvalidScrollTokenException:
+        return forbidden(err="Invalid scroll ID for this user.")
     except (SearchException, BadRequestError) as e:
         return bad_request(err=f"SearchException: {e}")
 
@@ -398,6 +361,8 @@ def facet(indexes: str, **kwargs):
         )
 
         return ok(facet_result)
+    except SensitiveUserFieldsException as e:
+        return forbidden(err=e.message)
     except (SearchException, BadRequestError) as e:
         query = params.get("query", "id:*")
         logger.exception(f"SearchException on query {query}")

@@ -5,12 +5,19 @@ from typing import Any
 import elasticsearch
 from elasticsearch import Elasticsearch
 
+from howler.api.search_utils import read_scroll_token
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
-from howler.datastore.collection import parse_sort
-from howler.datastore.exceptions import SearchException, SearchRetryException
+from howler.datastore.collection import ESCollection, parse_sort
+from howler.datastore.exceptions import (
+    InvalidScrollTokenException,
+    SearchException,
+    SearchRetryException,
+    SensitiveUserFieldsException,
+)
 from howler.datastore.types import SearchResult
-from howler.helper.search import get_collection, get_default_sort, has_access_control
+from howler.helper.search import INDEX_MAP, get_collection, get_default_sort, has_access_control
+from howler.odm.base import BANNED_FIELDS
 from howler.odm.models.user import User
 from howler.services import case_service
 from howler.utils.indexes import get_logical_index_name, normalize_indexes
@@ -20,13 +27,42 @@ DEFAULT_ROW_SIZE = 25
 DEFAULT_SORT: list[dict[str, str]] = [{"_id": "asc"}]
 DEFAULT_SEARCH_FIELD = "__text__"
 SCROLL_TIMEOUT = "5m"
-SENSITIVE_USER_FIELDS = ["password", "apikeys", "*"]
+
+_USER_FLAT_FIELDS = User.flat_fields()
+USER_STORED_FIELDS: frozenset[str] = frozenset(
+    name for name, field in _USER_FLAT_FIELDS.items() if field.store and name not in BANNED_FIELDS
+)
+_USER_DENIED_ROOTS: frozenset[str] = frozenset(
+    {name.split(".")[0] for name in _USER_FLAT_FIELDS if name not in USER_STORED_FIELDS} | BANNED_FIELDS
+)
 
 logger = get_logger(__file__)
 
 
-class SensitiveUserFieldsException(SearchException):
-    """Raised when a user search requests protected source fields."""
+def _validate_search_indexes(index_list: list[str], user: User | None) -> None:
+    """Accept only the logical index names the caller may search.
+
+    Physical names, aliases, and wildcards would bypass the per-index field rules and access-control filters.
+    """
+    if not index_list:
+        raise SearchException("No indexes were provided.")
+
+    for index in index_list:
+        collection = get_collection(index, user) if user else INDEX_MAP.get(index)
+        if collection is None:
+            raise SearchException(f"Not a valid index to search in: {index}")
+
+
+def _requested_field_names(fl: Any) -> list[str] | None:
+    """Split a field request into names, or return None when the request has an unsupported shape."""
+    if fl is None:
+        return []
+
+    entries = [fl] if isinstance(fl, str) else fl if isinstance(fl, list) else None
+    if entries is None or not all(isinstance(entry, str) for entry in entries):
+        return None
+
+    return [name.strip() for entry in entries for name in entry.split(",") if name.strip()]
 
 
 def _format_items(
@@ -62,6 +98,19 @@ def _format_items(
                 items.append(source)
 
     return items
+
+
+def user_fields_allowed(indexes: str | list[str], fl: Any) -> bool:
+    """Return False when a request for the user index names non-stored, banned, or wildcard fields.
+
+    Only stored user fields are safe to return. Anything else, including the credential fields and
+    wildcards that could expand to them, is refused. Requests for other indexes are not affected.
+    """
+    if "user" not in _parse_index_list(indexes):
+        return True
+
+    names = _requested_field_names(fl)
+    return names is not None and all("*" not in name and name.split(".")[0] not in _USER_DENIED_ROOTS for name in names)
 
 
 def search(  # noqa: C901
@@ -109,12 +158,14 @@ def search(  # noqa: C901
     del metadata
 
     index_list = _parse_index_list(indexes)
-    if (
-        fl is not None
-        and "user" in index_list
-        and any(sensitive_field in fl for sensitive_field in SENSITIVE_USER_FIELDS)
-    ):
-        raise SensitiveUserFieldsException("Invalid fields to retrieve.")
+    _validate_search_indexes(index_list, user)
+    if "user" in index_list:
+        if not user_fields_allowed(index_list, fl):
+            raise SensitiveUserFieldsException("Invalid fields to retrieve.")
+        if not _requested_field_names(fl):
+            if len(index_list) > 1:
+                raise SensitiveUserFieldsException("Specify fl when searching the user index with other indexes.")
+            fl = sorted(USER_STORED_FIELDS)
 
     client: Elasticsearch = datastore().ds.client
     parsed_indexes = normalize_indexes(indexes)
@@ -129,7 +180,7 @@ def search(  # noqa: C901
     # NOTE: This means index searches must be either ALL access controlled or none of them have access control.
     # Otherwise, the access control requirements on one index will cause the other index to return no items.
     # This is pretty reasonable constraint, as all the relevant, searchable items support classifications.
-    if user and user.access_control and has_access_control(indexes):
+    if user and user.access_control and has_access_control(index_list):
         parsed_filters.append(user.access_control)
 
     if query is None:
@@ -242,6 +293,60 @@ def clear_scroll(scroll_id: str) -> dict[str, Any]:
         raise SearchException(f"scroll_id: {scroll_id}, error: {str(error)}") from error
 
 
+def clear_owned_scroll(user: User, scroll_token: Any) -> dict[str, Any]:
+    """Clear the Elasticsearch scroll behind a token, but only for the user who opened it."""
+    claims = read_scroll_token(scroll_token)
+    if claims["u"] != user["uname"]:
+        raise InvalidScrollTokenException("Scroll token belongs to another user.")
+
+    return clear_scroll(claims["s"])
+
+
+def scroll_search(
+    indexes: str, query: str, user: User, params: dict[str, Any], scroll: Any
+) -> SearchResult[dict[str, Any]]:
+    """Open or continue a deep-paging scroll with user-bound tokens, access control, and field projection."""
+    from howler.api.search_utils import (
+        issue_scroll_token,
+        prune_scroll_items,
+        resolve_deep_paging_id,
+        select_safe_scroll_fields,
+        validate_scroll_keep_alive,
+    )
+
+    index_list = _parse_index_list(indexes)
+    requested_fl = params.get("fl")
+    if not user_fields_allowed(index_list, requested_fl):
+        raise SensitiveUserFieldsException("Invalid fields to retrieve.")
+
+    scroll_collections: dict[str, ESCollection] = {}
+    for index in index_list:
+        collection = get_collection(index, user)
+        if collection is None:
+            raise SearchException(f"Not a valid index to search in: {index}")
+        scroll_collections[index] = collection()
+
+    keep_alive = validate_scroll_keep_alive(scroll)
+    search_params = params.copy()
+    search_params["deep_paging_id"] = resolve_deep_paging_id(user, indexes, params["deep_paging_id"])
+    search_params["fl"], scroll_fields, include_id = select_safe_scroll_fields(scroll_collections, requested_fl)
+
+    result = search(
+        indexes,
+        query,
+        user=user,
+        scroll=keep_alive,
+        include_id=include_id,
+        **search_params,
+    )
+    next_scroll_id = result.get("next_deep_paging_id")
+    if next_scroll_id is not None:
+        result["next_deep_paging_id"] = issue_scroll_token(user, indexes, next_scroll_id)
+
+    result["items"] = prune_scroll_items(result["items"], scroll_fields, include_id)
+    return result
+
+
 def _parse_index_list(indexes: str | list[str]) -> list[str]:
     if isinstance(indexes, str):
         return [index.strip() for index in indexes.split(",") if index.strip()]
@@ -343,6 +448,9 @@ def facet(
 
     if not index_list:
         raise SearchException("No indexes were provided.")
+
+    if not user_fields_allowed(index_list, fields):
+        raise SensitiveUserFieldsException("Invalid fields to facet on.")
 
     facet_result: dict[str, dict[str, Any]] = {field: {} for field in fields}
 

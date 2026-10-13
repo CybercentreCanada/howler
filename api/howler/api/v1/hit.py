@@ -16,6 +16,7 @@ from howler.api import (
     not_found,
     ok,
 )
+from howler.api.search_utils import resolve_deep_paging_id
 from howler.api.v1.utils.etag import add_etag
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import (
@@ -29,7 +30,7 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.collection import ESCollection
-from howler.datastore.exceptions import DataStoreException, VersionConflictException
+from howler.datastore.exceptions import DataStoreException, InvalidScrollTokenException, VersionConflictException
 from howler.datastore.operations import OdmHelper, OdmUpdateOperation
 from howler.helper.workflow import WorkflowException
 from howler.odm.models.hit import Hit
@@ -542,17 +543,20 @@ def get_assigned_hits(user, **kwargs):
     """
     uname = user["uname"]
 
-    hits = hit_service.search(
-        query=f"howler.assignment:{sanitize_lucene_query(uname)}",
-        deep_paging_id=request.args.get("deep_paging_id", None),
-        offset=request.args.get("offset", 0, type=int),  # type: ignore[union-attr]
-        rows=request.args.get("rows", None, type=int),  # type: ignore[union-attr]
-        sort=request.args.get("sort", None, type=str),
-        fl=request.args.get("fl", None, type=str),
-        timeout=request.args.get("timeout", None, type=int),
-        filters=[user.access_control] if user.access_control else None,
-        as_obj=False,
-    )["items"]
+    try:
+        hits = hit_service.search(
+            query=f"howler.assignment:{sanitize_lucene_query(uname)}",
+            deep_paging_id=resolve_deep_paging_id(user, "hit", request.args.get("deep_paging_id", None)),
+            offset=request.args.get("offset", 0, type=int),  # type: ignore[union-attr]
+            rows=request.args.get("rows", None, type=int),  # type: ignore[union-attr]
+            sort=request.args.get("sort", None, type=str),
+            fl=request.args.get("fl", None, type=str),
+            timeout=request.args.get("timeout", None, type=int),
+            filters=[user.access_control] if user.access_control else None,
+            as_obj=False,
+        )["items"]
+    except InvalidScrollTokenException:
+        return forbidden(err="Invalid scroll ID for this user.")
 
     return ok(hits)
 

@@ -29,6 +29,14 @@ class VersionConflictException(HowlerException):
     pass
 
 
+class InvalidScrollTokenException(HowlerException):
+    """Raised when a scroll token is malformed, tampered with, or not bound to the requesting user."""
+
+
+class SensitiveUserFieldsException(SearchException):
+    """Raised when a user search requests protected source fields."""
+
+
 class MultiKeyError(HowlerKeyError):
     def __init__(self, keys: Iterable[str], partial_output):
         super().__init__(str(keys))

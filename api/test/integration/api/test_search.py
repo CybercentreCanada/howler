@@ -136,33 +136,20 @@ def test_search_scroll_keepalive_until_terminal_batch(datastore, login_session):
     assert item_count == count
 
 
-@pytest.mark.parametrize("fl", [["uname", "apikeys.password"], ["uname", "apikeys.*"]])
-def test_scroll_user_field_selection_excludes_unstored_credentials(datastore, login_session, fl):
-    """Scroll results apply the user collection's stored-field filtering to lists and wildcards."""
+@pytest.mark.parametrize("fl", [["uname", "apikeys.password"], ["uname", "apikeys.*"], ["pass*"]])
+def test_scroll_user_field_selection_rejects_credential_fields(datastore, login_session, fl):
+    """Credential fields and wildcards that can match them are rejected before a user scroll opens."""
     session, host = login_session
 
-    response = get_api_data(
-        session,
-        f"{host}/api/v1/search/user/",
-        method="POST",
-        data=json.dumps({"query": "id:*", "rows": 1, "deep_paging_id": "*", "scroll": "1m", "fl": fl}),
-    )
-
-    assert response["items"]
-    for item in response["items"]:
-        assert item["uname"]
-        assert "password" not in item
-        assert "apikeys" not in item
-        assert "apikeys.password" not in item
-
-    scroll_id = response.get("next_deep_paging_id")
-    if scroll_id:
+    with pytest.raises(APIError) as api_err:
         get_api_data(
             session,
-            f"{host}/api/v1/search/scroll",
-            method="DELETE",
-            data=json.dumps({"scroll_id": scroll_id}),
+            f"{host}/api/v1/search/user/",
+            method="POST",
+            data=json.dumps({"query": "id:*", "rows": 1, "deep_paging_id": "*", "scroll": "1m", "fl": fl}),
         )
+
+    assert "403" in str(api_err)
 
 
 def test_scroll_hit_default_fields_exclude_unstored_data(datastore, login_session):
@@ -318,8 +305,35 @@ def test_clear_scroll_rejects_reserved_all_id(datastore, login_session):
             data=json.dumps({"scroll_id": "_all"}),
         )
 
+    assert "403" in str(api_err)
+    assert "Invalid scroll ID" in str(api_err.value)
+
+
+@pytest.mark.parametrize("path", ["histogram/user/api_quota", "stats/user/api_quota", "grouped/user/api_quota"])
+def test_user_aggregations_refuse_non_stored_fields(datastore, login_session, path):
+    """Aggregations over non-stored user fields would return their values, so the API refuses them."""
+    session, host = login_session
+
+    with pytest.raises(APIError) as api_err:
+        get_api_data(session, f"{host}/api/v1/search/{path}/", params={"query": "id:*"})
+
+    assert "403" in str(api_err)
+
+
+@pytest.mark.parametrize("index", ["howler-user", "*", "_all"])
+def test_v2_search_refuses_physical_alias_and_wildcard_indexes(datastore, login_session, index):
+    """Only logical index names are searchable, so physical names and wildcards cannot bypass user field rules."""
+    session, host = login_session
+
+    with pytest.raises(APIError) as api_err:
+        get_api_data(
+            session,
+            f"{host}/api/v2/search/{index}",
+            method="POST",
+            data=json.dumps({"query": "uname:*", "fl": ["password"]}),
+        )
+
     assert "400" in str(api_err)
-    assert "reserved scroll ID" in str(api_err.value)
 
 
 def test_facet_search(datastore, login_session):
@@ -365,7 +379,7 @@ def test_histogram_search(datastore, login_session):
         for k, v in resp.items():
             assert k.startswith("2") and k.endswith("Z") and isinstance(v, int)
 
-    int_hist_map = {"user": "api_quota"}
+    int_hist_map = {"user": "refresh_rate"}
 
     for collection in collections:
         hist_field = int_hist_map.get(collection, "archive_ts")
@@ -581,7 +595,7 @@ def test_count_multiple_filters():
 def test_stats_search(datastore, login_session):
     session, host = login_session
 
-    int_map = {"user": "api_quota"}
+    int_map = {"user": "refresh_rate"}
 
     for collection in collections:
         field = int_map.get(collection, False)
