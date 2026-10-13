@@ -9,7 +9,6 @@ import pytest
 
 from howler.api.search_utils import (
     InvalidScrollTokenException,
-    clear_owned_scroll,
     issue_scroll_token,
     prune_scroll_items,
     resolve_deep_paging_id,
@@ -17,7 +16,7 @@ from howler.api.search_utils import (
     validate_scroll_keep_alive,
 )
 from howler.datastore.exceptions import SearchException
-from howler.services.search_service import scroll_search
+from howler.services.search_service import clear_owned_scroll, scroll_search
 
 
 def _search_collection(*stored_fields: str):
@@ -270,21 +269,21 @@ def test_clear_owned_scroll_clears_the_raw_scroll_for_its_opener():
     user = _user()
     token = issue_scroll_token(user, "hit", "raw-es-scroll")
 
-    with patch("howler.api.search_utils.search_service") as mock_search_svc:
-        mock_search_svc.clear_scroll.return_value = {"succeeded": True, "num_freed": 1}
+    with patch("howler.services.search_service.clear_scroll") as mock_clear_scroll:
+        mock_clear_scroll.return_value = {"succeeded": True, "num_freed": 1}
 
         assert clear_owned_scroll(user, token) == {"succeeded": True, "num_freed": 1}
-        mock_search_svc.clear_scroll.assert_called_once_with("raw-es-scroll")
+        mock_clear_scroll.assert_called_once_with("raw-es-scroll")
 
 
 def test_clear_owned_scroll_rejects_another_user_without_clearing():
     token = issue_scroll_token(_user("alice"), "hit", "raw-es-scroll")
 
-    with patch("howler.api.search_utils.search_service") as mock_search_svc:
+    with patch("howler.services.search_service.clear_scroll") as mock_clear_scroll:
         with pytest.raises(InvalidScrollTokenException):
             clear_owned_scroll(_user("bob"), token)
 
-        mock_search_svc.clear_scroll.assert_not_called()
+        mock_clear_scroll.assert_not_called()
 
 
 def test_token_rejects_oversized_input_before_decryption():
