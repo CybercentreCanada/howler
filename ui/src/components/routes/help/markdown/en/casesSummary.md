@@ -10,6 +10,10 @@ It also groups evidence into threat, target, and indicator summaries, shows the 
 
 `case_dashboard`
 
+The dashboard cards summarize unique threats, targets, and indicators found in the case evidence, alongside the case duration. The timeline lists evidence chronologically so you can follow how an investigation developed.
+
+`case_dashboard_insights`
+
 ## Track tasks and related work
 
 Add a task from the dashboard, write its summary, optionally link it to a case item, and assign it to a user. Check the task when it is complete. Linked child cases can contribute read-only task lists to the parent dashboard; use the child-case filter or visibility toggle to focus the list.

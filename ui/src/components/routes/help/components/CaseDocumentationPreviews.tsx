@@ -1,8 +1,11 @@
-import { Add, People } from '@mui/icons-material';
+import { Add, Circle, People } from '@mui/icons-material';
 import {
+  Box,
   Button,
   Card,
+  Chip,
   Divider,
+  Grid,
   Paper,
   Stack,
   Table,
@@ -11,39 +14,47 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Typography
+  Typography,
+  useTheme
 } from '@mui/material';
+import { useAppUser } from '@tui/core';
+import UserList from 'components/elements/UserList';
+import { ESCALATION_COLOR_MAP } from 'components/routes/cases/constants';
+import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
 import type { Event } from 'models/entities/generated/Event';
+import type { Hit } from 'models/entities/generated/Hit';
 import type { Item } from 'models/entities/generated/Item';
 import type { Rule } from 'models/entities/generated/Rule';
+import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { FC } from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import UserList from 'components/elements/UserList';
+import CaseAggregate from '../../cases/detail/aggregates/CaseAggregate';
 import { CaseEscalationControl, CaseStatusControl } from '../../cases/detail/CaseDetailControls';
 import CaseOverview from '../../cases/detail/CaseOverview';
 import CaseRuleRow from '../../cases/detail/CaseRuleRow';
 import CaseSidebarActions from '../../cases/detail/CaseSidebarActions';
 import CaseSidebarNavigation from '../../cases/detail/CaseSidebarNavigation';
 import CaseTask from '../../cases/detail/CaseTask';
+import FolderEntry from '../../cases/detail/sidebar/FolderEntry';
 import CaseItemTypeSelect, { CASE_ITEM_TYPES, type CaseItemType } from '../../cases/modals/CaseItemTypeSelect';
 import CaseRecordRow from '../../cases/modals/CaseRecordRow';
 import CaseSelector from '../../cases/modals/CaseSelector';
 import type { RecordEntry } from '../../cases/modals/types';
-import FolderEntry from '../../cases/detail/sidebar/FolderEntry';
 
 const EXAMPLE_CASE: Case = {
   __index: 'case',
   case_id: 'example-case',
   created: '2025-01-01T12:00:00Z',
   updated: '2025-01-01T12:00:00Z',
+  start: '2025-01-01T12:00:00Z',
+  end: '2025-01-01T13:24:00Z',
   title: 'VPN investigation',
   summary: 'Review the unusual VPN connection and related activity.',
   overview: '## Investigation notes\n\nCollect relevant evidence and document findings here.',
   status: 'in-progress',
   escalation: 'focus',
-  participants: [],
   items: [
     { id: 'folder-investigation', type: 'folder', name: 'Investigation', value: 'Investigation' },
     { id: 'hit-vpn', type: 'hit', name: 'VPN Monitor', value: 'hit-vpn' }
@@ -55,7 +66,22 @@ const EXAMPLE_EVENT: Event = {
   __index: 'event',
   timestamp: '2025-01-01T12:00:00Z',
   message: 'Manual evidence from VPN investigation',
-  howler: { id: 'event-vpn-001', hash: 'example-hash', analytic: 'VPN Monitor' }
+  howler: { id: 'event-vpn-001', hash: 'example-hash', analytic: 'VPN Monitor' },
+  event: { kind: 'event' }
+};
+
+const EXAMPLE_AGGREGATE_HIT: Partial<Hit> = {
+  howler: {
+    analytic: 'VPN Monitor',
+    assignment: 'documentation-analyst',
+    hash: 'example-hit-hash',
+    id: 'hit-vpn-001',
+    outline: {
+      threat: 'Credential access',
+      target: 'VPN gateway',
+      indicators: ['192.0.2.24']
+    }
+  }
 };
 
 const EXAMPLE_RULE: Rule = {
@@ -70,26 +96,54 @@ const EXAMPLE_RULE: Rule = {
 
 const NOOP_ASYNC = async () => {};
 
-export const CaseNavigationPreview: FC = () => <CaseSidebarNavigation />;
+export const CaseNavigationPreview: FC = () => {
+  const { t } = useTranslation();
+
+  return (
+    <Stack sx={{ width: 350 }}>
+      <Card sx={{ borderRadius: 0, px: 2, py: 1 }}>
+        <Typography variant="body1">{EXAMPLE_CASE.title}</Typography>
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          divider={<Circle color="disabled" sx={{ fontSize: '8px' }} />}
+        >
+          <Typography variant="caption" color="textSecondary">
+            {t('started')}: {dayjs(EXAMPLE_CASE.created).toString()}
+          </Typography>
+          <Chip
+            color={ESCALATION_COLOR_MAP[EXAMPLE_CASE.escalation as keyof typeof ESCALATION_COLOR_MAP]}
+            label={t(EXAMPLE_CASE.escalation!)}
+          />
+        </Stack>
+      </Card>
+      <CaseSidebarNavigation />
+    </Stack>
+  );
+};
 
 export const CaseInvestigationViewsPreview: FC = () => (
   <CaseSidebarNavigation sections={['search', 'observables', 'timeline']} />
 );
 
 export const CaseControlsPreview: FC = () => (
-  <CaseSidebarActions
-    onAddEvent={() => {}}
-    onAddItem={() => {}}
-    onAddFolder={() => {}}
-    onRefresh={() => {}}
-    onCollapseAll={() => {}}
-  />
+  <Box width={350}>
+    <CaseSidebarActions
+      onAddEvent={() => {}}
+      onAddItem={() => {}}
+      onAddFolder={() => {}}
+      onRefresh={() => {}}
+      onCollapseAll={() => {}}
+    />
+  </Box>
 );
 
 export const CaseDetailsPreview: FC = () => {
   const { t } = useTranslation();
   const [status, setStatus] = useState('in-progress');
   const [escalation, setEscalation] = useState('focus');
+  const { user } = useAppUser<HowlerUser>();
 
   return (
     <Card sx={{ p: 1, width: '300px' }}>
@@ -108,13 +162,7 @@ export const CaseDetailsPreview: FC = () => {
             <People />
             <Typography variant="body1">{t('page.cases.detail.participants')}</Typography>
           </Stack>
-          <UserList
-            multiple
-            i18nLabel="page.cases.detail.assignment"
-            userIds={EXAMPLE_CASE.participants ?? []}
-            onChange={() => {}}
-            disabled
-          />
+          <UserList multiple i18nLabel="page.cases.detail.assignment" userIds={[user.username]} onChange={() => {}} />
         </Stack>
       </Stack>
     </Card>
@@ -122,6 +170,50 @@ export const CaseDetailsPreview: FC = () => {
 };
 
 export const CaseDashboardPreview: FC = () => <CaseOverview case={EXAMPLE_CASE} updateCase={NOOP_ASYNC} />;
+
+export const CaseDashboardInsightsPreview: FC = () => {
+  const { t } = useTranslation();
+  const theme = useTheme();
+
+  return (
+    <Grid container spacing={2} sx={{ maxWidth: 1000 }}>
+      <Grid size={{ xs: 12, md: 6, xl: 3 }}>
+        <CaseAggregate
+          icon="material-symbols:warning-rounded"
+          iconColor={theme.palette.warning.main}
+          field="howler.outline.threat"
+          records={[EXAMPLE_AGGREGATE_HIT]}
+          subtitle={t('page.cases.dashboard.threat')}
+        />
+      </Grid>
+      <Grid size={{ xs: 12, md: 6, xl: 3 }}>
+        <CaseAggregate
+          icon="material-symbols:group"
+          iconColor={theme.palette.primary.main}
+          field="howler.outline.target"
+          records={[EXAMPLE_AGGREGATE_HIT]}
+          subtitle={t('page.cases.dashboard.target')}
+        />
+      </Grid>
+      <Grid size={{ xs: 12, md: 6, xl: 3 }}>
+        <CaseAggregate
+          icon="fluent:number-symbol-24-filled"
+          field="howler.outline.indicators"
+          records={[EXAMPLE_AGGREGATE_HIT]}
+          subtitle={t('page.cases.dashboard.indicators')}
+        />
+      </Grid>
+      <Grid size={{ xs: 12, md: 6, xl: 3 }}>
+        <CaseAggregate
+          icon="mingcute:heartbeat-line"
+          iconColor={theme.palette.error.light}
+          title="01h 24m"
+          subtitle={t('page.cases.dashboard.duration')}
+        />
+      </Grid>
+    </Grid>
+  );
+};
 
 export const CaseFolderTreePreview: FC = () => {
   const folder = EXAMPLE_CASE.items?.[0] as Item;

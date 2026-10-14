@@ -18,7 +18,8 @@ vi.mock('@mui/material', async importOriginal => {
 
 vi.mock('@tui/core', () => ({
   PageCenter: ({ children }: any) => <div>{children}</div>,
-  useAppTheme: () => ({ isDark: false })
+  useAppTheme: () => ({ isDark: false }),
+  useAppUser: () => ({ user: { username: 'documentation-analyst' } })
 }));
 
 vi.mock('mermaid', () => ({
@@ -34,6 +35,14 @@ vi.mock('components/elements/display/Notebook', () => ({
 
 vi.mock('components/elements/UserList', () => ({
   default: ({ userIds }: any) => <div>{userIds.join(',')}</div>
+}));
+
+vi.mock('components/elements/event/EventCard', () => ({
+  default: ({ event }: any) => <div>{event.message}</div>
+}));
+
+vi.mock('../cases/detail/aggregates/CaseAggregate', () => ({
+  default: ({ subtitle }: any) => <div>{subtitle}</div>
 }));
 
 vi.mock('components/hooks/useScrollRestoration', () => ({
@@ -143,5 +152,17 @@ describe('CaseDocumentation', () => {
     render(<CaseDocumentation />);
 
     expect(screen.getByRole('combobox', { name: 'modal.cases.add_item.type' })).toBeInTheDocument();
+  });
+
+  it('shows the dashboard aggregate cards and timeline in the summary guide', () => {
+    mockSearchParams.value = new URLSearchParams({ tab: 'summary' });
+
+    render(<CaseDocumentation />);
+
+    expect(screen.getByText('page.cases.dashboard.threat')).toBeInTheDocument();
+    expect(screen.getByText('page.cases.dashboard.target')).toBeInTheDocument();
+    expect(screen.getByText('page.cases.dashboard.indicators')).toBeInTheDocument();
+    expect(screen.getByText('page.cases.dashboard.duration')).toBeInTheDocument();
+    expect(screen.getByText('Manual evidence from VPN investigation')).toBeInTheDocument();
   });
 });

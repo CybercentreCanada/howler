@@ -10,6 +10,10 @@ Il regroupe aussi les preuves dans des résumés de menace, de cible et d'indica
 
 `case_dashboard`
 
+Les cartes du tableau de bord résument les menaces, les cibles et les indicateurs uniques trouvés dans les éléments de preuve du cas, ainsi que sa durée. La chronologie présente les éléments de preuve dans l'ordre afin de suivre le déroulement de l'enquête.
+
+`case_dashboard_insights`
+
 ## Suivre les tâches et le travail connexe
 
 Ajoutez une tâche depuis le tableau de bord, rédigez son résumé, liez-la facultativement à un élément de cas et assignez-la à un utilisateur. Cochez la tâche lorsqu'elle est terminée. Les cas enfants liés peuvent ajouter des listes de tâches en lecture seule au tableau de bord parent; utilisez le filtre de cas enfants ou la commande de visibilité pour concentrer la liste.
