@@ -434,7 +434,14 @@ def group_search(index: str, group_field: str, user: User, **kwargs):
     if not group_field:
         return bad_request(err="The field to group on was not specified.")
 
-    if not search_service.user_fields_allowed(index, [group_field, params.get("fl")]):
+    fields_to_check = [group_field]
+    requested_fields = params.get("fl")
+    if isinstance(requested_fields, list):
+        fields_to_check.extend(requested_fields)
+    elif requested_fields is not None:
+        fields_to_check.append(requested_fields)
+
+    if not search_service.user_fields_allowed(index, fields_to_check):
         return forbidden(err="Invalid field to group on or retrieve.")
 
     try:
