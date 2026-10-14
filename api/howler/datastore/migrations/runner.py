@@ -14,6 +14,7 @@ from howler.datastore.collection import CREATE_TOKEN
 from howler.datastore.exceptions import DataStoreException, VersionConflictException
 from howler.datastore.migrations.action_owner import ActionOwnerMigration
 from howler.datastore.migrations.base import Migration
+from howler.datastore.migrations.case_insensitive_metadata import CaseInsensitiveMetadataMigration
 from howler.utils.isotime import now_as_iso
 
 if TYPE_CHECKING:
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("howler.datastore.migrations")
 
-MIGRATIONS: tuple[Migration, ...] = (ActionOwnerMigration(),)
+MIGRATIONS: tuple[Migration, ...] = (ActionOwnerMigration(), CaseInsensitiveMetadataMigration())
 DEFAULT_WAIT_TIMEOUT = 14400.0
 DEFAULT_POLL_INTERVAL = 0.5
 # Keep this above the default task/retry budget so a live long-running migration is not reclaimed.
@@ -309,5 +310,17 @@ def run_migrations(
     selected_migrations = MIGRATIONS if migrations is None else tuple(migrations)
     _validate_migrations(selected_migrations)
 
+    record_collection = datastore.migration
+    statuses = [
+        _record_status(
+            record_collection.get_if_exists(migration.migration_id, as_obj=False),
+            migration.migration_id,
+        )
+        for migration in selected_migrations
+    ]
+    if any(status != "applied" for status in statuses):
+        for migration in selected_migrations:
+            migration.preflight(datastore)
+
     for migration in selected_migrations:
-        _run_migration(datastore, datastore.migration, migration)
+        _run_migration(datastore, record_collection, migration)
