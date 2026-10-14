@@ -15,4 +15,4 @@ class Overview(odm.Model):
         description="The person to whom this overview belongs.",
         optional=True,
     )
-    content: str = odm.CaseInsensitiveKeyword(description="The markdown to show when this overview is used.")
+    content: str = odm.Text(description="The markdown to show when this overview is used.")
