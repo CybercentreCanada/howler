@@ -542,11 +542,12 @@ def get_assigned_hits(user, **kwargs):
     https://github.com/CybercentreCanada/howler-api/blob/main/howler/odm/models/hit.py
     """
     uname = user["uname"]
+    query = f"howler.assignment:{sanitize_lucene_query(uname)}"
 
     try:
         hits = hit_service.search(
-            query=f"howler.assignment:{sanitize_lucene_query(uname)}",
-            deep_paging_id=resolve_deep_paging_id(user, "hit", request.args.get("deep_paging_id", None)),
+            query=query,
+            deep_paging_id=resolve_deep_paging_id(user, "hit", request.args.get("deep_paging_id", None), query),
             offset=request.args.get("offset", 0, type=int),  # type: ignore[union-attr]
             rows=request.args.get("rows", None, type=int),  # type: ignore[union-attr]
             sort=request.args.get("sort", None, type=str),

@@ -129,14 +129,24 @@ def _access_fingerprint(user: User) -> str:
     return hashlib.sha256(str(user["access_control"] or "").encode()).hexdigest()
 
 
+def _query_fingerprint(query: str) -> str:
+    return hashlib.sha256(query.encode()).hexdigest()
+
+
 def _normalize_indexes(indexes: str) -> str:
     return ",".join(sorted({index.strip() for index in indexes.split(",") if index.strip()}))
 
 
-def issue_scroll_token(user: User, indexes: str, scroll_id: str) -> str:
-    """Encrypt a scroll ID with the opener, index set, and access-control fingerprint it is bound to."""
+def issue_scroll_token(user: User, indexes: str, scroll_id: str, query: str) -> str:
+    """Encrypt a scroll ID with the opener, index set, query, and access-control fingerprint it is bound to."""
     _warn_if_default_secret()
-    claims = {"a": _access_fingerprint(user), "i": _normalize_indexes(indexes), "s": scroll_id, "u": user["uname"]}
+    claims = {
+        "a": _access_fingerprint(user),
+        "i": _normalize_indexes(indexes),
+        "q": _query_fingerprint(query),
+        "s": scroll_id,
+        "u": user["uname"],
+    }
     payload = json.dumps(claims, sort_keys=True, separators=(",", ":")).encode()
     return _jwe.serialize_compact(dict(_SCROLL_TOKEN_HEADER), payload, _scroll_token_key()).decode("ascii")
 
@@ -152,17 +162,18 @@ def read_scroll_token(token: Any) -> dict[str, str]:
     except Exception as error:
         raise InvalidScrollTokenException("Malformed scroll token.") from error
 
-    if not isinstance(claims, dict) or not all(isinstance(claims.get(key), str) for key in ("a", "i", "s", "u")):
+    if not isinstance(claims, dict) or not all(isinstance(claims.get(key), str) for key in ("a", "i", "q", "s", "u")):
         raise InvalidScrollTokenException("Malformed scroll token.")
 
     return cast(dict[str, str], claims)
 
 
-def resolve_deep_paging_id(user: User, indexes: str, deep_paging_id: Any) -> str | None:
+def resolve_deep_paging_id(user: User, indexes: str, deep_paging_id: Any, query: str) -> str | None:
     """Translate a client deep-paging value into the scroll ID the search service continues.
 
     ``None`` and ``*`` pass through unchanged. Any other value must be a token issued to this user for the same
-    indexes and the same access-control filter, so revoked access cannot continue an existing scroll.
+    indexes and query, and the same access-control filter, so tokens cannot be replayed against a different search
+    and revoked access cannot continue an existing scroll.
     """
     if deep_paging_id is None or deep_paging_id == "*":
         return deep_paging_id
@@ -171,8 +182,11 @@ def resolve_deep_paging_id(user: User, indexes: str, deep_paging_id: Any) -> str
     if (
         claims["u"] != user["uname"]
         or claims["i"] != _normalize_indexes(indexes)
+        or not hmac.compare_digest(claims["q"].encode(), _query_fingerprint(query).encode())
         or not hmac.compare_digest(claims["a"].encode(), _access_fingerprint(user).encode())
     ):
-        raise InvalidScrollTokenException("Scroll token is not valid for this user, index set, or access control.")
+        raise InvalidScrollTokenException(
+            "Scroll token is not valid for this user, index set, query, or access control."
+        )
 
     return claims["s"]

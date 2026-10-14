@@ -232,7 +232,7 @@ class TestSearch:
             "offset": 0,
         }
 
-        token = issue_scroll_token(user, "hit,user", "scroll-token")
+        token = issue_scroll_token(user, "hit,user", "scroll-token", "id:*")
 
         with request_context.test_request_context(
             method="POST",
@@ -349,7 +349,7 @@ class TestSearch:
         mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
         mock_quota_tracker.begin.return_value = True
         mock_clear_scroll.return_value = {"succeeded": True, "num_freed": 1}
-        token = issue_scroll_token(user, "hit", "scroll-raw")
+        token = issue_scroll_token(user, "hit", "scroll-raw", "id:*")
 
         with request_context.test_request_context(
             method="DELETE",
@@ -832,7 +832,7 @@ class TestScrollTokens:
         assert result.status_code == 200
         token = result.get_json()["api_response"]["next_deep_paging_id"]
         assert token != "raw-es-scroll"
-        assert resolve_deep_paging_id(user, "hit", token) == "raw-es-scroll"
+        assert resolve_deep_paging_id(user, "hit", token, "id:*") == "raw-es-scroll"
 
     @pytest.mark.parametrize("case", ["other_user", "raw_scroll_id", "revoked_access", "other_index"])
     @patch("howler.services.search_service.get_collection")
@@ -858,12 +858,12 @@ class TestScrollTokens:
 
         token = "raw-es-scroll"
         if case == "other_user":
-            token = issue_scroll_token(_build_user(), "hit", token)
+            token = issue_scroll_token(_build_user(), "hit", token, "id:*")
         elif case == "revoked_access":
-            token = issue_scroll_token(user, "hit", token)
+            token = issue_scroll_token(user, "hit", token, "id:*")
             user.access_control = "revoked-access-control"
         elif case == "other_index":
-            token = issue_scroll_token(user, "user", token)
+            token = issue_scroll_token(user, "user", token, "id:*")
 
         with request_context.test_request_context(
             method="POST",
@@ -925,7 +925,7 @@ class TestScrollTokens:
 
         value = scroll_id
         if scroll_id == "other_user":
-            value = issue_scroll_token(_build_user(), "hit", "raw-es-scroll")
+            value = issue_scroll_token(_build_user(), "hit", "raw-es-scroll", "id:*")
 
         with request_context.test_request_context(
             method="DELETE",
@@ -963,6 +963,35 @@ class TestScrollTokens:
         assert result.status_code == 403
         mock_get_collection.assert_not_called()
         mock_search.assert_not_called()
+
+
+class TestAssignedHitScrollTokenScope:
+    """Assigned-hit paging cannot consume a scroll opened for a different search query."""
+
+    @patch("howler.api.v1.hit.hit_service.search")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_assigned_hit_endpoint_rejects_token_for_another_query(
+        self, mock_quota_tracker, mock_auth_service, mock_hit_search, request_context: Flask
+    ):
+        from howler.api.search_utils import issue_scroll_token
+
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+        mock_quota_tracker.begin.return_value = True
+        token = issue_scroll_token(user, "hit", "raw-es-scroll", "id:*")
+
+        with request_context.test_request_context(
+            method="GET",
+            query_string={"deep_paging_id": token},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v1.hit import get_assigned_hits
+
+            result: Response = get_assigned_hits(user=user)
+
+        assert result.status_code == 403
+        mock_hit_search.assert_not_called()
 
 
 class TestV1DeepPagingRouting:

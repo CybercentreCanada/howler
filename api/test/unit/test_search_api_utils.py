@@ -192,13 +192,13 @@ def test_keep_alive_rejects_unbounded_or_malformed_durations(scroll):
 
 def test_token_resolves_to_raw_scroll_id_for_the_same_user_and_indexes():
     user = _user()
-    token = issue_scroll_token(user, "hit,user", "raw-es-scroll")
+    token = issue_scroll_token(user, "hit,user", "raw-es-scroll", "id:*")
 
-    assert resolve_deep_paging_id(user, "user, hit", token) == "raw-es-scroll"
+    assert resolve_deep_paging_id(user, "user, hit", token, "id:*") == "raw-es-scroll"
 
 
 def test_token_does_not_expose_the_raw_scroll_id_in_any_segment():
-    token = issue_scroll_token(_user(), "hit", "raw-es-scroll")
+    token = issue_scroll_token(_user(), "hit", "raw-es-scroll", "id:*")
 
     for segment in token.split("."):
         decoded = base64.urlsafe_b64decode(segment + "=" * (-len(segment) % 4))
@@ -207,43 +207,51 @@ def test_token_does_not_expose_the_raw_scroll_id_in_any_segment():
 
 
 def test_wildcard_and_missing_deep_paging_values_pass_through():
-    assert resolve_deep_paging_id(_user(), "hit", "*") == "*"
-    assert resolve_deep_paging_id(_user(), "hit", None) is None
+    assert resolve_deep_paging_id(_user(), "hit", "*", "id:*") == "*"
+    assert resolve_deep_paging_id(_user(), "hit", None, "id:*") is None
 
 
 def test_token_rejects_another_user():
-    token = issue_scroll_token(_user("alice"), "hit", "raw-es-scroll")
+    token = issue_scroll_token(_user("alice"), "hit", "raw-es-scroll", "id:*")
 
     with pytest.raises(InvalidScrollTokenException):
-        resolve_deep_paging_id(_user("bob"), "hit", token)
+        resolve_deep_paging_id(_user("bob"), "hit", token, "id:*")
 
 
 def test_token_rejects_a_different_index_set():
-    token = issue_scroll_token(_user(), "hit", "raw-es-scroll")
+    token = issue_scroll_token(_user(), "hit", "raw-es-scroll", "id:*")
 
     with pytest.raises(InvalidScrollTokenException):
-        resolve_deep_paging_id(_user(), "hit,user", token)
+        resolve_deep_paging_id(_user(), "hit,user", token, "id:*")
 
 
 def test_token_rejects_changed_access_control():
-    token = issue_scroll_token(_user(access_control="group:analysts"), "hit", "raw-es-scroll")
+    token = issue_scroll_token(_user(access_control="group:analysts"), "hit", "raw-es-scroll", "id:*")
 
     with pytest.raises(InvalidScrollTokenException):
-        resolve_deep_paging_id(_user(access_control="group:other"), "hit", token)
+        resolve_deep_paging_id(_user(access_control="group:other"), "hit", token, "id:*")
 
 
 def test_token_rejects_tampered_ciphertext():
-    token = issue_scroll_token(_user(), "hit", "raw-es-scroll")
+    token = issue_scroll_token(_user(), "hit", "raw-es-scroll", "id:*")
 
     with pytest.raises(InvalidScrollTokenException):
-        resolve_deep_paging_id(_user(), "hit", _tamper_part(token, 3))
+        resolve_deep_paging_id(_user(), "hit", _tamper_part(token, 3), "id:*")
 
 
 def test_token_rejects_a_forged_authentication_tag():
-    token = issue_scroll_token(_user(), "hit", "raw-es-scroll")
+    token = issue_scroll_token(_user(), "hit", "raw-es-scroll", "id:*")
 
     with pytest.raises(InvalidScrollTokenException):
-        resolve_deep_paging_id(_user(), "hit", _tamper_part(token, 4))
+        resolve_deep_paging_id(_user(), "hit", _tamper_part(token, 4), "id:*")
+
+
+def test_token_rejects_a_different_query():
+    user = _user()
+    token = issue_scroll_token(user, "hit", "raw-es-scroll", "id:*")
+
+    with pytest.raises(InvalidScrollTokenException):
+        resolve_deep_paging_id(user, "hit", token, "howler.assignment:alice")
 
 
 @pytest.mark.parametrize(
@@ -252,22 +260,22 @@ def test_token_rejects_a_forged_authentication_tag():
 )
 def test_token_rejects_malformed_values(token):
     with pytest.raises(InvalidScrollTokenException):
-        resolve_deep_paging_id(_user(), "hit", token)
+        resolve_deep_paging_id(_user(), "hit", token, "id:*")
 
 
 def test_token_rejects_validly_encrypted_claims_with_the_wrong_shape():
     from howler.api.search_utils import _SCROLL_TOKEN_HEADER, _jwe, _scroll_token_key
 
-    payload = json.dumps({"s": 1, "u": "alice", "i": "hit", "a": "x"}).encode()
+    payload = json.dumps({"s": "raw-es-scroll", "u": "alice", "i": "hit", "a": "x"}).encode()
     token = _jwe.serialize_compact(_SCROLL_TOKEN_HEADER, payload, _scroll_token_key()).decode("ascii")
 
     with pytest.raises(InvalidScrollTokenException):
-        resolve_deep_paging_id(_user(), "hit", token)
+        resolve_deep_paging_id(_user(), "hit", token, "id:*")
 
 
 def test_clear_owned_scroll_clears_the_raw_scroll_for_its_opener():
     user = _user()
-    token = issue_scroll_token(user, "hit", "raw-es-scroll")
+    token = issue_scroll_token(user, "hit", "raw-es-scroll", "id:*")
 
     with patch("howler.services.search_service.clear_scroll") as mock_clear_scroll:
         mock_clear_scroll.return_value = {"succeeded": True, "num_freed": 1}
@@ -277,7 +285,7 @@ def test_clear_owned_scroll_clears_the_raw_scroll_for_its_opener():
 
 
 def test_clear_owned_scroll_rejects_another_user_without_clearing():
-    token = issue_scroll_token(_user("alice"), "hit", "raw-es-scroll")
+    token = issue_scroll_token(_user("alice"), "hit", "raw-es-scroll", "id:*")
 
     with patch("howler.services.search_service.clear_scroll") as mock_clear_scroll:
         with pytest.raises(InvalidScrollTokenException):
@@ -288,11 +296,11 @@ def test_clear_owned_scroll_rejects_another_user_without_clearing():
 
 def test_token_rejects_oversized_input_before_decryption():
     user = _user()
-    token = issue_scroll_token(user, "hit", "x" * 20_000)
+    token = issue_scroll_token(user, "hit", "x" * 20_000, "id:*")
 
-    assert resolve_deep_paging_id(user, "hit", issue_scroll_token(user, "hit", "raw-es-scroll"))
+    assert resolve_deep_paging_id(user, "hit", issue_scroll_token(user, "hit", "raw-es-scroll", "id:*"), "id:*")
     with pytest.raises(InvalidScrollTokenException):
-        resolve_deep_paging_id(user, "hit", token)
+        resolve_deep_paging_id(user, "hit", token, "id:*")
 
 
 def test_token_rejects_an_unpinned_key_management_algorithm():
@@ -301,19 +309,21 @@ def test_token_rejects_an_unpinned_key_management_algorithm():
     from howler.api.search_utils import _access_fingerprint, _scroll_token_key
 
     user = _user()
-    claims = {"a": _access_fingerprint(user), "i": "hit", "s": "raw-es-scroll", "u": "alice"}
+    claims = {"a": _access_fingerprint(user), "i": "hit", "q": "x", "s": "raw-es-scroll", "u": "alice"}
     payload = json.dumps(claims, sort_keys=True, separators=(",", ":")).encode()
     token = JsonWebEncryption().serialize_compact({"alg": "dir", "enc": "A256GCM"}, payload, _scroll_token_key())
 
     with pytest.raises(InvalidScrollTokenException):
-        resolve_deep_paging_id(user, "hit", token.decode("ascii"))
+        resolve_deep_paging_id(user, "hit", token.decode("ascii"), "id:*")
 
 
 def test_repeated_issuance_produces_tokens_that_all_resolve():
     user = _user()
-    tokens = [issue_scroll_token(user, "hit", f"raw-{index}") for index in range(20)]
+    tokens = [issue_scroll_token(user, "hit", f"raw-{index}", "id:*") for index in range(20)]
 
-    assert [resolve_deep_paging_id(user, "hit", token) for token in tokens] == [f"raw-{index}" for index in range(20)]
+    assert [resolve_deep_paging_id(user, "hit", token, "id:*") for token in tokens] == [
+        f"raw-{index}" for index in range(20)
+    ]
 
 
 def test_scroll_search_preserves_request_params_and_wraps_the_next_scroll_id():
@@ -342,4 +352,4 @@ def test_scroll_search_preserves_request_params_and_wraps_the_next_scroll_id():
 
     assert params == original_params
     assert result["items"] == [{"__index": "hit", "name": "allowed"}]
-    assert resolve_deep_paging_id(user, "hit", result["next_deep_paging_id"]) == "raw-es-scroll"
+    assert resolve_deep_paging_id(user, "hit", result["next_deep_paging_id"], "id:*") == "raw-es-scroll"

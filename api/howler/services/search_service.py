@@ -314,6 +314,9 @@ def scroll_search(
         validate_scroll_keep_alive,
     )
 
+    if not isinstance(query, str):
+        raise SearchException("Search query must be a string.")
+
     index_list = _parse_index_list(indexes)
     requested_fl = params.get("fl")
     if not user_fields_allowed(index_list, requested_fl):
@@ -328,7 +331,7 @@ def scroll_search(
 
     keep_alive = validate_scroll_keep_alive(scroll)
     search_params = params.copy()
-    search_params["deep_paging_id"] = resolve_deep_paging_id(user, indexes, params["deep_paging_id"])
+    search_params["deep_paging_id"] = resolve_deep_paging_id(user, indexes, params["deep_paging_id"], query)
     search_params["fl"], scroll_fields, include_id = select_safe_scroll_fields(scroll_collections, requested_fl)
 
     result = search(
@@ -341,7 +344,7 @@ def scroll_search(
     )
     next_scroll_id = result.get("next_deep_paging_id")
     if next_scroll_id is not None:
-        result["next_deep_paging_id"] = issue_scroll_token(user, indexes, next_scroll_id)
+        result["next_deep_paging_id"] = issue_scroll_token(user, indexes, next_scroll_id, query)
 
     result["items"] = prune_scroll_items(result["items"], scroll_fields, include_id)
     return result
