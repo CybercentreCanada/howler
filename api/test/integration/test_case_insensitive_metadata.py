@@ -39,7 +39,6 @@ SEARCH_FIELDS = {
     "overview": {
         "analytic": "OverviewAnalyticPhrase",
         "detection": "OverviewDetectionPhrase",
-        "content": "OverviewMarkdownPhrase",
     },
 }
 VIEW_UI_SEARCH_FIELDS = ("title", "query", "sort", "type", "owner")
@@ -111,6 +110,7 @@ def _document_data(collection_name: str) -> dict:
             **owner,
             "overview_id": str(uuid4()),
             **SEARCH_FIELDS[collection_name],
+            "content": "OverviewMarkdownPhrase",
         }
     raise AssertionError(f"Unexpected collection {collection_name!r}")
 
@@ -161,6 +161,9 @@ def _assert_reindexed_collection(
     for field_name in SEARCH_FIELDS[collection_name]:
         assert current_mapping[field_name]["type"] == "keyword"
         assert current_mapping[field_name]["normalizer"] == "lowercase_normalizer"
+    if collection_name == "overview":
+        assert current_mapping["content"]["type"] == "text"
+        assert "normalizer" not in current_mapping["content"]
     assert "normalizer" not in current_mapping["owner"]
     assert "normalizer" not in current_mapping["id"]
     for field_name in ("admins", "members"):

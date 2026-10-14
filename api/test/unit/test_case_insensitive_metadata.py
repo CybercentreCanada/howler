@@ -31,7 +31,7 @@ MODEL_FIELDS = {
     Action: {"name", "query"},
     Dossier: {"title", "query"},
     Template: {"analytic", "detection"},
-    Overview: {"analytic", "detection", "content"},
+    Overview: {"analytic", "detection"},
 }
 
 
@@ -59,9 +59,8 @@ def test_metadata_fields_use_case_insensitive_mappings_without_changing_serializ
         "template.detection",
         "overview.analytic",
         "overview.detection",
-        "overview.content",
     }
-    assert sum(len(fields) for fields in MODEL_FIELDS.values()) == 11
+    assert sum(len(fields) for fields in MODEL_FIELDS.values()) == 10
 
     for model_class, changed_fields in MODEL_FIELDS.items():
         mapping, _ = build_mapping(model_class.fields().values())
@@ -76,6 +75,12 @@ def test_metadata_fields_use_case_insensitive_mappings_without_changing_serializ
             field = model_class.fields()[field_name]
             assert type(field) is not odm.CaseInsensitiveKeyword
             assert "normalizer" not in mapping[field_name]
+
+    overview_fields = Overview.fields()
+    overview_mapping, _ = build_mapping(overview_fields.values())
+    assert type(overview_fields["content"]) is odm.Text
+    assert overview_mapping["content"]["type"] == "text"
+    assert "normalizer" not in overview_mapping["content"]
 
     actual_field_paths = {
         f"{model_class.__name__.lower()}.{field_name}"
