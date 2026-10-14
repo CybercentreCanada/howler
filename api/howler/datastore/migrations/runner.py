@@ -311,13 +311,23 @@ def run_migrations(
     _validate_migrations(selected_migrations)
 
     record_collection = datastore.migration
-    statuses = [
-        _record_status(
-            record_collection.get_if_exists(migration.migration_id, as_obj=False),
-            migration.migration_id,
-        )
-        for migration in selected_migrations
-    ]
+    # Active migrations can create temporary indexes that preflight must not mistake for leftovers.
+    while True:
+        statuses = []
+        active_claims = []
+        for migration in selected_migrations:
+            record = record_collection.get_if_exists(migration.migration_id, as_obj=False)
+            status = _record_status(record, migration.migration_id)
+            statuses.append(status)
+            if status == "running" and record is not None and not _is_stale_claim(record, migration.migration_id):
+                active_claims.append(migration)
+
+        if not active_claims:
+            break
+
+        for migration in active_claims:
+            _wait_for_existing_claim(record_collection, migration.migration_id)
+
     if any(status != "applied" for status in statuses):
         for migration in selected_migrations:
             migration.preflight(datastore)

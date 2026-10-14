@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 from uuid import uuid4
@@ -355,15 +356,66 @@ def test_runner_skips_all_preflights_when_every_selected_migration_is_applied():
     indices.get.assert_not_called()
 
 
-@pytest.mark.parametrize("started_at", ["2026-10-14T08:00:00Z", "2026-01-01T00:00:00Z"])
-def test_preflight_failure_preserves_running_or_stale_claim(started_at):
+def test_runner_waits_for_active_metadata_claim_before_preflight():
+    migration_id = "metadata-case-insensitive-search"
+    now = datetime.now(tz=timezone.utc).isoformat().replace("+00:00", "Z")
+    records = FakeMigrationRecords()
+    records.records[migration_id] = {
+        "migration_id": migration_id,
+        "status": "running",
+        "started_at": now,
+        "claim_id": "active-claim",
+    }
+    records.versions[migration_id] = 0
+
+    datastore, _, indices = _make_datastore()
+    datastore.migration = records
+    pending_migration = RecordingMigration("pending-migration", [])
+    original_get = records.get_if_exists
+    record_reads = 0
+
+    def complete_active_claim(key, as_obj=True, version=False):
+        nonlocal record_reads
+        if key == migration_id:
+            record_reads += 1
+            if record_reads == 2:
+                records.records[key].update(
+                    {
+                        "status": "applied",
+                        "applied_at": now,
+                        "affected_documents": 0,
+                    }
+                )
+        return original_get(key, as_obj=as_obj, version=version)
+
+    records.get_if_exists = complete_active_claim
+    preflight_statuses = []
+
+    def find_reindex(index, **_kwargs):
+        status = records.records[migration_id]["status"]
+        preflight_statuses.append(status)
+        if status == "running" and index == f"{DATASTORE_INDEX_PREFIX}-view*":
+            return {f"{DATASTORE_INDEX_PREFIX}-view_hot__reindex": {}}
+        return {}
+
+    indices.get.side_effect = find_reindex
+
+    run_migrations(datastore, [CaseInsensitiveMetadataMigration(), pending_migration])
+
+    assert record_reads >= 3
+    assert preflight_statuses == ["applied"] * len(COLLECTION_NAMES)
+    assert pending_migration.events == ["preflight:pending-migration", "run:pending-migration"]
+
+
+def test_preflight_failure_preserves_stale_claim(monkeypatch):
+    monkeypatch.setattr("howler.datastore.migrations.runner._migration_stale_claim_timeout", lambda: 0)
     migration_id = "preflight-failure"
     events = []
     records = FakeMigrationRecords()
     claim = {
         "migration_id": migration_id,
         "status": "running",
-        "started_at": started_at,
+        "started_at": "2026-10-14T08:00:00Z",
         "claim_id": "existing-claim",
     }
     records.records[migration_id] = deepcopy(claim)
