@@ -31,7 +31,7 @@ const toMonacoColor = (color: string): string => {
     .map(channel => channel.trim());
   const alpha = slashAlpha?.trim() ?? (channels.length > 3 ? channels.pop() : undefined);
 
-  if (channels.length === 3 && channels.every(channel => /^-?(?:\d+\.?\d*|\.\d+)%?$/.test(channel))) {
+  if (channels.length !== 3 || !channels.every(channel => /^-?(?:\d+\.?\d*|\.\d+)%?$/.test(channel))) {
     return trimmedColor;
   }
 
