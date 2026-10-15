@@ -16,6 +16,7 @@ from howler.datastore.migrations.case_insensitive_metadata import COLLECTION_NAM
 from howler.datastore.migrations.runner import run_migrations
 from howler.datastore.store import ESStore
 from howler.odm.models.action import Action
+from howler.odm.models.config import ILMIndexConfig
 from howler.odm.models.dossier import Dossier
 from howler.odm.models.overview import Overview
 from howler.odm.models.template import Template
@@ -152,6 +153,184 @@ def _create_legacy_collection(store: ESStore, collection_name: str, document_id:
     return collection, source_document
 
 
+def _ilm_document_data(collection_name: str) -> dict:
+    data = _document_data(collection_name)
+    if collection_name == "overview":
+        data["content"] = "# Migration Markdown MiXeD"
+    return data
+
+
+def _create_legacy_ilm_collection(store: ESStore, config, collection_name: str):
+    collection = ESCollection(
+        store,
+        collection_name,
+        model_class=MODEL_CLASSES[collection_name],
+        ilm_config=ILMIndexConfig(enabled=True),
+    )
+    collection._create_ilm_policy(config.datastore.ilm)
+
+    legacy_mappings = deepcopy(collection._get_index_mappings())
+    for field_name in SEARCH_FIELDS[collection_name]:
+        legacy_mappings["properties"][field_name].pop("normalizer", None)
+    if collection_name == "overview":
+        # Persisted overview content predates the current ODM Text mapping.
+        legacy_mappings["properties"]["content"] = {"type": "keyword"}
+
+    legacy_settings = deepcopy(collection._get_index_settings())
+    legacy_settings["index"]["lifecycle"] = {
+        "name": f"{collection.name}_policy",
+        "rollover_alias": collection.name,
+    }
+    store.client.indices.put_index_template(
+        name=f"{collection.name}_template",
+        index_patterns=[f"{collection.name}-*"],
+        template={"settings": legacy_settings, "mappings": deepcopy(legacy_mappings)},
+    )
+
+    source_documents = {}
+    source_ids = {}
+    original_index_metadata = {}
+    for suffix in ("000001", "000002"):
+        index_name = f"{collection.name}-{suffix}"
+        document_id = str(uuid4())
+        source_document = deepcopy(MODEL_CLASSES[collection_name](_ilm_document_data(collection_name)).as_primitives())
+        store.client.indices.create(
+            index=index_name,
+            mappings=deepcopy(legacy_mappings),
+            settings=deepcopy(legacy_settings),
+            aliases={collection.name: {"is_write_index": suffix == "000002"}},
+        )
+        store.client.index(
+            index=index_name,
+            id=document_id,
+            document=source_document,
+            refresh="wait_for",
+        )
+        index_data = store.client.indices.get(index=index_name)[index_name]
+        source_documents[index_name] = source_document
+        source_ids[index_name] = document_id
+        original_index_metadata[index_name] = {
+            "lifecycle": deepcopy(index_data["settings"]["index"].get("lifecycle", {})),
+            "aliases": deepcopy(index_data.get("aliases", {})),
+        }
+
+    return collection, source_documents, source_ids, original_index_metadata
+
+
+def _seed_legacy_ilm_collections(store: ESStore, config):
+    original_ignore_ensure = ESCollection.IGNORE_ENSURE_COLLECTION
+    collections = {}
+    source_documents = {}
+    source_ids = {}
+    original_index_metadata = {}
+    try:
+        ESCollection.IGNORE_ENSURE_COLLECTION = True
+        for collection_name in COLLECTION_NAMES:
+            (
+                collections[collection_name],
+                collection_sources,
+                collection_ids,
+                collection_metadata,
+            ) = _create_legacy_ilm_collection(store, config, collection_name)
+            source_documents.update(collection_sources)
+            source_ids.update(collection_ids)
+            original_index_metadata.update(collection_metadata)
+    finally:
+        # Construction bypasses ensure only while seeding stale resources; the migration runs normally.
+        ESCollection.IGNORE_ENSURE_COLLECTION = original_ignore_ensure
+    return collections, source_documents, source_ids, original_index_metadata, original_ignore_ensure
+
+
+def _assert_stale_ilm_templates(store: ESStore, collections: dict) -> None:
+    for collection_name, collection in collections.items():
+        assert collection.ilm_config is not None
+        template = store.client.indices.get_index_template(name=f"{collection.name}_template")["index_templates"][0][
+            "index_template"
+        ]["template"]
+        for field_name in SEARCH_FIELDS[collection_name]:
+            assert "normalizer" not in template["mappings"]["properties"][field_name]
+        if collection_name == "overview":
+            assert template["mappings"]["properties"]["content"]["type"] == "keyword"
+
+
+def _assert_current_ilm_mappings(store: ESStore, collection_name: str, index_name: str) -> None:
+    properties = store.client.indices.get_mapping(index=index_name)[index_name]["mappings"]["properties"]
+    for field_name in SEARCH_FIELDS[collection_name]:
+        assert properties[field_name]["type"] == "keyword"
+        assert properties[field_name]["normalizer"] == "lowercase_normalizer"
+    if collection_name == "overview":
+        assert properties["content"]["type"] == "text"
+        assert "normalizer" not in properties["content"]
+
+
+def _assert_migrated_ilm_collection(
+    store: ESStore,
+    collection_name: str,
+    collection: ESCollection,
+    source_documents: dict,
+    source_ids: dict,
+    original_index_metadata: dict,
+) -> None:
+    expected_index_names = {f"{collection.name}-000001", f"{collection.name}-000002"}
+    assert set(collection.index_list_full) == expected_index_names
+    assert collection.index_name == f"{collection.name}-000002"
+    for index_name in expected_index_names:
+        index_data = store.client.indices.get(index=index_name)[index_name]
+        assert index_data["settings"]["index"].get("lifecycle", {}) == original_index_metadata[index_name]["lifecycle"]
+        assert index_data.get("aliases", {}) == original_index_metadata[index_name]["aliases"]
+        _assert_current_ilm_mappings(store, collection_name, index_name)
+        assert store.client.get(index=index_name, id=source_ids[index_name])["_source"] == source_documents[index_name]
+
+    alias_indices = store.client.indices.get_alias(name=collection.name)
+    write_targets = {
+        index_name
+        for index_name, index_data in alias_indices.items()
+        if index_data.get("aliases", {}).get(collection.name, {}).get("is_write_index") is True
+    }
+    assert write_targets == {f"{collection.name}-000002"}
+
+    template_name = f"{collection.name}_template"
+    template = store.client.indices.get_index_template(name=template_name)["index_templates"][0]["index_template"]
+    template_mappings = template["template"]["mappings"]["properties"]
+    for field_name in SEARCH_FIELDS[collection_name]:
+        assert template_mappings[field_name]["normalizer"] == "lowercase_normalizer"
+    if collection_name == "overview":
+        assert template_mappings["content"]["type"] == "text"
+
+
+def _rollover_and_verify_ilm_collection(store: ESStore, collection_name: str, collection: ESCollection) -> None:
+    rollover_result = store.client.indices.rollover(alias=collection.name, conditions={"max_docs": 1})
+    new_index = f"{collection.name}-000003"
+    assert rollover_result["rolled_over"] is True
+    assert rollover_result["new_index"] == new_index
+    _assert_current_ilm_mappings(store, collection_name, new_index)
+
+    collection._refresh_ilm_index_name()
+    assert collection.index_name == new_index
+    new_document_id = str(uuid4())
+    new_document = MODEL_CLASSES[collection_name](_ilm_document_data(collection_name))
+    assert collection.save(new_document_id, new_document, refresh="wait_for")
+    assert store.client.get(index=new_index, id=new_document_id)["_id"] == new_document_id
+
+    for phrase in SEARCH_FIELDS[collection_name].values():
+        for case_variant in _case_variants(phrase):
+            results = collection.search(_metadata_search_query(collection_name, case_variant), as_obj=False, rows=100)
+            assert results["total"] == 3
+            assert new_document_id in _result_ids(results)
+    if collection_name == "overview":
+        content_results = collection.search("content:MiXeD", as_obj=False, rows=100)
+        assert content_results["total"] == 3
+        assert new_document_id in _result_ids(content_results)
+
+    alias_indices = store.client.indices.get_alias(name=collection.name)
+    write_targets = {
+        index_name
+        for index_name, index_data in alias_indices.items()
+        if index_data.get("aliases", {}).get(collection.name, {}).get("is_write_index") is True
+    }
+    assert write_targets == {new_index}
+
+
 def _assert_reindexed_collection(
     store: ESStore,
     collection_name: str,
@@ -203,6 +382,20 @@ def _delete_isolated_prefix_indexes(store: ESStore, prefix: str) -> None:
 
     for index_name in indexes:
         store.client.indices.delete(index=index_name, ignore_unavailable=True)
+
+
+def _delete_isolated_ilm_resources(store: ESStore, prefix: str) -> None:
+    _delete_isolated_prefix_indexes(store, prefix)
+    for collection_name in COLLECTION_NAMES:
+        collection_prefix = f"{prefix}-{collection_name}"
+        try:
+            store.client.indices.delete_index_template(name=f"{collection_prefix}_template")
+        except elasticsearch.exceptions.NotFoundError:
+            pass
+        try:
+            store.client.ilm.delete_lifecycle(name=f"{collection_prefix}_policy")
+        except elasticsearch.exceptions.NotFoundError:
+            pass
 
 
 def test_metadata_case_insensitive_migration_preserves_documents_and_enables_wildcard_search(config, monkeypatch):
@@ -267,6 +460,10 @@ def test_metadata_case_insensitive_migration_preserves_documents_and_enables_wil
         for collection_name in COLLECTION_NAMES:
             collection = getattr(datastore, collection_name)
             assert collection.validate is True
+            assert (
+                datastore_store.client.indices.exists_index_template(name=f"{collection.name}_template").body is False
+            )
+            assert collection._ilm_policy_exists() is False
             _assert_reindexed_collection(
                 datastore_store,
                 collection_name,
@@ -284,6 +481,56 @@ def test_metadata_case_insensitive_migration_preserves_documents_and_enables_wil
         seed_store.close()
         if datastore_store is not None:
             datastore_store.close()
+
+
+def test_metadata_case_insensitive_migration_refreshes_ilm_templates_and_rollover_mappings(config, monkeypatch):
+    seed_store = ESStore(config)
+    if not seed_store.ping():
+        seed_store.close()
+        pytest.skip("Could not connect to Elasticsearch for isolated ILM metadata migration integration test")
+
+    prefix = f"howler-ci-ilm-{uuid4().hex[:12]}"
+    monkeypatch.setattr(collection_module, "DATASTORE_INDEX_PREFIX", prefix)
+    monkeypatch.setattr(migration_module, "DATASTORE_INDEX_PREFIX", prefix)
+
+    original_ignore_ensure = ESCollection.IGNORE_ENSURE_COLLECTION
+    try:
+        collections, source_documents, source_ids, original_index_metadata, original_ignore_ensure = (
+            _seed_legacy_ilm_collections(seed_store, config)
+        )
+        _assert_stale_ilm_templates(seed_store, collections)
+
+        class IsolatedMetadataDatastore:
+            def __init__(self):
+                self.ds = seed_store
+
+            def __getattr__(self, name):
+                if name in collections:
+                    return collections[name]
+                raise AttributeError(name)
+
+        datastore = IsolatedMetadataDatastore()
+        assert seed_store.validate is True
+
+        affected_documents = CaseInsensitiveMetadataMigration().run(datastore)
+
+        assert affected_documents == len(COLLECTION_NAMES) * 2
+        assert seed_store.validate is True
+
+        for collection_name, collection in collections.items():
+            _assert_migrated_ilm_collection(
+                seed_store,
+                collection_name,
+                collection,
+                source_documents,
+                source_ids,
+                original_index_metadata,
+            )
+            _rollover_and_verify_ilm_collection(seed_store, collection_name, collection)
+    finally:
+        ESCollection.IGNORE_ENSURE_COLLECTION = original_ignore_ensure
+        _delete_isolated_ilm_resources(seed_store, prefix)
+        seed_store.close()
 
 
 @pytest.mark.parametrize("temporary_suffix", ["action_hot__reindex", "action-000001__reindex"])

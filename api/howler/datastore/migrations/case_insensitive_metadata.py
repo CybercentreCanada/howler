@@ -73,6 +73,11 @@ class CaseInsensitiveMetadataMigration(Migration):
             finally:
                 datastore.ds.validate = original_validation
 
+            if collection.ilm_config:
+                from howler.odm.models.config import config as _config
+
+                collection._create_index_template(_config.datastore.ilm)
+
             reindex_result = collection.reindex(allow_failures=False, request_timeout=TRANSPORT_TIMEOUT)
             if reindex_result is not True:
                 raise DataStoreException(

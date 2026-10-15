@@ -287,6 +287,7 @@ def _make_datastore(*, document_count=0, reindex_result=True):
     for collection_name in COLLECTION_NAMES:
         collection = SimpleNamespace(
             datastore=store,
+            ilm_config=None,
             index_list_full=[
                 f"{collection_name}_hot",
                 f"{collection_name}-000001",
@@ -294,6 +295,7 @@ def _make_datastore(*, document_count=0, reindex_result=True):
                 f"{collection_name}_hot__reindex",
             ],
             reindex=MagicMock(return_value=reindex_result),
+            _create_index_template=MagicMock(),
             _index_doc_count=MagicMock(return_value=document_count),
         )
         setattr(datastore, collection_name, collection)
@@ -448,11 +450,57 @@ def test_migration_reindexes_fixed_collections_with_configured_timeout_and_count
     assert list(collections) == ["view", "action", "dossier", "template", "overview"]
     for collection in collections.values():
         collection.reindex.assert_called_once_with(allow_failures=False, request_timeout=731)
+        collection._create_index_template.assert_not_called()
         assert [call.args[0] for call in collection._index_doc_count.call_args_list] == [
             next(index for index in collection.index_list_full if index.endswith("_hot")),
             next(index for index in collection.index_list_full if index.endswith("-000001")),
         ]
     assert indices.exists.call_count == 15
+
+
+def test_migration_refreshes_only_ilm_template_after_validation_restore_and_before_reindex(monkeypatch):
+    datastore, collections, _ = _make_datastore()
+    global_ilm_config = object()
+    events = []
+    collections["view"].ilm_config = object()
+
+    def refresh_template(ilm_config):
+        assert datastore.ds.validate is True
+        assert ilm_config is global_ilm_config
+        events.append(("template", "view"))
+
+    def reindex_view(**_kwargs):
+        assert datastore.ds.validate is True
+        events.append(("reindex", "view"))
+        return True
+
+    def count_view(index):
+        events.append(("count", index))
+        return 0
+
+    collections["view"]._create_index_template.side_effect = refresh_template
+    collections["view"].reindex.side_effect = reindex_view
+    collections["view"]._index_doc_count.side_effect = count_view
+    monkeypatch.setattr(
+        "howler.odm.models.config.config",
+        SimpleNamespace(datastore=SimpleNamespace(ilm=global_ilm_config)),
+    )
+
+    assert CaseInsensitiveMetadataMigration().run(datastore) == 0
+
+    assert events[:3] == [
+        ("template", "view"),
+        ("reindex", "view"),
+        ("count", "view_hot"),
+    ]
+    assert [event for event in events if event[0] == "count"] == [
+        ("count", "view_hot"),
+        ("count", "view-000001"),
+    ]
+    collections["view"]._create_index_template.assert_called_once_with(global_ilm_config)
+    for collection_name, collection in collections.items():
+        if collection_name != "view":
+            collection._create_index_template.assert_not_called()
 
 
 def test_migration_unwraps_realistic_head_api_existence_response():
@@ -644,8 +692,10 @@ def test_migration_acquires_registered_lazy_collections_without_validation_and_r
 
         collection = SimpleNamespace(
             datastore=store,
+            ilm_config=ilm_config,
             index_list_full=[f"{name}_hot"],
             reindex=MagicMock(side_effect=reindex),
+            _create_index_template=MagicMock(),
             _index_doc_count=MagicMock(return_value=1),
         )
         collections[name] = (collection, model_class, validate, ilm_config)
@@ -671,7 +721,7 @@ def _assert_validation_restored(store, expected):
 
 
 @pytest.mark.parametrize("initial_validate", [True, False])
-@pytest.mark.parametrize("failure_phase", ["acquisition", "reindex"])
+@pytest.mark.parametrize("failure_phase", ["acquisition", "template", "reindex"])
 def test_migration_restores_validation_after_lazy_collection_failures(monkeypatch, initial_validate, failure_phase):
     datastore, store, unrelated_collection, _ = _make_lazy_store(initial_validate)
     made_collections = {}
@@ -682,15 +732,23 @@ def test_migration_restores_validation_after_lazy_collection_failures(monkeypatc
             raise RuntimeError("collection acquisition failed")
         collection = SimpleNamespace(
             datastore=store,
+            ilm_config=object() if failure_phase == "template" else None,
             index_list_full=[f"{name}_hot"],
             reindex=MagicMock(side_effect=RuntimeError("reindex failed") if failure_phase == "reindex" else None),
+            _create_index_template=MagicMock(
+                side_effect=RuntimeError("template refresh failed") if failure_phase == "template" else None
+            ),
             _index_doc_count=MagicMock(return_value=1),
         )
         made_collections[name] = collection
         return collection
 
     monkeypatch.setattr("howler.datastore.store.ESCollection", make_collection)
-    expected_error = "collection acquisition failed" if failure_phase == "acquisition" else "reindex failed"
+    expected_error = {
+        "acquisition": "collection acquisition failed",
+        "template": "template refresh failed",
+        "reindex": "reindex failed",
+    }[failure_phase]
 
     with pytest.raises(RuntimeError, match=expected_error):
         CaseInsensitiveMetadataMigration().run(datastore)
@@ -699,9 +757,55 @@ def test_migration_restores_validation_after_lazy_collection_failures(monkeypatc
     assert store._collections == {"unrelated": unrelated_collection}
     if failure_phase == "acquisition":
         assert made_collections == {}
+    elif failure_phase == "template":
+        assert list(made_collections) == ["view"]
+        made_collections["view"]._create_index_template.assert_called_once()
+        made_collections["view"].reindex.assert_not_called()
     else:
         assert list(made_collections) == ["view"]
         made_collections["view"].reindex.assert_called_once()
+
+
+def test_failed_template_refresh_is_unrecorded_retry_succeeds_then_applied_migration_skips(monkeypatch):
+    datastore, collections, _ = _make_datastore()
+    datastore.migration = FakeMigrationRecords()
+    collections["view"].ilm_config = object()
+    collections["view"]._create_index_template.side_effect = [RuntimeError("template refresh failed"), None]
+    global_ilm_config = object()
+    monkeypatch.setattr(
+        "howler.odm.models.config.config",
+        SimpleNamespace(datastore=SimpleNamespace(ilm=global_ilm_config)),
+    )
+    migration = CaseInsensitiveMetadataMigration()
+
+    with pytest.raises(RuntimeError, match="template refresh failed"):
+        run_migrations(datastore, [migration])
+
+    assert datastore.migration.records == {}
+    assert datastore.ds.validate is True
+    collections["view"]._create_index_template.assert_called_once_with(global_ilm_config)
+    collections["view"].reindex.assert_not_called()
+    collections["view"]._index_doc_count.assert_not_called()
+    for name in COLLECTION_NAMES[1:]:
+        collections[name].reindex.assert_not_called()
+        collections[name]._index_doc_count.assert_not_called()
+
+    run_migrations(datastore, [migration])
+
+    assert datastore.migration.records[migration.migration_id]["status"] == "applied"
+    assert collections["view"]._create_index_template.call_count == 2
+    for collection in collections.values():
+        collection.reindex.assert_called_once_with(allow_failures=False, request_timeout=TRANSPORT_TIMEOUT)
+
+    operation_counts = {
+        name: (collection._create_index_template.call_count, collection.reindex.call_count)
+        for name, collection in collections.items()
+    }
+    run_migrations(datastore, [migration])
+    assert {
+        name: (collection._create_index_template.call_count, collection.reindex.call_count)
+        for name, collection in collections.items()
+    } == operation_counts
 
 
 def test_migration_preflight_still_precedes_real_lazy_collection_initialization(monkeypatch):
