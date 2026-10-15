@@ -1,0 +1,23 @@
+# Case sidebar
+
+## Navigate a case
+
+The top card shows the case title, creation date, and escalation. The navigation links open the dashboard, record search, observables, timeline, and correlation rules. Below them, the item tree shows linked cases first, folders next, and other items last.
+
+`case_navigation`
+
+## Sidebar controls
+
+Use the toolbar below the navigation to add an event, add an item, create a folder, refresh the case, or collapse all folders. **Add event** opens the manual evidence-entry dialog, while **Add item** creates a reference or Markdown note. See [Adding records to cases](/help/cases?tab=records) for the event's required fields and optional folder placement.
+
+Drag items onto a folder to move them; a highlighted border indicates a valid drop target. While dragging, the root drop zone at the bottom moves an item back to the top level.
+
+`case_controls`
+
+## Manage case details
+
+The right-hand details panel changes the case status between **Open**, **In Progress**, **On Hold**, and **Resolved**, and sets its escalation to **Normal**, **Focus**, or **Crisis**. It also manages participants and shows active viewers, creation and update times, and the source analytics represented by the case.
+
+Resolving a case opens a review of unresolved hits. You can assess selected hits before resolving, or explicitly allow unresolved hits to remain. Changes made by other case viewers are synchronized into the workspace.
+
+`case_details`
