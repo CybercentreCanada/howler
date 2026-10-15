@@ -39,8 +39,8 @@ class View(Ownership):
         description="What indexes this view applies to.",
     )
     title: str = odm.CaseInsensitiveKeyword(description="The name of this view.")
-    query: str = odm.Keyword(description="The query to run in this view.")
-    sort: str = odm.Keyword(description="The sorting to use with this view.", optional=True)
+    query: str = odm.CaseInsensitiveKeyword(description="The query to run in this view.")
+    sort: str = odm.CaseInsensitiveKeyword(description="The sorting to use with this view.", optional=True)
     span: str = odm.Keyword(
         description="The time span to use by default when opening this view",
         optional=True,
