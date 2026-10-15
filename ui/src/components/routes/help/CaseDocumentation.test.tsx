@@ -37,10 +37,6 @@ vi.mock('components/elements/UserList', () => ({
   default: ({ userIds }: any) => <div>{userIds.join(',')}</div>
 }));
 
-vi.mock('components/elements/event/EventCard', () => ({
-  default: ({ event }: any) => <div>{event.message}</div>
-}));
-
 vi.mock('../cases/detail/aggregates/CaseAggregate', () => ({
   default: ({ subtitle }: any) => <div>{subtitle}</div>
 }));
@@ -154,7 +150,7 @@ describe('CaseDocumentation', () => {
     expect(screen.getByRole('combobox', { name: 'modal.cases.add_item.type' })).toBeInTheDocument();
   });
 
-  it('shows the dashboard aggregate cards and timeline in the summary guide', () => {
+  it('shows the dashboard aggregate cards in the summary guide', () => {
     mockSearchParams.value = new URLSearchParams({ tab: 'summary' });
 
     render(<CaseDocumentation />);
@@ -163,6 +159,5 @@ describe('CaseDocumentation', () => {
     expect(screen.getByText('page.cases.dashboard.target')).toBeInTheDocument();
     expect(screen.getByText('page.cases.dashboard.indicators')).toBeInTheDocument();
     expect(screen.getByText('page.cases.dashboard.duration')).toBeInTheDocument();
-    expect(screen.getByText('Manual evidence from VPN investigation')).toBeInTheDocument();
   });
 });
