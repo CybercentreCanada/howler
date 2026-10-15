@@ -181,6 +181,48 @@ describe('HitBanner', () => {
     expect(screen.getByRole('link', { name: 'Open source link' })).toHaveAttribute('href', 'https://example.com');
   });
 
+  it('truncates HTTP indicator URLs and makes their tooltip keyboard reachable', async () => {
+    const user = userEvent.setup();
+    const indicator =
+      'https://example.example.com/v2/r03/__https://example.example.com/sites/security/documents/very-long-document-name?query=very-long-value-example';
+    const hit = createBannerHit({
+      howler: {
+        ...createBannerHit().howler,
+        outline: { ...createBannerHit().howler.outline, indicators: [indicator] }
+      } as any
+    } as any);
+
+    renderHitBanner({ hit });
+
+    const indicatorText = screen.getByText(indicator);
+    expect(indicatorText).toHaveStyle({ WebkitLineClamp: '2', overflow: 'hidden', textOverflow: 'ellipsis' });
+
+    const indicatorWrapper = indicatorText.closest('[tabindex="0"]');
+    expect(indicatorWrapper).toBeInTheDocument();
+
+    await user.tab();
+    expect(indicatorWrapper).toHaveFocus();
+
+    await user.hover(indicatorText);
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(indicator);
+  });
+
+  it('wraps non-URL indicators and does not add a tooltip', () => {
+    const indicator = 'a-very-long-unbroken-indicator-value';
+    const hit = createBannerHit({
+      howler: {
+        ...createBannerHit().howler,
+        outline: { ...createBannerHit().howler.outline, indicators: [indicator] }
+      } as any
+    } as any);
+
+    renderHitBanner({ hit });
+
+    expect(screen.getByText(indicator)).toHaveStyle({ overflowWrap: 'anywhere' });
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  });
+
   it.each(['in-progress', 'on-hold'])('renders the status chip for %s', status => {
     const hit = createBannerHit({ howler: { ...createBannerHit().howler, status } as any } as any);
 
