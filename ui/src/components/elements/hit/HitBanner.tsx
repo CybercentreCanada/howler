@@ -199,7 +199,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.N
                   {indicators.map((indicator, index) => {
                     const isUrl = isHttpUrl(indicator);
                     const indicatorValue = (
-                      <Box sx={{ minWidth: 0, maxWidth: '100%' }}>
+                      <Box tabIndex={isUrl ? 0 : undefined} sx={{ minWidth: 0, maxWidth: '100%' }}>
                         <PluginTypography
                           context="indicators"
                           variant={textVariant}

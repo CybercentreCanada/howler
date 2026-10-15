@@ -181,10 +181,10 @@ describe('HitBanner', () => {
     expect(screen.getByRole('link', { name: 'Open source link' })).toHaveAttribute('href', 'https://example.com');
   });
 
-  it('truncates HTTP indicator URLs and exposes their complete value in a tooltip', async () => {
+  it('truncates HTTP indicator URLs and makes their tooltip keyboard reachable', async () => {
     const user = userEvent.setup();
     const indicator =
-      'https://protect.checkpoint.com/v2/r03/__https://example.sharepoint.com/sites/security/documents/very-long-document-name?query=very-long-value';
+      'https://example.example.com/v2/r03/__https://example.example.com/sites/security/documents/very-long-document-name?query=very-long-value-example';
     const hit = createBannerHit({
       howler: {
         ...createBannerHit().howler,
@@ -196,6 +196,12 @@ describe('HitBanner', () => {
 
     const indicatorText = screen.getByText(indicator);
     expect(indicatorText).toHaveStyle({ WebkitLineClamp: '2', overflow: 'hidden', textOverflow: 'ellipsis' });
+
+    const indicatorWrapper = indicatorText.closest('[tabindex="0"]');
+    expect(indicatorWrapper).toBeInTheDocument();
+
+    await user.tab();
+    expect(indicatorWrapper).toHaveFocus();
 
     await user.hover(indicatorText);
 
