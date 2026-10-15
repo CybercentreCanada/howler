@@ -181,6 +181,42 @@ describe('HitBanner', () => {
     expect(screen.getByRole('link', { name: 'Open source link' })).toHaveAttribute('href', 'https://example.com');
   });
 
+  it('truncates HTTP indicator URLs and exposes their complete value in a tooltip', async () => {
+    const user = userEvent.setup();
+    const indicator =
+      'https://protect.checkpoint.com/v2/r03/__https://example.sharepoint.com/sites/security/documents/very-long-document-name?query=very-long-value';
+    const hit = createBannerHit({
+      howler: {
+        ...createBannerHit().howler,
+        outline: { ...createBannerHit().howler.outline, indicators: [indicator] }
+      } as any
+    } as any);
+
+    renderHitBanner({ hit });
+
+    const indicatorText = screen.getByText(indicator);
+    expect(indicatorText).toHaveStyle({ WebkitLineClamp: '2', overflow: 'hidden', textOverflow: 'ellipsis' });
+
+    await user.hover(indicatorText);
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(indicator);
+  });
+
+  it('wraps non-URL indicators and does not add a tooltip', () => {
+    const indicator = 'a-very-long-unbroken-indicator-value';
+    const hit = createBannerHit({
+      howler: {
+        ...createBannerHit().howler,
+        outline: { ...createBannerHit().howler.outline, indicators: [indicator] }
+      } as any
+    } as any);
+
+    renderHitBanner({ hit });
+
+    expect(screen.getByText(indicator)).toHaveStyle({ overflowWrap: 'anywhere' });
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  });
+
   it.each(['in-progress', 'on-hold'])('renders the status chip for %s', status => {
     const hit = createBannerHit({ howler: { ...createBannerHit().howler, status } as any } as any);
 

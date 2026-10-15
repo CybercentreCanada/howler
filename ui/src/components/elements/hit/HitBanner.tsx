@@ -48,6 +48,15 @@ type HitBannerWrapperProps = {
   field: string;
 } & TypographyProps;
 
+const isHttpUrl = (value: string) => {
+  try {
+    const { protocol } = new URL(value);
+    return protocol === 'http:' || protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
 const Wrapper: FC<HitBannerWrapperProps> = ({
   compressed,
   hit,
@@ -122,6 +131,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.N
   const textVariant = useMemo(() => (layout === HitLayout.COMFY ? 'body1' : 'caption'), [layout]);
 
   const providerColor = getProviderColor(hit?.event?.provider);
+  const indicators = uniq(hit.howler.outline?.indicators ?? []);
 
   return (
     <Box sx={{ width: '100%', ml: 0, overflow: 'hidden', color: 'text.primary' }}>
@@ -180,22 +190,43 @@ const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.N
                 field="howler.outline.target"
               />
             )}
-            {(hit.howler.outline.indicators?.length ?? 0) > 0 && (
-              <Stack direction="row" spacing={layout !== HitLayout.COMFY ? 0.25 : 1}>
+            {indicators.length > 0 && (
+              <Stack direction="row" spacing={layout !== HitLayout.COMFY ? 0.25 : 1} sx={{ minWidth: 0 }}>
                 <Typography component="span" variant={textVariant} fontWeight="bold" pr={1}>
                   {t('hit.header.indicators')}:
                 </Typography>
-                <Grid container spacing={0.5}>
-                  {uniq(hit.howler.outline.indicators ?? []).map((_indicator, index) => {
+                <Grid container spacing={0.5} sx={{ flex: 1, minWidth: 0 }}>
+                  {indicators.map((indicator, index) => {
+                    const isUrl = isHttpUrl(indicator);
+                    const indicatorValue = (
+                      <Box sx={{ minWidth: 0, maxWidth: '100%' }}>
+                        <PluginTypography
+                          context="indicators"
+                          variant={textVariant}
+                          value={indicator}
+                          sx={
+                            isUrl
+                              ? {
+                                  display: '-webkit-box',
+                                  overflow: 'hidden',
+                                  overflowWrap: 'anywhere',
+                                  textOverflow: 'ellipsis',
+                                  WebkitBoxOrient: 'vertical',
+                                  WebkitLineClamp: 2
+                                }
+                              : { overflowWrap: 'anywhere' }
+                          }
+                        >
+                          {indicator}
+                        </PluginTypography>
+                      </Box>
+                    );
+
                     return (
-                      <Grid key={_indicator}>
-                        <Stack direction="row">
-                          <PluginTypography context="indicators" variant={textVariant} value={_indicator}>
-                            {_indicator}
-                          </PluginTypography>
-                          {index < (hit.howler.outline?.indicators?.length ?? 0) - 1 && (
-                            <Typography variant={textVariant}>{','}</Typography>
-                          )}
+                      <Grid key={indicator} sx={{ flexBasis: '100%', minWidth: 0, maxWidth: '100%' }}>
+                        <Stack direction="row" sx={{ minWidth: 0 }}>
+                          {isUrl ? <Tooltip title={indicator}>{indicatorValue}</Tooltip> : indicatorValue}
+                          {index < indicators.length - 1 && <Typography variant={textVariant}>{','}</Typography>}
                         </Stack>
                       </Grid>
                     );
