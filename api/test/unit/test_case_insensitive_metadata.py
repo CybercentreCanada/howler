@@ -12,13 +12,16 @@ from elastic_transport import ApiResponseMeta, HeadApiResponse, NodeConfig
 from howler import odm
 from howler.common.loader import DATASTORE_INDEX_PREFIX
 from howler.datastore.exceptions import DataStoreException, VersionConflictException
+from howler.datastore.howler_store import HowlerDatastore
 from howler.datastore.migrations.action_owner import ActionOwnerMigration
 from howler.datastore.migrations.base import Migration
 from howler.datastore.migrations.case_insensitive_metadata import (
     COLLECTION_NAMES,
+    TRANSPORT_TIMEOUT,
     CaseInsensitiveMetadataMigration,
 )
 from howler.datastore.migrations.runner import MIGRATIONS, run_migrations
+from howler.datastore.store import ESStore
 from howler.datastore.support.build import build_mapping
 from howler.external import run_migrations as migration_cli
 from howler.odm.models.action import Action
@@ -277,7 +280,7 @@ def _make_datastore(*, document_count=0, reindex_result=True):
     indices.exists.side_effect = lambda index: _head_response(
         not index.endswith("_missing") and not index.endswith("__reindex")
     )
-    store = SimpleNamespace(client=SimpleNamespace(indices=indices))
+    store = SimpleNamespace(client=SimpleNamespace(indices=indices), validate=True)
     datastore = SimpleNamespace(ds=store)
     collections = {}
 
@@ -597,3 +600,121 @@ def test_migration_timeout_symbol_matches_datastore_collection_configuration():
     from howler.datastore.migrations import case_insensitive_metadata
 
     assert case_insensitive_metadata.TRANSPORT_TIMEOUT == collection.TRANSPORT_TIMEOUT
+
+
+def _make_lazy_store(validate: bool):
+    store = ESStore.__new__(ESStore)
+    store._models = {
+        "view": View,
+        "action": Action,
+        "dossier": Dossier,
+        "template": Template,
+        "overview": Overview,
+    }
+    unrelated_collection = object()
+    store._collections = {"unrelated": unrelated_collection}
+    store._ilm_configs = {"view": object()}
+    store.validate = validate
+    indices = MagicMock()
+    indices.get.return_value = {}
+    indices.exists.return_value = _head_response(True)
+    store.client = SimpleNamespace(indices=indices)
+
+    datastore = HowlerDatastore.__new__(HowlerDatastore)
+    datastore.ds = store
+    return datastore, store, unrelated_collection, indices
+
+
+@pytest.mark.parametrize("initial_validate", [True, False])
+def test_migration_acquires_registered_lazy_collections_without_validation_and_restores_before_reindex(
+    monkeypatch, initial_validate
+):
+    datastore, store, unrelated_collection, indices = _make_lazy_store(initial_validate)
+    collections = {}
+    expected_models = dict(zip(COLLECTION_NAMES, (View, Action, Dossier, Template, Overview), strict=True))
+    ilm_config = store._ilm_configs["view"]
+
+    def make_collection(datastore_arg, name, model_class=None, validate=True, ilm_config=None):
+        assert datastore_arg is store
+        assert store.validate is False
+
+        def reindex(**_):
+            _assert_validation_restored(store, initial_validate)
+            return True
+
+        collection = SimpleNamespace(
+            datastore=store,
+            index_list_full=[f"{name}_hot"],
+            reindex=MagicMock(side_effect=reindex),
+            _index_doc_count=MagicMock(return_value=1),
+        )
+        collections[name] = (collection, model_class, validate, ilm_config)
+        return collection
+
+    monkeypatch.setattr("howler.datastore.store.ESCollection", make_collection)
+
+    assert CaseInsensitiveMetadataMigration().run(datastore) == len(COLLECTION_NAMES)
+
+    assert store.validate is initial_validate
+    assert store._collections == {"unrelated": unrelated_collection}
+    assert indices.exists.call_count == len(COLLECTION_NAMES)
+    assert set(collections) == set(COLLECTION_NAMES)
+    for collection_name, (collection, model_class, collection_validate, collection_ilm_config) in collections.items():
+        assert model_class is expected_models[collection_name]
+        assert collection_validate is False
+        assert collection_ilm_config is (ilm_config if collection_name == "view" else None)
+        collection.reindex.assert_called_once_with(allow_failures=False, request_timeout=TRANSPORT_TIMEOUT)
+
+
+def _assert_validation_restored(store, expected):
+    assert store.validate is expected
+
+
+@pytest.mark.parametrize("initial_validate", [True, False])
+@pytest.mark.parametrize("failure_phase", ["acquisition", "reindex"])
+def test_migration_restores_validation_after_lazy_collection_failures(monkeypatch, initial_validate, failure_phase):
+    datastore, store, unrelated_collection, _ = _make_lazy_store(initial_validate)
+    made_collections = {}
+
+    def make_collection(datastore_arg, name, model_class=None, validate=True, ilm_config=None):
+        assert datastore_arg is store
+        if failure_phase == "acquisition" and name == "view":
+            raise RuntimeError("collection acquisition failed")
+        collection = SimpleNamespace(
+            datastore=store,
+            index_list_full=[f"{name}_hot"],
+            reindex=MagicMock(side_effect=RuntimeError("reindex failed") if failure_phase == "reindex" else None),
+            _index_doc_count=MagicMock(return_value=1),
+        )
+        made_collections[name] = collection
+        return collection
+
+    monkeypatch.setattr("howler.datastore.store.ESCollection", make_collection)
+    expected_error = "collection acquisition failed" if failure_phase == "acquisition" else "reindex failed"
+
+    with pytest.raises(RuntimeError, match=expected_error):
+        CaseInsensitiveMetadataMigration().run(datastore)
+
+    assert store.validate is initial_validate
+    assert store._collections == {"unrelated": unrelated_collection}
+    if failure_phase == "acquisition":
+        assert made_collections == {}
+    else:
+        assert list(made_collections) == ["view"]
+        made_collections["view"].reindex.assert_called_once()
+
+
+def test_migration_preflight_still_precedes_real_lazy_collection_initialization(monkeypatch):
+    datastore, store, unrelated_collection, indices = _make_lazy_store(True)
+    leftover = f"{DATASTORE_INDEX_PREFIX}-view_hot__reindex"
+    indices.get.side_effect = lambda index, **_: {leftover: {}} if "-view" in index else {}
+    make_collection = MagicMock(side_effect=AssertionError("collection initialized before preflight"))
+    monkeypatch.setattr("howler.datastore.store.ESCollection", make_collection)
+
+    with pytest.raises(DataStoreException, match="leftover temporary reindex"):
+        CaseInsensitiveMetadataMigration().run(datastore)
+
+    assert indices.get.call_args_list[0].kwargs["index"] == f"{DATASTORE_INDEX_PREFIX}-view*__reindex"
+    make_collection.assert_not_called()
+    assert store.validate is True
+    assert store._collections == {"unrelated": unrelated_collection}

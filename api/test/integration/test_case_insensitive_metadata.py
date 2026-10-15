@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from types import SimpleNamespace
-from unittest.mock import MagicMock
 from uuid import uuid4
 
 import elasticsearch
 import pytest
 
+from howler.common.exceptions import HowlerRuntimeError
 from howler.datastore import collection as collection_module
 from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import DataStoreException
@@ -18,7 +17,6 @@ from howler.datastore.migrations.runner import run_migrations
 from howler.datastore.store import ESStore
 from howler.odm.models.action import Action
 from howler.odm.models.dossier import Dossier
-from howler.odm.models.migration import MigrationRecord
 from howler.odm.models.overview import Overview
 from howler.odm.models.template import Template
 from howler.odm.models.view import View
@@ -117,7 +115,7 @@ def _document_data(collection_name: str) -> dict:
 
 def _create_legacy_collection(store: ESStore, collection_name: str, document_id: str) -> tuple[ESCollection, dict]:
     model_class = MODEL_CLASSES[collection_name]
-    collection = ESCollection(store, f"{collection_name}_{uuid4().hex[:8]}", model_class=model_class)
+    collection = ESCollection(store, collection_name, model_class=model_class)
     model = model_class(_document_data(collection_name))
     source_document = deepcopy(model.as_primitives())
 
@@ -126,6 +124,9 @@ def _create_legacy_collection(store: ESStore, collection_name: str, document_id:
         legacy_field = legacy_mappings["properties"][field_name]
         assert legacy_field["type"] == "keyword"
         legacy_field.pop("normalizer", None)
+    if collection_name == "overview":
+        # Before the current ODM changed content to Text, persisted overview content was keyword.
+        legacy_mappings["properties"]["content"] = {"type": "keyword"}
 
     store.client.indices.create(
         index=collection.index_name,
@@ -139,6 +140,9 @@ def _create_legacy_collection(store: ESStore, collection_name: str, document_id:
         document=source_document,
         refresh="wait_for",
     )
+
+    if collection_name == "overview":
+        assert collection.fields()["content"]["type"] == "keyword"
 
     # The old plain-keyword mappings do not match these lower-case UI-style wildcard queries.
     for phrase in SEARCH_FIELDS[collection_name].values():
@@ -187,20 +191,6 @@ def _assert_reindexed_collection(
     assert stored["_id"] == document_id
 
 
-def _delete_isolated_indexes(store: ESStore, collection: ESCollection) -> None:
-    try:
-        indexes = store.client.indices.get(
-            index=f"{collection.name}*",
-            allow_no_indices=True,
-            ignore_unavailable=True,
-        )
-    except elasticsearch.exceptions.NotFoundError:
-        return
-
-    for index_name in indexes:
-        store.client.indices.delete(index=index_name, ignore_unavailable=True)
-
-
 def _delete_isolated_prefix_indexes(store: ESStore, prefix: str) -> None:
     try:
         indexes = store.client.indices.get(
@@ -216,9 +206,9 @@ def _delete_isolated_prefix_indexes(store: ESStore, prefix: str) -> None:
 
 
 def test_metadata_case_insensitive_migration_preserves_documents_and_enables_wildcard_search(config, monkeypatch):
-    store = ESStore(config)
-    if not store.ping():
-        store.close()
+    seed_store = ESStore(config)
+    if not seed_store.ping():
+        seed_store.close()
         pytest.skip("Could not connect to Elasticsearch for isolated metadata migration integration test")
 
     prefix = f"howler-ci-{uuid4().hex[:12]}"
@@ -226,43 +216,59 @@ def test_metadata_case_insensitive_migration_preserves_documents_and_enables_wil
     monkeypatch.setattr(migration_module, "DATASTORE_INDEX_PREFIX", prefix)
 
     original_ignore_ensure = ESCollection.IGNORE_ENSURE_COLLECTION
-    ESCollection.IGNORE_ENSURE_COLLECTION = True
-    collections: dict[str, ESCollection] = {}
-    migration_collection = None
+    datastore_store = None
     source_documents: dict[str, dict] = {}
     document_ids = {collection_name: str(uuid4()) for collection_name in COLLECTION_NAMES}
 
     try:
-        for collection_name in COLLECTION_NAMES:
-            collection, source_document = _create_legacy_collection(
-                store,
-                collection_name,
-                document_ids[collection_name],
-            )
-            collections[collection_name] = collection
-            source_documents[collection_name] = source_document
+        ESCollection.IGNORE_ENSURE_COLLECTION = True
+        try:
+            for collection_name in COLLECTION_NAMES:
+                collection, source_document = _create_legacy_collection(
+                    seed_store,
+                    collection_name,
+                    document_ids[collection_name],
+                )
+                source_documents[collection_name] = source_document
+        finally:
+            # Legacy setup alone suppresses ensure; the migration must use normal collection construction.
+            ESCollection.IGNORE_ENSURE_COLLECTION = original_ignore_ensure
 
-        ESCollection.IGNORE_ENSURE_COLLECTION = original_ignore_ensure
-        migration_collection = ESCollection(
-            store,
-            f"migration_records_{uuid4().hex[:8]}",
-            model_class=MigrationRecord,
-        )
-        datastore = SimpleNamespace(ds=store, migration=migration_collection, **collections)
-        reindex_spies = {}
-        for collection_name, collection in collections.items():
-            collection.reindex = MagicMock(wraps=collection.reindex)
-            reindex_spies[collection_name] = collection.reindex
+        datastore_store = ESStore(config)
+        assert datastore_store.ping()
+        datastore = HowlerDatastore(datastore_store)
+        assert datastore_store.validate is True
+        assert datastore_store._collections == {}
 
+        # Normal application access still rejects the old keyword mapping before migration.
+        with pytest.raises(HowlerRuntimeError, match="Field content didn't have the expected store type"):
+            _ = datastore.overview
+        assert "overview" not in datastore_store._collections
+        assert datastore_store.validate is True
+
+        migration_collection = datastore.migration
+        reindexed_collections = []
+        original_reindex = ESCollection.reindex
+
+        def track_reindex(collection, *args, **kwargs):
+            reindexed_collections.append(collection.name)
+            return original_reindex(collection, *args, **kwargs)
+
+        monkeypatch.setattr(ESCollection, "reindex", track_reindex)
         run_migrations(datastore, [CaseInsensitiveMetadataMigration()])
 
+        assert datastore_store.validate is True
+        assert set(datastore_store._collections) == {"migration"}
+        assert reindexed_collections == [f"{prefix}-{name}" for name in COLLECTION_NAMES]
         migration_record = migration_collection.get_if_exists("metadata-case-insensitive-search", as_obj=False)
         assert migration_record["status"] == "applied"
         assert migration_record["affected_documents"] == len(COLLECTION_NAMES)
 
-        for collection_name, collection in collections.items():
+        for collection_name in COLLECTION_NAMES:
+            collection = getattr(datastore, collection_name)
+            assert collection.validate is True
             _assert_reindexed_collection(
-                store,
+                datastore_store,
                 collection_name,
                 collection,
                 document_ids[collection_name],
@@ -270,16 +276,14 @@ def test_metadata_case_insensitive_migration_preserves_documents_and_enables_wil
             )
 
         # The existing applied-record gate must skip all collection reindexes on subsequent runner calls.
-        rerun_counts = {collection_name: reindex.call_count for collection_name, reindex in reindex_spies.items()}
         run_migrations(datastore, [CaseInsensitiveMetadataMigration()])
-        assert {
-            collection_name: reindex.call_count for collection_name, reindex in reindex_spies.items()
-        } == rerun_counts
+        assert reindexed_collections == [f"{prefix}-{name}" for name in COLLECTION_NAMES]
     finally:
         ESCollection.IGNORE_ENSURE_COLLECTION = original_ignore_ensure
-        for collection in [*collections.values(), *([migration_collection] if migration_collection else [])]:
-            _delete_isolated_indexes(store, collection)
-        store.close()
+        _delete_isolated_prefix_indexes(seed_store, prefix)
+        seed_store.close()
+        if datastore_store is not None:
+            datastore_store.close()
 
 
 @pytest.mark.parametrize("temporary_suffix", ["action_hot__reindex", "action-000001__reindex"])

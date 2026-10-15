@@ -64,7 +64,15 @@ class CaseInsensitiveMetadataMigration(Migration):
 
         affected_documents = 0
         for collection_name in COLLECTION_NAMES:
-            collection = getattr(datastore, collection_name)
+            original_validation = datastore.ds.validate
+            try:
+                # Lazily create an uncached collection so legacy mappings do not block the migration.
+                # The collection still uses its registered ODM model and ILM configuration to build mappings.
+                datastore.ds.validate = False
+                collection = getattr(datastore, collection_name)
+            finally:
+                datastore.ds.validate = original_validation
+
             reindex_result = collection.reindex(allow_failures=False, request_timeout=TRANSPORT_TIMEOUT)
             if reindex_result is not True:
                 raise DataStoreException(
