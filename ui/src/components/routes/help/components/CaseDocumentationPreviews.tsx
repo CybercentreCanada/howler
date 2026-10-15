@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   Card,
+  CardContent,
   Chip,
   Divider,
   Grid,
@@ -11,6 +12,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableRow,
   TextField,
@@ -124,7 +126,9 @@ export const CaseNavigationPreview: FC = () => {
 };
 
 export const CaseInvestigationViewsPreview: FC = () => (
-  <CaseSidebarNavigation sections={['search', 'observables', 'timeline']} />
+  <Box sx={{ width: 350 }}>
+    <CaseSidebarNavigation sections={['search', 'observables', 'timeline']} />
+  </Box>
 );
 
 export const CaseControlsPreview: FC = () => (
@@ -176,7 +180,7 @@ export const CaseDashboardInsightsPreview: FC = () => {
   const theme = useTheme();
 
   return (
-    <Grid container spacing={2} sx={{ maxWidth: 1000 }}>
+    <Grid container spacing={2} sx={{ maxWidth: '100%' }}>
       <Grid size={{ xs: 12, md: 6, xl: 3 }}>
         <CaseAggregate
           icon="material-symbols:warning-rounded"
@@ -240,19 +244,25 @@ export const AddRecordsPreview: FC = () => {
   const caseOptions = [EXAMPLE_CASE, { ...EXAMPLE_CASE, case_id: 'example-case-2', title: 'Related investigation' }];
 
   return (
-    <Stack spacing={1} sx={{ maxWidth: 600 }}>
-      <Typography variant="h4">{t('modal.cases.add_to_case')}</Typography>
-      <CaseSelector options={caseOptions} value={selectedCase} onChange={setSelectedCase} />
-      <CaseRecordRow entry={entry} onNameChange={setName} onParentChange={() => {}} />
-      <Stack direction="row" spacing={1} alignSelf="end">
-        <Button variant="outlined" color="error">
-          {t('cancel')}
-        </Button>
-        <Button variant="outlined" color="success">
-          {t('confirm')}
-        </Button>
-      </Stack>
-    </Stack>
+    <Box display="flex">
+      <Card sx={{ minWidth: '400px' }}>
+        <CardContent>
+          <Stack spacing={1} sx={{ minWidth: 'min(800px, 60vw)' }}>
+            <Typography variant="h4">{t('modal.cases.add_to_case')}</Typography>
+            <CaseSelector options={caseOptions} value={selectedCase} onChange={setSelectedCase} />
+            <CaseRecordRow entry={entry} onNameChange={setName} onParentChange={() => {}} />
+            <Stack direction="row" spacing={1} alignSelf="end">
+              <Button variant="outlined" color="error">
+                {t('cancel')}
+              </Button>
+              <Button variant="outlined" color="success">
+                {t('confirm')}
+              </Button>
+            </Stack>
+          </Stack>
+        </CardContent>
+      </Card>
+    </Box>
   );
 };
 
@@ -260,7 +270,7 @@ export const CaseTasksPreview: FC = () => {
   const { t } = useTranslation();
 
   return (
-    <Stack spacing={1} sx={{ maxWidth: 800 }}>
+    <Stack spacing={1} sx={{ maxWidth: '100%' }}>
       <Typography variant="h4">{t('page.cases.dashboard.tasks')}</Typography>
       <Divider />
       <CaseTask case={EXAMPLE_CASE} task={EXAMPLE_CASE.tasks?.[0]} onEdit={NOOP_ASYNC} onDelete={NOOP_ASYNC} />
@@ -295,24 +305,26 @@ export const CorrelationRulePreview: FC = () => {
   const { t } = useTranslation();
 
   return (
-    <Paper variant="outlined" sx={{ maxWidth: 900, overflow: 'auto' }}>
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell>{t('page.cases.rules.destination')}</TableCell>
-            <TableCell>{t('page.cases.rules.query')}</TableCell>
-            <TableCell>{t('hit.search.index')}</TableCell>
-            <TableCell>{t('page.cases.rules.timeframe')}</TableCell>
-            <TableCell>{t('page.cases.rules.author')}</TableCell>
-            <TableCell align="center">{t('enabled')}</TableCell>
-            <TableCell align="right" />
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          <CaseRuleRow rule={EXAMPLE_RULE} onToggleEnabled={() => {}} onBackfill={() => {}} onDelete={() => {}} />
-        </TableBody>
-      </Table>
-    </Paper>
+    <Card>
+      <TableContainer>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>{t('page.cases.rules.destination')}</TableCell>
+              <TableCell>{t('page.cases.rules.query')}</TableCell>
+              <TableCell>{t('hit.search.index')}</TableCell>
+              <TableCell>{t('page.cases.rules.timeframe')}</TableCell>
+              <TableCell>{t('page.cases.rules.author')}</TableCell>
+              <TableCell align="center">{t('enabled')}</TableCell>
+              <TableCell align="right" />
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            <CaseRuleRow rule={EXAMPLE_RULE} onToggleEnabled={() => {}} onBackfill={() => {}} onDelete={() => {}} />
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Card>
   );
 };
 
