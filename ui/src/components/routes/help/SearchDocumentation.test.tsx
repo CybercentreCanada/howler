@@ -1,10 +1,14 @@
 /// <reference types="vitest" />
+import { createTheme, ThemeProvider } from '@mui/material';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import type { PropsWithChildren } from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockUseMediaQuery = vi.hoisted(() => vi.fn(() => false));
 const mockAppUser = vi.hoisted(() => ({ user: { is_admin: true } }));
 const mockLocation = vi.hoisted(() => ({ hash: '#overview' }));
+const mockAppBar = vi.hoisted(() => ({ autoHide: false }));
+const mockAppLayout = vi.hoisted(() => ({ current: 'side' }));
 
 vi.mock('@mui/material', async importOriginal => {
   const actual = await importOriginal<typeof import('@mui/material')>();
@@ -15,9 +19,11 @@ vi.mock('@mui/material', async importOriginal => {
 });
 
 vi.mock('@tui/core', () => ({
-  PageCenter: ({ children }: any) => <div>{children}</div>,
-  useAppBar: () => ({ autoHide: false }),
-  useAppLayout: () => ({ current: 'side' }),
+  PageCenter: ({ children, className }: PropsWithChildren<{ className?: string }>) => (
+    <div className={className}>{children}</div>
+  ),
+  useAppBar: () => mockAppBar,
+  useAppLayout: () => mockAppLayout,
   useAppUser: () => mockAppUser
 }));
 
@@ -52,7 +58,20 @@ const config = {
   }
 } as any;
 
+const documentationWithSpacing = (spacing: number) => (
+  <ThemeProvider theme={createTheme({ spacing })}>
+    <ApiConfigContext.Provider value={{ config } as any}>
+      <SearchDocumentation />
+    </ApiConfigContext.Provider>
+  </ThemeProvider>
+);
+
 describe('SearchDocumentation', () => {
+  beforeEach(() => {
+    mockAppBar.autoHide = false;
+    mockAppLayout.current = 'side';
+  });
+
   it('returns nothing when indexes are unavailable', () => {
     const { container } = render(
       <ApiConfigContext.Provider value={{ config: {} } as any}>
@@ -81,5 +100,51 @@ describe('SearchDocumentation', () => {
     expect(screen.getAllByText('regex').length).toBeGreaterThan(0);
     expect(screen.getAllByText('ranges').length).toBeGreaterThan(0);
     expect(screen.getAllByText('reserved').length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    { density: 'default', spacing: 8 },
+    { density: 'compact', spacing: 6 },
+    { density: 'dense', spacing: 4 }
+  ])('keeps section spacing positive at $density density', ({ spacing }) => {
+    const { container } = render(documentationWithSpacing(spacing));
+    const paragraphs = container.querySelectorAll('.paragraph');
+
+    expect(paragraphs.length).toBeGreaterThan(0);
+    paragraphs.forEach(paragraph => {
+      const spacer = paragraph.querySelector('.spacer') as HTMLDivElement;
+
+      expect(paragraph).toHaveStyle({ marginTop: `${-12 * spacing}px` });
+      expect(spacer).toHaveStyle({ height: `${14 * spacing}px` });
+      expect(parseFloat(getComputedStyle(paragraph).marginTop) + parseFloat(getComputedStyle(spacer).height)).toBe(
+        2 * spacing
+      );
+    });
+  });
+
+  it('updates section offsets when density changes without remounting', () => {
+    const { container, rerender } = render(documentationWithSpacing(8));
+    const paragraph = container.querySelector('#overview');
+
+    expect(paragraph).toHaveStyle({ marginTop: '-96px' });
+
+    rerender(documentationWithSpacing(6));
+    expect(paragraph).toHaveStyle({ marginTop: '-72px' });
+
+    rerender(documentationWithSpacing(4));
+    expect(paragraph).toHaveStyle({ marginTop: '-48px' });
+  });
+
+  it.each([
+    { layout: 'side', marginTop: '0px' },
+    { layout: 'top', marginTop: '-48px' }
+  ])('preserves auto-hide offsets in the $layout layout at dense density', ({ layout, marginTop }) => {
+    mockAppBar.autoHide = true;
+    mockAppLayout.current = layout;
+    const { container } = render(documentationWithSpacing(4));
+    const paragraph = container.querySelector('#overview') as HTMLDivElement;
+
+    expect(paragraph).toHaveStyle({ marginTop });
+    expect(paragraph.classList.contains('autoHide')).toBe(layout === 'side');
   });
 });
