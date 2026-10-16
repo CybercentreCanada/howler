@@ -1,6 +1,6 @@
 import re
 
-from dateutil.tz import tzutc
+from dateutil.tz import tzutc  # type: ignore
 
 from howler.odm.howler_enum import HowlerEnum
 
