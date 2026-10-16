@@ -147,12 +147,11 @@ def user_fields_allowed(
     indexes: str | list[str],
     fl: str | list[str] | None,
     user: User | None = None,
-    include_id: bool = False,
     allow_other_index_fields: bool = False,
 ) -> bool:
     """Return False when a request for the user index names non-stored, banned, or wildcard fields.
 
-    Only stored user fields (and the synthetic document ID when requested internally) are safe to return.
+    Only stored user fields and the public synthetic document ID are safe to return.
     Anything else, including credential fields and wildcards that could expand to them, is refused. A mixed-index
     request may also name stored fields from its other indexes when the caller applies an index-specific projection.
     """
@@ -168,11 +167,11 @@ def user_fields_allowed(
     if any("*" in name or name.split(".")[0] in _USER_DENIED_ROOTS for name in names):
         return False
 
-    allowed_paths = _USER_ALLOWED_FIELD_PATHS
+    # ``id`` is a public synthetic field. ``include_id`` remains a formatting/projection control and must not
+    # determine whether callers are allowed to request it.
+    allowed_paths = _USER_ALLOWED_FIELD_PATHS | {"id"}
     if allow_other_index_fields:
         allowed_paths = allowed_paths | _other_index_stored_fields(index_list, user)
-    if include_id:
-        allowed_paths = allowed_paths | {"id"}
     return all(name in allowed_paths for name in names)
 
 
@@ -254,10 +253,12 @@ def search(  # noqa: C901
 
     index_list = _parse_index_list(indexes)
     _validate_search_indexes(index_list, user)
+    requested_fields = _requested_field_names(fl)
+    include_id = include_id or (requested_fields is not None and "id" in requested_fields)
     if "user" in index_list:
-        if not user_fields_allowed(index_list, fl, user, include_id, allow_other_index_fields=True):
+        if not user_fields_allowed(index_list, fl, user, allow_other_index_fields=True):
             raise SensitiveUserFieldsException("Invalid fields to retrieve.")
-        if not _requested_field_names(fl):
+        if not requested_fields:
             if len(index_list) > 1:
                 raise SensitiveUserFieldsException("Specify fl when searching the user index with other indexes.")
             fl = sorted(USER_STORED_FIELDS)

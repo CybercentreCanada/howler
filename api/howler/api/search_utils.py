@@ -33,13 +33,16 @@ def select_safe_scroll_fields(
     search_collections: Mapping[str, ESCollection], fl: str | list[str] | None
 ) -> tuple[list[str], dict[str, list[str]], bool]:
     """Build the Elasticsearch source projection and per-index stored-field allowlists."""
-    if isinstance(fl, str):
-        fl = [fl]
-    elif not isinstance(fl, list):
-        fl = []
-    requested_fields = [
-        field.strip() for value in fl if isinstance(value, str) for field in value.split(",") if field.strip()
-    ]
+    if fl is None:
+        field_values: list[str] = []
+    elif isinstance(fl, str):
+        field_values = [fl]
+    elif isinstance(fl, list) and all(isinstance(value, str) for value in fl):
+        field_values = fl
+    else:
+        raise SearchException("Field list must be a string or a list of strings.")
+
+    requested_fields = [field.strip() for value in field_values for field in value.split(",") if field.strip()]
 
     allowed_fields_by_index: dict[str, list[str]] = {}
     include_all = not requested_fields or "*" in requested_fields

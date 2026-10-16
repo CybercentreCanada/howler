@@ -103,13 +103,54 @@ def test_scroll_projection_includes_document_ids_by_default():
     assert include_id is True
 
 
-@pytest.mark.parametrize("fl", [" name, id ", ["name,id"], [" name ", "id", None]])
+@pytest.mark.parametrize("fl", [" name, id ", ["name,id"], [" name ", "id"]])
 def test_scroll_projection_normalizes_string_and_list_field_requests(fl):
     assert select_safe_scroll_fields({"hit": _search_collection("name")}, fl) == (
         ["name", "id"],
         {"hit": ["name"]},
         True,
     )
+
+
+@pytest.mark.parametrize("fl", [{"secret": 1}, 5, ["name", None], [["name"]]])
+def test_scroll_projection_rejects_malformed_field_lists(fl):
+    with pytest.raises(SearchException, match="Field list must be a string or a list of strings"):
+        select_safe_scroll_fields({"hit": _search_collection("name")}, fl)
+
+
+@pytest.mark.parametrize("fl", [{"secret": 1}, ["name", None]])
+def test_scroll_search_rejects_malformed_field_lists_before_search(fl):
+    with (
+        patch("howler.services.search_service.get_collection") as mock_get_collection,
+        patch("howler.services.search_service.search") as mock_search,
+    ):
+        mock_get_collection.return_value.return_value = _search_collection("name")
+
+        with pytest.raises(SearchException, match="Field list must be a string or a list of strings"):
+            scroll_search("hit", "id:*", _user(), {"deep_paging_id": "*", "fl": fl}, None)
+
+    mock_search.assert_not_called()
+
+
+def test_user_scroll_allows_public_document_id_without_internal_include_flag():
+    user = _user()
+    with (
+        patch("howler.services.search_service.get_collection") as mock_get_collection,
+        patch("howler.services.search_service.search") as mock_search,
+    ):
+        mock_get_collection.return_value.return_value = _search_collection("name")
+        mock_search.return_value = {
+            "items": [{"__index": "user", "id": "user-id", "uname": "alice"}],
+            "next_deep_paging_id": None,
+            "offset": 0,
+            "rows": 1,
+            "total": 1,
+        }
+
+        result = scroll_search("user", "id:*", user, {"deep_paging_id": "*", "fl": "id"}, None)
+
+    assert mock_search.call_args.kwargs["include_id"] is True
+    assert result["items"] == [{"id": "user-id", "__index": "user"}]
 
 
 @pytest.mark.parametrize("fl", [None, "", [], "*", ["*", "not_stored"]])

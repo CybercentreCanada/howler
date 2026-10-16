@@ -104,8 +104,9 @@ def test_field_allowlist_includes_only_compound_parents_of_stored_paths():
         assert user_fields_allowed("user", "settings.theme") is True
         assert user_fields_allowed("user", "settings.unknown") is False
 
-    assert user_fields_allowed("user", "id") is False
-    assert user_fields_allowed("user", "id", include_id=True) is True
+
+def test_public_synthetic_document_id_is_allowed_for_user_search():
+    assert user_fields_allowed("user", "id") is True
 
 
 def test_mixed_search_prunes_non_user_fields_and_unknown_source_values_from_user_items():
@@ -205,6 +206,22 @@ def test_user_search_without_fields_returns_only_stored_fields(fl):
     source = client.search.call_args.kwargs["_source"]
     assert source == sorted(USER_STORED_FIELDS)
     assert not {"password", "apikeys", "access_control", "api_quota"} & set(source)
+
+
+def test_user_search_returns_public_synthetic_document_id_when_requested():
+    with patch("howler.services.search_service.datastore") as mock_datastore:
+        client = mock_datastore.return_value.ds.client
+        client.search.return_value = {
+            "hits": {
+                "total": {"value": 1},
+                "hits": [{"_index": "howler-user_hot", "_id": "user-1", "_source": {}}],
+            }
+        }
+
+        result = search("user", query="uname:alice", fl="id", user=_caller())
+
+    assert client.search.call_args.kwargs["_source"] == ["id"]
+    assert result["items"] == [{"__index": "user", "id": "user-1"}]
 
 
 def test_mixed_index_search_without_fields_is_rejected_before_querying():
