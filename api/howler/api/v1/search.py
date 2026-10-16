@@ -130,7 +130,7 @@ def search(index: str, user: User, **kwargs):
     if not query:
         return bad_request(err="There was no search query.")
 
-    if not search_service.user_fields_allowed(index, params.get("fl")):
+    if not search_service.user_fields_allowed(index, params.get("fl"), user):
         return forbidden(err="Invalid fields to retrieve.")
 
     try:
@@ -280,7 +280,7 @@ def eql_search(index: str, user: User, **kwargs):
     if not eql_query:
         return bad_request(err="There was no EQL search query.")
 
-    if not search_service.user_fields_allowed(index, params.get("fl")):
+    if not search_service.user_fields_allowed(index, params.get("fl"), user):
         return forbidden(err="Invalid fields to retrieve.")
 
     try:
@@ -364,7 +364,7 @@ def sigma_search(index: str, user: User, **kwargs):
 
     lucene_queries = LuceneBackend(index_names=[es_collection.index_name]).convert_rule(rule)
 
-    if not search_service.user_fields_allowed(index, params.get("fl")):
+    if not search_service.user_fields_allowed(index, params.get("fl"), user):
         return forbidden(err="Invalid fields to retrieve.")
 
     try:
@@ -441,7 +441,7 @@ def group_search(index: str, group_field: str, user: User, **kwargs):
     elif requested_fields is not None:
         fields_to_check.append(requested_fields)
 
-    if not search_service.user_fields_allowed(index, fields_to_check):
+    if not search_service.user_fields_allowed(index, fields_to_check, user):
         return forbidden(err="Invalid field to group on or retrieve.")
 
     try:
@@ -593,7 +593,7 @@ def facet(index: str, user: User, **kwargs):
                 logger.warning("Invalid field %s requested for faceting, skipping", field)
                 continue
 
-            if not search_service.user_fields_allowed(index, [field]):
+            if not search_service.user_fields_allowed(index, [field], user):
                 return forbidden(err="Invalid fields to facet on.")
 
             facet_result[field] = collection().facet(field, **params)
@@ -645,7 +645,7 @@ def facet_field(index: str, field: str, user: User, **kwargs):
     if field_info is None:
         return bad_request(err=f"Field '{field}' is not a valid field in index: {index}")
 
-    if not search_service.user_fields_allowed(index, [field]):
+    if not search_service.user_fields_allowed(index, [field], user):
         return forbidden(err="Invalid field to facet on.")
 
     fields = ["query", "mincount", "rows"]
@@ -705,7 +705,7 @@ def histogram(index: str, field: str, user: User, **kwargs):
     if collection is None:
         return bad_request(err=f"Not a valid index to search in: {index}")
 
-    if not search_service.user_fields_allowed(index, [field]):
+    if not search_service.user_fields_allowed(index, [field], user):
         return forbidden(err="Invalid field to histogram on.")
 
     # Get fields default values
@@ -772,7 +772,7 @@ def stats(index: str, int_field: str, user: User, **kwargs):
     if collection is None:
         return bad_request(err=f"Not a valid index to search in: {index}")
 
-    if not search_service.user_fields_allowed(index, [int_field]):
+    if not search_service.user_fields_allowed(index, [int_field], user):
         return forbidden(err="Invalid field to stats on.")
 
     field_info = collection().fields().get(int_field, None)

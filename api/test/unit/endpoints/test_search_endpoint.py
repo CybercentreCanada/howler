@@ -971,6 +971,61 @@ class TestAssignedHitScrollTokenScope:
     @patch("howler.api.v1.hit.hit_service.search")
     @patch("howler.security.login.auth_service")
     @patch("howler.security.login.QUOTA_TRACKER")
+    @patch("howler.security.login.audit")
+    @patch("howler.api.QUOTA_TRACKER")
+    def test_assigned_hit_scroll_returns_and_advances_with_a_token(
+        self,
+        mock_api_quota_tracker,
+        mock_audit,
+        mock_quota_tracker,
+        mock_auth_service,
+        mock_hit_search,
+        request_context: Flask,
+    ):
+        from howler.api.search_utils import resolve_deep_paging_id
+
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+        mock_hit_search.side_effect = [
+            {"items": [{"howler": {"id": "hit-1"}}], "next_deep_paging_id": "raw-first-scroll"},
+            {"items": [{"howler": {"id": "hit-2"}}], "next_deep_paging_id": "raw-second-scroll"},
+        ]
+        query = f"howler.assignment:{user.uname}"
+
+        with request_context.test_request_context(
+            method="GET",
+            query_string={"deep_paging_id": "*"},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v1.hit import get_assigned_hits
+
+            first_response: Response = get_assigned_hits(user=user)
+
+        first_result = first_response.get_json()["api_response"]
+        first_token = first_result["next_deep_paging_id"]
+        assert first_result["items"] == [{"howler": {"id": "hit-1"}}]
+        assert "raw-first-scroll" not in first_response.get_data(as_text=True)
+        assert resolve_deep_paging_id(user, "hit", first_token, query) == "raw-first-scroll"
+
+        with request_context.test_request_context(
+            method="GET",
+            query_string={"deep_paging_id": first_token},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v1.hit import get_assigned_hits
+
+            second_response: Response = get_assigned_hits(user=user)
+
+        second_result = second_response.get_json()["api_response"]
+        assert mock_hit_search.call_args_list[1].kwargs["deep_paging_id"] == "raw-first-scroll"
+        assert resolve_deep_paging_id(user, "hit", second_result["next_deep_paging_id"], query) == "raw-second-scroll"
+        assert mock_audit.call_count == 2
+        assert mock_api_quota_tracker.end.call_count == 2
+
+    @patch("howler.api.v1.hit.hit_service.search")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
     def test_assigned_hit_endpoint_rejects_token_for_another_query(
         self, mock_quota_tracker, mock_auth_service, mock_hit_search, request_context: Flask
     ):

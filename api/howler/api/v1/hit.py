@@ -16,7 +16,7 @@ from howler.api import (
     not_found,
     ok,
 )
-from howler.api.search_utils import resolve_deep_paging_id
+from howler.api.search_utils import issue_scroll_token, resolve_deep_paging_id
 from howler.api.v1.utils.etag import add_etag
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import (
@@ -539,13 +539,16 @@ def get_assigned_hits(user, **kwargs):
         ]
     }
 
+    When deep_paging_id is provided, the result includes the usual search metadata and a
+    tokenized next_deep_paging_id, which can be passed back to retrieve the next page.
+
     https://github.com/CybercentreCanada/howler-api/blob/main/howler/odm/models/hit.py
     """
     uname = user["uname"]
     query = f"howler.assignment:{sanitize_lucene_query(uname)}"
 
     try:
-        hits = hit_service.search(
+        result = hit_service.search(
             query=query,
             deep_paging_id=resolve_deep_paging_id(user, "hit", request.args.get("deep_paging_id", None), query),
             offset=request.args.get("offset", 0, type=int),  # type: ignore[union-attr]
@@ -555,11 +558,19 @@ def get_assigned_hits(user, **kwargs):
             timeout=request.args.get("timeout", None, type=int),
             filters=[user.access_control] if user.access_control else None,
             as_obj=False,
-        )["items"]
+        )
     except InvalidScrollTokenException:
         return forbidden(err="Invalid scroll ID for this user.")
 
-    return ok(hits)
+    next_scroll_id = result.get("next_deep_paging_id")
+    if next_scroll_id is not None:
+        result["next_deep_paging_id"] = issue_scroll_token(user, "hit", next_scroll_id, query)
+
+    # Keep the legacy list response unless the caller explicitly opts into deep paging.
+    if request.args.get("deep_paging_id") is not None:
+        return ok(result)
+
+    return ok(result["items"])
 
 
 @generate_swagger_docs()

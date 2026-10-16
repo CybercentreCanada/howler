@@ -39,8 +39,24 @@ _USER_FLAT_FIELDS = User.flat_fields()
 USER_STORED_FIELDS: frozenset[str] = frozenset(
     name for name, field in _USER_FLAT_FIELDS.items() if field.store and name not in BANNED_FIELDS
 )
-_USER_DENIED_ROOTS: frozenset[str] = frozenset(
-    {name.split(".")[0] for name in _USER_FLAT_FIELDS if name not in USER_STORED_FIELDS} | BANNED_FIELDS
+
+
+def _field_paths_with_compound_parents(field_names: set[str]) -> set[str]:
+    """Return stored field paths plus their valid compound-object parents."""
+    paths = set(field_names)
+    for field_name in field_names:
+        parts = field_name.split(".")
+        paths.update(".".join(parts[:depth]) for depth in range(1, len(parts)))
+    return paths
+
+
+_USER_ALLOWED_FIELD_PATHS = frozenset(_field_paths_with_compound_parents(set(USER_STORED_FIELDS)))
+_NON_STORED_USER_ROOTS = {name.split(".")[0] for name in _USER_FLAT_FIELDS if name not in USER_STORED_FIELDS}
+_USER_DENIED_ROOTS: frozenset[str] = (
+    frozenset(
+        root for root in _NON_STORED_USER_ROOTS if not any(name.startswith(f"{root}.") for name in USER_STORED_FIELDS)
+    )
+    | BANNED_FIELDS
 )
 
 logger = get_logger(__file__)
@@ -107,17 +123,89 @@ def _format_items(
     return items
 
 
-def user_fields_allowed(indexes: str | list[str], fl: str | list[str] | None) -> bool:
+def _other_index_stored_fields(indexes: list[str], user: User | None) -> set[str]:
+    """Return stored field paths for the non-user indexes in a mixed search."""
+    field_names: set[str] = set()
+    for index in indexes:
+        if index == "user":
+            continue
+
+        collection_factory = get_collection(index, user) if user is not None else INDEX_MAP.get(index)
+        if collection_factory is None:
+            continue
+
+        field_names.update(
+            name
+            for name, field in collection_factory().stored_fields.items()
+            if field.store and name not in BANNED_FIELDS
+        )
+
+    return _field_paths_with_compound_parents(field_names)
+
+
+def user_fields_allowed(
+    indexes: str | list[str],
+    fl: str | list[str] | None,
+    user: User | None = None,
+    include_id: bool = False,
+    allow_other_index_fields: bool = False,
+) -> bool:
     """Return False when a request for the user index names non-stored, banned, or wildcard fields.
 
-    Only stored user fields are safe to return. Anything else, including the credential fields and
-    wildcards that could expand to them, is refused. Requests for other indexes are not affected.
+    Only stored user fields (and the synthetic document ID when requested internally) are safe to return.
+    Anything else, including credential fields and wildcards that could expand to them, is refused. A mixed-index
+    request may also name stored fields from its other indexes when the caller applies an index-specific projection.
     """
-    if "user" not in _parse_index_list(indexes):
+    index_list = _parse_index_list(indexes)
+    if "user" not in index_list:
         return True
 
     names = _requested_field_names(fl)
-    return names is not None and all("*" not in name and name.split(".")[0] not in _USER_DENIED_ROOTS for name in names)
+    if names is None:
+        return False
+    if not names:
+        return True
+    if any("*" in name or name.split(".")[0] in _USER_DENIED_ROOTS for name in names):
+        return False
+
+    allowed_paths = _USER_ALLOWED_FIELD_PATHS
+    if allow_other_index_fields:
+        allowed_paths = allowed_paths | _other_index_stored_fields(index_list, user)
+    if include_id:
+        allowed_paths = allowed_paths | {"id"}
+    return all(name in allowed_paths for name in names)
+
+
+def _user_projection_fields(fl: str | list[str] | None) -> set[str]:
+    """Expand valid user field selections to stored leaf paths for safe result pruning."""
+    requested_fields = _requested_field_names(fl) or []
+    if not requested_fields:
+        return set(USER_STORED_FIELDS)
+
+    return {
+        field_name
+        for field_name in USER_STORED_FIELDS
+        if any(field_name == requested or field_name.startswith(f"{requested}.") for requested in requested_fields)
+    }
+
+
+def _project_user_index_items(
+    items: list[dict[str, Any]], indexes: list[str], fl: str | list[str] | None, include_id: bool = False
+) -> list[dict[str, Any]]:
+    """Restrict user results in mixed-index searches to their own stored-field projection."""
+    if "user" not in indexes:
+        return items
+
+    allowed_fields = {"user": sorted(_user_projection_fields(fl))}
+    projected_items: list[dict[str, Any]] = []
+    for item in items:
+        is_user_item = item.get("__index") == "user" or (len(indexes) == 1 and indexes[0] == "user")
+        if is_user_item:
+            projected_items.extend(prune_scroll_items([item], allowed_fields, include_id=include_id))
+        else:
+            projected_items.append(item)
+
+    return projected_items
 
 
 def search(  # noqa: C901
@@ -167,7 +255,7 @@ def search(  # noqa: C901
     index_list = _parse_index_list(indexes)
     _validate_search_indexes(index_list, user)
     if "user" in index_list:
-        if not user_fields_allowed(index_list, fl):
+        if not user_fields_allowed(index_list, fl, user, include_id, allow_other_index_fields=True):
             raise SensitiveUserFieldsException("Invalid fields to retrieve.")
         if not _requested_field_names(fl):
             if len(index_list) > 1:
@@ -258,11 +346,14 @@ def search(  # noqa: C901
     total = result.get("hits", {}).get("total", {}).get("value", 0)
     hits = result.get("hits", {}).get("hits", [])
 
+    items = _format_items(hits, user.classification if user else None, include_id=include_id)
+    items = _project_user_index_items(items, index_list, fl, include_id)
+
     response: SearchResult[dict[str, Any]] = {
         "offset": int(offset),
         "rows": len(hits),
         "total": int(total),
-        "items": _format_items(hits, user.classification if user else None, include_id=include_id),
+        "items": items,
     }
 
     next_deep_paging_id = result.get("_scroll_id")
@@ -318,7 +409,7 @@ def scroll_search(
 
     index_list = _parse_index_list(indexes)
     requested_fl = params.get("fl")
-    if not user_fields_allowed(index_list, requested_fl):
+    if not user_fields_allowed(index_list, requested_fl, user, allow_other_index_fields=True):
         raise SensitiveUserFieldsException("Invalid fields to retrieve.")
 
     scroll_collections: dict[str, ESCollection] = {}
@@ -451,7 +542,7 @@ def facet(
     if not index_list:
         raise SearchException("No indexes were provided.")
 
-    if not user_fields_allowed(index_list, fields):
+    if not user_fields_allowed(index_list, fields, user):
         raise SensitiveUserFieldsException("Invalid fields to facet on.")
 
     facet_result: dict[str, dict[str, Any]] = {field: {} for field in fields}

@@ -1,5 +1,6 @@
 """Field-safety checks for user-index searches, covering comma strings, JSON lists, wildcards, and defaults."""
 
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -8,6 +9,8 @@ from howler.datastore.exceptions import SearchException
 from howler.services.search_service import (
     USER_STORED_FIELDS,
     SensitiveUserFieldsException,
+    _field_paths_with_compound_parents,
+    _project_user_index_items,
     facet,
     search,
     user_fields_allowed,
@@ -42,6 +45,9 @@ def _caller(access_control: str | None = None) -> _Caller:
         ("user", "access_control"),
         ("user", ["uname", "api_quota"]),
         ("user", "dashboard.config"),
+        ("user", "dashboard.unknown"),
+        ("user", "unknown_field"),
+        ("user", "name.internal"),
         ("user", "__access_lvl__"),
         ("user", {"password": 1}),
         ("user", {"password"}),
@@ -67,11 +73,100 @@ def test_user_index_rejects_credential_wildcard_or_non_stored_fields(indexes, fl
         ("user", ["uname", "groups"]),
         ("hit", ["*"]),
         ("hit,event", ["password"]),
-        ("hit,user", ["howler.id", "uname"]),
     ],
 )
 def test_safe_or_non_user_requests_are_allowed(indexes, fl):
     assert user_fields_allowed(indexes, fl) is True
+
+
+def test_mixed_index_fields_must_belong_to_a_requested_index_schema():
+    hit_collection = SimpleNamespace(stored_fields={"howler.id": SimpleNamespace(store=True)})
+
+    with patch("howler.services.search_service.INDEX_MAP", {"hit": lambda: hit_collection}):
+        assert user_fields_allowed("hit,user", ["howler.id", "uname"]) is False
+        assert user_fields_allowed("hit,user", ["howler.id", "uname"], allow_other_index_fields=True) is True
+        assert user_fields_allowed("hit,user", ["unknown_field", "uname"], allow_other_index_fields=True) is False
+
+
+def test_field_allowlist_includes_only_compound_parents_of_stored_paths():
+    allowed_paths = _field_paths_with_compound_parents({"settings.theme", "username"})
+    assert allowed_paths == {
+        "settings",
+        "settings.theme",
+        "username",
+    }
+
+    with (
+        patch("howler.services.search_service._USER_ALLOWED_FIELD_PATHS", frozenset(allowed_paths)),
+        patch("howler.services.search_service._USER_DENIED_ROOTS", frozenset()),
+    ):
+        assert user_fields_allowed("user", "settings") is True
+        assert user_fields_allowed("user", "settings.theme") is True
+        assert user_fields_allowed("user", "settings.unknown") is False
+
+    assert user_fields_allowed("user", "id") is False
+    assert user_fields_allowed("user", "id", include_id=True) is True
+
+
+def test_mixed_search_prunes_non_user_fields_and_unknown_source_values_from_user_items():
+    items = [
+        {
+            "__index": "user",
+            "uname": "alice",
+            "howler": {"id": "not-a-user-field"},
+            "dashboard": [{"config": "safe", "unexpected": "not-stored"}],
+        },
+        {"__index": "hit", "howler": {"id": "hit-1"}},
+    ]
+
+    assert _project_user_index_items(items, ["hit", "user"], ["uname", "howler.id"]) == [
+        {"__index": "user", "uname": "alice"},
+        {"__index": "hit", "howler": {"id": "hit-1"}},
+    ]
+
+
+def test_user_projection_keeps_document_id_when_scroll_requests_it():
+    item = {"__index": "user", "id": "user-id", "uname": "alice"}
+
+    assert _project_user_index_items([item], ["user"], None, include_id=True) == [item]
+
+
+def test_mixed_index_search_only_returns_stored_user_fields_from_user_documents():
+    hit_collection = SimpleNamespace(stored_fields={"howler.id": SimpleNamespace(store=True)})
+
+    with (
+        patch("howler.services.search_service.datastore") as mock_datastore,
+        patch("howler.services.search_service.get_collection", return_value=lambda: hit_collection),
+    ):
+        storage = mock_datastore.return_value
+        client = storage.ds.client
+        client.search.return_value = {
+            "hits": {
+                "total": {"value": 2},
+                "hits": [
+                    {
+                        "_index": "howler-user_hot",
+                        "_source": {"uname": "alice", "howler": {"id": "unexpected-user-data"}},
+                    },
+                    {"_index": "howler-hit_hot", "_source": {"howler": {"id": "hit-1"}}},
+                ],
+            }
+        }
+
+        result = search(["hit", "user"], query="*:*", fl=["howler.id", "uname"], user=_caller())
+
+    assert result["items"] == [
+        {"__index": "user", "uname": "alice"},
+        {"__index": "hit", "howler": {"id": "hit-1"}},
+    ]
+
+
+def test_mixed_index_facet_rejects_fields_without_a_user_allowlist_entry():
+    with patch("howler.services.search_service.datastore") as mock_datastore:
+        with pytest.raises(SensitiveUserFieldsException):
+            facet(["hit", "user"], ["howler.id"], user=_caller())
+
+    mock_datastore.assert_not_called()
 
 
 def test_stored_user_fields_exclude_credentials_and_non_stored_fields():
@@ -79,7 +174,18 @@ def test_stored_user_fields_exclude_credentials_and_non_stored_fields():
     assert not {"password", "apikeys", "access_control", "api_quota"} & USER_STORED_FIELDS
 
 
-@pytest.mark.parametrize("fl", [["apik*"], ["pass*"], "*", {"password": 1}, ["access_control"]])
+@pytest.mark.parametrize(
+    "fl",
+    [
+        ["apik*"],
+        ["pass*"],
+        "*",
+        {"password": 1},
+        ["access_control"],
+        ["unknown_field"],
+        ["dashboard.unknown"],
+    ],
+)
 def test_search_rejects_credential_wildcards_before_querying(fl):
     with patch("howler.services.search_service.datastore") as mock_datastore:
         with pytest.raises(SensitiveUserFieldsException):
