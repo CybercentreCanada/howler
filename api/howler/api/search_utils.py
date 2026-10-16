@@ -30,7 +30,7 @@ _jwe = JsonWebEncryption(algorithms=["A256GCMKW", "A256GCM"])
 
 
 def select_safe_scroll_fields(
-    search_collections: Mapping[str, ESCollection], fl: Any
+    search_collections: Mapping[str, ESCollection], fl: str | list[str] | None
 ) -> tuple[list[str], dict[str, list[str]], bool]:
     """Build the Elasticsearch source projection and per-index stored-field allowlists."""
     if isinstance(fl, str):
@@ -65,12 +65,14 @@ def select_safe_scroll_fields(
     return source_fields, allowed_fields_by_index, include_id
 
 
-def _remove_banned_scroll_fields(value: Any) -> Any:
+def _remove_banned_scroll_fields(value: dict | list | str) -> Any:
     """Remove banned field names at every level of a scroll result."""
     if isinstance(value, dict):
         return {key: _remove_banned_scroll_fields(item) for key, item in value.items() if key not in BANNED_FIELDS}
+
     if isinstance(value, list):
         return [_remove_banned_scroll_fields(item) for item in value]
+
     return value
 
 
@@ -151,7 +153,7 @@ def issue_scroll_token(user: User, indexes: str, scroll_id: str, query: str) -> 
     return _jwe.serialize_compact(dict(_SCROLL_TOKEN_HEADER), payload, _scroll_token_key()).decode("ascii")
 
 
-def read_scroll_token(token: Any) -> dict[str, str]:
+def read_scroll_token(token: str) -> dict[str, str]:
     """Decrypt and authenticate a scroll token, returning its claims without checking who is asking."""
     if not isinstance(token, str) or len(token) > _MAX_SCROLL_TOKEN_LENGTH:
         raise InvalidScrollTokenException("Malformed scroll token.")
@@ -168,7 +170,7 @@ def read_scroll_token(token: Any) -> dict[str, str]:
     return cast(dict[str, str], claims)
 
 
-def resolve_deep_paging_id(user: User, indexes: str, deep_paging_id: Any, query: str) -> str | None:
+def resolve_deep_paging_id(user: User, indexes: str, deep_paging_id: str | None, query: str) -> str | None:
     """Translate a client deep-paging value into the scroll ID the search service continues.
 
     ``None`` and ``*`` pass through unchanged. Any other value must be a token issued to this user for the same

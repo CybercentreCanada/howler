@@ -5,7 +5,14 @@ from typing import Any
 import elasticsearch
 from elasticsearch import Elasticsearch
 
-from howler.api.search_utils import read_scroll_token
+from howler.api.search_utils import (
+    issue_scroll_token,
+    prune_scroll_items,
+    read_scroll_token,
+    resolve_deep_paging_id,
+    select_safe_scroll_fields,
+    validate_scroll_keep_alive,
+)
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.collection import ESCollection, parse_sort
@@ -53,7 +60,7 @@ def _validate_search_indexes(index_list: list[str], user: User | None) -> None:
             raise SearchException(f"Not a valid index to search in: {index}")
 
 
-def _requested_field_names(fl: Any) -> list[str] | None:
+def _requested_field_names(fl: list[str] | str | None) -> list[str] | None:
     """Split a field request into names, or return None when the request has an unsupported shape."""
     if fl is None:
         return []
@@ -100,7 +107,7 @@ def _format_items(
     return items
 
 
-def user_fields_allowed(indexes: str | list[str], fl: Any) -> bool:
+def user_fields_allowed(indexes: str | list[str], fl: str | list[str] | None) -> bool:
     """Return False when a request for the user index names non-stored, banned, or wildcard fields.
 
     Only stored user fields are safe to return. Anything else, including the credential fields and
@@ -303,17 +310,9 @@ def clear_owned_scroll(user: User, scroll_token: Any) -> dict[str, Any]:
 
 
 def scroll_search(
-    indexes: str, query: str, user: User, params: dict[str, Any], scroll: Any
+    indexes: str, query: str, user: User, params: dict[str, Any], scroll: str | None
 ) -> SearchResult[dict[str, Any]]:
     """Open or continue a deep-paging scroll with user-bound tokens, access control, and field projection."""
-    from howler.api.search_utils import (
-        issue_scroll_token,
-        prune_scroll_items,
-        resolve_deep_paging_id,
-        select_safe_scroll_fields,
-        validate_scroll_keep_alive,
-    )
-
     if not isinstance(query, str):
         raise SearchException("Search query must be a string.")
 
