@@ -9,10 +9,11 @@ from typing import TYPE_CHECKING, Any, Iterable, Optional
 
 from howler import odm
 from howler.datastore.exceptions import SearchException
-from howler.odm.base import BANNED_FIELDS, _Field
+from howler.odm.constants import BANNED_FIELDS
 
 if TYPE_CHECKING:
     from howler.datastore.collection import ESCollection
+    from howler.odm.base import _Field
 
 
 def expand_field_patterns(
@@ -92,7 +93,7 @@ def field_paths_with_parents(field_names: Iterable[str]) -> set[str]:
     return paths
 
 
-def stored_field_paths(fields: ABCMapping[str, _Field]) -> set[str]:
+def stored_field_paths(fields: ABCMapping[str, "_Field"]) -> set[str]:
     """Return stored, non-internal source paths from ODM field metadata."""
     return {name for name, field in fields.items() if field.store and name not in BANNED_FIELDS}
 
