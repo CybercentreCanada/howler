@@ -13,12 +13,11 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.logging.audit import audit
 from howler.common.swagger import generate_swagger_docs
-from howler.datastore.exceptions import SearchException, SearchRetryException
+from howler.datastore.exceptions import SearchException, SearchRetryException, SensitiveUserFieldsException
 from howler.helper.search import get_collection, has_access_control
 from howler.odm.models.user import User
 from howler.security.login import api_login
 from howler.services import hit_service, lucene_service, search_service
-from howler.services.search_service import SensitiveUserFieldsException
 from howler.utils.net_utils import generate_params
 
 SUB_API = "search"
@@ -126,6 +125,8 @@ def search(indexes: str, user: User, **kwargs):
         return forbidden(err=e.message)
     except InvalidScrollTokenException:
         return forbidden(err="Invalid scroll ID for this user or search.")
+    except SearchRetryException:
+        return service_unavailable(err="The search service is temporarily unavailable. Please retry.")
     except (SearchException, BadRequestError) as e:
         logger.exception(f"SearchException on query {query}")
         return bad_request(err=f"SearchException on query {query}: {str(e)}")

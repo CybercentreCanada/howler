@@ -282,11 +282,14 @@ def clear_scroll(scroll_id: str) -> dict[str, Any]:
     try:
         return dict(client.clear_scroll(scroll_id=scroll_id).body)
     except (elasticsearch.exceptions.ConnectionError, elasticsearch.exceptions.ConnectionTimeout) as error:
-        raise SearchRetryException(f"scroll_id: {scroll_id}, error: {str(error)}") from error
+        logger.exception("Failed to clear Elasticsearch scroll")
+        raise SearchRetryException("The scroll context could not be cleared. Please retry.") from error
     except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.RequestError) as error:
-        raise SearchException(str(error)) from error
+        logger.exception("Failed to clear Elasticsearch scroll")
+        raise SearchException("The scroll context could not be cleared.") from error
     except Exception as error:
-        raise SearchException(f"scroll_id: {scroll_id}, error: {str(error)}") from error
+        logger.exception("Failed to clear Elasticsearch scroll")
+        raise SearchException("The scroll context could not be cleared.") from error
 
 
 def clear_owned_scroll(user: User, scroll_token: Any) -> dict[str, Any]:

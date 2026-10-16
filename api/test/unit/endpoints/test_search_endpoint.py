@@ -400,6 +400,51 @@ class TestSearch:
         assert "raw-es-scroll" not in result.get_data(as_text=True)
         assert "connection reset" not in result.get_data(as_text=True)
 
+    @pytest.mark.parametrize(
+        ("api_module", "route_args"),
+        [
+            ("howler.api.v1.search", {"index": "hit"}),
+            ("howler.api.v2.search", {"indexes": "hit"}),
+        ],
+    )
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_scroll_search_retry_failure_returns_sanitized_503(
+        self,
+        mock_quota_tracker,
+        mock_auth_service,
+        api_module: str,
+        route_args: dict[str, str],
+        request_context: Flask,
+    ):
+        from howler.datastore.exceptions import SearchRetryException
+
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R"])
+        mock_quota_tracker.begin.return_value = True
+
+        with (
+            patch(
+                f"{api_module}.search_service.scroll_search",
+                side_effect=SearchRetryException("raw-scroll-id: connection reset"),
+            ),
+            patch(f"{api_module}.get_collection", return_value=MagicMock()) as mock_get_collection,
+            patch(f"{api_module}.get_default_sort", create=True, return_value="id asc"),
+        ):
+            with request_context.test_request_context(
+                method="POST",
+                json={"query": "id:*", "deep_paging_id": "*"},
+                headers={"Authorization": "Bearer ."},
+            ):
+                search = importlib.import_module(api_module).search
+                result: Response = search(user=user, **route_args)
+
+        assert result.status_code == 503
+        assert "raw-scroll-id" not in result.get_data(as_text=True)
+        assert "connection reset" not in result.get_data(as_text=True)
+        if api_module.endswith("v1.search"):
+            mock_get_collection.assert_called_once_with("hit", user)
+
     @patch("howler.api.v2.search.search_service")
     @patch("howler.security.login.auth_service")
     def test_search_normalizes_sort(self, mock_auth_service, mock_search_svc, request_context: Flask):

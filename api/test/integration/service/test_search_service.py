@@ -6,6 +6,7 @@ import pytest
 
 from howler.common.loader import DATASTORE_INDEX_PREFIX
 from howler.datastore.exceptions import SearchException, SearchRetryException
+from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
 from howler.odm.random_data import (
     create_events,
@@ -19,6 +20,14 @@ from howler.odm.randomizer import random_model_obj
 from howler.services import search_service
 
 TEST_SIZE = 12
+
+
+def _stored_hit_collection() -> SimpleNamespace:
+    """Build a collection fixture with the real Hit model's stored-field metadata."""
+    return SimpleNamespace(
+        model_class=Hit,
+        stored_fields={name: field for name, field in Hit.flat_fields().items() if field.store},
+    )
 
 
 @pytest.fixture(scope="module")
@@ -617,7 +626,10 @@ class TestSearch:
 
         mock_client.search.return_value = {"hits": {"total": {"value": 0}, "hits": []}}
 
-        search_service.search("hit", query="*:*", fl="howler.id,event.kind")
+        with patch(
+            "howler.services.search_service.INDEX_MAP", {"hit": MagicMock(return_value=_stored_hit_collection())}
+        ):
+            search_service.search("hit", query="*:*", fl="howler.id,event.kind")
 
         call_kwargs = mock_client.search.call_args
         assert set(call_kwargs.kwargs["_source"]) == {"howler.id", "event.kind"}
@@ -632,7 +644,10 @@ class TestSearch:
 
         mock_client.search.return_value = {"hits": {"total": {"value": 0}, "hits": []}}
 
-        search_service.search("hit", query="*:*", fl=["howler.id"])
+        with patch(
+            "howler.services.search_service.INDEX_MAP", {"hit": MagicMock(return_value=_stored_hit_collection())}
+        ):
+            search_service.search("hit", query="*:*", fl=["howler.id"])
 
         call_kwargs = mock_client.search.call_args
         assert call_kwargs.kwargs["_source"] == ["howler.id"]
@@ -647,7 +662,10 @@ class TestSearch:
 
         mock_client.search.return_value = {"hits": {"total": {"value": 0}, "hits": []}}
 
-        search_service.search("hit", query="*:*", fl=None)
+        with patch(
+            "howler.services.search_service.INDEX_MAP", {"hit": MagicMock(return_value=_stored_hit_collection())}
+        ):
+            search_service.search("hit", query="*:*", fl=None)
 
         call_kwargs = mock_client.search.call_args
         source_fields = call_kwargs.kwargs["_source"]
@@ -848,8 +866,10 @@ class TestSearch:
             "N/A", "scroll service unavailable"
         )
 
-        with pytest.raises(SearchRetryException):
+        with pytest.raises(SearchRetryException) as raised:
             search_service.clear_scroll("scroll-abc")
+
+        assert "scroll-abc" not in str(raised.value)
 
     @patch("howler.services.search_service.datastore")
     def test_clear_scroll_transport_error_raises_search_exception(self, mock_ds_fn):
@@ -860,8 +880,28 @@ class TestSearch:
         mock_ds_fn.return_value = mock_ds
         mock_client.clear_scroll.side_effect = elasticsearch.exceptions.TransportError("bad request")
 
-        with pytest.raises(SearchException, match="bad request"):
-            search_service.clear_scroll("scroll-abc")
+        with patch.object(search_service.logger, "exception") as mock_log:
+            with pytest.raises(SearchException, match="scroll context could not be cleared") as raised:
+                search_service.clear_scroll("raw-scroll-id")
+
+        assert "raw-scroll-id" not in str(raised.value)
+        mock_log.assert_called_once_with("Failed to clear Elasticsearch scroll")
+
+    @patch("howler.services.search_service.datastore")
+    def test_clear_scroll_unexpected_error_is_sanitized(self, mock_ds_fn):
+        """Unexpected clear failures do not expose the decrypted scroll ID."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+        mock_client.clear_scroll.side_effect = RuntimeError("backend failure")
+
+        with patch.object(search_service.logger, "exception") as mock_log:
+            with pytest.raises(SearchException, match="scroll context could not be cleared") as raised:
+                search_service.clear_scroll("raw-scroll-id")
+
+        assert "raw-scroll-id" not in str(raised.value)
+        mock_log.assert_called_once_with("Failed to clear Elasticsearch scroll")
 
     @patch("howler.services.search_service.datastore")
     def test_deep_paging_clears_scroll_when_exhausted(self, mock_ds_fn):

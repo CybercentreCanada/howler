@@ -63,7 +63,7 @@ def clear_scroll(user: User, **kwargs):
 @generate_swagger_docs()
 @search_api.route("/<index>", methods=["GET", "POST"])
 @api_login(required_priv=["R"])
-def search(index: str, user: User, **kwargs):
+def search(index: str, user: User, **kwargs):  # noqa: C901
     """Search through specified index for a given query. Uses lucene search syntax for query.
 
     Variables:
@@ -152,6 +152,8 @@ def search(index: str, user: User, **kwargs):
         return forbidden(err=e.message)
     except InvalidScrollTokenException:
         return forbidden(err="Invalid scroll ID for this user or search.")
+    except SearchRetryException:
+        return service_unavailable(err="The search service is temporarily unavailable. Please retry.")
     except (SearchException, BadRequestError) as e:
         return bad_request(err=f"SearchException: {e}")
 
