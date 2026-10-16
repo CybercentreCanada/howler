@@ -12,14 +12,9 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import SearchException, SearchRetryException
 from howler.datastore.types import SearchResult
+from howler.odm import constants
 from howler.odm.base import (
-    DOMAIN_ONLY_REGEX,
-    EMAIL_REGEX,
     IP,
-    IP_ONLY_REGEX,
-    MD5_REGEX,
-    SHA1_REGEX,
-    SHA256_REGEX,
     List,
     Optional,
     Text,
@@ -41,12 +36,12 @@ def _escape_query_string(query: str) -> str:
 
 
 # Compiled regexes from ODM base for token type detection
-_IP_RE = re.compile(IP_ONLY_REGEX)
-_MD5_RE = re.compile(MD5_REGEX, re.IGNORECASE)
-_SHA1_RE = re.compile(SHA1_REGEX, re.IGNORECASE)
-_SHA256_RE = re.compile(SHA256_REGEX, re.IGNORECASE)
-_EMAIL_RE = re.compile(EMAIL_REGEX)
-_DOMAIN_RE = re.compile(DOMAIN_ONLY_REGEX)
+_IP_RE = re.compile(constants.IP_ONLY_REGEX)
+_MD5_RE = re.compile(constants.MD5_REGEX, re.IGNORECASE)
+_SHA1_RE = re.compile(constants.SHA1_REGEX, re.IGNORECASE)
+_SHA256_RE = re.compile(constants.SHA256_REGEX, re.IGNORECASE)
+_EMAIL_RE = re.compile(constants.EMAIL_REGEX)
+_DOMAIN_RE = re.compile(constants.DOMAIN_ONLY_REGEX)
 # FULL_URI is too permissive for token detection (matches bare domains).
 # Use a scheme-prefix check to identify URLs specifically.
 _URL_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+\-.]*://", re.IGNORECASE)

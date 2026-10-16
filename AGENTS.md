@@ -13,7 +13,7 @@
 ## Toolchains And Setup
 
 - Use Poetry for every Python package; do not install Python dependencies from the repository root.
-- The API quality environment is Python 3.12 (`api/.python-version`); CI also tests the API, client, and plugins on Python 3.10-3.13 as applicable.
+- Python CI quality jobs run on Python 3.12 (`api/.python-version`). Test matrices differ: API 3.10-3.13; client, Evidence, and Sentinel 3.10-3.12; Sync and MCP 3.12 only.
 - The UI's `.nvmrc` says Node 20, while current UI CI uses Node 24 and pnpm 11. Use pnpm, never npm, and honor `ui/pnpm-lock.yaml`.
 - After changing a lockfile or dependency declaration, reinstall that package with its lockfile before validating it.
 
@@ -65,10 +65,63 @@ pnpm test <specific_test_file_paths>
 
 - Client: from `client/`, run `poetry install --with dev,test,types`, then `poetry run ruff format howler_client --diff`, `poetry run ruff check howler_client --output-format=github`, `poetry run type_check`, and `poetry run test`. A focused test is `poetry run test test/unit/test_case.py -k name`.
 - Client integration tests need the API environment configured as above, an API server, and `docker compose -f client/test/docker-compose.yml up -d` for Elasticsearch and Redis. CI seeds API data with `poetry run python -m howler.odm.random_data`.
-- Evidence and Sentinel: from the plugin directory, install with `poetry install --with dev`, run Ruff against `evidence` or `sentinel`, run `poetry run type_check`, and use direct pytest for tests, for example `poetry run pytest test/unit -vv`. Their tests import the API package and may need the API config files and services.
-- Sync: install from `plugins/sync/` with `poetry install --with dev`; unit tests are local, but integration tests require Elasticsearch and create/clean randomized Howler users and hits.
+- Evidence and Sentinel: from the plugin directory, install with `poetry install --with dev,types`, run Ruff against `evidence` or `sentinel`, run `poetry run type_check`, and use direct pytest for tests, for example `poetry run pytest test/unit -vv`. Their tests import the API package and may need the API config files and services.
+- Sync: install from `plugins/sync/` with `poetry install --with dev,types`; unit tests are local, but integration tests require Elasticsearch and create/clean randomized Howler users and hits.
 - MCP: from `mcp/`, run `poetry install --with dev`, `poetry run ruff format howler_mcp --diff`, `poetry run ruff check howler_mcp --output-format=github`, and `poetry run test`. Use `poetry run test test/test_tools.py -k name` for a focused unit test.
 - MCP live tests in `test/test_network.py` are skipped unless `RUN_MCP_NETWORK_TESTS=1`, `TEST_AUTH_USERNAME`, `TEST_AUTH_PASSWORD`, and `TEST_AUTH_EMAIL` are set. They require the `mcp/docker-compose.yml` full stack, seeded API data, and a running MCP server; see `.github/workflows/mcp-workflow.yml` for the exact orchestration.
+
+## Python CI Workflows
+
+The Python workflows in `.github/workflows/` are the source of truth for CI. To reproduce a job, run its steps in order from the package directory unless a step names another one. Publish jobs run only for stable release tags, so never run `poetry publish` or Docker pushes locally.
+
+### API (`api-workflow.yml`)
+
+- Quality job (Python 3.12, `api/`): `poetry install --with test,dev`, then the commands in "API Development And Validation". Also run hadolint on the Dockerfile with `hadolint --ignore DL3018 --failure-threshold warning api/Dockerfile`; CI uses `hadolint/hadolint-action`.
+- Test job (Python 3.10-3.13, `api/`):
+  1. Run `docker compose -f api/dev/docker-compose.yml up --build -d`, then apply the config setup from the API section.
+  2. Run `poetry install --with test,dev`, then `poetry run mitre /etc/howler/lookups` and `poetry run sigma`.
+  3. Run `poetry run python build_scripts/docker_health.py`.
+  4. Run `poetry run test <paths>`. The wrapper starts its own Flask server, so do not also run `poetry run server`. CI runs the full suite; locally, use targeted paths.
+  5. After a passing run, run `poetry run coverage_report`.
+
+### Client (`client-workflow.yml`)
+
+- Quality job (Python 3.12, `client/`): CI installs only `--with test`, but ruff and mypy live in the `dev` group. Locally, use `poetry install --with dev,test,types`, then the ruff and `type_check` commands above.
+- Test job (Python 3.10-3.12, `client/`):
+  1. From `api/`, apply the API config setup, but copy `../client/test/config/config.ci.yml` to `/etc/howler/conf/config.yml` instead of `test/unit/config.yml`.
+  2. From `api/`, run `poetry install --with test,dev`, then `poetry run mitre /etc/howler/lookups` and `poetry run sigma`.
+  3. Run `docker compose -f client/test/docker-compose.yml up -d` for Elasticsearch and Redis.
+  4. From `api/`, start the API in the background with `TESTING=true poetry run flask --app howler.app run --no-reload &`, and wait until `curl --fail http://localhost:5000/api/apispec_v1.json` succeeds.
+  5. From `api/`, run `poetry run python -m howler.odm.random_data`.
+  6. From `client/`, run `poetry install --with test`, then `poetry run test`. Passing paths gives a focused run without coverage.
+  7. Stop the background Flask process when finished.
+
+### MCP (`mcp-workflow.yml`)
+
+- Quality job (Python 3.12, `mcp/`): `poetry install --with dev`, then the ruff format and check commands above. MCP has no type-check job.
+- Test job (Python 3.12, `mcp/`) needs the full stack:
+  1. From `mcp/`, run `docker compose -f docker-compose.yml --profile full up -d howler-api elasticsearch redis keycloak`.
+  2. Seed the API with `docker compose -f docker-compose.yml exec -T howler-api python -m howler.odm.random_data users hits`.
+  3. Start the server in the background with `HOWLER_API_HOST=localhost`, `HOWLER_API_BASE_URL=http://localhost:5000/api/v1`, `AUTH_HOST=localhost`, `AUTH_TOKEN_URL=http://localhost:9100/realms/HogwartsMini/protocol/openid-connect/token`, `COVERAGE_FILE=.coverage.server`, and `poetry run coverage run -m howler_mcp.server`. Wait until `curl http://localhost:8000/mcp` responds.
+  4. Run `poetry run test` with `RUN_MCP_NETWORK_TESTS=1`, `HOWLER_API_BASE_URL=http://localhost:5000/api/v1`, `COVERAGE_FILE=.coverage.tests`, and the `AUTH_*` and `TEST_AUTH_*` values from the job env in `mcp-workflow.yml`.
+  5. Stop the server, then run `poetry run coverage combine`.
+
+### Evidence, Sentinel, and Sync Plugins
+
+- Quality jobs (Python 3.12, plugin directory): run `poetry check --lock`, `poetry install --with dev,types`, then ruff format and check on the package. Evidence and Sentinel then run `poetry run type_check`. Sync runs `poetry run python -m mypy --disable-error-code=import-untyped sync` instead; the workflow comment says this is for PyYAML's missing stubs.
+- Evidence test job (Python 3.10-3.12, `plugins/evidence/`): apply the API config setup, run `poetry install --with dev,types`, `poetry run mitre /etc/howler/lookups`, and `poetry run sigma`, then `poetry run pytest --cov=evidence --cov-branch -rP -vv` and `poetry run python build_scripts/coverage_reports.py`. No services are needed.
+- Sentinel test job (Python 3.10-3.12, `plugins/sentinel/`): run `docker compose -f api/dev/docker-compose.yml up --build -d`, apply the API config setup, and install with mitre and sigma as above. Wait up to 180 seconds for Elasticsearch `_cluster/health` (green or yellow) and Redis `PING`, then run `poetry run pytest --cov=sentinel --cov-branch -rP -vv test/unit` and the coverage report script.
+- Sync test job (Python 3.12, `plugins/sync/`): install JDK 17 (CI uses Temurin, which Spark needs), then use the same services, config, and readiness wait as Sentinel. Run `poetry run pytest --cov=sync --cov-branch -rP -vv test/unit test/integration` and the coverage report script. Integration tests create and clean randomized Howler users and hits in Elasticsearch.
+
+### Release Validation And Documentation
+
+- `release-validation.yml` is a reusable, read-only job. It runs `python scripts/validate_release.py` on Python 3.12 to resolve the preview or stable channel from native package metadata and tags. Run it only when changing release logic, and only with the GitHub Actions environment variables listed in the script docstring.
+- `deploy-documentation.yml` runs on `main` pushes that change `documentation/` or `docs/`. It installs `mkdocs-material`, `mkdocs-static-i18n`, and `mkdocs-glightbox` with pip, then runs `mkdocs gh-deploy --force` in `documentation/`. For a local preview, run `mkdocs serve` in `documentation/`. Do not run `gh-deploy` unless asked, because it pushes the built site to the `gh-pages` branch.
+
+### Remote Runs And Generated Files
+
+- Every Python workflow has a `workflow_dispatch` trigger. Dispatch only when asked, for example `gh workflow run api-workflow.yml --ref <branch>`. Leave `publish_release` at `false`, because `true` publishes stable artifacts. Check results with `gh run list --workflow api-workflow.yml` and `gh run view <run-id> --log-failed`.
+- Test and coverage reports (`test-results.md`, `coverage-results.md`, and any `diff.txt` used for diff coverage) are written into package directories and are not gitignored. Remove them before committing.
 
 ## Cross-Cutting Workflow
 

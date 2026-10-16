@@ -6,6 +6,8 @@ import pytest
 
 from howler.datastore.collection import ESCollection
 from howler.datastore.howler_store import HowlerDatastore
+from howler.datastore.utils import project_stored_fields
+from howler.odm.base import BANNED_FIELDS
 from howler.odm.models.hit import Hit
 from howler.odm.random_data import (
     create_hits,
@@ -70,6 +72,356 @@ def test_deep_search(datastore, login_session):
         assert len(res) >= TEST_SIZE
 
 
+def test_search_scroll_keepalive_until_terminal_batch(datastore, login_session):
+    """The v1 endpoint can advance a custom scroll until Elasticsearch returns a terminal batch."""
+    session, host = login_session
+
+    count = get_api_data(
+        session,
+        f"{host}/api/v1/search/count/user/",
+        method="POST",
+        data=json.dumps({"query": "id:*"}),
+    )["count"]
+    assert count > 0
+
+    params = {"query": "id:*", "rows": count, "deep_paging_id": "*", "scroll": "1m"}
+    first_page = get_api_data(
+        session,
+        f"{host}/api/v1/search/user/",
+        method="POST",
+        data=json.dumps(params),
+    )
+    first_page_items = first_page["items"]
+    assert len(first_page_items) == count
+    assert first_page.get("next_deep_paging_id")
+
+    item_count = len(first_page_items)
+    for item in first_page_items:
+        assert "id" in item
+        assert "uname" in item
+        assert "password" not in item
+        assert "apikeys" not in item
+        assert "apikeys.password" not in item
+
+    params["deep_paging_id"] = first_page["next_deep_paging_id"]
+    received_empty_batch = False
+    while True:
+        response = get_api_data(
+            session,
+            f"{host}/api/v1/search/user/",
+            method="POST",
+            data=json.dumps(params),
+        )
+
+        page_items = response["items"]
+        item_count += len(page_items)
+        for item in page_items:
+            assert "id" in item
+            assert "uname" in item
+            assert "password" not in item
+            assert "apikeys" not in item
+            assert "apikeys.password" not in item
+
+        if not page_items:
+            received_empty_batch = True
+            break
+
+        next_scroll_id = response.get("next_deep_paging_id")
+        if not next_scroll_id:
+            break
+
+        params["deep_paging_id"] = next_scroll_id
+
+    assert received_empty_batch
+    assert item_count == count
+
+
+@pytest.mark.parametrize("fl", [["password"], ["uname", "apikeys.password"]])
+def test_scroll_user_field_selection_rejects_credential_fields(datastore, login_session, fl):
+    """Explicit non-stored fields are refused by the common search policy."""
+    session, host = login_session
+
+    with pytest.raises(APIError) as api_err:
+        get_api_data(
+            session,
+            f"{host}/api/v1/search/user/",
+            method="POST",
+            data=json.dumps({"query": "id:*", "rows": 1, "deep_paging_id": "*", "scroll": "1m", "fl": fl}),
+        )
+
+    assert "400" in str(api_err)
+
+
+@pytest.mark.parametrize("fl", [["uname", "apikeys.*"], ["pass*"], ["*"]])
+def test_scroll_user_wildcards_cannot_expose_credentials(datastore, login_session, fl):
+    session, host = login_session
+    result = get_api_data(
+        session,
+        f"{host}/api/v1/search/user/",
+        method="POST",
+        data=json.dumps({"query": "id:*", "rows": 1, "deep_paging_id": "*", "fl": fl}),
+    )
+    assert result["items"]
+    for item in result["items"]:
+        assert "password" not in item
+        assert "apikeys" not in item
+    if token := result.get("next_deep_paging_id"):
+        get_api_data(session, f"{host}/api/v1/search/scroll", method="DELETE", data=json.dumps({"scroll_id": token}))
+
+
+def test_scroll_hit_default_fields_exclude_unstored_data(datastore, login_session):
+    """A hit scroll without fl returns stored fields only and preserves the document ID."""
+    session, host = login_session
+
+    hit = datastore.hit.search("howler.id:*", rows=1, as_obj=False)["items"][0]
+    hit_id = hit["howler"]["id"]
+    datastore.hit.datastore.client.update(
+        index=datastore.hit.name,
+        id=hit_id,
+        doc={"howler": {"data": ["scroll projection regression secret"]}},
+        refresh="wait_for",
+    )
+
+    raw_hit = datastore.hit.datastore.client.get(index=datastore.hit.name, id=hit_id)
+    assert raw_hit["_source"]["howler"]["data"] == ["scroll projection regression secret"]
+
+    response = get_api_data(
+        session,
+        f"{host}/api/v1/search/hit/",
+        method="POST",
+        data=json.dumps({"query": f"howler.id:{hit_id}", "rows": 1, "deep_paging_id": "*", "scroll": "1m"}),
+    )
+    scroll_id = response.get("next_deep_paging_id")
+    if scroll_id:
+        get_api_data(
+            session,
+            f"{host}/api/v1/search/scroll",
+            method="DELETE",
+            data=json.dumps({"scroll_id": scroll_id}),
+        )
+
+    assert response["items"]
+    item = response["items"][0]
+    assert item["id"] == hit_id
+    assert "data" not in item.get("howler", {})
+
+
+@pytest.mark.parametrize("fl,include_id", [("howler.id", False), ("id,howler.id", True)])
+def test_scroll_hit_explicit_fields_follow_collection_projection(datastore, login_session, fl, include_id):
+    """An explicit scroll field list keeps the collection's projection and ID behavior."""
+    session, host = login_session
+    hit_id = datastore.hit.search("howler.id:*", rows=1, as_obj=False)["items"][0]["howler"]["id"]
+
+    response = get_api_data(
+        session,
+        f"{host}/api/v1/search/hit/",
+        method="POST",
+        data=json.dumps({"query": f"howler.id:{hit_id}", "rows": 1, "deep_paging_id": "*", "scroll": "1m", "fl": fl}),
+    )
+    scroll_id = response.get("next_deep_paging_id")
+    if scroll_id:
+        get_api_data(
+            session,
+            f"{host}/api/v1/search/scroll",
+            method="DELETE",
+            data=json.dumps({"scroll_id": scroll_id}),
+        )
+
+    assert response["items"]
+    item = response["items"][0]
+    assert item["howler"] == {"id": hit_id}
+    assert ("id" in item) is include_id
+    if include_id:
+        assert item["id"] == hit_id
+
+
+@pytest.mark.parametrize(
+    ("fl", "expected_labels"),
+    [
+        ("labels.team", {"team": "pr652-cleanup"}),
+        ("labels.*", {"team": "pr652-cleanup", "other": "must-not-leak"}),
+        ("labels.t*", {"team": "pr652-cleanup"}),
+        ("*.team", {"team": "pr652-cleanup"}),
+        ("*team", {"team": "pr652-cleanup"}),
+        ("labels.missing*", None),
+    ],
+)
+def test_v2_search_and_scroll_project_a_stored_mapping_key(datastore, login_session, fl, expected_labels):
+    """Ordinary searches and continuations select dynamic Mapping keys without widening their scope."""
+    session, host = login_session
+    hits = datastore.hit.search("howler.id:*", rows=2, as_obj=False)["items"]
+    hit_ids = [hit["howler"]["id"] for hit in hits]
+    assert len(hit_ids) == 2
+
+    for hit_id in hit_ids:
+        datastore.hit.datastore.client.update(
+            index=datastore.hit.name,
+            id=hit_id,
+            script={
+                "source": "ctx._source.labels = params.labels",
+                "params": {"labels": {"team": "pr652-cleanup", "other": "must-not-leak"}},
+            },
+            refresh="wait_for",
+        )
+
+    query = "labels.team:pr652-cleanup"
+    ordinary = get_api_data(
+        session,
+        f"{host}/api/v2/search/hit",
+        method="POST",
+        data=json.dumps({"query": query, "rows": 5, "fl": fl}),
+    )
+    assert len(ordinary["items"]) == 2
+    assert all(item.get("labels") == expected_labels for item in ordinary["items"])
+
+    first_page = get_api_data(
+        session,
+        f"{host}/api/v2/search/hit",
+        method="POST",
+        data=json.dumps({"query": query, "rows": 1, "fl": "labels", "deep_paging_id": "*", "scroll": "1m"}),
+    )
+    assert first_page["items"] == [{"labels": {"team": "pr652-cleanup", "other": "must-not-leak"}, "__index": "hit"}]
+    next_scroll_id = first_page.get("next_deep_paging_id")
+    assert next_scroll_id
+
+    second_page = get_api_data(
+        session,
+        f"{host}/api/v2/search/hit",
+        method="POST",
+        data=json.dumps({"query": query, "rows": 1, "fl": fl, "deep_paging_id": next_scroll_id, "scroll": "1m"}),
+    )
+    assert len(second_page["items"]) == 1
+    assert second_page["items"][0].get("labels") == expected_labels
+
+    terminal_scroll_id = second_page.get("next_deep_paging_id")
+    if terminal_scroll_id:
+        get_api_data(
+            session,
+            f"{host}/api/v2/search/scroll",
+            method="DELETE",
+            data=json.dumps({"scroll_id": terminal_scroll_id}),
+        )
+
+
+def test_scroll_item_pruning_removes_top_level_and_nested_banned_fields():
+    """The scroll response pruner removes banned keys recursively without losing allowed fields."""
+    top_level_banned = "__access_lvl__"
+    nested_banned = "__access_req__"
+    assert top_level_banned in BANNED_FIELDS
+    assert nested_banned in BANNED_FIELDS
+
+    items = [
+        {
+            "id": "scroll-hit-id",
+            "__index": "hit",
+            "name": "allowed top-level value",
+            top_level_banned: "restricted",
+            "nested": {"name": "allowed nested value", nested_banned: "restricted"},
+            "action": {
+                "operations": [
+                    {"operation_id": "add_label", "data_json": "restricted"},
+                    {"operation_id": "promote", "data_json": "also restricted"},
+                ]
+            },
+        }
+    ]
+
+    pruned_items = project_stored_fields(
+        items,
+        {"hit": ["name", "nested.name", "action.operations.operation_id"]},
+        include_id=True,
+        fields=None,
+    )
+
+    assert pruned_items == [
+        {
+            "name": "allowed top-level value",
+            "nested": {"name": "allowed nested value"},
+            "action": {"operations": [{"operation_id": "add_label"}, {"operation_id": "promote"}]},
+            "id": "scroll-hit-id",
+            "__index": "hit",
+        }
+    ]
+
+
+def test_clear_scroll(datastore, login_session):
+    """A caller can clear an open scroll using the v1 clear endpoint."""
+    session, host = login_session
+
+    opened_scroll = get_api_data(
+        session,
+        f"{host}/api/v1/search/user/",
+        method="POST",
+        data=json.dumps({"query": "id:*", "rows": 1, "deep_paging_id": "*", "scroll": "1m"}),
+    )
+    scroll_id = opened_scroll.get("next_deep_paging_id")
+    assert scroll_id
+
+    clear_result = get_api_data(
+        session,
+        f"{host}/api/v1/search/scroll",
+        method="DELETE",
+        data=json.dumps({"scroll_id": scroll_id}),
+    )
+    assert clear_result["succeeded"] is True
+
+
+def test_clear_scroll_requires_scroll_id(datastore, login_session):
+    session, host = login_session
+
+    with pytest.raises(APIError) as api_err:
+        get_api_data(
+            session,
+            f"{host}/api/v1/search/scroll",
+            method="DELETE",
+            data=json.dumps({}),
+        )
+
+    assert "400" in str(api_err)
+
+
+def test_clear_scroll_rejects_reserved_all_id(datastore, login_session):
+    session, host = login_session
+
+    with pytest.raises(APIError) as api_err:
+        get_api_data(
+            session,
+            f"{host}/api/v1/search/scroll",
+            method="DELETE",
+            data=json.dumps({"scroll_id": "_all"}),
+        )
+
+    assert "403" in str(api_err)
+    assert "Invalid scroll ID" in str(api_err.value)
+
+
+@pytest.mark.parametrize("path", ["histogram/user/api_quota", "stats/user/api_quota", "grouped/user/api_quota"])
+def test_user_aggregations_refuse_non_stored_fields(datastore, login_session, path):
+    """Aggregations over non-stored user fields would return their values, so the API refuses them."""
+    session, host = login_session
+
+    with pytest.raises(APIError) as api_err:
+        get_api_data(session, f"{host}/api/v1/search/{path}/", params={"query": "id:*"})
+
+    assert "403" in str(api_err)
+
+
+@pytest.mark.parametrize("index", ["howler-user", "*", "_all"])
+def test_v2_search_refuses_physical_alias_and_wildcard_indexes(datastore, login_session, index):
+    """Only logical index names are searchable, so physical names and wildcards cannot bypass user field rules."""
+    session, host = login_session
+
+    with pytest.raises(APIError) as api_err:
+        get_api_data(
+            session,
+            f"{host}/api/v2/search/{index}",
+            method="POST",
+            data=json.dumps({"query": "uname:*", "fl": ["password"]}),
+        )
+
+    assert "400" in str(api_err)
+
+
 def test_facet_search(datastore, login_session):
     session, host = login_session
 
@@ -113,7 +465,7 @@ def test_histogram_search(datastore, login_session):
         for k, v in resp.items():
             assert k.startswith("2") and k.endswith("Z") and isinstance(v, int)
 
-    int_hist_map = {"user": "api_quota"}
+    int_hist_map = {"user": "refresh_rate"}
 
     for collection in collections:
         hist_field = int_hist_map.get(collection, "archive_ts")
@@ -329,7 +681,7 @@ def test_count_multiple_filters():
 def test_stats_search(datastore, login_session):
     session, host = login_session
 
-    int_map = {"user": "api_quota"}
+    int_map = {"user": "refresh_rate"}
 
     for collection in collections:
         field = int_map.get(collection, False)
