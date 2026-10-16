@@ -159,8 +159,8 @@ jobs:
           let version = pkg.version;
           let npmTag = 'latest';
           if (process.env.CHANNEL === 'preview') {
-            const [major, minor, patch] = version.split('.').map(BigInt);
-            version = `${major}.${minor}.${patch + 1n}-dev.${process.env.RUN_NUMBER}.${process.env.RUN_ATTEMPT}`;
+            const [major, minor] = version.split('.').map(BigInt);
+            version = `${major}.${minor + 1n}.0-dev.${process.env.RUN_NUMBER}.${process.env.RUN_ATTEMPT}`;
             pkg.version = version;
             fs.writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`, 'utf8');
             npmTag = 'development';

@@ -11,6 +11,7 @@ const mockGetCurrentViews = vi.hoisted(() => vi.fn());
 let locationValue = { search: '' };
 let parameterValue: any = {
   views: [],
+  disabledViewIndexes: [],
   span: 'date.range.1.day',
   setSpan: mockSetSpan,
   startDate: undefined,
@@ -79,7 +80,8 @@ describe('SearchSpan', () => {
   beforeEach(() => {
     locationValue = { search: '' };
     parameterValue = {
-      views: [],
+      views: ['selected_view'],
+      disabledViewIndexes: [],
       span: 'date.range.1.day',
       setSpan: mockSetSpan,
       startDate: undefined,
@@ -93,10 +95,25 @@ describe('SearchSpan', () => {
     mockGetCurrentViews.mockResolvedValueOnce([{ span: 'date.range.1.week' }]);
     render(<SearchSpan />);
     await waitFor(() => expect(mockSetSpan).toHaveBeenCalledWith('date.range.1.week'));
+    expect(mockGetCurrentViews).toHaveBeenCalledWith({ views: ['selected_view'], lazy: true, ignoreParams: true });
 
     fireEvent.click(screen.getByText('change-span'));
     expect(mockSetSpan).toHaveBeenCalledWith('date.range.custom');
     expect(screen.getByText('custom-span')).toBeInTheDocument();
+  });
+
+  it('loads span only from enabled views', async () => {
+    parameterValue = {
+      ...parameterValue,
+      views: ['disabled_view', 'enabled_view'],
+      disabledViewIndexes: [0]
+    };
+    mockGetCurrentViews.mockResolvedValueOnce([{ span: 'date.range.1.week' }]);
+
+    render(<SearchSpan />);
+
+    await waitFor(() => expect(mockSetSpan).toHaveBeenCalledWith('date.range.1.week'));
+    expect(mockGetCurrentViews).toHaveBeenCalledWith({ views: ['enabled_view'], lazy: true, ignoreParams: true });
   });
 
   it('converts lucene date spans and skips view lookup when span is already in the URL', async () => {

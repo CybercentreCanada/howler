@@ -934,6 +934,14 @@ def create_dossiers(ds: HowlerDatastore, num_dossiers: int = 5):
             Pivot(
                 {
                     "label": {"en": f"Password Check {index}", "fr": f"Verification mot de passe {index}"},
+                    "description": choice(
+                        [
+                            "Check whether these credentials appear in known data breaches.",
+                            "Review password strength and complexity for this alert.",
+                            "Investigate password reuse across related accounts.",
+                            "Review credential rotation and monitoring recommendations.",
+                        ]
+                    ),
                     "value": "https://password-checker.example.test/{{pivot_value}}",
                     "format": "link",
                     "group": pivot_group,
