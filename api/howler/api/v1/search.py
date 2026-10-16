@@ -9,11 +9,11 @@ from sigma.backends.elasticsearch import LuceneBackend
 from sigma.rule import SigmaRule
 from yaml.scanner import ScannerError
 
-from howler.api import bad_request, forbidden, make_subapi_blueprint, ok
+from howler.api import bad_request, forbidden, make_subapi_blueprint, ok, service_unavailable
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
-from howler.datastore.exceptions import InvalidScrollTokenException, SearchException
+from howler.datastore.exceptions import InvalidScrollTokenException, SearchException, SearchRetryException
 from howler.helper.search import get_collection, get_default_sort, has_access_control, list_all_fields
 from howler.odm.models.user import User
 from howler.security.login import api_login
@@ -54,6 +54,8 @@ def clear_scroll(user: User, **kwargs):
         return ok(search_service.clear_owned_scroll(user, scroll_id))
     except InvalidScrollTokenException:
         return forbidden(err="Invalid scroll ID for this user.")
+    except SearchRetryException:
+        return service_unavailable(err="The scroll context could not be cleared. Please retry.")
     except (SearchException, BadRequestError) as e:
         return bad_request(err=f"SearchException: {e}")
 
@@ -130,7 +132,7 @@ def search(index: str, user: User, **kwargs):
     if not query:
         return bad_request(err="There was no search query.")
 
-    if not search_service.user_fields_allowed(index, params.get("fl"), user):
+    if params.get("deep_paging_id") is None and not search_service.user_fields_allowed(index, params.get("fl"), user):
         return forbidden(err="Invalid fields to retrieve.")
 
     try:

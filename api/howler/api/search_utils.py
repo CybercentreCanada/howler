@@ -1,10 +1,9 @@
-"""Shared helpers for safely selecting, projecting, and continuing scroll search results."""
+"""Helpers for validating scroll lifetimes and authenticated continuation tokens."""
 
 import hashlib
 import hmac
 import json
 import re
-from collections.abc import Mapping
 from functools import cache
 from typing import Any, cast
 
@@ -12,10 +11,7 @@ from authlib.jose import JsonWebEncryption
 
 from howler.common.logging import get_logger
 from howler.config import config
-from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import InvalidScrollTokenException, SearchException
-from howler.datastore.utils import expand_field_patterns, prune_to_paths
-from howler.odm.base import BANNED_FIELDS
 from howler.odm.models.user import User
 
 logger = get_logger(__file__)
@@ -27,81 +23,6 @@ _SCROLL_TOKEN_LABEL = b"howler.search.scroll-token.v1"
 _SCROLL_TOKEN_HEADER = {"alg": "A256GCMKW", "enc": "A256GCM"}
 _MAX_SCROLL_TOKEN_LENGTH = 16_384
 _jwe = JsonWebEncryption(algorithms=["A256GCMKW", "A256GCM"])
-
-
-def select_safe_scroll_fields(
-    search_collections: Mapping[str, ESCollection], fl: str | list[str] | None
-) -> tuple[list[str], dict[str, list[str]], bool]:
-    """Build the Elasticsearch source projection and per-index stored-field allowlists."""
-    if fl is None:
-        field_values: list[str] = []
-    elif isinstance(fl, str):
-        field_values = [fl]
-    elif isinstance(fl, list) and all(isinstance(value, str) for value in fl):
-        field_values = fl
-    else:
-        raise SearchException("Field list must be a string or a list of strings.")
-
-    requested_fields = [field.strip() for value in field_values for field in value.split(",") if field.strip()]
-
-    allowed_fields_by_index: dict[str, list[str]] = {}
-    include_all = not requested_fields or "*" in requested_fields
-    include_id = not requested_fields
-
-    for index, search_collection in search_collections.items():
-        expanded_fields = (
-            expand_field_patterns(search_collection.model_class, requested_fields, preserve_all=True)
-            if not include_all
-            else set()
-        )
-        allowed_fields_by_index[index] = [
-            field_name
-            for field_name, field in search_collection.stored_fields.items()
-            if field.store and field_name not in BANNED_FIELDS and (include_all or field_name in expanded_fields)
-        ]
-        include_id = include_id or include_all or "id" in expanded_fields
-
-    source_fields = list(dict.fromkeys(field for fields in allowed_fields_by_index.values() for field in fields))
-    if include_id and "id" not in source_fields:
-        source_fields.append("id")
-
-    return source_fields, allowed_fields_by_index, include_id
-
-
-def _remove_banned_scroll_fields(value: dict | list | str) -> Any:
-    """Remove banned field names at every level of a scroll result."""
-    if isinstance(value, dict):
-        return {key: _remove_banned_scroll_fields(item) for key, item in value.items() if key not in BANNED_FIELDS}
-
-    if isinstance(value, list):
-        return [_remove_banned_scroll_fields(item) for item in value]
-
-    return value
-
-
-def prune_scroll_items(
-    items: list[dict[str, Any]], allowed_fields_by_index: Mapping[str, list[str]], include_id: bool
-) -> list[dict[str, Any]]:
-    """Project scroll items to stored fields, applying the correct allowlist per index."""
-    safe_items: list[dict[str, Any]] = []
-    default_fields = next(iter(allowed_fields_by_index.values())) if len(allowed_fields_by_index) == 1 else []
-
-    for item in items:
-        item_index = item.get("__index")
-        selected_fields = allowed_fields_by_index.get(item_index, []) if isinstance(item_index, str) else default_fields
-
-        source = {key: value for key, value in item.items() if key not in {"__index", "id"}}
-        # Selected mappings may still contain internal fields; strip them after projection.
-        safe_item: dict[str, Any] = _remove_banned_scroll_fields(prune_to_paths(source, set(selected_fields)))
-
-        if include_id and item.get("id") is not None:
-            safe_item["id"] = item["id"]
-        if "__index" in item:
-            safe_item["__index"] = item["__index"]
-
-        safe_items.append(safe_item)
-
-    return safe_items
 
 
 def validate_scroll_keep_alive(scroll: Any) -> str | None:

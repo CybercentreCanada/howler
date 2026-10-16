@@ -7,13 +7,13 @@ from elasticsearch import BadRequestError
 from elasticsearch._sync.client.indices import IndicesClient
 from flask import request
 
-from howler.api import bad_request, forbidden, internal_error, make_subapi_blueprint, ok
+from howler.api import bad_request, forbidden, internal_error, make_subapi_blueprint, ok, service_unavailable
 from howler.api.search_utils import InvalidScrollTokenException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.logging.audit import audit
 from howler.common.swagger import generate_swagger_docs
-from howler.datastore.exceptions import SearchException
+from howler.datastore.exceptions import SearchException, SearchRetryException
 from howler.helper.search import get_collection, has_access_control
 from howler.odm.models.user import User
 from howler.security.login import api_login
@@ -163,6 +163,8 @@ def clear_scroll(user: User, **kwargs):
         return ok(search_service.clear_owned_scroll(user, scroll_id))
     except InvalidScrollTokenException:
         return forbidden(err="Invalid scroll ID for this user.")
+    except SearchRetryException:
+        return service_unavailable(err="The scroll context could not be cleared. Please retry.")
     except (SearchException, BadRequestError) as e:
         return bad_request(err=f"SearchException: {e}")
 

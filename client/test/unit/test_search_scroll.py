@@ -146,6 +146,67 @@ def test_scroll_contexts_keep_independent_request_state():
     }
 
 
+def test_scroll_open_isolates_context_from_later_caller_option_mutations():
+    search, connection = _make_search()
+    first_page = {"items": [], "next_deep_paging_id": "scroll-options"}
+    connection.post.side_effect = [first_page, {"items": []}]
+    filters = ["howler.status:open"]
+    fields = ["howler.id"]
+
+    search.scroll.open("hit", "howler.id:*", filters=filters, fl=fields, timeout=2500)
+    filters.append("howler.status:closed")
+    fields[0] = "howler.status"
+
+    search.scroll.next("scroll-options", "1m")
+
+    assert json.loads(connection.post.call_args_list[1].kwargs["data"]) == {
+        "query": "howler.id:*",
+        "deep_paging_id": "scroll-options",
+        "scroll": "1m",
+        "filters": ["howler.status:open"],
+        "fl": ["howler.id"],
+    }
+    assert "timeout" not in json.loads(connection.post.call_args_list[1].kwargs["data"])
+
+
+def test_scroll_next_accepts_same_token_for_continuation():
+    search, connection = _make_search()
+    first_page = {"items": [], "next_deep_paging_id": "scroll-reused"}
+    second_page = {"items": ["page 2"], "next_deep_paging_id": "scroll-reused"}
+    final_page = {"items": []}
+    connection.post.side_effect = [first_page, second_page, final_page]
+
+    opened = search.scroll.open("hit", "howler.id:*")
+    advanced = search.scroll.next(opened["next_deep_paging_id"], "2m")
+    result = search.scroll.next(advanced["next_deep_paging_id"], "3m")
+
+    assert advanced is second_page
+    assert result is final_page
+    assert [json.loads(call.kwargs["data"])["deep_paging_id"] for call in connection.post.call_args_list] == [
+        "*",
+        "scroll-reused",
+        "scroll-reused",
+    ]
+
+
+def test_scroll_next_failure_retains_current_context():
+    search, connection = _make_search()
+    first_page = {"items": [], "next_deep_paging_id": "scroll-retry"}
+    final_page = {"items": []}
+    connection.post.side_effect = [first_page, RuntimeError("temporary failure"), final_page]
+
+    search.scroll.open("hit", "howler.id:*")
+    with pytest.raises(RuntimeError, match="temporary failure"):
+        search.scroll.next("scroll-retry", "2m")
+
+    assert search.scroll.next("scroll-retry", "2m") is final_page
+    assert [json.loads(call.kwargs["data"])["deep_paging_id"] for call in connection.post.call_args_list] == [
+        "*",
+        "scroll-retry",
+        "scroll-retry",
+    ]
+
+
 def test_scroll_clear_sends_scroll_id_and_removes_context():
     search, connection = _make_search()
     connection.post.return_value = {"items": [], "next_deep_paging_id": "scroll-4"}
@@ -159,3 +220,13 @@ def test_scroll_clear_sends_scroll_id_and_removes_context():
     connection.delete.assert_called_once_with("api/v1/search/scroll", json={"scroll_id": "scroll-4"})
     with pytest.raises(ClientError, match="Unknown or expired scroll ID: scroll-4"):
         search.scroll.next("scroll-4", "1m")
+
+
+def test_scroll_clear_forwards_unknown_scroll_id():
+    search, connection = _make_search()
+    response = {"cleared": True}
+    connection.delete.return_value = response
+
+    assert search.scroll.clear("server-only-scroll") is response
+
+    connection.delete.assert_called_once_with("api/v1/search/scroll", json={"scroll_id": "server-only-scroll"})

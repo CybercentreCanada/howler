@@ -11,7 +11,7 @@ class _ScrollContext(object):
     def __init__(self, index: str, query: str, search_kwargs: dict[str, Any]):
         self.index = index
         self.query = query
-        self.search_kwargs = deepcopy(search_kwargs)
+        self.search_kwargs = search_kwargs
         self.scroll_id: str | None = None
         self.lock = Lock()
 
@@ -54,19 +54,15 @@ class Scroll(object):
         search_kwargs.pop("deep_paging_id", None)
         search_kwargs.pop("scroll", None)
 
-        request_kwargs = deepcopy(search_kwargs)
+        request_kwargs = dict(search_kwargs)
         request_kwargs["scroll"] = keep_alive
         response = self._do_search(index, query, deep_paging_id="*", **request_kwargs)
 
         scroll_id = response.get("next_deep_paging_id")
         if isinstance(scroll_id, str) and scroll_id:
-            context_kwargs = deepcopy(search_kwargs)
-            context_kwargs.pop("timeout", None)
+            context_kwargs = {key: value for key, value in search_kwargs.items() if key != "timeout"}
             context = _ScrollContext(index, query, context_kwargs)
             with self._contexts_lock:
-                current_context = self._contexts.get(scroll_id)
-                if current_context is not None and current_context is not context:
-                    raise ClientError("The server returned a scroll ID already active in this client", 500)
                 context.scroll_id = scroll_id
                 self._contexts[scroll_id] = context
 
@@ -97,7 +93,7 @@ class Scroll(object):
                 if self._contexts.get(scroll_id) is not context:
                     raise ClientError("Unknown or expired scroll ID: %s" % scroll_id, 400)
 
-            request_kwargs = deepcopy(context.search_kwargs)
+            request_kwargs = dict(context.search_kwargs)
             request_kwargs["scroll"] = keep_alive
             response = self._do_search(
                 context.index,
@@ -112,14 +108,6 @@ class Scroll(object):
                 return response
 
             with self._contexts_lock:
-                conflicting_context = self._contexts.get(next_scroll_id)
-                if conflicting_context is not None and conflicting_context is not context:
-                    for token, registered_context in list(self._contexts.items()):
-                        if registered_context is context:
-                            del self._contexts[token]
-                    context.scroll_id = None
-                    raise ClientError("The server returned a scroll ID already active in this client", 500)
-
                 if self._contexts.get(scroll_id) is context:
                     del self._contexts[scroll_id]
                 context.scroll_id = next_scroll_id
@@ -141,18 +129,11 @@ class Scroll(object):
 
         if context is None:
             response = self._connection.delete(api_path("search", "scroll"), json={"scroll_id": scroll_id})
-            with self._contexts_lock:
-                self._contexts.pop(scroll_id, None)
             return response
 
         with context.lock:
             with self._contexts_lock:
-                current_scroll_id = context.scroll_id
-                clear_id = (
-                    current_scroll_id
-                    if current_scroll_id and self._contexts.get(current_scroll_id) is context
-                    else scroll_id
-                )
+                clear_id = context.scroll_id or scroll_id
 
             response = self._connection.delete(api_path("search", "scroll"), json={"scroll_id": clear_id})
             self._remove_context(context)
@@ -160,7 +141,7 @@ class Scroll(object):
 
     def _remove_context(self, context: _ScrollContext) -> None:
         with self._contexts_lock:
-            for token, registered_context in list(self._contexts.items()):
-                if registered_context is context:
-                    del self._contexts[token]
+            scroll_id = context.scroll_id
+            if scroll_id is not None and self._contexts.get(scroll_id) is context:
+                del self._contexts[scroll_id]
             context.scroll_id = None

@@ -4,9 +4,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from howler.api.search_utils import prune_scroll_items
 from howler.datastore.collection import ESCollection
 from howler.datastore.howler_store import HowlerDatastore
+from howler.datastore.utils import project_stored_fields
 from howler.odm.base import BANNED_FIELDS
 from howler.odm.models.hit import Hit
 from howler.odm.random_data import (
@@ -136,9 +136,9 @@ def test_search_scroll_keepalive_until_terminal_batch(datastore, login_session):
     assert item_count == count
 
 
-@pytest.mark.parametrize("fl", [["uname", "apikeys.password"], ["uname", "apikeys.*"], ["pass*"]])
+@pytest.mark.parametrize("fl", [["password"], ["uname", "apikeys.password"]])
 def test_scroll_user_field_selection_rejects_credential_fields(datastore, login_session, fl):
-    """Credential fields and wildcards that can match them are rejected before a user scroll opens."""
+    """Explicit non-stored fields are refused by the common search policy."""
     session, host = login_session
 
     with pytest.raises(APIError) as api_err:
@@ -149,7 +149,24 @@ def test_scroll_user_field_selection_rejects_credential_fields(datastore, login_
             data=json.dumps({"query": "id:*", "rows": 1, "deep_paging_id": "*", "scroll": "1m", "fl": fl}),
         )
 
-    assert "403" in str(api_err)
+    assert "400" in str(api_err)
+
+
+@pytest.mark.parametrize("fl", [["uname", "apikeys.*"], ["pass*"], ["*"]])
+def test_scroll_user_wildcards_cannot_expose_credentials(datastore, login_session, fl):
+    session, host = login_session
+    result = get_api_data(
+        session,
+        f"{host}/api/v1/search/user/",
+        method="POST",
+        data=json.dumps({"query": "id:*", "rows": 1, "deep_paging_id": "*", "fl": fl}),
+    )
+    assert result["items"]
+    for item in result["items"]:
+        assert "password" not in item
+        assert "apikeys" not in item
+    if token := result.get("next_deep_paging_id"):
+        get_api_data(session, f"{host}/api/v1/search/scroll", method="DELETE", data=json.dumps({"scroll_id": token}))
 
 
 def test_scroll_hit_default_fields_exclude_unstored_data(datastore, login_session):
@@ -218,6 +235,74 @@ def test_scroll_hit_explicit_fields_follow_collection_projection(datastore, logi
         assert item["id"] == hit_id
 
 
+@pytest.mark.parametrize(
+    ("fl", "expected_labels"),
+    [
+        ("labels.team", {"team": "pr652-cleanup"}),
+        ("labels.*", {"team": "pr652-cleanup", "other": "must-not-leak"}),
+        ("labels.t*", {"team": "pr652-cleanup"}),
+        ("*.team", {"team": "pr652-cleanup"}),
+        ("*team", {"team": "pr652-cleanup"}),
+        ("labels.missing*", None),
+    ],
+)
+def test_v2_search_and_scroll_project_a_stored_mapping_key(datastore, login_session, fl, expected_labels):
+    """Ordinary searches and continuations select dynamic Mapping keys without widening their scope."""
+    session, host = login_session
+    hits = datastore.hit.search("howler.id:*", rows=2, as_obj=False)["items"]
+    hit_ids = [hit["howler"]["id"] for hit in hits]
+    assert len(hit_ids) == 2
+
+    for hit_id in hit_ids:
+        datastore.hit.datastore.client.update(
+            index=datastore.hit.name,
+            id=hit_id,
+            script={
+                "source": "ctx._source.labels = params.labels",
+                "params": {"labels": {"team": "pr652-cleanup", "other": "must-not-leak"}},
+            },
+            refresh="wait_for",
+        )
+
+    query = "labels.team:pr652-cleanup"
+    ordinary = get_api_data(
+        session,
+        f"{host}/api/v2/search/hit",
+        method="POST",
+        data=json.dumps({"query": query, "rows": 5, "fl": fl}),
+    )
+    assert len(ordinary["items"]) == 2
+    assert all(item.get("labels") == expected_labels for item in ordinary["items"])
+
+    first_page = get_api_data(
+        session,
+        f"{host}/api/v2/search/hit",
+        method="POST",
+        data=json.dumps({"query": query, "rows": 1, "fl": "labels", "deep_paging_id": "*", "scroll": "1m"}),
+    )
+    assert first_page["items"] == [{"labels": {"team": "pr652-cleanup", "other": "must-not-leak"}, "__index": "hit"}]
+    next_scroll_id = first_page.get("next_deep_paging_id")
+    assert next_scroll_id
+
+    second_page = get_api_data(
+        session,
+        f"{host}/api/v2/search/hit",
+        method="POST",
+        data=json.dumps({"query": query, "rows": 1, "fl": fl, "deep_paging_id": next_scroll_id, "scroll": "1m"}),
+    )
+    assert len(second_page["items"]) == 1
+    assert second_page["items"][0].get("labels") == expected_labels
+
+    terminal_scroll_id = second_page.get("next_deep_paging_id")
+    if terminal_scroll_id:
+        get_api_data(
+            session,
+            f"{host}/api/v2/search/scroll",
+            method="DELETE",
+            data=json.dumps({"scroll_id": terminal_scroll_id}),
+        )
+
+
 def test_scroll_item_pruning_removes_top_level_and_nested_banned_fields():
     """The scroll response pruner removes banned keys recursively without losing allowed fields."""
     top_level_banned = "__access_lvl__"
@@ -241,10 +326,11 @@ def test_scroll_item_pruning_removes_top_level_and_nested_banned_fields():
         }
     ]
 
-    pruned_items = prune_scroll_items(
+    pruned_items = project_stored_fields(
         items,
         {"hit": ["name", "nested.name", "action.operations.operation_id"]},
         include_id=True,
+        fields=None,
     )
 
     assert pruned_items == [

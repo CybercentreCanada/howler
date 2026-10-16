@@ -475,11 +475,11 @@ class TestFormatItems:
 class TestSearch:
     """Tests for search_service.search."""
 
-    @pytest.mark.parametrize("sensitive_field", ["password", "apikeys", "*"])
+    @pytest.mark.parametrize("sensitive_field", ["password", "apikeys"])
     @patch("howler.services.search_service.datastore")
     def test_search_rejects_sensitive_user_fields(self, mock_ds_fn, sensitive_field):
         """Rejects sensitive source fields before accessing Elasticsearch."""
-        with pytest.raises(search_service.SensitiveUserFieldsException, match="Invalid fields to retrieve"):
+        with pytest.raises(SearchException, match="not stored"):
             search_service.search("user", query="uname:*", fl=sensitive_field)
 
         mock_ds_fn.assert_not_called()
@@ -620,7 +620,7 @@ class TestSearch:
         search_service.search("hit", query="*:*", fl="howler.id,event.kind")
 
         call_kwargs = mock_client.search.call_args
-        assert call_kwargs.kwargs["_source"] == ["howler.id", "event.kind"]
+        assert set(call_kwargs.kwargs["_source"]) == {"howler.id", "event.kind"}
 
     @patch("howler.services.search_service.datastore")
     def test_search_with_fl_list(self, mock_ds_fn):
@@ -638,8 +638,8 @@ class TestSearch:
         assert call_kwargs.kwargs["_source"] == ["howler.id"]
 
     @patch("howler.services.search_service.datastore")
-    def test_search_no_fl_omits_source(self, mock_ds_fn):
-        """When fl is None, _source is not constrained."""
+    def test_search_no_fl_limits_source_to_stored_fields(self, mock_ds_fn):
+        """Default searches, including correlation callers, retrieve stored fields only."""
         mock_client = MagicMock()
         mock_ds = MagicMock()
         mock_ds.ds.client = mock_client
@@ -650,7 +650,9 @@ class TestSearch:
         search_service.search("hit", query="*:*", fl=None)
 
         call_kwargs = mock_client.search.call_args
-        assert "_source" not in call_kwargs.kwargs
+        source_fields = call_kwargs.kwargs["_source"]
+        assert "howler.id" in source_fields
+        assert "howler.data" not in source_fields
 
     @patch("howler.services.search_service.datastore")
     def test_search_with_timeout(self, mock_ds_fn):

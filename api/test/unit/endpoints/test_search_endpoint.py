@@ -1,5 +1,6 @@
 """Unit tests for the search API endpoint (howler.api.v2.search)."""
 
+import importlib
 import uuid
 from types import SimpleNamespace
 from typing import cast
@@ -8,7 +9,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask, Response
 
-from howler.common.loader import datastore
 from howler.odm import Model
 from howler.odm.models.user import User
 from howler.odm.randomizer import random_model_obj
@@ -19,6 +19,17 @@ def request_context():
     app = Flask("test_app")
     app.config.update(SECRET_KEY="test test")
     return app
+
+
+@pytest.fixture(autouse=True)
+def isolate_quota_trackers():
+    """Keep endpoint unit tests from touching the shared Redis-backed quota trackers."""
+    with (
+        patch("howler.security.login.QUOTA_TRACKER") as login_quota_tracker,
+        patch("howler.api.QUOTA_TRACKER"),
+    ):
+        login_quota_tracker.begin.return_value = True
+        yield
 
 
 def _build_user(user_type: list[str] | None = None) -> User:
@@ -34,7 +45,6 @@ def _mock_auth(mock_auth_service, user, priv=None):
     if priv is None:
         priv = ["R", "W", "E"]
     mock_auth_service.bearer_auth = MagicMock(return_value=(user, priv))
-    datastore().user.save(user.uname, user)
 
 
 # ---------------------------------------------------------------------------
@@ -175,7 +185,7 @@ class TestSearch:
         mock_get_collection.return_value = lambda: collection
         mock_search.return_value = {
             "total": 1,
-            "items": [{"__index": "hit", "id": "hit-1", "name": "allowed", "secret": "filtered"}],
+            "items": [{"__index": "hit", "name": "allowed"}],
             "offset": 0,
         }
 
@@ -194,7 +204,7 @@ class TestSearch:
         assert mock_search.call_args.args == ("hit", "id:*")
         assert mock_search.call_args.kwargs["scroll"] == "37s"
         assert mock_search.call_args.kwargs["deep_paging_id"] == "*"
-        assert mock_search.call_args.kwargs["fl"] == ["name"]
+        assert mock_search.call_args.kwargs["fl"] == "name"
         assert mock_search.call_args.kwargs["include_id"] is False
 
     @patch("howler.services.search_service.get_collection")
@@ -216,18 +226,17 @@ class TestSearch:
         hit_collection.stored_fields = {"action.operations.operation_id": SimpleNamespace(store=True)}
         user_collection = MagicMock()
         user_collection.model_class = None
-        user_collection.stored_fields = {"user_only": SimpleNamespace(store=True)}
-        mock_get_collection.side_effect = [lambda: hit_collection, lambda: user_collection]
+        user_collection.stored_fields = {"uname": SimpleNamespace(store=True)}
+        collections = {"hit": hit_collection, "user": user_collection}
+        mock_get_collection.side_effect = lambda index, _user: lambda: collections[index]
         mock_search.return_value = {
             "total": 2,
             "items": [
                 {
                     "__index": "hit",
-                    "id": "hit-1",
-                    "user_only": "filtered",
-                    "action": {"operations": [{"operation_id": "add_label", "data_json": "filtered"}]},
+                    "action": {"operations": [{"operation_id": "add_label"}]},
                 },
-                {"__index": "user", "id": "user-1", "user_only": "allowed", "action": "filtered"},
+                {"__index": "user", "uname": "allowed"},
             ],
             "offset": 0,
         }
@@ -239,7 +248,7 @@ class TestSearch:
             json={
                 "query": "id:*",
                 "deep_paging_id": token,
-                "fl": "action.operations.operation_id,user_only",
+                "fl": "action.operations.operation_id,uname",
             },
             headers={"Authorization": "Bearer ."},
         ):
@@ -250,11 +259,11 @@ class TestSearch:
         assert result.status_code == 200
         assert result.get_json()["api_response"]["items"] == [
             {"action": {"operations": [{"operation_id": "add_label"}]}, "__index": "hit"},
-            {"user_only": "allowed", "__index": "user"},
+            {"uname": "allowed", "__index": "user"},
         ]
         assert mock_search.call_args.kwargs["scroll"] is None
         assert mock_search.call_args.kwargs["deep_paging_id"] == "scroll-token"
-        assert mock_search.call_args.kwargs["fl"] == ["action.operations.operation_id", "user_only"]
+        assert mock_search.call_args.kwargs["fl"] == "action.operations.operation_id,uname"
         assert mock_search.call_args.kwargs["include_id"] is False
 
     @patch("howler.services.search_service.get_collection")
@@ -272,21 +281,19 @@ class TestSearch:
         hit_collection = MagicMock()
         hit_collection.model_class = None
         hit_collection.stored_fields = {
-            "shared": SimpleNamespace(store=True),
+            "uname": SimpleNamespace(store=True),
             "hit_only": SimpleNamespace(store=True),
         }
         user_collection = MagicMock()
         user_collection.model_class = None
-        user_collection.stored_fields = {
-            "shared": SimpleNamespace(store=True),
-            "user_only": SimpleNamespace(store=True),
-        }
-        mock_get_collection.side_effect = [lambda: hit_collection, lambda: user_collection]
+        user_collection.stored_fields = {"uname": SimpleNamespace(store=True)}
+        collections = {"hit": hit_collection, "user": user_collection}
+        mock_get_collection.side_effect = lambda index, _user: lambda: collections[index]
         mock_search.return_value = {
             "total": 2,
             "items": [
-                {"__index": "hit", "shared": "hit", "hit_only": "allowed", "user_only": "filtered"},
-                {"__index": "user", "shared": "user", "hit_only": "filtered", "user_only": "allowed"},
+                {"__index": "hit", "uname": "hit", "hit_only": "allowed"},
+                {"__index": "user", "uname": "user"},
             ],
             "offset": 0,
         }
@@ -297,7 +304,7 @@ class TestSearch:
                 "query": "id:*",
                 "deep_paging_id": "*",
                 "scroll": "1m",
-                "fl": "shared,hit_only,user_only",
+                "fl": "uname,hit_only",
             },
             headers={"Authorization": "Bearer ."},
         ):
@@ -307,23 +314,26 @@ class TestSearch:
 
         assert result.status_code == 200
         assert result.get_json()["api_response"]["items"] == [
-            {"shared": "hit", "hit_only": "allowed", "__index": "hit"},
-            {"shared": "user", "user_only": "allowed", "__index": "user"},
+            {"uname": "hit", "hit_only": "allowed", "__index": "hit"},
+            {"uname": "user", "__index": "user"},
         ]
-        assert mock_search.call_args.kwargs["fl"] == ["shared", "hit_only", "user_only"]
+        assert mock_search.call_args.kwargs["fl"] == "uname,hit_only"
 
     @patch("howler.services.search_service.get_collection")
-    @patch("howler.services.search_service.search")
+    @patch("howler.services.search_service.datastore")
     @patch("howler.security.login.auth_service")
     @patch("howler.security.login.QUOTA_TRACKER")
     def test_search_scroll_rejects_sensitive_user_fields(
-        self, mock_quota_tracker, mock_auth_service, mock_search, mock_get_collection, request_context: Flask
+        self, mock_quota_tracker, mock_auth_service, mock_datastore, mock_get_collection, request_context: Flask
     ):
         """Applying the scroll allowlist does not bypass sensitive-user-field rejection."""
         user = _build_user()
         mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
         mock_quota_tracker.begin.return_value = True
-        mock_get_collection.return_value = MagicMock
+        mock_get_collection.return_value = lambda: SimpleNamespace(
+            model_class=User,
+            stored_fields={name: field for name, field in User.flat_fields().items() if field.store},
+        )
 
         with request_context.test_request_context(
             method="POST",
@@ -334,9 +344,9 @@ class TestSearch:
 
             result: Response = search(indexes="user", user=user)
 
-        assert result.status_code == 403
-        mock_search.assert_not_called()
-        mock_get_collection.assert_not_called()
+        assert result.status_code == 400
+        mock_datastore.assert_not_called()
+        mock_get_collection.assert_called_once()
 
     @patch("howler.services.search_service.clear_scroll")
     @patch("howler.security.login.auth_service")
@@ -362,6 +372,33 @@ class TestSearch:
 
         assert result.status_code == 200
         mock_clear_scroll.assert_called_once_with("scroll-raw")
+
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    @pytest.mark.parametrize("api_module", ["howler.api.v1.search", "howler.api.v2.search"])
+    def test_clear_scroll_retry_failure_is_sanitized_as_503(
+        self, mock_quota_tracker, mock_auth_service, api_module: str, request_context: Flask
+    ):
+        from howler.datastore.exceptions import SearchRetryException
+
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R"])
+        mock_quota_tracker.begin.return_value = True
+        with patch(
+            f"{api_module}.search_service.clear_owned_scroll",
+            side_effect=SearchRetryException("scroll_id: raw-es-scroll, connection reset"),
+        ):
+            with request_context.test_request_context(
+                method="DELETE",
+                json={"scroll_id": "safe-encrypted-token"},
+                headers={"Authorization": "Bearer ."},
+            ):
+                clear_scroll = importlib.import_module(api_module).clear_scroll
+                result: Response = clear_scroll(user=user)
+
+        assert result.status_code == 503
+        assert "raw-es-scroll" not in result.get_data(as_text=True)
+        assert "connection reset" not in result.get_data(as_text=True)
 
     @patch("howler.api.v2.search.search_service")
     @patch("howler.security.login.auth_service")
@@ -943,26 +980,35 @@ class TestScrollTokens:
     @patch("howler.services.search_service.search")
     @patch("howler.security.login.auth_service")
     @patch("howler.security.login.QUOTA_TRACKER")
-    def test_open_rejects_wildcard_user_fields_in_list_form(
+    def test_scroll_user_wildcard_fields_use_the_safe_projection_path(
         self, mock_quota_tracker, mock_auth_service, mock_search, mock_get_collection, request_context: Flask
     ):
-        """A JSON list of wildcard fields cannot bypass the credential-field rejection on the scroll path."""
+        """Search scroll wildcards reach the shared stored-field projection instead of raw source output."""
         user = _build_user()
         mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
         mock_quota_tracker.begin.return_value = True
+        mock_get_collection.return_value = lambda: _scroll_collection("uname")
+        mock_search.return_value = {
+            "total": 1,
+            "items": [{"__index": "user", "uname": "alice"}],
+            "offset": 0,
+        }
 
         with request_context.test_request_context(
             method="POST",
-            json={"query": "uname:*", "deep_paging_id": "*", "scroll": "1m", "fl": ["pass*"]},
+            json={"query": "uname:*", "deep_paging_id": "*", "scroll": "1m", "fl": ["*"]},
             headers={"Authorization": "Bearer ."},
         ):
             from howler.api.v2.search import search
 
             result: Response = search(indexes="user", user=user)
 
-        assert result.status_code == 403
+        assert result.status_code == 200
+        assert result.get_json()["api_response"]["items"] == [{"__index": "user", "uname": "alice"}]
         mock_get_collection.assert_not_called()
-        mock_search.assert_not_called()
+        mock_search.assert_called_once()
+        assert mock_search.call_args.kwargs["fl"] == ["*"]
+        assert mock_search.call_args.kwargs["include_id"] is True
 
 
 class TestAssignedHitScrollTokenScope:
@@ -1121,7 +1167,7 @@ class TestCredentialGuards:
 
             result: Response = search(indexes="user", user=user)
 
-        assert result.status_code == 403
+        assert result.status_code == 400
         mock_get_collection.assert_not_called()
         mock_search.assert_not_called()
 

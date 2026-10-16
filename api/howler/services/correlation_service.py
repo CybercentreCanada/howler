@@ -429,8 +429,8 @@ def process_batch(record_ids: list[str], rule_id: str | None = None) -> int:  # 
             continue
 
         try:
-            # SearchService returns each result's logical index and full source;
-            # full records are needed to render the rule's destination template.
+            # Correlation destination templates are user-provided, so search results
+            # contain only schema-declared stored fields.
             results = search_service.search(
                 indexes=indexes, query=rule.query, filters=[id_filter], rows=len(record_ids)
             )
