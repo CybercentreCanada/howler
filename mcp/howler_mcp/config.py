@@ -53,6 +53,11 @@ class HOWLER_API:
     MAX_CONNECTIONS = int(os.environ.get("HOWLER_API_MAX_CONNECTIONS", "100"))
     MAX_KEEPALIVE_CONNECTIONS = int(os.environ.get("HOWLER_API_MAX_KEEPALIVE_CONNECTIONS", "20"))
     KEEPALIVE_EXPIRY = float(os.environ.get("HOWLER_API_KEEPALIVE_EXPIRY", "5.0"))
+    # Backend authentication: "passthrough" (default) forwards the caller token; "apikey" uses a dedicated
+    # Howler user and API key, so backend privileges are bounded by the key ACL instead of the caller token.
+    AUTH_MODE = os.environ.get("HOWLER_API_AUTH_MODE", "passthrough")
+    USERNAME = os.environ.get("HOWLER_API_USERNAME")
+    API_KEY_FILE = os.environ.get("HOWLER_API_KEY_FILE")
 
 
 class HOWLER_UI:
