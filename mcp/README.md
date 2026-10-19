@@ -11,7 +11,13 @@ Request flow:
 3. The same user token is forwarded to the Howler API.
 4. The tool returns the Howler API result.
 
-This service intentionally uses token pass-through. It does not mint a second backend token.
+By default this service uses token pass-through. It does not mint a second backend token.
+
+Deployments that need backend privileges independent of the caller token can opt in to API key mode
+(`HOWLER_API_AUTH_MODE=apikey`): callers are still authenticated against the MCP JWKS, but their token is not
+sent to Howler. Backend requests use HTTP basic authentication with a dedicated Howler user and API key, so
+permissions are those of the API key ACL, not of the individual caller. Give each MCP deployment its own Howler
+identity and the narrowest key privileges (for example a read-only key for a read-only MCP instance).
 
 ## Current Tool Surface
 
@@ -59,7 +65,7 @@ Current server capabilities:
 ## Project Layout
 
 - howler_mcp/server.py: FastMCP server construction and lifecycle.
-- howler_mcp/auth.py: JWT verifier and token pass-through provider.
+- howler_mcp/auth.py: JWT verifier and backend authorization provider (token pass-through or API key).
 - howler_mcp/api.py: HTTP client wrapper for Howler API.
 - howler_mcp/tools.py: MCP tool registration and validation logic.
 - howler_mcp/prompts.py: Prompt registration.
@@ -106,6 +112,9 @@ Primary runtime variables:
 - HOWLER_API_MAX_CONNECTIONS
 - HOWLER_API_MAX_KEEPALIVE_CONNECTIONS
 - HOWLER_API_KEEPALIVE_EXPIRY
+- HOWLER_API_AUTH_MODE (`passthrough` by default, or `apikey`)
+- HOWLER_API_USERNAME (required in `apikey` mode)
+- HOWLER_API_KEY_FILE (required in `apikey` mode; file containing the Howler API key)
 - AUTH_ISSUER
 - AUTH_JWKS_URI
 - AUTH_TOKEN_URL
