@@ -143,7 +143,7 @@ def _get_any_hit_id(token: str) -> str:
 
 def _get_hit(token: str, hit_id: str) -> dict:
     response = httpx.get(
-        f"{HOWLER_API.BASE_URL}/hit/{hit_id}",
+        f"{HOWLER_API.BASE_URL}/v1/hit/{hit_id}",
         headers={"Authorization": f"Bearer {token}"},
         timeout=HOWLER_API.TIMEOUT,
     )
