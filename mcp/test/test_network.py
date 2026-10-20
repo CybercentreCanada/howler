@@ -131,7 +131,7 @@ def call_mcp_tool(token: str, tool_name: str, arguments: dict | None = None) -> 
 def _get_any_hit_id(token: str) -> str:
     response = httpx.post(
         headers={"Authorization": f"Bearer {token}"},
-        url=f"{HOWLER_API.BASE_URL}/search/hit",
+        url=f"{HOWLER_API.BASE_URL}/v1/search/hit",
         json={"query": "howler.id:*", "rows": 1, "offset": 0, "fl": "howler.id"},
         timeout=HOWLER_API.TIMEOUT,
     )
