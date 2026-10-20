@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
+from fastmcp import Client, FastMCP
 from mcp.server.auth.provider import AccessToken
 
 from howler_mcp.tools import MAXIMUM_TICKET, register_tools
@@ -52,6 +53,7 @@ def test_registered_tool_surface(tools_and_api):
         "lucene_query",
         "get_label_set_options",
         "add_label_to_hit",
+        "validate_table_for_ecs",
         "create_dossier",
         "create_dossier_for_hit",
         "update_dossier",
@@ -240,7 +242,74 @@ async def test_add_comment_allows_non_uuid_hit_id(tools_and_api):
 
     assert result == "Comment added successfully."
     call_kwargs = mock_api.call.call_args.kwargs
-    assert call_kwargs["path"] == "/hit/hit-001/comments"
+    assert call_kwargs["path"] == "/v1/hit/hit-001/comments"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("api_result", "expected"),
+    [
+        ({"valid": [{"howler": {}}], "invalid": []}, True),
+        ({"valid": [], "invalid": [{"input": {}, "error": "bad field"}]}, False),
+        ({"valid": [{"howler": {}}], "invalid": [{"input": {}, "error": "bad field"}]}, False),
+        ({"valid": [], "invalid": []}, False),
+        (
+            {
+                "valid": [],
+                "invalid": [
+                    {"input": {"howler": {"id": "existing-id"}}, "error": "Id already exists"},
+                    {"input": {"howler": {"score": "bad"}}, "error": "Invalid score"},
+                ],
+            },
+            False,
+        ),
+    ],
+)
+@pytest.mark.parametrize("index", [None, "event"])
+async def test_validate_table_for_ecs_returns_verdict_and_errors(tools_and_api, api_result, expected, index):
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = api_result
+    records = api_result["valid"] + [error["input"] for error in api_result["invalid"]]
+
+    with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
+        if index is None:
+            result = await tools["validate_table_for_ecs"](records=records)
+        else:
+            result = await tools["validate_table_for_ecs"](records=records, index=index)
+
+    assert result.model_dump() == {"valid": expected, "errors": api_result["invalid"]}
+    call_kwargs = mock_api.call.call_args.kwargs
+    assert call_kwargs["path"] == f"/v2/ingest/{index or 'hit'}/validate"
+    assert call_kwargs["method"] == "POST"
+    assert call_kwargs["body"] == records
+    assert call_kwargs["user_access_token"] == FAKE_TOKEN
+
+
+@pytest.mark.asyncio
+async def test_validate_table_for_ecs_returns_structured_mcp_errors():
+    mcp = FastMCP("validation-test")
+    mock_api = AsyncMock()
+    record = {"howler": {"score": "bad"}}
+    errors = [{"input": record, "error": "Invalid score"}]
+    mock_api.call.return_value = {"valid": [], "invalid": errors}
+    register_tools(mcp, mock_api)
+
+    with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
+        async with Client(mcp) as client:
+            result = await client.call_tool("validate_table_for_ecs", {"records": [record]})
+
+    assert not result.is_error
+    assert result.structured_content == {"valid": False, "errors": errors}
+
+
+@pytest.mark.asyncio
+async def test_validate_table_for_ecs_propagates_api_errors(tools_and_api):
+    tools, mock_api = tools_and_api
+    mock_api.call.side_effect = ValueError("Howler API did not return in expected format")
+
+    with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
+        with pytest.raises(ValueError, match="Howler API did not return in expected format"):
+            await tools["validate_table_for_ecs"](records=[{}])
 
 
 @pytest.mark.asyncio
@@ -262,7 +331,7 @@ async def test_whoami_returns_structured_response(tools_and_api):
     assert result.roles == ["user"]
 
     call_kwargs = mock_api.call.call_args.kwargs
-    assert call_kwargs["path"] == "/user/whoami"
+    assert call_kwargs["path"] == "/v1/user/whoami"
     assert call_kwargs["method"] == "GET"
 
 
@@ -277,7 +346,7 @@ async def test_list_assigned_hits_calls_expected_endpoint(tools_and_api):
     assert result[0]["howler"]["id"] == "abc"
 
     call_kwargs = mock_api.call.call_args.kwargs
-    assert call_kwargs["path"] == "/hit/user"
+    assert call_kwargs["path"] == "/v1/hit/user"
     assert call_kwargs["method"] == "GET"
 
 
@@ -292,7 +361,7 @@ async def test_add_comment_sends_correct_payload(tools_and_api):
 
     assert result == "Comment added successfully."
     call_kwargs = mock_api.call.call_args.kwargs
-    assert call_kwargs["path"] == f"/hit/{hit_id}/comments"
+    assert call_kwargs["path"] == f"/v1/hit/{hit_id}/comments"
     assert call_kwargs["method"] == "POST"
     assert call_kwargs["body"] == {"value": "From MCP Client: test note"}
 
@@ -323,7 +392,7 @@ async def test_get_hit_fields_projects_expected_shape(tools_and_api):
     }
 
     call_kwargs = mock_api.call.call_args.kwargs
-    assert call_kwargs["path"] == "/search/fields/hit"
+    assert call_kwargs["path"] == "/v1/search/fields/hit"
     assert call_kwargs["method"] == "GET"
 
 
@@ -370,7 +439,7 @@ async def test_get_field_values_calls_facet_endpoint(tools_and_api):
     assert result["alert"] == 120
 
     facet_call = mock_api.call.call_args_list[-1].kwargs
-    assert facet_call["path"] == "/search/facet/hit/howler.escalation"
+    assert facet_call["path"] == "/v1/search/facet/hit/howler.escalation"
     assert facet_call["method"] == "GET"
     assert facet_call["params"] == {"query": "howler.id:*"}
 
@@ -477,7 +546,7 @@ async def test_lucene_query_builds_projected_body(tools_and_api):
     assert result.hits[0]["event"]["created"] == "2024-01-01"
 
     search_call = mock_api.call.call_args_list[-1].kwargs
-    assert search_call["path"] == "/search/hit"
+    assert search_call["path"] == "/v1/search/hit"
     assert search_call["method"] == "POST"
     assert search_call["body"]["query"] == "howler.assignment:user"
     assert search_call["body"]["rows"] == 20
@@ -529,7 +598,7 @@ async def test_add_label_to_hit_normalizes_category_and_returns_updated_labels(t
         )
 
     assert result == ["investigate"]
-    assert mock_api.call.call_args.kwargs["path"] == "/hit/hit-1/labels/generic"
+    assert mock_api.call.call_args.kwargs["path"] == "/v1/hit/hit-1/labels/generic"
 
 
 @pytest.mark.asyncio
@@ -565,7 +634,7 @@ async def test_lucene_query_rejects_unknown_query_field_before_search_call(
     # Field discovery is expected, but the search endpoint must not be called.
     assert mock_api.call.call_count == 1
     first_call = mock_api.call.call_args_list[0].kwargs
-    assert first_call["path"] == "/search/fields/hit"
+    assert first_call["path"] == "/v1/search/fields/hit"
 
 
 @pytest.mark.asyncio
@@ -641,7 +710,7 @@ async def test_create_dossier_all_hit_names(tools_and_api):
     assert result["dossier_id"] == "abc-123"
 
     call_kwargs = mock_api.call.call_args.kwargs
-    assert call_kwargs["path"] == "/dossier/"
+    assert call_kwargs["path"] == "/v1/dossier/"
     assert call_kwargs["method"] == "POST"
     assert call_kwargs["body"]["title"] == "All Hit Names"
     assert call_kwargs["body"]["query"] == "howler.id:*"
@@ -779,7 +848,7 @@ async def test_create_dossier_with_valid_nested_data_calls_api(tools_and_api):
 
     assert result["dossier_id"] == "d-100"
     call_kwargs = mock_api.call.call_args.kwargs
-    assert call_kwargs["path"] == "/dossier/"
+    assert call_kwargs["path"] == "/v1/dossier/"
     assert call_kwargs["method"] == "POST"
 
 
@@ -805,7 +874,7 @@ async def test_create_dossier_for_hit_appends_leads(tools_and_api):
 
     assert result["howler"]["id"] == "hit-1"
     call_kwargs = mock_api.call.call_args.kwargs
-    assert call_kwargs["path"] == "/hit/hit-1/update"
+    assert call_kwargs["path"] == "/v1/hit/hit-1/update"
     assert call_kwargs["method"] == "PUT"
     assert call_kwargs["body"] == [["APPEND", "howler.dossier", lead]]
 
@@ -927,7 +996,7 @@ async def test_update_dossier_with_query_and_valid_nested_data_calls_api(tools_a
     assert result == {"updated": True}
 
     update_call = mock_api.call.call_args_list[-1].kwargs
-    assert update_call["path"] == "/dossier/d-2"
+    assert update_call["path"] == "/v1/dossier/d-2"
     assert update_call["method"] == "PUT"
     assert update_call["body"]["query"] == "howler.id:*"
 
@@ -950,7 +1019,7 @@ async def test_create_dossier_rejects_unknown_query_field(tools_and_api):
         )
 
     assert mock_api.call.call_count == 1
-    assert mock_api.call.call_args.kwargs["path"] == "/search/fields/hit"
+    assert mock_api.call.call_args.kwargs["path"] == "/v1/search/fields/hit"
 
 
 @pytest.mark.asyncio

@@ -41,11 +41,10 @@ def _require_https_for_non_local(url: str, env_name: str) -> str:
 
 
 class HOWLER_API:
-    VERSION = os.environ.get("HOWLER_API_VERSION", "v1")
     HOST = os.environ.get("HOWLER_API_HOST", "localhost")
     PORT = os.environ.get("HOWLER_API_PORT", "3000")
     BASE_URL = _require_https_for_non_local(
-        os.environ.get("HOWLER_API_BASE_URL", f"http://{HOST}:{PORT}/api/{VERSION}"),
+        os.environ.get("HOWLER_API_BASE_URL", f"http://{HOST}:{PORT}/api"),
         "HOWLER_API_BASE_URL",
     )
     AUDIENCE = os.environ.get("HOWLER_API_AUDIENCE", "howler")
