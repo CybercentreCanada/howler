@@ -2,7 +2,7 @@
 
 ## Development
 
-You also need to run the [Howler API](https://github.com/CybercentreCanada/howler/tree/develop/api) in order to run howler.
+You also need to run the [Howler API](https://github.com/CybercentreCanada/howler/tree/main/api) in order to run howler.
 
 ```bash
 git clone git@github.com:CybercentreCanada/howler.git

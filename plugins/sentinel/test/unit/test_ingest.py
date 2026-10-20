@@ -9,6 +9,9 @@ import requests
 import werkzeug
 from flask.app import Flask
 from howler.common.loader import datastore
+from howler.services import hit_service
+
+from sentinel.mapping.xdr_alert import XDRAlert
 
 # No clue why this is necessary
 werkzeug.__version__ = "1.0.0"  # type: ignore
@@ -65,6 +68,31 @@ def test_ingest_endpoint(client, caplog):
     for _id in result.json["api_response"]["individual_hit_ids"]:
         assert datastore().hit.exists(_id)
         assert _id in case_hit_values, f"Child hit {_id} should be in case items"
+
+
+@pytest.mark.parametrize(
+    ("computer_dns_name", "has_computer_dns_name_field", "expected_target"),
+    [
+        (None, False, None),
+        (None, True, None),
+        ("", True, None),
+        ("   ", True, None),
+        ("host.example.com", True, "host.example.com"),
+    ],
+)
+def test_xdr_alert_mapping_handles_optional_computer_dns_name(
+    computer_dns_name, has_computer_dns_name_field, expected_target
+):
+    alert = copy.deepcopy(SENTINEL_ALERT["alerts"][0])
+    if has_computer_dns_name_field:
+        alert["computerDnsName"] = computer_dns_name
+
+    mapper = XDRAlert(tid_mapping={alert["tenantId"]: "Acme Corporation"})
+    mapped_alert = mapper.map_alert(alert, alert["tenantId"])
+
+    assert mapped_alert is not None
+    converted_alert, _ = hit_service.convert_hit(mapped_alert, unique=False, ignore_extra_values=True)
+    assert converted_alert.howler.outline.target == expected_target
 
 
 def test_update_incident_status(client):

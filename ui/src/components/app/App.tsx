@@ -83,9 +83,12 @@ import ItemPage from 'components/routes/cases/detail/ItemPage';
 import DossierEditor from 'components/routes/dossiers/DossierEditor';
 import Dossiers from 'components/routes/dossiers/Dossiers';
 import ActionDocumentation from 'components/routes/help/ActionDocumentation';
+import AdvancedDocumentation from 'components/routes/help/AdvancedDocumentation';
 import ApiDocumentation from 'components/routes/help/ApiDocumentation';
 import AuthDocumentation from 'components/routes/help/AuthDocumentation';
+import CaseDocumentation from 'components/routes/help/CaseDocumentation';
 import ClientDocumentation from 'components/routes/help/ClientDocumentation';
+import DossierDocumentation from 'components/routes/help/DossierDocumentation';
 import HelpDashboard from 'components/routes/help/Help';
 import HitDocumentation from 'components/routes/help/HitDocumentation';
 import NotebookDocumentation from 'components/routes/help/NotebookDocumentation';
@@ -572,6 +575,16 @@ const createRouter = () =>
           }
         },
         {
+          path: 'help/advanced',
+          element: <AdvancedDocumentation />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/help', 'route.help', <Help />),
+              selfCrumb(match, 'route.help.advanced', <Code />)
+            ]
+          }
+        },
+        {
           path: 'help/api',
           element: <ApiDocumentation />,
           handle: {
@@ -598,6 +611,26 @@ const createRouter = () =>
             breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
               crumb('/help', 'route.help', <Help />),
               selfCrumb(match, 'route.help.client', <Terminal />)
+            ]
+          }
+        },
+        {
+          path: 'help/cases',
+          element: <CaseDocumentation />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/help', 'route.help', <Help />),
+              selfCrumb(match, 'route.help.cases', <BookRounded />)
+            ]
+          }
+        },
+        {
+          path: 'help/dossiers',
+          element: <DossierDocumentation />,
+          handle: {
+            breadcrumb: (match: UIMatch): AppBreadcrumbItem[] => [
+              crumb('/help', 'route.help', <Help />),
+              selfCrumb(match, 'route.help.dossiers', <Topic />)
             ]
           }
         },

@@ -17,6 +17,7 @@ interface ChipPopperProps {
   placement?: 'bottom-start' | 'bottom-end' | 'bottom';
   onToggle?: (show: boolean) => void;
   onDelete?: (event?: any) => void;
+  dimmed?: boolean;
   toggleOnDelete?: boolean;
   disablePortal?: boolean;
   closeOnClick?: boolean;
@@ -31,6 +32,7 @@ const ChipPopper: FC<ChipPopperProps> = ({
   placement = 'bottom-start',
   onToggle,
   onDelete,
+  dimmed = false,
   toggleOnDelete = false,
   closeOnClick = false,
   disablePortal = true,
@@ -38,6 +40,7 @@ const ChipPopper: FC<ChipPopperProps> = ({
 }) => {
   const [show, setShow] = useState(false);
   const [anchorEl, setAnchorEl] = useState<HTMLDivElement | null>(null);
+  const { sx: chipSx, ...chipProps } = slotProps.chip ?? {};
 
   const handleToggle = (newShow: boolean) => {
     setShow(newShow);
@@ -61,12 +64,13 @@ const ChipPopper: FC<ChipPopperProps> = ({
           theme => ({
             position: 'relative',
             zIndex: 1,
-            transition: theme.transitions.create(['border-bottom-left-radius', 'border-bottom-right-radius'])
+            transition: theme.transitions.create(['border-bottom-left-radius', 'border-bottom-right-radius', 'opacity'])
           }),
           show && { borderBottomLeftRadius: '0', borderBottomRightRadius: '0' },
-          ...(Array.isArray(slotProps.chip?.sx) ? slotProps.chip.sx : [slotProps.chip?.sx])
+          dimmed && { opacity: 0.5, '&:hover': { opacity: 1 } },
+          ...(Array.isArray(chipSx) ? chipSx : [chipSx])
         ]}
-        {...(slotProps.chip ?? {})}
+        {...chipProps}
       />
       <Popper
         placement={placement}

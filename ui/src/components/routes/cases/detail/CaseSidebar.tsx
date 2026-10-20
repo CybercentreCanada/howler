@@ -9,33 +9,8 @@ import {
   type DragEndEvent,
   type DragStartEvent
 } from '@dnd-kit/core';
-import {
-  AddCircle,
-  CalendarMonth,
-  Circle,
-  Dashboard,
-  Dataset,
-  Description,
-  Event as EventIcon,
-  Folder,
-  Refresh,
-  Rule,
-  Search,
-  UnfoldLess
-} from '@mui/icons-material';
-import {
-  alpha,
-  Box,
-  Card,
-  Chip,
-  IconButton,
-  LinearProgress,
-  Skeleton,
-  Stack,
-  Tooltip,
-  Typography,
-  useTheme
-} from '@mui/material';
+import { Circle } from '@mui/icons-material';
+import { Box, Card, Chip, LinearProgress, Skeleton, Stack, Typography, useTheme } from '@mui/material';
 import api from 'api';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import useMyApi from 'components/hooks/useMyApi';
@@ -46,8 +21,9 @@ import type { Case } from 'models/entities/generated/Case';
 import type { Item } from 'models/entities/generated/Item';
 import { useCallback, useContext, useReducer, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation } from 'react-router';
 import { ESCALATION_COLOR_MAP } from '../constants';
+import CaseSidebarActions from './CaseSidebarActions';
+import CaseSidebarNavigation from './CaseSidebarNavigation';
 import CaseFolder from './sidebar/CaseFolder';
 import FolderEntry from './sidebar/FolderEntry';
 import RootDropZone from './sidebar/RootDropZone';
@@ -60,7 +36,6 @@ interface CaseSidebarProps {
 const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
   const { dispatchApi } = useMyApi();
   const { t } = useTranslation();
-  const location = useLocation();
   const theme = useTheme();
   const { showModal } = useContext(ModalContext);
 
@@ -85,35 +60,6 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
     const data = event.active.data.current;
     setActiveDragData({ type: data!.type, label: data!.label ?? '' });
   }, []);
-
-  const navItemSx = useCallback(
-    (isActive: boolean) => [
-      {
-        cursor: 'pointer',
-        px: 0.5,
-        py: 0.5,
-        transition: theme.transitions.create('background', { duration: 100 }),
-        color: `${theme.palette.text.primary} !important`,
-        textDecoration: 'none',
-        background: 'transparent',
-        borderRight: `thin solid ${theme.palette.divider}`,
-        '&:hover': {
-          background: alpha(theme.palette.grey[600], 0.25)
-        }
-      },
-      isActive && {
-        background: alpha(theme.palette.grey[600], 0.15),
-        borderRight: `3px solid ${theme.palette.primary.main}`
-      }
-    ],
-    [
-      theme.palette.divider,
-      theme.palette.grey,
-      theme.palette.primary.main,
-      theme.palette.text.primary,
-      theme.transitions
-    ]
-  );
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
@@ -156,6 +102,52 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
     [_case, dispatchApi, update]
   );
 
+  const handleAddEvent = useCallback(() => {
+    showModal(<AddEventModal case={_case} onUpdated={update} />, { maxHeight: '90vh', height: 'unset' });
+  }, [_case, showModal, update]);
+
+  const handleAddItem = useCallback(() => {
+    showModal(<AddToCaseModal case={_case} onUpdated={update} />, { maxHeight: '90vh', height: 'unset' });
+  }, [_case, showModal, update]);
+
+  const handleAddFolder = useCallback(async () => {
+    if (!_case?.case_id) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const updatedCase = await dispatchApi(
+        api.v2.case.items.post(_case.case_id, {
+          type: 'folder',
+          name: t('page.cases.sidebar.new_folder'),
+          value: t('page.cases.sidebar.new_folder')
+        })
+      );
+      if (updatedCase) {
+        update(updatedCase);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [_case, dispatchApi, t, update]);
+
+  const handleRefresh = useCallback(async () => {
+    if (!_case?.case_id) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const refreshedCase = await dispatchApi(api.v2.case.get(_case.case_id));
+      if (refreshedCase) {
+        update(refreshedCase);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [_case, dispatchApi, update]);
+
   if (!_case) {
     return null;
   }
@@ -194,70 +186,7 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
 
       {_case ? (
         <>
-          <Stack
-            direction="row"
-            alignItems="center"
-            sx={navItemSx(location.pathname.endsWith(_case.case_id!))}
-            component={Link}
-            to={`/cases/${_case.case_id!}`}
-          >
-            <Dashboard fontSize="small" />
-            <Typography variant="body2" sx={{ pl: 1, textWrap: 'nowrap' }}>
-              {t('page.cases.dashboard')}
-            </Typography>
-          </Stack>
-
-          <Stack
-            direction="row"
-            alignItems="center"
-            sx={navItemSx(location.pathname.endsWith('search'))}
-            component={Link}
-            to={`/cases/${_case.case_id!}/search`}
-          >
-            <Search fontSize="small" />
-            <Typography variant="body2" sx={{ userSelect: 'none', pl: 1, textWrap: 'nowrap' }}>
-              {t('page.cases.search')}
-            </Typography>
-          </Stack>
-
-          <Stack
-            direction="row"
-            alignItems="center"
-            sx={navItemSx(location.pathname.endsWith('observables'))}
-            component={Link}
-            to={`/cases/${_case.case_id!}/observables`}
-          >
-            <Dataset fontSize="small" />
-            <Typography variant="body2" sx={{ userSelect: 'none', pl: 1, textWrap: 'nowrap' }}>
-              {t('page.cases.observables')}
-            </Typography>
-          </Stack>
-
-          <Stack
-            direction="row"
-            alignItems="center"
-            sx={navItemSx(location.pathname.endsWith('timeline'))}
-            component={Link}
-            to={`/cases/${_case.case_id!}/timeline`}
-          >
-            <CalendarMonth fontSize="small" />
-            <Typography variant="body2" sx={{ userSelect: 'none', pl: 1, textWrap: 'nowrap' }}>
-              {t('page.cases.timeline')}
-            </Typography>
-          </Stack>
-
-          <Stack
-            direction="row"
-            alignItems="center"
-            sx={navItemSx(location.pathname.endsWith('rules'))}
-            component={Link}
-            to={`/cases/${_case.case_id!}/rules`}
-          >
-            <Rule />
-            <Typography variant="body2" sx={{ userSelect: 'none', pl: 1, textWrap: 'nowrap' }}>
-              {t('page.cases.rules')}
-            </Typography>
-          </Stack>
+          <CaseSidebarNavigation caseId={_case.case_id!} />
         </>
       ) : (
         <>
@@ -269,127 +198,13 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
         </>
       )}
 
-      <Card sx={{ borderRadius: 0, p: 0.25 }}>
-        <Stack direction="row" spacing={0.25}>
-          <div style={{ flex: 1 }} />
-
-          <Tooltip title={t('page.cases.sidebar.add_event')}>
-            <IconButton
-              size="small"
-              sx={{ position: 'relative' }}
-              onClick={() => {
-                if (_case) {
-                  showModal(<AddEventModal case={_case} onUpdated={update} />, { maxHeight: '90vh', height: 'unset' });
-                }
-              }}
-            >
-              <EventIcon sx={{ fontSize: '18px' }} />
-              <AddCircle
-                sx={{
-                  fontSize: '12px',
-                  position: 'absolute',
-                  bottom: 2,
-                  right: 2,
-                  backgroundColor: theme.palette.background.paper,
-                  borderRadius: '100%'
-                }}
-                htmlColor="grey"
-              />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip title={t('page.cases.sidebar.add_item')}>
-            <IconButton
-              size="small"
-              sx={{ position: 'relative' }}
-              onClick={() => {
-                if (_case) {
-                  showModal(<AddToCaseModal case={_case} onUpdated={update} />, { maxHeight: '90vh', height: 'unset' });
-                }
-              }}
-            >
-              <Description sx={{ fontSize: '18px' }} />
-              <AddCircle
-                sx={{
-                  fontSize: '12px',
-                  position: 'absolute',
-                  bottom: 2,
-                  right: 2,
-                  backgroundColor: theme.palette.background.paper,
-                  borderRadius: '100%'
-                }}
-                htmlColor="grey"
-              />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip title={t('page.cases.sidebar.add_folder')}>
-            <IconButton
-              size="small"
-              sx={{ position: 'relative' }}
-              onClick={async () => {
-                if (_case?.case_id) {
-                  try {
-                    setLoading(true);
-                    const updatedCase = await dispatchApi(
-                      api.v2.case.items.post(_case.case_id!, {
-                        type: 'folder',
-                        name: t('page.cases.sidebar.new_folder'),
-                        value: t('page.cases.sidebar.new_folder')
-                      })
-                    );
-                    if (updatedCase) {
-                      update(updatedCase);
-                    }
-                  } finally {
-                    setLoading(false);
-                  }
-                }
-              }}
-            >
-              <Folder sx={{ fontSize: '18px' }} />
-              <AddCircle
-                sx={{
-                  fontSize: '12px',
-                  position: 'absolute',
-                  bottom: 2,
-                  right: 2,
-                  backgroundColor: theme.palette.background.paper,
-                  borderRadius: '100%'
-                }}
-                htmlColor="grey"
-              />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip title={t('page.cases.sidebar.refresh')}>
-            <IconButton
-              size="small"
-              onClick={async () => {
-                if (_case?.case_id) {
-                  try {
-                    setLoading(true);
-                    const refreshedCase = await dispatchApi(api.v2.case.get(_case.case_id!));
-                    if (refreshedCase) {
-                      update(refreshedCase);
-                    }
-                  } finally {
-                    setLoading(false);
-                  }
-                }
-              }}
-            >
-              <Refresh sx={{ fontSize: '18px' }} />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip title={t('page.cases.sidebar.collapse_all')}>
-            <IconButton size="small" onClick={collapse}>
-              <UnfoldLess sx={{ fontSize: '18px' }} />
-            </IconButton>
-          </Tooltip>
-        </Stack>
-      </Card>
+      <CaseSidebarActions
+        onAddEvent={handleAddEvent}
+        onAddItem={handleAddItem}
+        onAddFolder={handleAddFolder}
+        onRefresh={handleRefresh}
+        onCollapseAll={collapse}
+      />
 
       {_case && (
         <Box
