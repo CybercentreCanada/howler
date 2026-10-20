@@ -1,6 +1,6 @@
 import re
 from logging import getLogger
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 from fastmcp.server.dependencies import get_access_token, get_http_request
@@ -50,6 +50,20 @@ class HowlerResponse(BaseModel):
     rows: int = Field(description="Number of rows returned in the search results.")
     total: int = Field(description="Total number of hits matching the search criteria.")
     hits: list[dict[str, Any]] = Field(default_factory=list, description="List of hits matching the search criteria.")
+
+
+class RecordValidationError(BaseModel):
+    input: dict[str, Any] = Field(description="The rejected record, unchanged from the validation request.")
+    error: str = Field(description="Backend validation error explaining why the record was rejected.")
+
+
+class RecordValidationResponse(BaseModel):
+    valid: bool = Field(
+        description="True only when at least one record was supplied and every record passed validation."
+    )
+    errors: list[RecordValidationError] = Field(
+        description="Rejected records and their errors; empty if none were rejected."
+    )
 
 
 def register_tools(mcp, api_client: HowlerApiClient):
@@ -233,7 +247,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
         data = await api_client.call(
             user_access_token=access_token,
-            path="/user/whoami",
+            path="/v1/user/whoami",
             method="GET",
         )
         return WhoAmIResponse(
@@ -260,7 +274,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
         return await api_client.call(
             user_access_token=access_token,
-            path="/hit/user",
+            path="/v1/hit/user",
             method="GET",
         )
 
@@ -291,7 +305,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
         await api_client.call(
             user_access_token=access_token,
-            path=f"/hit/{hit_id}/comments",
+            path=f"/v1/hit/{hit_id}/comments",
             method="POST",
             body={"value": f"From MCP Client: {comment}"},
         )
@@ -339,7 +353,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
             user_access_token=access_token,
             # The facet endpoint lives under /search/facet/<index>/<field>.
             # Passing the field directly in the path avoids a separate body.
-            path=f"/search/facet/hit/{normalized_field}",
+            path=f"/v1/search/facet/hit/{normalized_field}",
             method="GET",
             # A broad query is required — the facet endpoint needs at least one
             # matching document to return any distinct values. Using howler.id:*
@@ -373,7 +387,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
             # for that index, including type, indexed, and stored flags.
             # This is the authoritative source of valid field names for
             # Lucene queries — use these names verbatim.
-            path="/search/fields/hit",
+            path="/v1/search/fields/hit",
             method="GET",
         )
 
@@ -507,7 +521,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
             user_access_token=access_token,
             # The search endpoint accepts any Lucene query against the hit index.
             # The caller is responsible for providing valid Lucene syntax.
-            path="/search/hit",
+            path="/v1/search/hit",
             method="POST",
             body=body,
         )
@@ -584,7 +598,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
         # MCP tool response small and easy to consume.
         data: dict[str, Any] = await api_client.call(
             user_access_token=_proper_access_token(),
-            path=f"/hit/{hit_id.strip()}/labels/{label_set}",
+            path=f"/v1/hit/{hit_id.strip()}/labels/{label_set}",
             method="PUT",
             body={"value": labels_name},
         )
@@ -746,6 +760,39 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
         return False
 
+    @mcp.tool(name="validate_table_for_ecs")
+    async def validate_records(
+        records: list[dict[str, Any]], index: Literal["hit", "event"] = "hit"
+    ) -> RecordValidationResponse:
+        """Validate records against Howler's ECS subset and return errors for rejected records.
+
+        Checks whether records can be converted into Howler hits or events.
+        Validation also checks ID uniqueness: an existing ID can cause rejection
+        even when the record's schema is valid. This tool does not ingest records.
+
+        Args:
+            records: Records to validate
+            index: Record type to validate against. Defaults to hit
+
+        Returns:
+            RecordValidationResponse: ``valid`` is true only for a non-empty
+                batch with no rejected records. ``errors`` contains each rejected
+                record as ``input`` and its backend ``error`` message. Use these
+                messages to correct records before validating again. An empty
+                batch returns ``valid=false`` and ``errors=[]``.
+        """
+        result: dict[str, list[dict[str, Any]]] = await api_client.call(
+            body=records,
+            method="POST",
+            path=f"/v2/ingest/{index}/validate",
+            user_access_token=_proper_access_token(),
+        )
+
+        return RecordValidationResponse(
+            valid=bool(result["valid"]) and not result["invalid"],
+            errors=[RecordValidationError.model_validate(error) for error in result["invalid"]],
+        )
+
     @mcp.tool(name="create_dossier")
     async def create_dossier(dossier_data: dict) -> dict:
         """Create a new dossier from a validated Lucene query.
@@ -829,7 +876,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
         return await api_client.call(
             body=dossier_data,
             method="POST",
-            path="/dossier/",
+            path="/v1/dossier/",
             user_access_token=_proper_access_token(),
         )
 
@@ -869,7 +916,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
         return await api_client.call(
             body=operations,
             method="PUT",
-            path=f"/hit/{hit_id.strip()}/update",
+            path=f"/v1/hit/{hit_id.strip()}/update",
             user_access_token=_proper_access_token(),
         )
 
@@ -921,6 +968,6 @@ def register_tools(mcp, api_client: HowlerApiClient):
         return await api_client.call(
             body=data_to_update,
             method="PUT",
-            path=f"/dossier/{dossier_id}",
+            path=f"/v1/dossier/{dossier_id}",
             user_access_token=_proper_access_token(),
         )

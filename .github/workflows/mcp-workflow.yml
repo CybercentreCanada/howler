@@ -147,7 +147,7 @@ jobs:
         run: |
           poetry run coverage erase --data-file=.coverage.server
           HOWLER_API_HOST=localhost \
-          HOWLER_API_BASE_URL=http://localhost:5000/api/v1 \
+          HOWLER_API_BASE_URL=http://localhost:5000/api \
           AUTH_HOST=localhost \
           AUTH_TOKEN_URL=http://localhost:9100/realms/HogwartsMini/protocol/openid-connect/token \
           COVERAGE_FILE=.coverage.server poetry run coverage run -m howler_mcp.server > /tmp/howler-mcp-server.log 2>&1 &
@@ -164,7 +164,7 @@ jobs:
           TEST_AUTH_USERNAME: goose
           TEST_AUTH_PASSWORD: goose
           TEST_AUTH_EMAIL: goose@howler.cyber.gc.ca
-          HOWLER_API_BASE_URL: http://localhost:5000/api/v1
+          HOWLER_API_BASE_URL: http://localhost:5000/api
           COVERAGE_FILE: .coverage.tests
 
       - name: Print dependency logs after failed tests
