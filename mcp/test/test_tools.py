@@ -314,13 +314,7 @@ async def test_get_hit_fields_projects_expected_shape(tools_and_api):
     with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
         result = await tools["get_hit_fields"]()
 
-    assert result == {
-        "howler.escalation": {
-            "list": False,
-            "type": "keyword",
-            "description": "Escalation value",
-        }
-    }
+    assert result == "Key: howler.escalation, Type: keyword, Desc: Escalation value"
 
     call_kwargs = mock_api.call.call_args.kwargs
     assert call_kwargs["path"] == "/search/fields/hit"

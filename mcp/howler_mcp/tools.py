@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from howler_mcp.api import HowlerApiClient
 from howler_mcp.config import HOWLER_UI, ICONIFY
+from howler_mcp.utils import get_hit_fields as fetch_hit_fields
 
 # Safety limits to avoid oversized backend requests.
 MAXIMUM_TICKET: int = 200
@@ -160,7 +161,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
         # Cache field metadata for the current process lifetime to avoid
         # re-fetching index mapping for every query validation.
         if cached_hit_fields is None:
-            cached_hit_fields = set((await get_hit_fields()).keys())
+            cached_hit_fields = set(await fetch_hit_fields(api_client, _proper_access_token()))
 
         invalid_fields = sorted({field_name for field_name in referenced_fields if field_name not in cached_hit_fields})
 
@@ -328,7 +329,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
             raise ValueError("field parameter is required")
 
         if cached_hit_fields is None:
-            cached_hit_fields = set((await get_hit_fields()).keys())
+            cached_hit_fields = set(await fetch_hit_fields(api_client, access_token))
 
         if normalized_field not in cached_hit_fields:
             raise ValueError(
@@ -350,7 +351,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
         return field_values
 
     @mcp.tool(name="get_hit_fields")
-    async def get_hit_fields() -> dict[str, Any]:
+    async def get_hit_fields() -> str:
         """Return all searchable fields available on Howler hits.
 
         Use this tool before building a Lucene query when you are unsure which
@@ -367,6 +368,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
         """
         access_token: AccessToken = _proper_access_token()
 
+<<<<<<< Updated upstream
         all_values: dict[str, Any] = await api_client.call(
             user_access_token=access_token,
             # /search/fields/<index> returns the Elasticsearch field mapping
@@ -375,22 +377,16 @@ def register_tools(mcp, api_client: HowlerApiClient):
             # Lucene queries — use these names verbatim.
             path="/search/fields/hit",
             method="GET",
+=======
+        projected_values = await fetch_hit_fields(api_client, access_token)
+
+        compact_string = "\n".join(
+            f"Key: {key}, Type: {value['type']}, Desc: {value['description']}"
+            for key, value in projected_values.items()
+>>>>>>> Stashed changes
         )
 
-        # Keep only the metadata required for query authoring.
-        projected_values: dict[str, Any] = {}
-        for key, values in all_values.items():
-            # Somehow this key has no value?
-            if not isinstance(values, dict):
-                continue
-
-            projected_values[key] = {
-                "list": values.get("list"),
-                "type": values.get("type"),
-                "description": values.get("description"),
-            }
-
-        return projected_values
+        return compact_string
 
     @mcp.tool(name="lucene_query")
     async def lucene_query(
@@ -533,7 +529,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
         # Load and cache the searchable field names once for this process.
         if cached_hit_fields is None:
-            cached_hit_fields = set((await get_hit_fields()).keys())
+            cached_hit_fields = set(await fetch_hit_fields(api_client, _proper_access_token()))
 
         label_set_options: list[str] = []
 
