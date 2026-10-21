@@ -368,22 +368,11 @@ def register_tools(mcp, api_client: HowlerApiClient):
         """
         access_token: AccessToken = _proper_access_token()
 
-<<<<<<< Updated upstream
-        all_values: dict[str, Any] = await api_client.call(
-            user_access_token=access_token,
-            # /search/fields/<index> returns the Elasticsearch field mapping
-            # for that index, including type, indexed, and stored flags.
-            # This is the authoritative source of valid field names for
-            # Lucene queries — use these names verbatim.
-            path="/search/fields/hit",
-            method="GET",
-=======
         projected_values = await fetch_hit_fields(api_client, access_token)
 
         compact_string = "\n".join(
             f"Key: {key}, Type: {value['type']}, Desc: {value['description']}"
             for key, value in projected_values.items()
->>>>>>> Stashed changes
         )
 
         return compact_string
