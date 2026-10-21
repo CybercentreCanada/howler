@@ -391,6 +391,35 @@ async def test_get_hit_fields_projects_expected_shape(tools_and_api):
 
 
 @pytest.mark.asyncio
+async def test_get_hit_fields_filters_keys_by_regex(tools_and_api):
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = {
+        "howler.id": {"type": "keyword", "description": "Hit ID", "list": False},
+        "event.created": {"type": "date", "description": "Creation time", "list": False},
+        "howler.assignment": {"type": "keyword", "description": "Assignment", "list": False},
+    }
+
+    with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
+        result = await tools["get_hit_fields"](regex=r"^howler\.")
+
+    assert "Key: howler.id," in result
+    assert "Key: howler.assignment," in result
+    assert "event.created" not in result
+
+
+@pytest.mark.asyncio
+async def test_get_hit_fields_rejects_invalid_regex(tools_and_api):
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = {}
+
+    with (
+        patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
+        pytest.raises(ValueError, match="Invalid field regex"),
+    ):
+        await tools["get_hit_fields"](regex="[")
+
+
+@pytest.mark.asyncio
 async def test_get_field_values_requires_field(tools_and_api):
     tools, _ = tools_and_api
 

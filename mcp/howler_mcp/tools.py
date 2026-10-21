@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from howler_mcp.api import HowlerApiClient
 from howler_mcp.config import HOWLER_UI, ICONIFY
-from howler_mcp.utils import get_hit_fields as fetch_hit_fields
+from howler_mcp.utils import get_fields_for_index as fetch_index_fields
 
 # Safety limits to avoid oversized backend requests.
 MAXIMUM_TICKET: int = 200
@@ -175,7 +175,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
         # Cache field metadata for the current process lifetime to avoid
         # re-fetching index mapping for every query validation.
         if cached_hit_fields is None:
-            cached_hit_fields = set(await fetch_hit_fields(api_client, _proper_access_token()))
+            cached_hit_fields = set(await fetch_index_fields(api_client, _proper_access_token(), "hit"))
 
         invalid_fields = sorted({field_name for field_name in referenced_fields if field_name not in cached_hit_fields})
 
@@ -343,7 +343,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
             raise ValueError("field parameter is required")
 
         if cached_hit_fields is None:
-            cached_hit_fields = set(await fetch_hit_fields(api_client, access_token))
+            cached_hit_fields = set(await fetch_index_fields(api_client, access_token, "hit"))
 
         if normalized_field not in cached_hit_fields:
             raise ValueError(
@@ -365,31 +365,38 @@ def register_tools(mcp, api_client: HowlerApiClient):
         return field_values
 
     @mcp.tool(name="get_hit_fields")
-    async def get_hit_fields() -> str:
+    async def get_hit_fields(regex: str | None = None) -> str:
         """Return all searchable fields available on Howler hits.
 
         Use this tool before building a Lucene query when you are unsure which
         field names are valid. The response lists every indexed field together
         with its type and whether it is stored or indexed.
 
-        Returns:
-            dict[str, Any]: Mapping of field name to field metadata, for
-            example ``{"howler.assignment": {"type": "keyword", "indexed": true,
-            "stored": false}, ...}``.
+        Args:
+            regex: Optional regular expression used to filter field names.
+                When omitted, all fields are returned.
 
         Raises:
             ValueError: If no access token is available.
+            ValueError: If invalid field on regex
+
+        Returns:
+            str: Compacted "JSON" like object holding all valid fields in new lines
         """
         access_token: AccessToken = _proper_access_token()
 
-        projected_values = await fetch_hit_fields(api_client, access_token)
+        projected_values = await fetch_index_fields(api_client, access_token, "hit")
 
-        compact_string = "\n".join(
+        try:
+            field_pattern = re.compile(regex) if regex else None
+        except re.error as error:
+            raise ValueError(f"Invalid field regex: {error}") from error
+
+        return "\n".join(
             f"Key: {key}, Type: {value['type']}, Desc: {value['description']}"
             for key, value in projected_values.items()
+            if field_pattern is None or field_pattern.search(key)
         )
-
-        return compact_string
 
     @mcp.tool(name="lucene_query")
     async def lucene_query(
@@ -532,7 +539,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
         # Load and cache the searchable field names once for this process.
         if cached_hit_fields is None:
-            cached_hit_fields = set(await fetch_hit_fields(api_client, _proper_access_token()))
+            cached_hit_fields = set(await fetch_index_fields(api_client, _proper_access_token(), "hit"))
 
         label_set_options: list[str] = []
 

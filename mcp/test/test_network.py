@@ -202,8 +202,8 @@ def test_tool_get_hit_fields():
 
     assert not result.get("isError", False)
     tool_output = json.loads(result["content"][0]["text"])
-    assert isinstance(tool_output, dict)
-    assert "howler.id" in tool_output
+    assert isinstance(tool_output, str)
+    assert any(line.startswith("Key: howler.id, Type:") for line in tool_output.splitlines())
 
 
 def test_tool_get_field_values():
