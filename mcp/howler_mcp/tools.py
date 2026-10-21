@@ -760,7 +760,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
         return False
 
-    @mcp.tool(name="validate_table_for_ecs")
+    @mcp.tool(name="validate_records")
     async def validate_records(
         records: list[dict[str, Any]], index: Literal["hit", "event"] = "hit"
     ) -> RecordValidationResponse:

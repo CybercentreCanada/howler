@@ -53,7 +53,7 @@ def test_registered_tool_surface(tools_and_api):
         "lucene_query",
         "get_label_set_options",
         "add_label_to_hit",
-        "validate_table_for_ecs",
+        "validate_records",
         "create_dossier",
         "create_dossier_for_hit",
         "update_dossier",
@@ -266,16 +266,16 @@ async def test_add_comment_allows_non_uuid_hit_id(tools_and_api):
     ],
 )
 @pytest.mark.parametrize("index", [None, "event"])
-async def test_validate_table_for_ecs_returns_verdict_and_errors(tools_and_api, api_result, expected, index):
+async def test_validate_records_returns_verdict_and_errors(tools_and_api, api_result, expected, index):
     tools, mock_api = tools_and_api
     mock_api.call.return_value = api_result
     records = api_result["valid"] + [error["input"] for error in api_result["invalid"]]
 
     with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
         if index is None:
-            result = await tools["validate_table_for_ecs"](records=records)
+            result = await tools["validate_records"](records=records)
         else:
-            result = await tools["validate_table_for_ecs"](records=records, index=index)
+            result = await tools["validate_records"](records=records, index=index)
 
     assert result.model_dump() == {"valid": expected, "errors": api_result["invalid"]}
     call_kwargs = mock_api.call.call_args.kwargs
@@ -286,7 +286,7 @@ async def test_validate_table_for_ecs_returns_verdict_and_errors(tools_and_api, 
 
 
 @pytest.mark.asyncio
-async def test_validate_table_for_ecs_returns_structured_mcp_errors():
+async def test_validate_records_returns_structured_mcp_errors():
     mcp = FastMCP("validation-test")
     mock_api = AsyncMock()
     record = {"howler": {"score": "bad"}}
@@ -296,20 +296,20 @@ async def test_validate_table_for_ecs_returns_structured_mcp_errors():
 
     with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
         async with Client(mcp) as client:
-            result = await client.call_tool("validate_table_for_ecs", {"records": [record]})
+            result = await client.call_tool("validate_records", {"records": [record]})
 
     assert not result.is_error
     assert result.structured_content == {"valid": False, "errors": errors}
 
 
 @pytest.mark.asyncio
-async def test_validate_table_for_ecs_propagates_api_errors(tools_and_api):
+async def test_validate_records_propagates_api_errors(tools_and_api):
     tools, mock_api = tools_and_api
     mock_api.call.side_effect = ValueError("Howler API did not return in expected format")
 
     with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
         with pytest.raises(ValueError, match="Howler API did not return in expected format"):
-            await tools["validate_table_for_ecs"](records=[{}])
+            await tools["validate_records"](records=[{}])
 
 
 @pytest.mark.asyncio
