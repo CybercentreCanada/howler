@@ -73,10 +73,10 @@ pnpm test <specific_test_file_paths>
 ## Cross-Cutting Workflow
 
 - Root pre-commit hooks cover Ruff, Actionlint, oxfmt, changed-file oxlint/TypeScript checks, Poetry lock integrity, translation/import checks, and commit messages. Install with `pre-commit install` and run all hooks with `pre-commit run --all-files`.
-- Commit messages are Conventional Commits. Valid scopes enforced by the hook are `api`, `client`, `ui`, `ci`, `demo`, `helm`, and `mcp`; the hook links issue-like branch names and lowercases the summary.
+- Commit messages use the Conventional Commit types configured in `.release-please-config.json` and the commit-message hook. Valid scopes are `api`, `client`, `ui`, `ci`, `demo`, `helm`, `mcp`, `evidence`, `sentinel`, `sync`, and `main` (for Release Please titles); the hook links issue-like branch names and lowercases the summary.
 - GPG signing is broken in this environment. Whenever the agent creates a local commit, explicitly bypass signing for that invocation, e.g. `git -C <repo-or-worktree> -c commit.gpgsign=false commit ...`; never run bare `git commit` and do not change global or repository signing configuration.
 - PR titles are semantic and their subjects must be lowercase; accepted types are defined in `.github/workflows/pr-title-check.yml`.
-- If a verified bug fix is made on `main`, `develop`, `patch/*`, or `rc/*`, add a matching entry under the appropriate version in `docs/RELEASES.md` using `- **Short Title** _(bugfix)_: description.`
+- Release Please creates independent package release PRs from `main` and generates each package's `CHANGELOG.md`. Do not manually add new entries to `docs/RELEASES.md`; it is a read-only archive of historical releases. Keep each package's initial native baseline note and archive link in its local changelog.
 
 ## Agentic Development And Git Worktrees
 

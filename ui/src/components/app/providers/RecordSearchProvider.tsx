@@ -52,6 +52,7 @@ export interface RecordSearchContextType {
 export const RecordSearchContext = createContext<RecordSearchContextType>(null!);
 
 const THROTTLER = new Throttler(500);
+const isEffectiveFilter = (filter: string) => filter.startsWith('-') || !filter.endsWith('*');
 
 const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const { get } = useMyLocalStorage();
@@ -71,9 +72,11 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
   const indexes = useContextSelector(ParameterContext, ctx => ctx.indexes);
   const allFilters = useContextSelector(ParameterContext, ctx => ctx.filters);
+  const disabledFilterIndexes = useContextSelector(ParameterContext, ctx => ctx.disabledFilterIndexes);
   const startDate = useContextSelector(ParameterContext, ctx => ctx.startDate);
   const endDate = useContextSelector(ParameterContext, ctx => ctx.endDate);
-  const views = useContextSelector(ParameterContext, ctx => ctx.views);
+  const allViews = useContextSelector(ParameterContext, ctx => ctx.views);
+  const disabledViewIndexes = useContextSelector(ParameterContext, ctx => ctx.disabledViewIndexes);
   const addView = useContextSelector(ParameterContext, ctx => ctx.addView);
 
   const loadHits = useContextSelector(RecordContext, ctx => ctx.loadRecords);
@@ -88,9 +91,20 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const [fzfSearch, setFzfSearch] = useState<boolean>(false);
 
   const filters = useMemo(
-    () => (allFilters ?? []).filter(filter => filter.startsWith('-') || !filter.endsWith('*')),
-    [allFilters]
+    () =>
+      (allFilters ?? []).filter(
+        (filter, index) => !disabledFilterIndexes?.includes(index) && isEffectiveFilter(filter)
+      ),
+    [allFilters, disabledFilterIndexes]
   );
+  const hasDisabledFilters = (allFilters ?? []).some(
+    (filter, index) => disabledFilterIndexes?.includes(index) && isEffectiveFilter(filter)
+  );
+  const views = useMemo(
+    () => (allViews ?? []).filter((_, index) => !disabledViewIndexes?.includes(index)),
+    [allViews, disabledViewIndexes]
+  );
+  const hasDisabledViews = (allViews ?? []).some((_, index) => disabledViewIndexes?.includes(index));
 
   // On load check to filter out any queries older than one month
   useEffect(() => {
@@ -102,10 +116,10 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
   // Inject default view into URL when no views present
   useEffect(() => {
-    if (views?.length === 0 && defaultView) {
+    if (allViews?.length === 0 && defaultView) {
       addView(defaultView);
     }
-  }, [views?.length, defaultView, addView]);
+  }, [allViews?.length, defaultView, addView]);
 
   const getFilters = useCallback(async () => {
     const _filters: string[] = cloneDeep(filters);
@@ -119,7 +133,7 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
     // Fetch all view queries
     if (views?.length) {
-      const viewObjects = await getCurrentViews({ views });
+      const viewObjects = await getCurrentViews({ views, ignoreParams: true });
 
       // Filter out null/undefined views and extract queries
       viewObjects.forEach(view => {
@@ -232,14 +246,35 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       return;
     }
 
-    if (views?.length || (query && query !== DEFAULT_QUERY) || offset > 0 || filters.length > 0) {
+    if (
+      views.length ||
+      hasDisabledViews ||
+      (query && query !== DEFAULT_QUERY) ||
+      offset > 0 ||
+      filters.length > 0 ||
+      hasDisabledFilters
+    ) {
       void search(query);
     } else {
       setResponse(null);
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offset, pageCount, sort, span, indexes, location.pathname, startDate, endDate, filters, query, views]);
+  }, [
+    offset,
+    pageCount,
+    sort,
+    span,
+    indexes,
+    location.pathname,
+    startDate,
+    endDate,
+    filters,
+    query,
+    views,
+    hasDisabledViews,
+    hasDisabledFilters
+  ]);
 
   return (
     <RecordSearchContext.Provider

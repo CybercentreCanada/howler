@@ -6,9 +6,14 @@ ui_dir="$(cd -- "$script_dir/.." && pwd)"
 
 cd "$ui_dir"
 
+diff_base=HEAD
+if [[ -z "$(git status --porcelain)" ]]; then
+  diff_base=main...HEAD
+fi
+
 get_changed_test_files() {
   {
-    git diff --name-only --relative HEAD
+    git diff --name-only --relative "$diff_base"
     git ls-files --others --exclude-standard
   } | while IFS= read -r file; do
     case "$file" in

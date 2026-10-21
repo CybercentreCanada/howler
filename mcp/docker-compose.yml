@@ -9,10 +9,9 @@ services:
       - howler-mcp-network
     environment:
       # Howler API configuration
-      HOWLER_API_VERSION: ${HOWLER_API_VERSION:-v1}
       HOWLER_API_HOST: ${HOWLER_API_HOST:-howler-api}
       HOWLER_API_PORT: ${HOWLER_API_PORT:-5000}
-      HOWLER_API_BASE_URL: ${HOWLER_API_BASE_URL:-http://howler-api:5000/api/v1}
+      HOWLER_API_BASE_URL: ${HOWLER_API_BASE_URL:-http://howler-api:5000/api}
       HOWLER_API_AUDIENCE: ${HOWLER_API_AUDIENCE:-howler}
       HOWLER_API_SCOPE: ${HOWLER_API_SCOPE:-howler}
       HOWLER_API_TIMEOUT: ${HOWLER_API_TIMEOUT:-5.0}
@@ -84,7 +83,11 @@ services:
       logger.level: WARN
       ES_JAVA_OPTS: -Xms1024m -Xmx1024m -Dlog4j2.disable.jmx=true
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sf http://localhost:9200/_cluster/health || exit 1",
+        ]
       interval: 5s
       timeout: 3s
       retries: 20
