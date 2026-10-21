@@ -201,7 +201,7 @@ def test_tool_get_hit_fields():
     result = call_mcp_tool(token, "get_hit_fields")
 
     assert not result.get("isError", False)
-    tool_output = json.loads(result["content"][0]["text"])
+    tool_output = result["content"][0]["text"]
     assert isinstance(tool_output, str)
     assert any(line.startswith("Key: howler.id, Type:") for line in tool_output.splitlines())
 
