@@ -158,13 +158,15 @@ const getEtagUrl = (_uri: string): string => {
  * @param body - the body of the request.
  * @returns the `api_response` object of the returned {@link HowlerResponse}.
  */
-export const hfetch = async <R>(
+const fetchWithAuthRecovery = async <R>(
   _uri: string,
   method: 'get' | 'post' | 'put' | 'delete' | 'patch' = 'get',
   body?: unknown,
   searchParams?: URLSearchParams,
   requestHeaders?: HeadersInit,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  allowRefresh = true,
+  onSuccess?: () => void
 ): Promise<R | undefined> => {
   const authToken = getLocalStored<string>(StorageKey.APP_TOKEN);
   const xsrfToken = getXSRFCookie();
@@ -197,11 +199,15 @@ export const hfetch = async <R>(
   }
 
   if (!json) {
+    if (statusCode < 300 || statusCode === 304) {
+      onSuccess?.();
+    }
     return;
   }
 
   // Did it work?
   if (statusCode < 300 || statusCode === 304) {
+    onSuccess?.();
     return json.api_response;
   }
 
@@ -213,19 +219,36 @@ export const hfetch = async <R>(
 
     const refreshToken = getLocalStored<string>(StorageKey.REFRESH_TOKEN);
     const provider = getLocalStored<string>(StorageKey.PROVIDER);
-    if (!_uri.includes('/auth/login') && refreshToken && provider) {
+    if (allowRefresh && !_uri.includes('/auth/login') && refreshToken && provider) {
       //Refresh access token if possible
       //And re-execute the previous api call (seamless)
       const refreshResponse = await api.auth.login.post({ refresh_token: refreshToken, provider: provider });
+      const refreshedToken = refreshResponse?.app_token;
 
-      if (refreshResponse) {
+      if (
+        refreshResponse &&
+        typeof refreshedToken === 'string' &&
+        refreshedToken.trim() &&
+        refreshedToken !== authToken
+      ) {
         saveLoginCredential(refreshResponse);
-        const result = await hfetch<R>(_uri, method, body, searchParams, undefined, signal);
+        const storedToken = getLocalStored<string>(StorageKey.APP_TOKEN);
 
-        removeLocalStored(StorageKey.NEXT_LOCATION);
-        removeLocalStored(StorageKey.NEXT_SEARCH);
-
-        return result;
+        if (typeof storedToken === 'string' && storedToken.trim() && storedToken === refreshedToken) {
+          return fetchWithAuthRecovery<R>(
+            _uri,
+            method,
+            body,
+            searchParams,
+            { ...requestHeaders, Authorization: `Bearer ${storedToken}` },
+            signal,
+            false,
+            () => {
+              removeLocalStored(StorageKey.NEXT_LOCATION);
+              removeLocalStored(StorageKey.NEXT_SEARCH);
+            }
+          );
+        }
       }
     }
 
@@ -244,6 +267,17 @@ export const hfetch = async <R>(
       cause: json
     }
   );
+};
+
+export const hfetch = async <R>(
+  _uri: string,
+  method: 'get' | 'post' | 'put' | 'delete' | 'patch' = 'get',
+  body?: unknown,
+  searchParams?: URLSearchParams,
+  requestHeaders?: HeadersInit,
+  signal?: AbortSignal
+): Promise<R | undefined> => {
+  return fetchWithAuthRecovery(_uri, method, body, searchParams, requestHeaders, signal);
 };
 
 /**

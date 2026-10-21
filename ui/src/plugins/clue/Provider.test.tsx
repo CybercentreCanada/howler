@@ -17,11 +17,16 @@ type ClueProviderProps = {
 const mocks = vi.hoisted(() => ({
   buildDatabase: vi.fn(),
   clueProviderProps: undefined as ClueProviderProps | undefined,
+  whoamiGet: vi.fn(),
   token: 'stored-token' as string | null
 }));
 
 vi.mock('@cccsaurora/clue-ui', () => ({
   buildDatabase: mocks.buildDatabase
+}));
+
+vi.mock('api', () => ({
+  default: { user: { whoami: { get: mocks.whoamiGet } } }
 }));
 
 vi.mock('@cccsaurora/clue-ui/hooks/ClueProvider', () => ({
@@ -66,9 +71,32 @@ const renderProvider = (config: object, options?: CluePluginOptions) =>
     </ApiConfigContext.Provider>
   );
 
+type ClueReplicationError = Error & { status: number; url: string; collection: string };
+
+const getReplicationErrorHandler = () => {
+  const databaseConfig = mocks.buildDatabase.mock.calls[0]?.[0] as
+    | { onReplicationError?: (error: ClueReplicationError) => Promise<boolean> }
+    | undefined;
+
+  if (!databaseConfig?.onReplicationError) {
+    throw new Error('Replication error handler was not configured');
+  }
+
+  return databaseConfig.onReplicationError;
+};
+
+const makeReplicationError = (status: number): ClueReplicationError =>
+  Object.assign(new Error('replication failed'), {
+    status,
+    url: '/api/v1/clue/stream',
+    collection: 'alerts'
+  });
+
 describe('Clue Provider', () => {
   beforeEach(() => {
     mocks.buildDatabase.mockReset();
+    mocks.whoamiGet.mockReset();
+    mocks.whoamiGet.mockImplementation(async () => ({}));
     mocks.clueProviderProps = undefined;
     mocks.token = 'stored-token';
   });
@@ -119,7 +147,8 @@ describe('Clue Provider', () => {
         storageType: 'memory',
         replicate: true,
         baseURL: 'https://howler.example/api/v1/clue',
-        getToken
+        getToken,
+        onReplicationError: expect.any(Function)
       });
       expect(getProviderProps().database).toBe(database);
     });
@@ -146,9 +175,155 @@ describe('Clue Provider', () => {
         storageType: 'memory',
         replicate: false,
         baseURL: `${location.origin}/api/v1/clue`,
-        getToken: expect.any(Function)
+        getToken: expect.any(Function),
+        onReplicationError: expect.any(Function)
       });
     });
+  });
+
+  it('accepts a successful session check with a nonempty already-refreshed token', async () => {
+    mocks.buildDatabase.mockResolvedValue({ name: 'replicated' });
+    mocks.token = 'already-refreshed-token';
+
+    renderProvider({ configuration: { features: { clue: true } } }, { replicate: true });
+    await waitFor(() => expect(mocks.buildDatabase).toHaveBeenCalled());
+
+    await expect(getReplicationErrorHandler()(makeReplicationError(401))).resolves.toBe(true);
+    expect(mocks.whoamiGet).toHaveBeenCalledOnce();
+  });
+
+  it('does not refresh non-401 errors and refuses failed or empty session refreshes', async () => {
+    mocks.buildDatabase.mockResolvedValue({ name: 'replicated' });
+    renderProvider({ configuration: { features: { clue: true } } }, { replicate: true });
+    await waitFor(() => expect(mocks.buildDatabase).toHaveBeenCalled());
+
+    const onReplicationError = getReplicationErrorHandler();
+    await expect(onReplicationError(makeReplicationError(403))).resolves.toBe(false);
+    expect(mocks.whoamiGet).not.toHaveBeenCalled();
+
+    mocks.whoamiGet.mockRejectedValueOnce(new Error('refresh failed'));
+    await expect(onReplicationError(makeReplicationError(401))).resolves.toBe(false);
+    mocks.whoamiGet.mockResolvedValueOnce(undefined);
+    await expect(onReplicationError(makeReplicationError(401))).resolves.toBe(false);
+    mocks.whoamiGet.mockResolvedValueOnce({});
+    mocks.token = null;
+    await expect(onReplicationError(makeReplicationError(401))).resolves.toBe(false);
+    expect(mocks.whoamiGet).toHaveBeenCalledTimes(3);
+  });
+
+  it('coalesces concurrent replication auth recoveries', async () => {
+    let resolveRefresh: ((value: { username: string }) => void) | undefined;
+    mocks.whoamiGet.mockReturnValue(
+      new Promise<{ username: string }>(resolve => {
+        resolveRefresh = resolve;
+      })
+    );
+    mocks.buildDatabase.mockResolvedValue({ name: 'replicated' });
+
+    renderProvider({ configuration: { features: { clue: true } } }, { replicate: true });
+    await waitFor(() => expect(mocks.buildDatabase).toHaveBeenCalled());
+
+    const onReplicationError = getReplicationErrorHandler();
+    const firstRecovery = onReplicationError(makeReplicationError(401));
+    const secondRecovery = onReplicationError(makeReplicationError(401));
+
+    await waitFor(() => expect(mocks.whoamiGet).toHaveBeenCalledOnce());
+    mocks.token = 'refreshed-token';
+    resolveRefresh?.({ username: 'user' });
+
+    await expect(Promise.all([firstRecovery, secondRecovery])).resolves.toEqual([true, true]);
+    expect(mocks.whoamiGet).toHaveBeenCalledOnce();
+  });
+
+  it('refuses pending default and coalesced recoveries that settle after unmount', async () => {
+    let resolveRefresh: ((value: { username: string }) => void) | undefined;
+    mocks.whoamiGet.mockReturnValue(
+      new Promise<{ username: string }>(resolve => {
+        resolveRefresh = resolve;
+      })
+    );
+    mocks.buildDatabase.mockResolvedValue({ name: 'replicated' });
+
+    const { unmount } = renderProvider({ configuration: { features: { clue: true } } }, { replicate: true });
+    await waitFor(() => expect(mocks.buildDatabase).toHaveBeenCalled());
+
+    const onReplicationError = getReplicationErrorHandler();
+    const firstRecovery = onReplicationError(makeReplicationError(401));
+    const coalescedRecovery = onReplicationError(makeReplicationError(401));
+    await waitFor(() => expect(mocks.whoamiGet).toHaveBeenCalledOnce());
+
+    await act(async () => {
+      resolveRefresh?.({ username: 'user' });
+      await Promise.resolve();
+      unmount();
+    });
+
+    await expect(Promise.all([firstRecovery, coalescedRecovery])).resolves.toEqual([false, false]);
+  });
+
+  it('preserves custom token getters and does not refresh them without an override', async () => {
+    mocks.buildDatabase.mockResolvedValue({ name: 'replicated' });
+    const getToken = vi.fn(() => 'custom-token');
+
+    renderProvider({ configuration: { features: { clue: true } } }, { replicate: true, getToken });
+    await waitFor(() => expect(mocks.buildDatabase).toHaveBeenCalled());
+
+    expect(mocks.buildDatabase.mock.calls[0][0]).toMatchObject({ getToken });
+    expect(getProviderProps().getToken).toBe(getToken);
+    await expect(getReplicationErrorHandler()(makeReplicationError(401))).resolves.toBe(false);
+    expect(mocks.whoamiGet).not.toHaveBeenCalled();
+  });
+
+  it('uses the custom replication error handler for custom token deployments', async () => {
+    mocks.buildDatabase.mockResolvedValue({ name: 'replicated' });
+    const getToken = vi.fn(() => 'custom-token');
+    const onReplicationError = vi.fn(async () => true);
+
+    renderProvider({ configuration: { features: { clue: true } } }, { replicate: true, getToken, onReplicationError });
+    await waitFor(() => expect(mocks.buildDatabase).toHaveBeenCalled());
+
+    const error = makeReplicationError(401);
+    await expect(getReplicationErrorHandler()(error)).resolves.toBe(true);
+    expect(mocks.buildDatabase.mock.calls[0][0]).toMatchObject({ getToken });
+    expect(mocks.buildDatabase.mock.calls[0][0].onReplicationError).toEqual(expect.any(Function));
+    expect(onReplicationError).toHaveBeenCalledWith(error);
+    expect(mocks.whoamiGet).not.toHaveBeenCalled();
+  });
+
+  it('refuses a custom recovery that settles after unmount', async () => {
+    let resolveCustomRecovery: ((shouldRetry: boolean) => void) | undefined;
+    const onReplicationError = vi.fn(
+      () =>
+        new Promise<boolean>(resolve => {
+          resolveCustomRecovery = resolve;
+        })
+    );
+    mocks.buildDatabase.mockResolvedValue({ name: 'replicated' });
+
+    const { unmount } = renderProvider(
+      { configuration: { features: { clue: true } } },
+      { replicate: true, getToken: () => 'custom-token', onReplicationError }
+    );
+    await waitFor(() => expect(mocks.buildDatabase).toHaveBeenCalled());
+
+    const pendingRecovery = getReplicationErrorHandler()(makeReplicationError(401));
+    await waitFor(() => expect(onReplicationError).toHaveBeenCalledOnce());
+
+    act(() => unmount());
+    resolveCustomRecovery?.(true);
+
+    await expect(pendingRecovery).resolves.toBe(false);
+  });
+
+  it('does not refresh after the provider unmounts', async () => {
+    mocks.buildDatabase.mockResolvedValue({ name: 'replicated' });
+    const { unmount } = renderProvider({ configuration: { features: { clue: true } } }, { replicate: true });
+    await waitFor(() => expect(mocks.buildDatabase).toHaveBeenCalled());
+    const onReplicationError = getReplicationErrorHandler();
+    unmount();
+
+    await expect(onReplicationError(makeReplicationError(401))).resolves.toBe(false);
+    expect(mocks.whoamiGet).not.toHaveBeenCalled();
   });
 
   it('ignores a database that resolves after the provider unmounts', async () => {

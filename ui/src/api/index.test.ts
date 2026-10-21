@@ -6,6 +6,7 @@ const mockGetLocalStored = vi.hoisted(() => vi.fn());
 const mockRemoveLocalStored = vi.hoisted(() => vi.fn());
 const mockSaveLoginCredential = vi.hoisted(() => vi.fn());
 const mockSetLocalStored = vi.hoisted(() => vi.fn());
+const mockLocalStorage = vi.hoisted(() => new Map<string, unknown>());
 const mockGetSessionStored = vi.hoisted(() => vi.fn());
 const mockSetSessionStored = vi.hoisted(() => vi.fn());
 const mockGetXSRFCookie = vi.hoisted(() => vi.fn());
@@ -66,14 +67,31 @@ import api, {
 describe('api root module', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLocalStorage.clear();
     mockGetXSRFCookie.mockReturnValue(null);
     mockGetSessionStored.mockReturnValue({});
-    mockGetLocalStored.mockImplementation((key: string) => {
-      if (key === 'etag') {
-        return undefined;
-      }
-      return undefined;
+    mockGetLocalStored.mockImplementation((key: string) => mockLocalStorage.get(key));
+    mockSetLocalStored.mockImplementation((key: string, value: unknown) => {
+      mockLocalStorage.set(key, value);
     });
+    mockRemoveLocalStored.mockImplementation((key: string) => {
+      mockLocalStorage.delete(key);
+    });
+    mockSaveLoginCredential.mockImplementation(
+      (credentials: { app_token?: string; refresh_token?: string; provider?: string }) => {
+        if (credentials.app_token) {
+          mockLocalStorage.set('app_token', credentials.app_token);
+          if (credentials.refresh_token) {
+            mockLocalStorage.set('refresh_token', credentials.refresh_token);
+            mockLocalStorage.set('provider', credentials.provider);
+          }
+        } else {
+          mockLocalStorage.delete('app_token');
+          mockLocalStorage.delete('refresh_token');
+          mockLocalStorage.delete('provider');
+        }
+      }
+    );
     history.pushState({}, '', '/hits?q=1');
   });
 
@@ -94,7 +112,7 @@ describe('api root module', () => {
   });
 
   it('performs a successful fetch and stores the returned ETag', async () => {
-    mockGetLocalStored.mockImplementation((key: string) => (key === 'app_token' ? 'token' : undefined));
+    mockLocalStorage.set('app_token', 'token');
     mockGetSessionStored.mockReturnValue({ 'hit/hit123': '"old-etag"' });
     mockGetXSRFCookie.mockReturnValue('csrf');
     mockClientFetch.mockResolvedValue([{ api_response: { ok: true } }, 200, { etag: '"new-etag"' }]);
@@ -127,24 +145,177 @@ describe('api root module', () => {
   });
 
   it('refreshes credentials after a 401 when a refresh token is available', async () => {
-    mockGetLocalStored.mockImplementation((key: string) => {
-      if (key === 'refresh_token') return 'refresh-token';
-      if (key === 'provider') return 'oidc';
-      return undefined;
-    });
+    mockLocalStorage.set('app_token', 'expired-token');
+    mockLocalStorage.set('refresh_token', 'refresh-token');
+    mockLocalStorage.set('provider', 'oidc');
     mockRefreshLogin.mockResolvedValue({ app_token: 'new-token', refresh_token: 'new-refresh' });
     mockClientFetch
       .mockResolvedValueOnce([{ api_error_message: 'unauthorized' }, 401, {}])
       .mockResolvedValueOnce([{ api_response: { retried: true } }, 200, {}]);
 
-    await expect(hfetch('/view/1')).resolves.toEqual({ retried: true });
+    const params = new URLSearchParams({ limit: '5' });
+    const signal = new AbortController().signal;
+    await expect(
+      hfetch(
+        '/view/1',
+        'post',
+        { query: 'test' },
+        params,
+        { Accept: 'application/json', 'If-Match': '"caller-etag"' },
+        signal
+      )
+    ).resolves.toEqual({
+      retried: true
+    });
 
     expect(mockSetLocalStored).toHaveBeenCalledWith('next.location', '/hits');
     expect(mockSetLocalStored).toHaveBeenCalledWith('next.search', '?q=1');
     expect(mockRefreshLogin).toHaveBeenCalledWith({ refresh_token: 'refresh-token', provider: 'oidc' });
     expect(mockSaveLoginCredential).toHaveBeenCalledWith({ app_token: 'new-token', refresh_token: 'new-refresh' });
+    expect(mockClientFetch).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1//view/1',
+      'post',
+      { query: 'test' },
+      params,
+      expect.objectContaining({
+        Authorization: 'Bearer expired-token',
+        Accept: 'application/json',
+        'If-Match': '"caller-etag"'
+      }),
+      signal
+    );
+    expect(mockClientFetch).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1//view/1',
+      'post',
+      { query: 'test' },
+      params,
+      expect.objectContaining({
+        Authorization: 'Bearer new-token',
+        Accept: 'application/json',
+        'If-Match': '"caller-etag"'
+      }),
+      signal
+    );
     expect(mockRemoveLocalStored).toHaveBeenCalledWith('next.location');
     expect(mockRemoveLocalStored).toHaveBeenCalledWith('next.search');
+  });
+
+  it.each([
+    ['empty', undefined],
+    ['blank token', { app_token: '   ' }],
+    ['unchanged', { app_token: 'expired-token' }]
+  ])('does not replay after an %s refresh response', async (_description, refreshResponse) => {
+    mockLocalStorage.set('app_token', 'expired-token');
+    mockLocalStorage.set('refresh_token', 'refresh-token');
+    mockLocalStorage.set('provider', 'oidc');
+    mockRefreshLogin.mockResolvedValue(refreshResponse);
+    mockClientFetch.mockResolvedValue([{ api_error_message: 'unauthorized' }, 401, {}]);
+    history.pushState({}, '', '/login?auth=1');
+
+    await expect(hfetch('/view/1')).resolves.toBeUndefined();
+
+    expect(mockClientFetch).toHaveBeenCalledTimes(1);
+    expect(mockRefreshLogin).toHaveBeenCalledTimes(1);
+    expect(mockSaveLoginCredential).toHaveBeenLastCalledWith({});
+    expect(mockRemoveLocalStored).not.toHaveBeenCalledWith('next.location');
+    expect(mockRemoveLocalStored).not.toHaveBeenCalledWith('next.search');
+  });
+
+  it('does not refresh again or clear the saved return route when the replay is unauthorized', async () => {
+    mockLocalStorage.set('app_token', 'expired-token');
+    mockLocalStorage.set('refresh_token', 'refresh-token');
+    mockLocalStorage.set('provider', 'oidc');
+    mockRefreshLogin.mockResolvedValue({ app_token: 'new-token' });
+    mockClientFetch.mockResolvedValue([{ api_error_message: 'unauthorized' }, 401, {}]);
+    history.pushState({}, '', '/login?auth=1');
+
+    await expect(hfetch('/view/1')).resolves.toBeUndefined();
+
+    expect(mockClientFetch).toHaveBeenCalledTimes(2);
+    expect(mockRefreshLogin).toHaveBeenCalledTimes(1);
+    expect(mockSaveLoginCredential).toHaveBeenLastCalledWith({});
+    expect(mockRemoveLocalStored).not.toHaveBeenCalledWith('next.location');
+    expect(mockRemoveLocalStored).not.toHaveBeenCalledWith('next.search');
+  });
+
+  it('clears the saved return route after an empty successful replay response', async () => {
+    mockLocalStorage.set('app_token', 'expired-token');
+    mockLocalStorage.set('refresh_token', 'refresh-token');
+    mockLocalStorage.set('provider', 'oidc');
+    mockRefreshLogin.mockResolvedValue({ app_token: 'new-token' });
+    mockClientFetch
+      .mockResolvedValueOnce([{ api_error_message: 'unauthorized' }, 401, {}])
+      .mockResolvedValueOnce([undefined, 204, {}]);
+
+    await expect(hfetch('/view/1')).resolves.toBeUndefined();
+
+    expect(mockClientFetch).toHaveBeenCalledTimes(2);
+    expect(mockRefreshLogin).toHaveBeenCalledTimes(1);
+    expect(mockRemoveLocalStored).toHaveBeenCalledWith('next.location');
+    expect(mockRemoveLocalStored).toHaveBeenCalledWith('next.search');
+  });
+
+  it('does not clear the saved return route after an empty unauthorized replay response', async () => {
+    mockLocalStorage.set('app_token', 'expired-token');
+    mockLocalStorage.set('refresh_token', 'refresh-token');
+    mockLocalStorage.set('provider', 'oidc');
+    mockRefreshLogin.mockResolvedValue({ app_token: 'new-token' });
+    mockClientFetch
+      .mockResolvedValueOnce([{ api_error_message: 'unauthorized' }, 401, {}])
+      .mockResolvedValueOnce([undefined, 401, {}]);
+
+    await expect(hfetch('/view/1')).resolves.toBeUndefined();
+
+    expect(mockClientFetch).toHaveBeenCalledTimes(2);
+    expect(mockRefreshLogin).toHaveBeenCalledTimes(1);
+    expect(mockRemoveLocalStored).not.toHaveBeenCalledWith('next.location');
+    expect(mockRemoveLocalStored).not.toHaveBeenCalledWith('next.search');
+  });
+
+  it('does not replay if refreshed credentials were not persisted', async () => {
+    mockLocalStorage.set('app_token', 'expired-token');
+    mockLocalStorage.set('refresh_token', 'refresh-token');
+    mockLocalStorage.set('provider', 'oidc');
+    mockRefreshLogin.mockResolvedValue({ app_token: 'new-token' });
+    mockSaveLoginCredential.mockImplementationOnce(() => {});
+    mockClientFetch.mockResolvedValue([{ api_error_message: 'unauthorized' }, 401, {}]);
+    history.pushState({}, '', '/login?auth=1');
+
+    await expect(hfetch('/view/1')).resolves.toBeUndefined();
+
+    expect(mockClientFetch).toHaveBeenCalledTimes(1);
+    expect(mockSaveLoginCredential).toHaveBeenNthCalledWith(1, { app_token: 'new-token' });
+    expect(mockSaveLoginCredential).toHaveBeenNthCalledWith(2, {});
+  });
+
+  it('propagates a rejected refresh request without replaying the original request', async () => {
+    mockLocalStorage.set('app_token', 'expired-token');
+    mockLocalStorage.set('refresh_token', 'refresh-token');
+    mockLocalStorage.set('provider', 'oidc');
+    mockRefreshLogin.mockRejectedValue(new Error('refresh failed'));
+    mockClientFetch.mockResolvedValue([{ api_error_message: 'unauthorized' }, 401, {}]);
+
+    await expect(hfetch('/view/1')).rejects.toThrow('refresh failed');
+
+    expect(mockClientFetch).toHaveBeenCalledTimes(1);
+    expect(mockRefreshLogin).toHaveBeenCalledTimes(1);
+    expect(mockSaveLoginCredential).not.toHaveBeenCalled();
+    expect(mockRemoveLocalStored).not.toHaveBeenCalledWith('next.location');
+    expect(mockRemoveLocalStored).not.toHaveBeenCalledWith('next.search');
+  });
+
+  it('does not try to refresh an unauthorized login request', async () => {
+    mockLocalStorage.set('refresh_token', 'refresh-token');
+    mockLocalStorage.set('provider', 'oidc');
+    mockClientFetch.mockResolvedValue([{ api_error_message: 'unauthorized' }, 401, {}]);
+    history.pushState({}, '', '/login?auth=1');
+
+    await expect(hfetch('/auth/login')).resolves.toBeUndefined();
+
+    expect(mockClientFetch).toHaveBeenCalledTimes(1);
+    expect(mockRefreshLogin).not.toHaveBeenCalled();
   });
 
   it('clears credentials after a 401 when refresh is unavailable', async () => {
