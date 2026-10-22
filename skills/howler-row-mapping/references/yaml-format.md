@@ -8,7 +8,7 @@ engine.
 ## Document structure
 
 The following is illustrative, not a production analytic. Use exact source keys
-present in the saved row profile, targets in the selected `get_hit_fields`
+present in the saved row profile, targets in the selected hit-index field
 catalog, and user-approved meanings and classification. Do not copy sample values
 into constants.
 

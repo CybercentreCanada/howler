@@ -196,14 +196,14 @@ def test_tool_list_assigned_hits():
     assert "content" in result
 
 
-def test_tool_get_hit_fields():
+def test_tool_get_index_fields():
     token = get_token()
-    result = call_mcp_tool(token, "get_hit_fields")
+    result = call_mcp_tool(token, "get_index_fields", {"index": "hit"})
 
     assert not result.get("isError", False)
-    tool_output = json.loads(result["content"][0]["text"])
-    assert isinstance(tool_output, dict)
-    assert "howler.id" in tool_output
+    tool_output = result["content"][0]["text"]
+    assert isinstance(tool_output, str)
+    assert any(line.startswith("howler.id:") for line in tool_output.splitlines())
 
 
 def test_tool_get_field_values():

@@ -159,7 +159,7 @@ class RowMapping:
     """Validated, offline mapping from one raw table row to one hit dictionary.
 
     ``fields`` is optional Howler field metadata keyed by dotted field name, as
-    returned by ``client.search.fields.hit()`` or the MCP ``get_hit_fields`` tool.
+    returned by ``client.search.fields.hit()``.
     When supplied, targets must exist and not be deprecated. Mapped values are not
     checked against target field types or list shape; validate them with Howler's
     validation API or during ingestion.

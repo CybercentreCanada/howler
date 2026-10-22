@@ -117,18 +117,18 @@ def validate_fields_snapshot(snapshot):
     """Check artifact provenance/integrity, not Howler field types or constraints."""
     if not isinstance(snapshot, dict) or set(snapshot) != {
         "version",
-        "mcp_url",
+        "api_url",
         "fields_sha256",
         "fields",
     }:
-        raise MappingError("expected a snapshot produced by mcp_files.py fields")
+        raise MappingError("expected a snapshot produced by api_fields.py fields")
     if (
         type(snapshot["version"]) is not int
-        or snapshot["version"] != 1
+        or snapshot["version"] != 2
         or not isinstance(snapshot["fields"], dict)
         or not snapshot["fields"]
-        or not isinstance(snapshot["mcp_url"], str)
-        or not snapshot["mcp_url"].startswith("https://")
+        or not isinstance(snapshot["api_url"], str)
+        or not snapshot["api_url"].startswith("https://")
     ):
         raise MappingError("invalid fields snapshot")
     if snapshot["fields_sha256"] != digest(snapshot["fields"]):
@@ -301,7 +301,7 @@ def main(argv=None):
                     "engine": "howler-client",
                     "backend_validated": False,
                     "mapping_sha256": digest(compiled.mapping),
-                    "mcp_url": snapshot["mcp_url"],
+                    "api_url": snapshot["api_url"],
                     "fields_sha256": snapshot["fields_sha256"],
                     "sample_row_count": len(rows) if rows is not None else None,
                     "successful_row_count": len(records) if rows is not None else None,
