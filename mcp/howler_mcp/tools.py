@@ -181,7 +181,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
         if invalid_fields:
             raise ValueError(
-                f"Invalid query field(s): {', '.join(invalid_fields)}. Use get_hit_fields to list supported fields."
+                f"Invalid query field(s): {', '.join(invalid_fields)}. Use get_index_fields to list supported fields."
             )
 
         return normalized
@@ -347,7 +347,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
         if normalized_field not in cached_hit_fields:
             raise ValueError(
-                f"The field: {normalized_field} is not a valid option. Use get_hit_fields to see available fields."
+                f"The field: {normalized_field} is not a valid option. Use get_index_fields to see available fields."
             )
 
         field_values = await api_client.call(
@@ -364,8 +364,8 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
         return field_values
 
-    @mcp.tool(name="get_hit_fields")
-    async def get_hit_fields(regex: str | None = None) -> str:
+    @mcp.tool(name="get_index_fields")
+    async def get_index_fields(regex: str | None = None) -> str:
         """Return all searchable fields available on Howler hits.
 
         Use this tool before building a Lucene query when you are unsure which
@@ -433,8 +433,8 @@ def register_tools(mcp, api_client: HowlerApiClient):
             howler.score:[50 TO 100] AND NOT howler.assessment:false-positive
             howler.outline.indicators:(example.com OR 1.2.3.4)
 
-        If you are unsure which field names are valid, call ``get_hit_fields``
-        first. If you are unsure which values a field accepts, call
+        If you are unsure which field names are valid, call ``get_index_fields``
+        first with either ``event`` or ``hit`` as a parameter. If you are unsure which values a field accepts, call
         ``get_field_values`` first.
 
         **Reducing response size with** ``fl``:
@@ -462,7 +462,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
             query: A valid Lucene query string. Use ``field:value`` syntax, quote
                 phrase values that contain spaces, and use Lucene operators such as
                 ``AND``, ``OR``, ``NOT``, parentheses, and range expressions.
-                Do not invent field names or values. Use ``get_hit_fields`` and
+                Do not invent field names or values. Use ``get_index_fields`` with either ``hit`` or ``event`` as a parameter and
                 ``get_field_values`` to verify them before querying.
             sort: Optional Howler sort expression, such as
                 ``event.created desc``. Leave empty to use the API default.
