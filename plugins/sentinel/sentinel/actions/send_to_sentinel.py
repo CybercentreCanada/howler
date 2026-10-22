@@ -7,6 +7,7 @@ from howler.common.logging import get_logger
 from howler.odm.models.action import VALID_TRIGGERS
 from howler.odm.models.hit import Hit
 
+from sentinel.utils.hit_types import is_derived_evidence
 from sentinel.utils.tenant_utils import get_token
 
 logger = get_logger(__file__)
@@ -38,6 +39,17 @@ def execute(query: str, **kwargs) -> list[dict[str, Any]]:
     from sentinel.config import config
 
     for hit in hits:
+        if is_derived_evidence(hit):
+            report.append(
+                {
+                    "query": f"howler.id:{hit.howler.id}",
+                    "outcome": "skipped",
+                    "title": "Derived Sentinel evidence is not an alert",
+                    "message": "Evidence child hits are not sent as independent Sentinel alerts.",
+                }
+            )
+            continue
+
         if hit.azure and hit.azure.tenant_id:
             tenant_id = hit.azure.tenant_id
         elif hit.organization.id:

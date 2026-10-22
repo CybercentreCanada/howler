@@ -1,21 +1,60 @@
 # Howler Sentinel Plugin
 
-This plugin contains modules for Microsoft Sentinel integration in Howler.
+This plugin ingests Microsoft Sentinel XDR incidents as ordinary Howler hits
+organized into native Howler cases. It has no runtime dependency on the Evidence
+plugin; enable and install Sentinel alone when Sentinel is the only optional
+plugin needed.
+
+## Case and hit hierarchy
+
+Each ingested incident creates one case, including incidents with no alerts:
+
+```text
+Sentinel case
+├── incident summary hit
+└── alerts/
+    └── <stable source-alert hit ID>/
+        ├── source alert hit
+        ├── evidence hit (one per Graph evidence object)
+        └── ...
+```
+
+The incident summary and source alert remain normal hits. Each former Graph
+`alerts[].evidence[]` object is its own normal child hit under the source alert's
+folder. Evidence hits retain their original JSON in `howler.data` and include
+supported ECS fields when a mapping is available; unknown types and fields from
+other plugins are preserved in the raw JSON without requiring those plugins.
+Sentinel-owned metadata identifies the incident, tenant, source alert, and
+evidence record. The case provides reciprocal hit membership links.
+Graph classification values stay in the retained source JSON; ingestion does
+not turn them into Howler analyst assessments or the workflow-only
+`Escalation.EVIDENCE` disposition.
+
+Replay uses tenant-scoped stable hit IDs. Repeated alerts/evidence do not create
+duplicates; newly observed alerts and evidence are added. An omitted collection
+does not delete existing case data. Incident status updates propagate only to
+Sentinel-owned hits in the case, not analyst-added case hits. Derived evidence
+hits are not sent to outbound actions as independent Graph alerts or incidents.
+
+This hierarchy is a breaking change. The plugin does not migrate or backfill
+pre-existing Sentinel bundles, evidence-plugin records, or cases. Those records
+remain untouched; only incidents ingested after the change use the native case
+hierarchy.
 
 ## Tenant organization mapping
 
 Sentinel incidents must have a `tenantId` that exactly matches an entry in
 `tenant_mapping`. The configured value is the Howler organization name used on
-the incident root hit and every child alert. Tenant IDs are not normalized or
-case-folded. The mapping defaults to empty, so Sentinel ingestion returns HTTP
-400 until at least the sending tenant is configured. A mapping value must be a
-non-blank string. An explicitly configured organization named `Unknown Customer`
-is valid.
+the incident summary, source alert, and evidence hits. Tenant IDs are not
+normalized or case-folded. The mapping defaults to empty, so Sentinel ingestion
+returns HTTP 400 until at least the sending tenant is configured. A mapping
+value must be a non-blank string.
 
 ### Standalone configuration
 
-Add the tenant IDs and organization names to `/etc/howler/conf/sentinel.yml`,
-merging these keys into any existing Sentinel plugin configuration:
+Add tenant IDs and organization names to
+`/etc/howler/conf/sentinel.yml`, merging these keys into any existing Sentinel
+plugin configuration:
 
 ```yaml
 name: sentinel
@@ -24,23 +63,21 @@ tenant_mapping:
   "<another-exact-tenant-id>": "Another Organization"
 ```
 
-The tenant ID comes from the incident's top-level `tenantId`. Child alerts are
-assigned the same organization as their parent incident, even if an alert has a
-different `tenantId` value.
+The tenant ID comes from the incident's top-level `tenantId`. All child hits
+inherit the parent incident's organization, even if an alert has a different
+`tenantId` value.
 
 ### Helm configuration
 
-With the Howler Helm chart, enable both the evidence and Sentinel plugins and
-provide the mapping in ordinary, nonsecret Helm values. The chart serializes
-`plugins.sentinel` to `sentinel.yml` in the `howler-server-conf` ConfigMap;
-`tenant_mapping` is not a Kubernetes Secret. Keep any other currently enabled
-plugin names in `config.core.plugins` as well.
+Install the Sentinel plugin package in the API image, enable `sentinel` in
+`config.core.plugins`, and provide the mapping in ordinary, nonsecret Helm
+values. The chart serializes `plugins.sentinel` to `sentinel.yml` in the
+`howler-server-conf` ConfigMap; `tenant_mapping` is not a Kubernetes Secret.
 
 ```yaml
 config:
   core:
     plugins:
-      - evidence
       - sentinel
 
 plugins:
@@ -48,20 +85,12 @@ plugins:
     name: sentinel
     tenant_mapping:
       "<exact-microsoft-tenant-id>": "Example Organization"
-      "<another-exact-tenant-id>": "Another Organization"
 ```
 
-### Upgrade migration
+### Upgrade
 
-Older deployments may have relied on an in-code example mapping. That mapping
-has been removed. Before upgrading, add every tenant that should be allowed to
-ingest to `tenant_mapping`; with the empty default, all incoming incidents are
-rejected until their exact tenant IDs are present. Use the actual top-level
-`tenantId` values from Sentinel and map each one to the desired organization
-name.
-
-This configuration change does not relabel existing hits. Re-ingesting an
-existing incident only applies the existing status-update behavior; its root
-and child organization fields are not backfilled or changed. New incidents use
-the configured organization name and exact tenant ID on the root and child
-hits.
+Configure every tenant that should be allowed to ingest before upgrading. The
+empty default rejects missing, blank, and unmapped tenant IDs with HTTP 400
+before datastore access. This release does not migrate historical Sentinel
+hits, evidence, or case memberships; existing records are not backfilled by
+re-ingestion. Newly ingested incidents use the hierarchy above.

@@ -6,6 +6,7 @@ from howler.odm.models.action import VALID_TRIGGERS
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import Assessment, Status
 
+from sentinel.utils.hit_types import sentinel_record_type
 from sentinel.utils.tenant_utils import get_token
 
 logger = get_logger(__file__)
@@ -73,6 +74,18 @@ def execute(query: str, **kwargs):
         return report
 
     for hit in hits:
+        record_type = sentinel_record_type(hit)
+        if record_type is not None and record_type != "incident":
+            report.append(
+                {
+                    "query": f"howler.id:{hit.howler.id}",
+                    "outcome": "skipped",
+                    "title": "Hit is not a Microsoft Defender XDR incident",
+                    "message": "Only Sentinel incident summary hits can be updated as XDR incidents.",
+                }
+            )
+            continue
+
         if hit.azure and hit.azure.tenant_id:
             tenant_id = hit.azure.tenant_id
         elif hit.organization.id:
@@ -89,7 +102,7 @@ def execute(query: str, **kwargs):
             continue
 
         try:
-            token = get_token(tenant_id, "https://graph.microsoft.com/.default")[0]
+            token = get_token(tenant_id, "https://graph.microsoft.com/.default")
         except HowlerRuntimeError as err:
             logger.exception("Error on token fetching")
             report.append(
