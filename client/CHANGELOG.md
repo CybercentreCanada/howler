@@ -1,5 +1,16 @@
 # Changelog
 
+## [4.0.0](https://github.com/CybercentreCanada/howler/compare/client-v3.2.0...client-v4.0.0) (2026-10-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* **mcp:** updating MCP server to get all valid fields in Howler ([#674](https://github.com/CybercentreCanada/howler/issues/674))
+
+### Features
+
+* **mcp:** updating MCP server to get all valid fields in Howler ([#674](https://github.com/CybercentreCanada/howler/issues/674)) ([ec51d26](https://github.com/CybercentreCanada/howler/commit/ec51d26563bc7e972b9cdcd4e3882e80673880e1))
+
 ## [3.2.0](https://github.com/CybercentreCanada/howler/compare/client-v3.1.0...client-v3.2.0) (2026-10-22)
 
 
