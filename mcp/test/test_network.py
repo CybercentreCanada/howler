@@ -196,9 +196,9 @@ def test_tool_list_assigned_hits():
     assert "content" in result
 
 
-def test_tool_get_hit_fields():
+def test_tool_get_index_fields():
     token = get_token()
-    result = call_mcp_tool(token, "get_hit_fields")
+    result = call_mcp_tool(token, "get_index_fields")
 
     assert not result.get("isError", False)
     tool_output = result["content"][0]["text"]

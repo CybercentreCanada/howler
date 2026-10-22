@@ -434,8 +434,8 @@ def register_tools(mcp, api_client: HowlerApiClient):
             howler.outline.indicators:(example.com OR 1.2.3.4)
 
         If you are unsure which field names are valid, call ``get_index_fields``
-        first with either ``event`` or ``hit`` as a parameter. If you are unsure which values a field accepts, call
-        ``get_field_values`` first.
+        first. It lists fields available on the hit index. If you are unsure
+        which values a field accepts, call ``get_field_values`` first.
 
         **Reducing response size with** ``fl``:
 
@@ -462,7 +462,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
             query: A valid Lucene query string. Use ``field:value`` syntax, quote
                 phrase values that contain spaces, and use Lucene operators such as
                 ``AND``, ``OR``, ``NOT``, parentheses, and range expressions.
-                Do not invent field names or values. Use ``get_index_fields`` with either ``hit`` or ``event`` as a parameter and
+                Do not invent field names or values. Use ``get_index_fields`` and
                 ``get_field_values`` to verify them before querying.
             sort: Optional Howler sort expression, such as
                 ``event.created desc``. Leave empty to use the API default.

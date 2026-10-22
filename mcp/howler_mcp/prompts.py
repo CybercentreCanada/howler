@@ -63,10 +63,10 @@ howler.assignment, howler.escalation, howler.assessment, howler.status, and howl
 Never guess a value's spelling or casing. Use only values returned by this tool.
 After the call, summarize the most common values and use the exact selected value in lucene_query."""
 
-    @mcp.prompt(name="get_hit_fields")
-    def get_hit_fields_prompt() -> str:
-        """Explain when and how to use the get_hit_fields tool."""
-        return """Use get_hit_fields to retrieve the authoritative list of fields valid in Howler Lucene queries.
+    @mcp.prompt(name="get_index_fields")
+    def get_index_fields_prompt() -> str:
+        """Explain when and how to use the get_index_fields tool."""
+        return """Use get_index_fields to retrieve the authoritative list of fields valid in Howler Lucene queries.
 
 The response includes each field's key, type, list flag, and description.
 Call it when a field may not exist or when you need its exact dot-notation name.
@@ -106,7 +106,7 @@ Required arguments:
 - dossier_type: global or personal
 
 Before calling:
-- verify field names with get_hit_fields when uncertain
+- verify field names with get_index_fields when uncertain
 - verify enumerated values with get_field_values(field) when uncertain
 - confirm whether the dossier should be global or personal
 
@@ -138,7 +138,7 @@ Required arguments:
 Only these data_to_update keys are allowed:
 title, query, leads, pivots, type, owner.
 
-Before calling, confirm dossier_id and remove all other keys. If query is included, verify field names with get_hit_fields and enumerated values with get_field_values(field) when needed.
+Before calling, confirm dossier_id and remove all other keys. If query is included, verify field names with get_index_fields and enumerated values with get_field_values(field) when needed.
 Use this tool to rename a dossier, change its query, or update metadata such as type or ownership.
 After the call, confirm the update and summarize the changed fields."""
 
@@ -182,7 +182,7 @@ Do not add keys or use a string for label. Ensure value and format are non-empty
         return """Use lucene_query to search Howler hits based on the user's request.
 
 Available tools:
-- get_hit_fields: retrieve valid field names and metadata
+- get_index_fields: retrieve valid field names and metadata
 - get_field_values(field): retrieve accepted values and counts
 - lucene_query: execute the final search
 
@@ -194,7 +194,7 @@ Build the query as follows:
 - never invent enumerated values; verify them first
 - search only Howler hits
 
-Call get_hit_fields when a field name is uncertain. Call get_field_values first for categorical fields such as:
+Call get_index_fields when a field name is uncertain. Call get_field_values first for categorical fields such as:
 howler.detection, howler.escalation, howler.assessment, howler.status, howler.scrutiny, howler.analytic, and howler.assignment.
 
 lucene_query arguments:

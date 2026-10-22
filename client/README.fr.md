@@ -166,7 +166,7 @@ YAML. Pour utiliser du texte YAML, passer par `from_yaml` afin qu'il ne soit pas
 ### Vérifier les cibles par rapport aux champs Howler
 
 On peut fournir les métadonnées de champs de Howler pour vérifier les cibles avant toute ingestion. Utiliser le
-résultat de `client.search.fields.hit()` ou de l'outil MCP `get_hit_fields` :
+résultat de `client.search.fields.hit()` ou de l'outil MCP `get_index_fields` :
 
 ```python
 fields = client.search.fields.hit()

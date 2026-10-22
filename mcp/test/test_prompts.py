@@ -25,7 +25,7 @@ def test_register_prompts_registers_and_returns_guidance():
         "craft_howler_url": "Use craft_howler_url",
         "add_comment_to_hit": "Use add_comment_to_hit",
         "get_field_values": "Use get_field_values",
-        "get_hit_fields": "Use get_hit_fields",
+        "get_index_fields": "Use get_index_fields",
         "get_label_set_options": "Use get_label_set_options",
         "add_label_to_hit": "Use add_label_to_hit",
         "create_dossier": "Use create_dossier",

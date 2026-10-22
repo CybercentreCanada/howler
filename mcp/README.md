@@ -23,13 +23,13 @@ The server currently registers these tools:
 | craft_howler_url       | —                         | —      | Build a UI URL for a hit or event object.                   |
 | list_assigned_hits     | /hit/user                 | GET    | Return hits assigned to the authenticated user.             |
 | add_comment_to_hit     | /hit/{hit_id}/comments    | POST   | Append an analyst comment to a hit.                         |
-| get_hit_fields         | /search/fields/hit        | GET    | Return valid searchable fields for hit Lucene queries.      |
+| get_index_fields       | /search/fields/hit        | GET    | Return valid searchable fields for hit Lucene queries.      |
 | get_field_values       | /search/facet/hit/{field} | GET    | Return value distribution for one field.                    |
 | lucene_query           | /search/hit               | POST   | Execute Lucene search with field projection and pagination. |
 | create_dossier         | /dossier/                 | POST   | Create a reusable dossier from a Lucene query.              |
 | create_dossier_for_hit | /hit/{hit_id}/update      | PUT    | Append dossier leads to one alert.                          |
 
-Important note: older helper tools such as ListAlerts, GetHitById, SearchHitsWithIndicators, GetFalsePositiveHits, and ListHitsByAnalytic were replaced by lucene_query plus discovery helpers get_hit_fields and get_field_values.
+Important note: older helper tools such as ListAlerts, GetHitById, SearchHitsWithIndicators, GetFalsePositiveHits, and ListHitsByAnalytic were replaced by lucene_query plus discovery helpers get_index_fields and get_field_values.
 
 ## Prompt Surface
 
@@ -40,7 +40,7 @@ The server currently registers prompt guidance for:
 - craft_howler_url
 - add_comment_to_hit
 - get_field_values
-- get_hit_fields
+- get_index_fields
 - lucene_query
 - create_dossier
 - create_dossier_for_hit
@@ -192,7 +192,7 @@ Empty/failed query execution:
 
 - invalid field names in Lucene query.
 - invalid values for enumerated fields.
-- use get_hit_fields and get_field_values before complex lucene_query filters.
+- use get_index_fields and get_field_values before complex lucene_query filters.
 
 ## Security Model Summary
 
