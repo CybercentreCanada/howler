@@ -154,6 +154,15 @@ Une cible peut aussi définir :
 | `list` | Place une valeur scalaire dans une liste. |
 | `json` | Convertit la valeur en texte JSON compact à clés triées. |
 | `{op: timestamp}` | Convertit une chaîne ISO-8601 en UTC. Ajouter `assume_timezone: UTC` pour accepter les valeurs sans fuseau horaire. |
+| `{op: template, template: "user-{value}"}` | Insère une valeur scalaire dans un modèle littéral. |
+
+Les modèles n'acceptent que le marqueur `{value}`; écrire `{{` et `}}` pour obtenir des accolades littérales. Leur
+syntaxe est vérifiée au chargement du mappage; ils ne peuvent ni accéder aux champs de la ligne ni évaluer du code.
+Comme pour `string`, les objets et les listes sont refusés; appliquer `json` d'abord pour insérer une donnée structurée :
+
+```yaml
+transforms: [json, {op: template, template: "payload={value}"}]
+```
 
 Les fichiers de mappage sont lus avec `yaml.safe_load`. Mettre entre guillemets les constantes qui doivent rester des
 chaînes, comme `"yes"`, `"off"` ou `"2026-01-01"`.

@@ -16,6 +16,7 @@ import pytest
 from jsonschema import Draft202012Validator
 
 import howler_client
+import howler_client.module.mapping as mapping_module
 from howler_client.module.mapping import (
     _TRANSFORMS,
     HowlerMapping,
@@ -254,6 +255,13 @@ def test_from_yaml_yaml_path_and_mapping_document_factories(tmp_path: Path) -> N
         lambda doc: doc["mappings"].update({"user.id": {"column": "id", "transforms": ["eval"]}}),
         lambda doc: doc["mappings"].update({"user.id": {"column": "id", "transforms": "trim"}}),
         lambda doc: doc["mappings"].update({"user.id": {"column": "id", "transforms": [{"op": "eval"}]}}),
+        lambda doc: doc["mappings"].update({"user.id": {"column": "id", "transforms": [{"op": "template"}]}}),
+        lambda doc: doc["mappings"].update(
+            {"user.id": {"column": "id", "transforms": [{"op": "template", "template": 1}]}}
+        ),
+        lambda doc: doc["mappings"].update(
+            {"user.id": {"column": "id", "transforms": [{"op": "template", "template": "{value}", "extra": 1}]}}
+        ),
         lambda doc: doc["mappings"].update(
             {"user.id": {"column": "id", "transforms": [{"op": "timestamp", "assume_timezone": "EST"}]}}
         ),
@@ -484,6 +492,137 @@ def test_transform_text_list_and_canonical_json_boundaries() -> None:
     assert _single_row({"column": "value", "transforms": ["list"]}, "one") == ["one"]
     assert _single_row({"column": "value", "transforms": ["list"]}, ["one", "one"]) == ["one", "one"]
     assert _single_row({"column": "value", "transforms": ["json"]}, {"z": 2, "é": 1}) == '{"z":2,"é":1}'
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [("alice", "user-alice"), (True, "user-true"), (3.0, "user-3.0")],
+)
+def test_template_transform_uses_scalar_string_conversion(value: Any, expected: str) -> None:
+    assert (
+        _single_row(
+            {"column": "value", "transforms": [{"op": "template", "template": "user-{value}"}]},
+            value,
+        )
+        == expected
+    )
+
+
+def test_template_transform_escapes_braces_and_obeys_transform_order() -> None:
+    assert _single_row({"column": "value", "transforms": [{"op": "template", "template": "{{value}}"}]}, "Alice") == (
+        "{value}"
+    )
+    assert (
+        _single_row(
+            {
+                "column": "value",
+                "transforms": [{"op": "template", "template": "{{user}} {{{value}}}"}],
+            },
+            "Alice",
+        )
+        == "{user} {Alice}"
+    )
+    assert (
+        _single_row(
+            {
+                "column": "value",
+                "transforms": ["trim", {"op": "template", "template": "USER-{value}"}, "lower"],
+            },
+            " Alice ",
+        )
+        == "user-alice"
+    )
+
+
+@pytest.mark.parametrize("value", [{"private": "payload"}, ["private"]])
+def test_template_transform_rejects_structured_values_unless_json_runs_first(value: Any) -> None:
+    template = {"op": "template", "template": "payload={value}"}
+    with pytest.raises(MappingError, match="use the json transform"):
+        _single_row({"column": "value", "transforms": [template]}, value)
+
+    expected_json = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    assert _single_row({"column": "value", "transforms": ["json", template]}, value) == f"payload={expected_json}"
+
+
+def test_template_without_placeholder_is_literal_but_still_requires_a_scalar() -> None:
+    assert _single_row({"column": "value", "transforms": [{"op": "template", "template": "constant"}]}, 1) == (
+        "constant"
+    )
+    with pytest.raises(MappingError, match="use the json transform"):
+        _single_row(
+            {"column": "value", "transforms": [{"op": "template", "template": "constant"}]},
+            {"private": "payload"},
+        )
+
+
+@pytest.mark.parametrize(
+    "template",
+    [
+        "{",
+        "}",
+        "{value",
+        "value}",
+        "{}",
+        "{other}",
+        "{row.value}",
+        "{value.name}",
+        "{value[0]}",
+        "{value!r}",
+        "{value:>8}",
+        "private-marker-{value.__class__}",
+    ],
+)
+@pytest.mark.parametrize("source", ["dynamic", "null-omitted"])
+def test_template_syntax_is_validated_when_mapping_is_loaded(template: str, source: str) -> None:
+    expression: dict[str, Any]
+    if source == "dynamic":
+        expression = {"column": "value", "transforms": [{"op": "template", "template": template}]}
+    else:
+        expression = {
+            "value": None,
+            "on_null": "omit",
+            "transforms": [{"op": "template", "template": template}],
+        }
+
+    rows = _TrackedRows()
+    with pytest.raises(MappingError, match="invalid template syntax") as error:
+        map_rows(rows, _single_value_mapping(expression, on_null="omit"))
+    assert "private-marker" not in str(error.value)
+    assert rows.iterations == 0
+
+
+def test_template_null_omit_and_constant_caching_remain_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
+    original_render_template = mapping_module.render_template
+    render_calls = 0
+
+    def count_template_render(value: Any, template: str) -> str:
+        nonlocal render_calls
+        render_calls += 1
+        return original_render_template(value, template)
+
+    monkeypatch.setattr(mapping_module, "render_template", count_template_render)
+    omitted = _single_value_mapping(
+        {"value": None, "on_null": "omit", "transforms": [{"op": "template", "template": "x-{value}"}]},
+        on_null="omit",
+    )
+    omitted["mappings"]["user.id"] = {"value": "constant", "transforms": [{"op": "template", "template": "id-{value}"}]}
+    mapper = RowMapping(omitted)
+    assert render_calls == 1
+    assert list(mapper.map_rows([{}, {}])) == [({"user": {"id": "id-constant"}}, None)] * 2
+    assert render_calls == 1
+
+
+def test_template_row_failures_are_sanitized_and_do_not_stop_later_rows() -> None:
+    mapper = RowMapping(
+        _single_value_mapping({"column": "value", "transforms": [{"op": "template", "template": "x-{value}"}]})
+    )
+    results = list(mapper.map_rows([{"value": "first"}, {"value": {"private": "source-marker"}}, {"value": "last"}]))
+    assert results[0] == ({"result": {"value": "x-first"}}, None)
+    assert results[1][0] is None
+    _assert_detached_error(results[1][1])
+    assert str(results[1][1]) == "row 2, target result.value: use the json transform for structured values"
+    assert "source-marker" not in str(results[1][1])
+    assert results[2] == ({"result": {"value": "x-last"}}, None)
 
 
 def test_timestamp_timezone_normalization_and_explicit_utc_assumption() -> None:
