@@ -1,6 +1,8 @@
 ---
 name: howler-worktrees
 description: Run the isolated worktree, adversarial review, and patch-application workflow for large Howler implementation tasks; do not use for minor localized fixes.
+metadata:
+  internal: true
 ---
 
 # Howler Worktree Orchestration
