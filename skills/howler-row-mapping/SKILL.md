@@ -1,6 +1,6 @@
 ---
 name: howler-row-mapping
-description: Create, augment, explain, and apply reusable howler-client version-1 YAML mappings from saved JSONL row objects to Howler alerts. Use RowMapping/map_rows and the client's bundled schema, discover targets through MCP get_hit_fields, and keep source rows, rendered records, and validation responses in files rather than prompts. Render and validate only; never ingest.
+description: Create, augment, explain, and apply reusable howler-client version-1 YAML mappings from saved JSONL row objects to Howler alerts. Use RowMapping/map_rows and the client's bundled schema, discover targets through the Howler hit-index API, and keep source rows, rendered records, and validation responses in files rather than prompts. Render and validate only; never ingest.
 ---
 
 # Howler-client YAML row mappings
@@ -24,29 +24,34 @@ or deduplication.
 ## Inputs and files
 
 Offline profiling, validation, and rendering need only the saved JSONL row
-objects, a mapping YAML file, and a supplied `get_hit_fields` snapshot. They do
+objects, a mapping YAML file, and a supplied hit-index field snapshot. They do
 not require environment URLs or credentials. Confirm which Howler environment
 and index the mapping targets before authoring it. The network workflow supports
 the `hit` index and its validation endpoint only; it never ingests. If another
 index is intended, stop rather than silently using `hit`.
 
 Use Python 3.12+ and `uv`. Every bundled PEP 723 script pins
-`howler-client==3.2.0`; the MCP helper also declares its MCP SDK dependencies.
+`howler-client==3.2.0`.
 Set `SKILL` to this skill directory and `WORK` to a private, ignored directory
-for artifacts. Only network stages need environment URLs and credentials: set
-`HOWLER_MCP_URL` and `HOWLER_API_URL` for the selected environment and use the
-supplied private token files through `HOWLER_MCP_TOKEN_FILE` and
-`HOWLER_TOKEN_FILE`. Commands also accept a supplied token in `HOWLER_JWT`.
+for artifacts. Only network stages need the selected environment's
+`HOWLER_API_URL` and API token file (`HOWLER_TOKEN_FILE`). Commands also accept
+a supplied token in `HOWLER_JWT`.
 Never print credentials or place them in output files.
 
 | File                                                            | Purpose                                                                                          |
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | `scripts/mapping.py`                                            | File-first profile, draft, augmentation, client validation, and rendering; no service calls.     |
-| `scripts/mcp_files.py`                                          | Materialize target metadata returned by MCP `get_hit_fields`.                                    |
+| `scripts/api_fields.py`                                          | Materialize hit-index field metadata from `/api/v1/search/fields/hit`.                            |
 | `scripts/validate_ingestion.py`                                 | Send saved alert JSONL to Howler's validation API and save its complete response; never ingests. |
 | `references/yaml-format.md`                                     | Detailed client-native YAML language contract.                                                   |
 | `references/howler-client.md`                                   | Released API examples and division of validation responsibilities.                               |
-| `scripts/test_mapping.py`, `scripts/test_validate_ingestion.py` | Offline tests with synthetic rows and mocked service boundaries.                                 |
+| `scripts/test_api_fields.py`                                     | Offline tests for API URL validation and mocked field metadata requests.                          |
+
+Run the field-helper tests without network access:
+
+```bash
+uv run --script "$SKILL/scripts/test_api_fields.py"
+```
 
 Keep the working directory private and out of version control. Typical artifacts:
 
@@ -90,17 +95,19 @@ infer meaning from a name or type alone.
 ### 2. Use the supplied target snapshot or discover current fields
 
 Use a supplied snapshot for offline authoring. To fetch or refresh target
-metadata, call MCP `get_hit_fields` in the selected environment:
+metadata, call the Howler API's hit-index fields endpoint directly:
 
 ```bash
-uv run --script "$SKILL/scripts/mcp_files.py" fields \
-  --mcp-url "$HOWLER_MCP_URL" --token-file "$HOWLER_MCP_TOKEN_FILE" \
+uv run --script "$SKILL/scripts/api_fields.py" fields \
+  --api-url "$HOWLER_API_URL" --token-file "$HOWLER_TOKEN_FILE" \
   --output "$WORK/hit_fields.json"
 ```
 
-The saved snapshot includes the complete field response, MCP URL, and SHA-256
-fingerprint. Review relevant target names, descriptions, types, and list flags;
-metadata may omit constraints such as required fields, enums, or regexes.
+The saved snapshot includes projected field names, descriptions, types, and list
+flags, the API URL, and a SHA-256 fingerprint. Review relevant target metadata;
+the endpoint may omit constraints such as required fields, enums, or regexes.
+This helper writes snapshot version 2; refresh any older MCP-derived snapshot
+before using it with this version of the skill.
 
 ### 3. Create or augment a native mapping
 
@@ -166,8 +173,8 @@ Fetch a fresh field snapshot immediately before backend validation, then pass
 both the pinned and current snapshots:
 
 ```bash
-uv run --script "$SKILL/scripts/mcp_files.py" fields \
-  --mcp-url "$HOWLER_MCP_URL" --token-file "$HOWLER_MCP_TOKEN_FILE" \
+uv run --script "$SKILL/scripts/api_fields.py" fields \
+  --api-url "$HOWLER_API_URL" --token-file "$HOWLER_TOKEN_FILE" \
   --output "$WORK/hit_fields_current.json"
 
 uv run --script "$SKILL/scripts/validate_ingestion.py" \

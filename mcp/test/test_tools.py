@@ -383,7 +383,7 @@ async def test_get_index_fields_projects_expected_shape(tools_and_api):
     with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
         result = await tools["get_index_fields"]()
 
-    assert result == "Key: howler.escalation, Type: keyword, Desc: Escalation value"
+    assert result == "howler.escalation: Escalation value (Type: keyword, List: False)"
 
     call_kwargs = mock_api.call.call_args.kwargs
     assert call_kwargs["path"] == "/v1/search/fields/hit"
@@ -396,14 +396,16 @@ async def test_get_index_fields_filters_keys_by_regex(tools_and_api):
     mock_api.call.return_value = {
         "howler.id": {"type": "keyword", "description": "Hit ID", "list": False},
         "event.created": {"type": "date", "description": "Creation time", "list": False},
-        "howler.assignment": {"type": "keyword", "description": "Assignment", "list": False},
+        "howler.assignment": {"type": "keyword", "description": "Assignment", "list": True},
     }
 
     with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
         result = await tools["get_index_fields"](regex=r"^howler\.")
 
-    assert "Key: howler.id," in result
-    assert "Key: howler.assignment," in result
+    assert "howler.id:" in result
+    assert "List: False" in result
+    assert "howler.assignment:" in result
+    assert "List: True" in result
     assert "event.created" not in result
 
 

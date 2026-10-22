@@ -47,13 +47,14 @@ def origin(url):
     return parsed.scheme, parsed.hostname, parsed.port or 443
 
 
-def validation_url(api_url, mcp_url):
-    if origin(api_url) != origin(mcp_url):
-        raise MappingError(
-            "API and saved MCP fields must belong to the same HTTPS origin"
-        )
-    if urlsplit(api_url).path not in ("", "/"):
-        raise MappingError("--api-url must be the Howler origin, without /api or /mcp")
+def validation_url(api_url, fields_api_url):
+    if origin(api_url) != origin(fields_api_url):
+        raise MappingError("API and saved fields must belong to the same HTTPS origin")
+    if urlsplit(api_url).path not in ("", "/") or urlsplit(fields_api_url).path not in (
+        "",
+        "/",
+    ):
+        raise MappingError("--api-url and the fields snapshot must be Howler origins")
     return api_url.rstrip("/") + "/api/v2/ingest/hit/validate"
 
 
@@ -95,7 +96,7 @@ def post_records(url, token, records):
 def save_validation(args, token, snapshot, records, post=post_records):
     for record in records:
         ensure_no_howler_id(record)
-    url = validation_url(args.api_url, snapshot["mcp_url"])
+    url = validation_url(args.api_url, snapshot["api_url"])
     status, envelope = post(url, token, records)
     data = envelope.get("api_response") if isinstance(envelope, dict) else None
     contract_ok = False
@@ -132,7 +133,7 @@ def save_validation(args, token, snapshot, records, post=post_records):
         {
             "scope": "backend",
             "transport": "rest",
-            "mcp_url": snapshot["mcp_url"],
+            "fields_api_url": snapshot["api_url"],
             "api_url": args.api_url.rstrip("/"),
             "validation_url": url,
             "http_status": status,
@@ -157,7 +158,7 @@ def run(args, token, post=post_records):
     snapshot = fields_from_file(args.fields)
     current = fields_from_file(args.current_fields)
     if (
-        snapshot["mcp_url"] != current["mcp_url"]
+        snapshot["api_url"] != current["api_url"]
         or snapshot["fields_sha256"] != current["fields_sha256"]
     ):
         raise MappingError(
@@ -175,12 +176,12 @@ def main(argv=None):
         "--records", required=True, help="generated alert JSONL; never manually edit it"
     )
     parser.add_argument(
-        "--fields", required=True, help="pinned get_hit_fields snapshot"
+        "--fields", required=True, help="pinned hit-index API field snapshot"
     )
     parser.add_argument(
         "--current-fields",
         required=True,
-        help="freshly materialized get_hit_fields snapshot",
+        help="freshly materialized hit-index API field snapshot",
     )
     parser.add_argument(
         "--token-file", help="private Howler API token file; alternatively HOWLER_JWT"

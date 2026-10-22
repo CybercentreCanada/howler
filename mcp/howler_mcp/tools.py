@@ -370,7 +370,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
         Use this tool before building a Lucene query when you are unsure which
         field names are valid. The response lists every indexed field together
-        with its type and whether it is stored or indexed.
+        with its type, list flag, and description.
 
         Args:
             regex: Optional regular expression used to filter field names.
@@ -381,7 +381,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
             ValueError: If invalid field on regex
 
         Returns:
-            str: Compacted "JSON" like object holding all valid fields in new lines
+            str: Compact field metadata lines, one per valid field.
         """
         access_token: AccessToken = _proper_access_token()
 
@@ -393,7 +393,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
             raise ValueError(f"Invalid field regex: {error}") from error
 
         return "\n".join(
-            f"Key: {key}, Type: {value['type']}, Desc: {value['description']}"
+            f"{key}: {value['description']} (Type: {value['type']}, List: {value['list']})"
             for key, value in projected_values.items()
             if field_pattern is None or field_pattern.search(key)
         )
