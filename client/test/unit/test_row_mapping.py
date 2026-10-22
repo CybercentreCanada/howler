@@ -506,11 +506,10 @@ def test_fields_check_existence_deprecation_and_concat_targets() -> None:
         RowMapping(document, fields=[])  # type: ignore[arg-type]
 
     wrong_constant = _single_value_mapping({"value": 1}, target="user.id")
-    with pytest.raises(MappingError, match="invalid constant for target user.id: target requires keyword"):
-        RowMapping(wrong_constant, fields=fields)
+    assert RowMapping(wrong_constant, fields=fields).map_row({}) == {"user": {"id": 1}}
 
 
-def test_fields_check_row_types_and_list_shape() -> None:
+def test_fields_do_not_check_mapped_row_types_or_list_shape() -> None:
     fields = {
         "event.count": {"type": "integer", "list": False},
         "event.counts": {"type": "long", "list": True},
@@ -530,20 +529,24 @@ def test_fields_check_row_types_and_list_shape() -> None:
     assert mapper("source.ip").map_row({"value": "2001:db8::1"}) == {"source": {"ip": "2001:db8::1"}}
     assert mapper("event.other").map_row({"value": {"lat": 1}}) == {"event": {"other": {"lat": 1}}}
 
-    failures = [
-        ("event.count", True, "target requires integer"),
-        ("event.count", 1.5, "target requires integer"),
-        ("event.counts", 1, "target requires a list"),
-        ("event.counts", [1, "2"], "target requires long"),
-        ("event.flag", [True], "target is scalar"),
-        ("event.flag", "true", "target requires boolean"),
-        ("event.created", "2026-01-01T00:00:00", "target requires date"),
-        ("source.ip", "not-an-ip", "target requires ip"),
-        ("source.ip", 1, "target requires ip"),
+    values = [
+        ("event.count", True),
+        ("event.count", 1.5),
+        ("event.counts", 1),
+        ("event.counts", [1, "2"]),
+        ("event.flag", [True]),
+        ("event.flag", "true"),
+        ("event.created", "2026-01-01T00:00:00"),
+        ("source.ip", "not-an-ip"),
+        ("source.ip", 1),
     ]
-    for target, value, message in failures:
-        with pytest.raises(MappingError, match=message):
-            mapper(target).map_row({"value": value})
+    for target, value in values:
+        hit = mapper(target).map_row({"value": value})
+        nested_value: Any = hit
+        parts = target.split(".")
+        for part in parts[:-1]:
+            nested_value = nested_value[part]
+        assert nested_value[parts[-1]] == value
 
 
 def test_without_fields_backend_field_catalog_is_not_checked() -> None:

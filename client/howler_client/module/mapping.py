@@ -6,18 +6,26 @@ creates server-owned identifiers. See the client README for examples.
 
 from __future__ import annotations
 
-import ipaddress
 import json
-import math
 import os
 from collections.abc import Callable, Generator, Iterable, Mapping
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, TypeAlias, cast
 
 import yaml
 
 from howler_client.common.dict_utils import unflatten
+from howler_client.common.exceptions import MappingError
+from howler_client.utils.transforms import (
+    canonical_json,
+    normalize,
+    text,
+    timestamp,
+    to_boolean,
+    to_integer,
+    to_number,
+    to_string,
+)
 
 _NULL_POLICIES = ("error", "omit")
 _EXPRESSION_KEYS = {"column", "path", "concat", "value", "on_null", "transforms"}
@@ -25,149 +33,25 @@ _ID_ERROR = "howler.id is server-generated and must not be set"
 _OMIT = object()
 
 
-class MappingError(ValueError):
-    """A mapping document, field definition, or source row is invalid."""
-
-
 RowMappingResult: TypeAlias = tuple[dict[str, Any] | None, MappingError | None]
 
-
-def _dumps(value: Any, what: str = "value", **kwargs: Any) -> str:
-    try:
-        return json.dumps(value, allow_nan=False, **kwargs)
-    except (TypeError, ValueError, RecursionError):
-        # Serializer messages can include source values; never echo them.
-        raise MappingError(f"{what} is not valid JSON") from None
-
-
-def _normalize(value: Any, what: str = "value") -> Any:
-    """Return a detached JSON copy of ``value``, rejecting non-JSON and non-finite values."""
-    return json.loads(_dumps(value, what))
-
-
-def _canonical_json(value: Any) -> str:
-    return _dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-
-
-def _timestamp(value: Any, assume_utc: bool = False) -> str:
-    if not isinstance(value, str):
-        raise MappingError("timestamp requires an ISO-8601 string")
-    try:
-        parsed = datetime.fromisoformat(value[:-1] + "+00:00" if value.endswith("Z") else value)
-    except ValueError:
-        raise MappingError("invalid ISO-8601 timestamp") from None
-    if parsed.tzinfo is None:
-        if not assume_utc:
-            raise MappingError("timestamp has no timezone; explicitly set assume_timezone: UTC")
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    try:
-        normalized = parsed.astimezone(timezone.utc)
-    except (ValueError, OverflowError):
-        raise MappingError("invalid ISO-8601 timestamp") from None
-    return normalized.isoformat(timespec="microseconds").replace("+00:00", "Z")
-
-
-def _text(value: Any) -> str:
-    if not isinstance(value, str):
-        raise MappingError("text transform requires a string")
-    return value
-
-
-def _to_string(value: Any) -> str:
-    if isinstance(value, (Mapping, list)):
-        raise MappingError("use the json transform for structured values")
-    return value if isinstance(value, str) else _canonical_json(value)
-
-
-def _to_integer(value: Any) -> int:
-    if type(value) is float and value.is_integer():
-        return int(value)
-    if type(value) in (int, str):
-        try:
-            return int(value)
-        except ValueError:
-            pass
-    raise MappingError("invalid integer conversion")
-
-
-def _to_number(value: Any) -> float:
-    try:
-        result = float(value) if type(value) in (int, float, str) else math.nan
-    except (ValueError, OverflowError):
-        result = math.nan
-    if not math.isfinite(result):
-        raise MappingError("invalid numeric conversion")
-    return result
-
-
-def _to_boolean(value: Any) -> bool:
-    if type(value) is bool:
-        return value
-    if isinstance(value, str) and value in ("true", "false"):
-        return value == "true"
-    raise MappingError("boolean accepts only booleans or the strings true/false")
-
-
 _TRANSFORMS: dict[str, Callable[[Any], Any]] = {
-    "string": _to_string,
-    "integer": _to_integer,
-    "number": _to_number,
-    "boolean": _to_boolean,
-    "trim": lambda value: _text(value).strip(),
-    "lower": lambda value: _text(value).lower(),
-    "upper": lambda value: _text(value).upper(),
+    "string": to_string,
+    "integer": to_integer,
+    "number": to_number,
+    "boolean": to_boolean,
+    "trim": lambda value: text(value).strip(),
+    "lower": lambda value: text(value).lower(),
+    "upper": lambda value: text(value).upper(),
     "list": lambda value: value if isinstance(value, list) else [value],
-    "json": _canonical_json,
+    "json": canonical_json,
 }
 
 
 def _apply_transform(value: Any, operation: str | Mapping[str, Any]) -> Any:
     if isinstance(operation, Mapping):
-        return _timestamp(value, assume_utc=operation.get("assume_timezone") == "UTC")
+        return timestamp(value, assume_utc=operation.get("assume_timezone") == "UTC")
     return _TRANSFORMS[operation](value)
-
-
-def _is_ip(value: Any) -> bool:
-    if not isinstance(value, str):
-        return False
-    try:
-        ipaddress.ip_address(value)
-    except ValueError:
-        return False
-    return True
-
-
-def _is_timestamp(value: Any) -> bool:
-    try:
-        _timestamp(value)
-    except MappingError:
-        return False
-    return True
-
-
-_FIELD_TYPE_CHECKS: dict[str, Callable[[Any], bool]] = {
-    "keyword": lambda value: isinstance(value, str),
-    "text": lambda value: isinstance(value, str),
-    "integer": lambda value: type(value) is int,
-    "long": lambda value: type(value) is int,
-    "float": lambda value: type(value) in (int, float),
-    "boolean": lambda value: type(value) is bool,
-    "object": lambda value: isinstance(value, dict),
-    "ip": _is_ip,
-    "date": _is_timestamp,
-}
-
-
-def _check_field_value(value: Any, field: Mapping[str, Any]) -> None:
-    """Check list shape and basic type against Howler field metadata; unknown types are not checked."""
-    is_list = bool(field.get("list"))
-    if is_list and not isinstance(value, list):
-        raise MappingError("target requires a list; explicitly use the list transform")
-    if not is_list and isinstance(value, list):
-        raise MappingError("target is scalar but the mapped value is a list")
-    check = _FIELD_TYPE_CHECKS.get(str(field.get("type")))
-    if check and not all(check(item) for item in (value if is_list else [value])):
-        raise MappingError(f"target requires {field['type']}")
 
 
 def _validate_transform(target: str, operation: Any) -> None:
@@ -198,7 +82,11 @@ def _validate_expression(target: str, spec: Any) -> None:  # noqa: C901
             "column" not in spec
             or not isinstance(path, list)
             or not path
-            or any(not isinstance(segment, str) and not (type(segment) is int and segment >= 0) for segment in path)
+            or any(
+                not isinstance(segment, str)
+                and not (isinstance(segment, int) and not isinstance(segment, bool) and segment >= 0)
+                for segment in path
+            )
         ):
             raise MappingError(f"invalid source path for target: {target}")
     if "concat" in spec:
@@ -212,19 +100,26 @@ def _validate_expression(target: str, spec: Any) -> None:  # noqa: C901
         _validate_transform(target, operation)
 
 
-def _validate_document(document: Any) -> dict[str, Any]:
+def _validate_document(document: Mapping) -> dict[str, Any]:
     if not isinstance(document, Mapping):
         raise MappingError("mapping document must be an object")
     if set(document) - {"version", "on_null", "mappings"}:
         raise MappingError("mapping document has unsupported keys")
-    if type(document.get("version")) is not int or document["version"] != 1:
+
+    if (
+        not isinstance(document.get("version"), int)
+        or isinstance(document["version"], bool)
+        or document["version"] != 1
+    ):
         raise MappingError("only mapping version 1 is supported")
+
     if document.get("on_null", "error") not in _NULL_POLICIES:
         raise MappingError("on_null must be error or omit")
 
     mappings = document.get("mappings")
     if not isinstance(mappings, Mapping) or not mappings:
         raise MappingError("mapping must define at least one target")
+
     for target, spec in mappings.items():
         if not isinstance(target, str) or "" in target.split("."):
             raise MappingError("mapping targets must be non-empty dotted field names")
@@ -234,13 +129,15 @@ def _validate_document(document: Any) -> dict[str, Any]:
         if any(".".join(parts[:index]) in mappings for index in range(1, len(parts))):
             raise MappingError(f"conflicting parent/child target: {target}")
         _validate_expression(target, spec)
-    return cast(dict[str, Any], _normalize(document, "mapping document"))
+
+    return cast(dict[str, Any], normalize(document, "mapping document"))
 
 
 def _lookup(row: Mapping[str, Any], column: str, path: Iterable[str | int] = ()) -> Any:
     """Read a column and optional nested path; a missing nested key or index yields None."""
     if column not in row:
         raise MappingError("source column is missing")
+
     value = row[column]
     for segment in path:
         if isinstance(value, Mapping) and isinstance(segment, str):
@@ -249,6 +146,7 @@ def _lookup(row: Mapping[str, Any], column: str, path: Iterable[str | int] = ())
             value = value[segment] if segment < len(value) else None
         elif value is not None:
             raise MappingError("source path has the wrong container type")
+
     return value
 
 
@@ -270,8 +168,10 @@ def _evaluate(spec: Mapping[str, Any], row: Mapping[str, Any], on_null: str) -> 
         if spec.get("on_null", on_null) == "omit":
             return _OMIT
         raise MappingError("null source value is not permitted")
+
     for operation in spec.get("transforms", []):
         value = _apply_transform(value, operation)
+
     return value
 
 
@@ -280,18 +180,17 @@ class RowMapping:
 
     ``fields`` is optional Howler field metadata keyed by dotted field name, as
     returned by ``client.search.fields.hit()`` or the MCP ``get_hit_fields`` tool.
-    When supplied, targets must exist and not be deprecated, and mapped values are
-    checked for list shape and basic type. Without it, backend field existence and
-    types are not asserted.
+    When supplied, targets must exist and not be deprecated. Mapped values are not
+    checked against target field types or list shape; validate them with Howler's
+    validation API or during ingestion.
     """
 
     def __init__(self, mapping: Mapping[str, Any], fields: Mapping[str, Any] | None = None):
         """Create a mapping from an already loaded version-1 document."""
         self._document = _validate_document(mapping)
         self._on_null: str = self._document.get("on_null", "error")
-        self._fields: dict[str, Any] | None = None
         if fields is not None:
-            self._fields = _validate_fields(_normalize(fields, "fields"), self._document["mappings"])
+            _validate_fields(normalize(fields, "fields"), self._document["mappings"])
 
         self._targets: dict[str, dict[str, Any]] = {}
         self._constants: dict[str, str] = {}
@@ -329,7 +228,7 @@ class RowMapping:
     @property
     def mapping(self) -> dict[str, Any]:
         """Return a detached copy of the mapping document."""
-        return cast(dict[str, Any], _normalize(self._document))
+        return cast(dict[str, Any], normalize(self._document))
 
     def map_row(self, row: Mapping[str, Any]) -> dict[str, Any]:
         """Map one row and return a new nested hit dictionary."""
@@ -352,9 +251,7 @@ class RowMapping:
         value = _evaluate(spec, row, self._on_null)
         if value is _OMIT:
             return _OMIT
-        value = _normalize(value)
-        if self._fields is not None:
-            _check_field_value(value, self._fields[target])
+        value = normalize(value)
         if target == "howler" and isinstance(value, dict) and any(k == "id" or k.startswith("id.") for k in value):
             raise MappingError(_ID_ERROR)
         return value
@@ -415,6 +312,7 @@ def map_rows(
         row_mapping = RowMapping.from_file(mapping, fields=fields)
     else:
         raise TypeError("mapping must be RowMapping, a mapping document, or a YAML file path")
+
     return row_mapping.map_rows(rows)
 
 
