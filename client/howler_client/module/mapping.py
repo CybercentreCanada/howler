@@ -242,7 +242,7 @@ class RowMapping:
         for number, row in enumerate(rows, start=1):
             try:
                 result: RowMappingResult = (self._map_row(row, number), None)
-            except MappingError as exc:
+            except (MappingError, OverflowError) as exc:
                 # A fresh error has no traceback, so it cannot retain the source row.
                 result = (None, MappingError(str(exc)))
             yield result
