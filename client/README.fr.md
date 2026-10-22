@@ -4,14 +4,15 @@ La bibliothèque cliente Howler facilite l'envoi de requêtes à Howler.
 
 ## Mapper des lignes brutes vers des alertes
 
-`howler_client.mapping` applique un mappage YAML version 1 révisé à des lignes
-brutes, sans contacter Howler, enregistrer les alertes ni créer d'identifiants
-réservés au serveur. Les deux API sont des générateurs : chaque ligne est lue
-seulement lorsqu'elle est demandée, et produit soit `(hit, None)`, soit
+`RowMapping` applique un mappage YAML version 1 à des lignes brutes, sans
+contacter Howler, enregistrer les alertes ni créer d'identifiants réservés au
+serveur. Le traitement est paresseux : chaque ligne est lue seulement
+lorsqu'elle est demandée, et produit soit `(hit, None)`, soit
 `(None, MappingError)`, dans l'ordre source. Une erreur de ligne est retournée au
 lieu d'interrompre l'itération, qui peut donc continuer. Les erreurs de
-configuration sont levées avant la consommation de la source; les exceptions de
-l'itérateur source sont propagées sans modification.
+configuration sont levées dès l'appel à `map_rows`; les exceptions de
+l'itérateur source sont propagées sans modification. Aucune connexion à Howler
+n'est requise.
 
 ```python
 from howler_client import RowMapping, map_rows
@@ -25,20 +26,29 @@ for hit, error in map_rows(query_result_rows, mapping):
         process_hit(hit)
 ```
 
+Un document de mappage contient `version: 1`, un `on_null` par défaut facultatif
+(`error` ou `omit`, `error` par défaut) et `mappings`, qui associe des noms de
+champs Howler pointés à une expression : `column` (avec un `path` facultatif de
+clés/index dans les valeurs imbriquées; une clé imbriquée absente est traitée
+comme nulle), `concat` de deux colonnes de type liste ou plus, ou une constante
+`value`. Chaque expression peut définir son propre `on_null` et une liste de
+`transforms` (`string`, `integer`, `number`, `boolean`, `trim`, `lower`,
+`upper`, `list`, `json` ou `{op: timestamp, assume_timezone: UTC}`). Les
+mappages sont lus avec `yaml.safe_load`; mettre entre guillemets les constantes
+comme `"yes"` ou `"2026-01-01"` qui doivent rester des chaînes.
+
 On peut aussi créer un `RowMapping` à partir d'un document déjà chargé ou utiliser
 `RowMapping.from_yaml(text)`. La fonction `map_rows(rows, mapping)` accepte un
 document, un `RowMapping` ou un **chemin de fichier** YAML; utiliser `from_yaml`
-pour transmettre explicitement du texte YAML. Un instantané MCP sauvegardé peut
-être fourni pour vérifier le point de terminaison, l'empreinte, les champs, les
-listes et les types. Sans instantané, seules la structure du mappage et la sûreté
-des lignes rendues sont vérifiées; l'existence des champs ou l'acceptation par le
-serveur ne sont pas garanties. Voir
+pour transmettre explicitement du texte YAML. Les métadonnées de champs Howler
+(par exemple le résultat de `client.search.fields.hit()` ou de l'outil MCP
+`get_hit_fields`) peuvent être fournies avec `fields=...` pour vérifier que les
+champs existent, ne sont pas obsolètes et reçoivent des valeurs de forme (liste)
+et de type de base corrects. Sinon, la validation des champs est laissée à
+Howler (voir `client.v2.ingest.validate`). Voir
 [`examples/row_mapping/example_mapping.yaml`](examples/row_mapping/example_mapping.yaml)
-pour un exemple assaini avec des métadonnées synthétiques. Cette fonctionnalité
-transforme uniquement les lignes en dictionnaires; la persistance et l'ingestion
-n'en font pas partie. Les valeurs mappées, constantes et métadonnées d'instantané
-sont limitées à 128 conteneurs JSON imbriqués. Les colonnes source non mappées ne
-sont ni parcourues ni copiées.
+pour un exemple assaini. Cette fonctionnalité transforme uniquement les lignes en
+dictionnaires; la persistance et l'ingestion n'en font pas partie.
 
 ## Configuration requise
 

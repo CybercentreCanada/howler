@@ -1,21 +1,5 @@
 version: 1
-source:
-  table: example.identity.directory_users
-  columns:
-    - classification_label
-    - user_identifier
-    - account_name
-    - profile
-    - primary_email
-    - directory_role_names
-    - elevated_role_names
-target:
-  index: hit
-  mcp_url: https://example.invalid/mcp
-  fields_sha256: bae5393e40efe2f67f25b7345926d599dff3c5ee5a5832c9242b8ff2e56e9537
-policy:
-  missing: error
-  on_null: error
+on_null: error
 mappings:
   howler.analytic:
     value: Directory User Inventory Snapshot
