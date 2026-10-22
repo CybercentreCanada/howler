@@ -1,0 +1,37 @@
+version: 1
+on_null: error
+mappings:
+  howler.analytic:
+    value: Directory User Inventory Snapshot
+  classification:
+    column: classification_label
+  user.id:
+    column: user_identifier
+  user.name:
+    column: account_name
+    transforms:
+      - trim
+      - lower
+  user.full_name:
+    column: profile
+    path:
+      - display_name
+    transforms:
+      - trim
+  user.email:
+    column: primary_email
+    on_null: omit
+    transforms:
+      - trim
+      - lower
+  user.roles:
+    concat:
+      - directory_role_names
+      - elevated_role_names
+  organization.name:
+    column: profile
+    path:
+      - organization
+      - name
+    transforms:
+      - trim
