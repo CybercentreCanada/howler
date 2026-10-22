@@ -5,15 +5,25 @@ from __future__ import annotations
 import copy
 import inspect
 import itertools
+import json
 import sys
 from collections.abc import Generator, Mapping
+from importlib import resources
 from pathlib import Path
 from typing import Any
 
 import pytest
+from jsonschema import Draft202012Validator
 
 import howler_client
-from howler_client.module.mapping import HowlerMapping, MappingError, RowMapping, RowMappingResult, map_rows
+from howler_client.module.mapping import (
+    _TRANSFORMS,
+    HowlerMapping,
+    MappingError,
+    RowMapping,
+    RowMappingResult,
+    map_rows,
+)
 
 EXAMPLE_FIELDS: dict[str, dict[str, Any]] = {
     "howler.analytic": {"type": "keyword", "list": False},
@@ -270,6 +280,135 @@ def test_non_mapping_documents_are_rejected() -> None:
     for document in (None, [], "text"):
         with pytest.raises(MappingError, match="mapping document must be an object"):
             RowMapping(document)  # type: ignore[arg-type]
+
+
+def test_bundled_mapping_schema_is_valid_local_and_matches_runtime_transform_registry() -> None:
+    schema = json.loads(
+        resources.files("howler_client.schemas").joinpath("row_mapping_v1.schema.json").read_text(encoding="utf-8")
+    )
+    Draft202012Validator.check_schema(schema)
+
+    def refs(schema: Any) -> list[str]:
+        if isinstance(schema, dict):
+            return [
+                *([schema["$ref"]] if "$ref" in schema else []),
+                *(reference for value in schema.values() for reference in refs(value)),
+            ]
+        if isinstance(schema, list):
+            return [reference for value in schema for reference in refs(value)]
+        return []
+
+    assert all(reference.startswith("#/") for reference in refs(schema))
+    transform_enum = schema["$defs"]["transform"]["oneOf"][0]["enum"]
+    assert set(transform_enum) == set(_TRANSFORMS)
+
+
+def test_schema_accepts_unrestricted_target_characters_empty_path_parts_and_duplicate_concat_names() -> None:
+    target = "  unusual/field #name"
+    line_ending_target = "howler.id\n"
+    mapping = RowMapping(
+        {
+            "version": 1,
+            "mappings": {
+                target: {"column": "nested", "path": ["", ""]},
+                line_ending_target: {"value": "not-the-reserved-id"},
+                "result.duplicated": {"concat": ["items", "items"]},
+            },
+        }
+    )
+    assert mapping.map_row({"nested": {"": {"": "kept"}}, "items": ["one"]}) == {
+        target: "kept",
+        "howler": {"id\n": "not-the-reserved-id"},
+        "result": {"duplicated": ["one", "one"]},
+    }
+
+
+@pytest.mark.parametrize("version", [1.0, True])
+def test_schema_rejects_non_integer_or_boolean_versions(version: Any) -> None:
+    with pytest.raises(MappingError):
+        RowMapping({"version": version, "mappings": {"result.value": {"value": "x"}}})
+
+
+@pytest.mark.parametrize("segment", [1.0, True])
+def test_schema_rejects_float_and_boolean_path_indexes(segment: Any) -> None:
+    with pytest.raises(MappingError):
+        RowMapping(_single_value_mapping({"column": "value", "path": [segment]}))
+
+
+def test_json_schema_diagnostics_do_not_expose_source_or_constant_values() -> None:
+    source_marker = "SENSITIVE_SOURCE_COLUMN_MARKER"
+    constant_marker = "SENSITIVE_CONSTANT_PAYLOAD_MARKER"
+    document = _single_value_mapping(
+        {"column": source_marker, "value": constant_marker, "unrecognized": "SENSITIVE_EXTRA_MARKER"}
+    )
+    with pytest.raises(MappingError) as error:
+        RowMapping(document)
+
+    for marker in (source_marker, constant_marker, "SENSITIVE_EXTRA_MARKER"):
+        assert marker not in str(error.value)
+    assert error.value.__cause__ is None
+
+
+@pytest.mark.parametrize(
+    "yaml_text",
+    [
+        "version: 1\nmappings:\n  result.value: {value: 2026-01-01}\n",
+        "version: 1\nmappings:\n  result.value: {value: !!set {member: null}}\n",
+        "version: 1\nmappings:\n  result.value: {value: !!binary SGVsbG8=}\n",
+        "version: 1\nmappings:\n  result.value: {value: .nan}\n",
+        "1: private_root_key_marker\nversion: 1\nmappings:\n  result.value: {value: x}\n",
+        "version: 1\nmappings:\n  result.value:\n    1: private_expression_key_marker\n",
+        (
+            "version: 1\nmappings:\n  result.value:\n    column: value\n"
+            "    transforms: [{op: timestamp, 1: private_timestamp_key_marker}]\n"
+        ),
+    ],
+)
+def test_yaml_non_json_types_and_invalid_keys_are_rejected_without_echoing_input(yaml_text: str) -> None:
+    with pytest.raises(MappingError) as error:
+        RowMapping.from_yaml(yaml_text)
+    assert "private_" not in str(error.value)
+
+
+def test_mapping_defaults_are_not_applied_and_expression_null_policy_inherits() -> None:
+    default_error_document = {"version": 1, "mappings": {"result.value": {"column": "value"}}}
+    default_error_mapping = RowMapping(default_error_document)
+    assert default_error_mapping.mapping == default_error_document
+    with pytest.raises(MappingError, match="null source value"):
+        default_error_mapping.map_row({"value": None})
+
+    document = {"version": 1, "on_null": "omit", "mappings": {"result.value": {"column": "value"}}}
+    original = copy.deepcopy(document)
+    mapping = RowMapping(document)
+    assert mapping.mapping == original
+    assert document == original
+    with pytest.raises(MappingError, match="all fields were omitted"):
+        mapping.map_row({"value": None})
+
+    timestamp_document = {
+        "version": 1,
+        "mappings": {"result.time": {"column": "value", "transforms": [{"op": "timestamp"}]}},
+    }
+    timestamp_mapping = RowMapping(timestamp_document)
+    assert timestamp_mapping.mapping == timestamp_document
+    with pytest.raises(MappingError):
+        timestamp_mapping.map_row({"value": "2026-01-01T00:00:00"})
+
+
+@pytest.mark.parametrize("targets", [["result", "result.value"], ["result.value", "result"]])
+def test_semantic_parent_child_conflicts_are_rejected_in_either_order(targets: list[str]) -> None:
+    document = {
+        "version": 1,
+        "mappings": {target: {"value": target} for target in targets},
+    }
+    with pytest.raises(MappingError, match="conflicting parent/child target"):
+        RowMapping(document)
+
+
+@pytest.mark.parametrize("target", ["howler.id", "howler.id.child"])
+def test_schema_rejection_of_server_owned_targets_keeps_safe_diagnostic(target: str) -> None:
+    with pytest.raises(MappingError, match="howler.id is server-generated"):
+        RowMapping({"version": 1, "mappings": {target: {"value": "x"}}})
 
 
 def test_null_missing_and_path_semantics() -> None:

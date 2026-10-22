@@ -9,10 +9,12 @@ from __future__ import annotations
 import json
 import os
 from collections.abc import Callable, Generator, Iterable, Mapping
+from importlib import resources
 from pathlib import Path
 from typing import Any, TypeAlias, cast
 
 import yaml
+from jsonschema import Draft202012Validator, validators
 
 from howler_client.common.dict_utils import unflatten
 from howler_client.common.exceptions import MappingError
@@ -27,8 +29,6 @@ from howler_client.utils.transforms import (
     to_string,
 )
 
-_NULL_POLICIES = ("error", "omit")
-_EXPRESSION_KEYS = {"column", "path", "concat", "value", "on_null", "transforms"}
 _ID_ERROR = "howler.id is server-generated and must not be set"
 _OMIT = object()
 
@@ -48,89 +48,69 @@ _TRANSFORMS: dict[str, Callable[[Any], Any]] = {
 }
 
 
+def _strict_integer(_checker: Any, instance: Any) -> bool:
+    return isinstance(instance, int) and not isinstance(instance, bool)
+
+
+VALIDATOR = validators.extend(
+    Draft202012Validator,
+    type_checker=Draft202012Validator.TYPE_CHECKER.redefine("integer", _strict_integer),
+)(
+    json.loads(
+        resources.files("howler_client.schemas").joinpath("row_mapping_v1.schema.json").read_text(encoding="utf-8")
+    )
+)
+
+
 def _apply_transform(value: Any, operation: str | Mapping[str, Any]) -> Any:
     if isinstance(operation, Mapping):
         return timestamp(value, assume_utc=operation.get("assume_timezone") == "UTC")
     return _TRANSFORMS[operation](value)
 
 
-def _validate_transform(target: str, operation: Any) -> None:
-    if isinstance(operation, str) and operation in _TRANSFORMS:
-        return
-    if (
-        isinstance(operation, Mapping)
-        and operation.get("op") == "timestamp"
-        and set(operation) <= {"op", "assume_timezone"}
-        and operation.get("assume_timezone", "UTC") == "UTC"
+def _schema_error_message(error: Any, document: Mapping[str, Any]) -> str:
+    """Map schema failures to fixed diagnostics without rendering instance data."""
+    path = tuple(error.absolute_path)
+    if error.validator == "minProperties" and path == ("mappings",):
+        return "mapping must define at least one target"
+    if error.validator in ("const", "type") and path == ("version",):
+        return "only mapping version 1 is supported"
+    if error.validator == "not" and tuple(error.schema_path) == (
+        "properties",
+        "mappings",
+        "propertyNames",
+        "allOf",
+        1,
+        "not",
     ):
-        return
-    raise MappingError(f"unsupported transform for target: {target}")
+        targets = document["mappings"]
+        if any(target == "howler.id" or target.startswith("howler.id.") for target in targets):
+            return _ID_ERROR
 
-
-def _validate_expression(target: str, spec: Any) -> None:  # noqa: C901
-    if not isinstance(spec, Mapping) or set(spec) - _EXPRESSION_KEYS:
-        raise MappingError(f"invalid mapping expression for target: {target}")
-    if sum(key in spec for key in ("column", "concat", "value")) != 1:
-        raise MappingError(f"target requires exactly one of column, concat, or value: {target}")
-    if spec.get("on_null", "error") not in _NULL_POLICIES:
-        raise MappingError(f"invalid null policy for target: {target}")
-    if "column" in spec and (not isinstance(spec["column"], str) or not spec["column"]):
-        raise MappingError(f"invalid source column for target: {target}")
-    if "path" in spec:
-        path = spec["path"]
-        if (
-            "column" not in spec
-            or not isinstance(path, list)
-            or not path
-            or any(
-                not isinstance(segment, str)
-                and not (isinstance(segment, int) and not isinstance(segment, bool) and segment >= 0)
-                for segment in path
-            )
-        ):
-            raise MappingError(f"invalid source path for target: {target}")
-    if "concat" in spec:
-        concat = spec["concat"]
-        if not isinstance(concat, list) or len(concat) < 2 or any(not isinstance(c, str) or not c for c in concat):
-            raise MappingError(f"invalid concatenation for target: {target}")
-    transforms = spec.get("transforms", [])
-    if not isinstance(transforms, list):
-        raise MappingError(f"invalid transforms for target: {target}")
-    for operation in transforms:
-        _validate_transform(target, operation)
+    return "mapping document is invalid"
 
 
 def _validate_document(document: Mapping) -> dict[str, Any]:
     if not isinstance(document, Mapping):
         raise MappingError("mapping document must be an object")
-    if set(document) - {"version", "on_null", "mappings"}:
-        raise MappingError("mapping document has unsupported keys")
+    normalized = normalize(document, "mapping document")
 
-    if (
-        not isinstance(document.get("version"), int)
-        or isinstance(document["version"], bool)
-        or document["version"] != 1
-    ):
-        raise MappingError("only mapping version 1 is supported")
+    try:
+        error = next(VALIDATOR.iter_errors(normalized), None)
+    except Exception as err:
+        raise MappingError("mapping document is invalid") from err
 
-    if document.get("on_null", "error") not in _NULL_POLICIES:
-        raise MappingError("on_null must be error or omit")
+    if error is not None:
+        raise MappingError(_schema_error_message(error, normalized)) from None
 
-    mappings = document.get("mappings")
-    if not isinstance(mappings, Mapping) or not mappings:
-        raise MappingError("mapping must define at least one target")
+    mappings = normalized["mappings"]
 
-    for target, spec in mappings.items():
-        if not isinstance(target, str) or "" in target.split("."):
-            raise MappingError("mapping targets must be non-empty dotted field names")
-        if target == "howler.id" or target.startswith("howler.id."):
-            raise MappingError(_ID_ERROR)
+    for target in mappings:
         parts = target.split(".")
         if any(".".join(parts[:index]) in mappings for index in range(1, len(parts))):
             raise MappingError(f"conflicting parent/child target: {target}")
-        _validate_expression(target, spec)
 
-    return cast(dict[str, Any], normalize(document, "mapping document"))
+    return cast(dict[str, Any], normalized)
 
 
 def _lookup(row: Mapping[str, Any], column: str, path: Iterable[str | int] = ()) -> Any:

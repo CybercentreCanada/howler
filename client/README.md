@@ -156,6 +156,11 @@ A target can also set:
 Mapping files are parsed with `yaml.safe_load`. Quote constants that must stay strings, such as `"yes"`, `"off"`, or
 `"2026-01-01"`.
 
+Mapping documents must contain JSON-compatible values: object keys must be strings, and YAML-only values such as dates,
+sets, and binary data (as well as non-finite numbers and cyclic structures) are rejected. The client validates mappings
+offline with its bundled [Draft 2020-12 schema](howler_client/schemas/row_mapping_v1.schema.json), which is included in
+the wheel and source distribution.
+
 You can also build a mapping from YAML text with `RowMapping.from_yaml(text)`, or from an already-loaded dictionary
 with `RowMapping(document)`. `map_rows` accepts a `RowMapping`, a dictionary, or a path to a YAML file. To use YAML
 text, go through `from_yaml` so it isn't mistaken for a path.

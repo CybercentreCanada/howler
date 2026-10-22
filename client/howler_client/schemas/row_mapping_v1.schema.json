@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://howler.invalid/schemas/row_mapping_v1.schema.json",
+  "title": "Howler row mapping version 1",
+  "type": "object",
+  "required": ["version", "mappings"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "on_null": {
+      "type": "string",
+      "enum": ["error", "omit"],
+      "default": "error"
+    },
+    "mappings": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "allOf": [
+          {
+            "pattern": "^[^.]+(?:\\.[^.]+)*$"
+          },
+          {
+            "not": {
+              "pattern": "^howler[.]id(?:[.]|(?![\\s\\S]))"
+            }
+          }
+        ]
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/expression"
+      }
+    }
+  },
+  "$defs": {
+    "expression": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "column": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer",
+                "minimum": 0
+              }
+            ]
+          }
+        },
+        "concat": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "value": {},
+        "on_null": {
+          "type": "string",
+          "enum": ["error", "omit"]
+        },
+        "transforms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/transform"
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["column"]
+        },
+        {
+          "required": ["concat"]
+        },
+        {
+          "required": ["value"]
+        }
+      ],
+      "dependentRequired": {
+        "path": ["column"]
+      }
+    },
+    "transform": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "string",
+            "integer",
+            "number",
+            "boolean",
+            "trim",
+            "lower",
+            "upper",
+            "list",
+            "json"
+          ]
+        },
+        {
+          "type": "object",
+          "required": ["op"],
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "timestamp"
+            },
+            "assume_timezone": {
+              "type": "string",
+              "enum": ["UTC"]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

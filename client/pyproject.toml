@@ -135,6 +135,7 @@ keywords = [
     "cccs",
 ]
 packages = [{ include = "howler_client" }]
+include = [{ path = "howler_client/schemas/*.json", format = ["sdist", "wheel"] }]
 documentation = "https://cybercentrecanada.github.io/howler/developer/client/"
 homepage = "https://cybercentrecanada.github.io/howler/"
 repository = "https://github.com/CybercentreCanada/howler-client"
@@ -146,6 +147,7 @@ requests = { extras = ["security"], version = ">=2.32.0,<3.0.0" }
 python-baseconv = "^1.2.2"
 coverage = { extras = ["toml"], version = "^7.6.1" }
 pyyaml = ">=6.0,<7"
+jsonschema = ">=4.23,<5.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = ">=0.6.8,<0.18.0"
@@ -161,6 +163,7 @@ diff-cover = "^10.3.0"
 [tool.poetry.group.types.dependencies]
 types-requests = "^2.32.0.20240914"
 types-pyyaml = "^6.0.12.20260906"
+types-jsonschema = "^4.26.0.20261006"
 
 [tool.poetry.scripts]
 test = "build_scripts.run_tests:main"
