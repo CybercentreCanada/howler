@@ -66,11 +66,12 @@ After the call, summarize the most common values and use the exact selected valu
     @mcp.prompt(name="get_index_fields")
     def get_index_fields_prompt() -> str:
         """Explain when and how to use the get_index_fields tool."""
-        return """Use get_index_fields to retrieve the authoritative list of fields valid in Howler Lucene queries.
+        return """Use get_index_fields(index=...) to retrieve the authoritative list of fields available on a Howler index.
 
+The required index argument selects which Howler index to inspect (for example, hit or event). Use index="hit" when validating a hit query.
 The response includes each field's key, type, list flag, and description.
 Call it when a field may not exist or when you need its exact dot-notation name.
-Reuse returned field keys verbatim in lucene_query. To discover values for a field, call get_field_values(field)."""
+For hit searches, use index="hit" and reuse those returned field keys verbatim in lucene_query. To discover values for a hit field, call get_field_values(field)."""
 
     @mcp.prompt(name="get_label_set_options")
     def get_label_set_options_prompt() -> str:
@@ -106,7 +107,7 @@ Required arguments:
 - dossier_type: global or personal
 
 Before calling:
-- verify field names with get_index_fields when uncertain
+- verify hit field names with get_index_fields(index="hit") when uncertain
 - verify enumerated values with get_field_values(field) when uncertain
 - confirm whether the dossier should be global or personal
 
@@ -138,7 +139,7 @@ Required arguments:
 Only these data_to_update keys are allowed:
 title, query, leads, pivots, type, owner.
 
-Before calling, confirm dossier_id and remove all other keys. If query is included, verify field names with get_index_fields and enumerated values with get_field_values(field) when needed.
+Before calling, confirm dossier_id and remove all other keys. If query is included, verify field names with get_index_fields(index="hit") and enumerated values with get_field_values(field) when needed.
 Use this tool to rename a dossier, change its query, or update metadata such as type or ownership.
 After the call, confirm the update and summarize the changed fields."""
 
@@ -182,7 +183,7 @@ Do not add keys or use a string for label. Ensure value and format are non-empty
         return """Use lucene_query to search Howler hits based on the user's request.
 
 Available tools:
-- get_index_fields: retrieve valid field names and metadata
+- get_index_fields(index="hit"): retrieve valid hit field names and metadata
 - get_field_values(field): retrieve accepted values and counts
 - lucene_query: execute the final search
 
@@ -194,7 +195,7 @@ Build the query as follows:
 - never invent enumerated values; verify them first
 - search only Howler hits
 
-Call get_index_fields when a field name is uncertain. Call get_field_values first for categorical fields such as:
+Call get_index_fields(index="hit") when a field name is uncertain. Call get_field_values first for categorical fields such as:
 howler.detection, howler.escalation, howler.assessment, howler.status, howler.scrutiny, howler.analytic, and howler.assignment.
 
 lucene_query arguments:

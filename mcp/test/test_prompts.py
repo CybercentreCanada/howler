@@ -39,3 +39,6 @@ def test_register_prompts_registers_and_returns_guidance():
     assert set(mcp.prompts) == set(expected_opening)
     for name, opening in expected_opening.items():
         assert mcp.prompts[name]().startswith(opening)
+
+    assert 'index="hit"' in mcp.prompts["get_index_fields"]()
+    assert 'get_index_fields(index="hit")' in mcp.prompts["lucene_query"]()

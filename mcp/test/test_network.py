@@ -198,12 +198,12 @@ def test_tool_list_assigned_hits():
 
 def test_tool_get_index_fields():
     token = get_token()
-    result = call_mcp_tool(token, "get_index_fields")
+    result = call_mcp_tool(token, "get_index_fields", {"index": "hit"})
 
     assert not result.get("isError", False)
     tool_output = result["content"][0]["text"]
     assert isinstance(tool_output, str)
-    assert any(line.startswith("Key: howler.id, Type:") for line in tool_output.splitlines())
+    assert any(line.startswith("howler.id:") for line in tool_output.splitlines())
 
 
 def test_tool_get_field_values():

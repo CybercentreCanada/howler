@@ -203,7 +203,7 @@ def test_get_iconify_exist_url_shape_and_result(tools_and_api, icon_id, status_c
         ("list_assigned_hits", {}),
         ("add_comment_to_hit", {"hit_id": str(uuid4()), "comment": "hello"}),
         ("get_field_values", {"field": "howler.escalation"}),
-        ("get_index_fields", {}),
+        ("get_index_fields", {"index": "hit"}),
         ("lucene_query", {"query": "howler.id:*", "fl": "howler.id"}),
     ],
 )
@@ -367,7 +367,8 @@ async def test_add_comment_sends_correct_payload(tools_and_api):
 
 
 @pytest.mark.asyncio
-async def test_get_index_fields_projects_expected_shape(tools_and_api):
+@pytest.mark.parametrize("index", ["hit", "event"])
+async def test_get_index_fields_projects_expected_shape(tools_and_api, index):
     tools, mock_api = tools_and_api
     mock_api.call.return_value = {
         "howler.escalation": {
@@ -381,12 +382,12 @@ async def test_get_index_fields_projects_expected_shape(tools_and_api):
     }
 
     with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
-        result = await tools["get_index_fields"]()
+        result = await tools["get_index_fields"](index=index)
 
     assert result == "howler.escalation: Escalation value (Type: keyword, List: False)"
 
     call_kwargs = mock_api.call.call_args.kwargs
-    assert call_kwargs["path"] == "/v1/search/fields/hit"
+    assert call_kwargs["path"] == f"/v1/search/fields/{index}"
     assert call_kwargs["method"] == "GET"
 
 
@@ -400,7 +401,7 @@ async def test_get_index_fields_filters_keys_by_regex(tools_and_api):
     }
 
     with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
-        result = await tools["get_index_fields"](regex=r"^howler\.")
+        result = await tools["get_index_fields"](index="hit", regex=r"^howler\.")
 
     assert "howler.id:" in result
     assert "List: False" in result
@@ -418,7 +419,7 @@ async def test_get_index_fields_rejects_invalid_regex(tools_and_api):
         patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
         pytest.raises(ValueError, match="Invalid field regex"),
     ):
-        await tools["get_index_fields"](regex="[")
+        await tools["get_index_fields"](index="hit", regex="[")
 
 
 @pytest.mark.asyncio
@@ -672,7 +673,7 @@ async def test_lucene_query_rejects_unknown_query_field_before_search_call(
             "add_comment_to_hit",
             {"hit_id": "__VALID_HIT_ID__", "comment": "note"},
         ),
-        ("get_index_fields", {}),
+        ("get_index_fields", {"index": "hit"}),
     ],
 )
 async def test_tool_call_error_is_propagated_simple(tools_and_api, tool_name, kwargs):

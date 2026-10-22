@@ -169,7 +169,7 @@ text, go through `from_yaml` so it isn't mistaken for a path.
 ### Checking targets against Howler's fields
 
 You can pass Howler's field metadata to check targets before you ingest anything. Use the output of
-`client.search.fields.hit()` or of the MCP `get_index_fields` tool:
+`client.search.fields.hit()`:
 
 ```python
 fields = client.search.fields.hit()
