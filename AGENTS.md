@@ -29,6 +29,13 @@ poetry run pyright --project pyproject.toml --level warning
 poetry run test <specific_test_file_paths>
 ```
 
+### API Code Organization And Compatibility
+
+- Files that contain Flask routes should contain only route definitions; keep business logic and helper implementations out of route files.
+- Expose specific functionality that is used frequently through the relevant service files.
+- Put reusable code that is not specific to a particular service or domain in a utility file.
+- API endpoints are the only compatibility contract that must be maintained. Internal function signatures may change freely.
+- If a change would significantly simplify the code but require a breaking change, ask the user before proceeding; that tradeoff will often be worthwhile.
 - Avoid running the full API unit test suite during routine validation; it takes a long time. Prefer targeted tests for the affected code, and run the full suite only when explicitly requested or necessary.
 - API tests expect writable `/etc/howler/conf`, `/etc/howler/lookups`, and `/var/log/howler` directories. Copy `build_scripts/classification.yml`, `build_scripts/mappings.yml`, and `test/unit/config.yml` to the corresponding config paths, then run `poetry run mitre /etc/howler/lookups` and `poetry run sigma` before testing.
 - Start local dependencies with `docker compose -f api/dev/docker-compose.yml up --build -d`; Elasticsearch, Redis, Kibana, and Keycloak are defined there. `poetry run python build_scripts/docker_health.py` checks their health.
