@@ -19,16 +19,15 @@ def timestamp(value: str, assume_utc: bool = False) -> str:
 
     try:
         parsed = datetime.fromisoformat(value[:-1] + "+00:00" if value.endswith("Z") else value)
-
-        if parsed.tzinfo is None:
-            if not assume_utc:
-                raise MappingError("timestamp has no timezone; explicitly set assume_timezone: UTC")
-            parsed = parsed.replace(tzinfo=timezone.utc)
-
-        normalized = parsed.astimezone(timezone.utc)
     except (ValueError, OverflowError):
         raise MappingError("invalid ISO-8601 timestamp") from None
 
+    if parsed.tzinfo is None:
+        if not assume_utc:
+            raise MappingError("timestamp has no timezone; explicitly set assume_timezone: UTC")
+        parsed = parsed.replace(tzinfo=timezone.utc)
+
+    normalized = parsed.astimezone(timezone.utc)
     return normalized.isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
