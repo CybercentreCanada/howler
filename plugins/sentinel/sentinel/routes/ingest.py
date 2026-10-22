@@ -94,13 +94,22 @@ def ingest_xdr_incident(**kwargs) -> tuple[dict[str, Any], int]:  # noqa C901
 
     logger.info("Received authorization header with value %s", re.sub(r"^(.{3}).+(.{3})$", r"\1...\2", apikey))
 
-    xdr_incident = request.json
-    if not xdr_incident:
-        return bad_request(err="No JSON data provided in request body")
+    xdr_incident = request.get_json(silent=True)
+    if not isinstance(xdr_incident, dict):
+        return bad_request(err="Request body must be a JSON object")
+
+    tenant_id = xdr_incident.get("tenantId")
+    if not isinstance(tenant_id, str) or not tenant_id.strip():
+        return bad_request(err="Incident must include a non-blank string tenantId")
+
+    tenant_mapping = config.tenant_mapping
+    customer_name = tenant_mapping.get(tenant_id)
+    if customer_name is None:
+        return bad_request(err="Tenant ID is not configured for Sentinel ingestion")
+    if not isinstance(customer_name, str) or not customer_name.strip():
+        return bad_request(err="Configured organization name for tenant ID must not be blank")
 
     try:
-        # TODO needs to be replaced with actual tenant mapping logic
-        tenant_mapping = {"020cd98f-1002-45b7-90ff-69fc68bdd027": "Acme Corporation"}
         incident_mapper = SentinelIncident(tid_mapping=tenant_mapping)
         bundle_hit = incident_mapper.map_incident_to_bundle(xdr_incident)
         if bundle_hit is None:

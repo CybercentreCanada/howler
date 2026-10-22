@@ -2,7 +2,7 @@ import copy
 import json
 import logging
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 import requests
@@ -18,6 +18,11 @@ werkzeug.__version__ = "1.0.0"  # type: ignore
 
 with (Path(__file__).parent / "sentinel.json").open() as _alert:
     SENTINEL_ALERT = json.load(_alert)
+
+SAMPLE_TENANT_ID = "020cd98f-1002-45b7-90ff-69fc68bdd027"
+OTHER_TENANT_ID = "b3cc6e90-8d5e-4bb0-a73e-1c2bb48f7c14"
+SAMPLE_ORGANIZATION = "Briarwood Labs"
+OTHER_ORGANIZATION = "Fabrikam Security"
 
 
 def mock_post(url: str, **kwargs):
@@ -43,8 +48,44 @@ def client():
     return app.test_client()
 
 
+@pytest.fixture
+def tenant_mapping(monkeypatch):
+    from sentinel.config import config
+
+    mapping = {
+        SAMPLE_TENANT_ID: SAMPLE_ORGANIZATION,
+        OTHER_TENANT_ID: OTHER_ORGANIZATION,
+    }
+    monkeypatch.setattr(config, "tenant_mapping", mapping)
+    return mapping
+
+
+def _mock_ingest_processing(monkeypatch):
+    from sentinel.routes import ingest
+
+    processing_mocks = {}
+    for name in ["datastore", "SentinelIncident", "XDRAlert"]:
+        mock = Mock(name=name)
+        monkeypatch.setattr(ingest, name, mock)
+        processing_mocks[name] = mock
+
+    for service_name, methods in {
+        "hit_service": ["convert_hit", "create_hit", "get_hit"],
+        "analytic_service": ["save_from_hits"],
+        "case_service": ["create_case", "append_case_item", "get_parent_from_path"],
+        "action_service": ["bulk_execute_on_query"],
+    }.items():
+        service = getattr(ingest, service_name)
+        for method in methods:
+            mock = Mock(name=f"{service_name}.{method}")
+            monkeypatch.setattr(service, method, mock)
+            processing_mocks[f"{service_name}.{method}"] = mock
+
+    return processing_mocks
+
+
 @patch("requests.post", mock_post)
-def test_ingest_endpoint(client, caplog):
+def test_ingest_endpoint(client, caplog, tenant_mapping):
     # Arrange: Prepare request data and logging
     with caplog.at_level(logging.INFO):
         # Act: Post incident to ingest endpoint
@@ -61,12 +102,18 @@ def test_ingest_endpoint(client, caplog):
     # Verify child hits are linked via a case, not via howler.hits
     root_hit = datastore().hit.get(result.json["api_response"]["bundle_hit_id"], as_obj=True)
     assert root_hit
+    assert root_hit.organization.name == SAMPLE_ORGANIZATION
+    assert root_hit.organization.id == SAMPLE_TENANT_ID
     assert len(root_hit.howler.related) > 0, "Root hit should have a case back-reference"
     case = datastore().case.get(root_hit.howler.related[0])
     assert case
     case_hit_values = [item.value for item in case.items if item.type == "hit"]
     for _id in result.json["api_response"]["individual_hit_ids"]:
         assert datastore().hit.exists(_id)
+        child_hit = datastore().hit.get(_id, as_obj=True)
+        assert child_hit
+        assert child_hit.organization.name == SAMPLE_ORGANIZATION
+        assert child_hit.organization.id == SAMPLE_TENANT_ID
         assert _id in case_hit_values, f"Child hit {_id} should be in case items"
 
 
@@ -95,7 +142,27 @@ def test_xdr_alert_mapping_handles_optional_computer_dns_name(
     assert converted_alert.howler.outline.target == expected_target
 
 
-def test_update_incident_status(client):
+def test_xdr_alert_mapping_accepts_explicit_unknown_customer():
+    alert = copy.deepcopy(SENTINEL_ALERT["alerts"][0])
+    mapper = XDRAlert(tid_mapping={SAMPLE_TENANT_ID: XDRAlert.DEFAULT_CUSTOMER_NAME})
+
+    mapped_alert = mapper.map_alert(alert, SAMPLE_TENANT_ID)
+
+    assert mapped_alert is not None
+    assert mapped_alert["organization"] == {"name": XDRAlert.DEFAULT_CUSTOMER_NAME, "id": SAMPLE_TENANT_ID}
+
+
+def test_xdr_alert_mapping_preserves_custom_unmapped_default():
+    alert = copy.deepcopy(SENTINEL_ALERT["alerts"][0])
+    mapper = XDRAlert(default_customer_name="Configured Fallback")
+
+    mapped_alert = mapper.map_alert(alert, "unmapped-tenant")
+
+    assert mapped_alert is not None
+    assert mapped_alert["organization"] == {"name": "Configured Fallback", "id": "unmapped-tenant"}
+
+
+def test_update_incident_status(client, tenant_mapping):
     """Test updating the status of an existing incident."""
     # Arrange: Ingest incident and underlying alert as bundle
     incident = copy.deepcopy(SENTINEL_ALERT)
@@ -107,6 +174,9 @@ def test_update_incident_status(client):
     response = client.post("/api/v1/sentinel/ingest", json=incident, headers={"Authorization": "Basic test_key"})
     assert response.status_code == 201
     bundle_hit_id = response.json["api_response"]["bundle_hit_id"]
+    # Changing the mapping affects only new ingests, not status-only updates to
+    # this already persisted root hit and its child alerts.
+    tenant_mapping[SAMPLE_TENANT_ID] = "Changed Organization Name"
     # Assert: Checking that underlying alerts in the incident are open
     alert = datastore().hit.get(response.json["api_response"]["individual_hit_ids"][0], as_obj=True)
     assert alert
@@ -131,16 +201,22 @@ def test_update_incident_status(client):
     bundle = datastore().hit.get(bundle_hit_id, as_obj=True)
     assert bundle
     assert bundle.howler.status == "resolved"
+    assert bundle.organization.name == SAMPLE_ORGANIZATION
+    assert bundle.organization.id == SAMPLE_TENANT_ID
     # Assert: Checking that underlying alerts in the incident are resolved
     alert = datastore().hit.get(response.json["api_response"]["individual_hit_ids"][0], as_obj=True)
     assert alert
     assert alert.howler.status == "resolved"
-    alert = datastore().hit.get(response.json["api_response"]["individual_hit_ids"][1], as_obj=True)
-    assert alert
-    assert alert.howler.status == "resolved"
+    assert alert.organization.name == SAMPLE_ORGANIZATION
+    assert alert.organization.id == SAMPLE_TENANT_ID
+    second_alert = datastore().hit.get(response.json["api_response"]["individual_hit_ids"][1], as_obj=True)
+    assert second_alert
+    assert second_alert.howler.status == "resolved"
+    assert second_alert.organization.name == SAMPLE_ORGANIZATION
+    assert second_alert.organization.id == SAMPLE_TENANT_ID
 
 
-def test_update_incident_status_noalerts(client):
+def test_update_incident_status_noalerts(client, tenant_mapping):
     """Test updating the status of an existing incident.
     This test verifies that when an incident is updated without alerts in the payload,
     underlying alerts in the bundle still transition to the resolved state.
@@ -187,7 +263,7 @@ def test_update_incident_status_noalerts(client):
     assert alert.howler.status == "resolved"
 
 
-def test_ingest_incident_without_alerts(client):
+def test_ingest_incident_without_alerts(client, tenant_mapping):
     """Test ingesting an incident with no alerts."""
     # Arrange: Prepare incident with no alerts
     incident = copy.deepcopy(SENTINEL_ALERT)
@@ -212,7 +288,7 @@ def test_ingest_incident_without_alerts(client):
     assert len(bundle.howler.related) == 0
 
 
-def test_ingest_incident_without_alerts_key(client):
+def test_ingest_incident_without_alerts_key(client, tenant_mapping):
     """Test ingesting an incident with no 'alerts' key at all."""
     # Arrange: Prepare incident and remove 'alerts' key
     incident = copy.deepcopy(SENTINEL_ALERT)
@@ -238,7 +314,7 @@ def test_ingest_incident_without_alerts_key(client):
     assert len(bundle.howler.related) == 0
 
 
-def test_bundle_alert_linking_consistency(client):
+def test_bundle_alert_linking_consistency(client, tenant_mapping):
     """Test that bundle and alert linking is consistent after ingestion."""
     # Arrange: Prepare a unique incident with two alerts
     incident = copy.deepcopy(SENTINEL_ALERT)
@@ -266,3 +342,90 @@ def test_bundle_alert_linking_consistency(client):
         alert = datastore().hit.get(alert_id, as_obj=True)
         assert alert
         assert any(rid == case.case_id for rid in alert.howler.related)
+
+
+def test_ingest_uses_parent_tenant_for_all_alerts(client, tenant_mapping):
+    incident = copy.deepcopy(SENTINEL_ALERT)
+    incident_id = "test-parent-tenant-organization-id"
+    incident["id"] = incident_id
+    incident["tenantId"] = OTHER_TENANT_ID
+    for idx, alert in enumerate(incident.get("alerts", [])):
+        alert["incidentId"] = incident_id
+        alert["id"] = f"test-parent-tenant-alert-{idx}"
+        # The parent incident tenant is authoritative, even when a child has a
+        # different tenant ID that is itself present in the mapping.
+        alert["tenantId"] = SAMPLE_TENANT_ID
+
+    response = client.post("/api/v1/sentinel/ingest", json=incident, headers={"Authorization": "Basic test_key"})
+
+    assert response.status_code == 201
+    api_response = response.json["api_response"]
+    assert len(api_response["individual_hit_ids"]) == len(incident["alerts"])
+    root_hit = datastore().hit.get(api_response["bundle_hit_id"], as_obj=True)
+    assert root_hit
+    assert root_hit.organization.name == OTHER_ORGANIZATION
+    assert root_hit.organization.id == OTHER_TENANT_ID
+    for child_id in api_response["individual_hit_ids"]:
+        child_hit = datastore().hit.get(child_id, as_obj=True)
+        assert child_hit
+        assert child_hit.organization.name == OTHER_ORGANIZATION
+        assert child_hit.organization.id == OTHER_TENANT_ID
+
+
+@pytest.mark.parametrize(
+    ("payload", "mapping_override"),
+    [
+        pytest.param([], None, id="array-body"),
+        pytest.param("incident", None, id="string-body"),
+        pytest.param(3, None, id="number-body"),
+        pytest.param(None, None, id="null-body"),
+        pytest.param({}, None, id="missing-tenant-id"),
+        pytest.param({"tenantId": None}, None, id="null-tenant-id"),
+        pytest.param({"tenantId": 42}, None, id="non-string-tenant-id"),
+        pytest.param({"tenantId": ""}, None, id="empty-tenant-id"),
+        pytest.param({"tenantId": "   "}, None, id="blank-tenant-id"),
+        pytest.param({"tenantId": "unmapped-tenant"}, None, id="unmapped-tenant-id"),
+        pytest.param({"tenantId": SAMPLE_TENANT_ID.upper()}, None, id="tenant-id-is-exact"),
+        pytest.param({"tenantId": SAMPLE_TENANT_ID}, {}, id="empty-tenant-mapping"),
+        pytest.param({"id": "existing-incident", "status": "resolved"}, None, id="update-missing-tenant"),
+        pytest.param(
+            {"id": "existing-incident", "tenantId": "unknown-update-tenant", "status": "resolved"},
+            None,
+            id="unmapped-update-tenant",
+        ),
+        pytest.param(
+            {"tenantId": SAMPLE_TENANT_ID},
+            {SAMPLE_TENANT_ID: "  "},
+            id="blank-configured-organization",
+        ),
+    ],
+)
+def test_invalid_incidents_are_rejected_before_processing(
+    client, monkeypatch, tenant_mapping, payload, mapping_override
+):
+    if mapping_override is not None:
+        tenant_mapping.clear()
+        tenant_mapping.update(mapping_override)
+
+    processing_mocks = _mock_ingest_processing(monkeypatch)
+
+    response = client.post("/api/v1/sentinel/ingest", json=payload, headers={"Authorization": "Basic test_key"})
+
+    assert response.status_code == 400
+    for mock in processing_mocks.values():
+        mock.assert_not_called()
+
+
+def test_malformed_json_is_rejected_before_processing(client, monkeypatch, tenant_mapping):
+    processing_mocks = _mock_ingest_processing(monkeypatch)
+
+    response = client.post(
+        "/api/v1/sentinel/ingest",
+        data="{",
+        content_type="application/json",
+        headers={"Authorization": "Basic test_key"},
+    )
+
+    assert response.status_code == 400
+    for mock in processing_mocks.values():
+        mock.assert_not_called()

@@ -176,7 +176,7 @@ class XDRAlert:
             return None
 
         customer_name = self.get_customer_name(customer_id)
-        if customer_name == self.DEFAULT_CUSTOMER_NAME:
+        if customer_name == self.DEFAULT_CUSTOMER_NAME and customer_id not in self.tid_mapping:
             logger.warning("Customer name not found for tenant ID: %s", graph_alert.get("tenantId", ""))
             return None
 
