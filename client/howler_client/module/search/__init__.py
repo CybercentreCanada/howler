@@ -5,6 +5,7 @@ from howler_client.module.search.facet import Facet
 from howler_client.module.search.fields import Fields
 from howler_client.module.search.grouped import Grouped
 from howler_client.module.search.histogram import Histogram
+from howler_client.module.search.scroll import Scroll
 from howler_client.module.search.stats import Stats
 from howler_client.module.search.stream import Stream
 
@@ -18,6 +19,7 @@ class Search(object):
         self.fields = Fields(connection)
         self.grouped = Grouped(connection)
         self.histogram = Histogram(connection)
+        self.scroll = Scroll(connection, self._do_search)
         self.stats = Stats(connection)
         self.stream = Stream(connection, self._do_search)
 

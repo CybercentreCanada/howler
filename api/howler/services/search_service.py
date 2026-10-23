@@ -1,16 +1,35 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 import elasticsearch
 from elasticsearch import Elasticsearch
 
+from howler.api.search_utils import (
+    issue_scroll_token,
+    read_scroll_token,
+    resolve_deep_paging_id,
+    validate_scroll_keep_alive,
+)
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
-from howler.datastore.collection import parse_sort
-from howler.datastore.exceptions import SearchException, SearchRetryException
+from howler.datastore.collection import ESCollection, parse_sort
+from howler.datastore.exceptions import (
+    InvalidScrollTokenException,
+    SearchException,
+    SearchRetryException,
+    SensitiveUserFieldsException,
+)
 from howler.datastore.types import SearchResult
-from howler.helper.search import get_collection, get_default_sort, has_access_control
+from howler.datastore.utils import (
+    field_paths_with_parents,
+    normalize_field_list,
+    project_stored_fields,
+    select_stored_fields,
+    stored_field_paths,
+)
+from howler.helper.search import INDEX_MAP, get_collection, get_default_sort, has_access_control
 from howler.odm.models.user import User
 from howler.services import case_service
 from howler.utils.indexes import get_logical_index_name, normalize_indexes
@@ -20,16 +39,34 @@ DEFAULT_ROW_SIZE = 25
 DEFAULT_SORT: list[dict[str, str]] = [{"_id": "asc"}]
 DEFAULT_SEARCH_FIELD = "__text__"
 SCROLL_TIMEOUT = "5m"
-SENSITIVE_USER_FIELDS = ["password", "apikeys", "*"]
+
+USER_STORED_FIELDS: frozenset[str] = frozenset(stored_field_paths(User.flat_fields()))
+_USER_ALLOWED_FIELD_PATHS = frozenset(field_paths_with_parents(USER_STORED_FIELDS))
 
 logger = get_logger(__file__)
 
 
-class SensitiveUserFieldsException(SearchException):
-    """Raised when a user search requests protected source fields."""
+def _resolve_search_collections(index_list: list[str], user: User | None) -> dict[str, ESCollection]:
+    """Accept only the logical index names the caller may search.
+
+    Physical names, aliases, and wildcards would bypass the per-index field rules and access-control filters.
+    """
+    if not index_list:
+        raise SearchException("No indexes were provided.")
+
+    collection_factories: dict[str, Callable[[], ESCollection]] = {}
+    for index in index_list:
+        collection_factory = get_collection(index, user) if user else INDEX_MAP.get(index)
+        if collection_factory is None:
+            raise SearchException(f"Not a valid index to search in: {index}")
+        collection_factories[index] = collection_factory
+
+    return {index: factory() for index, factory in collection_factories.items()}
 
 
-def _format_items(hits: list[dict[str, Any]], user_classification: str | None) -> list[dict[str, Any]]:
+def _format_items(
+    hits: list[dict[str, Any]], user_classification: str | None, include_id: bool = False
+) -> list[dict[str, Any]]:
     """Formats Elasticsearch search hits into a standardized item format.
 
     Extracts the _source content from each hit.
@@ -44,8 +81,9 @@ def _format_items(hits: list[dict[str, Any]], user_classification: str | None) -
     for hit in hits:
         source = hit.get("_source")
 
-        if source:
+        if source is not None:
             raw_index = hit.get("_index", None)
+            source.pop("__index", None)
 
             if raw_index:
                 source["__index"] = get_logical_index_name(raw_index)
@@ -53,9 +91,28 @@ def _format_items(hits: list[dict[str, Any]], user_classification: str | None) -
             if source.get("__index") == "case" and user_classification:
                 case_service.filter_case_items_by_classification(source, user_classification)
 
-            items.append(source)
+            if include_id and hit.get("_id") is not None:
+                source["id"] = hit["_id"]
+
+            if source or include_id:
+                items.append(source)
 
     return items
+
+
+def user_fields_allowed(
+    indexes: str | list[str],
+    fl: str | list[str] | None,
+    user: User | None = None,
+) -> bool:
+    """Guard legacy v1 source searches and aggregations that do not use stored-field projection."""
+    if "user" not in _parse_index_list(indexes):
+        return True
+    try:
+        names = normalize_field_list(fl)
+    except SearchException:
+        return False
+    return all(name in _USER_ALLOWED_FIELD_PATHS or name == "id" for name in names)
 
 
 def search(  # noqa: C901
@@ -71,6 +128,8 @@ def search(  # noqa: C901
     track_total_hits: bool = False,
     metadata: list[str] | None = None,
     user: User | None = None,
+    scroll: str | None = None,
+    include_id: bool = False,
 ) -> SearchResult[dict[str, Any]]:
     """Search through specified index for a given query. Uses lucene search syntax for query.
 
@@ -80,6 +139,8 @@ def search(  # noqa: C901
     Arguments:
     query: Query to search for
     deep_paging_id   : ID of the next page or * to start deep paging
+    scroll           : Scroll keep-alive duration (defaults to 5m for deep paging)
+    include_id       : Include Elasticsearch's document ID in each formatted item
     filters          : List of additional filter queries limit the data
     offset           : Offset in the results
     rows             : Number of results per page
@@ -99,12 +160,15 @@ def search(  # noqa: C901
     del metadata
 
     index_list = _parse_index_list(indexes)
-    if (
-        fl is not None
-        and "user" in index_list
-        and any(sensitive_field in fl for sensitive_field in SENSITIVE_USER_FIELDS)
-    ):
-        raise SensitiveUserFieldsException("Invalid fields to retrieve.")
+    search_collections = _resolve_search_collections(index_list, user)
+    source_fields, allowed_fields_by_index, selected_id = select_stored_fields(search_collections, fl)
+    include_id = include_id or selected_id
+
+    if user and user.classification and "case" in allowed_fields_by_index:
+        selected_case_fields = allowed_fields_by_index["case"]
+        if any(field == "items" or field.startswith("items.") for field in selected_case_fields):
+            if "items.classification" not in source_fields:
+                source_fields.append("items.classification")
 
     client: Elasticsearch = datastore().ds.client
     parsed_indexes = normalize_indexes(indexes)
@@ -119,7 +183,7 @@ def search(  # noqa: C901
     # NOTE: This means index searches must be either ALL access controlled or none of them have access control.
     # Otherwise, the access control requirements on one index will cause the other index to return no items.
     # This is pretty reasonable constraint, as all the relevant, searchable items support classifications.
-    if user and user.access_control and has_access_control(indexes):
+    if user and user.access_control and has_access_control(index_list):
         parsed_filters.append(user.access_control)
 
     if query is None:
@@ -143,21 +207,13 @@ def search(  # noqa: C901
     else:
         offset = int(offset)
 
-    source_fields: list[str] | None
-    if fl is None:
-        source_fields = None
-    elif isinstance(fl, str):
-        source_fields = [field.strip() for field in fl.split(",") if field.strip()]
-    else:
-        source_fields = [field.strip() for field in fl if field.strip()]
-
     params: dict[str, Any] = {}
     if deep_paging_id is not None:
-        params["scroll"] = SCROLL_TIMEOUT
+        params["scroll"] = scroll if scroll is not None else SCROLL_TIMEOUT
     elif track_total_hits:
         params["track_total_hits"] = True
 
-    if timeout is not None:
+    if timeout is not None and deep_paging_id in (None, "*"):
         params["timeout"] = f"{timeout}ms"
 
     query_body: dict[str, Any] = {
@@ -170,10 +226,8 @@ def search(  # noqa: C901
         "from_": offset,
         "size": rows,
         "sort": parse_sort(sort),
+        "_source": source_fields,
     }
-
-    if source_fields is not None:
-        query_body["_source"] = source_fields
 
     try:
         if deep_paging_id is not None and deep_paging_id != "*":
@@ -190,11 +244,14 @@ def search(  # noqa: C901
     total = result.get("hits", {}).get("total", {}).get("value", 0)
     hits = result.get("hits", {}).get("hits", [])
 
+    items = _format_items(hits, user.classification if user else None, include_id=include_id)
+    items = project_stored_fields(items, allowed_fields_by_index, include_id, fields=fl)
+
     response: SearchResult[dict[str, Any]] = {
         "offset": int(offset),
         "rows": len(hits),
         "total": int(total),
-        "items": _format_items(hits, user.classification if user else None),
+        "items": items,
     }
 
     next_deep_paging_id = result.get("_scroll_id")
@@ -216,6 +273,58 @@ def search(  # noqa: C901
         response["next_deep_paging_id"] = next_deep_paging_id
 
     return response
+
+
+def clear_scroll(scroll_id: str) -> dict[str, Any]:
+    """Clear an Elasticsearch scroll context and return Elasticsearch's response."""
+    client: Elasticsearch = datastore().ds.client
+
+    try:
+        return dict(client.clear_scroll(scroll_id=scroll_id).body)
+    except (elasticsearch.exceptions.ConnectionError, elasticsearch.exceptions.ConnectionTimeout) as error:
+        logger.exception("Failed to clear Elasticsearch scroll")
+        raise SearchRetryException("The scroll context could not be cleared. Please retry.") from error
+    except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.RequestError) as error:
+        logger.exception("Failed to clear Elasticsearch scroll")
+        raise SearchException("The scroll context could not be cleared.") from error
+    except Exception as error:
+        logger.exception("Failed to clear Elasticsearch scroll")
+        raise SearchException("The scroll context could not be cleared.") from error
+
+
+def clear_owned_scroll(user: User, scroll_token: Any) -> dict[str, Any]:
+    """Clear the Elasticsearch scroll behind a token, but only for the user who opened it."""
+    claims = read_scroll_token(scroll_token)
+    if claims["u"] != user["uname"]:
+        raise InvalidScrollTokenException("Scroll token belongs to another user.")
+
+    return clear_scroll(claims["s"])
+
+
+def scroll_search(
+    indexes: str, query: str, user: User, params: dict[str, Any], scroll: str | None
+) -> SearchResult[dict[str, Any]]:
+    """Open or continue a deep-paging scroll with user-bound tokens and stored-field projection."""
+    if not isinstance(query, str):
+        raise SearchException("Search query must be a string.")
+
+    keep_alive = validate_scroll_keep_alive(scroll)
+    search_params = params.copy()
+    search_params["deep_paging_id"] = resolve_deep_paging_id(user, indexes, params["deep_paging_id"], query)
+    requested_fields = normalize_field_list(params.get("fl"))
+    result = search(
+        indexes,
+        query,
+        user=user,
+        scroll=keep_alive,
+        include_id=not requested_fields or "*" in requested_fields,
+        **search_params,
+    )
+    next_scroll_id = result.get("next_deep_paging_id")
+    if next_scroll_id is not None:
+        result["next_deep_paging_id"] = issue_scroll_token(user, indexes, next_scroll_id, query)
+
+    return result
 
 
 def _parse_index_list(indexes: str | list[str]) -> list[str]:
@@ -319,6 +428,9 @@ def facet(
 
     if not index_list:
         raise SearchException("No indexes were provided.")
+
+    if not user_fields_allowed(index_list, fields, user):
+        raise SensitiveUserFieldsException("Invalid fields to facet on.")
 
     facet_result: dict[str, dict[str, Any]] = {field: {} for field in fields}
 

@@ -26,66 +26,17 @@ from venv import logger
 
 import arrow
 import validators
-from dateutil.tz import tzutc
 
 from howler.common import loader
 from howler.common.exceptions import HowlerKeyError, HowlerNotImplementedError, HowlerTypeError, HowlerValueError
 from howler.common.net import is_valid_domain, is_valid_ip
+from howler.odm import constants
 from howler.odm.howler_enum import HowlerEnum
 from howler.utils.compat import Self
 from howler.utils.compat import StrEnum as PyStrEnum
 from howler.utils.dict_utils import flatten, recursive_update
 from howler.utils.isotime import now_as_iso
 from howler.utils.uid import get_random_id
-
-BANNED_FIELDS = {
-    "_id",
-    "__access_grp1__",
-    "__access_lvl__",
-    "__access_req__",
-    "__access_grp2__",
-}
-DATEFORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
-FIELD_SANITIZER = re.compile("^[a-z][a-z0-9_-]*$")
-FLATTENED_OBJECT_SANITIZER = re.compile("^[a-z][a-z0-9_.]*$")
-NOT_INDEXED_SANITIZER = re.compile("^[A-Za-z0-9_ -]*$")
-UTC_TZ = tzutc()
-
-DOMAIN_REGEX = (
-    r"(?:(?:[A-Za-z0-9\u00a1-\uffff][A-Za-z0-9\u00a1-\uffff_-]{0,62})?[A-Za-z0-9\u00a1-\uffff]\.)+"
-    r"(?:xn--)?(?:[A-Za-z0-9\u00a1-\uffff]{2,}\.?)"
-)
-DOMAIN_ONLY_REGEX = f"^{DOMAIN_REGEX}$"
-EMAIL_REGEX = f"^[a-zA-Z0-9!#$%&'*+/=?^_‘{{|}}~-]+(?:\\.[a-zA-Z0-9!#$%&'*+/=?^_‘{{|}}~-]+)*@({DOMAIN_REGEX})$"
-IPV4_REGEX = r"(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)"
-IPV6_REGEX = (
-    r"(?:(?:[0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|"
-    r"(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}|"
-    r"(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}|(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}|"
-    r"(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(?:(?::[0-9a-fA-F]{1,4}){1,6})|"
-    r":(?:(?::[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(?::[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|"
-    r"::(?:ffff(?::0{1,4}){0,1}:){0,1}(?:(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(?:25[0-5]|"
-    r"(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])|(?:[0-9a-fA-F]{1,4}:){1,4}:(?:(?:25[0-5]|"
-    r"(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9]))"
-)
-IP_REGEX = f"(?:{IPV4_REGEX}|{IPV6_REGEX})"
-IP_ONLY_REGEX = f"^{IP_REGEX}$"
-PRIVATE_IP = (
-    r"(?:(?:127|10)(?:\.(?:[2](?:[0-5][0-5]|[01234][6-9])|[1][0-9][0-9]|[1-9][0-9]|[0-9])){3})|"
-    r"(?:172\.(?:1[6-9]|2[0-9]|3[0-1])(?:\.(?:2[0-4][0-9]|25[0-5]|[1][0-9][0-9]|[1-9][0-9]|[0-9])){2}|"
-    r"(?:192\.168(?:\.(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])){2}))"
-)
-PHONE_REGEX = r"^(\+?\d{1,2})?[ .-]?(\(\d{3}\)|\d{3})[ .-](\d{3})[ .-](\d{4})$"
-SSDEEP_REGEX = r"^[0-9]{1,18}:[a-zA-Z0-9/+]{0,64}:[a-zA-Z0-9/+]{0,64}$"
-MD5_REGEX = r"^[a-f0-9]{32}$"
-SHA1_REGEX = r"^[a-f0-9]{40}$"
-SHA256_REGEX = r"^[a-f0-9]{64}$"
-HOWLER_HASH_REGEX = r"^[a-f0-9]{1,64}$"
-MAC_REGEX = r"^(?:(?:[0-9a-f]{2}-){5}[0-9a-f]{2}|(?:[0-9a-f]{2}:){5}[0-9a-f]{2})$"
-URI_PATH = r"(?:[/?#]\S*)"
-FULL_URI = f"^((?:(?:[A-Za-z]*:)?//)?(?:\\S+(?::\\S*)?@)?({IP_REGEX}|{DOMAIN_REGEX})(?::\\d{{2,5}})?){URI_PATH}?$"
-PLATFORM_REGEX = r"^(Windows|Linux|MacOS|Android|iOS)$"
-PROCESSOR_REGEX = r"^x(64|86)$"
 
 if TYPE_CHECKING:
     from howler.common.classification import Classification as ClassificationEngine
@@ -240,7 +191,7 @@ class Date(_Field):
 
         try:
             try:
-                return datetime.strptime(value, DATEFORMAT).replace(tzinfo=UTC_TZ)
+                return datetime.strptime(value, constants.DATEFORMAT).replace(tzinfo=constants.UTC_TZ)
             except (TypeError, ValueError):
                 return arrow.get(value).datetime
         except Exception as e:
@@ -430,7 +381,7 @@ class ValidatedKeyword(Keyword):
 class IP(Keyword):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.validation_regex = re.compile(IP_ONLY_REGEX)
+        self.validation_regex = re.compile(constants.IP_ONLY_REGEX)
 
     def check(self: Self, value: str, context: list[str] = [], **kwargs):
         if not value:
@@ -473,7 +424,7 @@ class Domain(Keyword):
 class Email(Keyword):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.validation_regex = re.compile(EMAIL_REGEX)
+        self.validation_regex = re.compile(constants.EMAIL_REGEX)
 
     def check(self: Self, value: str, context: list[str] = [], **kwargs):
         if not value:
@@ -497,7 +448,7 @@ class Email(Keyword):
 class URI(Keyword):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.validation_regex = re.compile(FULL_URI)
+        self.validation_regex = re.compile(constants.FULL_URI)
 
     def check(self: Self, value: str, context: list[str] = [], **kwargs):
         if not value:
@@ -519,52 +470,52 @@ class URI(Keyword):
 
 class URIPath(ValidatedKeyword):
     def __init__(self, *args, **kwargs):
-        super().__init__(URI_PATH, *args, **kwargs)
+        super().__init__(constants.URI_PATH, *args, **kwargs)
 
 
 class MAC(ValidatedKeyword):
     def __init__(self, *args, **kwargs):
-        super().__init__(MAC_REGEX, *args, **kwargs)
+        super().__init__(constants.MAC_REGEX, *args, **kwargs)
 
 
 class PhoneNumber(ValidatedKeyword):
     def __init__(self, *args, **kwargs):
-        super().__init__(PHONE_REGEX, *args, **kwargs)
+        super().__init__(constants.PHONE_REGEX, *args, **kwargs)
 
 
 class SSDeepHash(ValidatedKeyword):
     def __init__(self, *args, **kwargs):
-        super().__init__(SSDEEP_REGEX, *args, **kwargs)
+        super().__init__(constants.SSDEEP_REGEX, *args, **kwargs)
 
 
 class SHA1(ValidatedKeyword):
     def __init__(self, *args, **kwargs):
-        super().__init__(SHA1_REGEX, *args, **kwargs)
+        super().__init__(constants.SHA1_REGEX, *args, **kwargs)
 
 
 class SHA256(ValidatedKeyword):
     def __init__(self, *args, **kwargs):
-        super().__init__(SHA256_REGEX, *args, **kwargs)
+        super().__init__(constants.SHA256_REGEX, *args, **kwargs)
 
 
 class HowlerHash(ValidatedKeyword):
     def __init__(self, *args, **kwargs):
-        super().__init__(HOWLER_HASH_REGEX, *args, **kwargs)
+        super().__init__(constants.HOWLER_HASH_REGEX, *args, **kwargs)
 
 
 class MD5(ValidatedKeyword):
     def __init__(self, *args, **kwargs):
-        super().__init__(MD5_REGEX, *args, **kwargs)
+        super().__init__(constants.MD5_REGEX, *args, **kwargs)
 
 
 class Platform(ValidatedKeyword):
     def __init__(self, *args, **kwargs):
-        super().__init__(PLATFORM_REGEX, *args, **kwargs)
+        super().__init__(constants.PLATFORM_REGEX, *args, **kwargs)
 
 
 class Processor(ValidatedKeyword):
     def __init__(self, *args, **kwargs):
-        super().__init__(PROCESSOR_REGEX, *args, **kwargs)
+        super().__init__(constants.PROCESSOR_REGEX, *args, **kwargs)
 
 
 class Enum(Keyword):
@@ -990,9 +941,9 @@ class Mapping(_Field):
             return None
 
         if self.index or self.store:
-            sanitizer = FIELD_SANITIZER
+            sanitizer = constants.FIELD_SANITIZER
         else:
-            sanitizer = NOT_INDEXED_SANITIZER
+            sanitizer = constants.NOT_INDEXED_SANITIZER
 
         return TypedMapping(self.child_type, self.index, self.store, sanitizer, **value)
 
@@ -1014,7 +965,7 @@ class FlattenedListObject(Mapping):
         if self.optional and value is None:
             return None
 
-        return TypedMapping(self.child_type, self.index, self.store, FLATTENED_OBJECT_SANITIZER, **value)
+        return TypedMapping(self.child_type, self.index, self.store, constants.FLATTENED_OBJECT_SANITIZER, **value)
 
     def apply_defaults(self, index, store):
         """Initialize the default settings for the child field."""
@@ -1038,7 +989,7 @@ class FlattenedObject(Mapping):
             self.child_type,
             self.index,
             self.store,
-            FLATTENED_OBJECT_SANITIZER,
+            constants.FLATTENED_OBJECT_SANITIZER,
             context=context,
             **value,
         )
@@ -1167,7 +1118,7 @@ class Model:
 
         field._Model__description = description
         for name, field_data in field.fields().items():
-            if not FIELD_SANITIZER.match(name) or name in BANNED_FIELDS:
+            if not constants.FIELD_SANITIZER.match(name) or name in constants.BANNED_FIELDS:
                 raise HowlerValueError(f"Illegal variable name: {name}")
 
             recursive_set_name(field_data, name)
@@ -1412,7 +1363,7 @@ class Model:
         data = flat_to_nested(data)
 
         # Check to make sure we can use all the data we are given
-        self.unused_keys = set(data.keys()) - set(fields.keys()) - BANNED_FIELDS
+        self.unused_keys = set(data.keys()) - set(fields.keys()) - constants.BANNED_FIELDS
         extra_keys = set(extra_fields.keys()) - set(data.keys())
         if self.unused_keys and not ignore_extra_values:
             raise HowlerValueError(
@@ -1557,7 +1508,7 @@ class Model:
 
             if value.tzinfo is not None:
                 value = value.astimezone(timezone.utc)
-            return value.strftime(DATEFORMAT)
+            return value.strftime(constants.DATEFORMAT)
 
         if value is not None and isinstance(field_type, IP):
             if ip_format == "encoded_bytes":
@@ -1651,7 +1602,7 @@ def model(index=None, store=None, description=None, id_field=None):
             if not isinstance(id_field, str):
                 raise HowlerTypeError(f"id_field must be a str, got {type(id_field).__name__}")
 
-            if not FLATTENED_OBJECT_SANITIZER.match(id_field) or id_field in BANNED_FIELDS:
+            if not constants.FLATTENED_OBJECT_SANITIZER.match(id_field) or id_field in constants.BANNED_FIELDS:
                 raise HowlerValueError(f"Illegal id_field name: {id_field}")
 
             if id_field not in fields and id_field not in cls.flat_fields():
@@ -1660,7 +1611,7 @@ def model(index=None, store=None, description=None, id_field=None):
             cls._Model__id_field = id_field
 
         for name, field_data in fields.items():
-            if not FIELD_SANITIZER.match(name) or name in BANNED_FIELDS:
+            if not constants.FIELD_SANITIZER.match(name) or name in constants.BANNED_FIELDS:
                 raise HowlerValueError(f"Illegal variable name: {name}")
 
             recursive_set_name(field_data, name)

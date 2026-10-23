@@ -1,13 +1,14 @@
 """Unit tests for the search API endpoint (howler.api.v2.search)."""
 
+import importlib
 import uuid
+from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask, Response
 
-from howler.common.loader import datastore
 from howler.odm import Model
 from howler.odm.models.user import User
 from howler.odm.randomizer import random_model_obj
@@ -18,6 +19,17 @@ def request_context():
     app = Flask("test_app")
     app.config.update(SECRET_KEY="test test")
     return app
+
+
+@pytest.fixture(autouse=True)
+def isolate_quota_trackers():
+    """Keep endpoint unit tests from touching the shared Redis-backed quota trackers."""
+    with (
+        patch("howler.security.login.QUOTA_TRACKER") as login_quota_tracker,
+        patch("howler.api.QUOTA_TRACKER"),
+    ):
+        login_quota_tracker.begin.return_value = True
+        yield
 
 
 def _build_user(user_type: list[str] | None = None) -> User:
@@ -33,7 +45,6 @@ def _mock_auth(mock_auth_service, user, priv=None):
     if priv is None:
         priv = ["R", "W", "E"]
     mock_auth_service.bearer_auth = MagicMock(return_value=(user, priv))
-    datastore().user.save(user.uname, user)
 
 
 # ---------------------------------------------------------------------------
@@ -155,6 +166,284 @@ class TestSearch:
             assert body["api_response"]["total"] == 1
             mock_search_svc.search.assert_called_once()
             assert "sort" not in mock_search_svc.search.call_args.kwargs
+
+    @patch("howler.services.search_service.get_collection")
+    @patch("howler.services.search_service.search")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_search_scroll_projects_stored_fields(
+        self, mock_quota_tracker, mock_auth_service, mock_search, mock_get_collection, request_context: Flask
+    ):
+        """Scroll requests use the requested keep-alive and stored-field projection."""
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+
+        collection = MagicMock()
+        collection.model_class = None
+        collection.stored_fields = {"name": SimpleNamespace(store=True)}
+        mock_get_collection.return_value = lambda: collection
+        mock_search.return_value = {
+            "total": 1,
+            "items": [{"__index": "hit", "name": "allowed"}],
+            "offset": 0,
+        }
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"query": "id:*", "deep_paging_id": "*", "scroll": "37s", "fl": "name"},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.search import search
+
+            result: Response = search(indexes="hit", user=user)
+
+        assert result.status_code == 200
+        item = result.get_json()["api_response"]["items"][0]
+        assert item == {"name": "allowed", "__index": "hit"}
+        assert mock_search.call_args.args == ("hit", "id:*")
+        assert mock_search.call_args.kwargs["scroll"] == "37s"
+        assert mock_search.call_args.kwargs["deep_paging_id"] == "*"
+        assert mock_search.call_args.kwargs["fl"] == "name"
+        assert mock_search.call_args.kwargs["include_id"] is False
+
+    @patch("howler.services.search_service.get_collection")
+    @patch("howler.services.search_service.search")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_search_scroll_continuation_without_scroll_is_projected(
+        self, mock_quota_tracker, mock_auth_service, mock_search, mock_get_collection, request_context: Flask
+    ):
+        """Scroll continuation remains projected when the client omits the keep-alive."""
+        from howler.api.search_utils import issue_scroll_token
+
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+
+        hit_collection = MagicMock()
+        hit_collection.model_class = None
+        hit_collection.stored_fields = {"action.operations.operation_id": SimpleNamespace(store=True)}
+        user_collection = MagicMock()
+        user_collection.model_class = None
+        user_collection.stored_fields = {"uname": SimpleNamespace(store=True)}
+        collections = {"hit": hit_collection, "user": user_collection}
+        mock_get_collection.side_effect = lambda index, _user: lambda: collections[index]
+        mock_search.return_value = {
+            "total": 2,
+            "items": [
+                {
+                    "__index": "hit",
+                    "action": {"operations": [{"operation_id": "add_label"}]},
+                },
+                {"__index": "user", "uname": "allowed"},
+            ],
+            "offset": 0,
+        }
+
+        token = issue_scroll_token(user, "hit,user", "scroll-token", "id:*")
+
+        with request_context.test_request_context(
+            method="POST",
+            json={
+                "query": "id:*",
+                "deep_paging_id": token,
+                "fl": "action.operations.operation_id,uname",
+            },
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.search import search
+
+            result: Response = search(indexes="hit,user", user=user)
+
+        assert result.status_code == 200
+        assert result.get_json()["api_response"]["items"] == [
+            {"action": {"operations": [{"operation_id": "add_label"}]}, "__index": "hit"},
+            {"uname": "allowed", "__index": "user"},
+        ]
+        assert mock_search.call_args.kwargs["scroll"] is None
+        assert mock_search.call_args.kwargs["deep_paging_id"] == "scroll-token"
+        assert mock_search.call_args.kwargs["fl"] == "action.operations.operation_id,uname"
+        assert mock_search.call_args.kwargs["include_id"] is False
+
+    @patch("howler.services.search_service.get_collection")
+    @patch("howler.services.search_service.search")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_search_scroll_applies_allowlist_per_index(
+        self, mock_quota_tracker, mock_auth_service, mock_search, mock_get_collection, request_context: Flask
+    ):
+        """Multi-index scroll results use each item's own collection allowlist."""
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+
+        hit_collection = MagicMock()
+        hit_collection.model_class = None
+        hit_collection.stored_fields = {
+            "uname": SimpleNamespace(store=True),
+            "hit_only": SimpleNamespace(store=True),
+        }
+        user_collection = MagicMock()
+        user_collection.model_class = None
+        user_collection.stored_fields = {"uname": SimpleNamespace(store=True)}
+        collections = {"hit": hit_collection, "user": user_collection}
+        mock_get_collection.side_effect = lambda index, _user: lambda: collections[index]
+        mock_search.return_value = {
+            "total": 2,
+            "items": [
+                {"__index": "hit", "uname": "hit", "hit_only": "allowed"},
+                {"__index": "user", "uname": "user"},
+            ],
+            "offset": 0,
+        }
+
+        with request_context.test_request_context(
+            method="POST",
+            json={
+                "query": "id:*",
+                "deep_paging_id": "*",
+                "scroll": "1m",
+                "fl": "uname,hit_only",
+            },
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.search import search
+
+            result: Response = search(indexes="hit, user", user=user)
+
+        assert result.status_code == 200
+        assert result.get_json()["api_response"]["items"] == [
+            {"uname": "hit", "hit_only": "allowed", "__index": "hit"},
+            {"uname": "user", "__index": "user"},
+        ]
+        assert mock_search.call_args.kwargs["fl"] == "uname,hit_only"
+
+    @patch("howler.services.search_service.get_collection")
+    @patch("howler.services.search_service.datastore")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_search_scroll_rejects_sensitive_user_fields(
+        self, mock_quota_tracker, mock_auth_service, mock_datastore, mock_get_collection, request_context: Flask
+    ):
+        """Applying the scroll allowlist does not bypass sensitive-user-field rejection."""
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+        mock_get_collection.return_value = lambda: SimpleNamespace(
+            model_class=User,
+            stored_fields={name: field for name, field in User.flat_fields().items() if field.store},
+        )
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"query": "uname:*", "deep_paging_id": "*", "scroll": "1m", "fl": "password"},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.search import search
+
+            result: Response = search(indexes="user", user=user)
+
+        assert result.status_code == 400
+        mock_datastore.assert_not_called()
+        mock_get_collection.assert_called_once()
+
+    @patch("howler.services.search_service.clear_scroll")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_clear_scroll(self, mock_quota_tracker, mock_auth_service, mock_clear_scroll, request_context: Flask):
+        """A caller can clear a scroll context they opened."""
+        from howler.api.search_utils import issue_scroll_token
+
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+        mock_clear_scroll.return_value = {"succeeded": True, "num_freed": 1}
+        token = issue_scroll_token(user, "hit", "scroll-raw", "id:*")
+
+        with request_context.test_request_context(
+            method="DELETE",
+            json={"scroll_id": token},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.search import clear_scroll
+
+            result: Response = clear_scroll(user=user)
+
+        assert result.status_code == 200
+        mock_clear_scroll.assert_called_once_with("scroll-raw")
+
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    @pytest.mark.parametrize("api_module", ["howler.api.v1.search", "howler.api.v2.search"])
+    def test_clear_scroll_retry_failure_is_sanitized_as_503(
+        self, mock_quota_tracker, mock_auth_service, api_module: str, request_context: Flask
+    ):
+        from howler.datastore.exceptions import SearchRetryException
+
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R"])
+        mock_quota_tracker.begin.return_value = True
+        with patch(
+            f"{api_module}.search_service.clear_owned_scroll",
+            side_effect=SearchRetryException("scroll_id: raw-es-scroll, connection reset"),
+        ):
+            with request_context.test_request_context(
+                method="DELETE",
+                json={"scroll_id": "safe-encrypted-token"},
+                headers={"Authorization": "Bearer ."},
+            ):
+                clear_scroll = importlib.import_module(api_module).clear_scroll
+                result: Response = clear_scroll(user=user)
+
+        assert result.status_code == 503
+        assert "raw-es-scroll" not in result.get_data(as_text=True)
+        assert "connection reset" not in result.get_data(as_text=True)
+
+    @pytest.mark.parametrize(
+        ("api_module", "route_args"),
+        [
+            ("howler.api.v1.search", {"index": "hit"}),
+            ("howler.api.v2.search", {"indexes": "hit"}),
+        ],
+    )
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_scroll_search_retry_failure_returns_sanitized_503(
+        self,
+        mock_quota_tracker,
+        mock_auth_service,
+        api_module: str,
+        route_args: dict[str, str],
+        request_context: Flask,
+    ):
+        from howler.datastore.exceptions import SearchRetryException
+
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R"])
+        mock_quota_tracker.begin.return_value = True
+
+        with (
+            patch(
+                f"{api_module}.search_service.scroll_search",
+                side_effect=SearchRetryException("raw-scroll-id: connection reset"),
+            ),
+            patch(f"{api_module}.get_collection", return_value=MagicMock()) as mock_get_collection,
+            patch(f"{api_module}.get_default_sort", create=True, return_value="id asc"),
+        ):
+            with request_context.test_request_context(
+                method="POST",
+                json={"query": "id:*", "deep_paging_id": "*"},
+                headers={"Authorization": "Bearer ."},
+            ):
+                search = importlib.import_module(api_module).search
+                result: Response = search(user=user, **route_args)
+
+        assert result.status_code == 503
+        assert "raw-scroll-id" not in result.get_data(as_text=True)
+        assert "connection reset" not in result.get_data(as_text=True)
+        if api_module.endswith("v1.search"):
+            mock_get_collection.assert_called_once_with("hit", user)
 
     @patch("howler.api.v2.search.search_service")
     @patch("howler.security.login.auth_service")
@@ -458,6 +747,42 @@ class TestExplain:
 
 
 # ---------------------------------------------------------------------------
+# GET/POST /api/v1/search/grouped/<index>/<group_field>
+# ---------------------------------------------------------------------------
+
+
+class TestGroupedSearch:
+    """Tests for the grouped search endpoint."""
+
+    @patch("howler.api.v1.search.get_default_sort", return_value="name asc")
+    @patch("howler.api.v1.search.get_collection")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_grouped_user_search_without_field_list_checks_group_field(
+        self,
+        mock_quota_tracker,
+        mock_auth_service,
+        mock_get_collection,
+        mock_default_sort,
+        request_context: Flask,
+    ):
+        """A missing optional fl must not be treated as a malformed field request."""
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+        collection = MagicMock()
+        collection.grouped_search.return_value = {"total": 1, "items": [{"value": "Test User", "total": 1}]}
+        mock_get_collection.return_value = lambda: collection
+
+        with request_context.test_request_context(method="GET", headers={"Authorization": "Bearer ."}):
+            from howler.api.v1.search import group_search
+
+            result: Response = group_search(index="user", group_field="name", user=user)
+
+        assert result.status_code == 200
+
+
+# ---------------------------------------------------------------------------
 # GET/POST /api/v2/search/facet/<indexes>
 # ---------------------------------------------------------------------------
 
@@ -544,3 +869,511 @@ class TestFacet:
                 filters=["howler.status:open"],
                 user=user,
             )
+
+
+def _scroll_collection(*stored_fields: str) -> MagicMock:
+    collection = MagicMock()
+    collection.model_class = None
+    collection.stored_fields = {field: SimpleNamespace(store=True) for field in stored_fields}
+    return collection
+
+
+class TestScrollTokens:
+    """Scroll IDs handed to clients are bound to their opener and cannot be replayed by other callers."""
+
+    @patch("howler.services.search_service.get_collection")
+    @patch("howler.services.search_service.search")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_open_returns_token_bound_to_opener(
+        self, mock_quota_tracker, mock_auth_service, mock_search, mock_get_collection, request_context: Flask
+    ):
+        """Clients receive a token that resolves back to the raw scroll ID for the opener only."""
+        from howler.api.search_utils import resolve_deep_paging_id
+
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+        mock_get_collection.return_value = lambda: _scroll_collection("name")
+        mock_search.return_value = {
+            "total": 2,
+            "items": [{"__index": "hit", "id": "hit-1", "name": "allowed"}],
+            "offset": 0,
+            "next_deep_paging_id": "raw-es-scroll",
+        }
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"query": "id:*", "deep_paging_id": "*", "fl": "name"},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.search import search
+
+            result: Response = search(indexes="hit", user=user)
+
+        assert result.status_code == 200
+        token = result.get_json()["api_response"]["next_deep_paging_id"]
+        assert token != "raw-es-scroll"
+        assert resolve_deep_paging_id(user, "hit", token, "id:*") == "raw-es-scroll"
+
+    @pytest.mark.parametrize("case", ["other_user", "raw_scroll_id", "revoked_access", "other_index"])
+    @patch("howler.services.search_service.get_collection")
+    @patch("howler.services.search_service.search")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_continuation_rejects_foreign_or_stale_tokens(
+        self,
+        mock_quota_tracker,
+        mock_auth_service,
+        mock_search,
+        mock_get_collection,
+        request_context: Flask,
+        case: str,
+    ):
+        """A token continues only for its opener, on the same indexes, with unchanged access control."""
+        from howler.api.search_utils import issue_scroll_token
+
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+        mock_get_collection.return_value = lambda: _scroll_collection("name")
+
+        token = "raw-es-scroll"
+        if case == "other_user":
+            token = issue_scroll_token(_build_user(), "hit", token, "id:*")
+        elif case == "revoked_access":
+            token = issue_scroll_token(user, "hit", token, "id:*")
+            user.access_control = "revoked-access-control"
+        elif case == "other_index":
+            token = issue_scroll_token(user, "user", token, "id:*")
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"query": "id:*", "deep_paging_id": token, "fl": "name"},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.search import search
+
+            result: Response = search(indexes="hit", user=user)
+
+        assert result.status_code == 403
+        mock_search.assert_not_called()
+
+    @pytest.mark.parametrize("scroll", ["11m", "1h", "0s", "soon", 60])
+    @patch("howler.services.search_service.get_collection")
+    @patch("howler.services.search_service.search")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_open_rejects_unbounded_keep_alive(
+        self,
+        mock_quota_tracker,
+        mock_auth_service,
+        mock_search,
+        mock_get_collection,
+        request_context: Flask,
+        scroll,
+    ):
+        """Client-controlled keep-alive is capped so a caller cannot hold scroll contexts open indefinitely."""
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+        mock_get_collection.return_value = lambda: _scroll_collection("name")
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"query": "id:*", "deep_paging_id": "*", "fl": "name", "scroll": scroll},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.search import search
+
+            result: Response = search(indexes="hit", user=user)
+
+        assert result.status_code == 400
+        mock_search.assert_not_called()
+
+    @pytest.mark.parametrize("scroll_id", ["other_user", "raw_scroll_id", "_all"])
+    @patch("howler.services.search_service.clear_scroll")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_clear_rejects_tokens_not_owned_by_caller(
+        self, mock_quota_tracker, mock_auth_service, mock_clear_scroll, request_context: Flask, scroll_id: str
+    ):
+        """Only the opener of a scroll can clear it."""
+        from howler.api.search_utils import issue_scroll_token
+
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+
+        value = scroll_id
+        if scroll_id == "other_user":
+            value = issue_scroll_token(_build_user(), "hit", "raw-es-scroll", "id:*")
+
+        with request_context.test_request_context(
+            method="DELETE",
+            json={"scroll_id": value},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.search import clear_scroll
+
+            result: Response = clear_scroll(user=user)
+
+        assert result.status_code == 403
+        mock_clear_scroll.assert_not_called()
+
+    @patch("howler.services.search_service.get_collection")
+    @patch("howler.services.search_service.search")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_scroll_user_wildcard_fields_use_the_safe_projection_path(
+        self, mock_quota_tracker, mock_auth_service, mock_search, mock_get_collection, request_context: Flask
+    ):
+        """Search scroll wildcards reach the shared stored-field projection instead of raw source output."""
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+        mock_get_collection.return_value = lambda: _scroll_collection("uname")
+        mock_search.return_value = {
+            "total": 1,
+            "items": [{"__index": "user", "uname": "alice"}],
+            "offset": 0,
+        }
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"query": "uname:*", "deep_paging_id": "*", "scroll": "1m", "fl": ["*"]},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.search import search
+
+            result: Response = search(indexes="user", user=user)
+
+        assert result.status_code == 200
+        assert result.get_json()["api_response"]["items"] == [{"__index": "user", "uname": "alice"}]
+        mock_get_collection.assert_not_called()
+        mock_search.assert_called_once()
+        assert mock_search.call_args.kwargs["fl"] == ["*"]
+        assert mock_search.call_args.kwargs["include_id"] is True
+
+
+class TestAssignedHitScrollTokenScope:
+    """Assigned-hit paging cannot consume a scroll opened for a different search query."""
+
+    @patch("howler.api.v1.hit.hit_service.search")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    @patch("howler.security.login.audit")
+    @patch("howler.api.QUOTA_TRACKER")
+    def test_assigned_hit_scroll_returns_and_advances_with_a_token(
+        self,
+        mock_api_quota_tracker,
+        mock_audit,
+        mock_quota_tracker,
+        mock_auth_service,
+        mock_hit_search,
+        request_context: Flask,
+    ):
+        from howler.api.search_utils import resolve_deep_paging_id
+
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+        mock_hit_search.side_effect = [
+            {"items": [{"howler": {"id": "hit-1"}}], "next_deep_paging_id": "raw-first-scroll"},
+            {"items": [{"howler": {"id": "hit-2"}}], "next_deep_paging_id": "raw-second-scroll"},
+        ]
+        query = f"howler.assignment:{user.uname}"
+
+        with request_context.test_request_context(
+            method="GET",
+            query_string={"deep_paging_id": "*"},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v1.hit import get_assigned_hits
+
+            first_response: Response = get_assigned_hits(user=user)
+
+        first_result = first_response.get_json()["api_response"]
+        first_token = first_result["next_deep_paging_id"]
+        assert first_result["items"] == [{"howler": {"id": "hit-1"}}]
+        assert "raw-first-scroll" not in first_response.get_data(as_text=True)
+        assert resolve_deep_paging_id(user, "hit", first_token, query) == "raw-first-scroll"
+
+        with request_context.test_request_context(
+            method="GET",
+            query_string={"deep_paging_id": first_token},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v1.hit import get_assigned_hits
+
+            second_response: Response = get_assigned_hits(user=user)
+
+        second_result = second_response.get_json()["api_response"]
+        assert mock_hit_search.call_args_list[1].kwargs["deep_paging_id"] == "raw-first-scroll"
+        assert resolve_deep_paging_id(user, "hit", second_result["next_deep_paging_id"], query) == "raw-second-scroll"
+        assert mock_audit.call_count == 2
+        assert mock_api_quota_tracker.end.call_count == 2
+
+    @patch("howler.api.v1.hit.hit_service.search")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_assigned_hit_endpoint_rejects_token_for_another_query(
+        self, mock_quota_tracker, mock_auth_service, mock_hit_search, request_context: Flask
+    ):
+        from howler.api.search_utils import issue_scroll_token
+
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+        mock_quota_tracker.begin.return_value = True
+        token = issue_scroll_token(user, "hit", "raw-es-scroll", "id:*")
+
+        with request_context.test_request_context(
+            method="GET",
+            query_string={"deep_paging_id": token},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v1.hit import get_assigned_hits
+
+            result: Response = get_assigned_hits(user=user)
+
+        assert result.status_code == 403
+        mock_hit_search.assert_not_called()
+
+
+class TestV1DeepPagingRouting:
+    """Deep paging through v1 always uses the token path, even when the scroll keep-alive is omitted."""
+
+    @patch("howler.services.search_service.get_collection")
+    @patch("howler.services.search_service.search")
+    @patch("howler.api.v1.search.get_default_sort", return_value="event.created desc")
+    @patch("howler.api.v1.search.get_collection")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_deep_paging_without_keep_alive_is_tokenised(
+        self,
+        mock_quota_tracker,
+        mock_auth_service,
+        mock_v1_get_collection,
+        mock_default_sort,
+        mock_search,
+        mock_get_collection,
+        request_context: Flask,
+    ):
+        """The legacy datastore deep paging path is not reachable with raw scroll IDs."""
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+        legacy_collection = MagicMock()
+        mock_v1_get_collection.return_value = lambda: legacy_collection
+        mock_get_collection.return_value = lambda: _scroll_collection("name")
+        mock_search.return_value = {
+            "total": 1,
+            "items": [],
+            "offset": 0,
+            "next_deep_paging_id": "raw-es-scroll",
+        }
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"query": "id:*", "deep_paging_id": "*"},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v1.search import search
+
+            result: Response = search(index="hit", user=user)
+
+        assert result.status_code == 200
+        legacy_collection.search.assert_not_called()
+        assert mock_search.call_args.kwargs["deep_paging_id"] == "*"
+        assert result.get_json()["api_response"]["next_deep_paging_id"] != "raw-es-scroll"
+
+
+class TestCredentialGuards:
+    """Sigma refuses deep paging, facets refuse non-stored user fields, and scroll refuses malformed field requests."""
+
+    @patch("howler.services.search_service.get_collection")
+    @patch("howler.services.search_service.search")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_scroll_rejects_non_list_field_request(
+        self, mock_quota_tracker, mock_auth_service, mock_search, mock_get_collection, request_context: Flask
+    ):
+        """A JSON object in fl must not reach the stored-field projection as its keys."""
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"query": "uname:*", "deep_paging_id": "*", "scroll": "1m", "fl": {"password": 1}},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.search import search
+
+            result: Response = search(indexes="user", user=user)
+
+        assert result.status_code == 400
+        mock_get_collection.assert_not_called()
+        mock_search.assert_not_called()
+
+    @patch("howler.api.v1.search.get_default_sort", return_value="event.created desc")
+    @patch("howler.api.v1.search.get_collection")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_sigma_rejects_deep_paging(
+        self,
+        mock_quota_tracker,
+        mock_auth_service,
+        mock_get_collection,
+        mock_default_sort,
+        request_context: Flask,
+    ):
+        """Sigma results are not scroll-tokenised, so raw scroll IDs must never be accepted or returned there."""
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+        mock_get_collection.return_value = lambda: MagicMock()
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"sigma": "title: example", "deep_paging_id": "raw-es-scroll"},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v1.search import sigma_search
+
+            result: Response = sigma_search(index="hit", user=user)
+
+        assert result.status_code == 400
+        assert "Deep paging is not supported" in str(result.get_json())
+
+    @patch("howler.api.v1.search.get_collection")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_v1_facet_rejects_non_stored_user_field(
+        self, mock_quota_tracker, mock_auth_service, mock_get_collection, request_context: Flask
+    ):
+        """Facets on fields that are never stored (such as access_control) are refused on the user index."""
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+        collection = MagicMock()
+        collection.return_value.fields.return_value = {"access_control": {"type": "keyword"}}
+        mock_get_collection.return_value = collection
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"query": "uname:*"},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v1.search import facet_field
+
+            result: Response = facet_field(index="user", field="access_control", user=user)
+
+        assert result.status_code == 403
+        collection.return_value.facet.assert_not_called()
+
+    @patch("howler.services.search_service.datastore")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_v2_search_refuses_physical_index_names(
+        self, mock_quota_tracker, mock_auth_service, mock_datastore, request_context: Flask
+    ):
+        """Physical index names bypass the logical-name field rules, so the real service refuses them."""
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"query": "uname:*", "fl": ["password"]},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.search import search
+
+            result: Response = search(indexes="howler-user", user=user)
+
+        assert result.status_code == 400
+        mock_datastore.return_value.ds.client.search.assert_not_called()
+
+    @patch("howler.api.v1.search.get_collection")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_v1_histogram_refuses_non_stored_user_field(
+        self, mock_quota_tracker, mock_auth_service, mock_get_collection, request_context: Flask
+    ):
+        """Histograms on non-stored user fields such as api_quota are refused."""
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+        collection = MagicMock()
+        collection.return_value.fields.return_value = {"api_quota": {"type": "integer"}}
+        mock_get_collection.return_value = collection
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"query": "id:*"},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v1.search import histogram
+
+            result: Response = histogram(index="user", field="api_quota", user=user)
+
+        assert result.status_code == 403
+        collection.return_value.histogram.assert_not_called()
+
+    @patch("howler.api.v1.search.get_collection")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_v1_stats_refuses_non_stored_user_field(
+        self, mock_quota_tracker, mock_auth_service, mock_get_collection, request_context: Flask
+    ):
+        """Stats on non-stored user fields such as api_quota are refused."""
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+        collection = MagicMock()
+        collection.return_value.fields.return_value = {"api_quota": {"type": "integer"}}
+        mock_get_collection.return_value = collection
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"query": "id:*"},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v1.search import stats
+
+            result: Response = stats(index="user", int_field="api_quota", user=user)
+
+        assert result.status_code == 403
+        collection.return_value.stats.assert_not_called()
+
+    @patch("howler.api.v1.search.get_default_sort", return_value="event.created desc")
+    @patch("howler.api.v1.search.get_collection")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    def test_v1_grouped_search_refuses_non_stored_group_field(
+        self,
+        mock_quota_tracker,
+        mock_auth_service,
+        mock_get_collection,
+        mock_default_sort,
+        request_context: Flask,
+    ):
+        """Grouping on a non-stored user field would return its values as group keys, so it is refused."""
+        user = _build_user()
+        mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+        mock_quota_tracker.begin.return_value = True
+        collection = MagicMock()
+        mock_get_collection.return_value = collection
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"query": "id:*"},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v1.search import group_search
+
+            result: Response = group_search(index="user", group_field="api_quota", user=user)
+
+        assert result.status_code == 403
+        collection.return_value.grouped_search.assert_not_called()
