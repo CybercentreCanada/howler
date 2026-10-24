@@ -1,16 +1,11 @@
 # Changelog
 
-## [4.0.0](https://github.com/CybercentreCanada/howler/compare/client-v3.2.0...client-v4.0.0) (2026-10-24)
+## [3.3.0](https://github.com/CybercentreCanada/howler/compare/client-v3.2.0...client-v3.3.0) (2026-10-24)
 
-
-### ⚠ BREAKING CHANGES
-
-* **mcp:** updating MCP server to get all valid fields in Howler ([#674](https://github.com/CybercentreCanada/howler/issues/674))
 
 ### Features
 
 * **client:** include the raw data pre-transformation by default ([#688](https://github.com/CybercentreCanada/howler/issues/688)) ([802a500](https://github.com/CybercentreCanada/howler/commit/802a500a0305cb2b050eb805abfce1be38127809))
-* **mcp:** updating MCP server to get all valid fields in Howler ([#674](https://github.com/CybercentreCanada/howler/issues/674)) ([ec51d26](https://github.com/CybercentreCanada/howler/commit/ec51d26563bc7e972b9cdcd4e3882e80673880e1))
 
 ## [3.2.0](https://github.com/CybercentreCanada/howler/compare/client-v3.1.0...client-v3.2.0) (2026-10-22)
 
