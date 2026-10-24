@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.4.0](https://github.com/CybercentreCanada/howler/compare/client-v3.3.0...client-v3.4.0) (2026-10-24)
+
+
+### Features
+
+* **client:** support ingesting from a jsonl file ([#691](https://github.com/CybercentreCanada/howler/issues/691)) ([9ade526](https://github.com/CybercentreCanada/howler/commit/9ade526245567f74b078081ed3eadec20c4123c6))
+* **client:** support template strings for mappings ([#689](https://github.com/CybercentreCanada/howler/issues/689)) ([b555864](https://github.com/CybercentreCanada/howler/commit/b555864dd907e1a3b39d69446f355a684e36bf4b))
+
 ## [3.3.0](https://github.com/CybercentreCanada/howler/compare/client-v3.2.0...client-v3.3.0) (2026-10-24)
 
 
