@@ -156,6 +156,15 @@ A target can also set:
 | `list`                         | Wraps a scalar in a list.                                                                         |
 | `json`                         | Converts the value to compact JSON text with sorted keys.                                         |
 | `{op: timestamp}`              | Converts an ISO-8601 string to UTC. Add `assume_timezone: UTC` to accept values with no timezone. |
+| `{op: template, template: "user-{value}"}` | Inserts a scalar value into a literal template. |
+
+Templates allow only the `{value}` placeholder; write `{{` and `}}` for literal braces. Their syntax is checked when
+the mapping loads, and they cannot access row fields or evaluate code. As with `string`, objects and lists are rejected;
+apply `json` first if you need to insert structured data:
+
+```yaml
+transforms: [json, {op: template, template: "payload={value}"}]
+```
 
 Mapping files are parsed with `yaml.safe_load`. Quote constants that must stay strings, such as `"yes"`, `"off"`, or
 `"2026-01-01"`.

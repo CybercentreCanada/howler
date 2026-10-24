@@ -127,6 +127,19 @@
               "enum": ["UTC"]
             }
           }
+        },
+        {
+          "type": "object",
+          "required": ["op", "template"],
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "template"
+            },
+            "template": {
+              "type": "string"
+            }
+          }
         }
       ]
     }

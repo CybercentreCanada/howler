@@ -55,6 +55,50 @@ def to_string(value: Any) -> str:
     return value if isinstance(value, str) else canonical_json(value)
 
 
+def _template_parts(template: str) -> list[str | None]:
+    """Split a literal template into text and ``{value}`` slots."""
+    if not isinstance(template, str):
+        raise MappingError("template transform requires a string template")
+
+    parts: list[str | None] = []
+    literal: list[str] = []
+    index = 0
+    while index < len(template):
+        if template.startswith("{{", index):
+            literal.append("{")
+            index += 2
+        elif template.startswith("}}", index):
+            literal.append("}")
+            index += 2
+        elif template.startswith("{value}", index):
+            if literal:
+                parts.append("".join(literal))
+                literal.clear()
+            parts.append(None)
+            index += len("{value}")
+        elif template[index] in "{}":
+            raise MappingError("invalid template syntax")
+        else:
+            literal.append(template[index])
+            index += 1
+
+    if literal:
+        parts.append("".join(literal))
+    return parts
+
+
+def validate_template(template: str) -> None:
+    """Validate template syntax without rendering or accessing a row value."""
+    _template_parts(template)
+
+
+def render_template(value: Any, template: str) -> str:
+    """Render a scalar value into a safe, literal template."""
+    parts = _template_parts(template)
+    rendered_value = to_string(value)
+    return "".join(rendered_value if part is None else part for part in parts)
+
+
 def to_integer(value: Any) -> int:
     """Convert an integer-like number or string to an integer.
 

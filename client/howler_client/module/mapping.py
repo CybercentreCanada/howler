@@ -21,12 +21,14 @@ from howler_client.common.exceptions import MappingError
 from howler_client.utils.transforms import (
     canonical_json,
     normalize,
+    render_template,
     text,
     timestamp,
     to_boolean,
     to_integer,
     to_number,
     to_string,
+    validate_template,
 )
 
 _ID_ERROR = "howler.id is server-generated and must not be set"
@@ -64,6 +66,8 @@ VALIDATOR = validators.extend(
 
 def _apply_transform(value: Any, operation: str | Mapping[str, Any]) -> Any:
     if isinstance(operation, Mapping):
+        if operation.get("op") == "template":
+            return render_template(value, operation["template"])
         return timestamp(value, assume_utc=operation.get("assume_timezone") == "UTC")
     return _TRANSFORMS[operation](value)
 
@@ -104,6 +108,11 @@ def _validate_document(document: Mapping) -> dict[str, Any]:
         raise MappingError(_schema_error_message(error, normalized)) from None
 
     mappings = normalized["mappings"]
+
+    for spec in mappings.values():
+        for operation in spec.get("transforms", []):
+            if isinstance(operation, Mapping) and operation.get("op") == "template":
+                validate_template(operation["template"])
 
     for target in mappings:
         parts = target.split(".")
