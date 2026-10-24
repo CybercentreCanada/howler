@@ -111,6 +111,7 @@ To map a single row, `mapping.map_row(row)` returns the hit or raises `MappingEr
 ```yaml
 version: 1
 on_null: error # default for every target: error (default) or omit
+include_raw_data: true # default; set false to omit the automatic raw row entry
 mappings:
   howler.analytic:
     value: Directory User Inventory # constant
@@ -137,6 +138,9 @@ Each key under `mappings` is a dotted Howler field name. Each target needs exact
 | `column` + `path: [key, 0, ...]` | A value nested inside the column, found by dictionary keys and list indexes. A missing nested key or index counts as null. |
 | `concat: [a, b, ...]`            | Two or more list columns joined into one list.                                                                             |
 | `value: ...`                     | A constant, computed once when the mapping is loaded.                                                                      |
+
+At the document level, `include_raw_data` defaults to `true` and adds the complete raw row as the first entry in
+`howler.data`. Set it to `false` to disable that automatic entry; any explicitly mapped `howler.data` value is retained.
 
 A target can also set:
 

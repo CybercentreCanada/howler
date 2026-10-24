@@ -155,8 +155,32 @@ def _evaluate(spec: Mapping[str, Any], row: Mapping[str, Any], on_null: str) -> 
     return value
 
 
+def _prepend_raw_record(hit: dict[str, Any], row: Mapping[str, Any], number: int) -> dict[str, Any]:
+    try:
+        raw_record = normalize(dict(row), "raw row")
+    except MappingError as exc:
+        raise MappingError(f"row {number}, target howler.data: {exc}") from None
+
+    howler = hit.get("howler")
+    if howler is None:
+        howler = {}
+        hit["howler"] = howler
+    elif not isinstance(howler, dict):
+        raise MappingError(f"row {number}, target howler: expected an object")
+
+    howler_data = howler.get("data", [])
+    if not isinstance(howler_data, list):
+        howler_data = [howler_data]
+    howler["data"] = [raw_record, *howler_data]
+    return hit
+
+
 class RowMapping:
     """Validated, offline mapping from one raw table row to one hit dictionary.
+
+    By default, each mapped hit includes a detached copy of the raw row as the
+    first entry in ``howler.data``. Set ``include_raw_data: false`` in the mapping
+    document to disable this. Any explicitly mapped ``howler.data`` value remains.
 
     ``fields`` is optional Howler field metadata keyed by dotted field name, as
     returned by ``client.search.fields.hit()``.
@@ -169,6 +193,7 @@ class RowMapping:
         """Create a mapping from an already loaded version-1 document."""
         self._document = _validate_document(mapping)
         self._on_null: str = self._document.get("on_null", "error")
+        self._include_raw_data: bool = self._document.get("include_raw_data", True)
         if fields is not None:
             _validate_fields(normalize(fields, "fields"), self._document["mappings"])
 
@@ -252,7 +277,9 @@ class RowMapping:
                 values[target] = value
         if not values:
             raise MappingError(f"row {number}, target <row>: all fields were omitted")
-        return cast(dict[str, Any], unflatten(values))
+
+        hit = cast(dict[str, Any], unflatten(values))
+        return _prepend_raw_record(hit, row, number) if self._include_raw_data else hit
 
 
 def _validate_fields(fields: Any, mappings: Mapping[str, Any]) -> dict[str, Any]:

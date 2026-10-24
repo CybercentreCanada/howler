@@ -1,5 +1,6 @@
 version: 1
 on_null: error
+include_raw_data: true
 mappings:
   howler.analytic:
     value: Directory User Inventory Snapshot

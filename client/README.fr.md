@@ -113,6 +113,7 @@ Pour mapper une seule ligne, `mapping.map_row(row)` retourne l'alerte ou lève u
 ```yaml
 version: 1
 on_null: error # valeur par défaut pour toutes les cibles : error (par défaut) ou omit
+include_raw_data: true # par défaut; mettre false pour omettre la ligne brute automatique
 mappings:
   howler.analytic:
     value: Directory User Inventory # constante
@@ -139,6 +140,10 @@ Chaque clé sous `mappings` est un nom de champ Howler pointé. Chaque cible req
 | `column` + `path: [clé, 0, ...]` | Une valeur imbriquée dans la colonne, trouvée par clés de dictionnaire et index de liste. Une clé ou un index imbriqué absent compte comme nul. |
 | `concat: [a, b, ...]` | Deux colonnes de type liste ou plus, jointes en une seule liste. |
 | `value: ...` | Une constante, calculée une seule fois au chargement du mappage. |
+
+Au niveau du document, `include_raw_data` vaut `true` par défaut et ajoute la ligne source complète comme première entrée
+de `howler.data`. Mettre cette option à `false` pour désactiver cette entrée automatique; toute valeur `howler.data`
+mappée explicitement est conservée.
 
 Une cible peut aussi définir :
 
