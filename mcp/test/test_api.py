@@ -17,7 +17,7 @@ async def test_call_reuses_and_closes_owned_http_client():
     http_client.aclose = AsyncMock()
     http_client.request.return_value = Mock(json=Mock(return_value={"api_response": {"status": "ok"}}))
     auth_provider = Mock()
-    auth_provider.get_howler_token = AsyncMock(return_value="howler-token")
+    auth_provider.get_authorization_header = AsyncMock(return_value="Bearer howler-token")
 
     with patch("howler_mcp.api.httpx.AsyncClient", return_value=http_client) as client_class:
         api_client = HowlerApiClient(auth_provider=auth_provider, timeout=2.0)
@@ -43,7 +43,7 @@ async def test_call_reuses_and_closes_owned_http_client():
 @pytest.mark.asyncio
 async def test_call_rejects_body_for_non_post_methods():
     auth_provider = Mock()
-    auth_provider.get_howler_token = AsyncMock(return_value="howler-token")
+    auth_provider.get_authorization_header = AsyncMock(return_value="Bearer howler-token")
 
     with patch("howler_mcp.api.httpx.AsyncClient", return_value=Mock()):
         api_client = HowlerApiClient(auth_provider=auth_provider)
@@ -64,7 +64,7 @@ async def test_call_rejects_missing_api_response_envelope():
     http_client.aclose = AsyncMock()
     http_client.request.return_value = Mock(json=Mock(return_value={"wrong": "shape"}))
     auth_provider = Mock()
-    auth_provider.get_howler_token = AsyncMock(return_value="howler-token")
+    auth_provider.get_authorization_header = AsyncMock(return_value="Bearer howler-token")
 
     with patch("howler_mcp.api.httpx.AsyncClient", return_value=http_client):
         api_client = HowlerApiClient(auth_provider=auth_provider)
@@ -82,7 +82,7 @@ async def test_call_rejects_non_mapping_api_response_envelope(response_json):
     http_client.aclose = AsyncMock()
     http_client.request.return_value = Mock(json=Mock(return_value=response_json), status_code=200)
     auth_provider = Mock()
-    auth_provider.get_howler_token = AsyncMock(return_value="howler-token")
+    auth_provider.get_authorization_header = AsyncMock(return_value="Bearer howler-token")
 
     with patch("howler_mcp.api.httpx.AsyncClient", return_value=http_client):
         api_client = HowlerApiClient(auth_provider=auth_provider)
@@ -99,7 +99,7 @@ async def test_call_logs_request_start_event_name(caplog):
     http_client.aclose = AsyncMock()
     http_client.request.return_value = Mock(json=Mock(return_value={"api_response": {"status": "ok"}}), status_code=200)
     auth_provider = Mock()
-    auth_provider.get_howler_token = AsyncMock(return_value="howler-token")
+    auth_provider.get_authorization_header = AsyncMock(return_value="Bearer howler-token")
     api_client = HowlerApiClient(auth_provider=auth_provider, client=http_client)
 
     with caplog.at_level("INFO", logger="howler_mcp.api"):
@@ -121,7 +121,7 @@ async def test_call_preserves_specific_value_error_outcomes(caplog, body, respon
     http_client = Mock()
     http_client.request = AsyncMock(return_value=Mock(json=Mock(return_value=response_json), status_code=200))
     auth_provider = Mock()
-    auth_provider.get_howler_token = AsyncMock(return_value="howler-token")
+    auth_provider.get_authorization_header = AsyncMock(return_value="Bearer howler-token")
     api_client = HowlerApiClient(auth_provider=auth_provider, client=http_client)
 
     with caplog.at_level("WARNING", logger="howler_mcp.api"), pytest.raises(ValueError):
@@ -150,7 +150,7 @@ async def test_call_does_not_log_http_error_response_body(caplog, content_type, 
     http_client = Mock()
     http_client.request = AsyncMock(return_value=response)
     auth_provider = Mock()
-    auth_provider.get_howler_token = AsyncMock(return_value="howler-token")
+    auth_provider.get_authorization_header = AsyncMock(return_value="Bearer howler-token")
     api_client = HowlerApiClient(auth_provider=auth_provider, client=http_client)
 
     with caplog.at_level("WARNING", logger="howler_mcp.api"), pytest.raises(httpx.HTTPStatusError):
@@ -177,7 +177,7 @@ async def test_call_reraises_original_httpx_error(error: httpx.HTTPError):
     http_client = Mock()
     http_client.request = AsyncMock(side_effect=error)
     auth_provider = Mock()
-    auth_provider.get_howler_token = AsyncMock(return_value="howler-token")
+    auth_provider.get_authorization_header = AsyncMock(return_value="Bearer howler-token")
     api_client = HowlerApiClient(auth_provider=auth_provider, client=http_client)
 
     with pytest.raises(type(error)) as raised_error:
@@ -263,3 +263,18 @@ async def test_call_fails_after_injected_http_client_is_closed():
 
     with pytest.raises(RuntimeError, match="has not been started"):
         await api_client.call(FAKE_TOKEN, "/whoami", "GET")
+
+
+@pytest.mark.asyncio
+async def test_call_sends_authorization_header_from_auth_provider():
+    http_client = Mock()
+    http_client.request = AsyncMock()
+    http_client.request.return_value = Mock(json=Mock(return_value={"api_response": {"status": "ok"}}))
+    auth_provider = Mock()
+    auth_provider.get_authorization_header = AsyncMock(return_value="Basic bWNwOmtleQ==")
+
+    api_client = HowlerApiClient(auth_provider=auth_provider, client=http_client)
+    await api_client.call(FAKE_TOKEN, "/user/whoami", "GET")
+
+    auth_provider.get_authorization_header.assert_awaited_once_with("fake-bearer")
+    assert http_client.request.await_args.kwargs["headers"] == {"Authorization": "Basic bWNwOmtleQ=="}
