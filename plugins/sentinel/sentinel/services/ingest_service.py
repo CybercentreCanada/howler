@@ -6,7 +6,8 @@ from uuid import NAMESPACE_URL, uuid5
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.config import CLASSIFICATION
-from howler.odm.models.case import Case
+from howler.datastore.exceptions import VersionConflictException
+from howler.odm.models.case import Case, CaseItem
 from howler.odm.models.user import User
 from howler.services import action_service, analytic_service, case_service, hit_service
 
@@ -24,6 +25,27 @@ SYSTEM_USER = User(
         "password": "__NO_PASSWORD__",
     }
 )
+
+_EVIDENCE_LIFECYCLE_FIELDS = {
+    "createdDateTime",
+    "lastModified",
+    "verdict",
+    "remediationStatus",
+    "remediationStatusDetails",
+    "detectionStatus",
+}
+_EVIDENCE_IDENTITY_PATHS: dict[str, tuple[str, ...]] = {
+    "analyzedMessageEvidence": ("networkMessageId",),
+    "cloudApplicationEvidence": ("appId",),
+    "containerEvidence": ("containerId", "name"),
+    "containerImageEvidence": ("digestImage",),
+    "deviceEvidence": ("mdeDeviceId", "azureAdDeviceId", "deviceDnsName", "hostName"),
+    "fileEvidence": ("fileDetails.sha256", "fileDetails.sha1", "fileDetails.filePath"),
+    "ipEvidence": ("ipAddress",),
+    "processEvidence": ("processId", "imageFile.sha256"),
+    "urlEvidence": ("url",),
+    "userEvidence": ("userAccount.azureAdUserId", "userAccount.userPrincipalName", "userAccount.accountName"),
+}
 
 
 class SentinelIngestMappingError(Exception):
@@ -81,6 +103,24 @@ def _canonical_json(value: Any) -> str:
 
 def _content_digest(value: Any) -> str:
     return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
+
+
+def _evidence_identity(evidence: Any) -> dict[str, Any]:
+    """Use a known entity key, falling back to source fields without lifecycle state."""
+    if not isinstance(evidence, dict):
+        return {"payload": evidence}
+    raw_type = evidence.get("@odata.type")
+    evidence_type = raw_type.rsplit(".", 1)[-1] if isinstance(raw_type, str) else "unknown"
+    for path in _EVIDENCE_IDENTITY_PATHS.get(evidence_type, ()):
+        value: Any = evidence
+        for part in path.split("."):
+            value = value.get(part) if isinstance(value, dict) else None
+        if value is not None and value != "":
+            return {"type": evidence_type, "entity": {path: value}}
+    return {
+        "type": evidence_type,
+        "payload": {k: v for k, v in evidence.items() if k not in _EVIDENCE_LIFECYCLE_FIELDS},
+    }
 
 
 def _stable_hit_id(*parts: str) -> str:
@@ -173,19 +213,19 @@ def _create_evidence_hit(mapped_hit: dict[str, Any], stable_id: str) -> Any:  # 
     return _persist_mapped_hit(hit, stable_id)
 
 
-def _find_case_for_incident(root_hit: Any) -> Case | None:
-    """Find the case created for this Sentinel root hit."""
+def _find_case_for_incident(root_hit: Any) -> tuple[Case | None, str | None]:
+    """Find the case and its current datastore version for this Sentinel root hit."""
     ds = datastore()
     for case_id in getattr(root_hit.howler, "related", []):
-        case = ds.case.get(case_id)
+        case, version = ds.case.get(case_id, as_obj=True, version=True)
         if case is not None:
-            return case
-    return None
+            return case, version
+    return None, None
 
 
-def _ensure_incident_case(root_hit: Any, incident_identity: str) -> Case:
+def _ensure_incident_case(root_hit: Any, incident_identity: str) -> tuple[Case, str, bool]:
     """Return the incident's case, creating one even when it has no alerts."""
-    case = _find_case_for_incident(root_hit)
+    case, case_version = _find_case_for_incident(root_hit)
     if case is None:
         analytic = root_hit.howler.analytic or "Sentinel"
         source_label = root_hit.sentinel.id or incident_identity
@@ -198,7 +238,13 @@ def _ensure_incident_case(root_hit: Any, incident_identity: str) -> Case:
             },
             user=SYSTEM_USER,
         )
-    elif not any(item.type == "hit" and item.value == root_hit.howler.id for item in case.items):
+        case, case_version = datastore().case.get(case.case_id, as_obj=True, version=True)
+        if case is None or case_version is None:
+            raise ValueError("Sentinel incident case disappeared after creation")
+        return case, case_version, False
+
+    changed = False
+    if not any(item.type == "hit" and item.value == root_hit.howler.id for item in case.items):
         case_service.append_case_item(
             case,
             item_type="hit",
@@ -206,20 +252,18 @@ def _ensure_incident_case(root_hit: Any, incident_identity: str) -> Case:
             item_name=root_hit.howler.analytic or "Sentinel",
             user=SYSTEM_USER,
         )
-    return case
+        changed = True
+    if case_version is None:
+        raise ValueError(f"Sentinel incident case {case.case_id} has no datastore version")
+    return case, case_version, changed
 
 
-def _ensure_case_hit(case: Case, hit_id: str, name: str, parent_id: str | None) -> None:
-    if any(item.type == "hit" and item.value == hit_id for item in case.items):
+def _queue_case_hit(case: Case, pending: list[CaseItem], hit_id: str, name: str, parent_id: str | None) -> None:
+    if any(item.type == "hit" and item.value == hit_id for item in case.items) or any(
+        item.type == "hit" and item.value == hit_id for item in pending
+    ):
         return
-    case_service.append_case_item(
-        case,
-        item_type="hit",
-        item_value=hit_id,
-        item_parent=parent_id,
-        item_name=name,
-        user=SYSTEM_USER,
-    )
+    pending.append(CaseItem({"type": "hit", "value": hit_id, "parent": parent_id, "name": name}))
 
 
 def _record_matches_incident(hit: Any, tenant_id: str, incident_identity: str) -> bool:
@@ -277,6 +321,7 @@ def _reconcile_alerts(  # noqa C901
     evidence_hit_ids: list[str] = []
     created_count = 0
     anonymous_alert_counts: dict[str, int] = {}
+    pending_case_items: list[CaseItem] = []
 
     for alert in alerts:
         if not isinstance(alert, dict):
@@ -319,8 +364,9 @@ def _reconcile_alerts(  # noqa C901
             create_if_missing=True,
             user=SYSTEM_USER,
         )
-        _ensure_case_hit(
+        _queue_case_hit(
             case,
+            pending_case_items,
             actual_alert_hit_id,
             f"{alert_hit.howler.detection or 'Sentinel Alert'} ({actual_alert_hit_id})",
             alert_folder.id if alert_folder else None,
@@ -331,9 +377,8 @@ def _reconcile_alerts(  # noqa C901
             continue
         duplicate_counts: dict[str, int] = {}
         for evidence in evidence_values:
-            evidence_digest = _content_digest(evidence)
             external_evidence_id = _source_id(evidence.get("id")) if isinstance(evidence, dict) else None
-            evidence_basis = external_evidence_id or evidence_digest
+            evidence_basis = external_evidence_id or _content_digest(_evidence_identity(evidence))
             occurrence = duplicate_counts.get(evidence_basis, 0)
             duplicate_counts[evidence_basis] = occurrence + 1
             evidence_identity = evidence_basis if occurrence == 0 else f"{evidence_basis}:{occurrence}"
@@ -365,14 +410,59 @@ def _reconcile_alerts(  # noqa C901
                 raise ValueError(f"Stable Sentinel evidence ID {evidence_hit_id} is already used by another record")
 
             evidence_hit_ids.append(evidence_hit.howler.id)
-            _ensure_case_hit(
+            _queue_case_hit(
                 case,
+                pending_case_items,
                 evidence_hit.howler.id,
                 f"Evidence ({evidence_hit.howler.id})",
                 alert_folder.id if alert_folder else None,
             )
 
+    if pending_case_items:
+        case_service.append_hits(case, pending_case_items, user=SYSTEM_USER, refresh=False)
+
     return alert_hit_ids, evidence_hit_ids, created_count
+
+
+def _save_reconciled_case(
+    case: Case,
+    case_version: str,
+    root_hit: Any,
+    alerts: Any,
+    tenant_id: str,
+    incident_identity: str,
+    tenant_mapping: dict[str, str],
+) -> tuple[Case, bool]:
+    """Save a case snapshot, reloading and reconciling once if its version changed."""
+    try:
+        case.save(version=case_version)
+        return case, True
+    except VersionConflictException:
+        case, case_version = datastore().case.get(case.case_id, as_obj=True, version=True)
+        if case is None or case_version is None:
+            raise ValueError("Sentinel incident case disappeared during replay reconciliation")
+        case_items_before = len(case.items)
+        if not any(item.type == "hit" and item.value == root_hit.howler.id for item in case.items):
+            case_service.append_case_item(
+                case,
+                item_type="hit",
+                item_value=root_hit.howler.id,
+                item_name=root_hit.howler.analytic or "Sentinel",
+                user=SYSTEM_USER,
+            )
+        if isinstance(alerts, list):
+            _reconcile_alerts(
+                case,
+                alerts,
+                tenant_id,
+                incident_identity,
+                root_hit,
+                XDRAlert(tid_mapping=tenant_mapping),
+            )
+        changed = len(case.items) != case_items_before
+        if changed:
+            case.save(version=case_version)
+        return case, changed
 
 
 def _update_existing_incident(
@@ -385,7 +475,7 @@ def _update_existing_incident(
     tenant_mapping: dict[str, str],
 ) -> tuple[dict[str, Any], int]:
     ds = datastore()
-    case = _ensure_incident_case(existing_hit, incident_identity)
+    case, case_version, case_changed = _ensure_incident_case(existing_hit, incident_identity)
     existing_hit = ds.hit.get(existing_hit.howler.id, as_obj=True)
     if existing_hit is None:
         raise ValueError("Sentinel incident hit disappeared while its case was being ensured")
@@ -395,6 +485,7 @@ def _update_existing_incident(
     created_count = 0
     alerts = xdr_incident.get("alerts")
     if isinstance(alerts, list):
+        case_items_before = len(case.items)
         _, _, created_count = _reconcile_alerts(
             case,
             alerts,
@@ -403,7 +494,7 @@ def _update_existing_incident(
             existing_hit,
             XDRAlert(tid_mapping=tenant_mapping),
         )
-    alert_ids, evidence_ids = _case_record_ids(case, tenant_id, incident_identity)
+        case_changed = case_changed or len(case.items) != case_items_before
 
     new_status = xdr_incident.get("status")
     updated_count = 0
@@ -419,9 +510,21 @@ def _update_existing_incident(
             ds.hit.save(descendant.howler.id, descendant)
             updated_count += 1
 
-    case.save()
-    ds.case.commit()
+    if case_changed:
+        case, case_changed = _save_reconciled_case(
+            case,
+            case_version,
+            existing_hit,
+            alerts,
+            tenant_id,
+            incident_identity,
+            tenant_mapping,
+        )
+
+    if case_changed:
+        ds.case.commit()
     ds.hit.commit()
+    alert_ids, evidence_ids = _case_record_ids(case, tenant_id, incident_identity)
 
     response_body = {
         "success": True,
@@ -449,7 +552,7 @@ def _create_new_incident(
     incident_hit_data["sentinel"] = _incident_metadata(tenant_id, incident_identity, incident_source_id)
     root_hit_id = _stable_hit_id(tenant_id, incident_identity, "incident")
     root_hit = _create_mapped_hit(incident_hit_data, root_hit_id)
-    case = _ensure_incident_case(root_hit, incident_identity)
+    case, _, _ = _ensure_incident_case(root_hit, incident_identity)
 
     alerts = xdr_incident.get("alerts", [])
     if not isinstance(alerts, list):

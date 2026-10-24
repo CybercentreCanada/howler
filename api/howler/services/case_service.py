@@ -578,7 +578,6 @@ def append_case_item(  # noqa: C901
             f"case at classification {case.classification}"
         )
 
-    # If a parent is specified, ensure it references an existing folder item.
     if item.parent is not None:
         _ensure_parent_exists(case, item.parent)
 
@@ -824,6 +823,9 @@ def append_hit(
     case: Case,
     item: CaseItem,
     user: User | None = None,
+    *,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+    recompute_metadata: bool = True,
 ) -> Case:
     """Append a hit item to a case and create a back-reference on the hit.
 
@@ -851,14 +853,53 @@ def append_hit(
         )
 
     item.classification = hit.classification
-
     case.items.append(item)
-
     add_backreference(hit, case.case_id, user=user)
-    hit.save(version=hit_version)
+    if refresh is None:
+        hit.save(version=hit_version)
+    else:
+        hit.save(version=hit_version, refresh=refresh)
+    if recompute_metadata:
+        recompute_case_metadata(case)
+    return case
 
+
+def append_hits(
+    case: Case,
+    items: list[CaseItem],
+    user: User | None = None,
+    *,
+    refresh: bool = True,
+) -> Case:
+    """Batch hit attachment; the caller saves the case, while ``refresh=False`` defers index refresh."""
+    if not items:
+        return case
+
+    for item in items:
+        if item.type != CaseItemTypes.HIT:
+            raise InvalidDataException("append_hits only accepts hit items")
+
+        if item.name is None:
+            item.name = item.value
+        if not is_classification_accessible(user, item.classification):
+            raise ForbiddenException(f"User cannot add item at classification {item.classification}.")
+        if not CLASSIFICATION.is_accessible(case.classification, item.classification):
+            raise ForbiddenException(
+                f"User cannot add item at classification {item.classification} to "
+                f"case at classification {case.classification}"
+            )
+        if item.parent is not None:
+            _ensure_parent_exists(case, item.parent)
+
+        conflict = check_conflicts(case, item)
+        if conflict:
+            item.name = f"{item.name} ({item.value})" if item.name else item.value
+
+        append_hit(case, item, user, refresh="false", recompute_metadata=False)
+
+    if refresh:
+        datastore().hit.commit()
     recompute_case_metadata(case)
-
     return case
 
 

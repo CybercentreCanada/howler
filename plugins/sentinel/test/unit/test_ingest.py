@@ -9,9 +9,12 @@ import requests
 import werkzeug
 from flask.app import Flask
 from howler.common.loader import datastore
+from howler.datastore.exceptions import VersionConflictException
+from howler.odm.models.case import Case, CaseItem
 from howler.services import case_service, hit_service
 
 from sentinel.mapping.xdr_alert import XDRAlert
+from sentinel.mapping.xdr_alert_evidence import XDRAlertEvidence
 
 # No clue why this is necessary
 werkzeug.__version__ = "1.0.0"  # type: ignore
@@ -101,7 +104,11 @@ def test_ingest_creates_native_case_hierarchy_without_evidence_plugin(client, ca
 
     assert "evidence" not in config.core.plugins
     incident = _incident("case-hierarchy")
-    with patch("requests.post", mock_post), caplog.at_level(logging.INFO):
+    with (
+        patch.object(case_service, "append_hits", wraps=case_service.append_hits) as append_hits,
+        patch("requests.post", mock_post),
+        caplog.at_level(logging.INFO),
+    ):
         response = _post(client, incident)
 
     assert response.status_code == 201
@@ -110,6 +117,8 @@ def test_ingest_creates_native_case_hierarchy_without_evidence_plugin(client, ca
     assert len(api_response["source_alert_hit_ids"]) == 2
     assert len(api_response["evidence_hit_ids"]) == 4
     assert api_response["total_hits_created"] == 7
+    append_hits.assert_called_once()
+    assert len(append_hits.call_args.args[1]) == 6
     assert api_response["incident_id"] == incident["id"]
     assert not {"bundle_hit_id", "bundle_id", "individual_hit_ids", "bundle_size"} & api_response.keys()
 
@@ -273,6 +282,9 @@ def test_populated_evidence_mappings_match_howler_ecs_compounds(client, tenant_m
     assert container.container.id == "container-id"
     assert container.container.name == "api-container"
     assert container.container.image.name == "registry.example.test/api@sha256:abcdef"
+    assert XDRAlertEvidence.container_evidence({"name": "worker-container"}) == {
+        "container": {"name": "worker-container"}
+    }
 
 
 def test_invalid_projection_does_not_discard_valid_evidence_fields(client, tenant_mapping, monkeypatch):
@@ -305,7 +317,7 @@ def test_invalid_projection_does_not_discard_valid_evidence_fields(client, tenan
     assert json.loads(child.howler.data[0]) == evidence
 
 
-def test_update_incident_status_only_updates_sentinel_owned_case_hits(client, tenant_mapping):
+def test_update_incident_status_only_updates_sentinel_owned_case_hits(client, tenant_mapping, monkeypatch):
     incident = _incident("status-only")
     response = _post(client, incident)
     assert response.status_code == 201
@@ -333,6 +345,8 @@ def test_update_incident_status_only_updates_sentinel_owned_case_hits(client, te
     case.save()
     datastore().case.commit()
     datastore().hit.commit()
+
+    monkeypatch.setattr(Case, "save", Mock(side_effect=AssertionError("status-only replay should not save a case")))
 
     update = copy.deepcopy(incident)
     update.pop("alerts")
@@ -385,8 +399,11 @@ def test_incident_without_alerts_still_has_one_case(client, tenant_mapping, aler
     assert api_response["case_id"] in root_hit.howler.related
 
 
-def test_zero_alert_incident_reconciles_alerts_on_later_replay(client, tenant_mapping):
-    incident = _incident("add-alert-later", alerts=[])
+@pytest.mark.parametrize("concurrent_replay", [False, True], ids=["missing-items", "already-attached"])
+def test_zero_alert_incident_reconciles_alerts_after_case_conflict(
+    client, tenant_mapping, monkeypatch, concurrent_replay
+):
+    incident = _incident(f"add-alert-later-{concurrent_replay}", alerts=[])
     first = _post(client, incident)
     assert first.status_code == 201
     first_data = _api_response(first)
@@ -396,6 +413,26 @@ def test_zero_alert_incident_reconciles_alerts_on_later_replay(client, tenant_ma
     alert["id"] = "late-added-alert"
     alert["incidentId"] = incident["id"]
     later["alerts"] = [alert]
+
+    original_save = Case.save
+    conflict_pending = True
+    save_calls = 0
+
+    def save_with_concurrent_edit(case, *args, **kwargs):
+        nonlocal conflict_pending, save_calls
+        if case.case_id == first_data["case_id"]:
+            save_calls += 1
+        if case.case_id == first_data["case_id"] and conflict_pending:
+            conflict_pending = False
+            concurrent, version = datastore().case.get(case.case_id, as_obj=True, version=True)
+            if concurrent_replay:
+                concurrent.items = case.items
+            concurrent.items.append(CaseItem({"type": "folder", "name": "Analyst notes"}))
+            original_save(concurrent, version=version)
+            raise VersionConflictException("simulated overlapping update")
+        return original_save(case, *args, **kwargs)
+
+    monkeypatch.setattr(Case, "save", save_with_concurrent_edit)
     second = _post(client, later)
 
     assert second.status_code == 200
@@ -405,6 +442,10 @@ def test_zero_alert_incident_reconciles_alerts_on_later_replay(client, tenant_ma
     assert len(second_data["source_alert_hit_ids"]) == 1
     assert len(second_data["evidence_hit_ids"]) == 1
     assert second_data["total_hits_created"] == 2
+    case = datastore().case.get(second_data["case_id"])
+    assert case
+    assert any(item.type == "folder" and item.name == "Analyst notes" for item in case.items)
+    assert save_calls == (1 if concurrent_replay else 2)
 
 
 def test_graph_classification_does_not_set_howler_evidence_escalation(client, tenant_mapping):
@@ -443,6 +484,13 @@ def test_replay_reorders_and_adds_alerts_and_evidence_idempotently(client, tenan
     reordered["alerts"].reverse()
     for alert in reordered["alerts"]:
         alert["evidence"].reverse()
+    user_evidence = next(
+        evidence
+        for alert in reordered["alerts"]
+        for evidence in alert["evidence"]
+        if evidence.get("@odata.type", "").endswith("userEvidence")
+    )
+    user_evidence.update(verdict="malicious", remediationStatus="remediated")
     second = _post(client, reordered)
 
     assert second.status_code == 200
@@ -469,6 +517,13 @@ def test_replay_reorders_and_adds_alerts_and_evidence_idempotently(client, tenan
     assert third_data["total_hits_created"] == 2
     assert len(third_data["source_alert_hit_ids"]) == 3
     assert len(third_data["evidence_hit_ids"]) == 5
+    lifecycle_replay = copy.deepcopy(extended)
+    lifecycle_replay["alerts"][-1]["evidence"][0]["verdict"] = "malicious"
+    fourth = _post(client, lifecycle_replay)
+    assert fourth.status_code == 200
+    fourth_data = _api_response(fourth)
+    assert fourth_data["evidence_hit_ids"] == third_data["evidence_hit_ids"]
+    assert fourth_data["total_hits_created"] == 0
     case = datastore().case.get(first_data["case_id"])
     assert case
     assert len([item for item in case.items if item.type == "hit"]) == initial_hit_count + 2
@@ -476,19 +531,16 @@ def test_replay_reorders_and_adds_alerts_and_evidence_idempotently(client, tenan
 
 def test_failed_child_case_link_is_reported_and_replay_repairs_it(client, tenant_mapping, monkeypatch):
     incident = _incident("retry-link-failure")
-    original_append = case_service.append_case_item
+    original_append = case_service.append_hits
     failure_state = {"pending": True}
 
-    def append_with_one_evidence_failure(*args, **kwargs):
-        item_value = kwargs.get("item_value")
-        if failure_state["pending"] and item_value:
-            hit = datastore().hit.get(item_value, as_obj=True)
-            if hit is not None and hit.sentinel.record_type == "evidence":
-                failure_state["pending"] = False
-                raise RuntimeError("simulated case-link failure")
-        return original_append(*args, **kwargs)
+    def fail_first_batch(case, items, **kwargs):
+        if failure_state["pending"]:
+            failure_state["pending"] = False
+            raise RuntimeError("simulated case-link failure")
+        return original_append(case, items, **kwargs)
 
-    monkeypatch.setattr(case_service, "append_case_item", append_with_one_evidence_failure)
+    monkeypatch.setattr(case_service, "append_hits", fail_first_batch)
     failed = _post(client, incident)
     assert failed.status_code == 500
 

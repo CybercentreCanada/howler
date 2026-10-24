@@ -182,7 +182,7 @@ class XDRAlertEvidence:
         container: dict[str, Any] = {}
         container_id = evidence.get("containerId")
         container_name = evidence.get("name")
-        image_name = image.get("digestImage") or container_name
+        image_name = image.get("digestImage")
         if isinstance(container_id, str) and container_id:
             container["id"] = container_id
         if isinstance(container_name, str) and container_name:

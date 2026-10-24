@@ -992,6 +992,30 @@ class TestAppendHit:
             case_service.append_case_item("case-001", item=item)
 
 
+class TestAppendHits:
+    """Tests for batched case hit attachment."""
+
+    def test_append_hits_recomputes_metadata_and_refreshes_once(self):
+        mock_case = MagicMock(case_id="case-001", classification=CLASSIFICATION.UNRESTRICTED, items=[])
+        hit = MagicMock(classification=CLASSIFICATION.UNRESTRICTED)
+        hit.howler.related = []
+        item = CaseItem({"type": "hit", "value": "hit-001", "name": "Hit 1"})
+        with (
+            patch("howler.services.case_service.datastore") as mock_ds_fn,
+            patch("howler.services.case_service.hit_service.get_hit", return_value=(hit, "version-1")),
+            patch("howler.services.case_service.recompute_case_metadata") as mock_sync,
+        ):
+            mock_ds = MagicMock()
+            mock_ds_fn.return_value = mock_ds
+            case_service.append_hits(mock_case, [item])
+
+        assert mock_case.items == [item]
+        assert hit.howler.related == ["case-001"]
+        hit.save.assert_called_once_with(version="version-1", refresh="false")
+        mock_ds.hit.commit.assert_called_once_with()
+        mock_sync.assert_called_once_with(mock_case)
+
+
 # ---------------------------------------------------------------------------
 # append_event()
 # ---------------------------------------------------------------------------
