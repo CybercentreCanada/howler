@@ -10,7 +10,8 @@ from howler.datastore.exceptions import VersionConflictException
 from howler.odm.models.case import Case, CaseItem
 from howler.odm.models.user import User
 from howler.remote.datatypes.lock import Lock as RedisLock
-from howler.services import action_service, analytic_service, case_service, hit_service
+from howler.services import action_service, analytic_service, case_service, comms_service, hit_service
+from howler.utils.str_utils import sanitize_lucene_query
 
 from sentinel.mapping.sentinel_incident import SentinelIncident
 from sentinel.mapping.xdr_alert import XDRAlert
@@ -48,6 +49,7 @@ _EVIDENCE_IDENTITY_PATHS: dict[str, tuple[str, ...]] = {
 }
 _INGEST_LOCK_TIMEOUT_SECONDS = 600
 _CASE_RECONCILIATION_ATTEMPTS = 3
+_CASE_HIT_SEARCH_BATCH_SIZE = 250
 
 
 class SentinelIngestMappingError(Exception):
@@ -305,18 +307,17 @@ def _ensure_incident_case(  # noqa: C901
 ) -> tuple[Case, str, bool]:
     """Load and repair the incident's case, creating it only when absent.
 
-    Normal replays reuse the existing case for subsequent versioned updates.
-    Lookups prefer the root hit's existing association, including legacy case
-    IDs, then use the deterministic tenant/incident case ID to recover a case
-    whose root back-reference is missing.
+    The deterministic tenant/incident case ID is authoritative when that case
+    exists, even if the root hit has a different case back-reference. Legacy
+    related-case lookup is used only when the deterministic case is absent.
 
     Creation is needed only for the first delivery or recovery when an earlier
     attempt persisted the root hit but not its case, even with no alerts. On a
     version conflict, bounded retries reload current records before deciding
     whether creation is still needed; they never replace an existing case.
 
-    Returns the case, its datastore version, and whether case-item repairs need
-    to be persisted by the caller. Root back-reference repairs are saved here.
+    Returns the case, its datastore version, and whether completion processing
+    is needed. Root back-reference repairs are saved here.
     """
     ds = datastore()
     root_hit_id = root_hit.howler.id
@@ -327,13 +328,14 @@ def _ensure_incident_case(  # noqa: C901
         if root_hit is None:
             raise ValueError("Sentinel incident hit disappeared while its case was being ensured")
 
-        # Preserve a valid pre-existing association (including legacy random case
-        # IDs), but do not depend on that back-reference to find a newly-created
-        # deterministic case after a partial write.
-        case, case_version = _find_case_for_incident(root_hit)
+        # The stable ID is authoritative. A root back-reference may have been
+        # moved to an unrelated analyst case; following it first would silently
+        # detach Sentinel's deterministic case from future replays.
+        case, case_version = ds.case.get(stable_case_id, as_obj=True, version=True)
         if case is None:
-            case, case_version = ds.case.get(stable_case_id, as_obj=True, version=True)
+            case, case_version = _find_case_for_incident(root_hit)
 
+        case_created = False
         if case is None:
             analytic = root_hit.howler.analytic or "Sentinel"
             source_label = root_hit.sentinel.id or incident_identity
@@ -357,11 +359,14 @@ def _ensure_incident_case(  # noqa: C901
             case, case_version = ds.case.get(stable_case_id, as_obj=True, version=True)
             if case is None:
                 raise ValueError("Sentinel incident case disappeared after creation")
+            case_created = True
 
         if case_version is None:
             raise ValueError(f"Sentinel incident case {case.case_id} has no datastore version")
 
-        changed = False
+        # Creation or a repaired root link needs completion processing even if
+        # the case already contains the root item.
+        changed = case_created
         has_root_item = any(item.type == "hit" and item.value == root_hit_id for item in case.items)
         if not has_root_item:
             try:
@@ -389,6 +394,7 @@ def _ensure_incident_case(  # noqa: C901
                 if attempt + 1 == _CASE_RECONCILIATION_ATTEMPTS:
                     raise
                 continue
+            changed = True
 
         return case, case_version, changed
 
@@ -413,26 +419,46 @@ def _record_matches_incident(hit: Any, tenant_id: str, incident_identity: str) -
 
 
 def _case_descendants(case: Case, tenant_id: str, incident_identity: str) -> list[Any]:
-    descendants = []
-    for item in case.items:
-        if item.type != "hit":
-            continue
-        hit = datastore().hit.get(item.value, as_obj=True)
-        if hit is not None and _record_matches_incident(hit, tenant_id, incident_identity):
-            descendants.append(hit)
-    return descendants
+    """Load managed case hits through bounded, alias-safe searches in case order."""
+    hit_ids = list(dict.fromkeys(item.value for item in case.items if item.type == "hit"))
+    if not hit_ids:
+        return []
+
+    hit_collection = datastore().hit
+    hits_by_id: dict[str, Any] = {}
+    for offset in range(0, len(hit_ids), _CASE_HIT_SEARCH_BATCH_SIZE):
+        batch_ids = hit_ids[offset : offset + _CASE_HIT_SEARCH_BATCH_SIZE]
+        id_query = " OR ".join(sanitize_lucene_query(hit_id) for hit_id in batch_ids)
+        result = hit_collection.search(f"howler.id:({id_query})", rows=len(batch_ids), fl="*", as_obj=True)
+        requested_ids = set(batch_ids)
+        for hit in result["items"]:
+            hit_id = hit.howler.id
+            if (
+                hit_id in requested_ids
+                and hit_id not in hits_by_id
+                and _record_matches_incident(hit, tenant_id, incident_identity)
+            ):
+                hits_by_id[hit_id] = hit
+
+    return [hits_by_id[hit_id] for hit_id in hit_ids if hit_id in hits_by_id]
 
 
-def _case_record_ids(case: Case, tenant_id: str, incident_identity: str) -> tuple[list[str], list[str]]:
+def _case_record_ids(descendants: list[Any]) -> tuple[list[str], list[str]]:
+    """Project response IDs from already-loaded managed descendants without fetching again."""
     alert_ids: list[str] = []
     evidence_ids: list[str] = []
-    for hit in _case_descendants(case, tenant_id, incident_identity):
+    for hit in descendants:
         record_type = getattr(getattr(hit, "sentinel", None), "record_type", None)
         if record_type == "alert":
             alert_ids.append(hit.howler.id)
         elif record_type == "evidence":
             evidence_ids.append(hit.howler.id)
     return alert_ids, evidence_ids
+
+
+def _case_item_membership(case: Case) -> frozenset[tuple[str, str, str, str | None]]:
+    """Return stable item membership keys for version-conflict reconciliation."""
+    return frozenset((item.id, item.type, item.value, item.parent) for item in case.items)
 
 
 def _source_alert_metadata(tenant_id: str, incident_identity: str, alert_id: str | None) -> dict[str, Any]:
@@ -577,7 +603,9 @@ def _save_reconciled_case(
     use this update path rather than recreating the case. On a version conflict,
     reload the latest case and reapply missing Sentinel items once, preserving
     concurrent analyst edits and additions. Never fall back to an unconditional
-    replacement save.
+    replacement save. The returned boolean reports whether this helper saved
+    case changes; callers track reconciliation separately because a competing
+    writer may already have persisted every required item.
     """
     try:
         case.save(version=case_version)
@@ -586,7 +614,7 @@ def _save_reconciled_case(
         case, case_version = datastore().case.get(case.case_id, as_obj=True, version=True)
         if case is None or case_version is None:
             raise ValueError("Sentinel incident case disappeared during replay reconciliation")
-        case_items_before = len(case.items)
+        case_items_before = _case_item_membership(case)
         if not any(item.type == "hit" and item.value == root_hit.howler.id for item in case.items):
             case_service.append_case_item(
                 case,
@@ -604,7 +632,7 @@ def _save_reconciled_case(
                 root_hit,
                 XDRAlert(tid_mapping=tenant_mapping),
             )
-        changed = len(case.items) != case_items_before
+        changed = _case_item_membership(case) != case_items_before
         if changed:
             case.save(version=case_version)
         return case, changed
@@ -620,7 +648,7 @@ def _update_existing_incident(
     tenant_mapping: dict[str, str],
 ) -> tuple[dict[str, Any], int]:
     ds = datastore()
-    case, case_version, case_changed = _ensure_incident_case(existing_hit, incident_identity, tenant_id)
+    case, case_version, case_reconciliation_needed = _ensure_incident_case(existing_hit, incident_identity, tenant_id)
     existing_hit = ds.hit.get(existing_hit.howler.id, as_obj=True)
     if existing_hit is None:
         raise ValueError("Sentinel incident hit disappeared while its case was being ensured")
@@ -630,7 +658,7 @@ def _update_existing_incident(
     created_count = 0
     alerts = xdr_incident.get("alerts")
     if isinstance(alerts, list):
-        case_items_before = len(case.items)
+        case_items_before = _case_item_membership(case)
         _, _, created_count = _reconcile_alerts(
             case,
             alerts,
@@ -639,11 +667,29 @@ def _update_existing_incident(
             existing_hit,
             XDRAlert(tid_mapping=tenant_mapping),
         )
-        case_changed = case_changed or len(case.items) != case_items_before
+        case_reconciliation_needed = case_reconciliation_needed or _case_item_membership(case) != case_items_before
+
+    # Finish case version reconciliation before loading managed descendants. In
+    # the conflict path the returned case is the latest persisted membership,
+    # including items added by a concurrent analyst or writer.
+    if case_reconciliation_needed:
+        case, _case_saved = _save_reconciled_case(
+            case,
+            case_version,
+            existing_hit,
+            alerts,
+            tenant_id,
+            incident_identity,
+            tenant_mapping,
+        )
+        # A conflict may mean the competing writer already saved all items, but
+        # that final case still needs a visibility barrier and completion event.
+        ds.case.commit()
 
     # append_hits writes related back-references with refresh disabled. Make all
-    # physical indexes visible before reading descendants or applying status.
+    # physical indexes visible before loading the final descendant set.
     _refresh_hit_alias()
+    descendants = _case_descendants(case, tenant_id, incident_identity)
 
     new_status = xdr_incident.get("status")
     updated_count = 0
@@ -654,26 +700,13 @@ def _update_existing_incident(
         updated_count = 1
         # Only Sentinel-owned descendants bearing this incident and tenant
         # metadata are managed. Analyst-added case hits are deliberately ignored.
-        for descendant in _case_descendants(case, tenant_id, incident_identity):
+        for descendant in descendants:
             descendant.howler.status = status
             ds.hit.save(descendant.howler.id, descendant)
             updated_count += 1
+        _refresh_hit_alias()
 
-    if case_changed:
-        case, case_changed = _save_reconciled_case(
-            case,
-            case_version,
-            existing_hit,
-            alerts,
-            tenant_id,
-            incident_identity,
-            tenant_mapping,
-        )
-
-    if case_changed:
-        ds.case.commit()
-    _refresh_hit_alias()
-    alert_ids, evidence_ids = _case_record_ids(case, tenant_id, incident_identity)
+    alert_ids, evidence_ids = _case_record_ids(descendants)
 
     response_body = {
         "success": True,
@@ -687,6 +720,8 @@ def _update_existing_incident(
         "organization": existing_hit.organization.name,
         "updated": True,
     }
+    if case_reconciliation_needed:
+        comms_service.emit("cases", {"case": case.as_primitives()})
     return response_body, 200
 
 
@@ -728,13 +763,15 @@ def _create_new_incident(
         incident_identity,
         tenant_mapping,
     )
-    datastore().case.commit()
+    ds = datastore()
+    ds.case.commit()
 
     if alerts:
         action_service.bulk_execute_on_query(f"howler.id:{root_hit.howler.id}", user=SYSTEM_USER)
 
     _refresh_hit_alias()
-    alert_ids, evidence_ids = _case_record_ids(case, tenant_id, incident_identity)
+    descendants = _case_descendants(case, tenant_id, incident_identity)
+    alert_ids, evidence_ids = _case_record_ids(descendants)
 
     logger.info("Successfully completed XDR incident ingestion")
     response_body = {
@@ -747,4 +784,5 @@ def _create_new_incident(
         "total_hits_created": 1 + child_hits_created,
         "organization": root_hit.organization.name,
     }
+    comms_service.emit("cases", {"case": case.as_primitives()})
     return response_body, 201
