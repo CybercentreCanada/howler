@@ -639,7 +639,7 @@ def test_template_null_omit_and_constant_caching_remain_unchanged(monkeypatch: p
     omitted["mappings"]["user.id"] = {"value": "constant", "transforms": [{"op": "template", "template": "id-{value}"}]}
     mapper = RowMapping(omitted)
     assert render_calls == 1
-    assert list(mapper.map_rows([{}, {}])) == [({"user": {"id": "id-constant"}}, None)] * 2
+    assert list(mapper.map_rows([{}, {}])) == [(_with_raw_data({"user": {"id": "id-constant"}}, {}), None)] * 2
     assert render_calls == 1
 
 
@@ -648,12 +648,12 @@ def test_template_row_failures_are_sanitized_and_do_not_stop_later_rows() -> Non
         _single_value_mapping({"column": "value", "transforms": [{"op": "template", "template": "x-{value}"}]})
     )
     results = list(mapper.map_rows([{"value": "first"}, {"value": {"private": "source-marker"}}, {"value": "last"}]))
-    assert results[0] == ({"result": {"value": "x-first"}}, None)
+    assert results[0] == (_with_raw_data({"result": {"value": "x-first"}}, {"value": "first"}), None)
     assert results[1][0] is None
     _assert_detached_error(results[1][1])
     assert str(results[1][1]) == "row 2, target result.value: use the json transform for structured values"
     assert "source-marker" not in str(results[1][1])
-    assert results[2] == ({"result": {"value": "x-last"}}, None)
+    assert results[2] == (_with_raw_data({"result": {"value": "x-last"}}, {"value": "last"}), None)
 
 
 def test_timestamp_timezone_normalization_and_explicit_utc_assumption() -> None:
