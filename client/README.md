@@ -56,7 +56,7 @@ Other useful `get_client()` options:
 | `client.action`    | List, create, and execute saved actions.                                                                                                                                                                |
 | `client.user`      | Add, delete, list, and update users; `whoami`.                                                                                                                                                          |
 | `client.help`      | Server metadata such as `classification_definition()`.                                                                                                                                                  |
-| `client.v2.ingest` | v2 ingestion for the `hit` and `event` indexes: `create`, `validate` (check records without storing them), `overwrite`, `update_by_query`, `delete`.                                                    |
+| `client.v2.ingest` | v2 ingestion for the `hit` and `event` indexes: `create`, `from_file`, `validate` (check records without storing them), `overwrite`, `update_by_query`, `delete`.                                       |
 | `client.v2.search` | Search across several indexes at once (`client.v2.search("hit,event", query)`), plus `count`, `facet`, and `explain`.                                                                                   |
 | `client.v2.case`   | Fetch, create, update, hide, and delete cases; manage case items and correlation rules.                                                                                                                 |
 | `client.mapping`   | `map_rows(...)`, the same as the top-level `howler_client.map_rows`. See below.                                                                                                                         |
@@ -73,6 +73,24 @@ client.hit.create({"howler": {"analytic": "My Analytic", "score": 0.5}})
 
 Failed requests raise `howler_client.common.utils.ClientError`. It has `status_code` and `api_response` attributes. See
 the [user guide](https://cybercentrecanada.github.io/howler/ingestion/client/) for more examples.
+
+### Ingest JSON Lines files
+
+`client.v2.ingest.from_file()` reads a UTF-8 JSON Lines file (one JSON alert per
+line) and ingests it in one bulk request:
+
+```python
+created_ids = client.v2.ingest.from_file("alerts.jsonl", index="hit", refresh=False)
+```
+
+The default path is `alerts.jsonl` and the default index is `hit`; use `index="event"` for events. The method reads and
+parses the entire file before sending anything, then returns the IDs from the single `create` response. An empty file
+returns `[]` without a request. A blank or malformed line raises a JSON parsing error, and no request is sent. Records
+are passed through as parsed; this method does not call `validate` or rewrite them. The full file is held in memory and
+sent as one bulk operation, so choose batch sizes accordingly.
+
+The write uses the connection's configured retry policy. A timeout or other transport error can leave it unclear
+whether the server accepted the write; retries of an ambiguous write may create duplicate records.
 
 ## Mapping raw table rows to hit records
 
@@ -148,22 +166,22 @@ A target can also set:
   field is left out.
 - `transforms`, which are applied in order:
 
-| Transform                      | Effect                                                                                            |
-| ------------------------------ | ------------------------------------------------------------------------------------------------- |
-| `string`                       | Converts a scalar to a string. Use `json` for objects and lists.                                  |
-| `integer`, `number`, `boolean` | Strict conversions. `boolean` accepts only booleans or `"true"`/`"false"`.                        |
-| `trim`, `lower`, `upper`       | String clean-up.                                                                                  |
-| `list`                         | Wraps a scalar in a list.                                                                         |
-| `json`                         | Converts the value to compact JSON text with sorted keys.                                         |
-| `{op: timestamp}`              | Converts an ISO-8601 string to UTC. Add `assume_timezone: UTC` to accept values with no timezone. |
-| `{op: template, template: "user-{value}"}` | Inserts a scalar value into a literal template. |
+| Transform                                  | Effect                                                                                            |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `string`                                   | Converts a scalar to a string. Use `json` for objects and lists.                                  |
+| `integer`, `number`, `boolean`             | Strict conversions. `boolean` accepts only booleans or `"true"`/`"false"`.                        |
+| `trim`, `lower`, `upper`                   | String clean-up.                                                                                  |
+| `list`                                     | Wraps a scalar in a list.                                                                         |
+| `json`                                     | Converts the value to compact JSON text with sorted keys.                                         |
+| `{op: timestamp}`                          | Converts an ISO-8601 string to UTC. Add `assume_timezone: UTC` to accept values with no timezone. |
+| `{op: template, template: "user-{value}"}` | Inserts a scalar value into a literal template.                                                   |
 
 Templates allow only the `{value}` placeholder; write `{{` and `}}` for literal braces. Their syntax is checked when
 the mapping loads, and they cannot access row fields or evaluate code. As with `string`, objects and lists are rejected;
 apply `json` first if you need to insert structured data:
 
 ```yaml
-transforms: [json, {op: template, template: "payload={value}"}]
+transforms: [json, { op: template, template: "payload={value}" }]
 ```
 
 Mapping files are parsed with `yaml.safe_load`. Quote constants that must stay strings, such as `"yes"`, `"off"`, or
