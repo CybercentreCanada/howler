@@ -49,17 +49,17 @@ Autres options utiles de `get_client()` :
 
 ## Fonctionnalités du client
 
-| Attribut | Rôle |
-| --- | --- |
-| `client.hit` | Créer des alertes (`create`), en obtenir une par son ID (`client.hit(hit_id)`), `overwrite`, `update`, `update_by_query`, `delete`, `generate_hash`. Les commentaires sont sous `client.hit.comment` (`add`, `edit`, `delete`). |
-| `client.search` | Recherche Lucene sur les alertes (`hit`) et les actions (`action`), ainsi que les utilitaires `facet`, `fields`, `grouped`, `histogram`, `stats` et `stream`, chacun avec une méthode `.hit(...)`. |
-| `client.action` | Lister, créer et exécuter des actions enregistrées. |
-| `client.user` | Ajouter, supprimer, lister et mettre à jour des utilisateurs; `whoami`. |
-| `client.help` | Métadonnées du serveur, comme `classification_definition()`. |
-| `client.v2.ingest` | Ingestion v2 pour les index `hit` et `event` : `create`, `validate` (vérifier des enregistrements sans les stocker), `overwrite`, `update_by_query`, `delete`. |
-| `client.v2.search` | Recherche dans plusieurs index à la fois (`client.v2.search("hit,event", query)`), ainsi que `count`, `facet` et `explain`. |
-| `client.v2.case` | Obtenir, créer, mettre à jour, masquer et supprimer des dossiers; gérer leurs éléments et leurs règles de corrélation. |
-| `client.mapping` | `map_rows(...)`, identique à la fonction `howler_client.map_rows`. Voir plus bas. |
+| Attribut           | Rôle                                                                                                                                                                                                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `client.hit`       | Créer des alertes (`create`), en obtenir une par son ID (`client.hit(hit_id)`), `overwrite`, `update`, `update_by_query`, `delete`, `generate_hash`. Les commentaires sont sous `client.hit.comment` (`add`, `edit`, `delete`). |
+| `client.search`    | Recherche Lucene sur les alertes (`hit`) et les actions (`action`), ainsi que les utilitaires `facet`, `fields`, `grouped`, `histogram`, `stats` et `stream`, chacun avec une méthode `.hit(...)`.                              |
+| `client.action`    | Lister, créer et exécuter des actions enregistrées.                                                                                                                                                                             |
+| `client.user`      | Ajouter, supprimer, lister et mettre à jour des utilisateurs; `whoami`.                                                                                                                                                         |
+| `client.help`      | Métadonnées du serveur, comme `classification_definition()`.                                                                                                                                                                    |
+| `client.v2.ingest` | Ingestion v2 pour les index `hit` et `event` : `create`, `from_file`, `validate` (vérifier des enregistrements sans les stocker), `overwrite`, `update_by_query`, `delete`.                                                     |
+| `client.v2.search` | Recherche dans plusieurs index à la fois (`client.v2.search("hit,event", query)`), ainsi que `count`, `facet` et `explain`.                                                                                                     |
+| `client.v2.case`   | Obtenir, créer, mettre à jour, masquer et supprimer des dossiers; gérer leurs éléments et leurs règles de corrélation.                                                                                                          |
+| `client.mapping`   | `map_rows(...)`, identique à la fonction `howler_client.map_rows`. Voir plus bas.                                                                                                                                               |
 
 Par exemple :
 
@@ -74,6 +74,26 @@ client.hit.create({"howler": {"analytic": "Mon analytique", "score": 0.5}})
 Les requêtes qui échouent lèvent `howler_client.common.utils.ClientError`, qui a les attributs `status_code` et
 `api_response`. Voir le [guide d'utilisation](https://cybercentrecanada.github.io/howler/ingestion/client/) pour
 d'autres exemples.
+
+### Ingérer des fichiers JSON Lines
+
+`client.v2.ingest.from_file()` lit un fichier JSON Lines UTF-8 (une alerte JSON par
+ligne) et l'ingère dans une seule requête groupée :
+
+```python
+created_ids = client.v2.ingest.from_file("alerts.jsonl", index="hit", refresh=False)
+```
+
+Le chemin par défaut est `alerts.jsonl` et l'index par défaut est `hit`; utiliser `index="event"` pour les événements.
+La méthode lit et analyse tout le fichier avant d'envoyer quoi que ce soit, puis retourne les identifiants de l'unique
+réponse de `create`. Un fichier vide retourne `[]` sans requête. Une ligne vide ou mal formée provoque une erreur
+d'analyse JSON et aucune requête n'est envoyée. Les enregistrements sont transmis tels qu'analysés; cette méthode
+n'appelle pas `validate` et ne les réécrit pas. Le fichier complet est conservé en mémoire et envoyé en un seul lot; il
+faut donc choisir la taille des lots en conséquence.
+
+L'écriture suit la politique de nouvelles tentatives configurée pour la connexion. Un délai d'attente ou une autre
+erreur de transport peut laisser planer un doute sur l'acceptation de l'écriture par le serveur; réessayer une écriture
+au résultat ambigu peut créer des enregistrements en double.
 
 ## Mapper des lignes brutes vers des alertes
 
@@ -134,12 +154,12 @@ mappings:
 
 Chaque clé sous `mappings` est un nom de champ Howler pointé. Chaque cible requiert exactement une source :
 
-| Expression | Résultat |
-| --- | --- |
-| `column: nom` | La valeur de cette colonne. Une colonne absente est une erreur de ligne. |
+| Expression                       | Résultat                                                                                                                                        |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `column: nom`                    | La valeur de cette colonne. Une colonne absente est une erreur de ligne.                                                                        |
 | `column` + `path: [clé, 0, ...]` | Une valeur imbriquée dans la colonne, trouvée par clés de dictionnaire et index de liste. Une clé ou un index imbriqué absent compte comme nul. |
-| `concat: [a, b, ...]` | Deux colonnes de type liste ou plus, jointes en une seule liste. |
-| `value: ...` | Une constante, calculée une seule fois au chargement du mappage. |
+| `concat: [a, b, ...]`            | Deux colonnes de type liste ou plus, jointes en une seule liste.                                                                                |
+| `value: ...`                     | Une constante, calculée une seule fois au chargement du mappage.                                                                                |
 
 Au niveau du document, `include_raw_data` vaut `true` par défaut et ajoute la ligne source complète comme première entrée
 de `howler.data`. Mettre cette option à `false` pour désactiver cette entrée automatique; toute valeur `howler.data`
@@ -151,22 +171,22 @@ Une cible peut aussi définir :
   Avec `omit`, le champ est omis.
 - `transforms`, appliquées dans l'ordre :
 
-| Transformation | Effet |
-| --- | --- |
-| `string` | Convertit une valeur scalaire en chaîne. Utiliser `json` pour les objets et les listes. |
-| `integer`, `number`, `boolean` | Conversions strictes. `boolean` n'accepte que des booléens ou `"true"`/`"false"`. |
-| `trim`, `lower`, `upper` | Nettoyage de chaînes. |
-| `list` | Place une valeur scalaire dans une liste. |
-| `json` | Convertit la valeur en texte JSON compact à clés triées. |
-| `{op: timestamp}` | Convertit une chaîne ISO-8601 en UTC. Ajouter `assume_timezone: UTC` pour accepter les valeurs sans fuseau horaire. |
-| `{op: template, template: "user-{value}"}` | Insère une valeur scalaire dans un modèle littéral. |
+| Transformation                             | Effet                                                                                                               |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `string`                                   | Convertit une valeur scalaire en chaîne. Utiliser `json` pour les objets et les listes.                             |
+| `integer`, `number`, `boolean`             | Conversions strictes. `boolean` n'accepte que des booléens ou `"true"`/`"false"`.                                   |
+| `trim`, `lower`, `upper`                   | Nettoyage de chaînes.                                                                                               |
+| `list`                                     | Place une valeur scalaire dans une liste.                                                                           |
+| `json`                                     | Convertit la valeur en texte JSON compact à clés triées.                                                            |
+| `{op: timestamp}`                          | Convertit une chaîne ISO-8601 en UTC. Ajouter `assume_timezone: UTC` pour accepter les valeurs sans fuseau horaire. |
+| `{op: template, template: "user-{value}"}` | Insère une valeur scalaire dans un modèle littéral.                                                                 |
 
 Les modèles n'acceptent que le marqueur `{value}`; écrire `{{` et `}}` pour obtenir des accolades littérales. Leur
 syntaxe est vérifiée au chargement du mappage; ils ne peuvent ni accéder aux champs de la ligne ni évaluer du code.
 Comme pour `string`, les objets et les listes sont refusés; appliquer `json` d'abord pour insérer une donnée structurée :
 
 ```yaml
-transforms: [json, {op: template, template: "payload={value}"}]
+transforms: [json, { op: template, template: "payload={value}" }]
 ```
 
 Les fichiers de mappage sont lus avec `yaml.safe_load`. Mettre entre guillemets les constantes qui doivent rester des
