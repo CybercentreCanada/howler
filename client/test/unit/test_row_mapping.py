@@ -76,6 +76,16 @@ def _single_row(expression: dict[str, Any], value: Any) -> Any:
     return RowMapping(_single_value_mapping(expression)).map_row({"value": value})["result"]["value"]
 
 
+def _with_raw_data(hit: dict[str, Any], row: Mapping[str, Any]) -> dict[str, Any]:
+    expected = copy.deepcopy(hit)
+    howler = expected.setdefault("howler", {})
+    howler_data = howler.get("data", [])
+    if not isinstance(howler_data, list):
+        howler_data = [howler_data]
+    howler["data"] = [copy.deepcopy(dict(row)), *howler_data]
+    return expected
+
+
 def _id_mapping() -> RowMapping:
     return RowMapping(_single_value_mapping({"column": "id"}, target="user.id"))
 
@@ -116,9 +126,9 @@ def test_public_api_consumes_one_shot_infinite_input_on_demand() -> None:
         generated = mapper(endless_rows(), _single_value_mapping({"column": "id"}, target="user.id"))
         assert inspect.isgenerator(generated)
         assert started == []
-        assert next(generated) == ({"user": {"id": "synthetic-0"}}, None)
+        assert next(generated) == (_with_raw_data({"user": {"id": "synthetic-0"}}, {"id": "synthetic-0"}), None)
         assert started == [0]
-        assert next(generated) == ({"user": {"id": "synthetic-1"}}, None)
+        assert next(generated) == (_with_raw_data({"user": {"id": "synthetic-1"}}, {"id": "synthetic-1"}), None)
         assert started == [0, 1]
 
 
@@ -132,9 +142,12 @@ def test_row_mapping_method_is_lazy_and_preserves_source_order() -> None:
 
     rows = _id_mapping().map_rows(one_shot())
     assert calls == []
-    assert next(rows) == ({"user": {"id": "0"}}, None)
+    assert next(rows) == (_with_raw_data({"user": {"id": "0"}}, {"id": "0"}), None)
     assert calls == [0]
-    assert list(rows) == [({"user": {"id": "1"}}, None), ({"user": {"id": "2"}}, None)]
+    assert list(rows) == [
+        (_with_raw_data({"user": {"id": "1"}}, {"id": "1"}), None),
+        (_with_raw_data({"user": {"id": "2"}}, {"id": "2"}), None),
+    ]
     assert calls == [0, 1, 2]
 
 
@@ -145,17 +158,22 @@ def test_valid_invalid_valid_rows_yield_results_and_continue_without_leaking_val
             _id_mapping(),
         )
     )
-    assert results[0] == ({"user": {"id": "first"}}, None)
+    assert results[0] == (_with_raw_data({"user": {"id": "first"}}, {"id": "first"}), None)
     assert results[1][0] is None
     _assert_detached_error(results[1][1])
     assert str(results[1][1]) == "row 2, target user.id: source column is missing"
-    assert results[2] == ({"user": {"id": "third"}}, None)
+    assert results[2] == (_with_raw_data({"user": {"id": "third"}}, {"id": "third"}), None)
 
 
 def test_repeated_failures_and_non_mapping_rows_are_returned_independently() -> None:
     mapper = _id_mapping()
     repeated = list(mapper.map_rows([{}, {}, {"id": "valid"}, {}]))
-    assert [hit for hit, _error in repeated] == [None, None, {"user": {"id": "valid"}}, None]
+    assert [hit for hit, _error in repeated] == [
+        None,
+        None,
+        _with_raw_data({"user": {"id": "valid"}}, {"id": "valid"}),
+        None,
+    ]
     errors = [error for _hit, error in repeated if error is not None]
     assert [str(error).split(",", 1)[0] for error in errors] == ["row 1", "row 2", "row 4"]
     assert len({id(error) for error in errors}) == 3
@@ -164,7 +182,12 @@ def test_repeated_failures_and_non_mapping_rows_are_returned_independently() -> 
 
     mixed_rows: list[Any] = [None, 42, ["not", "a", "row"], {"id": "valid"}]
     mixed_results = list(mapper.map_rows(mixed_rows))
-    assert [hit for hit, _error in mixed_results] == [None, None, None, {"user": {"id": "valid"}}]
+    assert [hit for hit, _error in mixed_results] == [
+        None,
+        None,
+        None,
+        _with_raw_data({"user": {"id": "valid"}}, {"id": "valid"}),
+    ]
     for row_number, (_hit, error) in enumerate(mixed_results[:3], start=1):
         _assert_detached_error(error)
         assert str(error) == f"row {row_number}, target <row>: expected a mapping object"
@@ -176,13 +199,13 @@ def test_null_and_transform_row_failures_return_errors_then_continue() -> None:
     )
     assert null_results[0][0] is None
     assert str(null_results[0][1]) == "row 1, target result.value: null source value is not permitted"
-    assert null_results[1] == ({"result": {"value": "a"}}, None)
+    assert null_results[1] == (_with_raw_data({"result": {"value": "a"}}, {"value": "a"}), None)
 
     transform = RowMapping(_single_value_mapping({"column": "value", "transforms": ["integer"]}))
     transform_results = list(transform.map_rows([{"value": "not-an-integer"}, {"value": "7"}]))
     assert transform_results[0][0] is None
     assert "row 1, target result.value" in str(transform_results[0][1])
-    assert transform_results[1] == ({"result": {"value": 7}}, None)
+    assert transform_results[1] == (_with_raw_data({"result": {"value": 7}}, {"value": "7"}), None)
 
 
 def test_failed_row_never_returns_a_partially_built_hit() -> None:
@@ -217,7 +240,7 @@ def test_source_iterator_exception_propagates_unchanged_without_retry() -> None:
         raise failure
 
     generated = _id_mapping().map_rows(rows())
-    assert next(generated) == ({"user": {"id": "first"}}, None)
+    assert next(generated) == (_with_raw_data({"user": {"id": "first"}}, {"id": "first"}), None)
     with pytest.raises(RuntimeError) as error:
         next(generated)
     assert error.value is failure
@@ -229,9 +252,9 @@ def test_from_yaml_yaml_path_and_mapping_document_factories(tmp_path: Path) -> N
     assert RowMapping.from_yaml(yaml_text).mapping == document
     path = tmp_path / "mapping.yaml"
     path.write_text(yaml_text, encoding="utf-8")
-    assert RowMapping.from_file(path).map_row({}) == {"result": {"value": "synthetic"}}
-    assert next(map_rows([{}], path)) == ({"result": {"value": "synthetic"}}, None)
-    assert next(map_rows([{}], document)) == ({"result": {"value": "synthetic"}}, None)
+    assert RowMapping.from_file(path).map_row({}) == _with_raw_data({"result": {"value": "synthetic"}}, {})
+    assert next(map_rows([{}], path)) == (_with_raw_data({"result": {"value": "synthetic"}}, {}), None)
+    assert next(map_rows([{}], document)) == (_with_raw_data({"result": {"value": "synthetic"}}, {}), None)
     with pytest.raises(MappingError, match="unable to read mapping file"):
         RowMapping.from_file(tmp_path / "missing.yaml")
 
@@ -244,6 +267,8 @@ def test_from_yaml_yaml_path_and_mapping_document_factories(tmp_path: Path) -> N
         lambda doc: doc.update({"version": 2}),
         lambda doc: doc.update({"on_null": "skip"}),
         lambda doc: doc.update({"on_null": ["omit"]}),
+        lambda doc: doc.update({"include_raw_data": "false"}),
+        lambda doc: doc.update({"include_raw_data": []}),
         lambda doc: doc["mappings"].clear(),
         lambda doc: doc["mappings"].update({"": {"value": "x"}}),
         lambda doc: doc["mappings"].update({"user..id": {"value": "x"}}),
@@ -316,11 +341,15 @@ def test_schema_accepts_unrestricted_target_characters_empty_path_parts_and_dupl
             },
         }
     )
-    assert mapping.map_row({"nested": {"": {"": "kept"}}, "items": ["one"]}) == {
-        target: "kept",
-        "howler": {"id\n": "not-the-reserved-id"},
-        "result": {"duplicated": ["one", "one"]},
-    }
+    source = {"nested": {"": {"": "kept"}}, "items": ["one"]}
+    assert mapping.map_row(source) == _with_raw_data(
+        {
+            target: "kept",
+            "howler": {"id\n": "not-the-reserved-id"},
+            "result": {"duplicated": ["one", "one"]},
+        },
+        source,
+    )
 
 
 @pytest.mark.parametrize("version", [1.0, True])
@@ -419,7 +448,8 @@ def test_null_missing_and_path_semantics() -> None:
         omit.map_row({})
 
     path = RowMapping(_single_value_mapping({"column": "value", "path": ["child", 1]}, on_null="omit"))
-    assert path.map_row({"value": {"child": ["a", "b"]}}) == {"result": {"value": "b"}}
+    source = {"value": {"child": ["a", "b"]}}
+    assert path.map_row(source) == _with_raw_data({"result": {"value": "b"}}, source)
     for missing in ({}, {"child": None}, {"child": ["a"]}, None):
         with pytest.raises(MappingError, match="all fields were omitted"):
             path.map_row({"value": missing})
@@ -438,11 +468,12 @@ def test_null_missing_and_path_semantics() -> None:
 def test_concat_joins_lists_and_applies_null_policy() -> None:
     document = _single_value_mapping({"concat": ["left", "right"], "on_null": "omit"})
     document["mappings"]["user.id"] = {"value": "still-present"}
-    assert RowMapping(document).map_row({"left": ["a"], "right": ["b", "a"]}) == {
-        "result": {"value": ["a", "b", "a"]},
-        "user": {"id": "still-present"},
-    }
-    assert RowMapping(document).map_row({"left": None, "right": []}) == {"user": {"id": "still-present"}}
+    source = {"left": ["a"], "right": ["b", "a"]}
+    assert RowMapping(document).map_row(source) == _with_raw_data(
+        {"result": {"value": ["a", "b", "a"]}, "user": {"id": "still-present"}}, source
+    )
+    source = {"left": None, "right": []}
+    assert RowMapping(document).map_row(source) == _with_raw_data({"user": {"id": "still-present"}}, source)
     with pytest.raises(MappingError, match="concat requires list-valued columns"):
         RowMapping(document).map_row({"left": "a", "right": []})
 
@@ -517,8 +548,8 @@ def test_non_json_mapped_values_fail_without_echoing_values_and_later_rows_conti
     rows = [{"value": "first"}, *({"value": value} for value in invalid_values), {"value": "last"}]
     results = list(mapper.map_rows(rows))
 
-    assert results[0] == ({"result": {"value": "first"}}, None)
-    assert results[-1] == ({"result": {"value": "last"}}, None)
+    assert results[0] == (_with_raw_data({"result": {"value": "first"}}, {"value": "first"}), None)
+    assert results[-1] == (_with_raw_data({"result": {"value": "last"}}, {"value": "last"}), None)
     for row_number, (hit, error) in enumerate(results[1:-1], start=2):
         assert hit is None
         _assert_detached_error(error)
@@ -530,12 +561,14 @@ def test_non_json_mapped_values_fail_without_echoing_values_and_later_rows_conti
             json_mapper.map_row({"value": 10**digit_limit})
 
 
-def test_unmapped_source_columns_are_not_traversed() -> None:
+def test_unmapped_raw_source_columns_must_be_valid_json() -> None:
     deep_value: Any = "synthetic leaf"
     for _ in range(100_000):
         deep_value = {"child": deep_value}
     mapper = RowMapping(_single_value_mapping({"column": "value"}))
-    assert list(mapper.map_rows([{"value": "a", "unused": deep_value}])) == [({"result": {"value": "a"}}, None)]
+    hit, error = next(mapper.map_rows([{"value": "a", "unused": deep_value}]))
+    assert hit is None
+    assert str(error) == "row 1, target howler.data: raw row is not valid JSON"
 
 
 def test_constants_are_validated_once_and_copied_per_row() -> None:
@@ -546,7 +579,8 @@ def test_constants_are_validated_once_and_copied_per_row() -> None:
 
     omitted = _single_value_mapping({"value": None}, on_null="omit")
     omitted["mappings"]["user.id"] = {"column": "id"}
-    assert RowMapping(omitted).map_row({"id": "a"}) == {"user": {"id": "a"}}
+    source = {"id": "a"}
+    assert RowMapping(omitted).map_row(source) == _with_raw_data({"user": {"id": "a"}}, source)
 
 
 def test_yaml_parse_errors_are_sanitized() -> None:
@@ -569,7 +603,7 @@ def test_yaml_documents_must_still_pass_mapping_validation() -> None:
     with pytest.raises(MappingError, match="mapping document is not valid JSON"):
         RowMapping.from_yaml("version: 1\nmappings:\n  result.date: {value: 2026-01-01}\n")
     quoted = RowMapping.from_yaml('version: 1\nmappings:\n  result.date: {value: "2026-01-01"}\n')
-    assert quoted.map_row({}) == {"result": {"date": "2026-01-01"}}
+    assert quoted.map_row({}) == _with_raw_data({"result": {"date": "2026-01-01"}}, {})
 
 
 def test_every_row_gets_fresh_nested_output_and_no_server_generated_id() -> None:
@@ -583,14 +617,66 @@ def test_every_row_gets_fresh_nested_output_and_no_server_generated_id() -> None
     assert first["user"]["roles"] == ["admin", "reader", "reader", "operator"]
     assert first["event"]["created"] == "2026-04-01T08:00:00.000000Z"
     assert "id" not in first["howler"]
+    assert first["howler"]["data"][0] == source
 
     first["user"]["roles"].append("mutated")
     first["custom"]["object"]["tags"].append("mutated")
     first["custom"]["constant"]["members"].append("mutated")
+    first["howler"]["data"][0]["nested"]["tags"].append("mutated")
     assert "mutated" not in second["user"]["roles"]
     assert "mutated" not in second["custom"]["object"]["tags"]
     assert "mutated" not in second["custom"]["constant"]["members"]
+    assert "mutated" not in second["howler"]["data"][0]["nested"]["tags"]
     assert source == source_before
+
+
+def test_raw_record_is_first_data_entry_and_mapped_data_follows() -> None:
+    source = {"id": "synthetic-1", "payload": "mapped raw value", "unused": {"keep": True}}
+    mapping = RowMapping(
+        {
+            "version": 1,
+            "mappings": {
+                "user.id": {"column": "id"},
+                "howler.data": {"column": "payload"},
+            },
+        }
+    )
+
+    hit = mapping.map_row(source)
+
+    assert hit["howler"]["data"] == [source, "mapped raw value"]
+    hit["howler"]["data"][0]["unused"]["keep"] = False
+    assert source["unused"]["keep"] is True
+
+
+def test_raw_record_inclusion_can_be_disabled_and_explicit_data_is_preserved() -> None:
+    source = {"id": "synthetic-1", "payload": "mapped raw value"}
+    mapping = RowMapping(
+        {
+            "version": 1,
+            "include_raw_data": False,
+            "mappings": {
+                "user.id": {"column": "id"},
+            },
+        }
+    )
+    assert mapping.map_row(source) == {"user": {"id": "synthetic-1"}}
+    assert mapping.map_row({"id": "synthetic-1", "unused": object()}) == {"user": {"id": "synthetic-1"}}
+
+    mapping_with_data = RowMapping(
+        {
+            "version": 1,
+            "include_raw_data": False,
+            "mappings": {
+                "user.id": {"column": "id"},
+                "howler.data": {"column": "payload"},
+            },
+        }
+    )
+    assert mapping_with_data.map_row(source) == {
+        "user": {"id": "synthetic-1"},
+        "howler": {"data": "mapped raw value"},
+    }
 
 
 def test_mapping_document_is_detached_from_caller() -> None:
@@ -606,7 +692,8 @@ def test_server_owned_ids_are_rejected_in_parent_values_and_dynamic_rows() -> No
         RowMapping(_single_value_mapping({"value": {"id": None}}, target="howler"))
 
     mapper = RowMapping(_single_value_mapping({"column": "value"}, target="howler"))
-    assert mapper.map_row({"value": {"analytic": "a"}}) == {"howler": {"analytic": "a"}}
+    source = {"value": {"analytic": "a"}}
+    assert mapper.map_row(source) == _with_raw_data({"howler": {"analytic": "a"}}, source)
     with pytest.raises(MappingError, match="row 1, target howler: howler.id is server-generated"):
         mapper.map_row({"value": {"id": {"child": "not allowed"}}})
     with pytest.raises(MappingError, match="howler.id is server-generated"):
@@ -645,7 +732,7 @@ def test_fields_check_existence_deprecation_and_concat_targets() -> None:
         RowMapping(document, fields=[])  # type: ignore[arg-type]
 
     wrong_constant = _single_value_mapping({"value": 1}, target="user.id")
-    assert RowMapping(wrong_constant, fields=fields).map_row({}) == {"user": {"id": 1}}
+    assert RowMapping(wrong_constant, fields=fields).map_row({}) == _with_raw_data({"user": {"id": 1}}, {})
 
 
 def test_fields_do_not_check_mapped_row_types_or_list_shape() -> None:
@@ -662,11 +749,17 @@ def test_fields_do_not_check_mapped_row_types_or_list_shape() -> None:
     def mapper(target: str) -> RowMapping:
         return RowMapping(_single_value_mapping({"column": "value"}, target=target), fields=fields)
 
-    assert mapper("event.count").map_row({"value": 2}) == {"event": {"count": 2}}
-    assert mapper("event.counts").map_row({"value": [1, 2]}) == {"event": {"counts": [1, 2]}}
-    assert mapper("event.ratio").map_row({"value": 1}) == {"event": {"ratio": 1}}
-    assert mapper("source.ip").map_row({"value": "2001:db8::1"}) == {"source": {"ip": "2001:db8::1"}}
-    assert mapper("event.other").map_row({"value": {"lat": 1}}) == {"event": {"other": {"lat": 1}}}
+    assert mapper("event.count").map_row({"value": 2}) == _with_raw_data({"event": {"count": 2}}, {"value": 2})
+    assert mapper("event.counts").map_row({"value": [1, 2]}) == _with_raw_data(
+        {"event": {"counts": [1, 2]}}, {"value": [1, 2]}
+    )
+    assert mapper("event.ratio").map_row({"value": 1}) == _with_raw_data({"event": {"ratio": 1}}, {"value": 1})
+    assert mapper("source.ip").map_row({"value": "2001:db8::1"}) == _with_raw_data(
+        {"source": {"ip": "2001:db8::1"}}, {"value": "2001:db8::1"}
+    )
+    assert mapper("event.other").map_row({"value": {"lat": 1}}) == _with_raw_data(
+        {"event": {"other": {"lat": 1}}}, {"value": {"lat": 1}}
+    )
 
     values = [
         ("event.count", True),
@@ -690,7 +783,7 @@ def test_fields_do_not_check_mapped_row_types_or_list_shape() -> None:
 
 def test_without_fields_backend_field_catalog_is_not_checked() -> None:
     document = _single_value_mapping({"value": "synthetic"}, target="unknown.field")
-    assert RowMapping(document).map_row({}) == {"unknown": {"field": "synthetic"}}
+    assert RowMapping(document).map_row({}) == _with_raw_data({"unknown": {"field": "synthetic"}}, {})
 
 
 def test_sanitized_directory_example_with_and_without_fields() -> None:
@@ -711,15 +804,18 @@ def test_sanitized_directory_example_with_and_without_fields() -> None:
 
     hit, error = next(mapper.map_rows([synthetic_row]))
     assert error is None
-    assert hit == {
-        "howler": {"analytic": "Directory User Inventory Snapshot"},
-        "classification": "UNCLASSIFIED",
-        "user": {
-            "id": "synthetic-principal-001",
-            "name": "user@example.invalid",
-            "full_name": "Synthetic Example User",
-            "roles": ["Synthetic Reader", "Synthetic Analyst", "Synthetic Operator"],
+    assert hit == _with_raw_data(
+        {
+            "howler": {"analytic": "Directory User Inventory Snapshot"},
+            "classification": "UNCLASSIFIED",
+            "user": {
+                "id": "synthetic-principal-001",
+                "name": "user@example.invalid",
+                "full_name": "Synthetic Example User",
+                "roles": ["Synthetic Reader", "Synthetic Analyst", "Synthetic Operator"],
+            },
+            "organization": {"name": "Example Organization"},
         },
-        "organization": {"name": "Example Organization"},
-    }
+        synthetic_row,
+    )
     assert RowMapping.from_file(example_path).map_row(synthetic_row) == hit

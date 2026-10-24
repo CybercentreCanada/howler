@@ -15,6 +15,10 @@
       "enum": ["error", "omit"],
       "default": "error"
     },
+    "include_raw_data": {
+      "type": "boolean",
+      "default": true
+    },
     "mappings": {
       "type": "object",
       "minProperties": 1,
