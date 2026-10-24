@@ -5,6 +5,13 @@ name: "Howler CodeQL config"
 queries:
   - uses: security-and-quality
 
+# Exclude Python test code from both security and quality analysis.
+paths-ignore:
+  - "**/test/**"
+  - "**/tests/**"
+  - "**/test_*.py"
+  - "**/*_test.py"
+
 # CodeQL query filters cannot target individual `...` overload stubs. Excluding
 # this query silences all Python "statement has no effect" alerts; inline
 # suppressions are preferred when retaining the rest of the query is desired.
