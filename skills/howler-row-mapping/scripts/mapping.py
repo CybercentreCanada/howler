@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.12"
-# dependencies = ["howler-client==3.2.0"]
+# dependencies = ["howler-client==3.4.0"]
 # ///
 """File-first CLI around Howler's offline RowMapping/map_rows API.
 
@@ -21,7 +21,6 @@ import tempfile
 from pathlib import Path
 
 import yaml
-
 from howler_client import MappingError, RowMapping, map_rows
 
 
@@ -263,7 +262,12 @@ def main(argv=None):
             write_file(
                 args.output,
                 yaml.safe_dump(
-                    {"version": 1, "on_null": args.on_null, "mappings": {}},
+                    {
+                        "version": 1,
+                        "on_null": args.on_null,
+                        "include_raw_data": True,
+                        "mappings": {},
+                    },
                     sort_keys=False,
                 ),
                 args.replace,

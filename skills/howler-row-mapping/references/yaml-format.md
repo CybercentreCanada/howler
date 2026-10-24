@@ -1,7 +1,8 @@
 # Howler-client mapping YAML, version 1
 
-This is the native mapping format implemented by the released
-`howler-client==3.2.0`. `RowMapping` owns parsing, document validation, and
+This is the native mapping format implemented by the
+[released client 3.4.0](howler-client.md), including raw-row preservation and template
+transforms. `RowMapping` owns parsing, document validation, and
 mapping execution. This skill does not maintain a parallel schema or mapping
 engine.
 
@@ -15,9 +16,14 @@ into constants.
 ```yaml
 version: 1
 on_null: error
+include_raw_data: true
 mappings:
   howler.analytic:
     value: "User-approved analytic label"
+  howler.outline.summary:
+    column: activity_description
+    on_null: error
+    transforms: [trim]
   user.id:
     column: principal_id
   user.email:
@@ -37,17 +43,26 @@ mappings:
         assume_timezone: UTC # only if the source is known to be UTC
 ```
 
-| Key        | Meaning                                                              |
-| ---------- | -------------------------------------------------------------------- |
-| `version`  | Required integer `1`.                                                |
-| `on_null`  | Document-wide `error` (default) or `omit`; a target may override it. |
-| `mappings` | Nonempty dictionary keyed by exact dotted Howler fields.             |
+| Key                | Meaning                                                                                         |
+| ------------------ | ----------------------------------------------------------------------------------------------- |
+| `version`          | Required integer `1`.                                                                           |
+| `on_null`          | Document-wide `error` (default) or `omit`; a target may override it.                            |
+| `include_raw_data` | Boolean, default `true`; prepend the complete source row as a detached object in `howler.data`. |
+| `mappings`         | Nonempty dictionary keyed by exact dotted Howler fields.                                        |
 
-Only those three keys belong at document level. Index, environment, source
+Only those four keys belong at document level. Index, environment, source
 provenance, and field-catalog fingerprints belong in separate artifacts, not in
 mapping YAML. `version: 1` names the format, not a mapping revision. An empty
 draft is not a valid `RowMapping`; unmapped source columns are ignored, so report
 unresolved columns and approved omissions explicitly.
+
+Unmapped columns are ignored for target mapping but still retained in the raw
+entry when `include_raw_data` is true. Set it to `false` to disable the automatic
+entry; explicitly mapped `howler.data` entries remain. Review sensitive columns
+and source classification before retaining the complete row.
+
+Always author `howler.outline.summary`; add target/threat only when relevant and
+indicators wherever supported. See [outline authoring](outline.md) for examples.
 
 ## Source expressions
 
@@ -75,20 +90,28 @@ rejected.
 
 Transforms run in written order on the whole value:
 
-| Transform                               | Behavior                                                                                                     |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `string`                                | Convert a scalar to string; structured values require `json`.                                                |
-| `integer`, `number`                     | Numeric conversion; reject booleans, fractional integers, and non-finite values.                             |
-| `boolean`                               | Accept native booleans or exact strings `"true"` and `"false"`.                                              |
-| `trim`, `lower`, `upper`                | String-only cleanup; change case only when the meaning permits it.                                           |
-| `list`                                  | Wrap a non-list in a list; leave an existing list unchanged. No elementwise coercion.                        |
-| `json`                                  | Convert to compact JSON text with sorted keys; this does not parse JSON strings.                             |
-| `{op: timestamp}`                       | Parse an ISO-8601 string and convert to UTC with six fractional digits and `Z`; source timezone is required. |
-| `{op: timestamp, assume_timezone: UTC}` | Also accept naive/date-only strings only when the source is known to be UTC.                                 |
+| Transform                                      | Behavior                                                                                                     |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `string`                                       | Convert a scalar to string; structured values require `json`.                                                |
+| `integer`, `number`                            | Numeric conversion; reject booleans, fractional integers, and non-finite values.                             |
+| `boolean`                                      | Accept native booleans or exact strings `"true"` and `"false"`.                                              |
+| `trim`, `lower`, `upper`                       | String-only cleanup; change case only when the meaning permits it.                                           |
+| `list`                                         | Wrap a non-list in a list; leave an existing list unchanged. No elementwise coercion.                        |
+| `json`                                         | Convert to compact JSON text with sorted keys; this does not parse JSON strings.                             |
+| `{op: timestamp}`                              | Parse an ISO-8601 string and convert to UTC with six fractional digits and `Z`; source timezone is required. |
+| `{op: timestamp, assume_timezone: UTC}`        | Also accept naive/date-only strings only when the source is known to be UTC.                                 |
+| `{op: template, template: "Detected {value}"}` | Insert the current scalar value into literal text; use `json` first for lists/objects.                       |
 
 Transforms are not elementwise: for example, apply `trim` before `list` to
-convert one string, not after `list`. The mapping language has no parser,
-template, expression evaluator, remote lookup, or implicit default. Any required
+convert one string, not after `list`. Templates support only `{value}` (repeatable);
+escape literal braces with `{{` and `}}`. Syntax is checked at compile time.
+Other placeholders, field access, conversions such as `{value!r}`, format
+specifiers such as `{value:03d}`, and unmatched braces are rejected. Templates do
+not interpolate another row column or evaluate expressions. Null handling still
+occurs first; a template cannot turn a null source into a summary or indicator.
+
+The mapping language has no parser, general expression evaluator, remote lookup,
+multi-column string interpolation, conditional, coalesce, or implicit default. Any required
 preparation must already be reflected in the supplied row objects or be handled
 outside this mapping workflow.
 
@@ -104,7 +127,9 @@ outside this mapping workflow.
   its child (such as `user` and `user.id`).
 - The client never sets `howler.id`, including through a parent `howler` object.
   Howler assigns it. Other identifiers such as `user.id` may be mapped.
-- No implicit analytic, classification, timestamp, or other defaults are added.
+- No implicit analytic, classification, timestamp, or outline defaults are added.
+  The automatic raw-data entry is the only addition described above; it does not
+  rescue a row whose every mapped target was omitted.
   Repeated source rows remain repeated payloads; deterministic rendering does not
   promise ingestion deduplication or identical server-created IDs.
 

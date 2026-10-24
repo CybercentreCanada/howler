@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.12"
-# dependencies = ["howler-client==3.2.0"]
+# dependencies = ["howler-client==3.4.0"]
 # ///
 """Validate saved alert JSONL directly with Howler, without ingesting records."""
 

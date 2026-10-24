@@ -1,6 +1,15 @@
-# Howler-client 3.2.0 API
+# Howler-client 3.4.0 mapping API
 
-The helper scripts pin the released `howler-client==3.2.0`. Its public
+The helper scripts use the released `howler-client==3.4.0`. Their PEP 723 dependency is:
+
+```text
+howler-client==3.4.0
+```
+
+Update all script version pins and these references together when adopting a
+newer release. No Git dependency or local editable checkout is required.
+
+The released client's public
 `RowMapping` and `map_rows` API is the sole mapping parser, schema validator, and
 execution engine used by this skill.
 
@@ -34,6 +43,12 @@ result and apply their own file/privacy policy.
   source iteration; source-iterator exceptions propagate.
 - `mapping.map_row(row)` returns one nested hit or raises `MappingError`.
   `mapping.mapping` returns a detached document copy.
+- `{op: template, template: "Detected {value}"}` is a native transform: it
+  formats only the current scalar mapped value. It cannot read another column,
+  execute code, or provide a null fallback. Use `json` first for structured values.
+- `include_raw_data` defaults to `true`. A detached, JSON-compatible object copy of
+  the entire untransformed source row is prepended to `howler.data`; explicit data
+  entries follow it. Set `false` to disable only that automatic entry.
 
 ## Validation responsibility
 
@@ -44,6 +59,11 @@ The client intentionally does not validate output types/list shape, enums,
 regexes, required backend values, or classification permission. Howler backend
 validation is authoritative for backend acceptance; neither local nor backend
 validation is ingestion authorization.
+
+The skill additionally requires summary coverage and source-grounded outline
+semantics during authoring and private output review; these are not client schema
+checks. Do not implement a second mapping engine or target-value validator to
+enforce them. See [outline authoring](outline.md).
 
 An already-connected client exposes backend validation as
 `client.v2.ingest.validate("hit", records)`. The file helper
