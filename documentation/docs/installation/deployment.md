@@ -186,18 +186,16 @@ configuration and recovery procedure.
 
 The maintained `howler-sentinel-plugin` source lives in
 [`plugins/sentinel/`](https://github.com/CybercentreCanada/howler/tree/main/plugins/sentinel).
-Use an API image that includes a published plugin release supporting `tenant_mapping`, together with the evidence
-plugin. Installing/enabling a plugin and supplying its configuration are separate steps: Helm configuration alone
-does not install Python packages.
+Use an API image that includes a published plugin release supporting `tenant_mapping`. Sentinel no longer requires the
+Evidence plugin. Installing/enabling a plugin and supplying its configuration are separate steps: Helm configuration
+alone does not install Python packages.
 
 Add tenant IDs and their Howler customer/organization names to your deployment's Helm values:
 
 ```yaml
 config:
   core:
-    # Retain any other plugins your deployment already enables.
     plugins:
-      - evidence
       - sentinel
 
 plugins:
@@ -213,21 +211,28 @@ mounts it at `/etc/howler/conf/sentinel.yml`. Keep authentication credentials in
 configuration; do not include link keys or client secrets in this example.
 
 The incoming incident's top-level `tenantId` is matched exactly against the configured keys. Its mapped name becomes
-`organization.name` on the incident root hit and every newly created child alert hit; `organization.id` remains the
-tenant ID. Child hits use the incident's tenant, rather than looking up a separate customer from each alert payload.
+`organization.name` on the incident summary, source alert, and evidence hits; `organization.id` remains the tenant ID.
+All child hits use the incident's tenant, rather than looking up a separate customer from each alert payload.
+
+Each newly ingested incident creates one Howler case, including incidents with zero alerts. The incident summary hit is
+at the case root. Each source alert and its former Graph evidence objects are placed under an
+`alerts/<stable-source-alert-hit-id>/` folder; every evidence object is a normal hit with its raw object in
+`howler.data`. Replays add new alerts/evidence without duplicating stable records, and omitted collections do not delete
+case data. Status updates affect Sentinel-owned case hits only, not unrelated analyst-added hits.
 
 The default mapping is empty (`{}`). An authenticated request with a missing, blank, malformed, or unmapped tenant
 ID, or a mapping whose customer name is blank, receives **HTTP 400 before any datastore access or hit/case writes**.
 There is no implicit sample-customer or unknown-customer fallback. Configure every expected tenant before upgrading;
-otherwise ingestion for those tenants will be rejected, including updates to existing incidents. Callers should
+otherwise ingestion for those tenants will be rejected, including replays of existing incidents. Callers should
 correct the configuration or payload before retrying.
 
 Apply the values with your normal `helm upgrade` process, retaining the rest of your deployment values and selecting
 the API image containing the new plugin release via `images.rest.repository` / `images.rest.tag`. The chart's
 configuration checksum triggers a pod rollout when the mapping changes; ensure the rollout completes before sending
 incidents. Outside Helm, configure `tenant_mapping` directly in `sentinel.yml` and restart the API workers after changes.
-Changing a name affects newly created hits only: existing-incident updates remain status-only and do not relabel
-historical root or child hits. Plan any historical data correction separately.
+Changing a name affects newly created hits only. This case-based Sentinel hierarchy is a breaking change and does not
+migrate or backfill historical Sentinel bundles, Evidence-plugin fields, hits, or cases. Re-ingestion does not convert
+those historical records; only incidents newly ingested by this release use the case hierarchy.
 
 ### Releasing and consuming the plugin change
 

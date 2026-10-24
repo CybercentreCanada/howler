@@ -12,7 +12,7 @@ from howler.common.exceptions import (
 )
 from howler.config import CLASSIFICATION
 from howler.datastore.collection import CREATE_TOKEN
-from howler.datastore.exceptions import DataStoreException
+from howler.datastore.exceptions import DataStoreException, VersionConflictException
 from howler.odm.models.case import Case, CaseItem, CaseRule
 from howler.odm.models.ecs.related import Related
 from howler.odm.models.user import User
@@ -240,6 +240,36 @@ class TestCreateCase:
         )
 
         assert result["case_id"] != "should-be-removed"
+
+    @patch("howler.services.case_service.datastore")
+    def test_create_case_uses_only_trusted_keyword_case_id(self, _mock_ds_fn):
+        """A trusted internal ID replaces, rather than trusts, a request payload ID."""
+        trusted_case_id = "7d09f1a0-9976-4c08-b761-90be247b2f13"
+
+        result = case_service.create_case(
+            {"case_id": "payload-controlled-id", "title": "T", "summary": "S"},
+            user=_make_user(),
+            case_id=trusted_case_id,
+        )
+
+        assert result.case_id == trusted_case_id
+
+    @patch("howler.services.case_service.comms_service.emit")
+    @patch.object(Case, "save", side_effect=VersionConflictException("case ID already exists"))
+    def test_create_case_conflict_does_not_overwrite_or_emit(self, mock_save, mock_emit):
+        """A trusted ID still uses create-only persistence and emits only after success."""
+        trusted_case_id = "7d09f1a0-9976-4c08-b761-90be247b2f13"
+
+        with pytest.raises(VersionConflictException):
+            case_service.create_case(
+                {"case_id": "untrusted-id", "title": "T", "summary": "S"},
+                user=_make_user(),
+                case_id=trusted_case_id,
+            )
+
+        mock_save.assert_called_once()
+        assert mock_save.call_args.kwargs["version"] == CREATE_TOKEN
+        mock_emit.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -990,6 +1020,30 @@ class TestAppendHit:
         item = CaseItem({"type": "hit", "value": "hit-001", "name": "another name"})
         with pytest.raises(InvalidDataException, match="already exists"):
             case_service.append_case_item("case-001", item=item)
+
+
+class TestAppendHits:
+    """Tests for batched case hit attachment."""
+
+    def test_append_hits_recomputes_metadata_and_refreshes_once(self):
+        mock_case = MagicMock(case_id="case-001", classification=CLASSIFICATION.UNRESTRICTED, items=[])
+        hit = MagicMock(classification=CLASSIFICATION.UNRESTRICTED)
+        hit.howler.related = []
+        item = CaseItem({"type": "hit", "value": "hit-001", "name": "Hit 1"})
+        with (
+            patch("howler.services.case_service.datastore") as mock_ds_fn,
+            patch("howler.services.case_service.hit_service.get_hit", return_value=(hit, "version-1")),
+            patch("howler.services.case_service.recompute_case_metadata") as mock_sync,
+        ):
+            mock_ds = MagicMock()
+            mock_ds_fn.return_value = mock_ds
+            case_service.append_hits(mock_case, [item])
+
+        assert mock_case.items == [item]
+        assert hit.howler.related == ["case-001"]
+        hit.save.assert_called_once_with(version="version-1", refresh="false")
+        mock_ds.hit.commit.assert_called_once_with()
+        mock_sync.assert_called_once_with(mock_case)
 
 
 # ---------------------------------------------------------------------------
