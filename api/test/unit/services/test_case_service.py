@@ -12,7 +12,7 @@ from howler.common.exceptions import (
 )
 from howler.config import CLASSIFICATION
 from howler.datastore.collection import CREATE_TOKEN
-from howler.datastore.exceptions import DataStoreException
+from howler.datastore.exceptions import DataStoreException, VersionConflictException
 from howler.odm.models.case import Case, CaseItem, CaseRule
 from howler.odm.models.ecs.related import Related
 from howler.odm.models.user import User
@@ -240,6 +240,36 @@ class TestCreateCase:
         )
 
         assert result["case_id"] != "should-be-removed"
+
+    @patch("howler.services.case_service.datastore")
+    def test_create_case_uses_only_trusted_keyword_case_id(self, _mock_ds_fn):
+        """A trusted internal ID replaces, rather than trusts, a request payload ID."""
+        trusted_case_id = "7d09f1a0-9976-4c08-b761-90be247b2f13"
+
+        result = case_service.create_case(
+            {"case_id": "payload-controlled-id", "title": "T", "summary": "S"},
+            user=_make_user(),
+            case_id=trusted_case_id,
+        )
+
+        assert result.case_id == trusted_case_id
+
+    @patch("howler.services.case_service.comms_service.emit")
+    @patch.object(Case, "save", side_effect=VersionConflictException("case ID already exists"))
+    def test_create_case_conflict_does_not_overwrite_or_emit(self, mock_save, mock_emit):
+        """A trusted ID still uses create-only persistence and emits only after success."""
+        trusted_case_id = "7d09f1a0-9976-4c08-b761-90be247b2f13"
+
+        with pytest.raises(VersionConflictException):
+            case_service.create_case(
+                {"case_id": "untrusted-id", "title": "T", "summary": "S"},
+                user=_make_user(),
+                case_id=trusted_case_id,
+            )
+
+        mock_save.assert_called_once()
+        assert mock_save.call_args.kwargs["version"] == CREATE_TOKEN
+        mock_emit.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

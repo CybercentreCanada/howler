@@ -1,11 +1,14 @@
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+import pytest
 import requests
 from howler.app import app
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.hit import Hit
+from howler.odm.models.howler_data import Assessment, Status
 from howler.odm.randomizer import random_model_obj
 from howler.services import hit_service
 
@@ -51,7 +54,10 @@ def test_send_to_sentinel(datastore_connection: HowlerDatastore):
     with app.test_request_context():
         from sentinel.actions.send_to_sentinel import execute
 
-        hit_id = datastore_connection.hit.search("howler.id:*", fl="howler.id", rows=1)["items"][0].howler.id
+        # Use a seeded legacy hit, not a Sentinel record left by ingestion tests.
+        hit_id = datastore_connection.hit.search("howler.id:* AND NOT sentinel.record_type:*", fl="howler.id", rows=1)[
+            "items"
+        ][0].howler.id
 
         result = execute(f"howler.id:{hit_id}")
 
@@ -156,6 +162,65 @@ def test_update_defender_xdr_incident_uses_full_token(datastore_connection: Howl
     token_provider.assert_called_once_with("tenant-id", "https://graph.microsoft.com/.default")
     assert graph_get.call_args.kwargs["headers"]["Authorization"] == "Bearer test-access-token"
     assert graph_patch.call_args.kwargs["headers"]["Authorization"] == "Bearer test-access-token"
+
+
+@pytest.mark.parametrize("record_type", ["alert", "incident"])
+@pytest.mark.parametrize(
+    ("assessment", "expected_classification", "expected_determination"),
+    [
+        (None, "truePositive", "malware"),
+        (Assessment.FALSE_POSITIVE, "falsePositive", "other"),
+    ],
+)
+def test_update_defender_xdr_preserves_graph_disposition_without_assessment(
+    monkeypatch,
+    record_type: str,
+    assessment: Assessment | None,
+    expected_classification: str,
+    expected_determination: str,
+):
+    from sentinel.actions import update_defender_xdr_alert, update_defender_xdr_incident
+
+    action = update_defender_xdr_alert if record_type == "alert" else update_defender_xdr_incident
+    record_id = f"graph-{record_type}-id"
+    howler_data = random_model_obj(Hit).howler
+    howler_data.assessment = assessment
+    howler_data.status = Status.IN_PROGRESS
+    hit = SimpleNamespace(
+        howler=howler_data,
+        azure=SimpleNamespace(tenant_id="tenant-id"),
+        organization=SimpleNamespace(id="tenant-id"),
+        sentinel=SimpleNamespace(id=record_id),
+        rule=SimpleNamespace(id=record_id),
+    )
+    assert "assessment" in hit.howler
+    assert hit.howler.assessment == assessment
+
+    datastore = Mock()
+    datastore.hit.search.return_value = {"items": [hit]}
+    monkeypatch.setattr(action, "datastore", Mock(return_value=datastore))
+    monkeypatch.setattr(action, "sentinel_record_type", Mock(return_value=record_type))
+    monkeypatch.setattr(action, "get_token", Mock(return_value="test-access-token"))
+    graph_response = Mock(ok=True)
+    graph_response.json.return_value = {
+        "classification": "truePositive",
+        "determination": "malware",
+        "assignedTo": "analyst@example.test",
+    }
+    with (
+        app.test_request_context(),
+        patch("requests.get", return_value=graph_response),
+        patch("requests.patch", return_value=Mock(ok=True)) as graph_patch,
+    ):
+        result = action.execute(f"howler.id:{hit.howler.id}")
+
+    assert result[0]["outcome"] == "success"
+    assert graph_patch.call_args.kwargs["json"] == {
+        "assignedTo": "analyst@example.test",
+        "classification": expected_classification,
+        "determination": expected_determination,
+        "status": "inProgress",
+    }
 
 
 def test_derived_evidence_is_not_sent_as_graph_alert_or_incident(datastore_connection: HowlerDatastore):

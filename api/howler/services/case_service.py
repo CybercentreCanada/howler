@@ -122,23 +122,39 @@ def create_case(
     case_data: dict,
     refresh: Literal["true", "false", "wait_for"] | None = None,
     user: User | None = None,
+    *,
+    case_id: str | None = None,
 ) -> Case:  # type: ignore
-    """Create a new case in the datastore.
+    """Create a new case without replacing an existing case.
+
+    Trusted internal callers may supply a stable ``case_id`` for first-time
+    initialization or recovery when a case is missing. This is not an upsert:
+    callers should load and update existing cases, or reload the winning case
+    after a creation conflict. For example, Sentinel uses a tenant/incident ID
+    so a retry can find the same case even if its hit back-reference is missing.
+
+    IDs supplied in ``case_data`` are always ignored. Only the trusted keyword
+    argument is honored; otherwise a random case ID is generated.
 
     Args:
-        case_dict: Case data
-        user: Username to record in the creation log
+        case_data: Initial case data and optional items.
+        refresh: Elasticsearch refresh behavior for the creation write.
+        user: User whose username is recorded in the creation log.
+        case_id: Trusted internal ID for creation, not an existing-case update.
 
     Returns:
-        dict: The created case as a primitives dictionary
+        Case: The newly created case model.
 
     Raises:
-        ResourceExists: If a case with the same ID already exists
+        VersionConflictException: If create-only persistence or an initial item
+            back-reference write conflicts with another writer.
     """
     if not case_data:
         raise InvalidDataException("Case data is required to create a case")
 
     case_data.pop("case_id", None)
+    if case_id is not None:
+        case_data["case_id"] = case_id
     items = case_data.pop("items", [])
 
     case = Case(case_data)

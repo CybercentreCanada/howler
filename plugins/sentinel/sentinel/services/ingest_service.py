@@ -9,6 +9,7 @@ from howler.config import CLASSIFICATION
 from howler.datastore.exceptions import VersionConflictException
 from howler.odm.models.case import Case, CaseItem
 from howler.odm.models.user import User
+from howler.remote.datatypes.lock import Lock as RedisLock
 from howler.services import action_service, analytic_service, case_service, hit_service
 
 from sentinel.mapping.sentinel_incident import SentinelIncident
@@ -34,18 +35,19 @@ _EVIDENCE_LIFECYCLE_FIELDS = {
     "remediationStatusDetails",
     "detectionStatus",
 }
+_DEVICE_IDENTITY_FIELDS = ("mdeDeviceId", "azureAdDeviceId", "deviceId")
 _EVIDENCE_IDENTITY_PATHS: dict[str, tuple[str, ...]] = {
     "analyzedMessageEvidence": ("networkMessageId",),
     "cloudApplicationEvidence": ("appId",),
     "containerEvidence": ("containerId", "name"),
     "containerImageEvidence": ("digestImage",),
     "deviceEvidence": ("mdeDeviceId", "azureAdDeviceId", "deviceDnsName", "hostName"),
-    "fileEvidence": ("fileDetails.sha256", "fileDetails.sha1", "fileDetails.filePath"),
     "ipEvidence": ("ipAddress",),
-    "processEvidence": ("processId", "imageFile.sha256"),
     "urlEvidence": ("url",),
     "userEvidence": ("userAccount.azureAdUserId", "userAccount.userPrincipalName", "userAccount.accountName"),
 }
+_INGEST_LOCK_TIMEOUT_SECONDS = 600
+_CASE_RECONCILIATION_ATTEMPTS = 3
 
 
 class SentinelIngestMappingError(Exception):
@@ -67,26 +69,40 @@ def ingest_incident(xdr_incident: dict[str, Any], tenant_mapping: dict[str, str]
         if key not in {"alerts", "status", "lastUpdateDateTime", "comments", "customTags", "systemTags"}
     }
     incident_identity = incident_source_id or f"payload:{_content_digest(identity_payload)}"
-    existing_hit = _find_existing_incident(tenant_id, incident_identity)
-    if existing_hit is not None:
-        return _update_existing_incident(
-            existing_hit,
+    root_hit_id = _stable_hit_id(tenant_id, incident_identity, "incident")
+    hit_collection = datastore().hit
+    lock_name = f"sentinel-ingest:{hit_collection.name}:{root_hit_id}"
+    with RedisLock(lock_name, _INGEST_LOCK_TIMEOUT_SECONDS):
+        # Direct ID reads bypass Elasticsearch search visibility, but ILM rollover can
+        # leave older writes invisible through the collection alias. Flush the complete
+        # alias before making the authoritative create-or-update decision.
+        _refresh_hit_alias()
+        existing_hit = _find_existing_incident(tenant_id, incident_identity)
+        if existing_hit is not None:
+            return _update_existing_incident(
+                existing_hit,
+                xdr_incident,
+                incident_mapper,
+                tenant_id,
+                incident_identity,
+                incident_source_id,
+                tenant_mapping,
+            )
+
+        return _create_new_incident(
+            incident_hit,
             xdr_incident,
-            incident_mapper,
             tenant_id,
             incident_identity,
             incident_source_id,
             tenant_mapping,
         )
 
-    return _create_new_incident(
-        incident_hit,
-        xdr_incident,
-        tenant_id,
-        incident_identity,
-        incident_source_id,
-        tenant_mapping,
-    )
+
+def _refresh_hit_alias() -> None:
+    """Refresh every physical hit index once, including historical ILM indexes."""
+    collection = datastore().hit
+    collection.with_retries(collection.datastore.client.indices.refresh, index=collection.name)
 
 
 def _source_id(value: Any) -> str | None:
@@ -111,6 +127,11 @@ def _evidence_identity(evidence: Any) -> dict[str, Any]:
         return {"payload": evidence}
     raw_type = evidence.get("@odata.type")
     evidence_type = raw_type.rsplit(".", 1)[-1] if isinstance(raw_type, str) else "unknown"
+    if evidence_type in {"fileEvidence", "processEvidence"}:
+        composite = _composite_evidence_identity(evidence, evidence_type)
+        if composite is not None:
+            return composite
+
     for path in _EVIDENCE_IDENTITY_PATHS.get(evidence_type, ()):
         value: Any = evidence
         for part in path.split("."):
@@ -120,6 +141,62 @@ def _evidence_identity(evidence: Any) -> dict[str, Any]:
     return {
         "type": evidence_type,
         "payload": {k: v for k, v in evidence.items() if k not in _EVIDENCE_LIFECYCLE_FIELDS},
+    }
+
+
+def _is_populated_identity(value: Any) -> bool:
+    return value is not None and (not isinstance(value, str) or bool(value.strip()))
+
+
+def _composite_evidence_identity(evidence: dict[str, Any], evidence_type: str) -> dict[str, Any] | None:
+    """Build stable, order-independent file/process identities from entity context."""
+    device = next(
+        (
+            {field: evidence[field]}
+            for field in _DEVICE_IDENTITY_FIELDS
+            if field in evidence and _is_populated_identity(evidence[field])
+        ),
+        None,
+    )
+    if device is None:
+        return None
+
+    if evidence_type == "fileEvidence":
+        details = evidence.get("fileDetails")
+        if not isinstance(details, dict):
+            return None
+        file_identity = {
+            field: details[field]
+            for field in ("filePath", "fileName", "sha256", "sha1")
+            if field in details and _is_populated_identity(details[field])
+        }
+        if not {"filePath", "fileName"}.issubset(file_identity) or not {"sha256", "sha1"}.intersection(file_identity):
+            return None
+        return {"type": evidence_type, "entity": {"device": device, "file": file_identity}}
+
+    image_file = evidence.get("imageFile")
+    process_id = evidence.get("processId")
+    process_created = evidence.get("processCreationDateTime")
+    if (
+        not isinstance(image_file, dict)
+        or not _is_populated_identity(process_id)
+        or not _is_populated_identity(process_created)
+    ):
+        return None
+    image_identity = {
+        field: image_file[field]
+        for field in ("filePath", "fileName", "sha256", "sha1")
+        if field in image_file and _is_populated_identity(image_file[field])
+    }
+    if not {"filePath", "fileName"}.issubset(image_identity) or not {"sha256", "sha1"}.intersection(image_identity):
+        return None
+    return {
+        "type": evidence_type,
+        "entity": {
+            "device": device,
+            "process": {"processId": process_id, "processCreationDateTime": process_created},
+            "image": image_identity,
+        },
     }
 
 
@@ -223,39 +300,99 @@ def _find_case_for_incident(root_hit: Any) -> tuple[Case | None, str | None]:
     return None, None
 
 
-def _ensure_incident_case(root_hit: Any, incident_identity: str) -> tuple[Case, str, bool]:
-    """Return the incident's case, creating one even when it has no alerts."""
-    case, case_version = _find_case_for_incident(root_hit)
-    if case is None:
-        analytic = root_hit.howler.analytic or "Sentinel"
-        source_label = root_hit.sentinel.id or incident_identity
-        case = case_service.create_case(
-            {
-                "title": f"{analytic} - {root_hit.howler.detection or 'XDR Incident'}",
-                "summary": f"Sentinel incident {source_label}",
-                "classification": root_hit.classification,
-                "items": [{"type": "hit", "value": root_hit.howler.id, "name": analytic}],
-            },
-            user=SYSTEM_USER,
-        )
-        case, case_version = datastore().case.get(case.case_id, as_obj=True, version=True)
-        if case is None or case_version is None:
-            raise ValueError("Sentinel incident case disappeared after creation")
-        return case, case_version, False
+def _ensure_incident_case(  # noqa: C901
+    root_hit: Any, incident_identity: str, tenant_id: str
+) -> tuple[Case, str, bool]:
+    """Load and repair the incident's case, creating it only when absent.
 
-    changed = False
-    if not any(item.type == "hit" and item.value == root_hit.howler.id for item in case.items):
-        case_service.append_case_item(
-            case,
-            item_type="hit",
-            item_value=root_hit.howler.id,
-            item_name=root_hit.howler.analytic or "Sentinel",
-            user=SYSTEM_USER,
-        )
-        changed = True
-    if case_version is None:
-        raise ValueError(f"Sentinel incident case {case.case_id} has no datastore version")
-    return case, case_version, changed
+    Normal replays reuse the existing case for subsequent versioned updates.
+    Lookups prefer the root hit's existing association, including legacy case
+    IDs, then use the deterministic tenant/incident case ID to recover a case
+    whose root back-reference is missing.
+
+    Creation is needed only for the first delivery or recovery when an earlier
+    attempt persisted the root hit but not its case, even with no alerts. On a
+    version conflict, bounded retries reload current records before deciding
+    whether creation is still needed; they never replace an existing case.
+
+    Returns the case, its datastore version, and whether case-item repairs need
+    to be persisted by the caller. Root back-reference repairs are saved here.
+    """
+    ds = datastore()
+    root_hit_id = root_hit.howler.id
+    stable_case_id = _stable_hit_id(tenant_id, incident_identity, "case")
+
+    for attempt in range(_CASE_RECONCILIATION_ATTEMPTS):
+        root_hit, _ = ds.hit.get(root_hit_id, as_obj=True, version=True)
+        if root_hit is None:
+            raise ValueError("Sentinel incident hit disappeared while its case was being ensured")
+
+        # Preserve a valid pre-existing association (including legacy random case
+        # IDs), but do not depend on that back-reference to find a newly-created
+        # deterministic case after a partial write.
+        case, case_version = _find_case_for_incident(root_hit)
+        if case is None:
+            case, case_version = ds.case.get(stable_case_id, as_obj=True, version=True)
+
+        if case is None:
+            analytic = root_hit.howler.analytic or "Sentinel"
+            source_label = root_hit.sentinel.id or incident_identity
+            try:
+                created_case = case_service.create_case(
+                    {
+                        "title": f"{analytic} - {root_hit.howler.detection or 'XDR Incident'}",
+                        "summary": f"Sentinel incident {source_label}",
+                        "classification": root_hit.classification,
+                        "items": [{"type": "hit", "value": root_hit_id, "name": analytic}],
+                    },
+                    user=SYSTEM_USER,
+                    case_id=stable_case_id,
+                )
+            except VersionConflictException:
+                if attempt + 1 == _CASE_RECONCILIATION_ATTEMPTS:
+                    raise
+                continue
+            if created_case.case_id != stable_case_id:
+                raise ValueError("Sentinel incident case creation did not retain its deterministic ID")
+            case, case_version = ds.case.get(stable_case_id, as_obj=True, version=True)
+            if case is None:
+                raise ValueError("Sentinel incident case disappeared after creation")
+
+        if case_version is None:
+            raise ValueError(f"Sentinel incident case {case.case_id} has no datastore version")
+
+        changed = False
+        has_root_item = any(item.type == "hit" and item.value == root_hit_id for item in case.items)
+        if not has_root_item:
+            try:
+                case_service.append_case_item(
+                    case,
+                    item_type="hit",
+                    item_value=root_hit_id,
+                    item_name=root_hit.howler.analytic or "Sentinel",
+                    user=SYSTEM_USER,
+                )
+            except VersionConflictException:
+                if attempt + 1 == _CASE_RECONCILIATION_ATTEMPTS:
+                    raise
+                continue
+            changed = True
+
+        root_hit, root_hit_version = ds.hit.get(root_hit_id, as_obj=True, version=True)
+        if root_hit is None or root_hit_version is None:
+            raise ValueError("Sentinel incident hit disappeared while its case back-reference was being ensured")
+        if case.case_id not in root_hit.howler.related:
+            case_service.add_backreference(root_hit, case.case_id, user=SYSTEM_USER)
+            try:
+                root_hit.save(version=root_hit_version)
+            except VersionConflictException:
+                if attempt + 1 == _CASE_RECONCILIATION_ATTEMPTS:
+                    raise
+                continue
+
+        return case, case_version, changed
+
+    raise ValueError("Sentinel incident case could not be reconciled")
 
 
 def _queue_case_hit(case: Case, pending: list[CaseItem], hit_id: str, name: str, parent_id: str | None) -> None:
@@ -418,6 +555,7 @@ def _reconcile_alerts(  # noqa C901
                 alert_folder.id if alert_folder else None,
             )
 
+    _refresh_hit_alias()
     if pending_case_items:
         case_service.append_hits(case, pending_case_items, user=SYSTEM_USER, refresh=False)
 
@@ -433,7 +571,14 @@ def _save_reconciled_case(
     incident_identity: str,
     tenant_mapping: dict[str, str],
 ) -> tuple[Case, bool]:
-    """Save a case snapshot, reloading and reconciling once if its version changed."""
+    """Persist updates to an existing case using its loaded datastore version.
+
+    Both first-delivery ingestion, after case creation, and ordinary replays
+    use this update path rather than recreating the case. On a version conflict,
+    reload the latest case and reapply missing Sentinel items once, preserving
+    concurrent analyst edits and additions. Never fall back to an unconditional
+    replacement save.
+    """
     try:
         case.save(version=case_version)
         return case, True
@@ -475,7 +620,7 @@ def _update_existing_incident(
     tenant_mapping: dict[str, str],
 ) -> tuple[dict[str, Any], int]:
     ds = datastore()
-    case, case_version, case_changed = _ensure_incident_case(existing_hit, incident_identity)
+    case, case_version, case_changed = _ensure_incident_case(existing_hit, incident_identity, tenant_id)
     existing_hit = ds.hit.get(existing_hit.howler.id, as_obj=True)
     if existing_hit is None:
         raise ValueError("Sentinel incident hit disappeared while its case was being ensured")
@@ -495,6 +640,10 @@ def _update_existing_incident(
             XDRAlert(tid_mapping=tenant_mapping),
         )
         case_changed = case_changed or len(case.items) != case_items_before
+
+    # append_hits writes related back-references with refresh disabled. Make all
+    # physical indexes visible before reading descendants or applying status.
+    _refresh_hit_alias()
 
     new_status = xdr_incident.get("status")
     updated_count = 0
@@ -523,7 +672,7 @@ def _update_existing_incident(
 
     if case_changed:
         ds.case.commit()
-    ds.hit.commit()
+    _refresh_hit_alias()
     alert_ids, evidence_ids = _case_record_ids(case, tenant_id, incident_identity)
 
     response_body = {
@@ -552,12 +701,13 @@ def _create_new_incident(
     incident_hit_data["sentinel"] = _incident_metadata(tenant_id, incident_identity, incident_source_id)
     root_hit_id = _stable_hit_id(tenant_id, incident_identity, "incident")
     root_hit = _create_mapped_hit(incident_hit_data, root_hit_id)
-    case, _, _ = _ensure_incident_case(root_hit, incident_identity)
+    _refresh_hit_alias()
+    case, case_version, _ = _ensure_incident_case(root_hit, incident_identity, tenant_id)
 
     alerts = xdr_incident.get("alerts", [])
     if not isinstance(alerts, list):
         alerts = []
-    alert_ids, evidence_ids, child_hits_created = _reconcile_alerts(
+    _, _, child_hits_created = _reconcile_alerts(
         case,
         alerts,
         tenant_id,
@@ -565,13 +715,26 @@ def _create_new_incident(
         root_hit,
         XDRAlert(tid_mapping=tenant_mapping),
     )
+    # Child backlink writes are deferred; refresh their physical indexes before
+    # later action searches and any response-side descendant reads.
+    _refresh_hit_alias()
 
-    case.save()
+    case, _ = _save_reconciled_case(
+        case,
+        case_version,
+        root_hit,
+        alerts,
+        tenant_id,
+        incident_identity,
+        tenant_mapping,
+    )
     datastore().case.commit()
-    datastore().hit.commit()
 
     if alerts:
         action_service.bulk_execute_on_query(f"howler.id:{root_hit.howler.id}", user=SYSTEM_USER)
+
+    _refresh_hit_alias()
+    alert_ids, evidence_ids = _case_record_ids(case, tenant_id, incident_identity)
 
     logger.info("Successfully completed XDR incident ingestion")
     response_body = {

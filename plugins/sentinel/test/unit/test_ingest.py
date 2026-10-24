@@ -1,6 +1,7 @@
 import copy
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -9,6 +10,7 @@ import requests
 import werkzeug
 from flask.app import Flask
 from howler.common.loader import datastore
+from howler.datastore.collection import CREATE_TOKEN
 from howler.datastore.exceptions import VersionConflictException
 from howler.odm.models.case import Case, CaseItem
 from howler.services import case_service, hit_service
@@ -399,6 +401,218 @@ def test_incident_without_alerts_still_has_one_case(client, tenant_mapping, aler
     assert api_response["case_id"] in root_hit.howler.related
 
 
+def test_refresh_barriers_surround_root_creation_child_attachment_and_response(client, tenant_mapping, monkeypatch):
+    from sentinel.services import ingest_service
+
+    events = []
+    original_create_hit = ingest_service._create_mapped_hit
+    original_find_incident = ingest_service._find_existing_incident
+    original_create_case = case_service.create_case
+    original_append_hits = case_service.append_hits
+
+    def record_refresh():
+        events.append("refresh")
+
+    def record_find(*args, **kwargs):
+        events.append("lookup")
+        return original_find_incident(*args, **kwargs)
+
+    def record_hit_create(mapped_hit, stable_id):
+        result = original_create_hit(mapped_hit, stable_id)
+        events.append(f"create:{mapped_hit['sentinel']['record_type']}")
+        return result
+
+    def record_case_create(*args, **kwargs):
+        events.append("create-case")
+        return original_create_case(*args, **kwargs)
+
+    def record_append_hits(*args, **kwargs):
+        events.append("append-hits")
+        return original_append_hits(*args, **kwargs)
+
+    monkeypatch.setattr(ingest_service, "_refresh_hit_alias", record_refresh)
+    monkeypatch.setattr(ingest_service, "_find_existing_incident", record_find)
+    monkeypatch.setattr(ingest_service, "_create_mapped_hit", record_hit_create)
+    monkeypatch.setattr(case_service, "create_case", record_case_create)
+    monkeypatch.setattr(case_service, "append_hits", record_append_hits)
+    monkeypatch.setattr(
+        ingest_service.action_service,
+        "bulk_execute_on_query",
+        lambda *_args, **_kwargs: events.append("actions"),
+    )
+
+    response = _post(client, _incident("refresh-barriers"))
+
+    assert response.status_code == 201
+    assert events[0:2] == ["refresh", "lookup"]
+    root_index = events.index("create:incident")
+    case_index = events.index("create-case")
+    append_index = events.index("append-hits")
+    action_index = events.index("actions")
+    assert events[root_index + 1] == "refresh"
+    assert root_index < case_index < append_index
+    assert events[append_index - 1] == "refresh"
+    assert events[append_index + 1] == "refresh"
+    assert events[action_index + 1] == "refresh"
+    assert events.count("refresh") == 5
+    assert events[-1] == "refresh"
+
+
+def test_refresh_hit_alias_targets_collection_alias_with_retries():
+    from sentinel.services.ingest_service import _refresh_hit_alias
+
+    collection = Mock()
+    collection.name = "howler-hit"
+    with patch("sentinel.services.ingest_service.datastore") as mock_datastore:
+        mock_datastore.return_value.hit = collection
+
+        _refresh_hit_alias()
+
+    collection.with_retries.assert_called_once_with(
+        collection.datastore.client.indices.refresh,
+        index=collection.name,
+    )
+    collection.commit.assert_not_called()
+
+
+def test_concurrent_same_incident_ingest_is_serialized_and_reuses_case(client, tenant_mapping):
+    incident = _incident("serialized-ingest", alerts=[])
+    app = client.application
+
+    def post_once():
+        with app.test_client() as isolated_client:
+            return _post(isolated_client, incident)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        responses = list(executor.map(lambda _: post_once(), range(2)))
+
+    assert sorted(response.status_code for response in responses) == [200, 201]
+    response_data = [_api_response(response) for response in responses]
+    assert len({data["incident_hit_id"] for data in response_data}) == 1
+    assert len({data["case_id"] for data in response_data}) == 1
+    root = datastore().hit.get(response_data[0]["incident_hit_id"], as_obj=True)
+    case = datastore().case.get(response_data[0]["case_id"])
+    assert root and case
+    assert root.howler.related == [case.case_id]
+    assert len([item for item in case.items if item.type == "hit" and item.value == root.howler.id]) == 1
+
+
+def test_ingest_lock_acquisition_failure_does_not_fall_back_to_unlocked_work(client, tenant_mapping, monkeypatch):
+    from sentinel.services import ingest_service
+
+    lock_args = []
+
+    class FailingLock:
+        def __init__(self, name, timeout):
+            self.name = name
+            self.timeout = timeout
+            lock_args.append((name, timeout))
+
+        def __enter__(self):
+            raise RuntimeError("simulated Redis lock acquisition failure")
+
+        def __exit__(self, *_args):
+            raise AssertionError("an unacquired lock must not be released")
+
+    monkeypatch.setattr(ingest_service, "RedisLock", FailingLock)
+    incident = _incident("lock-acquisition-failure", alerts=[])
+    with patch.object(ingest_service, "_find_existing_incident") as lookup:
+        response = _post(client, incident)
+
+    assert response.status_code == 500
+    lookup.assert_not_called()
+    root_hit_id = ingest_service._stable_hit_id(SAMPLE_TENANT_ID, incident["id"], "incident")
+    expected_lock_name = f"sentinel-ingest:{datastore().hit.name}:{root_hit_id}"
+    assert lock_args == [(expected_lock_name, 600)]
+
+
+@pytest.mark.parametrize("missing_link", ["root-backreference", "case-root-item"])
+def test_replay_repairs_missing_root_case_link_without_duplicate_case(client, tenant_mapping, missing_link):
+    incident = _incident(f"repair-{missing_link}", alerts=[])
+    first = _post(client, incident)
+    assert first.status_code == 201
+    first_data = _api_response(first)
+    root = datastore().hit.get(first_data["incident_hit_id"], as_obj=True)
+    case, case_version = datastore().case.get(first_data["case_id"], as_obj=True, version=True)
+    assert root and case and case_version
+
+    if missing_link == "root-backreference":
+        root.howler.related.remove(case.case_id)
+        root.save(version=datastore().hit.get(root.howler.id, as_obj=True, version=True)[1])
+    else:
+        case.items = [item for item in case.items if item.value != root.howler.id]
+        case.save(version=case_version)
+
+    retry = _post(client, incident)
+
+    assert retry.status_code == 200
+    retry_data = _api_response(retry)
+    assert retry_data["case_id"] == first_data["case_id"]
+    repaired_root = datastore().hit.get(root.howler.id, as_obj=True)
+    repaired_case = datastore().case.get(first_data["case_id"])
+    assert repaired_root and repaired_case
+    assert repaired_root.howler.related == [repaired_case.case_id]
+    assert len([item for item in repaired_case.items if item.type == "hit" and item.value == root.howler.id]) == 1
+
+
+def test_case_creation_version_conflict_retries_same_deterministic_id(client, tenant_mapping, monkeypatch):
+    from sentinel.services.ingest_service import _stable_hit_id
+
+    incident = _incident("case-create-version-conflict", alerts=[])
+    stable_case_id = _stable_hit_id(SAMPLE_TENANT_ID, incident["id"], "case")
+    original_save = Case.save
+    conflict_state = {"pending": True}
+
+    def conflict_before_first_case_save(case, *args, **kwargs):
+        if case.case_id == stable_case_id and conflict_state["pending"]:
+            conflict_state["pending"] = False
+            raise VersionConflictException("simulated case create conflict")
+        return original_save(case, *args, **kwargs)
+
+    monkeypatch.setattr(Case, "save", conflict_before_first_case_save)
+    response = _post(client, incident)
+
+    assert response.status_code == 201
+    response_data = _api_response(response)
+    assert response_data["case_id"] == stable_case_id
+    root = datastore().hit.get(response_data["incident_hit_id"], as_obj=True)
+    case = datastore().case.get(stable_case_id)
+    assert root and case
+    assert root.howler.related == [stable_case_id]
+    assert len([item for item in case.items if item.type == "hit" and item.value == root.howler.id]) == 1
+
+
+def test_initial_case_save_conflict_preserves_concurrent_analyst_edits(client, tenant_mapping, monkeypatch):
+    incident = _incident("initial-case-save-conflict")
+    original_save = Case.save
+    conflict_pending = True
+
+    def save_with_concurrent_analyst_edit(case, *args, **kwargs):
+        nonlocal conflict_pending
+        if case.case_id and kwargs.get("version") != CREATE_TOKEN and conflict_pending:
+            conflict_pending = False
+            concurrent, version = datastore().case.get(case.case_id, as_obj=True, version=True)
+            concurrent.title = "Analyst-edited title"
+            concurrent.items.append(CaseItem({"type": "folder", "name": "Analyst notes"}))
+            original_save(concurrent, version=version)
+            raise VersionConflictException("simulated overlapping analyst update")
+        return original_save(case, *args, **kwargs)
+
+    monkeypatch.setattr(Case, "save", save_with_concurrent_analyst_edit)
+    response = _post(client, incident)
+
+    assert response.status_code == 201
+    response_data = _api_response(response)
+    case = datastore().case.get(response_data["case_id"])
+    assert case
+    assert case.title == "Analyst-edited title"
+    assert any(item.type == "folder" and item.name == "Analyst notes" for item in case.items)
+    assert set(response_data["source_alert_hit_ids"]).issubset(
+        {item.value for item in case.items if item.type == "hit"}
+    )
+    assert set(response_data["evidence_hit_ids"]).issubset({item.value for item in case.items if item.type == "hit"})
+
+
 @pytest.mark.parametrize("concurrent_replay", [False, True], ids=["missing-items", "already-attached"])
 def test_zero_alert_incident_reconciles_alerts_after_case_conflict(
     client, tenant_mapping, monkeypatch, concurrent_replay
@@ -499,6 +713,27 @@ def test_replay_reorders_and_adds_alerts_and_evidence_idempotently(client, tenan
     assert second_data["case_id"] == first_data["case_id"]
     assert set(second_data["source_alert_hit_ids"]) == set(first_data["source_alert_hit_ids"])
     assert set(second_data["evidence_hit_ids"]) == set(first_data["evidence_hit_ids"])
+    expected_alert_by_raw_evidence = {
+        json.dumps(evidence, sort_keys=True): alert["id"]
+        for alert in incident["alerts"]
+        for evidence in alert["evidence"]
+    }
+    for hit_id in second_data["evidence_hit_ids"]:
+        hit = datastore().hit.get(hit_id, as_obj=True)
+        assert hit
+        raw_evidence = json.loads(hit.howler.data[0])
+        assert hit.sentinel.alert_id == expected_alert_by_raw_evidence[json.dumps(raw_evidence, sort_keys=True)]
+
+    subset = copy.deepcopy(reordered)
+    subset["alerts"] = [subset["alerts"][0]]
+    subset["alerts"][0]["evidence"] = [subset["alerts"][0]["evidence"][0]]
+    subset_response = _post(client, subset)
+    assert subset_response.status_code == 200
+    subset_data = _api_response(subset_response)
+    assert set(subset_data["source_alert_hit_ids"]) == set(first_data["source_alert_hit_ids"])
+    assert set(subset_data["evidence_hit_ids"]) == set(first_data["evidence_hit_ids"])
+    assert subset_data["total_hits_created"] == 0
+
     case = datastore().case.get(first_data["case_id"])
     assert case
     initial_hit_count = len([item for item in case.items if item.type == "hit"])
@@ -527,6 +762,144 @@ def test_replay_reorders_and_adds_alerts_and_evidence_idempotently(client, tenan
     case = datastore().case.get(first_data["case_id"])
     assert case
     assert len([item for item in case.items if item.type == "hit"]) == initial_hit_count + 2
+
+
+def test_file_evidence_identity_combines_device_path_name_and_hash(client, tenant_mapping):
+    file_a = {
+        "@odata.type": "#microsoft.graph.security.fileEvidence",
+        "mdeDeviceId": "device-file-1",
+        "fileDetails": {
+            "filePath": "C:\\Temp\\alpha",
+            "fileName": "sample-a.dll",
+            "sha256": "same-file-content-hash",
+        },
+    }
+    file_b = {
+        "@odata.type": "#microsoft.graph.security.fileEvidence",
+        "mdeDeviceId": "device-file-1",
+        "fileDetails": {
+            "filePath": "C:\\Users\\analyst\\Downloads",
+            "fileName": "renamed-sample.dll",
+            "sha256": "same-file-content-hash",
+        },
+    }
+    alert = copy.deepcopy(SENTINEL_ALERT["alerts"][0])
+    alert["evidence"] = [file_a]
+    incident = _incident("file-composite-identity", alerts=[alert])
+
+    first = _post(client, incident)
+    assert first.status_code == 201
+    first_data = _api_response(first)
+    first_id = first_data["evidence_hit_ids"][0]
+
+    replay = copy.deepcopy(incident)
+    replay["alerts"][0]["evidence"] = [copy.deepcopy(file_b), copy.deepcopy(file_a)]
+    replay["alerts"][0]["evidence"][1].update(verdict="malicious", remediationStatus="remediated")
+    second = _post(client, replay)
+
+    assert second.status_code == 200
+    second_data = _api_response(second)
+    assert len(second_data["evidence_hit_ids"]) == 2
+    evidence_by_file = {}
+    for hit_id in second_data["evidence_hit_ids"]:
+        hit = datastore().hit.get(hit_id, as_obj=True)
+        assert hit
+        raw = json.loads(hit.howler.data[0])
+        details = raw["fileDetails"]
+        evidence_by_file[(details["filePath"], details["fileName"])] = hit_id
+        assert hit.sentinel.alert_id == replay["alerts"][0]["id"]
+
+    assert evidence_by_file[(file_a["fileDetails"]["filePath"], file_a["fileDetails"]["fileName"])] == first_id
+    assert evidence_by_file[(file_b["fileDetails"]["filePath"], file_b["fileDetails"]["fileName"])] != first_id
+    case = datastore().case.get(second_data["case_id"])
+    assert case
+    assert set(evidence_by_file.values()).issubset({item.value for item in case.items if item.type == "hit"})
+
+
+def test_explicit_evidence_id_remains_authoritative_over_composite_fields(client, tenant_mapping):
+    evidence = {
+        "@odata.type": "#microsoft.graph.security.fileEvidence",
+        "id": "graph-evidence-id",
+        "mdeDeviceId": "device-external-id",
+        "fileDetails": {
+            "filePath": "C:\\Temp\\first",
+            "fileName": "first.dll",
+            "sha256": "first-content-hash",
+        },
+    }
+    alert = copy.deepcopy(SENTINEL_ALERT["alerts"][0])
+    alert["evidence"] = [evidence]
+    incident = _incident("external-evidence-id", alerts=[alert])
+
+    first = _post(client, incident)
+    assert first.status_code == 201
+    first_data = _api_response(first)
+    first_evidence_id = first_data["evidence_hit_ids"][0]
+
+    replay = copy.deepcopy(incident)
+    replay["alerts"][0]["evidence"][0]["fileDetails"] = {
+        "filePath": "C:\\Users\\analyst\\second",
+        "fileName": "second.dll",
+        "sha256": "different-content-hash",
+    }
+    second = _post(client, replay)
+
+    assert second.status_code == 200
+    second_data = _api_response(second)
+    assert second_data["evidence_hit_ids"] == [first_evidence_id]
+    assert second_data["total_hits_created"] == 0
+
+
+def test_process_evidence_identity_distinguishes_pid_reuse_and_device(client, tenant_mapping):
+    def process(device_id, created, path):
+        return {
+            "@odata.type": "#microsoft.graph.security.processEvidence",
+            "mdeDeviceId": device_id,
+            "processId": "4242",
+            "processCreationDateTime": created,
+            "imageFile": {
+                "filePath": path,
+                "fileName": "worker.exe",
+                "sha256": "worker-image-hash",
+            },
+        }
+
+    process_a = process("device-process-1", "2025-01-01T00:00:00Z", "C:\\Tools")
+    pid_reuse = process("device-process-1", "2025-02-01T00:00:00Z", "C:\\Tools")
+    another_device = process("device-process-2", "2025-01-01T00:00:00Z", "C:\\Tools")
+    alert = copy.deepcopy(SENTINEL_ALERT["alerts"][0])
+    alert["evidence"] = [process_a]
+    incident = _incident("process-composite-identity", alerts=[alert])
+
+    first = _post(client, incident)
+    assert first.status_code == 201
+    first_data = _api_response(first)
+    first_id = first_data["evidence_hit_ids"][0]
+
+    replay = copy.deepcopy(incident)
+    replay["alerts"][0]["evidence"] = [
+        copy.deepcopy(another_device),
+        copy.deepcopy(pid_reuse),
+        copy.deepcopy(process_a),
+    ]
+    for evidence in replay["alerts"][0]["evidence"]:
+        evidence.update(verdict="malicious", detectionStatus="remediated")
+    second = _post(client, replay)
+
+    assert second.status_code == 200
+    second_data = _api_response(second)
+    assert len(second_data["evidence_hit_ids"]) == 3
+    evidence_by_process = {}
+    for hit_id in second_data["evidence_hit_ids"]:
+        hit = datastore().hit.get(hit_id, as_obj=True)
+        assert hit
+        raw = json.loads(hit.howler.data[0])
+        evidence_by_process[(raw["mdeDeviceId"], raw["processCreationDateTime"])] = hit_id
+        assert hit.sentinel.alert_id == replay["alerts"][0]["id"]
+
+    assert evidence_by_process[("device-process-1", "2025-01-01T00:00:00Z")] == first_id
+    assert evidence_by_process[("device-process-1", "2025-02-01T00:00:00Z")] != first_id
+    assert evidence_by_process[("device-process-2", "2025-01-01T00:00:00Z")] != first_id
 
 
 def test_failed_child_case_link_is_reported_and_replay_repairs_it(client, tenant_mapping, monkeypatch):

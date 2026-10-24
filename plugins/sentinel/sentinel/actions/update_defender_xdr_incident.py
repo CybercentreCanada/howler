@@ -138,7 +138,7 @@ def execute(query: str, **kwargs):
 
         # Update incident
         if (
-            "assessment" in hit.howler
+            hit.howler.assessment is not None
             and hit.howler.assessment in properties_map["graph"]["classification"]
             and hit.howler.assessment in properties_map["graph"]["determination"]
         ):
