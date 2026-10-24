@@ -1,0 +1,51 @@
+[data-md-color-scheme="dark"] {
+  --md-accent-fg-color:        #3175d0;
+  --md-accent-fg-color--light: #5189d1;
+  --md-accent-fg-color--dark:  #1c6ad1;
+  --md-default-fg-color--light: #fff;
+  --md-typeset-color: #fff;
+  --md-primary-fg-color: #121212;
+  --md-default-bg-color: #1e1e1e;
+  --md-default-fg-color: #fff;
+
+  --md-admonition-bg-color: var(--md-default-bg-color);
+  --md-admonition-fg-color: var(--md-default-fg-color);
+
+  --md-code-bg-color: var(--md-default-bg-color--lightest);
+  --md-code-fg-color: var(--md-default-fg-color);
+
+  --md-code-hl-name-color: var(--md-code-fg-color);
+  --md-code-hl-operator-color: #ddd;
+  --md-code-hl-punctuation-color: #ddd;
+  --md-code-hl-comment-color: grey;
+  --md-code-hl-generic-color: #ddd;
+  --md-code-hl-variable-color: #ddd;
+}
+
+[data-md-color-scheme="light"] header {
+  background-color: var(--md-default-bg-color);
+  color: var(--md-default-fg-color)
+}
+
+article.md-typeset {
+  font-size: .7rem;
+}
+
+.md-typeset code {
+  font-size: 13px;
+}
+
+@media only screen and (min-width: 76.25em) {
+  .md-grid {
+    max-width: 74rem;
+  }
+}
+
+.center {
+  display: block;
+  margin: 0 auto;
+}
+
+.big_icon {
+  font-size: large;
+}
