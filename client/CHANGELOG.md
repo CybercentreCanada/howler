@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.3.0](https://github.com/CybercentreCanada/howler/compare/client-v3.2.0...client-v3.3.0) (2026-10-24)
+
+
+### Features
+
+* **client:** include the raw data pre-transformation by default ([#688](https://github.com/CybercentreCanada/howler/issues/688)) ([802a500](https://github.com/CybercentreCanada/howler/commit/802a500a0305cb2b050eb805abfce1be38127809))
+
 ## [3.2.0](https://github.com/CybercentreCanada/howler/compare/client-v3.1.0...client-v3.2.0) (2026-10-22)
 
 
