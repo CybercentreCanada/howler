@@ -11,6 +11,7 @@ import {
 } from 'api';
 import * as execute from 'api/action/execute';
 import * as operations from 'api/action/operations';
+import * as runs from 'api/action/runs';
 import type { Action } from 'models/entities/generated/Action';
 import createPermissionsApi from '../utils/createPermissionsApi';
 
@@ -40,4 +41,4 @@ export const del = (id: string, refresh?: HowlerRefreshParam) => {
 
 const permission = createPermissionsApi<Action>(uri);
 
-export { execute, operations, permission };
+export { execute, operations, permission, runs };

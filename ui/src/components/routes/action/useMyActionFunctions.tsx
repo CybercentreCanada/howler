@@ -10,9 +10,11 @@ import type { ActionReport } from 'models/ActionTypes';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Operation } from 'models/entities/generated/Operation';
 import { useSnackbar, type SnackbarKey } from 'notistack';
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router';
+import useMyLocalStorage from 'components/hooks/useMyLocalStorage';
+import { StorageKey } from 'utils/constants';
 import { v4 as uuid } from 'uuid';
 
 const useMyActionFunctions = () => {
@@ -23,7 +25,17 @@ const useMyActionFunctions = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
+  const { get } = useMyLocalStorage();
+  const authSessionKey = get<string>(StorageKey.APP_TOKEN) ?? '';
+  const contextKey = JSON.stringify([authSessionKey, location.pathname, params.id ?? null]);
+  const [contextVersion, setContextVersion] = useState(() => ({ key: contextKey, version: 0 }));
+  const executionContext = JSON.stringify([
+    contextKey,
+    contextVersion.key === contextKey ? contextVersion.version : contextVersion.version + 1
+  ]);
   const { addListener, removeListener } = useContext(SocketContext);
+  const listenerId = useId();
+  const listenerKey = `action-progress-${listenerId}`;
 
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<HowlerSearchResponse<Hit>>();
@@ -31,14 +43,58 @@ const useMyActionFunctions = () => {
   const [progress, setProgress] = useState<[number, number]>([0, 0]);
   const [requestId, setRequestId] = useState<string>();
   const [report, setReport] = useState<ActionReport>();
+  const executionContextRef = useRef(executionContext);
+  const progressRevisions = useRef(new Map<string, number>());
+
+  useLayoutEffect(() => {
+    if (contextVersion.key !== contextKey) {
+      const nextContextVersion = { key: contextKey, version: contextVersion.version + 1 };
+      // oxlint-disable-next-line react/set-state-in-effect
+      setContextVersion(nextContextVersion);
+      executionContextRef.current = JSON.stringify([contextKey, nextContextVersion.version]);
+      progressRevisions.current.clear();
+      setLoading(false);
+      setResponse(undefined);
+      setResponseQuery('');
+      setRequestId(undefined);
+      setReport(undefined);
+      setProgress([0, 0]);
+    }
+  }, [contextKey, contextVersion]);
+
+  type ActionProgressEvent = {
+    request_id: string;
+    processed: number;
+    total: number;
+    run_id?: string;
+    revision?: number;
+    state?: string;
+  };
 
   const handler = useCallback(
-    (data: RecievedDataType<{ request_id: string; processed: number; total: number }>) => {
-      if (data.type === 'action' && data.request_id === requestId) {
-        setProgress([data.processed, data.total]);
+    (data: RecievedDataType<ActionProgressEvent>) => {
+      if (executionContextRef.current !== executionContext || data.type !== 'action' || data.request_id !== requestId) {
+        return;
+      }
+
+      const revision = typeof data.revision === 'number' ? data.revision : undefined;
+      const revisionKey = typeof data.run_id === 'string' ? data.run_id : data.request_id;
+      const knownRevision = progressRevisions.current.get(revisionKey) ?? -1;
+      if (revision !== undefined && revision < knownRevision) {
+        return;
+      }
+
+      if (revision !== undefined) {
+        progressRevisions.current.set(revisionKey, revision);
+      }
+
+      setProgress([data.processed, data.total]);
+      if ('state' in data && data.state === 'completed') {
+        setRequestId(undefined);
+        setProgress([0, 0]);
       }
     },
-    [requestId]
+    [executionContext, requestId]
   );
 
   const onSearch = useCallback(
@@ -51,27 +107,32 @@ const useMyActionFunctions = () => {
         })
       );
 
+      if (executionContextRef.current !== executionContext) {
+        return;
+      }
+
       setResponse(_response);
       setResponseQuery(query);
     },
-    [dispatchApi]
+    [dispatchApi, executionContext]
   );
 
   useEffect(() => {
-    addListener<{ request_id: string; processed: number; total: number }>('action', handler);
+    addListener<ActionProgressEvent>(listenerKey, handler);
 
-    return () => removeListener('action');
+    return () => removeListener(listenerKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [handler]);
+  }, [handler, listenerKey]);
 
   return {
-    loading,
+    loading: executionContextRef.current === executionContext ? loading : false,
     setLoading,
-    response,
+    response: executionContextRef.current === executionContext ? response : undefined,
     setResponse,
-    responseQuery,
-    report,
-    progress,
+    responseQuery: executionContextRef.current === executionContext ? responseQuery : '',
+    report: executionContextRef.current === executionContext ? report : undefined,
+    requestId: executionContextRef.current === executionContext ? requestId : undefined,
+    progress: executionContextRef.current === executionContext ? progress : [0, 0],
     onSearch,
     saveAction: useCallback(
       async (name: string, query: string, operations: Operation[], triggers: string[]) => {
@@ -119,6 +180,10 @@ const useMyActionFunctions = () => {
     ),
     submitAction: useCallback(
       async (query: string, operations: Operation[]): Promise<void> => {
+        if (executionContextRef.current !== executionContext) {
+          return;
+        }
+
         if (!query) {
           showErrorMessage(t('route.actions.query.empty'));
           return;
@@ -126,39 +191,62 @@ const useMyActionFunctions = () => {
 
         setLoading(true);
         const reqId = uuid();
+        const requestContext = executionContext;
         setRequestId(reqId);
+        progressRevisions.current.clear();
         setReport(undefined);
+        let acceptedAsyncRun = false;
 
         try {
-          setReport(
-            await dispatchApi(
-              api.action.execute.post({
-                request_id: reqId,
-                query,
-                operations
-              }),
-              { throwError: false, showError: true }
-            )
+          const result = await dispatchApi(
+            api.action.execute.post({
+              request_id: reqId,
+              query,
+              operations
+            }),
+            { throwError: false, showError: true }
           );
+          if (executionContextRef.current !== requestContext) {
+            return;
+          }
+
+          acceptedAsyncRun = Object.values(result ?? {})
+            .flat()
+            .some(item => item.status === 'queued' && !!item.run_id);
+          setReport(result);
         } finally {
-          setLoading(false);
-          setRequestId(undefined);
-          setProgress([0, 0]);
-          void onSearch(query);
+          if (executionContextRef.current === requestContext) {
+            setLoading(false);
+            if (!acceptedAsyncRun) {
+              setRequestId(undefined);
+              setProgress([0, 0]);
+            }
+            void onSearch(query);
+          }
         }
       },
-      [dispatchApi, onSearch, showErrorMessage, t]
+      [dispatchApi, executionContext, onSearch, showErrorMessage, t]
     ),
     executeAction: useCallback(
       async (actionId: string, query?: string) => {
+        if (executionContextRef.current !== executionContext) {
+          return;
+        }
+
         setLoading(true);
         const reqId = uuid();
+        const requestContext = executionContext;
         setRequestId(reqId);
+        progressRevisions.current.clear();
         setReport(undefined);
+        let acceptedAsyncRun = false;
 
         let key: SnackbarKey | null = null;
         try {
           const actionResponse = await api.search.action.post({ query: `action_id:${actionId}`, rows: 1 });
+          if (executionContextRef.current !== requestContext) {
+            return;
+          }
           const actionName = actionResponse?.items[0]?.name ?? t('unknown');
 
           key = showInfoMessage(
@@ -188,6 +276,10 @@ const useMyActionFunctions = () => {
             { throwError: false, showError: false }
           );
 
+          if (executionContextRef.current !== requestContext) {
+            return;
+          }
+
           setReport(result);
 
           if (!result) {
@@ -196,9 +288,11 @@ const useMyActionFunctions = () => {
           }
 
           const allItems = Object.values(result).flat();
+          const queued = allItems.filter(item => item.status === 'queued' && !!item.run_id);
+          acceptedAsyncRun = queued.length > 0;
           const errors = allItems.filter(item => item.outcome === 'error');
           const skipped = allItems.filter(item => item.outcome === 'skipped');
-          const succeeded = allItems.filter(item => item.outcome === 'success');
+          const succeeded = allItems.filter(item => item.outcome === 'success' && item.status !== 'queued');
 
           if (errors.length > 0) {
             showErrorMessage(
@@ -221,19 +315,29 @@ const useMyActionFunctions = () => {
             );
           }
 
-          if (succeeded.length > 0) {
+          if (queued.length > 0) {
+            if (key) {
+              closeSnackbar(key);
+              key = null;
+            }
+            showInfoMessage(<Trans i18nKey="actions.queued" values={{ action: actionName }} />);
+          } else if (succeeded.length > 0) {
             showSuccessMessage(<Trans i18nKey="actions.succeeded" values={{ action: actionName }} />);
           }
         } finally {
           if (key) {
             closeSnackbar(key);
           }
-          setLoading(false);
-          setRequestId(undefined);
-          setProgress([0, 0]);
+          if (executionContextRef.current === requestContext) {
+            setLoading(false);
+          }
+          if (executionContextRef.current === requestContext && !acceptedAsyncRun) {
+            setRequestId(undefined);
+            setProgress([0, 0]);
+          }
         }
       },
-      [closeSnackbar, dispatchApi, showInfoMessage, showSuccessMessage, showErrorMessage, t]
+      [closeSnackbar, dispatchApi, executionContext, showInfoMessage, showSuccessMessage, showErrorMessage, t]
     ),
     deleteAction: useCallback(
       async (actionId: string) => {

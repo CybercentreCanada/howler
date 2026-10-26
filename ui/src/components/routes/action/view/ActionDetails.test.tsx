@@ -9,6 +9,8 @@ const mockDeleteAction = vi.hoisted(() => vi.fn());
 const mockOnSearch = vi.hoisted(() => vi.fn());
 const mockSetLoading = vi.hoisted(() => vi.fn());
 const mockPluginExecute = vi.hoisted(() => vi.fn(() => <div key="plugin-operation">plugin-operation</div>));
+const mockHistoryProps = vi.hoisted(() => vi.fn());
+const mockActionState = vi.hoisted(() => ({ report: { status: 'done' } as any }));
 
 const modalContextToken = vi.hoisted(() => ({ name: 'modal-context' }));
 
@@ -122,6 +124,7 @@ vi.mock('react-pluggable', () => ({
 
 vi.mock('react-router', () => ({
   Link: ({ children, to }: any) => <a href={to}>{children}</a>,
+  useLocation: () => ({ pathname: '/action/action-1' }),
   useParams: () => ({ id: 'action-1' })
 }));
 
@@ -133,6 +136,13 @@ vi.mock('../shared/ActionReportDisplay', () => ({
   default: ({ report }: any) => <div>{`report:${report.status}`}</div>
 }));
 
+vi.mock('../shared/ActionRunHistory', () => ({
+  default: (props: any) => {
+    mockHistoryProps(props);
+    return <div>run-history</div>;
+  }
+}));
+
 vi.mock('../useMyActionFunctions', () => ({
   default: () => ({
     response: { total: 7 },
@@ -142,7 +152,7 @@ vi.mock('../useMyActionFunctions', () => ({
     executeAction: mockExecuteAction,
     deleteAction: mockDeleteAction,
     progress: [2, 4],
-    report: { status: 'done' }
+    report: mockActionState.report
   })
 }));
 
@@ -157,6 +167,8 @@ describe('ActionDetails', () => {
     mockOnSearch.mockReset();
     mockSetLoading.mockReset();
     mockPluginExecute.mockClear();
+    mockHistoryProps.mockClear();
+    mockActionState.report = { status: 'done' };
 
     mockDispatchApi.mockImplementation(async (request: any) => {
       if (request.op === 'get-operations') {
@@ -220,5 +232,47 @@ describe('ActionDetails', () => {
     expect(mockShowSuccessMessage).toHaveBeenCalledWith('route.actions.manager.delete.success');
 
     expect(screen.getByRole('link', { name: 'route.actions.edit' })).toHaveAttribute('href', '/action/action-1/edit');
+  });
+
+  it('keeps history scoped to the current route and passes accepted runs when the operation is unavailable', async () => {
+    mockActionState.report = {
+      ai_triage: [
+        {
+          query: '*',
+          outcome: 'success',
+          title: 'Accepted',
+          message: 'Queued',
+          status: 'queued',
+          run_id: 'run-accepted'
+        }
+      ]
+    };
+    mockDispatchApi.mockImplementation(async (request: any) => {
+      if (request.op === 'get-operations') {
+        return [];
+      }
+      if (request.op === 'get-action') {
+        return {
+          action_id: 'previous-route-action',
+          owner: 'alice',
+          name: 'Previous action',
+          query: 'status:open',
+          operations: [{ operation_id: 'ai_triage', data_json: '{}' }]
+        };
+      }
+      return request;
+    });
+
+    render(<ActionDetails />);
+
+    await waitFor(() => expect(mockHistoryProps).toHaveBeenCalled());
+    expect(mockHistoryProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        actionId: 'action-1',
+        contextId: '/action/action-1',
+        acceptedRunIds: ['run-accepted']
+      })
+    );
+    expect(screen.getByText('run-history')).toBeInTheDocument();
   });
 });

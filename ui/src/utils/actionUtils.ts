@@ -9,11 +9,11 @@ import type { Operation } from 'models/entities/generated/Operation';
  */
 export const checkArgsAreFilled = (step: ActionOperationStep, values: string) => {
   if (!values) {
-    return false;
+    return Object.keys(step.args).every(arg => step.optional_args?.includes(arg));
   }
 
   const parsedValues = JSON.parse(values);
-  return Object.keys(step.args).every(arg => !!parsedValues[arg]);
+  return Object.keys(step.args).every(arg => step.optional_args?.includes(arg) || !!parsedValues[arg]);
 };
 
 /**
@@ -77,22 +77,29 @@ export const getOptionsByContext = (
  * @param values the current list of values provided by the user
  * @returns A list of arguments to display
  */
-export const getArgsByContext = (args: ActionOperationStep['args'], values: string): string[] =>
-  Object.entries(args)
-    .filter(([_, conditions]) => {
-      // If the array is empty, we always want to show this argument
-      if (conditions.length < 1) {
-        return true;
-      }
+export const getArgsByContext = (
+  args: ActionOperationStep['args'],
+  values: string,
+  optionalArgs: string[] = []
+): string[] =>
+  [
+    ...Object.entries(args)
+      .filter(([_, conditions]) => {
+        // If the array is empty, we always want to show this argument
+        if (conditions.length < 1) {
+          return true;
+        }
 
-      const context = buildContext(values);
+        const context = buildContext(values);
 
-      // Note that the .some(...) here means the arguments are ORed together, not ANDed. So:
-      // "arg_to_show": ["status:open", "assignment:goose"]
-      // Will show if only one of these two conditions is valid.
-      return conditions.some(c => context.includes(c));
-    })
-    .map(([arg, _]) => arg);
+        // Note that the .some(...) here means the arguments are ORed together, not ANDed. So:
+        // "arg_to_show": ["status:open", "assignment:goose"]
+        // Will show if only one of these two conditions is valid.
+        return conditions.some(c => context.includes(c));
+      })
+      .map(([arg]) => arg),
+    ...optionalArgs
+  ].filter((arg, index, allArgs) => allArgs.indexOf(arg) === index);
 
 /**
  * Check to see if a given action has all the data necessary to execute successfully
@@ -106,11 +113,14 @@ export const operationReady = (data?: Operation['data_json'], action?: ActionOpe
   }
 
   const parsedData = JSON.parse(data);
-  return (
-    action &&
-    getArgsByContext(
-      action.steps.reduce((acc, _step) => ({ ...acc, ..._step.args }), {}),
-      data
-    ).every(v => !!parsedData[v])
-  );
+  const requiredArgs = action.steps.reduce<ActionOperationStep['args']>((acc, step) => {
+    Object.entries(step.args).forEach(([arg, conditions]) => {
+      if (!step.optional_args?.includes(arg)) {
+        acc[arg] = conditions;
+      }
+    });
+
+    return acc;
+  }, {});
+  return getArgsByContext(requiredArgs, data).every(v => !!parsedData[v]);
 };

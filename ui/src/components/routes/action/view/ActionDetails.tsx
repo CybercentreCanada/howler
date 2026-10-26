@@ -23,24 +23,35 @@ import type { ActionOperation } from 'models/ActionTypes';
 import type { Action } from 'models/entities/generated/Action';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import howlerPluginStore from 'plugins/store';
-import { useCallback, useContext, useEffect, useState, type ChangeEventHandler } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState, type ChangeEventHandler } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
-import { Link, useParams } from 'react-router';
+import { Link, useLocation, useParams } from 'react-router';
 import QueryResultText from '../../../elements/display/QueryResultText';
 import type { CustomActionProps } from '../edit/ActionEditor';
 import ActionReportDisplay from '../shared/ActionReportDisplay';
+import ActionRunHistory from '../shared/ActionRunHistory';
 import useMyActionFunctions from '../useMyActionFunctions';
 
 const ActionDetails = () => {
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
   const params = useParams();
+  const location = useLocation();
   const { user } = useAppUser<HowlerUser>();
   const pluginStore = usePluginStore();
 
   const { response, onSearch, loading, setLoading, executeAction, deleteAction, progress, report } =
     useMyActionFunctions();
+  const acceptedRunIds = useMemo(
+    () =>
+      Object.values(report ?? {}).flatMap(entries =>
+        (Array.isArray(entries) ? entries : []).flatMap(entry =>
+          entry.status === 'queued' && entry.run_id ? [entry.run_id] : []
+        )
+      ),
+    [report]
+  );
 
   const [operations, setOperations] = useState<ActionOperation[]>([]);
   const [action, setAction] = useState<Action>();
@@ -89,7 +100,7 @@ const ActionDetails = () => {
         await deleteAction(action.action_id);
         showSuccessMessage(t('route.actions.manager.delete.success'));
       }),
-    [withConfirmDeleteModal, deleteAction, action?.action_id, showSuccessMessage, t]
+    [withConfirmDeleteModal, deleteAction, action, showSuccessMessage, t]
   );
 
   useEffect(() => {
@@ -109,8 +120,7 @@ const ActionDetails = () => {
     if (action?.query) {
       void onSearch(action.query);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [action?.query]);
+  }, [action?.query, onSearch, params.id]);
 
   const editRoles =
     user.roles && (user.roles.includes('automation_basic') || user.roles.includes('automation_advanced'));
@@ -214,6 +224,9 @@ const ActionDetails = () => {
             <LinearProgress />
           ))}
         {report && <ActionReportDisplay report={report} operations={operations} />}
+        {params.id && (
+          <ActionRunHistory actionId={params.id} contextId={location.pathname} acceptedRunIds={acceptedRunIds} />
+        )}
         {operations.length > 0 &&
           action &&
           action.operations?.map(a => {
