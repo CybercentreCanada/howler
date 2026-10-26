@@ -383,6 +383,7 @@ describe('ViewComposer', () => {
     expect(parameterContextValue.setSort).toHaveBeenCalledWith('event.created asc');
     expect(parameterContextValue.setSpan).toHaveBeenCalledWith('7d');
     expect(screen.getByText('event:event-1')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'save' })).toBeEnabled());
 
     fireEvent.change(screen.getByLabelText('route.views.name'), { target: { value: 'Updated View' } });
     fireEvent.click(screen.getByText('record-query-clean'));

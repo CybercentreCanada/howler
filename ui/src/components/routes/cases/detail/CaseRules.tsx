@@ -1,22 +1,18 @@
-import { Add, Delete, History } from '@mui/icons-material';
+import { Add } from '@mui/icons-material';
 import {
   Button,
   Card,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  IconButton,
   Stack,
-  Switch,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Tooltip,
   Typography
 } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers';
@@ -34,6 +30,7 @@ import { useTranslation } from 'react-i18next';
 import { useOutletContext } from 'react-router';
 import useCase from '../hooks/useCase';
 import CreateRuleDialog from './CreateRuleDialog';
+import CaseRuleRow from './CaseRuleRow';
 
 const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, caseId }) => {
   const { t } = useTranslation();
@@ -196,77 +193,13 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
               </TableHead>
               <TableBody>
                 {rules.map(rule => (
-                  <TableRow key={rule.rule_id} id={`rule-row-${rule.rule_id}`}>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                        {rule.destination}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          fontFamily: 'monospace'
-                        }}
-                      >
-                        {rule.query}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Stack direction="row" spacing={0.5}>
-                        {(rule.indexes ?? ['hit']).map(idx => (
-                          <Chip key={idx} size="small" label={idx} variant="outlined" />
-                        ))}
-                      </Stack>
-                    </TableCell>
-                    <TableCell>
-                      {rule.timeframe != null ? (
-                        <Chip
-                          size="small"
-                          label={
-                            rule.expire_after_resolved
-                              ? t('page.cases.rules.timeframe.after_resolved', { days: rule.timeframe })
-                              : t('page.cases.rules.timeframe.days', { days: rule.timeframe })
-                          }
-                          color={rule.expire_after_resolved ? 'info' : 'default'}
-                        />
-                      ) : (
-                        <Chip size="small" label={t('page.cases.rules.no_expiry')} color="success" />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{rule.author}</Typography>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Switch
-                        id={`rule-toggle-${rule.rule_id}`}
-                        checked={rule.enabled ?? true}
-                        onChange={(_e, checked) => handleToggleEnabled(rule.rule_id!, checked)}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Tooltip title={t('page.cases.rules.backfill')}>
-                        <IconButton
-                          id={`rule-backfill-${rule.rule_id}`}
-                          size="small"
-                          disabled={rule.enabled === false}
-                          onClick={() => handleBackfillDialogOpen(rule)}
-                        >
-                          <History fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title={t('delete')}>
-                        <IconButton
-                          id={`rule-delete-${rule.rule_id}`}
-                          size="small"
-                          onClick={() => handleDeleteRule(rule.rule_id!)}
-                        >
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
+                  <CaseRuleRow
+                    key={rule.rule_id}
+                    rule={rule}
+                    onToggleEnabled={enabled => handleToggleEnabled(rule.rule_id!, enabled)}
+                    onBackfill={() => handleBackfillDialogOpen(rule)}
+                    onDelete={() => handleDeleteRule(rule.rule_id!)}
+                  />
                 ))}
               </TableBody>
             </Table>

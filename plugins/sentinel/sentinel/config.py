@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 from howler.plugins.config import BasePluginConfig
-from pydantic import BaseModel, ImportString
+from pydantic import BaseModel, Field, ImportString
 from pydantic_settings import SettingsConfigDict
 
 APP_NAME = os.environ.get("APP_NAME", "howler")
@@ -51,6 +51,8 @@ class SentinelConfig(BasePluginConfig):
     auth: Auth = Auth()
 
     ingestors: list[Ingestor] = []
+
+    tenant_mapping: dict[str, str] = Field(default_factory=dict)
 
     model_config = SettingsConfigDict(
         yaml_file=config_locations,

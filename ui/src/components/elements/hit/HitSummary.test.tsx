@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockDispatchApi = vi.hoisted(() => vi.fn());
 const mockShowErrorMessage = vi.hoisted(() => vi.fn());
 const mockSetQuery = vi.hoisted(() => vi.fn());
+const mockAddFilter = vi.hoisted(() => vi.fn());
 const mockGetFilters = vi.hoisted(() => vi.fn().mockResolvedValue(['status:open']));
 const mockGetMatchingTemplate = vi.hoisted(() => vi.fn());
 
@@ -36,7 +37,11 @@ vi.mock('@mui/material', () => ({
       {children}
     </button>
   ),
-  Chip: ({ label, onClick }: any) => <button onClick={onClick}>{label}</button>,
+  Chip: ({ label, onClick }: any) => (
+    <button aria-label="date-aggregation-chip" onClick={onClick}>
+      {label}
+    </button>
+  ),
   CircularProgress: () => <div>loading</div>,
   Divider: () => <div>divider</div>,
   Fade: ({ children }: any) => <div>{children}</div>,
@@ -154,6 +159,7 @@ describe('HitSummary', () => {
     parameterContextValue = {
       query: 'status:open',
       setQuery: mockSetQuery,
+      addFilter: mockAddFilter,
       views: []
     };
     recordSearchContextValue = {
@@ -164,17 +170,18 @@ describe('HitSummary', () => {
     mockDispatchApi.mockReset();
     mockShowErrorMessage.mockReset();
     mockSetQuery.mockReset();
+    mockAddFilter.mockReset();
     mockGetFilters.mockClear();
     mockGetMatchingTemplate.mockReset();
   });
 
-  it('aggregates template keys, supports ad hoc fields, and updates the search query from results', async () => {
+  it('aggregates template keys and adds aggregation filters without changing the search query', async () => {
     mockGetMatchingTemplate
       .mockResolvedValueOnce({ analytic: 'Analytic A', detection: 'Rule A', keys: ['severity', 'howler.id'] })
       .mockResolvedValueOnce({ analytic: 'Analytic A', detection: 'Rule B', keys: ['event.created'] });
     mockDispatchApi
       .mockResolvedValueOnce({
-        severity: { high: 2, low: 1 },
+        severity: { high: 2, low: 1, 'critical:high': 3 },
         'event.created': { '2026-01-01T00:00:00Z': 1, '2026-01-02T00:00:00Z': 1 }
       })
       .mockResolvedValueOnce({
@@ -211,8 +218,20 @@ describe('HitSummary', () => {
     expect(screen.getByText('severity')).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('high (2)'));
-    expect(mockSetQuery).toHaveBeenCalledWith('severity:"high"');
+    expect(mockAddFilter).toHaveBeenCalledWith('severity:"high"');
+    fireEvent.click(screen.getByText('critical:high (3)'));
+    expect(mockAddFilter).toHaveBeenCalledWith('severity:"critical\\:high"');
+    expect(mockSetQuery).not.toHaveBeenCalled();
 
+    fireEvent.click(screen.getByLabelText('date-aggregation-chip'));
+    expect(mockAddFilter).toHaveBeenCalledWith('event.created:[2026-01-01T00:00:00Z TO 2026-01-02T00:00:00Z]');
+    expect(mockSetQuery).not.toHaveBeenCalled();
+
+    mockGetFilters.mockResolvedValue([
+      'status:open',
+      'severity:"high"',
+      'event.created:[2026-01-01T00:00:00Z TO 2026-01-02T00:00:00Z]'
+    ]);
     fireEvent.click(screen.getByText('add-custom-field'));
     fireEvent.click(screen.getByText('button.aggregate'));
 
@@ -222,7 +241,7 @@ describe('HitSummary', () => {
           fields: ['custom.field'],
           query: 'status:open',
           rows: 25,
-          filters: ['status:open']
+          filters: ['status:open', 'severity:"high"', 'event.created:[2026-01-01T00:00:00Z TO 2026-01-02T00:00:00Z]']
         },
         { throwError: false, logError: true, showError: false }
       )

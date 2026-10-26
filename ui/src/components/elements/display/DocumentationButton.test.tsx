@@ -44,10 +44,22 @@ describe('DocumentationButton', () => {
       expect(link).toHaveAttribute('href', '/help/search');
     });
 
-    it('renders a link to /help/search on /advanced', () => {
+    it('renders a link to /help/advanced on /advanced', () => {
       renderAt('/advanced');
       const link = screen.getByRole('link');
-      expect(link).toHaveAttribute('href', '/help/search');
+      expect(link).toHaveAttribute('href', '/help/advanced');
+    });
+
+    it('renders a link to /help/cases on a case route', () => {
+      renderAt('/cases/example-case/timeline');
+      const link = screen.getByRole('link');
+      expect(link).toHaveAttribute('href', '/help/cases');
+    });
+
+    it('renders a link to /help/dossiers on a dossier editor route', () => {
+      renderAt('/dossiers/example-dossier/edit');
+      const link = screen.getByRole('link');
+      expect(link).toHaveAttribute('href', '/help/dossiers');
     });
 
     it('renders a link to /help/views on /views', () => {

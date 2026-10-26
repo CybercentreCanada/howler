@@ -50,7 +50,20 @@ def test_collection_bulk_returns_false_and_logs_errors():
     operations = MagicMock()
     operations.get_plan_batches.return_value = ["bulk-operation"]
     collection = MagicMock()
-    collection.with_retries.return_value = {"errors": {"delete": "document not found"}}
+    bulk_error = {"type": "document_missing_exception", "reason": "document not found"}
+    collection.with_retries.return_value = {
+        "errors": True,
+        "items": [
+            {
+                "delete": {
+                    "_index": "test_index",
+                    "_id": "record-123",
+                    "status": 404,
+                    "error": bulk_error,
+                }
+            }
+        ],
+    }
 
     with patch("howler.datastore.collection.logger") as mock_logger:
         result = ESCollection.bulk(collection, operations)
@@ -61,7 +74,14 @@ def test_collection_bulk_returns_false_and_logs_errors():
         operations="bulk-operation",
         refresh=None,
     )
-    mock_logger.error.assert_called_once_with("Errors on bulk plan: %s", {"delete": "document not found"})
+    mock_logger.error.assert_called_once_with(
+        "Bulk %s failed for index %s document %s (status %s): %s",
+        "delete",
+        "test_index",
+        "record-123",
+        404,
+        bulk_error,
+    )
 
 
 # ---------------------------------------------------------------------------

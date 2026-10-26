@@ -259,8 +259,13 @@ flaskSecret:
 # Each key becomes a <key>.yml file in the ConfigMap, loaded by the application at startup.
 # Example:
 #   plugins:
-#     myplugin:
-#       setting: value
+#     sentinel:
+#       # Non-secret tenant IDs -> Howler organization names. Match tenantId exactly.
+#       # The default is {}; missing/unmapped tenants are rejected with HTTP 400.
+#       tenant_mapping:
+#         "11111111-1111-1111-1111-111111111111": "Example Organization"
+# Enable installed plugins separately in config.core.plugins (e.g. [sentinel]).
+# Keep authentication credentials in Secrets, not in this ConfigMap example.
 plugins: {}
 
 classification:

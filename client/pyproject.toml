@@ -108,7 +108,7 @@ suppress-none-returning = true
 [tool.poetry]
 package-mode = true
 name = "howler-client"
-version = "3.1.0"
+version = "3.4.0"
 description = "The Howler client library facilitates issuing requests to Howler"
 authors = [
     "Canadian Centre for Cyber Security <howler@cyber.gc.ca>",
@@ -135,6 +135,7 @@ keywords = [
     "cccs",
 ]
 packages = [{ include = "howler_client" }]
+include = [{ path = "howler_client/schemas/*.json", format = ["sdist", "wheel"] }]
 documentation = "https://cybercentrecanada.github.io/howler/developer/client/"
 homepage = "https://cybercentrecanada.github.io/howler/"
 repository = "https://github.com/CybercentreCanada/howler-client"
@@ -145,9 +146,11 @@ pycryptodome = "^3.20.0"
 requests = { extras = ["security"], version = ">=2.32.0,<3.0.0" }
 python-baseconv = "^1.2.2"
 coverage = { extras = ["toml"], version = "^7.6.1" }
+pyyaml = ">=6.0,<7"
+jsonschema = ">=4.23,<5.0"
 
 [tool.poetry.group.dev.dependencies]
-ruff = ">=0.6.8,<0.17.0"
+ruff = ">=0.6.8,<0.18.0"
 pre-commit = "^3.8.0"
 mypy = "^1.11.2"
 
@@ -159,6 +162,8 @@ diff-cover = "^10.3.0"
 
 [tool.poetry.group.types.dependencies]
 types-requests = "^2.32.0.20240914"
+types-pyyaml = "^6.0.12.20260906"
+types-jsonschema = "^4.26.0.20261006"
 
 [tool.poetry.scripts]
 test = "build_scripts.run_tests:main"

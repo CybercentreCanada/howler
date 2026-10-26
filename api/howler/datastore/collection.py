@@ -666,9 +666,22 @@ class ESCollection(Generic[ModelType]):
 
         has_errors = False
         for response in responses:
-            if response["errors"]:
-                has_errors = True
-                logger.error("Errors on bulk plan: %s", response["errors"])
+            if not response["errors"]:
+                continue
+
+            has_errors = True
+            for item in response.get("items", []):
+                for action, result in item.items():
+                    error = result.get("error")
+                    if error:
+                        logger.error(
+                            "Bulk %s failed for index %s document %s (status %s): %s",
+                            action,
+                            result.get("_index"),
+                            result.get("_id"),
+                            result.get("status"),
+                            error,
+                        )
 
         return not has_errors
 
@@ -1360,7 +1373,7 @@ class ESCollection(Generic[ModelType]):
 
         return None
 
-    def _get_version_write_target(self: Self, version: str) -> tuple[str, str, str]:
+    def get_version_write_target(self: Self, version: str) -> tuple[str, str, str]:
         """Return the concrete write target and optimistic-concurrency values from a version token."""
         version_parts = version.split("---")
         if len(version_parts) == 3:
@@ -1530,7 +1543,7 @@ class ESCollection(Generic[ModelType]):
         if version == CREATE_TOKEN:
             operation = "create"
         elif version:
-            index, seq_no, primary_term = self._get_version_write_target(version)
+            index, seq_no, primary_term = self.get_version_write_target(version)
 
         if refresh == "true":
             logger.warning(
@@ -1570,7 +1583,7 @@ class ESCollection(Generic[ModelType]):
         if version:
             if version == CREATE_TOKEN:
                 raise DataStoreException("Cannot delete a document using the create version token.")
-            index, seq_no, primary_term = self._get_version_write_target(version)
+            index, seq_no, primary_term = self.get_version_write_target(version)
             kwargs.update({"index": index, "if_seq_no": seq_no, "if_primary_term": primary_term})
 
         try:
@@ -1782,7 +1795,7 @@ class ESCollection(Generic[ModelType]):
             _, version = self.get_if_exists(key, as_obj=False, version=True)
 
         if version:
-            index, seq_no, primary_term = self._get_version_write_target(version)
+            index, seq_no, primary_term = self.get_version_write_target(version)
 
         try:
             res = self.with_retries(

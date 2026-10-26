@@ -1,11 +1,11 @@
 import type { SearchIndex } from 'api/v2/search';
-import { identity, isEmpty, isEqual, isNil, isUndefined, omitBy, uniq } from 'lodash-es';
+import { has, identity, isEmpty, isEqual, isNil, isUndefined, omitBy, uniq } from 'lodash-es';
 import type { Dispatch, FC, PropsWithChildren, SetStateAction } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useParams, useSearchParams } from 'react-router';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY } from 'utils/constants';
-import Throttler from 'utils/Throttler';
+import { notNil } from 'utils/utils';
 import { missingContext } from './contextUtils';
 
 export interface ParameterContextType {
@@ -17,9 +17,11 @@ export interface ParameterContextType {
   span?: string;
   indexes?: SearchIndex[];
   filters?: string[];
+  disabledFilterIndexes: number[];
   startDate?: string | null;
   endDate?: string | null;
   views?: string[];
+  disabledViewIndexes: number[];
 
   setSelected: (id: string | null) => void;
   setQuery: (id: string) => void;
@@ -30,6 +32,8 @@ export interface ParameterContextType {
 
   addFilter: (filter: string) => void;
   removeFilter: (filter: string) => void;
+  enableFilter: (index: number) => void;
+  disableFilter: (index: number) => void;
   setFilter: (index: number, filter: string) => void;
   resetFilters: () => void;
 
@@ -41,6 +45,8 @@ export interface ParameterContextType {
 
   addView: (view: string) => void;
   removeView: (view: string) => void;
+  enableView: (index: number) => void;
+  disableView: (index: number) => void;
   setView: (index: number, view: string) => void;
   resetViews: () => void;
 }
@@ -52,7 +58,9 @@ interface SearchValues {
   span: string;
   indexes: SearchIndex[];
   filters: string[];
+  disabledFilterIndexes: number[];
   views: string[];
+  disabledViewIndexes: number[];
   startDate: string | null;
   endDate: string | null;
   offset: number;
@@ -72,9 +80,11 @@ const DEFAULT_PARAMETER_CONTEXT: ParameterContextType = {
   offset: 0,
   trackTotalHits: false,
   filters: [],
+  disabledFilterIndexes: [],
   startDate: null,
   endDate: null,
   views: [],
+  disabledViewIndexes: [],
   setSelected: () => missingContext('ParameterContext'),
   setQuery: () => missingContext('ParameterContext'),
   setOffset: () => missingContext('ParameterContext'),
@@ -84,6 +94,8 @@ const DEFAULT_PARAMETER_CONTEXT: ParameterContextType = {
   addFilter: () => missingContext('ParameterContext'),
   removeFilter: () => missingContext('ParameterContext'),
   setFilter: () => missingContext('ParameterContext'),
+  enableFilter: () => missingContext('ParameterContext'),
+  disableFilter: () => missingContext('ParameterContext'),
   resetFilters: () => missingContext('ParameterContext'),
   addIndex: () => missingContext('ParameterContext'),
   removeIndex: () => missingContext('ParameterContext'),
@@ -92,6 +104,8 @@ const DEFAULT_PARAMETER_CONTEXT: ParameterContextType = {
   resetIndexes: () => missingContext('ParameterContext'),
   addView: () => missingContext('ParameterContext'),
   removeView: () => missingContext('ParameterContext'),
+  enableView: () => missingContext('ParameterContext'),
+  disableView: () => missingContext('ParameterContext'),
   setView: () => missingContext('ParameterContext'),
   resetViews: () => missingContext('ParameterContext')
 };
@@ -107,21 +121,25 @@ const PARAM_MAPPINGS: [string, keyof SearchValues][] = [
   ['end_date', 'endDate']
 ];
 
+type ListKey = 'filters' | 'views' | 'indexes';
+type DisabledListKey = 'disabledFilterIndexes' | 'disabledViewIndexes';
+
 interface ArrayParamDescriptor {
   urlKey: string;
-  stateKey: 'filters' | 'views' | 'indexes';
+  stateKey: ListKey;
+  disabled?: { urlKey: string; stateKey: DisabledListKey };
 }
 
 /** Multi-value URL params that map to array state keys */
 const ARRAY_PARAMS: ArrayParamDescriptor[] = [
-  { urlKey: 'filter', stateKey: 'filters' },
-  { urlKey: 'view', stateKey: 'views' },
+  { urlKey: 'filter', stateKey: 'filters', disabled: { urlKey: 'disabled_filter', stateKey: 'disabledFilterIndexes' } },
+  { urlKey: 'view', stateKey: 'views', disabled: { urlKey: 'disabled_view', stateKey: 'disabledViewIndexes' } },
   { urlKey: 'index', stateKey: 'indexes' }
 ];
 
-const ARRAY_URL_KEYS = new Set(ARRAY_PARAMS.map(p => p.urlKey));
+const ARRAY_URL_KEYS = new Set(ARRAY_PARAMS.flatMap(p => [p.urlKey, p.disabled?.urlKey]).filter(notNil));
 
-const WRITE_THROTTLER = new Throttler(100);
+const WRITE_DELAY_MS = 100;
 
 /**
  * Helper function to convert a number/string representation of a number into a valid offset.
@@ -154,18 +172,28 @@ const getSelectedValue = (params: URLSearchParams, pathname: string, bundleId?: 
 };
 
 /**
- * Returns stable add / remove / setAt / setAll / clear handlers for a list field in
- * SearchValues. All returned functions are memoized; since _setValues (from useState)
- * and key are both stable for the lifetime of the component, the deps array is empty.
+ * Returns stable list handlers, keeping disabled positions attached through edits,
+ * deduplication and removal. Lists without disabled metadata ignore enable/disable.
  */
-const useListHandlers = <T,>(
-  key: 'filters' | 'indexes' | 'views',
-  _setValues: Dispatch<SetStateAction<SearchValues>>
-) => {
+const useListHandlers = <T,>(key: ListKey, _setValues: Dispatch<SetStateAction<SearchValues>>) => {
+  const disabledKey = ARRAY_PARAMS.find(param => param.stateKey === key)?.disabled?.stateKey;
+  const update = useCallback(
+    (current: SearchValues, items: T[], disabledIndexes = disabledKey ? current[disabledKey] : []) => {
+      if (!disabledKey) {
+        return { ...current, [key]: items };
+      }
+
+      const normalized = normalizeList(items, disabledIndexes);
+      return isEqual(normalized.items, current[key]) && isEqual(normalized.disabledIndexes, current[disabledKey])
+        ? current
+        : { ...current, [key]: normalized.items, [disabledKey]: normalized.disabledIndexes };
+    },
+    [key, disabledKey]
+  );
+
   const add = useCallback(
-    (item: T) => _setValues(c => ({ ...c, [key]: uniq([...(c[key] as T[]), item]) })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    (item: T) => _setValues(c => update(c, uniq([...(c[key] as T[]), item]))),
+    [_setValues, key, update]
   );
 
   const remove = useCallback(
@@ -173,41 +201,128 @@ const useListHandlers = <T,>(
       _setValues(c => {
         const arr = c[key] as T[];
         const i = arr.indexOf(item);
-        return i === -1 ? c : { ...c, [key]: arr.filter((_, idx) => idx !== i) };
+        if (i === -1) {
+          return c;
+        }
+        const disabledIndexes = (disabledKey ? c[disabledKey] : []).flatMap(index =>
+          index === i ? [] : [index > i ? index - 1 : index]
+        );
+        return update(
+          c,
+          arr.filter((_, idx) => idx !== i),
+          disabledIndexes
+        );
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [_setValues, key, disabledKey, update]
   );
 
   const setAt = useCallback(
     (pos: number, item: T) =>
       _setValues(c => {
         const arr = c[key] as T[];
-        if (pos < 0 || pos >= arr.length) {
+        if (!Number.isInteger(pos) || pos < 0 || pos >= arr.length) {
           return c;
         }
         const next = [...arr] as T[];
         next[pos] = item;
-        return { ...c, [key]: next };
+        return update(c, next);
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [_setValues, key, update]
   );
 
-  const setAll = useCallback(
-    (items: T[]) => _setValues(c => ({ ...c, [key]: uniq(items) })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
+  const setAll = useCallback((items: T[]) => _setValues(c => update(c, uniq(items), [])), [_setValues, update]);
 
   const reset = useCallback(
-    (defaultValue: T[] = []) => _setValues(c => ({ ...c, [key]: defaultValue })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    (defaultValue: T[] = []) => _setValues(c => update(c, defaultValue, [])),
+    [_setValues, update]
   );
 
-  return { add, remove, setAt, setAll, reset };
+  const setDisabled = useCallback(
+    (index: number, disabled: boolean) => {
+      if (!disabledKey) {
+        return;
+      }
+      _setValues(c => {
+        if (!Number.isInteger(index) || index < 0 || index >= c[key].length) {
+          return c;
+        }
+        const disabledIndexes = c[disabledKey];
+        if (disabledIndexes.includes(index) === disabled) {
+          return c;
+        }
+        return update(
+          c,
+          c[key] as T[],
+          disabled ? [...disabledIndexes, index] : disabledIndexes.filter(position => position !== index)
+        );
+      });
+    },
+    [_setValues, key, disabledKey, update]
+  );
+
+  const enable = useCallback((index: number) => setDisabled(index, false), [setDisabled]);
+  const disable = useCallback((index: number) => setDisabled(index, true), [setDisabled]);
+
+  return { add, remove, setAt, setAll, reset, enable, disable };
 };
+
+const normalizeList = <T,>(items: T[], disabledIndexes: number[]) => {
+  const indexesByItem = new Map<T, number>();
+  const normalizedItems: T[] = [];
+  const normalizedDisabled: boolean[] = [];
+
+  items.forEach((item, index) => {
+    const normalizedIndex = indexesByItem.get(item);
+    const isDisabled = disabledIndexes.includes(index);
+    if (normalizedIndex === undefined) {
+      const nextIndex = normalizedItems.length;
+      indexesByItem.set(item, nextIndex);
+      normalizedItems.push(item);
+      normalizedDisabled[nextIndex] = isDisabled;
+      return;
+    }
+
+    normalizedDisabled[normalizedIndex] = normalizedDisabled[normalizedIndex] && isDisabled;
+  });
+
+  return {
+    items: normalizedItems,
+    disabledIndexes: normalizedDisabled.flatMap((isDisabled, index) => (isDisabled ? [index] : []))
+  };
+};
+
+const getListFromUrl = (params: URLSearchParams, { urlKey, disabled }: ArrayParamDescriptor) => {
+  const rawItems = params.getAll(urlKey);
+  const disabledCounts = new Map<string, number>();
+  const itemCounts = new Map<string, number>();
+
+  (disabled ? params.getAll(disabled.urlKey) : []).forEach(item => {
+    disabledCounts.set(item, (disabledCounts.get(item) ?? 0) + 1);
+  });
+  rawItems.forEach(item => {
+    itemCounts.set(item, (itemCounts.get(item) ?? 0) + 1);
+  });
+
+  const items = uniq(rawItems);
+  return {
+    items,
+    disabledIndexes: items.flatMap((item, index) =>
+      (disabledCounts.get(item) ?? 0) >= (itemCounts.get(item) ?? 0) ? [index] : []
+    )
+  };
+};
+
+const getListStateFromUrl = (params: URLSearchParams, defaults: Partial<SearchValues>) =>
+  Object.fromEntries(
+    ARRAY_PARAMS.flatMap(descriptor => {
+      const { items, disabledIndexes } = getListFromUrl(params, descriptor);
+      const resolved = descriptor.stateKey === 'indexes' && isEmpty(items) ? defaults.indexes : items;
+      return [
+        [descriptor.stateKey, resolved],
+        ...(descriptor.disabled ? [[descriptor.disabled.stateKey, disabledIndexes]] : [])
+      ];
+    })
+  ) as Pick<SearchValues, ListKey | DisabledListKey>;
 
 /**
  * Synchronizes SearchValues state with the URL search string, and vice-versa.
@@ -222,6 +337,8 @@ const useUrlSync = (
   search: string,
   routeId?: string
 ) => {
+  const lastProcessedLocation = useRef({ pathname, search, routeId });
+
   const getUrlFromState = useCallback(() => {
     const changes: Record<string, unknown> = {};
 
@@ -241,19 +358,27 @@ const useUrlSync = (
     });
 
     // Array params: skip when state equals default and URL is already empty
-    ARRAY_PARAMS.forEach(({ urlKey, stateKey }) => {
-      const stateArr = values[stateKey] as string[];
+    ARRAY_PARAMS.forEach(({ urlKey, stateKey, disabled }) => {
+      const { items: stateArr, disabledIndexes } = disabled
+        ? normalizeList<string>(values[stateKey], values[disabled.stateKey])
+        : { items: values[stateKey], disabledIndexes: [] };
       const urlArr = params.getAll(urlKey);
       const defaultValue = stateKey === 'indexes' ? defaults.indexes : undefined;
-      if (isEqual(stateArr, urlArr)) {
-        return;
+      if (!isEqual(stateArr, urlArr)) {
+        const isDefault = defaultValue ? isEqual(stateArr, defaultValue) : stateArr.length === 0;
+        if (!isDefault) {
+          changes[urlKey] = stateArr.length === 0 ? null : stateArr;
+        } else if (urlArr.length > 0) {
+          changes[urlKey] = null; // state is default but URL isn't — remove
+        }
       }
 
-      const isDefault = defaultValue ? isEqual(stateArr, defaultValue) : stateArr.length === 0;
-      if (!isDefault) {
-        changes[urlKey] = stateArr.length === 0 ? null : stateArr;
-      } else if (urlArr.length > 0) {
-        changes[urlKey] = null; // state is default but URL isn't — remove
+      // Keep every definition in the URL, with disabled entries marked separately.
+      if (disabled) {
+        const disabledParams = disabledIndexes.map(index => stateArr[index]);
+        if (!isEqual(disabledParams, params.getAll(disabled.urlKey))) {
+          changes[disabled.urlKey] = disabledParams.length === 0 ? null : disabledParams;
+        }
       }
     });
 
@@ -275,6 +400,7 @@ const useUrlSync = (
 
   const getStateFromUrl = useCallback(() => {
     const changes: Partial<SearchValues> = {};
+    const listState = getListStateFromUrl(params, defaults);
 
     // Scalar params: fall back to default when absent from URL
     PARAM_MAPPINGS.forEach(([urlKey, stateKey]) => {
@@ -289,12 +415,9 @@ const useUrlSync = (
     });
 
     // Array params: fall back to their declared default when absent from URL
-    ARRAY_PARAMS.forEach(({ urlKey, stateKey }) => {
-      const raw = params.getAll(urlKey);
-      const defaultValue = stateKey === 'indexes' ? defaults.indexes : undefined;
-      const resolved = (isEmpty(raw) && defaultValue ? defaultValue : uniq(raw)) as SearchValues[typeof stateKey];
-      if (!isEqual(resolved, values[stateKey])) {
-        (changes as any)[stateKey] = resolved;
+    Object.entries(listState).forEach(([key, value]) => {
+      if (!isEqual(value, values[key as keyof typeof listState])) {
+        (changes as any)[key] = value;
       }
     });
 
@@ -315,6 +438,10 @@ const useUrlSync = (
 
   // State → URL
   useEffect(() => {
+    if (!isEqual(lastProcessedLocation.current, { pathname, search, routeId })) {
+      return;
+    }
+
     const changes = getUrlFromState();
     if (isEmpty(changes)) {
       return;
@@ -330,18 +457,20 @@ const useUrlSync = (
           } else if (isNil(value)) {
             newParams.delete(key);
           } else {
+            // oxlint-disable-next-line typescript/no-base-to-string
             newParams.set(key, String(value));
           }
         });
         return newParams;
       },
-      { replace: !changes.query && !Object.keys(changes).includes('offset') }
+      { replace: !changes.query && !has(changes, 'offset') }
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [values]);
 
   // URL → State
   useEffect(() => {
+    lastProcessedLocation.current = { pathname, search, routeId };
     const changes = getStateFromUrl();
     if (isEmpty(changes)) {
       return;
@@ -365,20 +494,49 @@ const ParameterProvider: FC<PropsWithChildren<{ defaults?: Partial<SearchValues>
   const defaults = useMemo<Partial<SearchValues>>(() => ({ ...DEFAULT_VALUES, ..._defaults }), [_defaults]);
 
   const pendingChanges = useRef<Partial<SearchValues>>({});
+  const writeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [values, _setValues] = useState<SearchValues>({
     selected: getSelectedValue(params, location.pathname, routeParams.id),
     query: params.get('query') ?? defaults.query!,
     sort: params.get('sort') ?? defaults.sort!,
     span: params.get('span') ?? defaults.span!,
+    ...getListStateFromUrl(params, defaults),
     indexes: params.has('index') ? uniq(params.getAll('index') as SearchIndex[]).filter(identity) : defaults.indexes!,
-    filters: params.getAll('filter'),
-    views: params.getAll('view'),
     startDate: params.get('start_date'),
     endDate: params.get('end_date'),
     offset: parseOffset(params.get('offset')),
     trackTotalHits: (params.get('track_total_hits') ?? 'false') !== 'false'
   });
+
+  useLayoutEffect(() => {
+    if (writeTimeout.current !== null) {
+      clearTimeout(writeTimeout.current);
+      writeTimeout.current = null;
+    }
+    pendingChanges.current = {};
+
+    return () => {
+      if (writeTimeout.current !== null) {
+        clearTimeout(writeTimeout.current);
+        writeTimeout.current = null;
+      }
+    };
+  }, [location.pathname, location.search, routeParams.id]);
+
+  const setValuesImmediately = useCallback<Dispatch<SetStateAction<SearchValues>>>(update => {
+    if (writeTimeout.current !== null) {
+      clearTimeout(writeTimeout.current);
+      writeTimeout.current = null;
+    }
+
+    const pending = pendingChanges.current;
+    pendingChanges.current = {};
+    _setValues(current => {
+      const withPending = { ...current, ...pending };
+      return typeof update === 'function' ? update(withPending) : { ...withPending, ...update };
+    });
+  }, []);
 
   // TODO: SELECTING A BUNDLE STILL CAUSES A FREAKOUT
   useUrlSync(values, defaults, _setValues, params, setParams, location.pathname, location.search, routeParams.id);
@@ -401,27 +559,32 @@ const ParameterProvider: FC<PropsWithChildren<{ defaults?: Partial<SearchValues>
           pendingChanges.current.endDate = null;
         }
 
-        WRITE_THROTTLER.debounce(() => {
-          _setValues(c => ({ ...c, ...pendingChanges.current }));
+        if (writeTimeout.current !== null) {
+          clearTimeout(writeTimeout.current);
+        }
+        writeTimeout.current = setTimeout(() => {
+          writeTimeout.current = null;
+          const changes = pendingChanges.current;
           pendingChanges.current = {};
-        });
+          _setValues(c => ({ ...c, ...changes }));
+        }, WRITE_DELAY_MS);
       },
     [values, defaults]
   );
 
   const setOffset = useCallback(
-    (_offset: string | number) => _setValues(c => ({ ...c, offset: parseOffset(_offset) })),
-    []
+    (_offset: string | number) => setValuesImmediately(c => ({ ...c, offset: parseOffset(_offset) })),
+    [setValuesImmediately]
   );
 
   const setCustomSpan = useCallback(
-    (startDate: string, endDate: string) => _setValues(c => ({ ...c, startDate, endDate })),
-    []
+    (startDate: string, endDate: string) => setValuesImmediately(c => ({ ...c, startDate, endDate })),
+    [setValuesImmediately]
   );
 
-  const filters = useListHandlers<string>('filters', _setValues);
-  const indexes = useListHandlers<SearchIndex>('indexes', _setValues);
-  const views = useListHandlers<string>('views', _setValues);
+  const filters = useListHandlers<string>('filters', setValuesImmediately);
+  const indexes = useListHandlers<SearchIndex>('indexes', setValuesImmediately);
+  const views = useListHandlers<string>('views', setValuesImmediately);
 
   return (
     <ParameterContext.Provider
@@ -439,6 +602,8 @@ const ParameterProvider: FC<PropsWithChildren<{ defaults?: Partial<SearchValues>
         addFilter: filters.add,
         removeFilter: filters.remove,
         setFilter: filters.setAt,
+        enableFilter: filters.enable,
+        disableFilter: filters.disable,
         resetFilters: filters.reset,
 
         addIndex: indexes.add,
@@ -450,6 +615,8 @@ const ParameterProvider: FC<PropsWithChildren<{ defaults?: Partial<SearchValues>
         addView: views.add,
         removeView: views.remove,
         setView: views.setAt,
+        enableView: views.enable,
+        disableView: views.disable,
         resetViews: views.reset
       }}
     >

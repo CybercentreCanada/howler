@@ -1,14 +1,21 @@
 """Unit tests for the correlation service."""
 
+import json
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, call, patch
+from uuid import UUID
 
 import pytest
 
 from howler.common.exceptions import HowlerRuntimeError, InvalidDataException
 from howler.config import CLASSIFICATION
-from howler.odm.models.case import CaseItem, CaseRule
+from howler.datastore.bulk import ElasticBulkPlan
+from howler.datastore.collection import ESCollection
+from howler.odm.models.case import Case, CaseItem, CaseRule
+from howler.odm.models.event import Event
+from howler.odm.models.hit import Hit
 from howler.services import correlation_service
 
 # ---------------------------------------------------------------------------
@@ -479,25 +486,74 @@ def _make_backing_obj(classification: str = CLASSIFICATION.UNRESTRICTED) -> Magi
     return obj
 
 
+def _uuid(value: int) -> str:
+    return str(UUID(int=value))
+
+
+def _make_real_case(case_id: str) -> Case:
+    return Case({"case_id": case_id, "title": f"case {case_id}", "summary": "keep this summary"})
+
+
+def _make_real_hit(record_id: str) -> Hit:
+    return Hit(
+        {
+            "howler": {"id": record_id, "analytic": "Correlation test", "hash": "0123456789abcdef"},
+            "message": "keep this hit message",
+        }
+    )
+
+
+def _make_real_event(record_id: str) -> Event:
+    return Event({"howler": {"id": record_id, "hash": "abcdef0123456789"}, "message": "keep this event message"})
+
+
+def _bulk_updates(plan: ElasticBulkPlan) -> list[tuple[str, str, dict[str, Any]]]:
+    """Decode real bulk-plan NDJSON into (target index, document ID, partial body)."""
+    lines = [json.loads(line) for line in plan.get_plan_data().splitlines()]
+    return [
+        (lines[offset]["update"]["_index"], lines[offset]["update"]["_id"], lines[offset + 1]["doc"])
+        for offset in range(0, len(lines), 2)
+    ]
+
+
 def _setup_ds(
     mock_ds_fn: MagicMock,
-    cases: dict[str, MagicMock],
-    hits: dict[str, MagicMock] | None = None,
-    events: dict[str, MagicMock] | None = None,
+    cases: dict[str, Any],
+    hits: dict[str, Any] | None = None,
+    events: dict[str, Any] | None = None,
+    case_versions: dict[str, str] | None = None,
+    hit_versions: dict[str, str] | None = None,
+    event_versions: dict[str, str] | None = None,
 ) -> MagicMock:
-    """Wire up a mocked datastore whose case/hit/event `.get()` calls resolve from dicts."""
+    """Wire up a datastore mock with versioned reads and the real version resolver."""
     mock_ds = MagicMock()
     mock_ds_fn.return_value = mock_ds
 
-    def versioned_get(records: dict[str, MagicMock] | None, *args, **kwargs):
+    def versioned_get(records: dict[str, Any] | None, versions: dict[str, str] | None, *args, **kwargs):
         key = args[0] if args else kwargs.get("key")
         record = (records or {}).get(key)
-        return record, f"{key}-version" if record else "create"
+        if kwargs.get("version"):
+            # Legacy two-part version tokens resolve to each collection's alias;
+            # individual tests can provide three-part ILM tokens for physical indexes.
+            return record, (versions or {}).get(key, f"{key}-seq---{key}-term") if record else "create"
+        return record
 
-    mock_ds.case.get.side_effect = lambda cid: cases.get(cid)
-    mock_ds.hit.get.side_effect = lambda *args, **kwargs: versioned_get(hits, *args, **kwargs)
-    mock_ds.event.get.side_effect = lambda *args, **kwargs: versioned_get(events, *args, **kwargs)
+    mock_ds.case.get.side_effect = lambda cid, *args, **kwargs: versioned_get(
+        cases, case_versions, cid, *args, **kwargs
+    )
+    mock_ds.hit.get.side_effect = lambda *args, **kwargs: versioned_get(hits, hit_versions, *args, **kwargs)
+    mock_ds.event.get.side_effect = lambda *args, **kwargs: versioned_get(events, event_versions, *args, **kwargs)
     mock_ds.__getitem__.side_effect = lambda item_type: getattr(mock_ds, item_type)
+
+    # Keep collection objects mocked, but delegate token parsing to the production
+    # ESCollection resolver so these tests cover legacy aliases and ILM indexes.
+    for item_type in ("case", "hit", "event"):
+        collection = getattr(mock_ds, item_type)
+        collection.name = f"howler-{item_type}"
+        resolver_owner = SimpleNamespace(name=collection.name)
+        collection.get_version_write_target.side_effect = lambda version, owner=resolver_owner: (
+            ESCollection.get_version_write_target(owner, version)
+        )
 
     # Mirror ElasticBulkPlan.empty: starts empty, flips once an operation is queued.
     bulk_plan = mock_ds.case.get_bulk_plan.return_value
@@ -545,14 +601,14 @@ class TestProcessBatch:
 
         assert "case-1" in hit.howler.related
         mock_ds.hit.get_bulk_plan.return_value.add_update_operation.assert_called_once_with(
-            "hit-1", hit, fields=["howler.related"]
+            "hit-1", hit, index="howler-hit", fields=["howler.related"]
         )
         mock_ds.hit.bulk.assert_called_once_with(mock_ds.hit.get_bulk_plan.return_value)
 
         mock_ds.case.get_bulk_plan.return_value.add_update_operation.assert_called_once_with(
-            "case-1", case, fields=["items", "targets", "threats", "indicators"]
+            "case-1", case, index="howler-case", fields=["items", "targets", "threats", "indicators"]
         )
-        mock_ds.case.bulk.assert_called_once()
+        mock_ds.case.bulk.assert_called_once_with(mock_ds.case.get_bulk_plan.return_value, refresh="wait_for")
         mock_comms.emit.assert_called_once_with("cases", {"case": case.as_primitives()})
 
     @patch("howler.services.correlation_service.comms_service")
@@ -641,7 +697,7 @@ class TestProcessBatch:
         # The exact case object mutated in memory is what gets handed to the bulk plan, so its
         # folders are part of the single persisted document rather than requiring separate saves.
         mock_ds.case.get_bulk_plan.return_value.add_update_operation.assert_called_once_with(
-            "case-1", case, fields=["items", "targets", "threats", "indicators"]
+            "case-1", case, index="howler-case", fields=["items", "targets", "threats", "indicators"]
         )
         mock_ds.case.bulk.assert_called_once()
 
@@ -794,7 +850,7 @@ class TestProcessBatch:
         assert "case-1" in event.howler.related
         mock_ds = mock_ds_fn.return_value
         mock_ds.event.get_bulk_plan.return_value.add_update_operation.assert_called_once_with(
-            "obs-1", event, fields=["howler.related"]
+            "obs-1", event, index="howler-event", fields=["howler.related"]
         )
         mock_ds.event.bulk.assert_called_once_with(mock_ds.event.get_bulk_plan.return_value)
 
@@ -906,6 +962,197 @@ class TestProcessBatch:
 
         assert added == 0
         mock_ds.case.bulk.assert_not_called()
+
+
+class TestCorrelationBulkRouting:
+    """Regression coverage for routing correlation partial updates by read version."""
+
+    @patch("howler.services.correlation_service.comms_service")
+    @patch("howler.services.correlation_service.search_service")
+    @patch("howler.services.correlation_service.get_active_rules")
+    @patch("howler.services.correlation_service.datastore")
+    def test_routes_real_bulk_updates_to_versioned_indexes_and_batches_cached_records(
+        self, mock_ds_fn, mock_get_rules, mock_search_svc, mock_comms
+    ):
+        case_old_id, case_current_id = _uuid(101), _uuid(102)
+        hit_old_id, hit_current_id = _uuid(201), _uuid(202)
+        event_old_id, event_current_id = _uuid(301), _uuid(302)
+        cases = {case_old_id: _make_real_case(case_old_id), case_current_id: _make_real_case(case_current_id)}
+        hits = {hit_old_id: _make_real_hit(hit_old_id), hit_current_id: _make_real_hit(hit_current_id)}
+        events = {event_old_id: _make_real_event(event_old_id), event_current_id: _make_real_event(event_current_id)}
+
+        versions = {
+            "case_versions": {
+                case_old_id: "howler-case-000001---10---1",
+                case_current_id: "howler-case-000002---20---1",
+            },
+            "hit_versions": {
+                hit_old_id: "howler-hit-000001---11---1",
+                hit_current_id: "howler-hit-000002---21---1",
+            },
+            "event_versions": {
+                event_old_id: "howler-event-000001---12---1",
+                event_current_id: "howler-event-000002---22---1",
+            },
+        }
+        mock_ds = _setup_ds(mock_ds_fn, cases, hits, events, **versions)
+
+        active_case_index = "howler-case-000002"
+        active_hit_index = "howler-hit-000002"
+        active_event_index = "howler-event-000002"
+        case_plan = ElasticBulkPlan([active_case_index], Case)
+        hit_plan = ElasticBulkPlan([active_hit_index], Hit)
+        event_plan = ElasticBulkPlan([active_event_index], Event)
+        mock_ds.case.get_bulk_plan.return_value = case_plan
+        mock_ds.hit.get_bulk_plan.return_value = hit_plan
+        mock_ds.event.get_bulk_plan.return_value = event_plan
+
+        rule = _make_rule(destination="correlated/{{howler.id}}", indexes=["hit", "event"])
+        mock_get_rules.return_value = [(case_old_id, rule), (case_current_id, rule)]
+        results = [
+            {"howler": {"id": hit_old_id}, "__index": "hit"},
+            {"howler": {"id": hit_current_id}, "__index": "hit"},
+            {"howler": {"id": event_old_id}, "__index": "event"},
+            {"howler": {"id": event_current_id}, "__index": "event"},
+        ]
+        mock_search_svc.search.return_value = {"items": results}
+        second_rule_for_old_case = _make_rule(destination="another-path/{{howler.id}}", indexes=["hit", "event"])
+        mock_get_rules.return_value.append((case_old_id, second_rule_for_old_case))
+
+        persisted: list[str] = []
+        mock_ds.hit.bulk.side_effect = lambda _plan: (persisted.append("hit"), True)[1]
+        mock_ds.event.bulk.side_effect = lambda _plan: (persisted.append("event"), True)[1]
+        mock_ds.case.bulk.side_effect = lambda _plan, refresh=None: (persisted.append(f"case:{refresh}"), True)[1]
+        mock_comms.emit.side_effect = lambda *_args, **_kwargs: persisted.append("notify")
+
+        with patch.object(correlation_service.case_service, "datastore", return_value=mock_ds):
+            added = correlation_service.process_batch([hit_old_id, hit_current_id, event_old_id, event_current_id])
+
+        assert added == 8
+        assert len(case_plan.operations) == 2
+        assert len(hit_plan.operations) == 2
+        assert len(event_plan.operations) == 2
+        assert dict((doc_id, index) for index, doc_id, _ in _bulk_updates(case_plan)) == {
+            case_old_id: "howler-case-000001",
+            case_current_id: active_case_index,
+        }
+        assert dict((doc_id, index) for index, doc_id, _ in _bulk_updates(hit_plan)) == {
+            hit_old_id: "howler-hit-000001",
+            hit_current_id: active_hit_index,
+        }
+        assert dict((doc_id, index) for index, doc_id, _ in _bulk_updates(event_plan)) == {
+            event_old_id: "howler-event-000001",
+            event_current_id: active_event_index,
+        }
+
+        case_updates = _bulk_updates(case_plan)
+        assert all(set(body) == {"items", "targets", "threats", "indicators"} for _, _, body in case_updates)
+        backing_updates = _bulk_updates(hit_plan) + _bulk_updates(event_plan)
+        assert all(set(body) == {"howler"} and set(body["howler"]) == {"related"} for _, _, body in backing_updates)
+        assert all(
+            json.loads(operation[0]).get("update")
+            for plan in (case_plan, hit_plan, event_plan)
+            for operation in plan.operations
+        )
+
+        assert mock_ds.case.get.call_count == 2
+        assert all(call.kwargs == {"as_obj": True, "version": True} for call in mock_ds.case.get.call_args_list)
+        versioned_hit_reads = [read for read in mock_ds.hit.get.call_args_list if read.kwargs.get("version")]
+        versioned_event_reads = [read for read in mock_ds.event.get.call_args_list if read.kwargs.get("version")]
+        assert len(versioned_hit_reads) == 2
+        assert {read.args[0] for read in versioned_hit_reads} == {hit_old_id, hit_current_id}
+        assert len(versioned_event_reads) == 2
+        assert {read.kwargs["key"] for read in versioned_event_reads} == {event_old_id, event_current_id}
+        mock_ds.hit.bulk.assert_called_once_with(hit_plan)
+        mock_ds.event.bulk.assert_called_once_with(event_plan)
+        mock_ds.case.bulk.assert_called_once_with(case_plan, refresh="wait_for")
+        assert persisted.count("hit") == 1
+        assert persisted.count("event") == 1
+        assert persisted.count("case:wait_for") == 1
+        assert persisted.index("case:wait_for") < persisted.index("notify")
+        assert persisted.count("notify") == 2
+
+    @patch("howler.services.correlation_service.comms_service")
+    @patch("howler.services.correlation_service.search_service")
+    @patch("howler.services.correlation_service.get_active_rules")
+    @patch("howler.services.correlation_service.datastore")
+    def test_legacy_non_ilm_versions_route_updates_to_collection_alias(
+        self, mock_ds_fn, mock_get_rules, mock_search_svc, mock_comms
+    ):
+        case_id, hit_id = _uuid(401), _uuid(402)
+        case = _make_real_case(case_id)
+        hit = _make_real_hit(hit_id)
+        mock_ds = _setup_ds(
+            mock_ds_fn,
+            {case_id: case},
+            {hit_id: hit},
+            case_versions={case_id: "7---2"},
+            hit_versions={hit_id: "9---3"},
+        )
+        case_plan = ElasticBulkPlan(["howler-case_hot"], Case)
+        hit_plan = ElasticBulkPlan(["howler-hit_hot"], Hit)
+        mock_ds.case.get_bulk_plan.return_value = case_plan
+        mock_ds.hit.get_bulk_plan.return_value = hit_plan
+        mock_get_rules.return_value = [(case_id, _make_rule(destination="legacy"))]
+        mock_search_svc.search.return_value = {"items": [{"howler": {"id": hit_id}, "__index": "hit"}]}
+
+        with patch.object(correlation_service.case_service, "datastore", return_value=mock_ds):
+            added = correlation_service.process_batch([hit_id])
+
+        assert added == 1
+        assert _bulk_updates(case_plan)[0][0] == "howler-case"
+        assert _bulk_updates(hit_plan)[0][0] == "howler-hit"
+
+    @patch("howler.services.correlation_service.comms_service")
+    @patch("howler.services.correlation_service.search_service")
+    @patch("howler.services.correlation_service.get_active_rules")
+    @patch("howler.services.correlation_service.datastore")
+    def test_real_bulk_error_from_backing_collection_prevents_case_success_notification(
+        self, mock_ds_fn, mock_get_rules, mock_search_svc, mock_comms
+    ):
+        case_id, hit_id = _uuid(601), _uuid(602)
+        case = _make_real_case(case_id)
+        hit = _make_real_hit(hit_id)
+        mock_ds = _setup_ds(
+            mock_ds_fn,
+            {case_id: case},
+            {hit_id: hit},
+            case_versions={case_id: "howler-case-000001---1---1"},
+            hit_versions={hit_id: "howler-hit-000001---2---1"},
+        )
+        case_plan = ElasticBulkPlan(["howler-case-000002"], Case)
+        hit_plan = ElasticBulkPlan(["howler-hit-000002"], Hit)
+        mock_ds.case.get_bulk_plan.return_value = case_plan
+        mock_ds.hit.get_bulk_plan.return_value = hit_plan
+        mock_get_rules.return_value = [(case_id, _make_rule(destination="errors"))]
+        mock_search_svc.search.return_value = {"items": [{"howler": {"id": hit_id}, "__index": "hit"}]}
+
+        response = {
+            "errors": True,
+            "items": [
+                {
+                    "update": {
+                        "_index": "howler-hit-000001",
+                        "_id": hit_id,
+                        "status": 404,
+                        "error": {"type": "document_missing_exception", "reason": "missing from active index"},
+                    }
+                }
+            ],
+        }
+        fake_collection = object.__new__(ESCollection)
+        fake_collection.max_attempts = 1
+        fake_collection.datastore = SimpleNamespace(client=SimpleNamespace(bulk=MagicMock(return_value=response)))
+        mock_ds.hit.bulk.side_effect = fake_collection.bulk
+
+        with patch.object(correlation_service.case_service, "datastore", return_value=mock_ds):
+            with pytest.raises(HowlerRuntimeError, match="Bulk backing record update reported errors"):
+                correlation_service.process_batch([hit_id])
+
+        request = fake_collection.datastore.client.bulk.call_args.kwargs["operations"]
+        assert json.loads(request.splitlines()[0]) == {"update": {"_index": "howler-hit-000001", "_id": hit_id}}
+        mock_ds.case.bulk.assert_not_called()
+        mock_comms.emit.assert_not_called()
 
 
 class TestCorrelationUnreachableBranches:

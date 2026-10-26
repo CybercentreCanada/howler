@@ -131,7 +131,7 @@ def call_mcp_tool(token: str, tool_name: str, arguments: dict | None = None) -> 
 def _get_any_hit_id(token: str) -> str:
     response = httpx.post(
         headers={"Authorization": f"Bearer {token}"},
-        url=f"{HOWLER_API.BASE_URL}/search/hit",
+        url=f"{HOWLER_API.BASE_URL}/v1/search/hit",
         json={"query": "howler.id:*", "rows": 1, "offset": 0, "fl": "howler.id"},
         timeout=HOWLER_API.TIMEOUT,
     )
@@ -143,7 +143,7 @@ def _get_any_hit_id(token: str) -> str:
 
 def _get_hit(token: str, hit_id: str) -> dict:
     response = httpx.get(
-        f"{HOWLER_API.BASE_URL}/hit/{hit_id}",
+        f"{HOWLER_API.BASE_URL}/v1/hit/{hit_id}",
         headers={"Authorization": f"Bearer {token}"},
         timeout=HOWLER_API.TIMEOUT,
     )
@@ -196,14 +196,14 @@ def test_tool_list_assigned_hits():
     assert "content" in result
 
 
-def test_tool_get_hit_fields():
+def test_tool_get_index_fields():
     token = get_token()
-    result = call_mcp_tool(token, "get_hit_fields")
+    result = call_mcp_tool(token, "get_index_fields", {"index": "hit"})
 
     assert not result.get("isError", False)
-    tool_output = json.loads(result["content"][0]["text"])
-    assert isinstance(tool_output, dict)
-    assert "howler.id" in tool_output
+    tool_output = result["content"][0]["text"]
+    assert isinstance(tool_output, str)
+    assert any(line.startswith("howler.id:") for line in tool_output.splitlines())
 
 
 def test_tool_get_field_values():

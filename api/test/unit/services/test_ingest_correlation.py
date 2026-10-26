@@ -5,10 +5,12 @@ These tests mock the services and queue to verify the contract between
 ingest.py (producer) and correlation_service.process_batch (consumer).
 """
 
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 from howler.config import CLASSIFICATION
+from howler.datastore.collection import ESCollection
 from howler.odm.models.case import CaseItem, CaseRule
 from howler.services import correlation_service
 
@@ -58,18 +60,35 @@ def _setup_ds(
     cases: dict[str, MagicMock],
     hits: dict[str, MagicMock] | None = None,
     events: dict[str, MagicMock] | None = None,
+    case_versions: dict[str, str] | None = None,
+    hit_versions: dict[str, str] | None = None,
+    event_versions: dict[str, str] | None = None,
 ) -> MagicMock:
-    """Wire up a mocked datastore whose case/hit/event `.get()` calls resolve from dicts."""
+    """Wire up versioned case/hit/event reads and the real write-target resolver."""
     mock_ds = MagicMock()
     mock_ds_fn.return_value = mock_ds
 
-    def backing_get(records: dict[str, MagicMock] | None, *args, **kwargs):
+    def versioned_get(records: dict[str, MagicMock] | None, versions: dict[str, str] | None, *args, **kwargs):
         key = args[0] if args else kwargs.get("key")
-        return (records or {}).get(key), "backing-version"
+        record = (records or {}).get(key)
+        if kwargs.get("version"):
+            # Default to a legacy sequence/term token; routing tests supply ILM tokens.
+            return record, (versions or {}).get(key, "7---2") if record is not None else "create"
+        return record
 
-    mock_ds.case.get.side_effect = lambda cid: cases.get(cid)
-    mock_ds.hit.get.side_effect = lambda *args, **kwargs: backing_get(hits, *args, **kwargs)
-    mock_ds.event.get.side_effect = lambda *args, **kwargs: backing_get(events, *args, **kwargs)
+    mock_ds.case.get.side_effect = lambda *args, **kwargs: versioned_get(cases, case_versions, *args, **kwargs)
+    mock_ds.hit.get.side_effect = lambda *args, **kwargs: versioned_get(hits, hit_versions, *args, **kwargs)
+    mock_ds.event.get.side_effect = lambda *args, **kwargs: versioned_get(events, event_versions, *args, **kwargs)
+    mock_ds.__getitem__.side_effect = lambda item_type: getattr(mock_ds, item_type)
+
+    # Attribute and item access must use the same collection mocks, with real token parsing.
+    for item_type in ("case", "hit", "event"):
+        collection = getattr(mock_ds, item_type)
+        collection.name = f"howler-{item_type}"
+        resolver_owner = SimpleNamespace(name=collection.name)
+        collection.get_version_write_target.side_effect = lambda version, owner=resolver_owner: (
+            ESCollection.get_version_write_target(owner, version)
+        )
 
     # Mirror ElasticBulkPlan.empty: starts empty, flips once an operation is queued.
     bulk_plan = mock_ds.case.get_bulk_plan.return_value
@@ -99,7 +118,14 @@ class TestIngestedAlertsCorrelation:
     def test_single_alert_matches_rule(self, mock_ds_fn, mock_get_rules, mock_search_svc, mock_comms):
         """A single ingested alert ID that matches a rule is appended to the case."""
         case = _make_case("case-1")
-        _setup_ds(mock_ds_fn, {"case-1": case}, hits={"ingested-hit-1": _make_backing_obj()})
+        hit = _make_backing_obj()
+        mock_ds = _setup_ds(
+            mock_ds_fn,
+            {"case-1": case},
+            hits={"ingested-hit-1": hit},
+            case_versions={"case-1": "howler-case-000001---7---2"},
+            hit_versions={"ingested-hit-1": "howler-hit-000003---11---4"},
+        )
 
         rule = _make_rule(query="event.kind:alert", destination="alerts/incoming")
         mock_get_rules.return_value = [("case-1", rule)]
@@ -117,6 +143,18 @@ class TestIngestedAlertsCorrelation:
         hit_item = next(i for i in case.items if i.type == "hit")
         assert hit_item.value == "ingested-hit-1"
         assert hit_item.name == "incoming"
+
+        mock_ds.case.get.assert_called_once_with("case-1", as_obj=True, version=True)
+        mock_ds.hit.get.assert_called_once_with("ingested-hit-1", as_obj=True, version=True)
+        assert hit.howler.related == ["case-1"]
+        mock_ds.hit.get_bulk_plan.return_value.add_update_operation.assert_called_once_with(
+            "ingested-hit-1", hit, index="howler-hit-000003", fields=["howler.related"]
+        )
+        mock_ds.hit.bulk.assert_called_once_with(mock_ds.hit.get_bulk_plan.return_value)
+        mock_ds.case.get_bulk_plan.return_value.add_update_operation.assert_called_once_with(
+            "case-1", case, index="howler-case-000001", fields=["items", "targets", "threats", "indicators"]
+        )
+        mock_ds.case.bulk.assert_called_once_with(mock_ds.case.get_bulk_plan.return_value, refresh="wait_for")
 
     @patch("howler.services.correlation_service.comms_service")
     @patch("howler.services.correlation_service.search_service")
@@ -274,7 +312,14 @@ class TestIngestedEventsCorrelation:
     def test_event_matches_rule_with_event_index(self, mock_ds_fn, mock_get_rules, mock_search_svc, mock_comms):
         """An event matching a rule targeting the event index is added."""
         case = _make_case("case-1")
-        _setup_ds(mock_ds_fn, {"case-1": case}, events={"obs-1": _make_backing_obj()})
+        event = _make_backing_obj()
+        mock_ds = _setup_ds(
+            mock_ds_fn,
+            {"case-1": case},
+            events={"obs-1": event},
+            case_versions={"case-1": "howler-case-000002---5---1"},
+            event_versions={"obs-1": "howler-event-000004---13---3"},
+        )
 
         rule = _make_rule(
             query="event.kind:enrichment",
@@ -295,6 +340,18 @@ class TestIngestedEventsCorrelation:
         assert added == 1
         event_item = next(i for i in case.items if i.type == "event")
         assert event_item.value == "obs-1"
+
+        mock_ds.case.get.assert_called_once_with("case-1", as_obj=True, version=True)
+        mock_ds.event.get.assert_called_once_with(key="obs-1", as_obj=True, version=True)
+        assert event.howler.related == ["case-1"]
+        mock_ds.event.get_bulk_plan.return_value.add_update_operation.assert_called_once_with(
+            "obs-1", event, index="howler-event-000004", fields=["howler.related"]
+        )
+        mock_ds.event.bulk.assert_called_once_with(mock_ds.event.get_bulk_plan.return_value)
+        mock_ds.case.get_bulk_plan.return_value.add_update_operation.assert_called_once_with(
+            "case-1", case, index="howler-case-000002", fields=["items", "targets", "threats", "indicators"]
+        )
+        mock_ds.case.bulk.assert_called_once_with(mock_ds.case.get_bulk_plan.return_value, refresh="wait_for")
 
     @patch("howler.services.correlation_service.search_service")
     @patch("howler.services.correlation_service.get_active_rules")

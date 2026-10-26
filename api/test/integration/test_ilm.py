@@ -9,13 +9,19 @@ import logging
 import random
 import string
 import time
+from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 
 from howler.common.loader import DATASTORE_INDEX_PREFIX
 from howler.datastore.collection import ESCollection
 from howler.datastore.store import ESStore
+from howler.odm.models.case import Case, CaseRule
 from howler.odm.models.config import ILMIndexConfig
+from howler.odm.models.event import Event
+from howler.odm.models.hit import Hit
+from howler.services import correlation_service
 
 logger = logging.getLogger(__name__)
 
@@ -324,6 +330,163 @@ class TestILMDataOperations:
 
         items = list(ilm_collection.stream_search("field_s:streamable"))
         assert len(items) >= 5
+
+
+class TestILMCorrelationUpdates:
+    """Verify correlation updates keep targeting the physical index returned by a read."""
+
+    def test_process_batch_updates_historical_case_hit_and_event_in_place(self, es_store: ESStore, request):  # noqa: C901
+        collection_names = {kind: f"{_random_name()}_{kind}" for kind in ("case", "hit", "event")}
+        models = {"case": Case, "hit": Hit, "event": Event}
+        ilm_index_config = ILMIndexConfig(warm="30d", cold="90d")
+
+        def cleanup():
+            client = es_store.client
+            for name in collection_names.values():
+                full_name = f"{DATASTORE_INDEX_PREFIX}-{name}"
+                try:
+                    client.indices.delete(index=f"{full_name}-*", ignore_unavailable=True)
+                except Exception:
+                    logger.warning("Failed to delete correlation test indexes for %s", name, exc_info=True)
+                try:
+                    client.indices.delete_alias(index="_all", name=full_name)
+                except Exception:
+                    logger.debug("Correlation test alias %s was already removed", full_name, exc_info=True)
+                try:
+                    client.ilm.delete_lifecycle(name=f"{full_name}_policy")
+                except Exception:
+                    logger.debug("Correlation test policy %s was already removed", full_name, exc_info=True)
+                try:
+                    client.indices.delete_index_template(name=f"{full_name}_template")
+                except Exception:
+                    logger.debug("Correlation test template %s was already removed", full_name, exc_info=True)
+
+        request.addfinalizer(cleanup)
+
+        collections = {}
+        for kind, name in collection_names.items():
+            es_store.register(name, model_class=models[kind], ilm_config=ilm_index_config)
+            collections[kind] = getattr(es_store, name)
+
+        case_collection = collections["case"]
+        hit_collection = collections["hit"]
+        event_collection = collections["event"]
+
+        historical_case_id, historical_hit_id, historical_event_id = str(uuid4()), str(uuid4()), str(uuid4())
+        current_case_id, current_hit_id, current_event_id = str(uuid4()), str(uuid4()), str(uuid4())
+        historical_case = Case(
+            {"case_id": historical_case_id, "title": "Historical case title", "summary": "Preserve this summary"}
+        )
+        historical_hit = Hit(
+            {
+                "howler": {
+                    "id": historical_hit_id,
+                    "analytic": "Historical analytic",
+                    "hash": "1234567890abcdef",
+                },
+                "message": "Preserve historical hit message",
+            }
+        )
+        historical_event = Event(
+            {
+                "howler": {"id": historical_event_id, "hash": "abcdef1234567890"},
+                "message": "Preserve historical event message",
+            }
+        )
+        case_collection.save(historical_case_id, historical_case, refresh="wait_for")
+        hit_collection.save(historical_hit_id, historical_hit, refresh="wait_for")
+        event_collection.save(historical_event_id, historical_event, refresh="wait_for")
+
+        historical_indexes = {kind: collections[kind].index_name for kind in collection_names}
+        for collection in collections.values():
+            es_store.client.indices.rollover(alias=collection.name, conditions={"max_docs": 1})
+            collection._refresh_ilm_index_name()
+
+        current_case = Case({"case_id": current_case_id, "title": "Newest case sentinel", "summary": "Untouched"})
+        current_hit = Hit(
+            {
+                "howler": {"id": current_hit_id, "analytic": "Newest sentinel", "hash": "1234567890abcdef"},
+                "message": "Untouched current hit",
+            }
+        )
+        current_event = Event(
+            {"howler": {"id": current_event_id, "hash": "abcdef1234567890"}, "message": "Untouched current event"}
+        )
+        case_collection.save(current_case_id, current_case, refresh="wait_for")
+        hit_collection.save(current_hit_id, current_hit, refresh="wait_for")
+        event_collection.save(current_event_id, current_event, refresh="wait_for")
+        latest_indexes = {kind: collections[kind].index_name for kind in collection_names}
+        assert all(latest_indexes[kind] != historical_indexes[kind] for kind in collection_names)
+
+        rule = CaseRule(
+            {
+                "rule_id": str(uuid4()),
+                "query": "*:*",
+                "destination": "correlated/{{howler.id}}",
+                "author": "ilm-correlation-test",
+                "indexes": ["hit", "event"],
+            }
+        )
+        search_results = {
+            "items": [
+                {"howler": {"id": historical_hit_id}, "__index": "hit"},
+                {"howler": {"id": historical_event_id}, "__index": "event"},
+            ]
+        }
+
+        class IsolatedDatastore:
+            case = case_collection
+            hit = hit_collection
+            event = event_collection
+
+            def __getitem__(self, item_type):
+                return getattr(self, item_type)
+
+        isolated_datastore = IsolatedDatastore()
+        with (
+            patch("howler.services.correlation_service.datastore", return_value=isolated_datastore),
+            patch("howler.services.case_service.datastore", return_value=isolated_datastore),
+            patch("howler.services.correlation_service.get_active_rules", return_value=[(historical_case_id, rule)]),
+            patch("howler.services.correlation_service.search_service.search", return_value=search_results),
+            patch("howler.services.correlation_service.comms_service.emit") as emit,
+        ):
+            added = correlation_service.process_batch([historical_hit_id, historical_event_id])
+
+        assert added == 2
+        emit.assert_called_once()
+
+        # Bulk case writes already wait for refresh; explicitly refresh the concrete
+        # historical backing indexes as well before asserting their persisted state.
+        for kind in ("case", "hit", "event"):
+            es_store.client.indices.refresh(index=historical_indexes[kind])
+
+        stored_case = es_store.client.get(index=historical_indexes["case"], id=historical_case_id)["_source"]
+        stored_hit = es_store.client.get(index=historical_indexes["hit"], id=historical_hit_id)["_source"]
+        stored_event = es_store.client.get(index=historical_indexes["event"], id=historical_event_id)["_source"]
+        case_records = [item for item in stored_case["items"] if item.get("type") in {"hit", "event"}]
+        assert sorted((item["type"], item["value"]) for item in case_records) == sorted(
+            [("hit", historical_hit_id), ("event", historical_event_id)]
+        )
+        assert stored_case["title"] == "Historical case title"
+        assert stored_case["summary"] == "Preserve this summary"
+        assert stored_hit["message"] == "Preserve historical hit message"
+        assert stored_hit["howler"]["analytic"] == "Historical analytic"
+        assert stored_hit["howler"]["related"] == [historical_case_id]
+        assert stored_event["message"] == "Preserve historical event message"
+        assert stored_event["howler"]["related"] == [historical_case_id]
+
+        assert not es_store.client.exists(index=latest_indexes["case"], id=historical_case_id)
+        assert not es_store.client.exists(index=latest_indexes["hit"], id=historical_hit_id)
+        assert not es_store.client.exists(index=latest_indexes["event"], id=historical_event_id)
+        newest_case = es_store.client.get(index=latest_indexes["case"], id=current_case_id)["_source"]
+        newest_hit = es_store.client.get(index=latest_indexes["hit"], id=current_hit_id)["_source"]
+        newest_event = es_store.client.get(index=latest_indexes["event"], id=current_event_id)["_source"]
+        assert newest_case["title"] == "Newest case sentinel"
+        assert newest_case["items"] == []
+        assert newest_hit["message"] == "Untouched current hit"
+        assert newest_hit["howler"]["related"] == []
+        assert newest_event["message"] == "Untouched current event"
+        assert newest_event["howler"]["related"] == []
 
 
 class TestILMLegacyMigration:

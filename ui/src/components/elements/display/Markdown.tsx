@@ -181,6 +181,19 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
         td({ children, ...props }) {
           return <TableCell style={props.style}>{children}</TableCell>;
         },
+        p({ children, node }) {
+          const containsMappedComponent = node?.children.some(
+            child =>
+              child.type === 'element' &&
+              child.tagName === 'code' &&
+              child.children.some(
+                codeChild =>
+                  codeChild.type === 'text' && Object.prototype.hasOwnProperty.call(components, codeChild.value)
+              )
+          );
+
+          return containsMappedComponent ? <div>{children}</div> : <p>{children}</p>;
+        },
         a({ children, ...props }) {
           if (!props.href) {
             return <a {...props}>{children}</a>;

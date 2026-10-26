@@ -23,13 +23,13 @@ The server currently registers these tools:
 | craft_howler_url       | —                         | —      | Build a UI URL for a hit or event object.                   |
 | list_assigned_hits     | /hit/user                 | GET    | Return hits assigned to the authenticated user.             |
 | add_comment_to_hit     | /hit/{hit_id}/comments    | POST   | Append an analyst comment to a hit.                         |
-| get_hit_fields         | /search/fields/hit        | GET    | Return valid searchable fields for hit Lucene queries.      |
+| get_index_fields       | /search/fields/{index}    | GET    | Return valid searchable fields for the selected index.     |
 | get_field_values       | /search/facet/hit/{field} | GET    | Return value distribution for one field.                    |
 | lucene_query           | /search/hit               | POST   | Execute Lucene search with field projection and pagination. |
 | create_dossier         | /dossier/                 | POST   | Create a reusable dossier from a Lucene query.              |
 | create_dossier_for_hit | /hit/{hit_id}/update      | PUT    | Append dossier leads to one alert.                          |
 
-Important note: older helper tools such as ListAlerts, GetHitById, SearchHitsWithIndicators, GetFalsePositiveHits, and ListHitsByAnalytic were replaced by lucene_query plus discovery helpers get_hit_fields and get_field_values.
+Important note: older helper tools such as ListAlerts, GetHitById, SearchHitsWithIndicators, GetFalsePositiveHits, and ListHitsByAnalytic were replaced by lucene_query plus discovery helpers get_index_fields and get_field_values.
 
 ## Prompt Surface
 
@@ -40,7 +40,7 @@ The server currently registers prompt guidance for:
 - craft_howler_url
 - add_comment_to_hit
 - get_field_values
-- get_hit_fields
+- get_index_fields
 - lucene_query
 - create_dossier
 - create_dossier_for_hit
@@ -51,7 +51,7 @@ Current server capabilities:
 
 - Authenticates requests by validating JWT signature and claims via Keycloak JWKS.
 - Forwards the validated user token to Howler API (token pass-through model).
-- Exposes analyst triage tools for identity checks, assigned-hit retrieval, commenting, field discovery, and Lucene hit search.
+- Exposes analyst triage tools for identity checks, assigned-hit retrieval, commenting, index-specific field discovery, and Lucene hit search.
 - Validates Lucene query fields against backend-exposed searchable fields before issuing search requests.
 - Creates reusable query dossiers or appends dossier leads to a single alert.
 - Use `create_dossier` only for dossiers applying to a large number of alerts; use `create_dossier_for_hit` when the target alert list contains exactly one alert.
@@ -192,7 +192,7 @@ Empty/failed query execution:
 
 - invalid field names in Lucene query.
 - invalid values for enumerated fields.
-- use get_hit_fields and get_field_values before complex lucene_query filters.
+- use get_index_fields(index="hit") and get_field_values before complex lucene_query filters.
 
 ## Security Model Summary
 

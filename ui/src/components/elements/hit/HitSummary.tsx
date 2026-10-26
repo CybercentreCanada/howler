@@ -34,6 +34,7 @@ import { memo, useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
+import { sanitizeLuceneQuery } from 'utils/stringUtils';
 import { isHit } from 'utils/typeUtils';
 import { getTimeRange, notNil } from 'utils/utils';
 import PluginChip from '../PluginChip';
@@ -58,7 +59,7 @@ const HitSummary: FC<{
   const getFilters = useContextSelector(RecordSearchContext, ctx => ctx.getFilters);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
-  const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
+  const addFilter = useContextSelector(ParameterContext, ctx => ctx.addFilter);
   const views = useContextSelector(ParameterContext, ctx => ctx.views);
 
   const [loading, setLoading] = useState(false);
@@ -170,11 +171,11 @@ const HitSummary: FC<{
     query
   ]);
 
-  const setSearch = useCallback(
+  const addAggregationFilter = useCallback(
     (key: string, value: string) => {
-      setQuery(`${key}:${value}`);
+      addFilter(`${key}:${value}`);
     },
-    [setQuery]
+    [addFilter]
   );
 
   useEffect(() => {
@@ -270,7 +271,7 @@ const HitSummary: FC<{
                           variant="filled"
                           value={item}
                           label={`${item} (${aggregateResults[key][item]})`}
-                          onClick={() => setSearch(key, `"${item}"`)}
+                          onClick={() => addAggregationFilter(key, `"${sanitizeLuceneQuery(item)}"`)}
                           field={key}
                         />
                       </Grid>
@@ -284,7 +285,9 @@ const HitSummary: FC<{
                   label={getTimeRange(Object.keys(aggregateResults[key]))
                     .map(d => new Date(d).toLocaleString())
                     .join(' - ')}
-                  onClick={() => setSearch(key, `[${getTimeRange(Object.keys(aggregateResults[key])).join(' TO ')}]`)}
+                  onClick={() =>
+                    addAggregationFilter(key, `[${getTimeRange(Object.keys(aggregateResults[key])).join(' TO ')}]`)
+                  }
                 />
               )}
             </Fade>

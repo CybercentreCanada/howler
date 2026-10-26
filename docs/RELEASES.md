@@ -1,4 +1,6 @@
-# Howler Releases
+# Historical Howler Releases
+
+This is the read-only archive of release notes published before native, independent package changelogs were introduced. New notes are generated in the package changelogs: [API](../api/CHANGELOG.md), [UI](../ui/CHANGELOG.md), [Client](../client/CHANGELOG.md), [MCP](../mcp/CHANGELOG.md), [Evidence](../plugins/evidence/CHANGELOG.md), [Sentinel](../plugins/sentinel/CHANGELOG.md), and [Sync](../plugins/sync/CHANGELOG.md). The initial native baselines are recorded in those files without generating a new release entry.
 
 ## Howler UI `v3.1.0`
 
@@ -23,6 +25,7 @@
 
 ## Howler API `v4.1.0`
 
+- **Correlation Backfill** _(bugfix)_: It is now possible to backfill case rules to add historical alerts and events to the case.
 - **Action List Result Cap** _(bugfix)_: Action listing now streams up to 250 results, avoiding default-page truncation while bounding the response size.
 - **Classification Access Control** _(bugfix)_: Enforced classification authorization consistently across direct updates, ingestion, bundle compatibility endpoints, and case references without exposing inaccessible records.
 - **Action Retrieval Endpoint** _(new feature)_: Added an authenticated endpoint for retrieving individual actions with ETag support and conditional `304 Not Modified` responses.

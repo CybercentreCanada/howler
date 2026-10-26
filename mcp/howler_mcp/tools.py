@@ -1,6 +1,6 @@
 import re
 from logging import getLogger
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 from fastmcp.server.dependencies import get_access_token, get_http_request
@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from howler_mcp.api import HowlerApiClient
 from howler_mcp.config import HOWLER_UI, ICONIFY
+from howler_mcp.utils import get_fields_for_index as fetch_index_fields
 
 # Safety limits to avoid oversized backend requests.
 MAXIMUM_TICKET: int = 200
@@ -50,6 +51,20 @@ class HowlerResponse(BaseModel):
     rows: int = Field(description="Number of rows returned in the search results.")
     total: int = Field(description="Total number of hits matching the search criteria.")
     hits: list[dict[str, Any]] = Field(default_factory=list, description="List of hits matching the search criteria.")
+
+
+class RecordValidationError(BaseModel):
+    input: dict[str, Any] = Field(description="The rejected record, unchanged from the validation request.")
+    error: str = Field(description="Backend validation error explaining why the record was rejected.")
+
+
+class RecordValidationResponse(BaseModel):
+    valid: bool = Field(
+        description="True only when at least one record was supplied and every record passed validation."
+    )
+    errors: list[RecordValidationError] = Field(
+        description="Rejected records and their errors; empty if none were rejected."
+    )
 
 
 def register_tools(mcp, api_client: HowlerApiClient):
@@ -160,13 +175,13 @@ def register_tools(mcp, api_client: HowlerApiClient):
         # Cache field metadata for the current process lifetime to avoid
         # re-fetching index mapping for every query validation.
         if cached_hit_fields is None:
-            cached_hit_fields = set((await get_hit_fields()).keys())
+            cached_hit_fields = set(await fetch_index_fields(api_client, _proper_access_token(), "hit"))
 
         invalid_fields = sorted({field_name for field_name in referenced_fields if field_name not in cached_hit_fields})
 
         if invalid_fields:
             raise ValueError(
-                f"Invalid query field(s): {', '.join(invalid_fields)}. Use get_hit_fields to list supported fields."
+                f"Invalid query field(s): {', '.join(invalid_fields)}. Use get_index_fields(index='hit') to list supported fields."
             )
 
         return normalized
@@ -233,7 +248,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
         data = await api_client.call(
             user_access_token=access_token,
-            path="/user/whoami",
+            path="/v1/user/whoami",
             method="GET",
         )
         return WhoAmIResponse(
@@ -260,7 +275,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
         return await api_client.call(
             user_access_token=access_token,
-            path="/hit/user",
+            path="/v1/hit/user",
             method="GET",
         )
 
@@ -291,7 +306,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
         await api_client.call(
             user_access_token=access_token,
-            path=f"/hit/{hit_id}/comments",
+            path=f"/v1/hit/{hit_id}/comments",
             method="POST",
             body={"value": f"From MCP Client: {comment}"},
         )
@@ -328,18 +343,18 @@ def register_tools(mcp, api_client: HowlerApiClient):
             raise ValueError("field parameter is required")
 
         if cached_hit_fields is None:
-            cached_hit_fields = set((await get_hit_fields()).keys())
+            cached_hit_fields = set(await fetch_index_fields(api_client, access_token, "hit"))
 
         if normalized_field not in cached_hit_fields:
             raise ValueError(
-                f"The field: {normalized_field} is not a valid option. Use get_hit_fields to see available fields."
+                f"The field: {normalized_field} is not a valid option. Use get_index_fields(index='hit') to see available fields."
             )
 
         field_values = await api_client.call(
             user_access_token=access_token,
             # The facet endpoint lives under /search/facet/<index>/<field>.
             # Passing the field directly in the path avoids a separate body.
-            path=f"/search/facet/hit/{normalized_field}",
+            path=f"/v1/search/facet/hit/{normalized_field}",
             method="GET",
             # A broad query is required — the facet endpoint needs at least one
             # matching document to return any distinct values. Using howler.id:*
@@ -349,48 +364,40 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
         return field_values
 
-    @mcp.tool(name="get_hit_fields")
-    async def get_hit_fields() -> dict[str, Any]:
-        """Return all searchable fields available on Howler hits.
+    @mcp.tool(name="get_index_fields")
+    async def get_index_fields(index: str, regex: str | None = None) -> str:
+        """Return all searchable fields available on a Howler index.
 
-        Use this tool before building a Lucene query when you are unsure which
-        field names are valid. The response lists every indexed field together
-        with its type and whether it is stored or indexed.
+        Use this tool before building a query when you are unsure which field
+        names are valid for the selected index. The response lists every indexed
+        field together with its type, list flag, and description.
 
-        Returns:
-            dict[str, Any]: Mapping of field name to field metadata, for
-            example ``{"howler.assignment": {"type": "keyword", "indexed": true,
-            "stored": false}, ...}``.
+        Args:
+            index: The index to pull fields from, such as ``hit`` or ``event``.
+            regex: Optional regular expression used to filter field names.
+                When omitted, all fields are returned.
 
         Raises:
             ValueError: If no access token is available.
+            ValueError: If invalid field on regex
+
+        Returns:
+            str: Compact field metadata lines, one per valid field.
         """
         access_token: AccessToken = _proper_access_token()
 
-        all_values: dict[str, Any] = await api_client.call(
-            user_access_token=access_token,
-            # /search/fields/<index> returns the Elasticsearch field mapping
-            # for that index, including type, indexed, and stored flags.
-            # This is the authoritative source of valid field names for
-            # Lucene queries — use these names verbatim.
-            path="/search/fields/hit",
-            method="GET",
+        projected_values = await fetch_index_fields(api_client, access_token, index)
+
+        try:
+            field_pattern = re.compile(regex) if regex else None
+        except re.error as error:
+            raise ValueError(f"Invalid field regex: {error}") from error
+
+        return "\n".join(
+            f"{key}: {value['description']} (Type: {value['type']}, List: {value['list']})"
+            for key, value in projected_values.items()
+            if field_pattern is None or field_pattern.search(key)
         )
-
-        # Keep only the metadata required for query authoring.
-        projected_values: dict[str, Any] = {}
-        for key, values in all_values.items():
-            # Somehow this key has no value?
-            if not isinstance(values, dict):
-                continue
-
-            projected_values[key] = {
-                "list": values.get("list"),
-                "type": values.get("type"),
-                "description": values.get("description"),
-            }
-
-        return projected_values
 
     @mcp.tool(name="lucene_query")
     async def lucene_query(
@@ -427,9 +434,9 @@ def register_tools(mcp, api_client: HowlerApiClient):
             howler.score:[50 TO 100] AND NOT howler.assessment:false-positive
             howler.outline.indicators:(example.com OR 1.2.3.4)
 
-        If you are unsure which field names are valid, call ``get_hit_fields``
-        first. If you are unsure which values a field accepts, call
-        ``get_field_values`` first.
+        If you are unsure which field names are valid, call
+        ``get_index_fields(index="hit")`` first. If you are unsure which values
+        a field accepts, call ``get_field_values`` first.
 
         **Reducing response size with** ``fl``:
 
@@ -456,8 +463,9 @@ def register_tools(mcp, api_client: HowlerApiClient):
             query: A valid Lucene query string. Use ``field:value`` syntax, quote
                 phrase values that contain spaces, and use Lucene operators such as
                 ``AND``, ``OR``, ``NOT``, parentheses, and range expressions.
-                Do not invent field names or values. Use ``get_hit_fields`` and
-                ``get_field_values`` to verify them before querying.
+                Do not invent field names or values. Use
+                ``get_index_fields(index="hit")`` and ``get_field_values`` to
+                verify them before querying.
             sort: Optional Howler sort expression, such as
                 ``event.created desc``. Leave empty to use the API default.
             rows: Maximum number of hits to return.
@@ -507,7 +515,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
             user_access_token=access_token,
             # The search endpoint accepts any Lucene query against the hit index.
             # The caller is responsible for providing valid Lucene syntax.
-            path="/search/hit",
+            path="/v1/search/hit",
             method="POST",
             body=body,
         )
@@ -533,7 +541,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
         # Load and cache the searchable field names once for this process.
         if cached_hit_fields is None:
-            cached_hit_fields = set((await get_hit_fields()).keys())
+            cached_hit_fields = set(await fetch_index_fields(api_client, _proper_access_token(), "hit"))
 
         label_set_options: list[str] = []
 
@@ -584,7 +592,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
         # MCP tool response small and easy to consume.
         data: dict[str, Any] = await api_client.call(
             user_access_token=_proper_access_token(),
-            path=f"/hit/{hit_id.strip()}/labels/{label_set}",
+            path=f"/v1/hit/{hit_id.strip()}/labels/{label_set}",
             method="PUT",
             body={"value": labels_name},
         )
@@ -746,6 +754,39 @@ def register_tools(mcp, api_client: HowlerApiClient):
 
         return False
 
+    @mcp.tool(name="validate_records")
+    async def validate_records(
+        records: list[dict[str, Any]], index: Literal["hit", "event"] = "hit"
+    ) -> RecordValidationResponse:
+        """Validate records against Howler's ECS subset and return errors for rejected records.
+
+        Checks whether records can be converted into Howler hits or events.
+        Validation also checks ID uniqueness: an existing ID can cause rejection
+        even when the record's schema is valid. This tool does not ingest records.
+
+        Args:
+            records: Records to validate
+            index: Record type to validate against. Defaults to hit
+
+        Returns:
+            RecordValidationResponse: ``valid`` is true only for a non-empty
+                batch with no rejected records. ``errors`` contains each rejected
+                record as ``input`` and its backend ``error`` message. Use these
+                messages to correct records before validating again. An empty
+                batch returns ``valid=false`` and ``errors=[]``.
+        """
+        result: dict[str, list[dict[str, Any]]] = await api_client.call(
+            body=records,
+            method="POST",
+            path=f"/v2/ingest/{index}/validate",
+            user_access_token=_proper_access_token(),
+        )
+
+        return RecordValidationResponse(
+            valid=bool(result["valid"]) and not result["invalid"],
+            errors=[RecordValidationError.model_validate(error) for error in result["invalid"]],
+        )
+
     @mcp.tool(name="create_dossier")
     async def create_dossier(dossier_data: dict) -> dict:
         """Create a new dossier from a validated Lucene query.
@@ -829,7 +870,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
         return await api_client.call(
             body=dossier_data,
             method="POST",
-            path="/dossier/",
+            path="/v1/dossier/",
             user_access_token=_proper_access_token(),
         )
 
@@ -869,7 +910,7 @@ def register_tools(mcp, api_client: HowlerApiClient):
         return await api_client.call(
             body=operations,
             method="PUT",
-            path=f"/hit/{hit_id.strip()}/update",
+            path=f"/v1/hit/{hit_id.strip()}/update",
             user_access_token=_proper_access_token(),
         )
 
@@ -921,6 +962,6 @@ def register_tools(mcp, api_client: HowlerApiClient):
         return await api_client.call(
             body=data_to_update,
             method="PUT",
-            path=f"/dossier/{dossier_id}",
+            path=f"/v1/dossier/{dossier_id}",
             user_access_token=_proper_access_token(),
         )

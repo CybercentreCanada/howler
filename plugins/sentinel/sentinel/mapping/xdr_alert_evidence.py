@@ -1,10 +1,4 @@
 from typing import Any
-from uuid import uuid4
-
-
-def default_unknown_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
-    """Default function to handle unknown evidence types."""
-    return {}
 
 
 class XDRAlertEvidence:
@@ -29,25 +23,36 @@ class XDRAlertEvidence:
     @staticmethod
     def analyzed_message_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert analyzed message evidence to howler evidence format."""
-        sender = [
-            evidence.get("p1Sender", {}).get("emailAddress", "Unknown"),
-            evidence.get("p2Sender", {}).get("emailAddress", "Unknown"),
-        ]
-        if not sender:
-            sender = []
-        return {
-            "email": {
-                "direction": evidence.get("antiSpamDirection"),
-                "local_id": evidence.get("networkMessageId"),
-                "to": evidence.get("recipientEmailAddress"),
-                "sender": ", ".join(sender),
-                "subject": evidence.get("subject"),
-            },
-            "host": {"ip": [evidence.get("senderIp")]},
-            "url": {
-                "full": ", ".join(evidence.get("urls", [])),
-            },
+        p1_sender = evidence.get("p1Sender")
+        p2_sender = evidence.get("p2Sender")
+        p1_sender = p1_sender if isinstance(p1_sender, dict) else {}
+        p2_sender = p2_sender if isinstance(p2_sender, dict) else {}
+        sender = p1_sender.get("emailAddress") or p2_sender.get("emailAddress")
+
+        email: dict[str, Any] = {
+            "direction": evidence.get("antiSpamDirection"),
+            "local_id": evidence.get("networkMessageId"),
+            "subject": evidence.get("subject"),
         }
+        recipient = evidence.get("recipientEmailAddress")
+        if isinstance(recipient, str) and recipient:
+            email["to"] = {"address": recipient}
+        if isinstance(sender, str) and sender:
+            email["sender"] = {"address": sender}
+
+        sender_ip = evidence.get("senderIp")
+        mapped: dict[str, Any] = {"email": email, "host": {"ip": [sender_ip] if isinstance(sender_ip, str) else []}}
+        raw_urls = evidence.get("urls", [])
+        if isinstance(raw_urls, list):
+            urls = [
+                url if isinstance(url, str) else url.get("url")
+                for url in raw_urls
+                if isinstance(url, str) or isinstance(url, dict)
+            ]
+            full_url = ", ".join(url for url in urls if isinstance(url, str))
+            if full_url:
+                mapped["url"] = {"full": full_url}
+        return mapped
 
     @staticmethod
     def azure_resource_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
@@ -173,52 +178,24 @@ class XDRAlertEvidence:
     def container_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert container evidence to howler evidence format."""
         image = evidence.get("image", {})
-        pod = evidence.get("pod", {})
-        containers = pod.get("containers", [])
-        if not image:
-            image = {}
-        if not pod:
-            pod = {}
-        if not containers:
-            containers = []
-        return {
-            "container": {
-                "id": evidence.get("containerId"),
-                "image": evidence.get("name"),
-            },
-            "image": {"name": image.get("digestImage")},
-            "kubernetes": {
-                "pod": {
-                    "containers": [
-                        {
-                            "name": container.get("name"),
-                            "image": container.get("image"),
-                            "id": container.get("containerId"),
-                            "digest": container.get("digestImage"),
-                        }
-                        for container in containers
-                    ],
-                    "controller": pod.get("controller"),
-                    "ephemeral_containers": pod.get("ephemeralContainers"),
-                    "init_containers": pod.get("initContainers"),
-                    "labels": pod.get("labels"),
-                    "name": pod.get("name"),
-                    "namespace": pod.get("namespace"),
-                    "pod_ip": pod.get("podIp"),
-                    "service_account": {
-                        "name": pod.get("serviceAccountName"),
-                        "namespace": pod.get("namespace"),
-                    },
-                }
-            },
-        }
+        image = image if isinstance(image, dict) else {}
+        container: dict[str, Any] = {}
+        container_id = evidence.get("containerId")
+        container_name = evidence.get("name")
+        image_name = image.get("digestImage")
+        if isinstance(container_id, str) and container_id:
+            container["id"] = container_id
+        if isinstance(container_name, str) and container_name:
+            container["name"] = container_name
+        if isinstance(image_name, str) and image_name:
+            container["image"] = {"name": image_name}
+        return {"container": container}
 
     @staticmethod
     def container_image_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert container image evidence to howler evidence format."""
-        return {
-            "image": {"name": evidence.get("digestImage")},
-        }
+        digest = evidence.get("digestImage")
+        return {"container": {"image": {"name": digest}}} if isinstance(digest, str) and digest else {}
 
     @staticmethod
     def container_registry_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
@@ -493,7 +470,6 @@ class XDRAlertEvidence:
         """Convert mail cluster evidence to howler evidence format."""
         return {
             "metadata": {
-                "id": str(uuid4()),
                 "kind": "evidence",
                 "provider": "Alert",
                 "rawdata": evidence,
@@ -512,23 +488,23 @@ class XDRAlertEvidence:
     def mailbox_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert mailbox evidence to howler evidence format."""
         user = evidence.get("userAccount", {})
-        if not user:
-            user = {}
+        user = user if isinstance(user, dict) else {}
+        primary_address = evidence.get("primaryAddress")
+        email: dict[str, Any] = {}
+        if isinstance(primary_address, str) and primary_address:
+            email["to"] = {"address": primary_address}
         return {
             "metadata": {
                 "kind": "evidence",
                 "provider": "Alert",
                 "rawdata": evidence,
             },
-            "email": {
-                "id": str(uuid4()),
-                "to": evidence.get("primaryAddress"),
-            },
+            "email": email,
             "user": {
                 "id": user.get("azureAdUserId"),
                 "name": user.get("accountName"),
                 "full_name": user.get("userPrincipalName"),
-                "domain": user.get("domain"),
+                "domain": user.get("domainName") or user.get("domain"),
             },
         }
 
@@ -547,7 +523,6 @@ class XDRAlertEvidence:
         """Convert OAuth application evidence to howler evidence format."""
         return {
             "metadata": {
-                "id": str(uuid4()),
                 "kind": "evidence",
                 "provider": "Alert",
                 "rawdata": evidence,

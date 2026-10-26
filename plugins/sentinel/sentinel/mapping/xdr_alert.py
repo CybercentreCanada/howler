@@ -4,13 +4,32 @@ from datetime import datetime
 from typing import Any, Optional
 
 from dateutil import parser
-from howler.common.exceptions import NonRecoverableError
-from howler.config import config
 
-from sentinel.mapping.xdr_alert_evidence import default_unknown_evidence, evidence_function_map
+from sentinel.mapping.xdr_alert_evidence import evidence_function_map
 
 # Configure logger
 logger = logging.getLogger(__name__)
+
+# The existing Graph evidence projections also contain plugin-specific namespaces. Only
+# these top-level Howler/ECS field sets are safe to copy onto a normal hit;
+# everything else remains available verbatim in howler.data.
+SUPPORTED_EVIDENCE_FIELDS = {
+    "aws",
+    "azure",
+    "cloud",
+    "container",
+    "email",
+    "file",
+    "gcp",
+    "group",
+    "host",
+    "network",
+    "process",
+    "registry",
+    "url",
+    "user",
+    "user_agent",
+}
 
 
 class XDRAlert:
@@ -110,52 +129,12 @@ class XDRAlert:
         }
         return service_map.get(graph_service_source, "Unknown Service Source")
 
-    def map_classification(self, graph_classification: str) -> str:
-        """Map Microsoft Graph alert classification to Howler assessment classification.
-
-        Converts Graph API classification strings or integers to Howler-compatible
-        assessment values. Handles both string and integer formats due to
-        serialization variations in Graph alert data.
-
-        Args:
-            graph_classification: Graph API classification value (string or int).
-                String values include: "informationalExpectedActivity", "falsePositive",
-                "truePositive", "unknown", etc.
-                Integer values: 0=ambiguous, 1=false-positive, 2=compromise,
-                3=legitimate, 4=unknownFutureValue.
-
-        Returns:
-            Howler assessment classification ("legitimate", "false-positive",
-            "compromise", or "ambiguous"). Defaults to "ambiguous" for unknown values.
-
-        Note:
-            TODO: Evaluate if this field should be set for new alerts.
-        """
-        # Added integer values since the serialization of the graph alert is emitting integers at some point
-        classification = {
-            "informationalExpectedActivity": "legitimate",
-            "falsePositive": "false-positive",
-            "truePositive": "compromise",
-            "unknown": "ambiguous",
-            "TRUEPOSITIVE": "compromise",
-            "FALSEPOSITIVE": "false-positive",
-            "UNDETERMINED": "ambiguous",
-            "SECURITYTEST": "legitimate",
-            0: "ambiguous",
-            1: "false-positive",
-            2: "compromise",
-            3: "legitimate",
-            4: "ambiguous",  # unknownFutureValue
-        }
-        # TODO evaluate if we should set this field if new alert
-        return classification.get(graph_classification, "ambiguous")
-
     def map_alert(self, graph_alert: dict[str, Any], customer_id: str) -> Optional[dict[str, Any]]:
         """Transform a Microsoft Graph alert into a Howler hit format.
 
         This is the main mapping function that converts a Graph API alert object
-        into the Howler hit format, including all necessary field mappings,
-        evidence processing, and metadata extraction.
+        into the Howler hit format. Evidence is ingested separately as child
+        hits by the Sentinel case ingestion route.
 
         Args:
             graph_alert: Dictionary containing the Graph API alert data.
@@ -168,7 +147,7 @@ class XDRAlert:
         Note:
             Calls several helper methods to populate specific sections of the hit:
             _map_timestamps, _map_graph_host_link, _populate_event_provider,
-            _populate_comments, and _map_evidence.
+            and _populate_comments.
         """
         # Handle None input gracefully
         if graph_alert is None:
@@ -176,7 +155,7 @@ class XDRAlert:
             return None
 
         customer_name = self.get_customer_name(customer_id)
-        if customer_name == self.DEFAULT_CUSTOMER_NAME:
+        if customer_name == self.DEFAULT_CUSTOMER_NAME and customer_id not in self.tid_mapping:
             logger.warning("Customer name not found for tenant ID: %s", graph_alert.get("tenantId", ""))
             return None
 
@@ -200,8 +179,14 @@ class XDRAlert:
         if isinstance(assigned_to, str) and assigned_to.startswith("User-"):
             assigned_to = assigned_to[5:]
 
-        # Get classification for conditional assessment
-        classification = graph_alert.get("classification")
+        outline = {
+            "summary": graph_alert.get("description", ""),
+            "indicators": [],
+            "threat": graph_alert.get("threatDisplayName", ""),
+        }
+        computer_dns_name = graph_alert.get("computerDnsName")
+        if isinstance(computer_dns_name, str) and computer_dns_name.strip():
+            outline["target"] = computer_dns_name
 
         howler_hit = {
             "timestamp": created,
@@ -212,16 +197,9 @@ class XDRAlert:
                 "score": severity / 100.0,
                 "status": status,
                 "detection": display_name,
-                "outline": {
-                    "summary": graph_alert.get("description", ""),
-                    "indicators": [],
-                    "threat": graph_alert.get("threatDisplayName", ""),
-                    "target": graph_alert.get("computerDnsName", ""),
-                },
+                "outline": outline,
                 "assignment": assigned_to,
                 "escalation": "hit",
-                "is_bundle": False,
-                "bundle_size": 0,
                 "labels": {
                     "insight": [],
                     "mitigation": [],
@@ -234,7 +212,6 @@ class XDRAlert:
                 },
                 "data": [json.dumps(graph_alert)],
             },
-            "evidence": {"data": []},
             "event": {
                 "created": created,
                 "kind": "alert",
@@ -251,16 +228,89 @@ class XDRAlert:
             },
         }
 
-        # Add assessment conditionally if classification is not null
-        if classification is not None:
-            howler_hit["howler"]["assessment"] = self.map_classification(classification)
-
         # Call mapping helper methods
         self._map_timestamps(graph_alert, howler_hit)
         self._map_graph_host_link(graph_alert, howler_hit)
         self._populate_event_provider(howler_hit)
         self._populate_comments(graph_alert, howler_hit)
-        self._map_evidence(graph_alert, howler_hit)
+
+        return howler_hit
+
+    def map_evidence_to_hit(  # noqa C901
+        self,
+        graph_evidence: Any,
+        customer_id: str,
+        *,
+        parent_status: str,
+        classification: str | None = None,
+    ) -> dict[str, Any]:
+        """Map a Graph evidence value to an ordinary Howler hit.
+
+        Raw evidence is always retained in ``howler.data``. The evidence-field
+        projections are used only for supported ECS namespaces; fields
+        owned by the removed evidence plugin (or unknown Graph namespaces) are
+        intentionally not emitted as top-level hit fields.
+        """
+        evidence = graph_evidence if isinstance(graph_evidence, dict) else {}
+        odata = evidence.get("@odata.type", "")
+        evidence_type = odata.split(".")[-1].lstrip("#") if isinstance(odata, str) and odata else "Unknown"
+        mapper = evidence_function_map.get(evidence_type)
+
+        mapped_fields: dict[str, Any] = {}
+        if mapper is not None:
+            try:
+                mapped = mapper(evidence)
+                if isinstance(mapped, dict):
+                    mapped_fields = {key: value for key, value in mapped.items() if key in SUPPORTED_EVIDENCE_FIELDS}
+            except Exception:
+                logger.warning("Failed to map Sentinel evidence type %s; preserving raw evidence", evidence_type)
+
+        host = mapped_fields.get("host")
+        if isinstance(host, dict):
+            # Older evidence mappings used lists for these scalar ECS fields.
+            if isinstance(host.get("domain"), list):
+                host["domain"] = next((value for value in host["domain"] if isinstance(value, str)), None)
+            for field in ("ip", "mac"):
+                value = host.get(field)
+                if isinstance(value, str):
+                    host[field] = [value] if value else []
+                elif isinstance(value, list):
+                    host[field] = [entry for entry in value if isinstance(entry, str)]
+
+        created = evidence.get("createdDateTime")
+        if not isinstance(created, str) or not created:
+            created = None
+        else:
+            try:
+                created = parser.isoparse(created).isoformat()
+            except (TypeError, ValueError):
+                logger.warning("Invalid evidence timestamp: %s", created)
+                created = None
+
+        raw_payload = json.dumps(graph_evidence, sort_keys=True, ensure_ascii=True)
+        howler_hit: dict[str, Any] = {
+            "organization": {"name": self.get_customer_name(customer_id), "id": customer_id},
+            "howler": {
+                "analytic": "Sentinel Evidence",
+                "detection": "Sentinel Evidence",
+                "status": parent_status,
+                "escalation": "hit",
+                "outline": {"summary": f"Evidence object from {evidence_type}"},
+                "data": [raw_payload],
+            },
+            "event": {
+                "kind": "enrichment",
+                "category": ["threat"],
+                "type": ["info"],
+                "provider": "Microsoft Defender XDR",
+            },
+            **mapped_fields,
+        }
+        if created:
+            howler_hit["timestamp"] = created
+            howler_hit["event"]["created"] = created
+        if classification:
+            howler_hit["classification"] = classification
 
         return howler_hit
 
@@ -375,41 +425,3 @@ class XDRAlert:
             if "comment" not in howler_hit["howler"]:
                 howler_hit["howler"]["comment"] = []
             howler_hit["howler"]["comment"].extend(comments)
-
-    def _map_evidence(self, graph_alert: dict[str, Any], howler_hit: dict[str, Any]) -> None:
-        """Process and map evidence objects from Graph alert to Howler evidence format.
-
-        Extracts evidence items from the Graph alert and converts them using
-        specialized evidence mapping functions based on the evidence type.
-        Requires the evidence plugin to be enabled in Howler configuration.
-
-        Args:
-            graph_alert: Dictionary containing the Graph API alert data.
-            howler_hit: Dictionary representing the Howler hit being constructed.
-
-        Raises:
-            NonRecoverableError: If the evidence plugin is not enabled in configuration.
-
-        Note:
-            Uses evidence type from @odata.type field to determine appropriate
-            mapping function. Falls back to default_unknown_evidence for unmapped
-            or failed evidence types.
-        """
-        if "evidence" not in config.core.plugins:
-            raise NonRecoverableError("Sentinel requires the evidence plugin to be enabled")
-        if "evidence" not in howler_hit or not isinstance(howler_hit["evidence"], list):
-            howler_hit["evidence"] = []
-
-        for evidence in graph_alert.get("evidence", []):
-            odata = evidence.get("@odata.type", "")
-            if not odata:
-                continue
-            func_name = odata.split(".")[-1]
-            evidence_func = evidence_function_map.get(func_name)
-            mapped_evidence = None
-            if evidence_func:
-                mapped_evidence = evidence_func(evidence)
-            if not isinstance(mapped_evidence, dict):
-                logger.warning("Evidence mapping failed or returned non-dict for type: %s, using default.", odata)
-                mapped_evidence = default_unknown_evidence(evidence)
-            howler_hit["evidence"].append(mapped_evidence)
