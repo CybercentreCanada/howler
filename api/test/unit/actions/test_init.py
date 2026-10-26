@@ -64,6 +64,29 @@ def test_execute_missing_roles():
     assert result["message"].startswith("The operation ID provided (add_label) requires permissions you do not have")
 
 
+def test_execute_invalid_argument_with_sanitizer_delimiter():
+    user: User = random_model_obj(User)
+    user.type = ["actionrunner_basic"]
+
+    result = execute(
+        "add_label",
+        "howler.id:*",
+        user=user,
+        category="generic",
+        label="test",
+        **{"===": "unexpected"},
+    )
+
+    assert result == [
+        {
+            "query": "(howler.id:*)",
+            "outcome": "error",
+            "title": "Invalid Arguments",
+            "message": "===: Extra inputs are not permitted (received 'unexpected')",
+        }
+    ]
+
+
 @patch("howler.actions.datastore")
 def test_execute_basic_user_hit_limit_exceeded(mock_ds):
     """Test that basic users are blocked when exceeding hit limits."""
