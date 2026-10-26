@@ -205,7 +205,7 @@ def update_action(id: str, user: User, **kwargs) -> Response:
         "action_id": existing_action["action_id"],
     }
 
-    if error := action_service.validate_action(updated_action):
+    if error := action_service.validate_action(updated_action, existing_action=existing_action):
         return error
 
     try:

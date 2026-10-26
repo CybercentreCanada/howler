@@ -1,5 +1,6 @@
 import json
 from collections import defaultdict
+from collections.abc import Mapping
 from importlib.util import find_spec
 from typing import Any, Literal, Optional, TypedDict, overload
 
@@ -8,7 +9,7 @@ from flask import Response, has_request_context, request
 from pydantic import ValidationError
 
 from howler import actions
-from howler.actions.models import ActionModel, format_validation_error
+from howler.actions.models import ActionModel, OperationModel, format_validation_error
 from howler.api import bad_request
 from howler.common.exceptions import HowlerValueError
 from howler.common.loader import datastore
@@ -213,7 +214,21 @@ def process_action_batch(trigger: str, items: list[TriggeredAction]) -> None:
             logger.exception("Error processing action batch for trigger=%s user=%s", trigger, uname)
 
 
-def validate_action(new_action: Any) -> Optional[Response]:  # noqa: C901
+def _is_unchanged_operation(operation: OperationModel, stored_operation: Mapping[str, Any] | None) -> bool:
+    """Return whether the submitted operation keeps a stored operation's arguments unchanged."""
+    if stored_operation is None or stored_operation.get("operation_id") != operation.operation_id:
+        return False
+
+    stored_data_json = stored_operation.get("data_json")
+    try:
+        stored_data = json.loads(stored_data_json) if stored_data_json else {}
+    except (TypeError, json.JSONDecodeError):
+        return False
+
+    return isinstance(stored_data, dict) and stored_data == operation.data
+
+
+def validate_action(new_action: Any, existing_action: Mapping[str, Any] | None = None) -> Optional[Response]:  # noqa: C901
     """Validate a new action"""
     if not isinstance(new_action, dict):
         return bad_request(err="Incorrect data structure!")
@@ -250,6 +265,12 @@ def validate_action(new_action: Any) -> Optional[Response]:  # noqa: C901
     except ValidationError as e:
         return bad_request(err=format_validation_error(e))
 
+    stored_operations = {
+        operation["operation_id"]: operation
+        for operation in (existing_action or {}).get("operations", [])
+        if isinstance(operation, Mapping) and isinstance(operation.get("operation_id"), str)
+    }
+
     for operation in action.operations:
         specification = actions.get_specification(operation.operation_id)
         if specification is None:
@@ -258,7 +279,8 @@ def validate_action(new_action: Any) -> Optional[Response]:  # noqa: C901
             )
 
         try:
-            specification.validate_arguments(operation.data)
+            ignore_extra = _is_unchanged_operation(operation, stored_operations.get(operation.operation_id))
+            specification.validate_arguments(operation.data, ignore_extra=ignore_extra)
         except ValidationError as e:
             return bad_request(
                 err=f"Invalid arguments for operation {operation.operation_id}: {format_validation_error(e)}"

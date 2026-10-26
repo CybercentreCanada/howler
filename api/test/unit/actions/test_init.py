@@ -88,6 +88,57 @@ def test_execute_invalid_argument_with_sanitizer_delimiter():
 
 
 @patch("howler.actions.datastore")
+@patch("howler.actions.add_label.execute")
+def test_execute_stored_action_ignores_extra_arguments(mock_execute, mock_datastore):
+    user: User = random_model_obj(User)
+    user.type = ["actionrunner_basic"]
+    mock_execute.return_value = []
+    mock_datastore.return_value.hit.search.return_value = {"total": 1}
+
+    result = execute(
+        "add_label",
+        "howler.id:*",
+        user=user,
+        ignore_extra_arguments=True,
+        category="generic",
+        label="kept",
+        obsolete_argument="from an older action",
+    )
+
+    assert result == []
+    mock_execute.assert_called_once_with(
+        query="howler.id:*",
+        request_id=None,
+        user=user,
+        category="generic",
+        label="kept",
+    )
+
+
+@patch("howler.actions.datastore")
+@patch("howler.actions.add_label.execute")
+def test_execute_stored_action_still_rejects_invalid_declared_arguments(mock_execute, mock_datastore):
+    user: User = random_model_obj(User)
+    user.type = ["actionrunner_basic"]
+
+    result = execute(
+        "add_label",
+        "howler.id:*",
+        user=user,
+        ignore_extra_arguments=True,
+        category="generic",
+        label="",
+        obsolete_argument="from an older action",
+    )
+
+    assert len(result) == 1
+    assert result[0]["title"] == "Invalid Arguments"
+    assert "label" in result[0]["message"]
+    mock_execute.assert_not_called()
+    mock_datastore.assert_not_called()
+
+
+@patch("howler.actions.datastore")
 def test_execute_basic_user_hit_limit_exceeded(mock_ds):
     """Test that basic users are blocked when exceeding hit limits."""
     basic_user: User = random_model_obj(User)
