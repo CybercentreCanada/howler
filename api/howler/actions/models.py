@@ -135,10 +135,14 @@ class ActionStep(BaseModel):
 
 
 def _field_adapter(field: FieldInfo) -> TypeAdapter[Any]:
-    if not field.metadata:
-        return TypeAdapter(field.annotation)
+    annotation = field.annotation
+    if annotation is None:
+        raise ValueError("Action argument field must have an annotation.")
 
-    return TypeAdapter(Annotated[(field.annotation, *field.metadata)])  # type: ignore
+    if not field.metadata:
+        return TypeAdapter(annotation)
+
+    return TypeAdapter(Annotated[(annotation, *field.metadata)])  # type: ignore
 
 
 def _check_values(name: str, values: Iterable[str], adapter: TypeAdapter[Any]) -> None:

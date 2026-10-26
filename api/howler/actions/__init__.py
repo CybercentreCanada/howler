@@ -236,7 +236,9 @@ def execute(
     try:
         arguments = specification.validate_arguments(kwargs, ignore_extra=ignore_extra_arguments)
     except ValidationError as e:
-        return __sanitize_report([invalid_arguments_report(query, e)])
+        report = invalid_arguments_report(query, e)
+        report["query"] = f"({query})"
+        return [report]
 
     operation_kwargs = {key: value for key, value in kwargs.items() if key in RESERVED_ARGUMENTS}
     operation_kwargs.update(arguments.model_extra or {})
