@@ -41,7 +41,12 @@ const ActionReportDisplay: FC<{ report: ActionReport; operations: ActionOperatio
                     {_reports.map(
                       r =>
                         ({
-                          success: <TaskAltOutlined key={r.message} color="success" />,
+                          success:
+                            r.status === 'queued' ? (
+                              <InfoOutlined key={r.message} color="info" />
+                            ) : (
+                              <TaskAltOutlined key={r.message} color="success" />
+                            ),
                           skipped: <InfoOutlined key={r.message} color="info" />,
                           error: <ErrorOutline key={r.message} color="error" />
                         })[r.outcome]
@@ -54,13 +59,16 @@ const ActionReportDisplay: FC<{ report: ActionReport; operations: ActionOperatio
                       <Alert
                         key={r.query}
                         variant="outlined"
-                        severity={r.outcome.replace('skipped', 'info') as AlertColor}
+                        severity={(r.status === 'queued' ? 'info' : r.outcome.replace('skipped', 'info')) as AlertColor}
                       >
-                        <AlertTitle>{r.title}</AlertTitle>
+                        <AlertTitle>{r.status === 'queued' ? t('route.actions.run.accepted') : r.title}</AlertTitle>
                         <Stack>
                           <Typography variant="caption">
                             <Markdown md={r.message.replace('$UI_HOST', window.location.origin)} />
                           </Typography>
+                          {r.status === 'queued' && r.run_id && (
+                            <Typography variant="caption">{t('route.actions.run.id', { runId: r.run_id })}</Typography>
+                          )}
                           <Typography variant="caption">
                             <Link to={`/hits?query=${encodeURIComponent(r.query)}`}>
                               {t('route.actions.search.open')}

@@ -58,6 +58,12 @@ describe('checkArgsAreFilled', () => {
     const step = makeStep({});
     expect(checkArgsAreFilled(step, JSON.stringify({}))).toBe(true);
   });
+
+  it('allows an optional argument to be blank while still requiring all other arguments', () => {
+    const step = { ...makeStep({ prompt: [], target: [] }), optional_args: ['prompt'] };
+    expect(checkArgsAreFilled(step, JSON.stringify({ prompt: '', target: 'all' }))).toBe(true);
+    expect(checkArgsAreFilled(step, JSON.stringify({ prompt: '' }))).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -130,6 +136,10 @@ describe('getArgsByContext', () => {
     const values = JSON.stringify({ status: 'resolved' });
     expect(getArgsByContext(args, values)).toEqual([]);
   });
+
+  it('includes optional args in the visible argument list', () => {
+    expect(getArgsByContext({}, '{}', ['prompt'])).toEqual(['prompt']);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -171,5 +181,11 @@ describe('operationReady', () => {
     const action = makeAction([step1, step2]);
     const data = JSON.stringify({ status: 'open', assignment: 'alice' });
     expect(operationReady(data, action)).toBe(true);
+  });
+
+  it('does not require optional arguments to be filled in', () => {
+    const action = makeAction([{ ...makeStep({ prompt: [], target: [] }), optional_args: ['prompt'] }]);
+    expect(operationReady(JSON.stringify({ target: 'all' }), action)).toBe(true);
+    expect(operationReady(JSON.stringify({ prompt: '' }), action)).toBe(false);
   });
 });

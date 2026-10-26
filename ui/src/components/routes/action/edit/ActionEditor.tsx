@@ -32,6 +32,7 @@ import { useLocation, useParams, useSearchParams } from 'react-router';
 import { operationReady } from 'utils/actionUtils';
 import QueryResultText from '../../../elements/display/QueryResultText';
 import ActionReportDisplay from '../shared/ActionReportDisplay';
+import ActionRunHistory from '../shared/ActionRunHistory';
 import OperationEntry from '../shared/OperationEntry';
 import useMyActionFunctions from '../useMyActionFunctions';
 
@@ -57,6 +58,15 @@ const ActionEditor: FC = () => {
 
   const { response, loading, setLoading, responseQuery, report, progress, onSearch, saveAction, submitAction } =
     useMyActionFunctions();
+  const acceptedRunIds = useMemo(
+    () =>
+      Object.values(report ?? {}).flatMap(entries =>
+        (Array.isArray(entries) ? entries : []).flatMap(entry =>
+          entry.status === 'queued' && entry.run_id ? [entry.run_id] : []
+        )
+      ),
+    [report]
+  );
 
   const [operations, setOperations] = useState<ActionOperation[]>([]);
   const [name, setName] = useState('');
@@ -276,6 +286,7 @@ const ActionEditor: FC = () => {
             <LinearProgress />
           ))}
         {report && <ActionReportDisplay report={report} operations={operations} />}
+        <ActionRunHistory actionId={params.id} contextId={location.pathname} acceptedRunIds={acceptedRunIds} />
       </Stack>
       {operations.length > 0 && (
         <Stack spacing={1} mt={1}>

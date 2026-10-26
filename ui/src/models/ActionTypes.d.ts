@@ -4,6 +4,7 @@ export interface ActionOperationStep {
   args: {
     [index: string]: string[];
   };
+  optional_args?: string[];
   options: {
     [index: string]: string[] | { [index: string]: string[] };
   };
@@ -46,5 +47,7 @@ export interface ActionReport {
     outcome: 'success' | 'error' | 'skipped';
     title: string;
     message: string;
+    run_id?: string;
+    status?: 'queued' | 'running' | 'completed';
   }[];
 }

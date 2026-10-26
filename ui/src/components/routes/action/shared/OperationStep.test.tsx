@@ -50,7 +50,8 @@ vi.mock('react-router', () => ({
 
 vi.mock('utils/actionUtils', () => ({
   checkArgsAreFilled: (step: any, values: string) => Object.keys(step.args).every(key => JSON.parse(values)[key]),
-  getArgsByContext: (args: any) => Object.keys(args),
+  getArgsByContext: (args: any, _values: string, optionalArgs: string[] = []) =>
+    [...Object.keys(args), ...optionalArgs].filter((arg, index, values) => values.indexOf(arg) === index),
   getOptionsByContext: (options: any, arg: string) => options[arg]
 }));
 
@@ -126,5 +127,22 @@ describe('OperationStep', () => {
 
     expect(screen.getByLabelText('Name')).toBeDisabled();
     expect(mockDispatchApi).not.toHaveBeenCalled();
+  });
+
+  it('renders an optional prompt even when it is not part of the required arguments', () => {
+    const setValues = vi.fn();
+
+    render(
+      <OperationStep
+        query="status:open"
+        values="{}"
+        setValues={setValues}
+        step={{ args: {}, optional_args: ['prompt'], options: {}, validation: {} } as any}
+      />
+    );
+
+    const prompt = screen.getByLabelText('Prompt (route.actions.optional)');
+    fireEvent.change(prompt, { target: { value: 'Focus on suspicious process activity' } });
+    expect(setValues).toHaveBeenCalledWith('{"prompt":"Focus on suspicious process activity"}');
   });
 });
