@@ -35,7 +35,14 @@ def __sanitize_specification(spec: dict[str, Any]) -> dict[str, Any]:
             .replace("\n    ", "\n")
             .replace("Args:", "Args:\n"),
         },
-        "steps": [{**step, "args": {k: list(v) for k, v in step["args"].items()}} for step in spec.get("steps", [])],
+        "steps": [
+            {
+                **step,
+                "args": {k: list(v) for k, v in step["args"].items()},
+                **({"optional_args": list(step["optional_args"])} if "optional_args" in step else {}),
+            }
+            for step in spec.get("steps", [])
+        ],
     }
 
 
@@ -48,12 +55,18 @@ def __sanitize_report(report: list[dict[str, Any]]) -> list[dict[str, Any]]:
     Returns:
         list[dict[str, Any]]: The sanitized, concise report
     """
-    by_message: dict[str, Any] = {}
+    by_message: dict[tuple[str, str, str, str | None, str | None], list[str]] = {}
 
     for entry in report:
         # if these three keys match, we should merge the queries that use them both. For example, when multiple hits
         # fail to transition for the same reason.
-        key = f"{entry['title']}==={entry['message']}==={entry['outcome']}"
+        key = (
+            entry["title"],
+            entry["message"],
+            entry["outcome"],
+            entry.get("run_id"),
+            entry.get("status"),
+        )
 
         if key in by_message:
             by_message[key].append(f"({entry['query']})")
@@ -62,16 +75,17 @@ def __sanitize_report(report: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     sanitized: list[dict[str, Any]] = []
     for key, queries in by_message.items():
-        (title, message, outcome) = key.split("===")
-
-        sanitized.append(
-            {
-                "query": " OR ".join(queries),
-                "outcome": outcome,
-                "title": title,
-                "message": message,
-            }
-        )
+        title, message, outcome, run_id, status = key
+        entry = {
+            "query": " OR ".join(queries),
+            "outcome": outcome,
+            "title": title,
+            "message": message,
+        }
+        if run_id is not None:
+            entry["run_id"] = run_id
+            entry["status"] = status or "queued"
+        sanitized.append(entry)
 
     return sanitized
 
@@ -143,6 +157,9 @@ def execute(
     query: str,
     user: User | None,
     request_id: Optional[str] = None,
+    trusted_auth_token: str | None = None,
+    action_id: str | None = None,
+    trigger: str | None = None,
     **kwargs,
 ) -> list[dict[str, Any]]:
     """Execute a specification
@@ -196,13 +213,37 @@ def execute(
             }
         ]
 
+    operation_requires_token = bool(operation.specification().get("requires_auth_token", False))
+    if operation_requires_token and not trusted_auth_token:
+        return [
+            {
+                "query": query,
+                "outcome": "error",
+                "title": "Authentication required",
+                "message": "This operation requires a Bearer authorization token.",
+            }
+        ]
+
+    # Persisted action data is untrusted. Never let it impersonate the
+    # independently parsed request authorization context.
+    safe_kwargs = {
+        key: value
+        for key, value in kwargs.items()
+        if key not in {"auth_token", "trusted_auth_token", "action_id", "trigger", "request_id", "query", "user"}
+    }
+
     # Skip central limit check if operation handles it locally with transformed query
     if not getattr(operation, "SKIP_CENTRAL_LIMIT", False):
         limit_error = _check_hit_limit(operation, query, user)
         if limit_error:
             return [limit_error]
 
-    report = operation.execute(query=query, request_id=request_id, user=user, **kwargs)
+    if operation_requires_token:
+        safe_kwargs["trusted_auth_token"] = trusted_auth_token
+        safe_kwargs["action_id"] = action_id
+        safe_kwargs["trigger"] = trigger
+
+    report = operation.execute(query=query, request_id=request_id, user=user, **safe_kwargs)
 
     return __sanitize_report(report)
 
@@ -222,6 +263,9 @@ def specifications() -> list[dict[str, Any]]:
     ):
         try:
             operation = importlib.import_module(f"howler.actions.{module.stem}")
+
+            if hasattr(operation, "is_available") and not operation.is_available():
+                continue
 
             specifications.append(__sanitize_specification(operation.specification()))
 

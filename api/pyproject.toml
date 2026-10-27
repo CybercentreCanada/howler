@@ -360,7 +360,7 @@ rich = "^14.2.0"
 conventional-pre-commit = "^4.3.0"
 
 [tool.poetry.scripts]
-server = "howler.app:main"
+server = "howler.patched:main"
 howler-migrate = "howler.external.run_migrations:main"
 test = "build_scripts.run_tests:main"
 type_check = "build_scripts.type_check:main"
