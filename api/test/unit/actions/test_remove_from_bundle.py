@@ -187,7 +187,7 @@ def test_specification():
     """Verifies the action specification is correctly structured."""
     spec = specification()
 
-    assert spec["id"] == "remove_from_bundle"
-    assert "title" in spec
-    assert "roles" in spec
-    assert "steps" in spec
+    assert spec.id == "remove_from_bundle"
+    assert spec.title
+    assert spec.roles
+    assert spec.steps

@@ -1,6 +1,17 @@
-from typing import Optional
+from typing import Annotated, Optional
+
+from pydantic import model_validator
 
 import howler.helper.hit as hit_helper
+from howler.actions.models import (
+    ActionArguments,
+    ActionDescription,
+    ActionSpecification,
+    ActionStep,
+    EmptyToNone,
+    StepValidationRule,
+    one_of,
+)
 from howler.common.loader import datastore
 from howler.datastore.operations import OdmHelper
 from howler.odm.models.action import VALID_TRIGGERS
@@ -17,8 +28,34 @@ MAX_HITS_BASIC = 10
 MAX_HITS_ADVANCED = 1000
 
 ESCALATIONS = [esc for esc in Escalation.list() if esc != Escalation.MISS]
+EVIDENCE_ASSESSMENTS = [
+    assessment for assessment in Assessment.list() if AssessmentEscalationMap[assessment] == Escalation.EVIDENCE
+]
 
 odm_helper = OdmHelper(Hit)
+
+
+class PromoteArguments(ActionArguments):
+    """Arguments of the promote operation."""
+
+    escalation: Annotated[str, one_of("escalation", ESCALATIONS)] = Escalation.ALERT.value
+    assessment: Annotated[Optional[str], EmptyToNone, one_of("assessment", Assessment.list)] = None
+    rationale: Annotated[Optional[str], EmptyToNone] = None
+
+    @model_validator(mode="after")
+    def _validate_assessment(self) -> "PromoteArguments":
+        if self.escalation != Escalation.EVIDENCE:
+            return self
+
+        if not self.assessment:
+            raise ValueError("You must provide an assessment value when promoting to evidence.")
+
+        if self.assessment not in EVIDENCE_ASSESSMENTS:
+            raise ValueError(
+                f"'{self.assessment}' is not an evidence assessment. Must be one of: {', '.join(EVIDENCE_ASSESSMENTS)}."
+            )
+
+        return self
 
 
 def execute(
@@ -111,40 +148,31 @@ def execute(
     return report
 
 
-def specification():
+def specification() -> ActionSpecification:
     """Specify various properties of the action, such as title, descriptions, permissions and input steps."""
-    return {
-        "id": OPERATION_ID,
-        "title": "Promote Hit",
-        "i18nKey": "operations.promote",
-        "description": {
-            "short": "Promote a hit",
-            "long": execute.__doc__,
-        },
-        "roles": ["automation_basic", "actionrunner_basic"],
-        "steps": [
-            {
-                "args": {"escalation": []},
-                "options": {"escalation": ESCALATIONS},
-                "validation": {"warn": {"query": "howler.escalation:$escalation"}},
-            },
-            {
-                "args": {
-                    "assessment": ["escalation:evidence"],
-                    "rationale": ["escalation:evidence"],
-                },
-                "options": {
+    return ActionSpecification(
+        id=OPERATION_ID,
+        title="Promote Hit",
+        i18n_key="operations.promote",
+        description=ActionDescription(short="Promote a hit", long=execute.__doc__),
+        roles=["automation_basic", "actionrunner_basic"],
+        steps=[
+            ActionStep(
+                args={"escalation": []},
+                options={"escalation": ESCALATIONS},
+                validation={"warn": StepValidationRule(query="howler.escalation:$escalation")},
+            ),
+            ActionStep(
+                args={"assessment": ["escalation:evidence"], "rationale": ["escalation:evidence"]},
+                options={
                     "assessment": {
-                        "escalation:evidence": [
-                            assessment
-                            for assessment in Assessment.list()
-                            if AssessmentEscalationMap[assessment] == Escalation.EVIDENCE
-                        ],
+                        "escalation:evidence": EVIDENCE_ASSESSMENTS,
                         "escalation:alert": [],
                         "escalation:hit": [],
                     }
                 },
-            },
+            ),
         ],
-        "triggers": VALID_TRIGGERS,
-    }
+        triggers=VALID_TRIGGERS,
+        arguments=PromoteArguments,
+    )

@@ -705,6 +705,86 @@ def test_create_action_success(datastore: HowlerDatastore, login_session):
     assert datastore.action.exists(resp["action_id"])
 
 
+@pytest.mark.parametrize("save_mode", ["create", "update"])
+@pytest.mark.parametrize(
+    ("operation_id", "data_json", "error_message"),
+    [
+        ("add_label", "{", "data_json must be valid JSON"),
+        ("add_label", "[]", "data_json must be a JSON object"),
+        ("unknown_operation", "{}", "does not match any enabled operations"),
+        ("add_label", json.dumps({"category": "generic", "label": "label", "obsolete": "new"}), "obsolete"),
+        ("promote", json.dumps({"escalation": "evidence"}), "must provide an assessment"),
+        (
+            "promote",
+            json.dumps({"escalation": "evidence", "assessment": "development"}),
+            "not an evidence assessment",
+        ),
+        ("demote", json.dumps({"escalation": "miss"}), "must provide an assessment value when demoting to miss"),
+        (
+            "demote",
+            json.dumps({"escalation": "miss", "assessment": "attempt"}),
+            "not a miss assessment",
+        ),
+        ("add_label", json.dumps({"category": "generic", "label": "valid"}), None),
+        ("promote", json.dumps({"escalation": "evidence", "assessment": "attempt"}), None),
+        ("demote", json.dumps({"escalation": "miss", "assessment": "false-positive"}), None),
+    ],
+)
+def test_action_save_validates_operation_arguments(
+    datastore: HowlerDatastore,
+    login_session,
+    save_mode: str,
+    operation_id: str,
+    data_json: str,
+    error_message: str | None,
+):
+    """Create and update endpoints validate operation JSON and action-specific arguments."""
+    session, host = login_session
+
+    action_id = None
+    if save_mode == "update":
+        initial_action = get_api_data(
+            session,
+            f"{host}/api/v1/action",
+            method="POST",
+            data=json.dumps(
+                {
+                    "name": "Action validation baseline",
+                    "query": "howler.id:*",
+                    "operations": [
+                        {
+                            "operation_id": "add_label",
+                            "data_json": json.dumps({"category": "generic", "label": "baseline"}),
+                        }
+                    ],
+                }
+            ),
+        )
+        action_id = initial_action["action_id"]
+
+    action_payload = {
+        "name": "Action validation test",
+        "query": "howler.id:*",
+        "operations": [{"operation_id": operation_id, "data_json": data_json}],
+    }
+    if save_mode == "create":
+        url = f"{host}/api/v1/action"
+        method = "POST"
+    else:
+        url = f"{host}/api/v1/action/{action_id}"
+        method = "PUT"
+
+    if error_message:
+        with pytest.raises(APIError) as error:
+            get_api_data(session, url, method=method, data=json.dumps(action_payload))
+
+        assert error_message in str(error.value)
+        return
+
+    saved_action = get_api_data(session, url, method=method, data=json.dumps(action_payload))
+    assert saved_action["operations"][0]["operation_id"] == operation_id
+
+
 def test_update_action_success(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
@@ -731,6 +811,173 @@ def test_update_action_success(datastore: HowlerDatastore, login_session):
     assert resp.get("name", None) is not None
 
     assert resp["name"] == "Test Update action"
+
+
+def test_update_action_preserves_unchanged_legacy_arguments(datastore: HowlerDatastore, login_session):
+    """A metadata-only update should not reject obsolete arguments in stored operations."""
+    session, host = login_session
+    legacy_arguments = {"category": "generic", "label": "legacy", "obsolete": "stored value"}
+    action = Action(
+        {
+            "owner": "admin",
+            "name": "Legacy action",
+            "query": "howler.id:*",
+            "triggers": [],
+            "operations": [
+                {
+                    "operation_id": "add_label",
+                    "data_json": json.dumps(legacy_arguments),
+                }
+            ],
+        }
+    )
+    datastore.action.save(action.action_id, action)
+    datastore.action.commit()
+
+    resp = get_api_data(
+        session,
+        f"{host}/api/v1/action/{action.action_id}",
+        method="PUT",
+        data=json.dumps({"name": "Renamed legacy action"}),
+    )
+
+    assert resp["name"] == "Renamed legacy action"
+    stored_action = datastore.action.get(action.action_id, as_obj=False)
+    assert json.loads(stored_action["operations"][0]["data_json"]) == legacy_arguments
+
+
+def test_update_action_keeps_edited_legacy_arguments_strict(datastore: HowlerDatastore, login_session):
+    """Editing a legacy operation still rejects obsolete argument keys."""
+    session, host = login_session
+    legacy_arguments = {"category": "generic", "label": "legacy", "obsolete": "stored value"}
+    action = Action(
+        {
+            "owner": "admin",
+            "name": "Legacy action",
+            "query": "howler.id:*",
+            "triggers": [],
+            "operations": [
+                {
+                    "operation_id": "add_label",
+                    "data_json": json.dumps(legacy_arguments),
+                }
+            ],
+        }
+    )
+    datastore.action.save(action.action_id, action)
+    datastore.action.commit()
+
+    updated_arguments = {**legacy_arguments, "label": "edited"}
+    with pytest.raises(APIError) as error:
+        get_api_data(
+            session,
+            f"{host}/api/v1/action/{action.action_id}",
+            method="PUT",
+            data=json.dumps(
+                {
+                    "operations": [
+                        {
+                            "operation_id": "add_label",
+                            "data_json": json.dumps(updated_arguments),
+                        }
+                    ]
+                }
+            ),
+        )
+
+    assert "obsolete" in str(error.value)
+    stored_action = datastore.action.get(action.action_id, as_obj=False)
+    assert json.loads(stored_action["operations"][0]["data_json"]) == legacy_arguments
+
+
+def test_update_action_accepts_default_escalation_for_unchanged_legacy_transition(
+    datastore: HowlerDatastore, login_session
+):
+    """Adding a transition's server default should preserve compatibility with obsolete stored arguments."""
+    session, host = login_session
+    legacy_arguments = {"status": "in-progress", "transition": "promote", "obsolete": "stored value"}
+    action = Action(
+        {
+            "owner": "admin",
+            "name": "Legacy transition",
+            "query": "howler.id:*",
+            "triggers": [],
+            "operations": [
+                {
+                    "operation_id": "transition",
+                    "data_json": json.dumps(legacy_arguments),
+                }
+            ],
+        }
+    )
+    datastore.action.save(action.action_id, action)
+    datastore.action.commit()
+
+    normalized_arguments = {**legacy_arguments, "escalation": "alert"}
+    resp = get_api_data(
+        session,
+        f"{host}/api/v1/action/{action.action_id}",
+        method="PUT",
+        data=json.dumps(
+            {
+                "name": "Renamed legacy transition",
+                "operations": [
+                    {
+                        "operation_id": "transition",
+                        "data_json": json.dumps(normalized_arguments),
+                    }
+                ],
+            }
+        ),
+    )
+
+    assert resp["name"] == "Renamed legacy transition"
+    stored_action = datastore.action.get(action.action_id, as_obj=False)
+    assert json.loads(stored_action["operations"][0]["data_json"]) == normalized_arguments
+
+
+def test_update_action_keeps_edited_legacy_transition_strict(datastore: HowlerDatastore, login_session):
+    """Changing a declared transition argument still rejects obsolete legacy arguments."""
+    session, host = login_session
+    legacy_arguments = {"status": "in-progress", "transition": "promote", "obsolete": "stored value"}
+    action = Action(
+        {
+            "owner": "admin",
+            "name": "Legacy transition",
+            "query": "howler.id:*",
+            "triggers": [],
+            "operations": [
+                {
+                    "operation_id": "transition",
+                    "data_json": json.dumps(legacy_arguments),
+                }
+            ],
+        }
+    )
+    datastore.action.save(action.action_id, action)
+    datastore.action.commit()
+
+    edited_arguments = {**legacy_arguments, "escalation": "evidence"}
+    with pytest.raises(APIError) as error:
+        get_api_data(
+            session,
+            f"{host}/api/v1/action/{action.action_id}",
+            method="PUT",
+            data=json.dumps(
+                {
+                    "operations": [
+                        {
+                            "operation_id": "transition",
+                            "data_json": json.dumps(edited_arguments),
+                        }
+                    ]
+                }
+            ),
+        )
+
+    assert "obsolete" in str(error.value)
+    stored_action = datastore.action.get(action.action_id, as_obj=False)
+    assert json.loads(stored_action["operations"][0]["data_json"]) == legacy_arguments
 
 
 def test_update_action_forbidden(datastore: HowlerDatastore, login_session):

@@ -1,3 +1,6 @@
+from typing import Annotated
+
+from howler.actions.models import ActionArguments, ActionDescription, ActionSpecification, ActionStep, one_of
 from howler.common.loader import datastore
 from howler.datastore.operations import OdmHelper
 from howler.odm.models.action import VALID_TRIGGERS
@@ -10,6 +13,13 @@ MAX_HITS_BASIC = 10
 MAX_HITS_ADVANCED = 1000
 
 VALID_FIELDS = ["reliability", "severity", "volume", "confidence", "score"]
+
+
+class PrioritizationArguments(ActionArguments):
+    """Arguments of the prioritization operation."""
+
+    field: Annotated[str, one_of("field", VALID_FIELDS)] = "score"
+    value: float = 0.0
 
 
 def execute(query: str, field: str = "score", value: str | float = "0.0", **kwargs):
@@ -73,23 +83,16 @@ def execute(query: str, field: str = "score", value: str | float = "0.0", **kwar
     return report
 
 
-def specification():
+def specification() -> ActionSpecification:
     """Specify various properties of the action, such as title, descriptions, permissions and input steps."""
-    return {
-        "id": OPERATION_ID,
-        "title": "Change Prioritization",
-        "priority": 10,
-        "i18nKey": f"operations.{OPERATION_ID}",
-        "description": {
-            "short": "Change one of the prioritization fields of a hit",
-            "long": execute.__doc__,
-        },
-        "roles": ["automation_basic", "actionrunner_basic"],
-        "steps": [
-            {
-                "args": {"field": [], "value": []},
-                "options": {"field": VALID_FIELDS},
-            }
-        ],
-        "triggers": VALID_TRIGGERS,
-    }
+    return ActionSpecification(
+        id=OPERATION_ID,
+        title="Change Prioritization",
+        priority=10,
+        i18n_key=f"operations.{OPERATION_ID}",
+        description=ActionDescription(short="Change one of the prioritization fields of a hit", long=execute.__doc__),
+        roles=["automation_basic", "actionrunner_basic"],
+        steps=[ActionStep(args={"field": [], "value": []}, options={"field": VALID_FIELDS})],
+        triggers=VALID_TRIGGERS,
+        arguments=PrioritizationArguments,
+    )

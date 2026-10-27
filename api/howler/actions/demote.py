@@ -1,6 +1,17 @@
-from typing import Optional
+from typing import Annotated, Optional
+
+from pydantic import model_validator
 
 import howler.helper.hit as hit_helper
+from howler.actions.models import (
+    ActionArguments,
+    ActionDescription,
+    ActionSpecification,
+    ActionStep,
+    EmptyToNone,
+    StepValidationRule,
+    one_of,
+)
 from howler.common.loader import datastore
 from howler.datastore.operations import OdmHelper
 from howler.odm.models.action import VALID_TRIGGERS
@@ -19,8 +30,34 @@ MAX_HITS_BASIC = 10
 MAX_HITS_ADVANCED = 1000
 
 ESCALATIONS = [esc for esc in Escalation.list() if esc != Escalation.EVIDENCE]
+MISS_ASSESSMENTS = [
+    assessment for assessment in Assessment.list() if AssessmentEscalationMap[assessment] == Escalation.MISS
+]
 
 odm_helper = OdmHelper(Hit)
+
+
+class DemoteArguments(ActionArguments):
+    """Arguments of the demote operation."""
+
+    escalation: Annotated[str, one_of("escalation", ESCALATIONS)] = Escalation.HIT.value
+    assessment: Annotated[Optional[str], EmptyToNone, one_of("assessment", Assessment.list)] = None
+    rationale: Annotated[Optional[str], EmptyToNone] = None
+
+    @model_validator(mode="after")
+    def _validate_assessment(self) -> "DemoteArguments":
+        if self.escalation != Escalation.MISS:
+            return self
+
+        if not self.assessment:
+            raise ValueError("You must provide an assessment value when demoting to miss.")
+
+        if self.assessment not in MISS_ASSESSMENTS:
+            raise ValueError(
+                f"'{self.assessment}' is not a miss assessment. Must be one of: {', '.join(MISS_ASSESSMENTS)}."
+            )
+
+        return self
 
 
 def execute(
@@ -124,40 +161,31 @@ def execute(
     return report
 
 
-def specification():
+def specification() -> ActionSpecification:
     """Specify various properties of the action, such as title, descriptions, permissions and input steps."""
-    return {
-        "id": OPERATION_ID,
-        "title": "Demote Hit",
-        "i18nKey": "operations.demote",
-        "description": {
-            "short": "Demote a hit",
-            "long": execute.__doc__,
-        },
-        "roles": ["automation_basic", "actionrunner_basic"],
-        "steps": [
-            {
-                "args": {"escalation": []},
-                "options": {"escalation": ESCALATIONS},
-                "validation": {"warn": {"query": "howler.escalation:$escalation"}},
-            },
-            {
-                "args": {
-                    "assessment": ["escalation:miss"],
-                    "rationale": ["escalation:miss"],
-                },
-                "options": {
+    return ActionSpecification(
+        id=OPERATION_ID,
+        title="Demote Hit",
+        i18n_key="operations.demote",
+        description=ActionDescription(short="Demote a hit", long=execute.__doc__),
+        roles=["automation_basic", "actionrunner_basic"],
+        steps=[
+            ActionStep(
+                args={"escalation": []},
+                options={"escalation": ESCALATIONS},
+                validation={"warn": StepValidationRule(query="howler.escalation:$escalation")},
+            ),
+            ActionStep(
+                args={"assessment": ["escalation:miss"], "rationale": ["escalation:miss"]},
+                options={
                     "assessment": {
-                        "escalation:miss": [
-                            assessment
-                            for assessment in Assessment.list()
-                            if AssessmentEscalationMap[assessment] == Escalation.MISS
-                        ],
+                        "escalation:miss": MISS_ASSESSMENTS,
                         "escalation:alert": [],
                         "escalation:hit": [],
                     }
                 },
-            },
+            ),
         ],
-        "triggers": VALID_TRIGGERS,
-    }
+        triggers=VALID_TRIGGERS,
+        arguments=DemoteArguments,
+    )

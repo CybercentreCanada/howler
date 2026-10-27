@@ -2,7 +2,13 @@
 // @ts-nocheck
 import type { ActionOperation, ActionOperationStep } from 'models/ActionTypes';
 import { describe, expect, it } from 'vitest';
-import { checkArgsAreFilled, getArgsByContext, getOptionsByContext, operationReady } from './actionUtils';
+import {
+  checkArgsAreFilled,
+  getArgsByContext,
+  getOptionsByContext,
+  operationReady,
+  withTransitionEscalationDefault
+} from './actionUtils';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -171,5 +177,63 @@ describe('operationReady', () => {
     const action = makeAction([step1, step2]);
     const data = JSON.stringify({ status: 'open', assignment: 'alice' });
     expect(operationReady(data, action)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// withTransitionEscalationDefault
+// ---------------------------------------------------------------------------
+
+describe('withTransitionEscalationDefault', () => {
+  it.each([
+    ['promote', 'alert'],
+    ['demote', 'hit']
+  ])('restores the server default for a legacy %s transition', (transition, escalation) => {
+    const operation = {
+      operation_id: 'transition',
+      data_json: JSON.stringify({ status: 'open', transition })
+    } as any;
+
+    const normalized = withTransitionEscalationDefault(operation);
+
+    expect(JSON.parse(normalized.data_json)).toEqual({ status: 'open', transition, escalation });
+    expect(operation).not.toBe(normalized);
+  });
+
+  it('preserves an explicitly selected escalation', () => {
+    const operation = {
+      operation_id: 'transition',
+      data_json: JSON.stringify({ status: 'open', transition: 'promote', escalation: 'evidence' })
+    } as any;
+
+    expect(withTransitionEscalationDefault(operation)).toBe(operation);
+  });
+
+  it('leaves other operations and transitions unchanged', () => {
+    const operation = {
+      operation_id: 'other',
+      data_json: JSON.stringify({ status: 'open', transition: 'promote' })
+    } as any;
+    const otherTransition = {
+      operation_id: 'transition',
+      data_json: JSON.stringify({ status: 'open', transition: 'release' })
+    } as any;
+
+    expect(withTransitionEscalationDefault(operation)).toBe(operation);
+    expect(withTransitionEscalationDefault(otherTransition)).toBe(otherTransition);
+  });
+
+  it('makes a legacy transition ready to save without changing its server-default behavior', () => {
+    const operation = {
+      operation_id: 'transition',
+      data_json: JSON.stringify({ status: 'open', transition: 'promote' })
+    } as any;
+    const specification = makeAction([
+      makeStep({ status: [] }),
+      makeStep({ transition: [] }),
+      makeStep({ escalation: ['transition:promote', 'transition:demote'] })
+    ]);
+
+    expect(operationReady(withTransitionEscalationDefault(operation).data_json, specification)).toBe(true);
   });
 });

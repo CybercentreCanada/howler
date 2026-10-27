@@ -1,6 +1,7 @@
 import pytest
 
 from howler.actions.add_to_case import execute, specification
+from howler.actions.models import ActionStep
 from howler.common import loader
 from howler.common.loader import datastore
 from howler.datastore.howler_store import HowlerDatastore
@@ -292,20 +293,19 @@ def test_execute_mixed_results():
 def test_specification():
     spec = specification()
 
-    assert spec["id"] == "add_to_case"
-    assert spec["title"] == "Add to Case"
-    assert "roles" in spec
-    assert "automation_basic" in spec["roles"]
-    assert "triggers" in spec
-    assert "steps" in spec
-    steps = spec["steps"]
+    assert spec.id == "add_to_case"
+    assert spec.title == "Add to Case"
+    assert spec.roles
+    assert "automation_basic" in spec.roles
+    assert spec.triggers
+    assert spec.steps
+    steps = spec.steps
     assert isinstance(steps, list)
     assert len(steps) == 1
-    step: dict = steps[0]  # type: ignore[assignment]
-    assert isinstance(step, dict)
-    args = step["args"]
-    assert "case_id" in args
-    assert "destination" in args
+    step = steps[0]
+    assert isinstance(step, ActionStep)
+    assert "case_id" in step.args
+    assert "destination" in step.args
 
 
 # ---------------------------------------------------------------------------
