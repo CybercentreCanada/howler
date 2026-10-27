@@ -45,7 +45,7 @@ def main():  # noqa: C901
 
         print("Running howler server (with coverage)")
         background_server = subprocess.Popen(
-            prep_command("coverage run -m flask --app howler.app run --no-reload"),
+            prep_command("coverage run -m howler.patched"),
             env={**test_env, "HWL_START_BACKGROUND_SERVICES": "true"},
         )
 

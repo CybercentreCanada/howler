@@ -68,12 +68,18 @@ def __sanitize_report(report: list[dict[str, Any]]) -> list[dict[str, Any]]:
     Returns:
         list[dict[str, Any]]: The sanitized, concise report
     """
-    by_message: dict[str, Any] = {}
+    by_message: dict[tuple[str, str, str, str | None, str | None], list[str]] = {}
 
     for entry in report:
         # if these three keys match, we should merge the queries that use them both. For example, when multiple hits
         # fail to transition for the same reason.
-        key = f"{entry['title']}==={entry['message']}==={entry['outcome']}"
+        key = (
+            entry["title"],
+            entry["message"],
+            entry["outcome"],
+            entry.get("run_id"),
+            entry.get("status"),
+        )
 
         if key in by_message:
             by_message[key].append(f"({entry['query']})")
@@ -82,16 +88,17 @@ def __sanitize_report(report: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     sanitized: list[dict[str, Any]] = []
     for key, queries in by_message.items():
-        (title, message, outcome) = key.split("===")
-
-        sanitized.append(
-            {
-                "query": " OR ".join(queries),
-                "outcome": outcome,
-                "title": title,
-                "message": message,
-            }
-        )
+        title, message, outcome, run_id, status = key
+        entry = {
+            "query": " OR ".join(queries),
+            "outcome": outcome,
+            "title": title,
+            "message": message,
+        }
+        if run_id is not None:
+            entry["run_id"] = run_id
+            entry["status"] = status or "queued"
+        sanitized.append(entry)
 
     return sanitized
 
@@ -174,6 +181,9 @@ def execute(
     user: User | None,
     request_id: Optional[str] = None,
     auth_token: Optional[str] = None,
+    trusted_auth_token: str | None = None,
+    action_id: str | None = None,
+    trigger: str | None = None,
     **kwargs,
 ) -> list[dict[str, Any]]:
     """Execute an operation with strict validation of its arguments."""
@@ -219,6 +229,17 @@ def execute(
             }
         ]
 
+    operation_requires_token = bool(getattr(specification, "requires_auth_token", False))
+    if operation_requires_token and not trusted_auth_token:
+        return [
+            {
+                "query": query,
+                "outcome": "error",
+                "title": "Authentication required",
+                "message": "This operation requires a Bearer authorization token.",
+            }
+        ]
+
     try:
         validated_arguments = specification.validate_arguments(kwargs)
     except ValidationError as e:
@@ -226,7 +247,7 @@ def execute(
 
     # Unset arguments are left out so the operation's own defaults still apply
     operation_kwargs = validated_arguments.model_dump(exclude_unset=True)
-    if auth_token is not None:
+    if auth_token is not None and not operation_requires_token:
         operation_kwargs["auth_token"] = auth_token
 
     # Skip central limit check if operation handles it locally with transformed query
@@ -234,6 +255,11 @@ def execute(
         limit_error = _check_hit_limit(operation, query, user)
         if limit_error:
             return [limit_error]
+
+    if operation_requires_token:
+        operation_kwargs["trusted_auth_token"] = trusted_auth_token
+        operation_kwargs["action_id"] = action_id
+        operation_kwargs["trigger"] = trigger
 
     report = operation.execute(query=query, request_id=request_id, user=user, **operation_kwargs)
 
@@ -255,6 +281,9 @@ def specifications() -> list[dict[str, Any]]:
     ):
         try:
             operation = importlib.import_module(f"howler.actions.{module.stem}")
+
+            if hasattr(operation, "is_available") and not operation.is_available():
+                continue
 
             specifications.append(__sanitize_specification(_load_specification(operation)))
 

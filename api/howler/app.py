@@ -70,6 +70,8 @@ from howler.healthz import healthz
 from howler.telemetry import setup_telemetry
 
 logger = get_logger(__file__)
+_background_services_started = False
+_job_system_started = False
 
 
 def _should_start_background_services() -> bool:
@@ -80,12 +82,46 @@ def _should_start_background_services() -> bool:
     ``HWL_START_BACKGROUND_SERVICES`` only for its no-reload Flask server,
     preventing pytest imports from starting competing workers.
     """
-    return (
-        not DEBUG
-        or os.environ.get("WERKZEUG_RUN_MAIN") == "true"
+    explicit_start = (
+        os.environ.get("WERKZEUG_RUN_MAIN") == "true"
         or os.environ.get("HWL_START_BACKGROUND_SERVICES", "").lower() == "true"
         or Path(sys.argv[0]).name.lower().startswith("gunicorn")
     )
+    if os.environ.get("TESTING", "").lower() == "true":
+        return explicit_start
+    return not DEBUG or explicit_start
+
+
+def _is_no_reload_flask_cli() -> bool:
+    return os.environ.get("FLASK_RUN_FROM_CLI", "").lower() == "true" and any(
+        argument in {"--no-reload", "--no-reloader"} for argument in sys.argv
+    )
+
+
+def _start_ai_triage_workers(*, force: bool = False) -> bool:
+    """Start AI consumers/reconciliation in a serving REST process."""
+    global _background_services_started
+    if _background_services_started:
+        return False
+    if not (HWL_USE_REST_API or DEBUG) or (not force and not _should_start_background_services()):
+        return False
+
+    from howler.services.ai_triage_service import is_available as is_ai_triage_available
+    from howler.services.ai_triage_worker import start_workers
+
+    started = start_workers()
+    if is_ai_triage_available() and not HWL_USE_JOB_SYSTEM and config.system.action_queue.enabled:
+        # The legacy action queue also carries triggered AI operations. Reuse
+        # its existing per-trigger consumers only when setup_jobs() did not
+        # start them, so unrelated built-in actions keep their normal path.
+        from howler.cronjobs.action_queue_worker import setup_job as setup_action_queue_workers
+
+        setup_action_queue_workers(cast(Any, None))
+
+    _background_services_started = True
+    # The worker starts a provider-free reconciler even while integration is
+    # disabled, terminalizing retained queued runs without contacting a provider.
+    return started
 
 
 app = Flask(
@@ -205,6 +241,13 @@ else:
 
 if HWL_USE_JOB_SYSTEM and _should_start_background_services():
     setup_jobs()
+    _job_system_started = True
+
+# AI triage uses its own persistent Redis queue because many REST deployments
+# intentionally disable the scheduled-job system. Start consumers only in a
+# serving REST process, and only after the shared background-service guard has
+# selected the actual application worker (not an import-only/reloader process).
+_start_ai_triage_workers(force=_is_no_reload_flask_cli())
 
 
 # Setup OAuth providers
@@ -251,14 +294,23 @@ if logger.parent:  # pragma: no cover
         wlog.addHandler(h)
 
 
-def main():
-    """Main application function"""
+def main(*, use_reloader: bool | None = None):
+    """Run the application, starting background services for no-reloader servers."""
+    global _job_system_started
+    effective_use_reloader = DEBUG if use_reloader is None else use_reloader
+    if not effective_use_reloader:
+        _start_ai_triage_workers(force=True)
+        if HWL_USE_JOB_SYSTEM and not _job_system_started:
+            setup_jobs()
+            _job_system_started = True
+
     app.jinja_env.cache = {}
     app.run(
         host="0.0.0.0",  # noqa: S104
         debug=DEBUG,
         port=int(os.getenv("FLASK_RUN_PORT", os.getenv("PORT", 5000))),
         extra_files=os.environ.get("FLASK_RUN_EXTRA_FILES", "").split(":"),
+        use_reloader=effective_use_reloader,
     )
 
 

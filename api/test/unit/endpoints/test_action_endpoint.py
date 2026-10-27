@@ -283,7 +283,68 @@ def test_execute_operations_and_saved_action_report_invalid_data_json_and_contin
         request_id="request-1",
         query="howler.id:*",
         user=user,
+        action_id="action-id",
     )
     first_audit = mock_audit.call_args_list[0].args[1]
     assert first_audit == {"user": user, "query": "howler.id:*", "operation_id": "add_label"}
     assert mock_audit.call_args_list[0].args[4] is audit_fn
+
+
+@patch("howler.security.login.audit")
+@patch("howler.security.login.QUOTA_TRACKER")
+@patch("howler.security.login.auth_service")
+@patch("howler.api.v1.action.ai_triage_service.get_run")
+def test_get_action_run_is_no_store_and_returns_public_schema(
+    mock_get_run,
+    mock_auth_service,
+    mock_quota_tracker,
+    _mock_audit,
+    request_context: Flask,
+):
+    mock_get_run.return_value = {"run_id": "run-1", "operation_id": "ai_triage", "results": []}
+    _configure_auth(mock_auth_service, mock_quota_tracker)
+
+    with request_context.test_request_context(
+        "/api/v1/action/runs/run-1",
+        headers={"Authorization": "Bearer ."},
+    ):
+        from howler.api.v1.action import get_action_run
+
+        response: Response = get_action_run("run-1")
+
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.get_json()["api_response"]["run_id"] == "run-1"
+
+
+@patch("howler.security.login.audit")
+@patch("howler.security.login.QUOTA_TRACKER")
+@patch("howler.security.login.auth_service")
+@patch("howler.api.v1.action.ai_triage_service.list_runs")
+def test_list_action_runs_applies_filters_and_pagination(
+    mock_list_runs,
+    mock_auth_service,
+    mock_quota_tracker,
+    _mock_audit,
+    request_context: Flask,
+):
+    mock_list_runs.return_value = {"items": [], "offset": 3, "rows": 5, "has_more": False}
+    _configure_auth(mock_auth_service, mock_quota_tracker)
+
+    with request_context.test_request_context(
+        "/api/v1/action/runs?operation_id=ai_triage&action_id=action-1&request_id=req-1&offset=3&rows=5",
+        headers={"Authorization": "Bearer ."},
+    ):
+        from howler.api.v1.action import list_action_runs
+
+        response: Response = list_action_runs()
+
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    assert mock_list_runs.call_args.kwargs == {
+        "operation_id": "ai_triage",
+        "action_id": "action-1",
+        "request_id": "req-1",
+        "offset": 3,
+        "rows": 5,
+    }
