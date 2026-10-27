@@ -10,7 +10,7 @@ import gevent
 import requests
 
 from howler.common.logging import get_logger
-from howler.odm.models.config import AITriage
+from howler.odm.models.config import AI_RESERVED_HEADERS, AITriage
 
 logger = get_logger(__file__)
 
@@ -21,7 +21,7 @@ UNSUPPORTED_A2A_METHOD_CODES = {-32601}
 class AITransportError(Exception):
     """Provider failure with a safe, user-visible reason and retry classification."""
 
-    def __init__(self, reason: str, *, transient: bool = False):
+    def __init__(self: Any, reason: str, *, transient: bool = False):
         super().__init__(reason)
         self.reason = reason
         self.transient = transient
@@ -38,22 +38,10 @@ def _begin_attempt(callback: BeginAttempt | None) -> None:
 
 def _safe_headers(config: AITriage, token: str, *, streaming: bool = False) -> dict[str, str]:
     """Build headers with reserved auth and protocol fields owned by this module."""
-    reserved = {
-        "authorization",
-        "proxy-authorization",
-        "host",
-        "content-length",
-        "content-type",
-        "accept",
-        "transfer-encoding",
-        "connection",
-        "cookie",
-        "proxy-connection",
-    }
     headers = {
         key: value
         for key, value in config.headers.items()
-        if key.lower() not in reserved
+        if key.lower() not in AI_RESERVED_HEADERS
         and "\r" not in key
         and "\n" not in key
         and "\r" not in value
@@ -126,6 +114,33 @@ def _raise_http_error(response: requests.Response) -> None:
     raise AITransportError(f"Provider rejected the request (HTTP {status})")
 
 
+def _post_json(
+    session: requests.Session,
+    endpoint: str,
+    body: dict[str, Any],
+    headers: dict[str, str],
+    *,
+    deadline: float,
+    maximum: int,
+) -> dict[str, Any]:
+    try:
+        with session.post(
+            endpoint,
+            json=body,
+            headers=headers,
+            timeout=_request_timeout(deadline - time.monotonic()),
+            allow_redirects=False,
+            stream=True,
+        ) as response:
+            if response.status_code >= 300:
+                _raise_http_error(response)
+            return _read_bounded_json(response, maximum, deadline=deadline)
+    except AITransportError:
+        raise
+    except (requests.Timeout, requests.ConnectionError, requests.exceptions.ChunkedEncodingError) as exc:
+        raise AITransportError("AI provider is temporarily unavailable", transient=True) from exc
+
+
 def _a2a_state(result: dict[str, Any]) -> str | None:
     status = result.get("status")
     if isinstance(status, dict):
@@ -135,23 +150,17 @@ def _a2a_state(result: dict[str, Any]) -> str | None:
     return state if isinstance(state, str) else None
 
 
-def _a2a_task_id(result: dict[str, Any]) -> str | None:
-    task_id = result.get("taskId")
-    if not isinstance(task_id, str) and result.get("kind") == "task":
-        task_id = result.get("id")
-    return task_id if isinstance(task_id, str) and task_id else None
-
-
-def _a2a_context_id(result: dict[str, Any]) -> str | None:
-    context_id = result.get("contextId")
-    return context_id if isinstance(context_id, str) and context_id else None
-
-
 def _checkpoint(
     result: dict[str, Any], callback: Checkpoint, task_id: str | None, context_id: str | None
 ) -> tuple[str | None, str | None]:
-    observed_task = _a2a_task_id(result)
-    observed_context = _a2a_context_id(result)
+    observed_task = result.get("taskId")
+    if not isinstance(observed_task, str) and result.get("kind") == "task":
+        observed_task = result.get("id")
+    if not isinstance(observed_task, str) or not observed_task:
+        observed_task = None
+    observed_context = result.get("contextId")
+    if not isinstance(observed_context, str) or not observed_context:
+        observed_context = None
     if task_id and observed_task and task_id != observed_task:
         raise AITransportError("A2A response changed its task identifier")
     if context_id and observed_context and context_id != observed_context:
@@ -179,20 +188,14 @@ def _extract_completed_text(result: dict[str, Any], artifacts: dict[str, dict[st
     if _a2a_state(result) != "completed":
         raise AITransportError("A2A task did not complete successfully")
 
-    chunks: list[str] = []
-    result_artifacts = result.get("artifacts")
-    if isinstance(result_artifacts, list):
-        for artifact in result_artifacts:
-            if isinstance(artifact, dict):
-                text = _parts_text(artifact.get("parts"))
-                if text:
-                    chunks.append(text)
+    def texts(values: Any) -> list[str]:
+        return (
+            [text for value in values if isinstance(value, dict) if (text := _parts_text(value.get("parts")))]
+            if isinstance(values, list)
+            else []
+        )
 
-    if not chunks:
-        for artifact in artifacts.values():
-            text = _parts_text(artifact.get("parts"))
-            if text:
-                chunks.append(text)
+    chunks = texts(result.get("artifacts")) or texts(list(artifacts.values()))
 
     if not chunks:
         status = result.get("status")
@@ -288,11 +291,9 @@ def _iter_sse_json(  # noqa: C901
     max_line_bytes: int,
 ) -> Iterator[dict[str, Any]]:
     event_data: list[str] = []
-    buffered_bytes = 0
     total_bytes = 0
 
     def parse_line(raw_line: bytes) -> dict[str, Any] | None:  # noqa: C901
-        nonlocal buffered_bytes
         if raw_line.endswith(b"\r"):
             raw_line = raw_line[:-1]
         if not raw_line:
@@ -300,7 +301,6 @@ def _iter_sse_json(  # noqa: C901
                 return None
             payload = "\n".join(event_data)
             event_data.clear()
-            buffered_bytes = 0
             if payload == "[DONE]":
                 return None
             try:
@@ -316,12 +316,8 @@ def _iter_sse_json(  # noqa: C901
         if raw_line.startswith(b":"):
             return None
         if raw_line.startswith(b"data:"):
-            raw_data = raw_line[5:].lstrip()
-            buffered_bytes += len(raw_data)
-            if buffered_bytes > max_total_bytes:
-                raise AITransportError("Provider stream event exceeded the configured size limit")
             try:
-                event_data.append(raw_data.decode("utf-8", errors="strict"))
+                event_data.append(raw_line[5:].lstrip().decode("utf-8", errors="strict"))
             except UnicodeDecodeError as exc:
                 raise AITransportError("Provider returned an invalid stream event") from exc
         return None
@@ -336,10 +332,10 @@ def _iter_sse_json(  # noqa: C901
         if total_bytes > max_total_bytes:
             raise AITransportError("Provider stream exceeded the configured size limit")
         line_buffer.extend(chunk)
-        while b"\n" in line_buffer:
-            line, _, remainder = line_buffer.partition(b"\n")
-            line_buffer = bytearray(remainder)
-            if parsed := parse_line(bytes(line)):
+        while (newline := line_buffer.find(b"\n")) >= 0:
+            line = bytes(line_buffer[:newline])
+            del line_buffer[: newline + 1]
+            if parsed := parse_line(line):
                 yield parsed
         if len(line_buffer) > max_line_bytes:
             raise AITransportError("Provider stream line exceeded the configured size limit")
@@ -352,19 +348,59 @@ def _iter_sse_json(  # noqa: C901
             yield parsed
 
 
-def _absorb_artifact(event_result: dict[str, Any], artifacts: dict[str, dict[str, Any]], order: list[str]) -> None:
+def _absorb_artifact(event_result: dict[str, Any], artifacts: dict[str, dict[str, Any]]) -> None:
     artifact = event_result.get("artifact")
     if not isinstance(artifact, dict):
         return
-    artifact_id = artifact.get("artifactId") or artifact.get("name") or str(len(order))
+    artifact_id = artifact.get("artifactId") or artifact.get("name") or str(len(artifacts))
     raw_parts = artifact.get("parts")
     parts: list[Any] = raw_parts if isinstance(raw_parts, list) else []
     if event_result.get("append") and artifact_id in artifacts:
         artifacts[artifact_id].setdefault("parts", []).extend(parts)
     else:
-        if artifact_id not in artifacts:
-            order.append(artifact_id)
         artifacts[artifact_id] = {**artifact, "parts": list(parts)}
+
+
+def _handle_a2a_task_result(  # noqa: C901
+    result: dict[str, Any],
+    artifacts: dict[str, dict[str, Any]],
+    checkpoint: Checkpoint,
+    task_id: str | None,
+    context_id: str | None,
+) -> tuple[str | None, str | None, str | None]:
+    """Validate/checkpoint a task event and extract text only on completion."""
+    kind = result.get("kind")
+    if kind == "message":
+        if task_id or context_id:
+            raise AITransportError("A2A stream returned a direct message after accepting a task")
+        return _extract_direct_message_text(result), task_id, context_id
+
+    if kind == "task":
+        canonical_task_id = _require_task_id(result)
+        observed_task_id = result.get("taskId")
+        if isinstance(observed_task_id, str) and observed_task_id != canonical_task_id:
+            raise AITransportError("A2A provider returned a mismatched task identifier")
+    task_id, context_id = _checkpoint(result, checkpoint, task_id, context_id)
+    if kind == "artifact-update":
+        _absorb_artifact(result, artifacts)
+        return None, task_id, context_id
+    if kind == "task" and isinstance(result.get("artifacts"), list):
+        for artifact in result["artifacts"]:
+            if isinstance(artifact, dict):
+                _absorb_artifact({"artifact": artifact}, artifacts)
+
+    state = _a2a_state(result)
+    if state == "completed":
+        if not task_id:
+            raise AITransportError("A2A completed without a task identifier")
+        return _extract_completed_text(result, artifacts), task_id, context_id
+    if state in TERMINAL_A2A_STATES:
+        raise AITransportError("A2A task did not complete successfully")
+    if kind == "task" and state not in {"submitted", "working"}:
+        raise AITransportError("A2A task returned an invalid state")
+    if kind == "status-update" and state is not None and state not in {"submitted", "working"}:
+        raise AITransportError("A2A task returned an invalid state")
+    return None, task_id, context_id
 
 
 def _stream_a2a(  # noqa: C901
@@ -377,17 +413,14 @@ def _stream_a2a(  # noqa: C901
     config: AITriage,
     checkpoint: Checkpoint,
     begin_attempt: BeginAttempt | None = None,
-) -> str:  # noqa: C901
+) -> str:
     request_body = _rpc_payload("message/stream", _message_params(message))
     request_id = request_body["id"]
     response: requests.Response | None = None
     artifacts: dict[str, dict[str, Any]] = {}
-    artifact_order: list[str] = []
     task_id: str | None = None
     context_id: str | None = None
-    final_result: dict[str, Any] | None = None
     saw_result = False
-
     try:
         _begin_attempt(begin_attempt)
         response = session.post(
@@ -401,43 +434,34 @@ def _stream_a2a(  # noqa: C901
         if response.status_code >= 300:
             _raise_http_error(response)
 
-        content_type = response.headers.get("content-type", "").lower()
-        if "text/event-stream" not in content_type:
+        if "text/event-stream" not in response.headers.get("content-type", "").lower():
             payload = _validate_rpc_response(
-                _read_bounded_json(response, config.max_sse_bytes, deadline=deadline),
-                request_id,
+                _read_bounded_json(response, config.max_sse_bytes, deadline=deadline), request_id
             )
             if "error" in payload:
-                error = payload.get("error")
-                code = error.get("code") if isinstance(error, dict) else None
-                if code in UNSUPPORTED_A2A_METHOD_CODES:
+                error = payload["error"]
+                if isinstance(error, dict) and error.get("code") in UNSUPPORTED_A2A_METHOD_CODES:
                     raise _StreamUnsupported()
                 raise AITransportError("A2A provider rejected the request")
             result = payload.get("result")
-            if isinstance(result, dict):
-                if result.get("kind") == "message":
-                    return _extract_direct_message_text(result)
-                _require_task_id(result)
-                task_id, context_id = _checkpoint(result, checkpoint, task_id, context_id)
-                if not task_id:
-                    raise AITransportError("A2A completed without a task identifier")
-                state = _a2a_state(result)
-                if state == "completed":
-                    return _extract_completed_text(result, artifacts)
-                if state in {"submitted", "working"}:
-                    return _send_and_poll_a2a(
-                        session,
-                        endpoint,
-                        token,
-                        message,
-                        deadline=deadline,
-                        config=config,
-                        checkpoint=checkpoint,
-                        resume_task_id=task_id,
-                        resume_context_id=context_id,
-                    )
-                raise AITransportError("A2A task did not complete successfully")
-            raise AITransportError("A2A provider returned an invalid response")
+            if not isinstance(result, dict):
+                raise AITransportError("A2A provider returned an invalid response")
+            text, task_id, context_id = _handle_a2a_task_result(result, artifacts, checkpoint, task_id, context_id)
+            if text is not None:
+                return text
+            if not task_id:
+                raise AITransportError("A2A response did not include a task identifier")
+            return _send_and_poll_a2a(
+                session,
+                endpoint,
+                token,
+                message,
+                deadline=deadline,
+                config=config,
+                checkpoint=checkpoint,
+                resume_task_id=task_id,
+                resume_context_id=context_id,
+            )
 
         for event in _iter_sse_json(
             response,
@@ -447,42 +471,20 @@ def _stream_a2a(  # noqa: C901
             max_line_bytes=config.max_sse_line_bytes,
         ):
             if "error" in event:
-                error = event.get("error")
-                code = error.get("code") if isinstance(error, dict) else None
-                if code in UNSUPPORTED_A2A_METHOD_CODES:
-                    if saw_result or task_id or context_id:
-                        raise AITransportError("A2A stream failed after a task was accepted")
+                error = event["error"]
+                unsupported = isinstance(error, dict) and error.get("code") in UNSUPPORTED_A2A_METHOD_CODES
+                if unsupported and not (saw_result or task_id or context_id):
                     raise _StreamUnsupported()
+                if unsupported:
+                    raise AITransportError("A2A stream failed after a task was accepted")
                 raise AITransportError("A2A provider rejected the request")
             result = event.get("result")
             if not isinstance(result, dict):
                 continue
             saw_result = True
-            if result.get("kind") == "message":
-                if task_id or context_id:
-                    raise AITransportError("A2A stream returned a direct message after accepting a task")
-                return _extract_direct_message_text(result)
-            if result.get("kind") == "task":
-                _require_task_id(result)
-            task_id, context_id = _checkpoint(result, checkpoint, task_id, context_id)
-            if result.get("kind") == "artifact-update":
-                _absorb_artifact(result, artifacts, artifact_order)
-            elif result.get("kind") == "task":
-                for artifact in result.get("artifacts") or []:
-                    if isinstance(artifact, dict):
-                        _absorb_artifact({"artifact": artifact}, artifacts, artifact_order)
-                final_result = result
-            elif result.get("kind") == "status-update":
-                status = result.get("status")
-                if isinstance(status, dict) and status.get("state") in TERMINAL_A2A_STATES:
-                    final_result = {**result, "status": status}
-            elif _a2a_state(result) in TERMINAL_A2A_STATES:
-                final_result = result
-
-            if final_result and _a2a_state(final_result) in TERMINAL_A2A_STATES:
-                if not task_id:
-                    raise AITransportError("A2A completed without a task identifier")
-                return _extract_completed_text(final_result, artifacts)
+            text, task_id, context_id = _handle_a2a_task_result(result, artifacts, checkpoint, task_id, context_id)
+            if text is not None:
+                return text
 
         raise AITransportError("A2A stream ended before the task completed", transient=True)
     finally:
@@ -501,25 +503,17 @@ def _post_a2a_json(
     config: AITriage,
 ) -> dict[str, Any]:
     request_body = _rpc_payload(method, params)
-    remaining = deadline - time.monotonic()
-    try:
-        response = session.post(
+    payload = _validate_rpc_response(
+        _post_json(
+            session,
             endpoint,
-            json=request_body,
-            headers=_safe_headers(config, token),
-            timeout=_request_timeout(remaining),
-            allow_redirects=False,
-            stream=True,
-        )
-    except (requests.Timeout, requests.ConnectionError, requests.exceptions.ChunkedEncodingError) as exc:
-        raise AITransportError("A2A provider is temporarily unavailable", transient=True) from exc
-    with response:
-        if response.status_code >= 300:
-            _raise_http_error(response)
-        payload = _validate_rpc_response(
-            _read_bounded_json(response, config.max_output_bytes, deadline=deadline),
-            request_body["id"],
-        )
+            request_body,
+            _safe_headers(config, token),
+            deadline=deadline,
+            maximum=config.max_output_bytes,
+        ),
+        request_body["id"],
+    )
     if "error" in payload:
         error = payload.get("error")
         code = error.get("code") if isinstance(error, dict) else None
@@ -529,7 +523,7 @@ def _post_a2a_json(
     return payload
 
 
-def _send_and_poll_a2a(  # noqa: C901
+def _send_and_poll_a2a(
     session: requests.Session,
     endpoint: str,
     token: str,
@@ -540,71 +534,36 @@ def _send_and_poll_a2a(  # noqa: C901
     checkpoint: Checkpoint,
     resume_task_id: str | None = None,
     resume_context_id: str | None = None,
-) -> str:  # noqa: C901
-    task_id = resume_task_id
-    context_id = resume_context_id
+) -> str:
+    task_id, context_id = resume_task_id, resume_context_id
     if task_id is None:
         if context_id:
             raise AITransportError("A2A context checkpoint has no task identifier; refusing to start a duplicate task")
-        response = _post_a2a_json(
-            session,
-            endpoint,
-            token,
-            "message/send",
-            _message_params(message),
-            deadline=deadline,
-            config=config,
+        payload = _post_a2a_json(
+            session, endpoint, token, "message/send", _message_params(message), deadline=deadline, config=config
         )
-        result = response.get("result")
+        result = payload.get("result")
         if not isinstance(result, dict):
             raise AITransportError("A2A provider returned an invalid response")
-        if result.get("kind") == "message":
-            return _extract_direct_message_text(result)
-        response_task_id = _require_task_id(result)
-        task_id, context_id = _checkpoint(result, checkpoint, task_id, context_id)
-        if task_id != response_task_id:
-            raise AITransportError("A2A provider returned a mismatched task identifier")
-        state = _a2a_state(result)
-        if state == "completed":
-            if not task_id:
-                raise AITransportError("A2A completed without a task identifier")
-            return _extract_completed_text(result, {})
-        if state in {"failed", "canceled", "cancelled", "rejected", "input-required", "auth-required"}:
-            raise AITransportError("A2A task did not complete successfully")
+        text, task_id, context_id = _handle_a2a_task_result(result, {}, checkpoint, task_id, context_id)
+        if text is not None:
+            return text
         if not task_id:
             raise AITransportError("A2A response did not include a task identifier")
-        if state not in {"submitted", "working"}:
-            raise AITransportError("A2A response did not contain a resumable task state")
 
     while time.monotonic() < deadline:
         time.sleep(min(1.0, max(0.01, deadline - time.monotonic())))
         if time.monotonic() >= deadline:
             break
         payload = _post_a2a_json(
-            session,
-            endpoint,
-            token,
-            "tasks/get",
-            {"id": task_id},
-            deadline=deadline,
-            config=config,
+            session, endpoint, token, "tasks/get", {"id": task_id}, deadline=deadline, config=config
         )
         result = payload.get("result")
         if not isinstance(result, dict):
             raise AITransportError("A2A provider returned an invalid task response")
-        observed_task_id = _require_task_id(result)
-        if observed_task_id != task_id:
-            raise AITransportError("A2A provider returned a mismatched task identifier")
-        task_id, context_id = _checkpoint(result, checkpoint, task_id, context_id)
-        state = _a2a_state(result)
-        if state == "completed":
-            if not task_id:
-                raise AITransportError("A2A completed without a task identifier")
-            return _extract_completed_text(result, {})
-        if state in {"failed", "canceled", "cancelled", "rejected", "input-required", "auth-required"}:
-            raise AITransportError("A2A task did not complete successfully")
-        if state not in {"submitted", "working"}:
-            raise AITransportError("A2A task returned an invalid state")
+        text, task_id, context_id = _handle_a2a_task_result(result, {}, checkpoint, task_id, context_id)
+        if text is not None:
+            return text
     raise AITransportError("A2A task exceeded the run deadline", transient=True)
 
 
@@ -628,23 +587,15 @@ def _openai_chat(
         ],
         "stream": False,
     }
-    try:
-        _begin_attempt(begin_attempt)
-        response = session.post(
-            endpoint,
-            json=body,
-            headers=_safe_headers(config, token),
-            timeout=_request_timeout(deadline - time.monotonic()),
-            allow_redirects=False,
-            stream=True,
-        )
-    except (requests.Timeout, requests.ConnectionError, requests.exceptions.ChunkedEncodingError) as exc:
-        raise AITransportError("AI provider is temporarily unavailable", transient=True) from exc
-
-    with response:
-        if response.status_code >= 300:
-            _raise_http_error(response)
-        payload = _read_bounded_json(response, config.max_output_bytes, deadline=deadline)
+    _begin_attempt(begin_attempt)
+    payload = _post_json(
+        session,
+        endpoint,
+        body,
+        _safe_headers(config, token),
+        deadline=deadline,
+        maximum=config.max_output_bytes,
+    )
 
     choices = payload.get("choices")
     if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):

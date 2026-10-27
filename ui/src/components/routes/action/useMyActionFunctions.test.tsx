@@ -278,6 +278,7 @@ describe('useMyActionFunctions', () => {
 
     expect(result.current.requestId).toBe('req-123');
     expect(result.current.report?.ai_triage?.[0]?.run_id).toBe('run-1');
+    expect(result.current.acceptedRunIds).toEqual(['run-1']);
     expect(mockShowSuccessMessage).not.toHaveBeenCalled();
     expect(mockShowInfoMessage).toHaveBeenCalledWith(expect.objectContaining({ props: expect.any(Object) }));
     expect(mockCloseSnackbar).toHaveBeenCalledWith('snackbar-key');
@@ -335,29 +336,12 @@ describe('useMyActionFunctions', () => {
     });
     expect(result.current.progress).toEqual([0, 0]);
     expect(result.current.requestId).toBeUndefined();
-  });
-
-  it('retains request tracking for an ad hoc queued operation', async () => {
-    mockDispatchApi.mockResolvedValueOnce({
-      ai_triage: [
-        {
-          query: 'status:open',
-          outcome: 'success',
-          title: 'Accepted',
-          message: 'Queued for processing',
-          status: 'queued',
-          run_id: 'run-2'
-        }
-      ]
-    });
-
-    const { result } = renderHook(() => useMyActionFunctions());
+    mockDispatchApi.mockResolvedValueOnce({ ai_triage: [{ status: 'queued', run_id: 'run-2' }] });
     await act(async () => {
       await result.current.submitAction('status:open', [{ operation_id: 'ai_triage' }] as any);
     });
-
     expect(result.current.requestId).toBe('req-123');
-    expect(result.current.report?.ai_triage?.[0]?.run_id).toBe('run-2');
+    expect(result.current.acceptedRunIds).toEqual(['run-2']);
     expect(mockShowSuccessMessage).not.toHaveBeenCalled();
   });
 
@@ -375,10 +359,15 @@ describe('useMyActionFunctions', () => {
     expect(mockRemoveListener).toHaveBeenCalledWith(keys[1]);
   });
 
-  it('discards a saved-action response that resolves after navigating to another action', async () => {
+  it.each(['route', 'session'] as const)('discards a response after the %s changes', async contextChange => {
     locationValue = { pathname: '/action/action-1' };
     paramsValue = { id: 'action-1' };
     mockSearchActionPost.mockResolvedValueOnce({ items: [{ name: 'Action One' }] });
+    mockDispatchApi.mockResolvedValueOnce({ items: [], total: 1 });
+    const { result, rerender } = renderHook(() => useMyActionFunctions());
+    await act(async () => result.current.onSearch('status:open'));
+    expect(result.current.response?.total).toBe(1);
+
     let resolveExecution: (value: any) => void = () => {};
     mockDispatchApi.mockImplementationOnce(
       () =>
@@ -387,24 +376,31 @@ describe('useMyActionFunctions', () => {
         })
     );
 
-    const { result, rerender } = renderHook(() => useMyActionFunctions());
     let execution: Promise<void> = Promise.resolve();
     act(() => {
       execution = result.current.executeAction('action-1');
     });
     await waitFor(() => expect(mockDispatchApi).toHaveBeenCalled());
 
-    paramsValue = { id: 'action-2' };
-    locationValue = { pathname: '/action/action-2' };
+    if (contextChange === 'route') {
+      paramsValue = { id: 'action-2' };
+      locationValue = { pathname: '/action/action-2' };
+    } else {
+      mockAuthSession.token = 'session-b';
+    }
     rerender();
+    expect(result.current.response).toBeUndefined();
+    expect(result.current.responseQuery).toBe('');
+    expect(result.current.loading).toBe(false);
+    expect(result.current.progress).toEqual([0, 0]);
     expect(result.current.report).toBeUndefined();
     expect(result.current.requestId).toBeUndefined();
 
-    paramsValue = { id: 'action-1' };
-    locationValue = { pathname: '/action/action-1' };
-    rerender();
-    expect(result.current.report).toBeUndefined();
-    expect(result.current.requestId).toBeUndefined();
+    if (contextChange === 'route') {
+      paramsValue = { id: 'action-1' };
+      locationValue = { pathname: '/action/action-1' };
+      rerender();
+    }
 
     resolveExecution({
       ai_triage: [
@@ -422,51 +418,8 @@ describe('useMyActionFunctions', () => {
 
     expect(result.current.report).toBeUndefined();
     expect(result.current.requestId).toBeUndefined();
+    expect(result.current.acceptedRunIds).toEqual([]);
     expect(mockShowSuccessMessage).not.toHaveBeenCalled();
     expect(mockShowInfoMessage).toHaveBeenCalledTimes(1);
-  });
-
-  it('discards a pending report after same-account reauthentication changes the app token', async () => {
-    locationValue = { pathname: '/action/action-1' };
-    paramsValue = { id: 'action-1' };
-    mockSearchActionPost.mockResolvedValueOnce({ items: [{ name: 'Action One' }] });
-    let resolveExecution: (value: any) => void = () => {};
-    mockDispatchApi.mockImplementationOnce(
-      () =>
-        new Promise(resolve => {
-          resolveExecution = resolve;
-        })
-    );
-
-    const { result, rerender } = renderHook(() => useMyActionFunctions());
-    let execution: Promise<void> = Promise.resolve();
-    act(() => {
-      execution = result.current.executeAction('action-1');
-    });
-    await waitFor(() => expect(mockDispatchApi).toHaveBeenCalled());
-
-    mockAuthSession.token = 'session-b';
-    rerender();
-    expect(result.current.report).toBeUndefined();
-    expect(result.current.requestId).toBeUndefined();
-
-    resolveExecution({
-      ai_triage: [
-        {
-          query: '*',
-          outcome: 'success',
-          title: 'Accepted',
-          message: 'Queued',
-          status: 'queued',
-          run_id: 'run-old-session'
-        }
-      ]
-    });
-    await act(async () => execution);
-
-    expect(result.current.report).toBeUndefined();
-    expect(result.current.requestId).toBeUndefined();
-    expect(mockShowInfoMessage).toHaveBeenCalledTimes(1);
-    expect(mockShowSuccessMessage).not.toHaveBeenCalled();
   });
 });

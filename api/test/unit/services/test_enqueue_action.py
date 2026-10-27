@@ -59,9 +59,9 @@ class TestEnqueueActionExecution:
             action_service.enqueue_action_execution(["id1"], trigger="create", user=user)
 
         pushed = mock_queue.push.call_args.args[0]
-        assert pushed["auth_token"] != "oauth-access-token"
-        assert "oauth-access-token" not in pushed["auth_token"]
-        assert auth_service.decrypt_token(pushed["auth_token"]) == "oauth-access-token"
+        assert pushed["bearer_token"] != "oauth-access-token"
+        assert "oauth-access-token" not in pushed["bearer_token"]
+        assert auth_service.decrypt_token(pushed["bearer_token"]) == "oauth-access-token"
 
     @patch.object(action_service, "get_action_queue")
     @patch("howler.services.auth_service.config")
@@ -208,8 +208,7 @@ class TestProcessActionBatch:
                 {
                     "hit_ids": ["id1"],
                     "uname": "admin",
-                    "auth_token": encrypted_auth_token,
-                    "auth_scheme": "Bearer",
+                    "bearer_token": encrypted_auth_token,
                 }
             ],
         )
@@ -222,8 +221,8 @@ class TestProcessActionBatch:
     def test_process_batch_groups_by_encrypted_auth_token(self, mock_bulk, mock_datastore, mock_decrypt):
         """The worker decrypts one shared ciphertext once after grouping the batch."""
         items = [
-            {"hit_ids": ["id1"], "uname": "admin", "auth_token": "same-ciphertext", "auth_scheme": "Bearer"},
-            {"hit_ids": ["id2"], "uname": "admin", "auth_token": "same-ciphertext", "auth_scheme": "Bearer"},
+            {"hit_ids": ["id1"], "uname": "admin", "bearer_token": "same-ciphertext"},
+            {"hit_ids": ["id2"], "uname": "admin", "bearer_token": "same-ciphertext"},
         ]
 
         action_service.process_action_batch("create", items)
@@ -343,7 +342,7 @@ class TestProcessActionBatch:
         """A malformed queued token should not prevent the batch from being processed."""
         action_service.process_action_batch(
             "create",
-            [{"hit_ids": ["id1"], "uname": "admin", "auth_token": "invalid", "auth_scheme": "Bearer"}],
+            [{"hit_ids": ["id1"], "uname": "admin", "bearer_token": "invalid"}],
         )
 
         mock_decrypt.assert_called_once_with("invalid")
@@ -358,7 +357,7 @@ class TestProcessActionBatch:
         """Tokens encrypted by another instance produce an actionable log message."""
         action_service.process_action_batch(
             "create",
-            [{"hit_ids": ["id1"], "uname": "admin", "auth_token": "invalid", "auth_scheme": "Bearer"}],
+            [{"hit_ids": ["id1"], "uname": "admin", "bearer_token": "invalid"}],
         )
 
         mock_decrypt.assert_called_once_with("invalid")

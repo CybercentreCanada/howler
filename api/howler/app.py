@@ -99,28 +99,17 @@ def _is_no_reload_flask_cli() -> bool:
 
 
 def _start_ai_triage_workers(*, force: bool = False) -> bool:
-    """Start AI consumers/reconciliation in a serving REST process."""
+    """Start AI consumers in a serving REST process."""
     global _background_services_started
     if _background_services_started:
         return False
     if not (HWL_USE_REST_API or DEBUG) or (not force and not _should_start_background_services()):
         return False
 
-    from howler.services.ai_triage_service import is_available as is_ai_triage_available
     from howler.services.ai_triage_worker import start_workers
 
     started = start_workers()
-    if is_ai_triage_available() and not HWL_USE_JOB_SYSTEM and config.system.action_queue.enabled:
-        # The legacy action queue also carries triggered AI operations. Reuse
-        # its existing per-trigger consumers only when setup_jobs() did not
-        # start them, so unrelated built-in actions keep their normal path.
-        from howler.cronjobs.action_queue_worker import setup_job as setup_action_queue_workers
-
-        setup_action_queue_workers(cast(Any, None))
-
     _background_services_started = True
-    # The worker starts a provider-free reconciler even while integration is
-    # disabled, terminalizing retained queued runs without contacting a provider.
     return started
 
 

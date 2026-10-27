@@ -1,11 +1,10 @@
 """AI triage enqueueing, authorization, status views, and dossier persistence."""
 
-import hashlib
 import json
 import time
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 import gevent
 
@@ -185,7 +184,6 @@ def enqueue_run(
         "_expires_at": None,
         "_created_at_epoch": now.timestamp(),
         "_encrypted_bearer_token": auth_service.encrypt_token(bearer_token),
-        "_auth_scheme": "Bearer",
         "_prompt": prompt.strip() if prompt and prompt.strip() else None,
     }
     created_run = ai_triage_queue.create_run(run)
@@ -193,22 +191,47 @@ def enqueue_run(
     return public_run(created_run)
 
 
-def _run_is_accessible(run: dict[str, Any], user: User) -> bool:
+def _run_target_ids(run: dict[str, Any]) -> list[str] | None:
+    results = run.get("results")
+    if not isinstance(results, list) or not results:
+        return None
+    hit_ids: list[str] = []
+    for result in results:
+        if not isinstance(result, dict) or not isinstance(result.get("hit_id"), str):
+            return None
+        hit_ids.append(result["hit_id"])
+    return hit_ids
+
+
+def _load_accessible_hits(runs: list[dict[str, Any]], user: User) -> dict[str, Hit]:
+    """Fetch current target records in one real-time Elasticsearch multi-get."""
+    if not user.is_active:
+        return {}
+    hit_ids = list(dict.fromkeys(hit_id for run in runs if (ids := _run_target_ids(run)) is not None for hit_id in ids))
+    if not hit_ids:
+        return {}
+    hits = cast(
+        dict[str, Any], datastore().hit.multiget(hit_ids, as_dictionary=True, as_obj=True, error_on_missing=False)
+    )
+    return {
+        hit_id: hit
+        for hit_id, hit in hits.items()
+        if isinstance(hit, Hit) and is_classification_accessible(user, hit.classification)
+    }
+
+
+def _run_is_accessible(run: dict[str, Any], user: User, accessible_hits: dict[str, Hit] | None = None) -> bool:
     if not user.is_active or run.get("_owner") != _user_name(user):
         return False
-    for result in run.get("results", []):
-        hit_id = result.get("hit_id")
-        if not isinstance(hit_id, str):
-            return False
-        # get_hit uses datastore GET semantics rather than a near-real-time
-        # search snapshot, so a newly raised classification is enforced now.
-        hit, _version = hit_service.get_hit(hit_id, as_odm=True, version=True, user=user)
-        if hit is None or not is_classification_accessible(user, hit.classification):
-            return False
-    return bool(run.get("results"))
+    hit_ids = _run_target_ids(run)
+    if hit_ids is None:
+        return False
+    if accessible_hits is None:
+        accessible_hits = _load_accessible_hits([run], user)
+    return all(hit_id in accessible_hits for hit_id in hit_ids)
 
 
-def _matches_run_filters(
+def _run_matches_filters(
     run: dict[str, Any],
     user: User,
     *,
@@ -218,15 +241,15 @@ def _matches_run_filters(
     now_epoch: float,
 ) -> bool:
     expires_at = run.get("_expires_at")
-    if expires_at is not None and float(expires_at) <= now_epoch:
-        return False
-    if operation_id and run.get("operation_id") != operation_id:
-        return False
-    if action_id and run.get("action_id") != action_id:
-        return False
-    if request_id and run.get("request_id") != request_id:
-        return False
-    return _run_is_accessible(run, user)
+    return bool(
+        user.is_active
+        and run.get("_owner") == _user_name(user)
+        and _run_target_ids(run) is not None
+        and (expires_at is None or float(expires_at) > now_epoch)
+        and (not operation_id or run.get("operation_id") == operation_id)
+        and (not action_id or run.get("action_id") == action_id)
+        and (not request_id or run.get("request_id") == request_id)
+    )
 
 
 def get_run(run_id: str, user: User) -> dict[str, Any] | None:
@@ -264,19 +287,25 @@ def list_runs(
     now_epoch = datetime.now(timezone.utc).timestamp()
     while len(matches) < wanted:
         batch, progress = ai_triage_queue.list_runs(_user_name(user), scan_offset, ai_triage_queue.RUN_SCAN_BATCH)
-        for run in batch:
-            run_id = run.get("run_id")
-            if not isinstance(run_id, str) or run_id in seen_run_ids:
-                continue
-            seen_run_ids.add(run_id)
-            if not _matches_run_filters(
+        candidates = [
+            run
+            for run in batch
+            if _run_matches_filters(
                 run,
                 user,
                 operation_id=operation_id,
                 action_id=action_id,
                 request_id=request_id,
                 now_epoch=now_epoch,
-            ):
+            )
+        ]
+        accessible_hits = _load_accessible_hits(candidates, user)
+        for run in candidates:
+            run_id = run.get("run_id")
+            if not isinstance(run_id, str) or run_id in seen_run_ids:
+                continue
+            seen_run_ids.add(run_id)
+            if not _run_is_accessible(run, user, accessible_hits):
                 continue
             matches.append(run)
             if len(matches) >= wanted:
@@ -387,8 +416,6 @@ def run_owner_and_token(run_id: str) -> tuple[User | None, str | None, dict[str,
     run = ai_triage_queue.read_run(run_id)
     if not run:
         return None, None, None
-    if run.get("_auth_scheme") != "Bearer":
-        return None, None, run
     user = get_current_user(run)
     if user is None:
         return None, None, run
@@ -425,32 +452,18 @@ def provider_input(hit: Hit) -> dict[str, Any]:
     return data
 
 
-def _candidate_digest(content: str, label: dict[str, str], format: str, provenance: dict[str, Any]) -> str:
-    canonical = json.dumps(
-        {"content": content, "format": format, "label": label, "metadata": provenance},
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    )
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-
-
 def prepare_candidate(content: str, run_id: str, source_version: str) -> dict[str, Any]:
-    """Freeze the complete lead and provenance once before attempting a save."""
+    """Freeze a lead and its provenance before the versioned save."""
     label = {"en": "AI Triage", "fr": "Triage IA"}
-    generated_at = _iso(_utc_now())
-    provenance = {
-        "owner": LEAD_OWNER,
-        "schema_version": LEAD_SCHEMA_VERSION,
-        "run_id": run_id,
-        "generated_at": generated_at,
-        "source_version": source_version,
-        "provider": config.core.ai.provider,
-    }
-    digest = _candidate_digest(content, label, "markdown", provenance)
     metadata = json.dumps(
-        {**provenance, "candidate_sha256": digest},
-        ensure_ascii=False,
+        {
+            "owner": LEAD_OWNER,
+            "schema_version": LEAD_SCHEMA_VERSION,
+            "run_id": run_id,
+            "generated_at": _iso(_utc_now()),
+            "source_version": source_version,
+            "provider": config.core.ai.provider,
+        },
         sort_keys=True,
         separators=(",", ":"),
     )
@@ -460,84 +473,75 @@ def prepare_candidate(content: str, run_id: str, source_version: str) -> dict[st
         "content": content,
         "metadata": metadata,
         "source_version": source_version,
-        "digest": digest,
     }
 
 
-def _candidate_provenance(candidate: dict[str, Any]) -> dict[str, Any] | None:
-    if set(candidate) != {"label", "format", "content", "metadata", "source_version", "digest"}:
-        return None
-    try:
-        label = candidate["label"]
-        content = candidate["content"]
-        format = candidate["format"]
-        metadata = json.loads(candidate["metadata"])
-        digest = candidate["digest"]
-    except (KeyError, TypeError, json.JSONDecodeError):
+def _candidate_metadata(candidate: Any) -> dict[str, Any] | None:
+    if not isinstance(candidate, dict) or set(candidate) != {
+        "label",
+        "format",
+        "content",
+        "metadata",
+        "source_version",
+    }:
         return None
     if (
-        not isinstance(label, dict)
-        or label != {"en": "AI Triage", "fr": "Triage IA"}
-        or not isinstance(content, str)
-        or not isinstance(format, str)
-        or format != "markdown"
-        or not isinstance(metadata, dict)
+        candidate.get("label") != {"en": "AI Triage", "fr": "Triage IA"}
+        or candidate.get("format") != "markdown"
+        or not isinstance(candidate.get("content"), str)
+        or not candidate["content"].strip()
+        or not isinstance(candidate.get("source_version"), str)
+        or not candidate["source_version"]
+    ):
+        return None
+    try:
+        metadata = json.loads(candidate["metadata"])
+    except (TypeError, json.JSONDecodeError):
+        return None
+    required = {"owner", "schema_version", "run_id", "generated_at", "source_version", "provider"}
+    if (
+        not isinstance(metadata, dict)
+        or set(metadata) != required
         or metadata.get("owner") != LEAD_OWNER
         or metadata.get("schema_version") != LEAD_SCHEMA_VERSION
         or not isinstance(metadata.get("run_id"), str)
+        or not metadata["run_id"]
         or not isinstance(metadata.get("generated_at"), str)
-        or not isinstance(metadata.get("source_version"), str)
-        or metadata.get("source_version") != candidate.get("source_version")
-        or set(metadata)
-        != {"owner", "schema_version", "run_id", "generated_at", "source_version", "provider", "candidate_sha256"}
-        or not isinstance(digest, str)
+        or not metadata["generated_at"]
+        or metadata.get("source_version") != candidate["source_version"]
+        or not isinstance(metadata.get("provider"), str)
+        or not metadata["provider"]
     ):
         return None
-    provenance = {key: value for key, value in metadata.items() if key != "candidate_sha256"}
-    if metadata.get("candidate_sha256") != digest or _candidate_digest(content, label, format, provenance) != digest:
-        return None
-    return provenance
+    return metadata
 
 
 def candidate_is_valid(candidate: Any) -> bool:
-    """Validate a complete, hashed candidate before persisting or writing it."""
-    return isinstance(candidate, dict) and _candidate_provenance(candidate) is not None
+    """Validate the frozen lead fields and required provenance metadata."""
+    return _candidate_metadata(candidate) is not None
 
 
 def has_managed_candidate(hit: Hit, candidate: dict[str, Any]) -> bool:
-    """Match a managed lead against the exact canonical candidate digest/content."""
-    provenance = _candidate_provenance(candidate)
-    if provenance is None:
+    """Check whether this run's managed lead is already on the alert."""
+    metadata = _candidate_metadata(candidate)
+    if metadata is None:
         return False
     for lead in hit.howler.dossier or []:
-        metadata = _lead_metadata(lead)
+        lead_metadata = _lead_metadata(lead)
         label_obj = lead.get("label") if isinstance(lead, dict) else getattr(lead, "label", None)
-        if isinstance(label_obj, dict):
-            raw_label = label_obj
-        else:
-            raw_label = {"en": getattr(label_obj, "en", None), "fr": getattr(label_obj, "fr", None)}
-        label_en = raw_label.get("en") if isinstance(raw_label, dict) else None
-        label_fr = raw_label.get("fr") if isinstance(raw_label, dict) else None
-        lead_content = lead.get("content") if isinstance(lead, dict) else getattr(lead, "content", None)
+        label = (
+            label_obj
+            if isinstance(label_obj, dict)
+            else {"en": getattr(label_obj, "en", None), "fr": getattr(label_obj, "fr", None)}
+        )
+        content = lead.get("content") if isinstance(lead, dict) else getattr(lead, "content", None)
         lead_format = lead.get("format") if isinstance(lead, dict) else getattr(lead, "format", None)
         if (
-            not isinstance(lead_content, str)
-            or not isinstance(lead_format, str)
-            or not isinstance(label_en, str)
-            or not isinstance(label_fr, str)
-        ):
-            continue
-        label: dict[str, str] = {"en": label_en, "fr": label_fr}
-        lead_provenance = {key: value for key, value in metadata.items() if key != "candidate_sha256"}
-        if (
-            metadata.get("owner") == LEAD_OWNER
-            and metadata.get("run_id") == provenance["run_id"]
-            and metadata.get("candidate_sha256") == candidate["digest"]
-            and lead_content == candidate["content"]
+            lead_metadata.get("owner") == LEAD_OWNER
+            and lead_metadata.get("run_id") == metadata["run_id"]
+            and content == candidate["content"]
             and lead_format == candidate["format"]
             and label == candidate["label"]
-            and lead_provenance == provenance
-            and _candidate_digest(lead_content, label, lead_format, lead_provenance) == candidate["digest"]
         ):
             return True
     return False
@@ -573,9 +577,8 @@ def save_ai_lead(  # noqa: C901
     user_loader: Callable[[], User | None] | None = None,
     active_deadline: float | None = None,
 ) -> tuple[bool, str | None]:
-    """Upsert the managed dossier lead using fresh, versioned full-record saves."""
-    provenance = _candidate_provenance(candidate)
-    if provenance is None:
+    """Upsert a frozen candidate with fresh, versioned full-hit saves."""
+    if not candidate_is_valid(candidate):
         return False, "candidate_invalid"
 
     for _attempt in range(CAS_RETRIES):
@@ -588,6 +591,8 @@ def save_ai_lead(  # noqa: C901
             hit, version = _call_before_deadline(lambda: get_current_hit(hit_id, current_user), active_deadline)
         except _ActiveDeadlineExceeded:
             return False, "run_deadline_exceeded"
+        except Exception:
+            return False, "write_reconciliation_pending"
         if hit is None:
             return False, "alert_not_accessible"
         if has_managed_candidate(hit, candidate):
@@ -595,45 +600,11 @@ def save_ai_lead(  # noqa: C901
         if not _eligible_hit(hit):
             return False, "alert_no_longer_eligible"
 
-        # Re-read the initiating user and the hit immediately before preparing
-        # the CAS write. A clearance or role revocation during provider latency
-        # must not reuse the pre-provider identity/record.
-        try:
-            if lease_check and not _call_before_deadline(lease_check, active_deadline):
-                return False, "lease_lost"
-            current_user = _call_before_deadline(user_loader, active_deadline) if user_loader else current_user
-            if current_user is None or current_user.uname != user.uname or not user_can_run_ai_triage(current_user):
-                return False, "initiator_access_revoked"
-            hit, version = _call_before_deadline(lambda: get_current_hit(hit_id, current_user), active_deadline)
-        except _ActiveDeadlineExceeded:
-            return False, "run_deadline_exceeded"
-        if hit is None:
-            return False, "alert_not_accessible"
-        if has_managed_candidate(hit, candidate):
-            return True, None
-        if not _eligible_hit(hit):
-            return False, "alert_no_longer_eligible"
-
-        existing = list(hit.howler.dossier or [])
-        preserved = []
-        for lead in existing:
-            lead_metadata = _lead_metadata(lead)
-            if not (isinstance(lead_metadata, dict) and lead_metadata.get("owner") == LEAD_OWNER):
-                preserved.append(lead)
-        lead = Lead(
-            {
-                "label": candidate["label"],
-                "format": candidate["format"],
-                "content": candidate["content"],
-                "metadata": candidate["metadata"],
-            }
-        )
-        hit.howler.dossier = [*preserved, lead]
-        try:
-            if lease_check and not _call_before_deadline(lease_check, active_deadline):
-                return False, "lease_lost"
-        except _ActiveDeadlineExceeded:
-            return False, "run_deadline_exceeded"
+        preserved = [lead for lead in hit.howler.dossier or [] if _lead_metadata(lead).get("owner") != LEAD_OWNER]
+        hit.howler.dossier = [
+            *preserved,
+            Lead({key: candidate[key] for key in ("label", "format", "content", "metadata")}),
+        ]
 
         write_started = False
 
@@ -643,39 +614,15 @@ def save_ai_lead(  # noqa: C901
             datastore().hit.save(hit_id, hit, version=version)
 
         try:
-            # Persist the versioned full-record write directly. The service
-            # wrapper also performs a follow-up read and socket notification;
-            # those best-effort effects must not turn a committed write into a
-            # false save failure.
+            if lease_check and not _call_before_deadline(lease_check, active_deadline):
+                return False, "lease_lost"
             _call_before_deadline(submit_write, active_deadline)
         except _ActiveDeadlineExceeded:
-            # Once the datastore call begins its remote outcome is ambiguous;
-            # leave the immutable intent/candidate for read-only reconciliation.
             return False, "write_reconciliation_pending" if write_started else "run_deadline_exceeded"
         except VersionConflictException:
             continue
         except Exception:
-            # save_hit persists before it performs its follow-up read/event. An
-            # exception can therefore be ambiguous; reconcile the authoritative
-            # fresh hit before reporting failure or retrying a provider result.
-            for _reconcile_attempt in range(CAS_RETRIES):
-                try:
-                    reconciliation_user = (
-                        _call_before_deadline(user_loader, active_deadline) if user_loader else current_user
-                    )
-                    if reconciliation_user is None or reconciliation_user.uname != user.uname:
-                        continue
-                    saved_hit, _saved_version = _call_before_deadline(
-                        lambda: get_current_hit(hit_id, reconciliation_user), active_deadline
-                    )
-                except _ActiveDeadlineExceeded:
-                    return False, "write_reconciliation_pending"
-                except Exception:
-                    logger.warning("Unable to reconcile AI triage dossier save for alert %s", hit_id)
-                    continue
-                if saved_hit and has_managed_candidate(saved_hit, candidate):
-                    return True, None
-            logger.warning("AI triage lead save outcome remains unconfirmed for alert %s", hit_id)
+            logger.warning("AI triage lead save failed for alert %s", hit_id)
             return False, "write_reconciliation_pending"
 
         try:
@@ -684,8 +631,6 @@ def save_ai_lead(  # noqa: C901
             )
             if saved_data:
                 comms_service.emit("hits", {"hit": saved_data, "version": saved_version})
-        except _ActiveDeadlineExceeded:
-            logger.warning("AI triage lead saved but notification refresh exceeded its deadline for alert %s", hit_id)
         except Exception:
             logger.warning("AI triage lead saved but hit notification could not be refreshed for alert %s", hit_id)
         return True, None
@@ -693,111 +638,4 @@ def save_ai_lead(  # noqa: C901
     return False, "write_reconciliation_pending"
 
 
-def reconcile_candidate(  # noqa: C901
-    hit_id: str,
-    candidate: dict[str, Any],
-    *,
-    user_loader: Callable[[], User | None],
-    lease_check: Callable[[], bool],
-    write_intent_check: Callable[[], bool],
-    allow_write: bool,
-    write_intent: bool,
-    active_deadline: float,
-) -> tuple[str, str | None]:
-    """Read/commit-reconcile one immutable candidate without provider inference."""
-    provenance = _candidate_provenance(candidate)
-    if provenance is None:
-        return "failed", "candidate_invalid"
-
-    active_expired = time.monotonic() >= active_deadline
-    if active_expired and not write_intent:
-        return "failed", "run_deadline_exceeded"
-
-    # A prior submitted write stays uncertain until its exact immutable
-    # candidate is confirmed, even if the alert is now resolved/assessed or the
-    # active deadline expired. Past that deadline this path is deliberately
-    # read-only; active deadlines never authorize a new Elasticsearch write.
-    operation_deadline = None if write_intent and active_expired else active_deadline
-    try:
-        current_user = _call_before_deadline(user_loader, operation_deadline)
-        if not _call_before_deadline(lease_check, operation_deadline):
-            return "stale", "lease_lost"
-    except _ActiveDeadlineExceeded:
-        return ("pending", "write_reconciliation_pending") if write_intent else ("failed", "run_deadline_exceeded")
-    if current_user is None or not user_can_run_ai_triage(current_user):
-        if write_intent:
-            return "pending", "write_reconciliation_pending"
-        return "skipped", "initiator_access_revoked"
-    try:
-        hit, _version = _call_before_deadline(lambda: get_current_hit(hit_id, current_user), operation_deadline)
-    except _ActiveDeadlineExceeded:
-        return ("pending", "write_reconciliation_pending") if write_intent else ("failed", "run_deadline_exceeded")
-    except Exception:
-        return "pending", "write_reconciliation_pending"
-    if hit is None:
-        if write_intent:
-            return "pending", "write_reconciliation_pending"
-        return "skipped", "alert_not_accessible"
-    if has_managed_candidate(hit, candidate):
-        return "saved", None
-    if not _eligible_hit(hit):
-        if write_intent:
-            return "pending", "write_reconciliation_pending"
-        return "skipped", "alert_no_longer_eligible"
-    if time.monotonic() >= active_deadline:
-        return ("pending", "write_reconciliation_pending") if write_intent else ("failed", "run_deadline_exceeded")
-    if not allow_write:
-        if not write_intent:
-            return "failed", "configuration_unavailable"
-        return "pending", "write_reconciliation_pending"
-    try:
-        if not _call_before_deadline(write_intent_check, active_deadline):
-            return "stale", "lease_lost"
-    except _ActiveDeadlineExceeded:
-        return ("pending", "write_reconciliation_pending") if write_intent else ("failed", "run_deadline_exceeded")
-    if time.monotonic() >= active_deadline:
-        return ("pending", "write_reconciliation_pending") if write_intent else ("failed", "run_deadline_exceeded")
-
-    saved, reason = save_ai_lead(
-        hit_id,
-        current_user,
-        candidate,
-        lease_check=lease_check,
-        user_loader=user_loader,
-        active_deadline=active_deadline,
-    )
-    if saved:
-        return "saved", None
-    if reason == "lease_lost":
-        return "stale", reason
-    if reason in {"alert_not_accessible", "alert_no_longer_eligible", "initiator_access_revoked"}:
-        if write_intent:
-            return "pending", "write_reconciliation_pending"
-        return "skipped", reason
-    if reason == "candidate_invalid":
-        return "failed", reason
-    if reason == "run_deadline_exceeded":
-        return ("pending", "write_reconciliation_pending") if write_intent else ("failed", reason)
-    return "pending", "write_reconciliation_pending"
-
-
-def enqueue_action(
-    query: str,
-    user: User,
-    *,
-    request_id: str | None,
-    action_id: str | None,
-    trigger: str | None,
-    trusted_auth_token: str | None,
-    prompt: str | None,
-) -> dict[str, Any]:
-    """Compatibility wrapper used by the action operation."""
-    return enqueue_run(
-        query,
-        user,
-        request_id=request_id,
-        action_id=action_id,
-        trigger=trigger,
-        bearer_token=trusted_auth_token,
-        prompt=prompt,
-    )
+enqueue_action = enqueue_run

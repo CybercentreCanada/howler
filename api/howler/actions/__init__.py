@@ -13,9 +13,23 @@ from howler.plugins import get_plugins
 logger = get_logger(__file__)
 
 PLUGIN_PATH = Path(os.environ.get("HWL_PLUGIN_DIRECTORY", "/etc/howler/plugins"))
+RESERVED_ACTION_KWARGS = frozenset(
+    {"auth_token", "trusted_auth_token", "action_id", "trigger", "request_id", "query", "user"}
+)
 
 # Roles that grant advanced hit limits
 ADVANCED_ROLES = {"automation_advanced", "actionrunner_advanced", "admin"}
+
+
+def sanitize_operation_kwargs(data: dict[str, Any]) -> dict[str, Any]:
+    """Remove dispatcher-owned arguments from persisted operation data."""
+    return {key: value for key, value in data.items() if key not in RESERVED_ACTION_KWARGS}
+
+
+def _is_builtin_operation(operation_id: str) -> bool:
+    """Whether an operation resolves to a module shipped in this package."""
+    module = Path(__file__).parent / f"{operation_id}.py"
+    return module.parent == Path(__file__).parent and module.is_file()
 
 
 def __sanitize_specification(spec: dict[str, Any]) -> dict[str, Any]:
@@ -226,11 +240,7 @@ def execute(
 
     # Persisted action data is untrusted. Never let it impersonate the
     # independently parsed request authorization context.
-    safe_kwargs = {
-        key: value
-        for key, value in kwargs.items()
-        if key not in {"auth_token", "trusted_auth_token", "action_id", "trigger", "request_id", "query", "user"}
-    }
+    safe_kwargs = sanitize_operation_kwargs(kwargs)
 
     # Skip central limit check if operation handles it locally with transformed query
     if not getattr(operation, "SKIP_CENTRAL_LIMIT", False):
@@ -242,6 +252,10 @@ def execute(
         safe_kwargs["trusted_auth_token"] = trusted_auth_token
         safe_kwargs["action_id"] = action_id
         safe_kwargs["trigger"] = trigger
+    elif not _is_builtin_operation(operation_id) and trusted_auth_token:
+        # Older plugins consume auth_token without declaring the capability.
+        # This value comes only from the Bearer-only request parser above.
+        safe_kwargs["auth_token"] = trusted_auth_token
 
     report = operation.execute(query=query, request_id=request_id, user=user, **safe_kwargs)
 

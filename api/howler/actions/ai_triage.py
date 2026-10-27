@@ -60,13 +60,13 @@ def execute(
         ]
 
     try:
-        run = ai_triage_service.enqueue_action(
+        run = ai_triage_service.enqueue_run(
             query,
             user,
             request_id=request_id,
             action_id=action_id,
             trigger=trigger,
-            trusted_auth_token=trusted_auth_token,
+            bearer_token=trusted_auth_token,
             prompt=prompt,
         )
     except ai_triage_service.AIQueueValidationError as exc:

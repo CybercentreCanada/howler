@@ -306,11 +306,7 @@ def execute_action(id: str, **kwargs) -> Response:
         op_data = json.loads(operation.data_json) if operation.data_json else {}
         if not isinstance(op_data, dict):
             return bad_request(err="Operation data must be a JSON object")
-        op_data = {
-            key: value
-            for key, value in op_data.items()
-            if key not in {"auth_token", "trusted_auth_token", "action_id", "trigger", "request_id", "query", "user"}
-        }
+        op_data = actions.sanitize_operation_kwargs(op_data)
 
         query = execute_req.get("query", action.query) or action.query
 
@@ -424,11 +420,7 @@ def execute_operations(**kwargs) -> Response:
         op_data = json.loads(operation["data_json"])
         if not isinstance(op_data, dict):
             return bad_request(err="Operation data must be a JSON object")
-        op_data = {
-            key: value
-            for key, value in op_data.items()
-            if key not in {"auth_token", "trusted_auth_token", "action_id", "trigger", "request_id", "query", "user"}
-        }
+        op_data = actions.sanitize_operation_kwargs(op_data)
 
         audit(
             [],

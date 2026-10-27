@@ -56,17 +56,18 @@ const ActionEditor: FC = () => {
   const { user } = useAppUser<HowlerUser>();
   const pluginStore = usePluginStore();
 
-  const { response, loading, setLoading, responseQuery, report, progress, onSearch, saveAction, submitAction } =
-    useMyActionFunctions();
-  const acceptedRunIds = useMemo(
-    () =>
-      Object.values(report ?? {}).flatMap(entries =>
-        (Array.isArray(entries) ? entries : []).flatMap(entry =>
-          entry.status === 'queued' && entry.run_id ? [entry.run_id] : []
-        )
-      ),
-    [report]
-  );
+  const {
+    response,
+    loading,
+    setLoading,
+    responseQuery,
+    report,
+    progress,
+    acceptedRunIds = [],
+    onSearch,
+    saveAction,
+    submitAction
+  } = useMyActionFunctions();
 
   const [operations, setOperations] = useState<ActionOperation[]>([]);
   const [name, setName] = useState('');
@@ -286,7 +287,11 @@ const ActionEditor: FC = () => {
             <LinearProgress />
           ))}
         {report && <ActionReportDisplay report={report} operations={operations} />}
-        <ActionRunHistory actionId={params.id} contextId={location.pathname} acceptedRunIds={acceptedRunIds} />
+        {(Boolean(params.id) ||
+          operations.some(operation => operation.id === 'ai_triage') ||
+          acceptedRunIds.length > 0) && (
+          <ActionRunHistory actionId={params.id} contextId={location.pathname} acceptedRunIds={acceptedRunIds} />
+        )}
       </Stack>
       {operations.length > 0 && (
         <Stack spacing={1} mt={1}>

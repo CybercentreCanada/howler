@@ -82,25 +82,25 @@ Runs are stored in persistent Redis and processed by gevent consumers started
 with the REST application, independently of `HWL_USE_JOB_SYSTEM`. Provider work
 requires the patched Howler server entrypoint (`poetry run server`); a serving
 process that enables AI Triage without early gevent socket patching fails at
-startup rather than blocking API requests. When AI Triage is enabled, REST
-deployments that disable the job system also start the existing per-trigger
-action consumers, so AI actions configured on create/promote/demote/label events
-are dispatched once. If the integration is disabled on restart, retained queued
-AI runs are terminalized as unavailable without contacting a provider. A Redis
-lease and deployment-wide permits bound active AI jobs to four by default. Each
+startup rather than blocking API requests. AI Triage workers do not implicitly
+start the separate per-trigger action-queue jobs; event-triggered actions still
+require the configured action queue and job system. If the integration is
+disabled on restart, retained queued AI runs are failed as unavailable without
+contacting a provider. A Redis lease and deployment-wide permits bound active AI jobs to four by default. Each
 alert's immutable 600-second deadline begins on its own first claim, including
 recovery and retries. Each alert gets at most three actual provider-generation
-attempts; commit-only recovery does not consume an attempt. Completed status is retained for seven days by
-default. These defaults can be lowered using the fields above (attempts and
-deadline are capped at three and 600 seconds respectively).
+attempts. Once generated, a validated candidate is retained in Redis and save
+retries reuse it without another provider request, until the original item
+deadline. Completed status is retained for seven days by default. These defaults
+can be lowered using the fields above (attempts and deadline are capped at three
+and 600 seconds respectively).
 
-Queue locks use operation-specific nonces and an atomic compare-delete release;
-Redis transactions also verify the active lock nonce before committing. A
-cooperative stop drains processing, heartbeat, and renewal work before another
-claim. If Redis does not confirm lock cleanup, the worker fails closed and stops
-claiming. A hard-killed process or network partition can still leave a lock
-until its configured TTL expires; this is not an absolute cleanup guarantee
-under arbitrary host suspension.
+Queue locks use short-lived Redis nonces with atomic compare-delete release;
+transactions verify the active nonce before committing, so an expired or
+replaced lock cannot commit stale queue state. Workers heartbeat each active
+lease and stop provider work when the lease is lost. A hard-killed process or
+network partition can leave a lock until its configured TTL expires; this is
+not an absolute cleanup guarantee under arbitrary host suspension.
 
 OpenAI-compatible calls use non-streaming chat completions. A2A uses
 JSON-RPC 2.0 `message/stream` with bounded SSE accumulation. Output may be a
@@ -111,9 +111,10 @@ tasks resume with `tasks/get` rather than a new `message/send`. Only an explicit
 unsupported-stream response before task acceptance falls back to `message/send`
 and `tasks/get`; authentication errors, input-required states, empty output,
 mismatched JSON-RPC IDs, and non-completed tasks fail without saving a lead. A
-validated candidate is durably checkpointed before the dossier CAS write, and
-save-before-ack recovery reconciles the lead's run metadata instead of
-regenerating it. Howler does not approve or execute provider tool calls.
+validated candidate is durably checkpointed before the dossier CAS write. A
+normal queue retry checks for that run's lead and retries the same candidate
+when a save response is lost, without regenerating it. Howler does not approve
+or execute provider tool calls.
 
 The default prompt asks for Summary, Recommended assessment, Reasoning,
 Confidence and limitations, and Next steps. An action may add an optional
@@ -141,13 +142,13 @@ are filtered to the initiating owner, and contain no alert identifiers or
 provider failure details; clients should refetch the authenticated status API.
 
 Each eligible alert receives one managed markdown lead, identified by metadata
-owner `howler.ai_triage` and schema version `1`. Howler checkpoints one immutable
+owner `howler.ai_triage`, schema version `1`, and run ID. Howler checkpoints a
 candidate before the versioned full-hit compare-and-swap, preserving other
 dossier leads and concurrent unrelated alert edits. A confirmed pre-write
-eligibility failure leaves the previous managed lead intact. Ambiguous saves are
-reconciled against the exact candidate digest; if the write outcome cannot be
-confirmed within the retention horizon, status reports `write_outcome_unknown`
-and does not claim that the previous lead was untouched.
+eligibility failure leaves the previous managed lead intact. Transient or
+ambiguous saves retry the same candidate until the item deadline; if the outcome
+cannot be confirmed by then, the run reports the timeout and does not imply the
+write was rolled back.
 
 Local provider HTTP work is interrupted at the item deadline or when its Redis
 lease cannot be renewed. This closes the local response/session before the
