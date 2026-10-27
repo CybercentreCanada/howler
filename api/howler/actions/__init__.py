@@ -69,7 +69,7 @@ def __sanitize_report(report: list[dict[str, Any]]) -> list[dict[str, Any]]:
     Returns:
         list[dict[str, Any]]: The sanitized, concise report
     """
-    by_message: dict[tuple[str, str, str, str | None, str | None], list[str]] = {}
+    by_message: dict[tuple[str, str, str], list[str]] = {}
 
     for entry in report:
         # if these three keys match, we should merge the queries that use them both. For example, when multiple hits
@@ -78,8 +78,6 @@ def __sanitize_report(report: list[dict[str, Any]]) -> list[dict[str, Any]]:
             entry["title"],
             entry["message"],
             entry["outcome"],
-            entry.get("run_id"),
-            entry.get("status"),
         )
 
         if key in by_message:
@@ -89,16 +87,13 @@ def __sanitize_report(report: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     sanitized: list[dict[str, Any]] = []
     for key, queries in by_message.items():
-        title, message, outcome, run_id, status = key
+        title, message, outcome = key
         entry = {
             "query": " OR ".join(queries),
             "outcome": outcome,
             "title": title,
             "message": message,
         }
-        if run_id is not None:
-            entry["run_id"] = run_id
-            entry["status"] = status or "queued"
         sanitized.append(entry)
 
     return sanitized

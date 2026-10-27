@@ -30,7 +30,12 @@ class HowlerHandlebarsRenderError extends Error {
 
 const THROTTLER = new Throttler(500);
 
-const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disableLinks = false }) => {
+const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({
+  md,
+  object = {},
+  disableLinks = false,
+  untrusted = false
+}) => {
   const { t } = useTranslation();
   const helpers = useHelpers();
 
@@ -61,6 +66,10 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
   }, []);
 
   useEffect(() => {
+    if (untrusted) {
+      return;
+    }
+
     helpers.forEach(helper => {
       if (handlebars.helpers[helper.keyword] && !helper.componentCallback) {
         return;
@@ -101,9 +110,13 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
         }
       });
     });
-  }, [handlebars, helpers, mdComponents]);
+  }, [handlebars, helpers, mdComponents, untrusted]);
 
   useEffect(() => {
+    if (untrusted) {
+      return;
+    }
+
     THROTTLER.debounce(async () => {
       // Types are a bit muddled here due to the async helpers
       const compiled = handlebars.compile(md || '') as unknown as (obj: any) => PromiseLike<string>;
@@ -147,7 +160,11 @@ ${err instanceof Error ? err.stack : ''}
         `);
       }
     });
-  }, [md, handlebars, object, t]);
+  }, [md, handlebars, object, t, untrusted]);
+
+  if (untrusted) {
+    return <Markdown md={md} disableLinks={disableLinks} untrusted />;
+  }
 
   return <Markdown md={rendered} disableLinks={disableLinks} components={mdComponents} />;
 };

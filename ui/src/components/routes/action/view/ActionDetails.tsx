@@ -1,14 +1,5 @@
 import { Delete, Edit, PlayCircleOutline, Search } from '@mui/icons-material';
-import {
-  Button,
-  Checkbox,
-  FormControlLabel,
-  FormGroup,
-  IconButton,
-  LinearProgress,
-  Stack,
-  Typography
-} from '@mui/material';
+import { Button, Checkbox, FormControlLabel, FormGroup, IconButton, Stack, Typography } from '@mui/material';
 import { PageCenter, useAppUser } from '@tui/core';
 import api from 'api';
 import { ModalContext } from 'components/app/providers/ModalProvider';
@@ -26,32 +17,20 @@ import howlerPluginStore from 'plugins/store';
 import { useCallback, useContext, useEffect, useState, type ChangeEventHandler } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
-import { Link, useLocation, useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 import QueryResultText from '../../../elements/display/QueryResultText';
 import type { CustomActionProps } from '../edit/ActionEditor';
 import ActionReportDisplay from '../shared/ActionReportDisplay';
-import ActionRunHistory from '../shared/ActionRunHistory';
 import useMyActionFunctions from '../useMyActionFunctions';
 
 const ActionDetails = () => {
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
   const params = useParams();
-  const location = useLocation();
   const { user } = useAppUser<HowlerUser>();
   const pluginStore = usePluginStore();
 
-  const {
-    response,
-    onSearch,
-    loading,
-    setLoading,
-    executeAction,
-    deleteAction,
-    progress,
-    report,
-    acceptedRunIds = []
-  } = useMyActionFunctions();
+  const { response, onSearch, setLoading, executeAction, deleteAction, report } = useMyActionFunctions();
 
   const [operations, setOperations] = useState<ActionOperation[]>([]);
   const [action, setAction] = useState<Action>();
@@ -213,27 +192,7 @@ const ActionDetails = () => {
             </Stack>
           </FormGroup>
         )}
-        {loading &&
-          (progress[1] > 0 ? (
-            <LinearProgress
-              variant="determinate"
-              value={(progress[0] / progress[1]) * 100}
-              valueBuffer={((progress[0] + 10) / progress[1]) * 100}
-            />
-          ) : (
-            <LinearProgress />
-          ))}
         {report && <ActionReportDisplay report={report} operations={operations} />}
-        {Boolean(params.id) &&
-          (Boolean(
-            action &&
-            action.action_id === params.id &&
-            action.operations?.some(operation => operation.operation_id === 'ai_triage')
-          ) ||
-            operations.some(operation => operation.id === 'ai_triage') ||
-            acceptedRunIds.length > 0) && (
-            <ActionRunHistory actionId={params.id} contextId={location.pathname} acceptedRunIds={acceptedRunIds} />
-          )}
         {operations.length > 0 &&
           action &&
           action.operations?.map(a => {

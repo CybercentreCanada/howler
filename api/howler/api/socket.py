@@ -17,7 +17,7 @@ from howler.odm.models.user import User
 from howler.security.login import api_login
 from howler.security.socket import websocket_auth, ws_response
 from howler.security.utils import is_classification_accessible
-from howler.services import ai_triage_service, case_service
+from howler.services import case_service
 from howler.utils.socket_utils import check_action
 
 HWL_INTERPOD_COMMS_SECRET = os.getenv("HWL_INTERPOD_COMMS_SECRET", "secret")
@@ -106,21 +106,6 @@ def connect(ws: Server, *args: Any, ws_id: str, user: User | None = None, **kwar
 
     def send_action(data: dict[str, Any]):
         """Send an action update to the websocket client."""
-        if data.get("operation_id") == "ai_triage":
-            # AI run events use a hidden recipient on the inter-pod envelope.
-            # The public websocket payload is strictly filtered and legacy
-            # action events continue to be broadcast unchanged.
-            if not user or data.get("recipient") != user.uname:
-                return
-            current_user = ai_triage_service.get_user(user.uname)
-            if not current_user or not ai_triage_service.get_run(data.get("run_id", ""), current_user):
-                return
-            allowed = ("operation_id", "run_id", "request_id", "revision", "state", "processed", "total")
-            payload = {key: data.get(key) for key in allowed}
-            logger.debug("Sending private AI triage action event to owner")
-            ws.send(ws_response("action", payload))
-            return
-
         logger.debug("Sending action: %s", data)
         ws.send(ws_response("action", data))
 

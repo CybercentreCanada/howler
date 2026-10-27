@@ -16,7 +16,7 @@ SKIP_CENTRAL_LIMIT = True
 
 
 def is_available() -> bool:
-    """Return local configuration availability without calling the provider."""
+    """Return local configuration availability without contacting the provider."""
     return ai_triage_service.is_available()
 
 
@@ -30,81 +30,37 @@ def execute(
     trusted_auth_token: str | None = None,
     **_kwargs: Any,
 ) -> list[dict[str, Any]]:
-    """Queue a run and return a backward-compatible accepted report entry."""
+    """Queue one alert job per eligible hit and return a normal action report."""
+    del request_id, action_id, trigger
+
+    def report(outcome: str, title: str, message: str) -> list[dict[str, Any]]:
+        return [{"query": query, "outcome": outcome, "title": title, "message": message}]
+
     if not is_available():
-        return [
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "AI triage unavailable",
-                "message": "AI triage is not enabled or is missing valid local configuration.",
-            }
-        ]
+        return report(
+            "error", "AI triage unavailable", "AI triage is not enabled or is missing valid local configuration."
+        )
     if user is None:
-        return [
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "Authentication required",
-                "message": "You must be logged in to execute AI triage.",
-            }
-        ]
+        return report("error", "Authentication required", "You must be logged in to execute AI triage.")
     if not trusted_auth_token:
-        return [
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "Authentication required",
-                "message": "AI triage requires a Bearer authorization token.",
-            }
-        ]
+        return report("error", "Authentication required", "AI triage requires a Bearer authorization token.")
 
     try:
-        run = ai_triage_service.enqueue_run(
-            query,
-            user,
-            request_id=request_id,
-            action_id=action_id,
-            trigger=trigger,
-            bearer_token=trusted_auth_token,
-            prompt=prompt,
-        )
+        count = ai_triage_service.enqueue_alerts(query, user, trusted_auth_token, prompt=prompt)
     except ai_triage_service.AIQueueValidationError as exc:
-        return [
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "AI triage could not be queued",
-                "message": str(exc),
-            }
-        ]
+        return report("error", "AI triage could not be queued", str(exc))
     except Exception:
-        # Redis and datastore exceptions can include connection details or other
-        # secrets. Keep them out of reports and logs.
-        logger.error("Unable to enqueue AI triage run")  # noqa: TRY400
-        return [
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "AI triage could not be queued",
-                "message": "The run could not be durably queued. Please retry later.",
-            }
-        ]
+        # Redis and datastore errors can contain connection details or secrets.
+        logger.error("Unable to enqueue AI triage alerts")  # noqa: TRY400
+        return report(
+            "error", "AI triage could not be queued", "Alerts could not be durably queued. Please retry later."
+        )
 
-    return [
-        {
-            "query": query,
-            "outcome": "success",
-            "title": "AI triage queued",
-            "message": f"AI triage was queued for {run['counts']['total']} alert(s).",
-            "run_id": run["run_id"],
-            "status": "queued",
-        }
-    ]
+    return report("success", "AI triage queued", f"AI triage was queued for {count} alert(s).")
 
 
 def specification() -> dict[str, Any]:
-    """Declare the operation and its only optional action argument."""
+    """Declare AI triage as an ordinary action with one optional argument."""
     return {
         "id": OPERATION_ID,
         "title": "AI Triage",
@@ -113,8 +69,8 @@ def specification() -> dict[str, Any]:
         "description": {
             "short": "Generate a conservative AI triage lead for eligible alerts",
             "long": (
-                "Queue a durable AI triage run for unresolved alerts that have no assessment. "
-                "The provider receives only the configured filtered alert data."
+                "Queue asynchronous AI triage for unresolved alerts that have no assessment. "
+                "The provider receives only configured filtered alert data."
             ),
         },
         "roles": ["automation_basic", "automation_advanced", "actionrunner_basic", "actionrunner_advanced"],

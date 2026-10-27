@@ -26,9 +26,8 @@ vi.mock('../utils/createPermissionsApi', () => ({
 
 vi.mock('api/action/execute', () => ({ sentinel: 'execute' }));
 vi.mock('api/action/operations', () => ({ sentinel: 'operations' }));
-vi.mock('api/action/runs', () => ({ sentinel: 'runs' }));
 
-import { del, execute, get, operations, patch, permission, post, put, runs, uri } from './index';
+import { del, execute, get, operations, patch, permission, post, put, uri } from './index';
 
 describe('action API', () => {
   beforeEach(() => {
@@ -66,6 +65,5 @@ describe('action API', () => {
     expect(permission).toEqual({ put: expect.any(Function), delete: expect.any(Function) });
     expect(execute).toEqual({ sentinel: 'execute' });
     expect(operations).toEqual({ sentinel: 'operations' });
-    expect(runs).toEqual({ sentinel: 'runs' });
   });
 });

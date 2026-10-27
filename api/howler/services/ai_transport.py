@@ -3,7 +3,7 @@
 import json
 import time
 import uuid
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from typing import Any
 
 import gevent
@@ -16,21 +16,11 @@ UNSUPPORTED_A2A_METHOD_CODES = {-32601}
 
 
 class AITransportError(Exception):
-    """Provider failure with a safe, user-visible reason and retry classification."""
+    """Provider failure with a safe, user-visible reason."""
 
-    def __init__(self: Any, reason: str, *, transient: bool = False):
+    def __init__(self: Any, reason: str):
         super().__init__(reason)
         self.reason = reason
-        self.transient = transient
-
-
-Checkpoint = Callable[[str | None, str | None], bool | None]
-BeginAttempt = Callable[[], bool]
-
-
-def _begin_attempt(callback: BeginAttempt | None) -> None:
-    if callback is not None and not callback():
-        raise AITransportError("AI provider attempt limit reached")
 
 
 def _safe_headers(config: AITriage, token: str, *, streaming: bool = False) -> dict[str, str]:
@@ -72,7 +62,7 @@ def _iter_response_content(response: requests.Response) -> Iterator[bytes]:
     try:
         yield from response.iter_content(chunk_size=8192)
     except requests.exceptions.ChunkedEncodingError as exc:
-        raise AITransportError("Provider response was interrupted", transient=True) from exc
+        raise AITransportError("Provider response was interrupted") from exc
 
 
 def _read_bounded_json(
@@ -84,13 +74,13 @@ def _read_bounded_json(
     body = bytearray()
     for chunk in _iter_response_content(response):
         if deadline is not None and time.monotonic() >= deadline:
-            raise AITransportError("Provider exceeded the run deadline", transient=True)
+            raise AITransportError("Provider exceeded its timeout")
         if chunk:
             body.extend(chunk)
             if len(body) > maximum:
                 raise AITransportError("Provider response exceeded the configured size limit")
     if deadline is not None and time.monotonic() >= deadline:
-        raise AITransportError("Provider exceeded the run deadline", transient=True)
+        raise AITransportError("Provider exceeded its timeout")
     try:
         parsed = json.loads(body)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -107,7 +97,7 @@ def _raise_http_error(response: requests.Response) -> None:
     if status in {401, 403}:
         raise AITransportError("Provider rejected the authorization token")
     if status == 429 or status in {408, 425} or status >= 500:
-        raise AITransportError("Provider is temporarily unavailable", transient=True)
+        raise AITransportError("Provider is temporarily unavailable")
     raise AITransportError(f"Provider rejected the request (HTTP {status})")
 
 
@@ -135,7 +125,7 @@ def _post_json(
     except AITransportError:
         raise
     except (requests.Timeout, requests.ConnectionError, requests.exceptions.ChunkedEncodingError) as exc:
-        raise AITransportError("AI provider is temporarily unavailable", transient=True) from exc
+        raise AITransportError("AI provider is temporarily unavailable") from exc
 
 
 def _a2a_state(result: dict[str, Any]) -> str | None:
@@ -147,9 +137,7 @@ def _a2a_state(result: dict[str, Any]) -> str | None:
     return state if isinstance(state, str) else None
 
 
-def _checkpoint(
-    result: dict[str, Any], callback: Checkpoint, task_id: str | None, context_id: str | None
-) -> tuple[str | None, str | None]:
+def _task_context(result: dict[str, Any], task_id: str | None, context_id: str | None) -> tuple[str | None, str | None]:
     observed_task = result.get("taskId")
     if not isinstance(observed_task, str) and result.get("kind") == "task":
         observed_task = result.get("id")
@@ -164,9 +152,6 @@ def _checkpoint(
         raise AITransportError("A2A response changed its context identifier")
     task_id = observed_task or task_id
     context_id = observed_context or context_id
-    if task_id or context_id:
-        if callback(task_id, context_id) is False:
-            raise AITransportError("A2A task checkpoint could not be persisted")
     return task_id, context_id
 
 
@@ -303,7 +288,7 @@ def _iter_sse_json(  # noqa: C901
             try:
                 decoded = json.loads(payload)
             except json.JSONDecodeError as exc:
-                raise AITransportError("Provider returned an invalid stream event", transient=True) from exc
+                raise AITransportError("Provider returned an invalid stream event") from exc
             if not isinstance(decoded, dict):
                 raise AITransportError("Provider returned an invalid JSON-RPC stream event")
             return _validate_rpc_response(decoded, request_id)
@@ -322,7 +307,7 @@ def _iter_sse_json(  # noqa: C901
     line_buffer = bytearray()
     for chunk in _iter_response_content(response):
         if time.monotonic() >= deadline:
-            raise AITransportError("Provider exceeded the run deadline", transient=True)
+            raise AITransportError("Provider exceeded its timeout")
         if not chunk:
             continue
         total_bytes += len(chunk)
@@ -361,11 +346,10 @@ def _absorb_artifact(event_result: dict[str, Any], artifacts: dict[str, dict[str
 def _handle_a2a_task_result(  # noqa: C901
     result: dict[str, Any],
     artifacts: dict[str, dict[str, Any]],
-    checkpoint: Checkpoint,
     task_id: str | None,
     context_id: str | None,
 ) -> tuple[str | None, str | None, str | None]:
-    """Validate/checkpoint a task event and extract text only on completion."""
+    """Validate an in-call task event and extract text only on completion."""
     kind = result.get("kind")
     if kind == "message":
         if task_id or context_id:
@@ -377,7 +361,7 @@ def _handle_a2a_task_result(  # noqa: C901
         observed_task_id = result.get("taskId")
         if isinstance(observed_task_id, str) and observed_task_id != canonical_task_id:
             raise AITransportError("A2A provider returned a mismatched task identifier")
-    task_id, context_id = _checkpoint(result, checkpoint, task_id, context_id)
+    task_id, context_id = _task_context(result, task_id, context_id)
     if kind == "artifact-update":
         _absorb_artifact(result, artifacts)
         return None, task_id, context_id
@@ -408,8 +392,6 @@ def _stream_a2a(  # noqa: C901
     *,
     deadline: float,
     config: AITriage,
-    checkpoint: Checkpoint,
-    begin_attempt: BeginAttempt | None = None,
 ) -> str:
     request_body = _rpc_payload("message/stream", _message_params(message))
     request_id = request_body["id"]
@@ -419,7 +401,6 @@ def _stream_a2a(  # noqa: C901
     context_id: str | None = None
     saw_result = False
     try:
-        _begin_attempt(begin_attempt)
         response = session.post(
             endpoint,
             json=request_body,
@@ -443,7 +424,7 @@ def _stream_a2a(  # noqa: C901
             result = payload.get("result")
             if not isinstance(result, dict):
                 raise AITransportError("A2A provider returned an invalid response")
-            text, task_id, context_id = _handle_a2a_task_result(result, artifacts, checkpoint, task_id, context_id)
+            text, task_id, context_id = _handle_a2a_task_result(result, artifacts, task_id, context_id)
             if text is not None:
                 return text
             if not task_id:
@@ -455,9 +436,8 @@ def _stream_a2a(  # noqa: C901
                 message,
                 deadline=deadline,
                 config=config,
-                checkpoint=checkpoint,
-                resume_task_id=task_id,
-                resume_context_id=context_id,
+                initial_task_id=task_id,
+                initial_context_id=context_id,
             )
 
         for event in _iter_sse_json(
@@ -479,11 +459,11 @@ def _stream_a2a(  # noqa: C901
             if not isinstance(result, dict):
                 continue
             saw_result = True
-            text, task_id, context_id = _handle_a2a_task_result(result, artifacts, checkpoint, task_id, context_id)
+            text, task_id, context_id = _handle_a2a_task_result(result, artifacts, task_id, context_id)
             if text is not None:
                 return text
 
-        raise AITransportError("A2A stream ended before the task completed", transient=True)
+        raise AITransportError("A2A stream ended before the task completed")
     finally:
         if response is not None:
             response.close()
@@ -528,21 +508,20 @@ def _send_and_poll_a2a(
     *,
     deadline: float,
     config: AITriage,
-    checkpoint: Checkpoint,
-    resume_task_id: str | None = None,
-    resume_context_id: str | None = None,
+    initial_task_id: str | None = None,
+    initial_context_id: str | None = None,
 ) -> str:
-    task_id, context_id = resume_task_id, resume_context_id
+    task_id, context_id = initial_task_id, initial_context_id
     if task_id is None:
         if context_id:
-            raise AITransportError("A2A context checkpoint has no task identifier; refusing to start a duplicate task")
+            raise AITransportError("A2A context identifier has no associated task")
         payload = _post_a2a_json(
             session, endpoint, token, "message/send", _message_params(message), deadline=deadline, config=config
         )
         result = payload.get("result")
         if not isinstance(result, dict):
             raise AITransportError("A2A provider returned an invalid response")
-        text, task_id, context_id = _handle_a2a_task_result(result, {}, checkpoint, task_id, context_id)
+        text, task_id, context_id = _handle_a2a_task_result(result, {}, task_id, context_id)
         if text is not None:
             return text
         if not task_id:
@@ -558,10 +537,10 @@ def _send_and_poll_a2a(
         result = payload.get("result")
         if not isinstance(result, dict):
             raise AITransportError("A2A provider returned an invalid task response")
-        text, task_id, context_id = _handle_a2a_task_result(result, {}, checkpoint, task_id, context_id)
+        text, task_id, context_id = _handle_a2a_task_result(result, {}, task_id, context_id)
         if text is not None:
             return text
-    raise AITransportError("A2A task exceeded the run deadline", transient=True)
+    raise AITransportError("A2A task exceeded its timeout")
 
 
 def _openai_chat(
@@ -573,7 +552,6 @@ def _openai_chat(
     alert_json: str,
     *,
     deadline: float,
-    begin_attempt: BeginAttempt | None = None,
 ) -> str:
     body = {
         **config.extra_body,
@@ -584,7 +562,6 @@ def _openai_chat(
         ],
         "stream": False,
     }
-    _begin_attempt(begin_attempt)
     payload = _post_json(
         session,
         endpoint,
@@ -617,10 +594,6 @@ def generate(  # noqa: C901
     alert_data: dict[str, Any],
     *,
     deadline: float,
-    checkpoint: Checkpoint,
-    begin_attempt: BeginAttempt | None = None,
-    resume_task_id: str | None = None,
-    resume_context_id: str | None = None,
 ) -> str:
     """Generate a bounded response from the configured provider.
 
@@ -633,7 +606,7 @@ def generate(  # noqa: C901
     if not config.locally_valid() or not endpoint:
         raise AITransportError("AI triage is not configured")
     if deadline <= time.monotonic():
-        raise AITransportError("AI triage run exceeded its deadline")
+        raise AITransportError("AI triage exceeded its timeout")
     provider_deadline = min(deadline, time.monotonic() + float(config.timeout_seconds))
 
     alert_json = json.dumps(alert_data, ensure_ascii=False, separators=(",", ":"))
@@ -643,20 +616,20 @@ def generate(  # noqa: C901
     if input_size > config.max_input_bytes:
         raise AITransportError("Alert input exceeded the configured size limit")
     if time.monotonic() >= provider_deadline:
-        raise AITransportError("AI triage exceeded its deadline", transient=True)
+        raise AITransportError("AI triage exceeded its timeout")
 
     session = _session()
     try:
         provider_remaining = provider_deadline - time.monotonic()
         if provider_remaining <= 0:
-            raise AITransportError("AI triage exceeded its configured provider timeout", transient=True)
+            raise AITransportError("AI triage exceeded its configured provider timeout")
         # Requests' read timeout is an inactivity bound. A server that sends a
         # byte frequently can keep a Content-Length read(8192) blocked forever,
         # so also enforce the absolute provider budget around the whole body
         # read. Unwinding closes the active Response context before the Session.
         with gevent.Timeout(
             provider_remaining,
-            AITransportError("AI triage exceeded its configured provider timeout", transient=True),
+            AITransportError("AI triage exceeded its configured provider timeout"),
         ):
             if config.provider == "openai":
                 result = _openai_chat(
@@ -667,11 +640,21 @@ def generate(  # noqa: C901
                     system_prompt,
                     alert_json,
                     deadline=provider_deadline,
-                    begin_attempt=begin_attempt,
                 )
             else:
                 a2a_message = f"{system_prompt}\n\nAlert data (JSON):\n{alert_json}"
-                if resume_task_id or resume_context_id:
+                try:
+                    result = _stream_a2a(
+                        session,
+                        endpoint,
+                        token,
+                        a2a_message,
+                        deadline=provider_deadline,
+                        config=config,
+                    )
+                except _StreamUnsupported:
+                    # Only an explicit unsupported response before task acceptance
+                    # may fall back; both paths share this call's timeout budget.
                     result = _send_and_poll_a2a(
                         session,
                         endpoint,
@@ -679,47 +662,18 @@ def generate(  # noqa: C901
                         a2a_message,
                         deadline=provider_deadline,
                         config=config,
-                        checkpoint=checkpoint,
-                        resume_task_id=resume_task_id,
-                        resume_context_id=resume_context_id,
                     )
-                else:
-                    try:
-                        result = _stream_a2a(
-                            session,
-                            endpoint,
-                            token,
-                            a2a_message,
-                            deadline=provider_deadline,
-                            config=config,
-                            checkpoint=checkpoint,
-                            begin_attempt=begin_attempt,
-                        )
-                    except _StreamUnsupported:
-                        # Only an explicit unsupported response before task acceptance
-                        # may fall back; both paths share the same immutable deadline.
-                        result = _send_and_poll_a2a(
-                            session,
-                            endpoint,
-                            token,
-                            a2a_message,
-                            deadline=provider_deadline,
-                            config=config,
-                            checkpoint=checkpoint,
-                        )
     except requests.Timeout as exc:
-        raise AITransportError("AI provider is temporarily unavailable", transient=True) from exc
+        raise AITransportError("AI provider is temporarily unavailable") from exc
     except requests.exceptions.ChunkedEncodingError as exc:
-        # A2A checkpoints are durable before subsequent stream reads, so the
-        # caller can resume tasks/get rather than submit a second message.
-        raise AITransportError("AI provider response was interrupted", transient=True) from exc
+        raise AITransportError("AI provider response was interrupted") from exc
     except requests.ConnectionError as exc:
-        raise AITransportError("AI provider is temporarily unavailable", transient=True) from exc
+        raise AITransportError("AI provider is temporarily unavailable") from exc
     finally:
         session.close()
 
     if time.monotonic() >= provider_deadline:
-        raise AITransportError("AI triage exceeded its deadline", transient=True)
+        raise AITransportError("AI triage exceeded its timeout")
     if len(result.encode("utf-8")) > config.max_output_bytes:
         raise AITransportError("Provider output exceeded the configured size limit")
     return result

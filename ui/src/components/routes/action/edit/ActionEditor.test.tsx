@@ -1,24 +1,23 @@
 /// <reference types="vitest" />
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockDispatchApi = vi.hoisted(() => vi.fn());
-const mockHistoryProps = vi.hoisted(() => vi.fn());
-const mockHookState = vi.hoisted(() => ({ acceptedRunIds: ['run-ad-hoc'] as string[] }));
+const mockSetLoading = vi.hoisted(() => vi.fn());
+const mockOnSearch = vi.hoisted(() => vi.fn(async () => {}));
 const fieldContextToken = vi.hoisted(() => ({ name: 'field-context' }));
+const mockGetHitFields = vi.hoisted(() => vi.fn());
 const mockSearchParams = vi.hoisted(() => new URLSearchParams());
 const mockSetSearchParams = vi.hoisted(() => vi.fn());
 
+let paramsValue: { id?: string } = { id: 'action-a' };
+let locationValue = { pathname: '/action/action-a/edit' };
+const actionLoadResolvers: Record<string, Array<(value: any) => void>> = {};
+
 vi.mock('@mui/icons-material', () => ({
-  Add: () => <span>add</span>,
-  PlayCircleOutline: () => <span>play</span>,
-  Save: () => <span>save</span>,
-  PsychologyAlt: () => null,
-  LocalPolice: () => null,
-  MoodBad: () => null,
-  NewReleases: () => null,
-  Star: () => null,
-  Timeline: () => null
+  Add: () => null,
+  PlayCircleOutline: () => null,
+  Save: () => null
 }));
 
 vi.mock('@mui/material', () => {
@@ -32,7 +31,6 @@ vi.mock('@mui/material', () => {
     FormControlLabel: wrapper,
     FormGroup: wrapper,
     IconButton: ({ children }: any) => <button>{children}</button>,
-    LinearProgress: () => <div>progress</div>,
     Stack: wrapper,
     TextField: ({ label, value }: any) => <input aria-label={label} value={value} readOnly />,
     Tooltip: wrapper,
@@ -48,130 +46,112 @@ vi.mock('@tui/core', () => ({
 vi.mock('api', () => ({
   default: {
     action: { operations: { get: () => ({ kind: 'operations' }) } },
-    search: { hit: { post: (query: any) => query } }
+    search: {
+      action: {
+        post: ({ query }: { query: string }) => ({
+          kind: 'action-search',
+          actionId: query.replace('action_id:', '')
+        })
+      },
+      hit: { post: (query: any) => query }
+    }
   }
 }));
 
 vi.mock('components/app/providers/FieldProvider', () => ({
   FieldContext: fieldContextToken
 }));
-
-vi.mock('components/elements/display/icons/SocketBadge', () => ({
-  default: () => <span>socket-badge</span>
-}));
-
-vi.mock('components/routes/hits/search/RecordQuery', () => ({
-  default: () => <div>record-query</div>
-}));
-
-vi.mock('components/elements/display/QueryResultText', () => ({
-  default: () => <div>query-result</div>
-}));
-
-vi.mock('../shared/ActionReportDisplay', () => ({
-  default: () => <div>action-report</div>
-}));
-
-vi.mock('../shared/ActionRunHistory', () => ({
-  default: (props: any) => {
-    mockHistoryProps(props);
-    return <div>run-history</div>;
-  }
-}));
-
-vi.mock('../shared/OperationEntry', () => ({
-  default: () => <div>operation-entry</div>
-}));
-
+vi.mock('components/elements/display/icons/SocketBadge', () => ({ default: () => null }));
+vi.mock('components/routes/hits/search/RecordQuery', () => ({ default: () => null }));
+vi.mock('../../../elements/display/QueryResultText', () => ({ default: () => null }));
+vi.mock('../shared/ActionReportDisplay', () => ({ default: () => null }));
+vi.mock('../shared/OperationEntry', () => ({ default: () => null }));
 vi.mock('../useMyActionFunctions', () => ({
   default: () => ({
+    contextReady: true,
     response: undefined,
     loading: false,
-    setLoading: vi.fn(),
+    setLoading: mockSetLoading,
     responseQuery: '',
-    report: {
-      ai_triage: [
-        {
-          query: '*',
-          outcome: 'success',
-          title: 'Accepted',
-          message: 'Queued',
-          status: 'queued',
-          run_id: 'run-ad-hoc'
-        }
-      ]
-    },
-    acceptedRunIds: mockHookState.acceptedRunIds,
-    progress: [0, 0],
-    onSearch: vi.fn(),
+    report: undefined,
+    onSearch: mockOnSearch,
     saveAction: vi.fn(),
     submitAction: vi.fn()
   })
 }));
-
-vi.mock('plugins/store', () => ({
-  default: { operations: [] }
-}));
-
-vi.mock('react-pluggable', () => ({
-  usePluginStore: () => ({ executeFunction: vi.fn() })
-}));
-
+vi.mock('plugins/store', () => ({ default: { operations: [] } }));
+vi.mock('react-pluggable', () => ({ usePluginStore: () => ({ executeFunction: vi.fn() }) }));
 vi.mock('react-router', () => ({
-  useLocation: () => ({ pathname: '/action/new' }),
-  useParams: () => ({}),
+  useLocation: () => locationValue,
+  useParams: () => paramsValue,
   useSearchParams: () => [mockSearchParams, mockSetSearchParams]
 }));
-
-vi.mock('components/hooks/useMyApi', () => ({
-  default: () => ({ dispatchApi: mockDispatchApi })
-}));
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key })
-}));
-
+vi.mock('components/hooks/useMyApi', () => ({ default: () => ({ dispatchApi: mockDispatchApi }) }));
+vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('react', async importOriginal => {
   const actual = await importOriginal<typeof import('react')>();
   return {
     ...actual,
     useContext: (context: any) =>
-      context === fieldContextToken ? { getHitFields: vi.fn() } : actual.useContext(context)
+      context === fieldContextToken ? { getHitFields: mockGetHitFields } : actual.useContext(context)
   };
 });
 
 import ActionEditor from './ActionEditor';
 
-describe('ActionEditor', () => {
+describe('ActionEditor route visits', () => {
   beforeEach(() => {
+    paramsValue = { id: 'action-a' };
+    locationValue = { pathname: '/action/action-a/edit' };
     mockDispatchApi.mockReset();
-    mockDispatchApi.mockResolvedValue([]);
-    mockHistoryProps.mockClear();
-    mockHookState.acceptedRunIds = ['run-ad-hoc'];
+    mockSetLoading.mockClear();
+    mockOnSearch.mockClear();
     mockSearchParams.delete('query');
     mockSetSearchParams.mockClear();
+    for (const actionId of Object.keys(actionLoadResolvers)) {
+      delete actionLoadResolvers[actionId];
+    }
+    mockDispatchApi.mockImplementation((request: any) => {
+      if (request.kind === 'operations') {
+        return Promise.resolve([]);
+      }
+      return new Promise(resolve => {
+        const resolvers = actionLoadResolvers[request.actionId] ?? [];
+        resolvers.push(resolve);
+        actionLoadResolvers[request.actionId] = resolvers;
+      });
+    });
   });
 
-  it('tracks accepted ad hoc runs even when the server hides the operation', async () => {
-    render(<ActionEditor />);
+  it('does not apply an old action load after leaving and revisiting the same ID', async () => {
+    const { rerender } = render(<ActionEditor />);
+    await waitFor(() => expect(actionLoadResolvers['action-a']).toHaveLength(1));
 
-    await waitFor(() => expect(mockHistoryProps).toHaveBeenCalled());
-    expect(mockHistoryProps).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        actionId: undefined,
-        contextId: '/action/new',
-        acceptedRunIds: ['run-ad-hoc']
-      })
-    );
-    expect(screen.getByText('run-history')).toBeInTheDocument();
-  });
+    paramsValue = { id: 'action-b' };
+    locationValue = { pathname: '/action/action-b/edit' };
+    rerender(<ActionEditor />);
+    await waitFor(() => expect(actionLoadResolvers['action-b']).toHaveLength(1));
 
-  it('omits history for an unrelated new action', async () => {
-    mockHookState.acceptedRunIds = [];
-    render(<ActionEditor />);
+    paramsValue = { id: 'action-a' };
+    locationValue = { pathname: '/action/action-a/edit' };
+    rerender(<ActionEditor />);
+    await waitFor(() => expect(actionLoadResolvers['action-a']).toHaveLength(2));
 
-    await waitFor(() => expect(mockDispatchApi).toHaveBeenCalled());
-    expect(screen.queryByText('run-history')).not.toBeInTheDocument();
-    expect(mockHistoryProps).not.toHaveBeenCalled();
+    await act(async () => {
+      actionLoadResolvers['action-a'][1]!({
+        items: [{ name: 'Current A', query: 'status:current', operations: [] }]
+      });
+    });
+    await waitFor(() => expect(screen.getByLabelText('route.actions.name')).toHaveValue('Current A'));
+
+    const loadingCallsAfterCurrentLoad = mockSetLoading.mock.calls.length;
+    await act(async () => {
+      actionLoadResolvers['action-a'][0]!({ items: [{ name: 'Stale A', query: 'status:stale', operations: [] }] });
+    });
+
+    expect(screen.getByLabelText('route.actions.name')).toHaveValue('Current A');
+    expect(mockOnSearch).toHaveBeenCalledTimes(1);
+    expect(mockOnSearch).toHaveBeenCalledWith('status:current');
+    expect(mockSetLoading).toHaveBeenCalledTimes(loadingCallsAfterCurrentLoad);
   });
 });

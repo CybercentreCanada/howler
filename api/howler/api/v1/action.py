@@ -17,7 +17,7 @@ from howler.config import CLASSIFICATION
 from howler.odm.models.action import Action
 from howler.odm.models.user import User
 from howler.security.login import api_login
-from howler.services import action_service, ai_triage_service
+from howler.services import action_service
 
 SUB_API = "action"
 MAX_ACTION_RESULTS = 250
@@ -450,52 +450,3 @@ def execute_operations(**kwargs) -> Response:
         reports[operation["operation_id"]].extend(report)
 
     return ok(reports)
-
-
-@generate_swagger_docs()
-@action_api.route("/runs", methods=["GET"])
-@api_login(audit=False, required_priv=["R"])
-def list_action_runs(user: User, **_) -> Response:
-    """List AI triage run summaries owned by the current user.
-
-    Optional Arguments:
-    operation_id => Filter by operation (currently ``ai_triage``).
-    action_id    => Filter by action ID.
-    request_id   => Filter by request ID.
-    offset       => Non-negative result offset (default 0).
-    rows         => Page size (default 20, maximum 100).
-    """
-    operation_id = request.args.get("operation_id")
-    if operation_id not in (None, ai_triage_service.OPERATION_ID):
-        return bad_request(err="Invalid operation_id")
-    try:
-        offset = int(request.args.get("offset", "0"))
-        rows = int(request.args.get("rows", "20"))
-        result = ai_triage_service.list_runs(
-            user,
-            operation_id=operation_id,
-            action_id=request.args.get("action_id"),
-            request_id=request.args.get("request_id"),
-            offset=offset,
-            rows=rows,
-        )
-    except (ValueError, TypeError) as exc:
-        return bad_request(err=str(exc) or "Invalid pagination parameters")
-
-    response = ok(result)
-    response.headers["Cache-Control"] = "no-store"
-    return response
-
-
-@generate_swagger_docs()
-@action_api.route("/runs/<run_id>", methods=["GET"])
-@api_login(audit=False, required_priv=["R"])
-def get_action_run(run_id: str, user: User, **_) -> Response:
-    """Get one AI triage run if it remains accessible to its owner."""
-    run = ai_triage_service.get_run(run_id, user)
-    if run is None:
-        response = not_found(err="The specified run does not exist or is not accessible")
-    else:
-        response = ok(run)
-    response.headers["Cache-Control"] = "no-store"
-    return response
