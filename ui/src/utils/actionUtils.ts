@@ -95,6 +95,29 @@ export const getArgsByContext = (args: ActionOperationStep['args'], values: stri
     .map(([arg, _]) => arg);
 
 /**
+ * Restore the server default escalation for legacy saved transitions that predate the escalation argument.
+ * @param operation The saved operation to normalize
+ * @returns The operation with its default escalation, if one applies
+ */
+export const withTransitionEscalationDefault = (operation: Operation): Operation => {
+  if (operation.operation_id !== 'transition' || !operation.data_json) {
+    return operation;
+  }
+
+  const values = JSON.parse(operation.data_json);
+  const defaultEscalation = { promote: 'alert', demote: 'hit' }[values.transition as 'promote' | 'demote'];
+
+  if (!defaultEscalation || values.escalation) {
+    return operation;
+  }
+
+  return {
+    ...operation,
+    data_json: JSON.stringify({ ...values, escalation: defaultEscalation })
+  };
+};
+
+/**
  * Check to see if a given action has all the data necessary to execute successfully
  * @param data The user-provided data
  * @param action The action to validate
