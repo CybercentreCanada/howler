@@ -27,14 +27,13 @@ def settings(provider):
     )
 
 
-def run(provider, session, *, checkpoint=None):
+def run(provider, session):
     return transport.generate(
         settings(provider),
         "qa-access-token",
         "Conservative system prompt",
         {"event": "alert"},
         deadline=time.monotonic() + 30,
-        checkpoint=checkpoint or Mock(),
     )
 
 
@@ -89,14 +88,11 @@ def test_a2a_direct_message_success(monkeypatch):
 
     session.post.side_effect = post
     monkeypatch.setattr(transport.requests, "Session", Mock(return_value=session))
-    checkpoint = Mock()
-
-    assert run("a2a", session, checkpoint=checkpoint) == "A2A opinion"
+    assert run("a2a", session) == "A2A opinion"
 
     assert session.post.call_args.kwargs["headers"]["Authorization"] == "Bearer qa-access-token"
     response.close.assert_called_once()
     session.close.assert_called_once()
-    checkpoint.assert_not_called()
 
 
 def test_a2a_error_response_is_safe_and_does_not_retry(monkeypatch):

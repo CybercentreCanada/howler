@@ -70,7 +70,6 @@ from howler.healthz import healthz
 from howler.telemetry import setup_telemetry
 
 logger = get_logger(__file__)
-_background_services_started = False
 _job_system_started = False
 
 
@@ -90,27 +89,6 @@ def _should_start_background_services() -> bool:
     if os.environ.get("TESTING", "").lower() == "true":
         return explicit_start
     return not DEBUG or explicit_start
-
-
-def _is_no_reload_flask_cli() -> bool:
-    return os.environ.get("FLASK_RUN_FROM_CLI", "").lower() == "true" and any(
-        argument in {"--no-reload", "--no-reloader"} for argument in sys.argv
-    )
-
-
-def _start_ai_triage_workers(*, force: bool = False) -> bool:
-    """Start AI consumers in a serving REST process."""
-    global _background_services_started
-    if _background_services_started:
-        return False
-    if not (HWL_USE_REST_API or DEBUG) or (not force and not _should_start_background_services()):
-        return False
-
-    from howler.services.ai_triage_worker import start_workers
-
-    started = start_workers()
-    _background_services_started = True
-    return started
 
 
 app = Flask(
@@ -232,13 +210,6 @@ if HWL_USE_JOB_SYSTEM and _should_start_background_services():
     setup_jobs()
     _job_system_started = True
 
-# AI triage uses its own persistent Redis queue because many REST deployments
-# intentionally disable the scheduled-job system. Start consumers only in a
-# serving REST process, and only after the shared background-service guard has
-# selected the actual application worker (not an import-only/reloader process).
-_start_ai_triage_workers(force=_is_no_reload_flask_cli())
-
-
 # Setup OAuth providers
 if config.auth.oauth.enabled:
     providers = []
@@ -288,7 +259,6 @@ def main(*, use_reloader: bool | None = None):
     global _job_system_started
     effective_use_reloader = DEBUG if use_reloader is None else use_reloader
     if not effective_use_reloader:
-        _start_ai_triage_workers(force=True)
         if HWL_USE_JOB_SYSTEM and not _job_system_started:
             setup_jobs()
             _job_system_started = True

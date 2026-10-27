@@ -8,7 +8,6 @@ import {
   FormControlLabel,
   FormGroup,
   IconButton,
-  LinearProgress,
   Stack,
   TextField,
   Tooltip,
@@ -32,7 +31,6 @@ import { useLocation, useParams, useSearchParams } from 'react-router';
 import { operationReady } from 'utils/actionUtils';
 import QueryResultText from '../../../elements/display/QueryResultText';
 import ActionReportDisplay from '../shared/ActionReportDisplay';
-import ActionRunHistory from '../shared/ActionRunHistory';
 import OperationEntry from '../shared/OperationEntry';
 import useMyActionFunctions from '../useMyActionFunctions';
 
@@ -56,18 +54,8 @@ const ActionEditor: FC = () => {
   const { user } = useAppUser<HowlerUser>();
   const pluginStore = usePluginStore();
 
-  const {
-    response,
-    loading,
-    setLoading,
-    responseQuery,
-    report,
-    progress,
-    acceptedRunIds = [],
-    onSearch,
-    saveAction,
-    submitAction
-  } = useMyActionFunctions();
+  const { contextReady, response, loading, setLoading, responseQuery, report, onSearch, saveAction, submitAction } =
+    useMyActionFunctions();
 
   const [operations, setOperations] = useState<ActionOperation[]>([]);
   const [name, setName] = useState('');
@@ -150,23 +138,28 @@ const ActionEditor: FC = () => {
   }, [searchParams, responseQuery, setSearchParams]);
 
   useEffect(() => {
-    if (params.id) {
-      setLoading(true);
-      void dispatchApi(
-        api.search.action.post({
-          query: `action_id:${params.id}`,
-          rows: 1
-        }),
-        { throwError: false }
-      ).then(result => {
-        if (!result) {
-          setLoading(false);
+    if (!params.id || !contextReady) {
+      return;
+    }
+
+    let current = true;
+    setLoading(true);
+
+    const loadAction = async () => {
+      try {
+        const result = await dispatchApi(
+          api.search.action.post({
+            query: `action_id:${params.id}`,
+            rows: 1
+          }),
+          { throwError: false }
+        );
+        if (!current) {
           return;
         }
 
-        const existingAction = result.items[0];
+        const existingAction = result?.items[0];
         if (!existingAction) {
-          setLoading(false);
           return;
         }
 
@@ -175,12 +168,21 @@ const ActionEditor: FC = () => {
         searchParams.set('query', query);
         setSearchParams(new URLSearchParams(searchParams), { replace: true });
         setUserOperations(existingAction.operations ?? []);
-        setLoading(false);
-        void onSearch(query);
-      });
-    }
+        await onSearch(query);
+      } finally {
+        if (current) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadAction();
+
+    return () => {
+      current = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatchApi, params.id]);
+  }, [contextReady, dispatchApi, params.id, onSearch, setLoading]);
 
   return (
     <PageCenter maxWidth="1500px" textAlign="left" height="100%">
@@ -189,7 +191,7 @@ const ActionEditor: FC = () => {
           <TextField
             label={t('route.actions.name')}
             size="small"
-            disabled={loading}
+            disabled={!contextReady || loading}
             value={name}
             onChange={e => setName(e.target.value)}
             fullWidth
@@ -200,7 +202,9 @@ const ActionEditor: FC = () => {
             size="small"
             startIcon={loading ? <CircularProgress size={16} /> : <Save />}
             sx={{ minWidth: '150px' }}
-            disabled={!name || loading || userOperations.length < 1 || !userOperationsReady}
+            disabled={
+              !contextReady || !name || !responseQuery || loading || userOperations.length < 1 || !userOperationsReady
+            }
             onClick={() => saveAction(name, responseQuery, userOperations, triggers)}
           >
             {t('route.actions.save')}
@@ -276,22 +280,7 @@ const ActionEditor: FC = () => {
             {t('route.actions.search.warning')}
           </Typography>
         )}
-        {loading &&
-          (progress[1] > 0 ? (
-            <LinearProgress
-              variant="determinate"
-              value={(progress[0] / progress[1]) * 100}
-              valueBuffer={((progress[0] + 10) / progress[1]) * 100}
-            />
-          ) : (
-            <LinearProgress />
-          ))}
         {report && <ActionReportDisplay report={report} operations={operations} />}
-        {(Boolean(params.id) ||
-          operations.some(operation => operation.id === 'ai_triage') ||
-          acceptedRunIds.length > 0) && (
-          <ActionRunHistory actionId={params.id} contextId={location.pathname} acceptedRunIds={acceptedRunIds} />
-        )}
       </Stack>
       {operations.length > 0 && (
         <Stack spacing={1} mt={1}>
@@ -365,7 +354,14 @@ const ActionEditor: FC = () => {
               color="success"
               sx={{ alignSelf: 'start' }}
               startIcon={loading ? <CircularProgress size={16} /> : <PlayCircleOutline />}
-              disabled={!responseQuery || !response || loading || userOperations.length < 1 || !userOperationsReady}
+              disabled={
+                !contextReady ||
+                !responseQuery ||
+                !response ||
+                loading ||
+                userOperations.length < 1 ||
+                !userOperationsReady
+              }
               onClick={_submitAction}
             >
               {t('route.actions.execute')}

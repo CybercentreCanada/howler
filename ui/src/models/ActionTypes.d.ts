@@ -47,7 +47,5 @@ export interface ActionReport {
     outcome: 'success' | 'error' | 'skipped';
     title: string;
     message: string;
-    run_id?: string;
-    status?: 'queued' | 'running' | 'completed';
   }[];
 }

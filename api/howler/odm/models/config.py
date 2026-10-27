@@ -639,14 +639,10 @@ class AITriage(BaseModel):
         ),
         description="Server-side base prompt for AI triage",
     )
-    timeout_seconds: int = Field(default=120, ge=1, le=600, description="Maximum time for one provider request")
-    deadline_seconds: int = Field(default=600, ge=1, le=600, description="Per-alert budget from its first worker claim")
-    lease_seconds: int = Field(default=30, ge=1, le=300, description="Worker lease heartbeat interval")
-    max_attempts: int = Field(default=3, ge=1, le=3, description="Maximum transient provider attempts")
-    max_concurrent_jobs: int = Field(default=4, ge=1, le=4, description="Deployment-wide active worker permits")
+    timeout_seconds: int = Field(default=120, ge=1, le=600, description="Maximum time spent on one alert")
+    max_concurrent_jobs: int = Field(default=4, ge=1, le=4, description="Maximum concurrent alert triage jobs")
     max_hits_basic: int = Field(default=10, ge=1, description="Maximum eligible hits for basic users")
     max_hits_advanced: int = Field(default=50, ge=1, description="Maximum eligible hits for advanced users")
-    retention_seconds: int = Field(default=604800, ge=60, description="How long completed run status is retained")
     max_input_bytes: int = Field(default=200_000, ge=1024, description="Maximum serialized alert input size")
     max_output_bytes: int = Field(default=100_000, ge=1024, description="Maximum provider output size")
     max_sse_bytes: int = Field(default=1_000_000, ge=1024, description="Maximum accumulated A2A stream bytes")
