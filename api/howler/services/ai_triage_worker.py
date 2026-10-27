@@ -116,16 +116,6 @@ def _process(job: dict[str, Any]) -> None:  # noqa: C901
         if not ai_triage_service.candidate_is_valid(candidate):
             _finish(job, state="failed", reason="candidate_invalid", message="Saved AI candidate is invalid")
             return
-        hit, source_version = ai_triage_service.get_current_hit(item_id, user)
-        if hit is None:
-            _finish(job, state="skipped", reason="alert_not_accessible", message="Alert is no longer accessible")
-            return
-        if ai_triage_service.has_managed_candidate(hit, candidate):
-            _finish(job, state="succeeded", message="AI triage lead was already saved")
-            return
-        if not ai_triage_service._eligible_hit(hit):
-            _finish(job, state="skipped", reason="alert_no_longer_eligible", message="Alert is no longer eligible")
-            return
     else:
         user = ai_triage_service.get_current_user(current_run)
         if user is None or not ai_triage_service.user_can_run_ai_triage(user):
@@ -133,13 +123,19 @@ def _process(job: dict[str, Any]) -> None:  # noqa: C901
                 job, state="skipped", reason="initiator_access_revoked", message="Initiator is no longer authorized"
             )
             return
-        hit, source_version = ai_triage_service.get_current_hit(item_id, user)
-        if hit is None:
-            _finish(job, state="skipped", reason="alert_not_accessible", message="Alert is no longer accessible")
-            return
-        if not ai_triage_service._eligible_hit(hit):
-            _finish(job, state="skipped", reason="alert_no_longer_eligible", message="Alert is no longer eligible")
-            return
+
+    hit, source_version = ai_triage_service.get_current_hit(item_id, user)
+    if hit is None:
+        _finish(job, state="skipped", reason="alert_not_accessible", message="Alert is no longer accessible")
+        return
+    if candidate is not None and ai_triage_service.has_managed_candidate(hit, candidate):
+        _finish(job, state="succeeded", message="AI triage lead was already saved")
+        return
+    if not ai_triage_service._eligible_hit(hit):
+        _finish(job, state="skipped", reason="alert_no_longer_eligible", message="Alert is no longer eligible")
+        return
+
+    if candidate is None:
         prompt = current_run.get("_prompt")
         system_prompt = ai_triage_service.build_system_prompt(prompt if isinstance(prompt, str) else None)
         if time.monotonic() >= deadline:

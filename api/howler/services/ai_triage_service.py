@@ -73,12 +73,7 @@ def _user_name(user: User) -> str:
     return str(user.uname)
 
 
-def _eligible_hit(hit: Hit | dict[str, Any]) -> bool:
-    if isinstance(hit, dict):
-        howler = hit.get("howler", {})
-        if not isinstance(howler, dict):
-            return False
-        return howler.get("status") != "resolved" and not howler.get("assessment")
+def _eligible_hit(hit: Hit) -> bool:
     return hit.howler.status != "resolved" and not hit.howler.assessment
 
 
