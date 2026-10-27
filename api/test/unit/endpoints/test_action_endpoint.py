@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch
 
 import pytest
@@ -131,3 +132,56 @@ def test_get_actions_caps_results(
     assert actions[-1]["action_id"] == "249"
     assert stream_closed
     mock_datastore.return_value.action.stream_search.assert_called_once_with("*:*", as_obj=False)
+
+
+@patch("howler.security.login.audit")
+@patch("howler.security.login.QUOTA_TRACKER")
+@patch("howler.security.login.auth_service")
+@patch("howler.api.v1.action.audit")
+@patch("howler.actions.add_label.execute")
+@patch("howler.actions.datastore")
+def test_execute_operations_cannot_enable_compatibility_mode(
+    mock_datastore,
+    mock_add_label_execute,
+    mock_action_audit,
+    mock_auth_service,
+    mock_quota_tracker,
+    mock_login_audit,
+    request_context: Flask,
+):
+    _configure_auth(mock_auth_service, mock_quota_tracker)
+    request_data = {
+        "query": "howler.id:*",
+        "request_id": "request-1",
+        "operations": [
+            {
+                "operation_id": "add_label",
+                "data_json": json.dumps(
+                    {
+                        "category": "generic",
+                        "label": "kept",
+                        "ignore_extra_arguments": True,
+                        "obsolete_argument": "from an older action",
+                    }
+                ),
+            }
+        ],
+    }
+
+    with request_context.test_request_context(
+        "/api/v1/action/execute",
+        method="POST",
+        json=request_data,
+        headers={"Authorization": "Bearer ."},
+    ):
+        from howler.api.v1.action import execute_operations
+
+        result: Response = execute_operations()
+
+    assert result.status_code == 200
+    report = result.get_json()["api_response"]["add_label"][0]
+    assert report["title"] == "Invalid Arguments"
+    assert "ignore_extra_arguments" in report["message"]
+    assert "obsolete_argument" in report["message"]
+    mock_add_label_execute.assert_not_called()
+    mock_datastore.assert_not_called()
