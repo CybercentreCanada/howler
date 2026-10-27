@@ -17,6 +17,7 @@ from howler.common.logging import get_logger
 from howler.common.logging.audit import audit
 from howler.config import config
 from howler.odm.models.action import VALID_TRIGGERS, Action
+from howler.odm.models.howler_data import Escalation, HitStatusTransition
 from howler.odm.models.user import User
 from howler.remote.datatypes.queues.named import NamedQueue
 from howler.services import auth_service
@@ -24,6 +25,11 @@ from howler.utils.constants import TESTING
 from howler.utils.str_utils import sanitize_lucene_query
 
 logger = get_logger(__file__)
+
+_DEFAULT_TRANSITION_ESCALATIONS = {
+    HitStatusTransition.PROMOTE.value: Escalation.ALERT.value,
+    HitStatusTransition.DEMOTE.value: Escalation.HIT.value,
+}
 
 
 class TriggeredAction(TypedDict):
@@ -225,7 +231,20 @@ def _is_unchanged_operation(operation: OperationModel, stored_operation: Mapping
     except (TypeError, json.JSONDecodeError):
         return False
 
-    return isinstance(stored_data, dict) and stored_data == operation.data
+    if not isinstance(stored_data, dict):
+        return False
+
+    if stored_data == operation.data:
+        return True
+
+    # The editor adds the server's default escalation when loading legacy transitions. Treat
+    # that normalization as unchanged so obsolete legacy arguments remain compatible on save.
+    transition = stored_data.get("transition")
+    default_escalation = _DEFAULT_TRANSITION_ESCALATIONS.get(transition) if isinstance(transition, str) else None
+    if operation.operation_id == "transition" and default_escalation and not stored_data.get("escalation"):
+        return {**stored_data, "escalation": default_escalation} == operation.data
+
+    return False
 
 
 def validate_action(new_action: Any, existing_action: Mapping[str, Any] | None = None) -> Optional[Response]:  # noqa: C901
