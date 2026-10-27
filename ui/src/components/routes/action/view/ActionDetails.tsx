@@ -23,7 +23,7 @@ import type { ActionOperation } from 'models/ActionTypes';
 import type { Action } from 'models/entities/generated/Action';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import howlerPluginStore from 'plugins/store';
-import { useCallback, useContext, useEffect, useMemo, useState, type ChangeEventHandler } from 'react';
+import { useCallback, useContext, useEffect, useState, type ChangeEventHandler } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { Link, useLocation, useParams } from 'react-router';
@@ -41,17 +41,17 @@ const ActionDetails = () => {
   const { user } = useAppUser<HowlerUser>();
   const pluginStore = usePluginStore();
 
-  const { response, onSearch, loading, setLoading, executeAction, deleteAction, progress, report } =
-    useMyActionFunctions();
-  const acceptedRunIds = useMemo(
-    () =>
-      Object.values(report ?? {}).flatMap(entries =>
-        (Array.isArray(entries) ? entries : []).flatMap(entry =>
-          entry.status === 'queued' && entry.run_id ? [entry.run_id] : []
-        )
-      ),
-    [report]
-  );
+  const {
+    response,
+    onSearch,
+    loading,
+    setLoading,
+    executeAction,
+    deleteAction,
+    progress,
+    report,
+    acceptedRunIds = []
+  } = useMyActionFunctions();
 
   const [operations, setOperations] = useState<ActionOperation[]>([]);
   const [action, setAction] = useState<Action>();
@@ -224,9 +224,16 @@ const ActionDetails = () => {
             <LinearProgress />
           ))}
         {report && <ActionReportDisplay report={report} operations={operations} />}
-        {params.id && (
-          <ActionRunHistory actionId={params.id} contextId={location.pathname} acceptedRunIds={acceptedRunIds} />
-        )}
+        {Boolean(params.id) &&
+          (Boolean(
+            action &&
+            action.action_id === params.id &&
+            action.operations?.some(operation => operation.operation_id === 'ai_triage')
+          ) ||
+            operations.some(operation => operation.id === 'ai_triage') ||
+            acceptedRunIds.length > 0) && (
+            <ActionRunHistory actionId={params.id} contextId={location.pathname} acceptedRunIds={acceptedRunIds} />
+          )}
         {operations.length > 0 &&
           action &&
           action.operations?.map(a => {

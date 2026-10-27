@@ -22,6 +22,12 @@ PLUGIN_PATH = Path(os.environ.get("HWL_PLUGIN_DIRECTORY", "/etc/howler/plugins")
 ADVANCED_ROLES = {"automation_advanced", "actionrunner_advanced", "admin"}
 
 
+def _is_builtin_operation(operation_id: str) -> bool:
+    """Whether an operation resolves to a module shipped in this package."""
+    module = Path(__file__).parent / f"{operation_id}.py"
+    return module.parent == Path(__file__).parent and module.is_file()
+
+
 def __sanitize_specification(spec: ActionSpecification) -> dict[str, Any]:
     """Adapt the specification for use in the UI
 
@@ -260,6 +266,9 @@ def execute(
         operation_kwargs["trusted_auth_token"] = trusted_auth_token
         operation_kwargs["action_id"] = action_id
         operation_kwargs["trigger"] = trigger
+    elif not _is_builtin_operation(operation_id) and trusted_auth_token:
+        # Older plugins consume auth_token without declaring the capability.
+        operation_kwargs["auth_token"] = trusted_auth_token
 
     report = operation.execute(query=query, request_id=request_id, user=user, **operation_kwargs)
 

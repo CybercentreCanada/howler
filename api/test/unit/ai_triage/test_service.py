@@ -8,6 +8,7 @@ from howler import actions
 from howler.actions import ai_triage
 from howler.odm.models.config import AITriage, config
 from howler.services import ai_triage_service as service
+from howler.services.ai_triage_queue import OwnerRunScan
 
 from .support import make_hit, make_lead, make_user
 
@@ -28,7 +29,7 @@ def test_disabled_or_unconfigured_is_hidden_and_cannot_dispatch(settings, change
     for key, value in change.items():
         setattr(settings, key, value)
     enqueue = Mock()
-    monkeypatch.setattr(service, "enqueue_action", enqueue)
+    monkeypatch.setattr(service, "enqueue_run", enqueue)
     assert "ai_triage" not in {spec["id"] for spec in actions.specifications()}
     report = actions.execute("ai_triage", "*:*", make_user(), trusted_auth_token="qa-token")
     assert all(item["outcome"] == "error" for item in report)
@@ -79,7 +80,7 @@ def test_server_prompt_override_and_nested_exclusions(settings):
 def test_failed_durable_enqueue_does_not_fall_back_to_provider(settings, monkeypatch, caplog):
     enqueue = Mock(side_effect=RuntimeError("redis-password-secret"))
     generate = Mock()
-    monkeypatch.setattr(service, "enqueue_action", enqueue)
+    monkeypatch.setattr(service, "enqueue_run", enqueue)
     monkeypatch.setattr("howler.services.ai_transport.generate", generate)
     result = ai_triage.execute("*:*", make_user(), trusted_auth_token="qa-token")
     assert result[0]["outcome"] == "error"
@@ -134,20 +135,39 @@ def test_async_report_sanitizer_does_not_collapse_distinct_runs():
     assert all(entry["status"] == "queued" for entry in reports)
 
 
-@pytest.mark.parametrize("mutation", ["digest", "generated_at", "source_version", "provider", "label", "format"])
-def test_candidate_confirmation_rejects_same_owner_run_and_content_with_tampered_identity(settings, mutation):
+def test_candidate_shape_and_managed_lead_idempotency(settings):
     candidate = service.prepare_candidate("identical text", "identical-run", "identical-version")
-    changed = {key: deepcopy(candidate[key]) for key in ("content", "label", "format", "metadata")}
-    metadata = json.loads(changed["metadata"])
-    if mutation == "label":
-        changed["label"]["fr"] = "Different label"
-    elif mutation == "format":
-        changed["format"] = "text"
-    elif mutation == "digest":
-        metadata["candidate_sha256"] = "0" * 64
-    else:
-        metadata[mutation] = "different-provenance"
-    changed["metadata"] = json.dumps(metadata)
-    assert metadata["owner"] == service.LEAD_OWNER and metadata["run_id"] == "identical-run"
-    assert changed["content"] == candidate["content"]
-    assert not service.has_managed_candidate(make_hit(dossier=[changed]), candidate)
+    metadata = json.loads(candidate["metadata"])
+    assert service.candidate_is_valid(candidate)
+    assert set(metadata) == {"owner", "schema_version", "run_id", "generated_at", "source_version", "provider"}
+    assert metadata["owner"] == service.LEAD_OWNER
+    assert metadata["schema_version"] == service.LEAD_SCHEMA_VERSION
+    assert metadata["run_id"] == "identical-run"
+    assert metadata["source_version"] == candidate["source_version"] == "identical-version"
+    assert metadata["provider"] == settings.provider
+    assert isinstance(metadata["generated_at"], str) and metadata["generated_at"]
+    lead = {key: candidate[key] for key in ("label", "format", "content", "metadata")}
+    assert service.has_managed_candidate(make_hit(dossier=[lead]), candidate)
+    assert not service.has_managed_candidate(make_hit(dossier=[{**lead, "content": "different"}]), candidate)
+    assert not service.candidate_is_valid({**candidate, "format": "text"})
+
+
+def test_run_list_batches_current_hit_access_checks(monkeypatch):
+    user = make_user()
+    records = [make_hit(), make_hit()]
+    hit_ids = [record.howler.id for record in records]
+    runs = [
+        {"run_id": f"run-{index}", "_owner": user.uname, "results": [{"hit_id": hit_id}]}
+        for index, hit_id in enumerate(hit_ids)
+    ]
+    storage = Mock()
+    storage.hit.multiget.return_value = dict(zip(hit_ids, records, strict=True))
+    monkeypatch.setattr(service, "datastore", lambda: storage)
+    monkeypatch.setattr(
+        service.ai_triage_queue,
+        "list_runs",
+        Mock(return_value=(runs, OwnerRunScan(fetched_count=2, next_offset=2, exhausted=True))),
+    )
+    page = service.list_runs(user, rows=1)
+    assert page["has_more"] is True
+    storage.hit.multiget.assert_called_once_with(hit_ids, as_dictionary=True, as_obj=True, error_on_missing=False)

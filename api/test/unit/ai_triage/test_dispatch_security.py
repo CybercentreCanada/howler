@@ -113,6 +113,26 @@ def test_required_token_cannot_bypass_role_authorization(endpoint, declared_oper
     declared_operation.assert_not_called()
 
 
+def test_legacy_plugin_receives_only_the_trusted_bearer_token(monkeypatch):
+    execute = Mock(return_value=[{"query": "*:*", "outcome": "success", "title": "Accepted", "message": "Accepted"}])
+    operation = SimpleNamespace(
+        SKIP_CENTRAL_LIMIT=True,
+        specification=lambda: {"roles": ["actionrunner_basic"]},
+        execute=execute,
+    )
+    monkeypatch.setattr(actions, "_get_operation", lambda _: operation)
+    actions.execute(
+        "external_plugin",
+        "*:*",
+        make_user(),
+        trusted_auth_token="qa-trusted-bearer",
+        auth_token="forged-operation-data",
+    )
+    assert execute.call_args.kwargs["auth_token"] == "qa-trusted-bearer"
+    assert "trusted_auth_token" not in execute.call_args.kwargs
+    assert "forged-operation-data" not in repr(execute.call_args)
+
+
 @pytest.mark.parametrize("url", ["/api/v1/action/runs", "/api/v1/action/runs/absent"])
 def test_run_routes_require_authentication(endpoint, url):
     client, _ = endpoint
@@ -149,7 +169,7 @@ def test_trigger_queue_encrypts_bearer_and_restores_only_proven_context(trigger_
         action_service.enqueue_action_execution(["frozen-hit-id"], user=user)
     item = queue.push.call_args.args[0]
     assert "qa-trigger-bearer" not in json.dumps(item)
-    assert auth_service.decrypt_token(item["auth_token"]) == "qa-trigger-bearer"
+    assert auth_service.decrypt_token(item["bearer_token"]) == "qa-trigger-bearer"
     action_service.process_action_batch("create", [item])
     execute.assert_called_once()
     assert execute.call_args.kwargs["trusted_auth_token"] == "qa-trigger-bearer"
@@ -186,7 +206,7 @@ def test_invalid_ciphertext_cannot_fall_back_to_unauthenticated_execution(trigge
     with app.test_request_context(headers={"Authorization": "Bearer qa-trigger-bearer"}):
         action_service.enqueue_action_execution(["frozen-hit-id"], user=user)
     item = queue.push.call_args.args[0]
-    item["auth_token"] = "tampered-ciphertext"
+    item["bearer_token"] = "tampered-ciphertext"
     action_service.process_action_batch("create", [item])
     execute.assert_not_called()
 

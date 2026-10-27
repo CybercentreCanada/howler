@@ -22,6 +22,7 @@ def test_authenticated_socket_filters_ai_recipient_and_strips_private_metadata(m
     storage = Mock()
     storage.user.get.return_value = user
     storage.hit.get_if_exists.return_value = (record, "0")
+    storage.hit.multiget.return_value = {record.howler.id: record}
     monkeypatch.setattr(ai_triage_service, "datastore", lambda: storage)
     monkeypatch.setattr(hit_service, "datastore", lambda: storage)
     monkeypatch.setattr(

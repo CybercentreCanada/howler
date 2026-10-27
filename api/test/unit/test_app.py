@@ -43,8 +43,8 @@ def test_should_start_background_services(monkeypatch):
     assert howler_app._should_start_background_services()
 
 
-def test_ai_triage_workers_start_independently_of_job_system(monkeypatch):
-    """The guarded REST worker lifecycle does not depend on HWL_USE_JOB_SYSTEM."""
+def test_ai_triage_startup_does_not_start_action_queue_consumers(monkeypatch):
+    """AI workers start independently without implicitly starting action consumers."""
     from howler.cronjobs import action_queue_worker
     from howler.services import ai_triage_service, ai_triage_worker
 
@@ -59,7 +59,7 @@ def test_ai_triage_workers_start_independently_of_job_system(monkeypatch):
     monkeypatch.setattr(action_queue_worker, "setup_job", setup_action_workers)
 
     assert howler_app._start_ai_triage_workers()
-    setup_action_workers.assert_called_once()
+    setup_action_workers.assert_not_called()
 
 
 def test_configured_ai_fails_fast_on_unpatched_serving_entrypoint(monkeypatch):

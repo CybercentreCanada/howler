@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockDispatchApi = vi.hoisted(() => vi.fn());
 const mockHistoryProps = vi.hoisted(() => vi.fn());
+const mockHookState = vi.hoisted(() => ({ acceptedRunIds: ['run-ad-hoc'] as string[] }));
 const fieldContextToken = vi.hoisted(() => ({ name: 'field-context' }));
 const mockSearchParams = vi.hoisted(() => new URLSearchParams());
 const mockSetSearchParams = vi.hoisted(() => vi.fn());
@@ -100,6 +101,7 @@ vi.mock('../useMyActionFunctions', () => ({
         }
       ]
     },
+    acceptedRunIds: mockHookState.acceptedRunIds,
     progress: [0, 0],
     onSearch: vi.fn(),
     saveAction: vi.fn(),
@@ -145,6 +147,7 @@ describe('ActionEditor', () => {
     mockDispatchApi.mockReset();
     mockDispatchApi.mockResolvedValue([]);
     mockHistoryProps.mockClear();
+    mockHookState.acceptedRunIds = ['run-ad-hoc'];
     mockSearchParams.delete('query');
     mockSetSearchParams.mockClear();
   });
@@ -161,5 +164,14 @@ describe('ActionEditor', () => {
       })
     );
     expect(screen.getByText('run-history')).toBeInTheDocument();
+  });
+
+  it('omits history for an unrelated new action', async () => {
+    mockHookState.acceptedRunIds = [];
+    render(<ActionEditor />);
+
+    await waitFor(() => expect(mockDispatchApi).toHaveBeenCalled());
+    expect(screen.queryByText('run-history')).not.toBeInTheDocument();
+    expect(mockHistoryProps).not.toHaveBeenCalled();
   });
 });

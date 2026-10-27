@@ -1,6 +1,5 @@
 from collections import defaultdict
 from collections.abc import Callable, Mapping
-from importlib.util import find_spec
 from typing import Any, Literal, Optional, TypedDict, overload
 
 from cryptography.exceptions import InvalidTag
@@ -34,8 +33,7 @@ class TriggeredAction(TypedDict):
 
     hit_ids: list[str]
     uname: str | None
-    auth_token: str | None
-    auth_scheme: str | None
+    bearer_token: str | None
 
 
 # Per-trigger persistent queues for buffering action execution requests.
@@ -81,11 +79,6 @@ def get_action(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...  # codeql
 def get_action(id: str, as_odm=False, version=False, user: User | None = None):
     """Retrieve an action from the datastore as an ODM object or dictionary."""
     return datastore().action.get_if_exists(key=id, as_obj=as_odm, version=version)
-
-
-def _is_builtin_operation(operation_id: str) -> bool:
-    """Return whether an operation is implemented by Howler's built-in actions package."""
-    return find_spec(f"howler.actions.{operation_id}") is not None
 
 
 def _request_auth_token() -> str | None:
@@ -251,8 +244,7 @@ def enqueue_action_execution(hit_ids: str | list[str], trigger: str = "create", 
             {
                 "hit_ids": hit_ids,
                 "uname": user.uname if user else None,
-                "auth_token": auth_service.encrypt_token(auth_token),
-                "auth_scheme": "Bearer" if auth_token else None,
+                "bearer_token": auth_service.encrypt_token(auth_token),
             }
         )
     except Exception:
@@ -274,21 +266,21 @@ def process_action_batch(trigger: str, items: list[TriggeredAction]) -> None:
     if not items:
         return
 
-    groups: dict[tuple[str | None, str | None, str | None], list[str]] = defaultdict(list)
+    groups: dict[tuple[str | None, str | None], list[str]] = defaultdict(list)
 
     for item in items:
         uname = item.get("uname")
-        groups[(uname, item.get("auth_token"), item.get("auth_scheme"))].extend(item["hit_ids"])
+        # Older queue items stored ambiguous ``auth_token`` ciphertext. Only
+        # the explicit bearer_token field proves current Bearer provenance.
+        groups[(uname, item.get("bearer_token"))].extend(item["hit_ids"])
 
-    for (uname, encrypted_auth_token, auth_scheme), hit_ids in groups.items():
+    for (uname, encrypted_auth_token), hit_ids in groups.items():
         # Deduplicate IDs within a batch group
         unique_ids = list(dict.fromkeys(hit_ids))
         query = f"howler.id:({' OR '.join(sanitize_lucene_query(h) for h in unique_ids)})"
 
         auth_token = None
-        # Before auth_scheme was written, queued credentials have no verifiable
-        # bearer provenance. Do not guess their original scheme or forward them.
-        if auth_scheme == "Bearer" and encrypted_auth_token:
+        if encrypted_auth_token:
             try:
                 auth_token = auth_service.decrypt_token(encrypted_auth_token)
             except InvalidTag:
@@ -414,10 +406,6 @@ def _execute_bulk_operation(
 
     if not user:
         raise NotImplementedError("Running actions without a user object is not currently supported")
-
-    if auth_token is not None and not _is_builtin_operation(operation.operation_id):
-        logger.debug("Appending auth token to external operation %s", operation.operation_id)
-        parsed_data["auth_token"] = auth_token
 
     report = actions.execute(
         operation_id=operation.operation_id,

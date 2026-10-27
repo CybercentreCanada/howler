@@ -14,14 +14,12 @@ import time
 from pathlib import Path
 from types import SimpleNamespace
 from urllib.parse import urlparse
-from uuid import uuid4
 
 import requests
 from gevent import Greenlet
 from redis import Redis
 
 from howler.datastore.store import ESStore
-from howler.odm.models.action import VALID_TRIGGERS, Action
 from howler.odm.models.config import AITriage, Host, config
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
@@ -75,7 +73,6 @@ def main():  # noqa: C901 -- distinct startup modes share the same isolated life
     original_request = requests.sessions.Session.request
     ai_transport.generate = provider
     requests.sessions.Session.request = no_http
-    action_collection = None
     legacy_workers = []
     try:
         if payload.get("runtime"):
@@ -99,55 +96,7 @@ def main():  # noqa: C901 -- distinct startup modes share the same isolated life
             assert not worker._started and not worker._workers and not calls
             sys.stdout.write('QA_RESULT={"unsupported":true,"provider_calls":0,"legacy_workers":0}\n')
             return
-        if payload.get("trigger"):
-            from howler import actions
-            from howler.cronjobs import action_queue_worker
-            from howler.remote.datatypes.queues.named import NamedQueue
-            from howler.services import action_service
-
-            action_collection = f"ai-triage-probe-actions-{uuid4().hex}"
-            store.register(action_collection, Action)
-            storage.action = store[action_collection]
-            action_service.datastore = lambda: storage
-            actions.datastore = lambda: storage
-            action_service.audit = lambda *_args, **_kwargs: None
-            action_service.config.system.action_queue.enabled = True
-            action_queue_worker.BATCH_SIZE = 1
-            action_queue_worker.BATCH_TIMEOUT = 1
-            trigger_queues = {}
-            redis_url = urlparse(payload["redis_url"])
-            for trigger in VALID_TRIGGERS:
-                trigger_queue = NamedQueue(
-                    f"{payload['prefix']}:trigger:{trigger}", host=redis_url.hostname, port=redis_url.port
-                )
-                trigger_queue.c = client
-                trigger_queues[trigger] = trigger_queue
-            action_service.get_action_queue = lambda trigger: trigger_queues[trigger]
-            action_queue_worker.get_action_queue = action_service.get_action_queue
-            action = Action(
-                {
-                    "owner": payload["owner"],
-                    "name": "QA startup trigger",
-                    "query": "*:*",
-                    "triggers": ["create"],
-                    "operations": [{"operation_id": "ai_triage", "data_json": "{}"}],
-                }
-            )
-            storage.action.save(action.action_id, action, refresh="true")
-            import howler.app as app_module
-
-            app_module.DEBUG = False
-            app_module.HWL_USE_JOB_SYSTEM = False
-            app_module.HWL_USE_REST_API = True
-            os.environ["HWL_START_BACKGROUND_SERVICES"] = "true"
-            assert app_module._start_ai_triage_workers()
-            legacy_workers = list(action_queue_worker._threads.values())
-            assert len(legacy_workers) == len(VALID_TRIGGERS)
-            assert all(thread.is_alive() for thread in legacy_workers)
-            with app_module.app.test_request_context(headers={"Authorization": "Bearer qa-trigger-token"}):
-                action_service.enqueue_action_execution([payload["hit_id"]], user=storage.user.get(payload["owner"]))
-        else:
-            assert worker.start_workers()
+        assert worker.start_workers()
 
         assert not worker.start_workers(), "Startup must be idempotent"
         active_workers = list(worker._workers)
@@ -192,8 +141,6 @@ def main():  # noqa: C901 -- distinct startup modes share the same isolated life
         )
     finally:
         worker.stop_workers(timeout=2)
-        if action_collection:
-            store.client.indices.delete(index=store[action_collection].index_name)
         store.close()
         client.close()
 

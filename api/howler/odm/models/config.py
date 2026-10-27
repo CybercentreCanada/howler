@@ -600,6 +600,22 @@ class Discovery(BaseModel):
     enabled: bool = Field(default=False, description="Should discovery be enabled?")
 
 
+AI_RESERVED_HEADERS = frozenset(
+    {
+        "authorization",
+        "proxy-authorization",
+        "host",
+        "content-length",
+        "content-type",
+        "accept",
+        "transfer-encoding",
+        "connection",
+        "cookie",
+        "proxy-connection",
+    }
+)
+
+
 class AITriage(BaseModel):
     """Server-side configuration for the optional AI triage operation.
 
@@ -671,22 +687,10 @@ class AITriage(BaseModel):
         if not self.system_prompt.strip():
             return False
 
-        forbidden_headers = {
-            "authorization",
-            "proxy-authorization",
-            "host",
-            "content-length",
-            "content-type",
-            "accept",
-            "transfer-encoding",
-            "connection",
-            "cookie",
-            "proxy-connection",
-        }
         for key, value in self.headers.items():
             if not re.fullmatch(r"[!#$%&'*+.^_`|~0-9A-Za-z-]+", key):
                 return False
-            if key.strip().lower() in forbidden_headers:
+            if key.strip().lower() in AI_RESERVED_HEADERS:
                 return False
             if any(ord(character) < 32 and character != "\t" or ord(character) == 127 for character in value):
                 return False

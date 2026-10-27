@@ -10,7 +10,7 @@ const mockOnSearch = vi.hoisted(() => vi.fn());
 const mockSetLoading = vi.hoisted(() => vi.fn());
 const mockPluginExecute = vi.hoisted(() => vi.fn(() => <div key="plugin-operation">plugin-operation</div>));
 const mockHistoryProps = vi.hoisted(() => vi.fn());
-const mockActionState = vi.hoisted(() => ({ report: { status: 'done' } as any }));
+const mockActionState = vi.hoisted(() => ({ report: { status: 'done' } as any, acceptedRunIds: [] as string[] }));
 
 const modalContextToken = vi.hoisted(() => ({ name: 'modal-context' }));
 
@@ -152,7 +152,8 @@ vi.mock('../useMyActionFunctions', () => ({
     executeAction: mockExecuteAction,
     deleteAction: mockDeleteAction,
     progress: [2, 4],
-    report: mockActionState.report
+    report: mockActionState.report,
+    acceptedRunIds: mockActionState.acceptedRunIds
   })
 }));
 
@@ -169,6 +170,7 @@ describe('ActionDetails', () => {
     mockPluginExecute.mockClear();
     mockHistoryProps.mockClear();
     mockActionState.report = { status: 'done' };
+    mockActionState.acceptedRunIds = [];
 
     mockDispatchApi.mockImplementation(async (request: any) => {
       if (request.op === 'get-operations') {
@@ -211,6 +213,7 @@ describe('ActionDetails', () => {
     expect(screen.getByText('progress:50')).toBeInTheDocument();
     expect(screen.getByText('operation:direct-op:direct')).toBeInTheDocument();
     expect(screen.getByText('plugin-operation')).toBeInTheDocument();
+    expect(mockHistoryProps).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByText('search-icon').parentElement!);
     expect(mockOnSearch).toHaveBeenCalledWith('status:open');
@@ -247,13 +250,14 @@ describe('ActionDetails', () => {
         }
       ]
     };
+    mockActionState.acceptedRunIds = ['run-accepted'];
     mockDispatchApi.mockImplementation(async (request: any) => {
       if (request.op === 'get-operations') {
         return [];
       }
       if (request.op === 'get-action') {
         return {
-          action_id: 'previous-route-action',
+          action_id: 'action-1',
           owner: 'alice',
           name: 'Previous action',
           query: 'status:open',
@@ -274,5 +278,25 @@ describe('ActionDetails', () => {
       })
     );
     expect(screen.getByText('run-history')).toBeInTheDocument();
+  });
+
+  it('ignores triage operations belonging to a stale action response', async () => {
+    mockDispatchApi.mockImplementation(async (request: any) => {
+      if (request.op === 'get-operations') {
+        return [];
+      }
+      if (request.op === 'get-action') {
+        return {
+          action_id: 'previous-route-action',
+          operations: [{ operation_id: 'ai_triage', data_json: '{}' }]
+        };
+      }
+      return request;
+    });
+
+    render(<ActionDetails />);
+
+    await waitFor(() => expect(mockDispatchApi).toHaveBeenCalledTimes(2));
+    expect(mockHistoryProps).not.toHaveBeenCalled();
   });
 });

@@ -37,18 +37,14 @@ modules were untested. Test tracebacks identify the imported source paths.
   heartbeat cancellation, terminal credential scrubbing.
 - Real Elasticsearch: 10/50 selection after eligibility/ACL filtering; frozen
   targets/current worker input; reassessment/resolution races; old opinion and
-  analyst-edit preservation; genuine version conflicts; immutable canonical
-  candidate replay after a stale committer resumes beyond its final check.
+  analyst-edit preservation; genuine version conflicts; idempotent retry of a
+  persisted candidate without another provider request.
 - Full worker paths: transient/auth HTTP failures, completion/save/ack crash
   windows, checkpoint recovery without resubmission, disabled configuration,
-  missing user/corrupt credential handling; third-attempt candidate/task recovery
-  without another inference; read-only reconciliation beyond the active deadline;
-  truthful bounded `write_outcome_unknown` rather than pretending rollback;
-  delayed reconciliation reads and real CAS retries cannot extend the original
-  alert deadline; resolved/assessed alerts without the exact submitted candidate
-  remain pending (including the same owner/run/text with stale digests or valid,
-  different generation provenance). Set-once candidate tests likewise reject
-  same-text/run candidates with valid different generation/source metadata.
+  missing user/corrupt credential handling; saved candidates are retried after
+  save failures or lease expiry without another provider call; the original
+  per-alert deadline still bounds all retries; postcommit retries detect an
+  already-written managed lead and do not duplicate it.
 - Authenticated API and socket paths: owner/current-classification access,
   read privilege, filtered pagination, public schema, no-store, event recipient
   filtering and payload allowlisting, private persistence-before-notification.
@@ -61,8 +57,8 @@ modules were untested. Test tracebacks identify the imported source paths.
 
 Crash tests use deterministic `BaseException` injections at persistence
 boundaries, not OS-level process termination. Concurrent claim tests use
-independent native threads sharing a real Redis server, including a paused
-claimer resumed after actual lock expiration while four replacements are live.
+independent native threads sharing a real Redis server. Redis transaction tests
+verify stale lock nonces cannot commit fenced writes.
 Subprocess probes import the production early-patched entrypoint, verify safe
 rejection of enabled unpatched serving, and exercise provider-free disabled
 maintenance (including late arrivals after an initially empty queue). An actual
@@ -75,9 +71,9 @@ it must not read the QA worktree's pre-feature declaration. Child processes use
 an allowlisted environment plus explicit isolated configuration, not inherited
 Howler settings. Hostile mixed-case/top-level/nested configuration and startup
 indicator tests point only to disposable loopback sentinels; they verify that
-imports start no consumers and never contact those sentinels. The probes also
-exercise the triggered-action queue with the scheduled job system disabled.
-They use real Redis/Elasticsearch and fixed-length HTTP bodies exceeding 8192
+imports start no consumers and never contact those sentinels. Startup tests
+also verify that AI worker startup does not implicitly start triggered-action
+queue workers. Real HTTP runtime probes use fixed-length bodies exceeding 8192
 bytes, trickled one byte at a time, checking cancellation and socket cleanup at
 the 500ms item deadline and on lease-renewal failure. Both real OpenAI and A2A
 adapters must also interrupt frequent single-byte Content-Length trickles at a
@@ -87,12 +83,11 @@ JSON and real `text/event-stream` responses. Idempotent repeated `close()` calls
 are permitted; local socket closure remains mandatory. No late monkey-patching of
 the main pytest process is used.
 Current-user/socket revocation, unrefreshed classification changes, retention
-shorter than the active deadline, and postcommit read reconciliation are tested.
+shorter than the active deadline, and postcommit save retries are tested.
 Browser rendering and multi-pod deployment/network partition injection remain
 outside this backend scope. Unmet assertions remain failures, not xfails/skips.
 
 This suite does not promise atomic Redis/Elasticsearch fencing or exactly-once
-requests. A resumed same-job stale CAS is allowed only with the identical full
-persisted candidate; ES version conflicts must protect unrelated edits, and
-the dossier must contain one managed lead. Candidate digests and generation
-metadata are fixed before the write and verified across recovery.
+requests. A resumed same-job CAS uses the candidate persisted before the first
+write; ES version conflicts protect unrelated edits, and the dossier must contain
+one managed lead with the candidate's provenance metadata.
