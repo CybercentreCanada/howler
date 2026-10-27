@@ -1,9 +1,11 @@
 import os
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
-from howler.actions import execute, specifications
+from howler.actions import execute, execute_stored_action, specifications
 from howler.config import config
+from howler.odm.models.howler_data import HitStatusTransition
 from howler.odm.models.user import User
 from howler.odm.randomizer import random_model_obj
 
@@ -95,11 +97,10 @@ def test_execute_stored_action_ignores_extra_arguments(mock_execute, mock_datast
     mock_execute.return_value = []
     mock_datastore.return_value.hit.search.return_value = {"total": 1}
 
-    result = execute(
+    result = execute_stored_action(
         "add_label",
         "howler.id:*",
         user=user,
-        ignore_extra_arguments=True,
         category="generic",
         label="kept",
         obsolete_argument="from an older action",
@@ -121,11 +122,10 @@ def test_execute_stored_action_still_rejects_invalid_declared_arguments(mock_exe
     user: User = random_model_obj(User)
     user.type = ["actionrunner_basic"]
 
-    result = execute(
+    result = execute_stored_action(
         "add_label",
         "howler.id:*",
         user=user,
-        ignore_extra_arguments=True,
         category="generic",
         label="",
         obsolete_argument="from an older action",
@@ -136,6 +136,60 @@ def test_execute_stored_action_still_rejects_invalid_declared_arguments(mock_exe
     assert "label" in result[0]["message"]
     mock_execute.assert_not_called()
     mock_datastore.assert_not_called()
+
+
+@patch("howler.actions.datastore")
+@patch("howler.actions.add_label.execute")
+def test_execute_user_arguments_cannot_enable_compatibility_mode(mock_execute, mock_datastore):
+    user: User = random_model_obj(User)
+    user.type = ["actionrunner_basic"]
+
+    result = execute(
+        "add_label",
+        "howler.id:*",
+        user=user,
+        category="generic",
+        label="kept",
+        ignore_extra_arguments=True,
+        obsolete_argument="from an older action",
+    )
+
+    assert len(result) == 1
+    assert result[0]["title"] == "Invalid Arguments"
+    assert "ignore_extra_arguments" in result[0]["message"]
+    assert "obsolete_argument" in result[0]["message"]
+    mock_execute.assert_not_called()
+    mock_datastore.assert_not_called()
+
+
+@patch("howler.actions.transition.datastore")
+@patch("howler.actions.datastore")
+@patch("howler.actions.transition.hit_service.transition_hit")
+def test_execute_stored_transition_preserves_escalation(
+    mock_transition_hit,
+    mock_action_datastore,
+    mock_transition_datastore,
+):
+    user: User = random_model_obj(User)
+    user.type = ["admin"]
+    hit_id = "stored-transition-hit"
+    mock_action_datastore.return_value.hit.search.return_value = {"total": 1}
+    mock_transition_datastore.return_value.hit.search.side_effect = [
+        {"total": 1, "items": [SimpleNamespace(howler=SimpleNamespace(id=hit_id))]},
+        {"total": 0},
+    ]
+
+    result = execute_stored_action(
+        "transition",
+        "howler.id:*",
+        user=user,
+        status="in-progress",
+        transition="demote",
+        escalation="alert",
+    )
+
+    assert result[0]["outcome"] == "success"
+    mock_transition_hit.assert_called_once_with(hit_id, HitStatusTransition.DEMOTE, user, escalation="alert")
 
 
 @patch("howler.actions.datastore")

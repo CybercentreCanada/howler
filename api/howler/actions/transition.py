@@ -21,6 +21,7 @@ from howler.helper.workflow import Workflow, WorkflowException
 from howler.odm.models.action import VALID_TRIGGERS
 from howler.odm.models.howler_data import (
     Assessment,
+    Escalation,
     HitStatusTransition,
     Status,
     Vote,
@@ -50,6 +51,7 @@ class TransitionArguments(ActionArguments):
 
     status: Annotated[str, one_of("status", Status.list)]
     transition: Annotated[str, one_of("transition", HitStatusTransition.list)]
+    escalation: Annotated[Optional[str], EmptyToNone, one_of("escalation", Escalation.list)] = None
     assessment: Annotated[Optional[str], EmptyToNone, one_of("assessment", Assessment.list)] = None
     rationale: Annotated[Optional[str], EmptyToNone] = None
     assignee: Annotated[Optional[str], EmptyToNone] = None
@@ -265,8 +267,15 @@ def specification() -> ActionSpecification:
                 },
             ),
             ActionStep(
-                args={name: sorted(conditions) for name, conditions in workflow_args.items()},
-                options={"vote": Vote.list(), "assessment": Assessment.list()},
+                args={
+                    **{name: sorted(conditions) for name, conditions in workflow_args.items()},
+                    "escalation": ["transition:promote", "transition:demote"],
+                },
+                options={
+                    "vote": Vote.list(),
+                    "assessment": Assessment.list(),
+                    "escalation": Escalation.list(),
+                },
             ),
         ],
         triggers=[trigger for trigger in VALID_TRIGGERS if trigger != "create"],

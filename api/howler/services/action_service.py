@@ -337,11 +337,10 @@ def bulk_execute_on_query(
                 logger.debug("Appending auth token to external operation %s", operation.operation_id)
                 parsed_data["auth_token"] = auth_token
 
-            report = actions.execute(
+            report = actions.execute_stored_action(
                 operation_id=operation.operation_id,
                 query=intersected_query,
                 user=user,
-                ignore_extra_arguments=True,
                 **parsed_data,
             )
 

@@ -176,17 +176,41 @@ def execute(
     query: str,
     user: User | None,
     request_id: Optional[str] = None,
-    ignore_extra_arguments: bool = False,
     **kwargs,
 ) -> list[dict[str, Any]]:
-    """Execute a specification
+    """Execute an operation with strict validation of its arguments."""
+    return _execute(operation_id, query, user, request_id, kwargs, ignore_extra_arguments=False)
+
+
+def execute_stored_action(
+    operation_id: str,
+    query: str,
+    user: User | None,
+    request_id: Optional[str] = None,
+    **kwargs,
+) -> list[dict[str, Any]]:
+    """Execute a saved action, allowing unknown legacy arguments to be ignored."""
+    return _execute(operation_id, query, user, request_id, kwargs, ignore_extra_arguments=True)
+
+
+def _execute(
+    operation_id: str,
+    query: str,
+    user: User | None,
+    request_id: Optional[str],
+    arguments: dict[str, Any],
+    *,
+    ignore_extra_arguments: bool,
+) -> list[dict[str, Any]]:
+    """Execute a specification.
 
     Args:
         operation_id (str): The id of the operation to run
         query (str): The query to run this action on
         user (dict[str, Any]): The user running this action
         request_id (str, None): A user-provided ID, can be used to track the progress of their excecution via websockets
-        ignore_extra_arguments (bool): Drop unknown arguments instead of rejecting them. Used for stored actions.
+        arguments (dict[str, Any]): User-supplied operation arguments.
+        ignore_extra_arguments (bool): Drop unknown arguments instead of rejecting them. Used only for stored actions.
 
     Returns:
         list[dict[str, Any]]: A report on the execution
@@ -234,16 +258,16 @@ def execute(
         ]
 
     try:
-        arguments = specification.validate_arguments(kwargs, ignore_extra=ignore_extra_arguments)
+        validated_arguments = specification.validate_arguments(arguments, ignore_extra=ignore_extra_arguments)
     except ValidationError as e:
         report = invalid_arguments_report(query, e)
         report["query"] = f"({query})"
         return [report]
 
-    operation_kwargs = {key: value for key, value in kwargs.items() if key in RESERVED_ARGUMENTS}
-    operation_kwargs.update(arguments.model_extra or {})
+    operation_kwargs = {key: value for key, value in arguments.items() if key in RESERVED_ARGUMENTS}
+    operation_kwargs.update(validated_arguments.model_extra or {})
     # Unset arguments are left out so the operation's own defaults still apply
-    operation_kwargs.update(arguments.model_dump(exclude_unset=True))
+    operation_kwargs.update(validated_arguments.model_dump(exclude_unset=True))
 
     # Skip central limit check if operation handles it locally with transformed query
     if not getattr(operation, "SKIP_CENTRAL_LIMIT", False):

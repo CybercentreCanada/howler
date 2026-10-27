@@ -320,12 +320,11 @@ def execute_action(id: str, **kwargs) -> Response:
             execute_action,
         )
 
-        report = actions.execute(
+        report = actions.execute_stored_action(
             operation_id=operation.operation_id,
             request_id=execute_req["request_id"],
             query=query,
             user=current_user,
-            ignore_extra_arguments=True,
             **op_data,
         )
 
