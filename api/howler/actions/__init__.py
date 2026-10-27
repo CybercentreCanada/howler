@@ -209,9 +209,10 @@ def execute(
             }
         ]
 
+    specification = operation.specification()
     user_roles = set(user["type"])
     is_admin = "admin" in user_roles
-    required_roles = set(operation.specification()["roles"])
+    required_roles = set(specification["roles"])
     has_roles = required_roles & user_roles
     if not is_admin and not has_roles:
         return [
@@ -227,7 +228,7 @@ def execute(
             }
         ]
 
-    operation_requires_token = bool(operation.specification().get("requires_auth_token", False))
+    operation_requires_token = bool(specification.get("requires_auth_token", False))
     if operation_requires_token and not trusted_auth_token:
         return [
             {

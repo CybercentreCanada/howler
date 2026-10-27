@@ -9,10 +9,7 @@ from typing import Any
 import gevent
 import requests
 
-from howler.common.logging import get_logger
 from howler.odm.models.config import AI_RESERVED_HEADERS, AITriage
-
-logger = get_logger(__file__)
 
 TERMINAL_A2A_STATES = {"completed", "failed", "canceled", "cancelled", "rejected", "input-required", "auth-required"}
 UNSUPPORTED_A2A_METHOD_CODES = {-32601}

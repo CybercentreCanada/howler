@@ -93,16 +93,15 @@ def _run_lock_key(run_id: str) -> str:
 
 
 @contextmanager
-def _locked(client: Any, key: str, *, timeout: float | None = None) -> Iterator[None]:
+def _locked(client: Any, key: str) -> Iterator[None]:
     """Acquire a Redis nonce lock and fence any transaction made under it."""
     token = uuid.uuid4().hex.encode("utf-8")
-    lock_timeout = QUEUE_LOCK_TTL if timeout is None else timeout
     deadline = time.monotonic() + QUEUE_LOCK_ACQUIRE_TIMEOUT
     acquired = False
     fence_context = None
     try:
         while time.monotonic() < deadline:
-            if client.set(key, token, nx=True, ex=max(1, int(lock_timeout))):
+            if client.set(key, token, nx=True, ex=QUEUE_LOCK_TTL):
                 acquired = True
                 break
             time.sleep(min(0.05, max(0.0, deadline - time.monotonic())))
@@ -231,6 +230,25 @@ def _update_counts_and_state(run: dict[str, Any]) -> None:
 
 def _lease_member(run_id: str, index: int, nonce: str) -> str:
     return f"{run_id}|{index}|{nonce}"
+
+
+def _owned_item(
+    client: Any, run_id: str, index: int, nonce: str, now: float | None = None
+) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    """Return a running item only while this worker still owns its live lease."""
+    run = _load_run(client, run_id)
+    if not run or index >= len(run.get("results", [])):
+        return None
+
+    item = run["results"][index]
+    if item.get("state") != "running" or item.get("_lease_nonce") != nonce:
+        return None
+
+    now = _now() if now is None else now
+    lease_score = client.zscore(_lease_key(), _lease_member(run_id, index, nonce))
+    if now >= float(item.get("_deadline_at", now)) or lease_score is None or float(lease_score) <= now:
+        return None
+    return run, item
 
 
 def _parse_lease_member(member: str) -> tuple[str, int, str] | None:
@@ -473,16 +491,11 @@ def heartbeat(run_id: str, index: int, nonce: str) -> float | None:
     now = _now()
     with _locked(client, _global_lock_key()):
         with _locked(client, _run_lock_key(run_id)):
-            run = _load_run(client, run_id)
-            if not run or index >= len(run.get("results", [])):
+            owned = _owned_item(client, run_id, index, nonce, now)
+            if owned is None:
                 return None
-            item = run["results"][index]
-            if item.get("state") != "running" or item.get("_lease_nonce") != nonce:
-                return None
+            run, item = owned
             deadline = float(item.get("_deadline_at", now))
-            lease_score = client.zscore(_lease_key(), _lease_member(run_id, index, nonce))
-            if now >= deadline or lease_score is None or float(lease_score) <= now:
-                return None
             expiry = min(deadline, now + config.core.ai.lease_seconds)
             item["_lease_expires_at"] = expiry
             with _fenced_pipeline(client) as pipeline:
@@ -496,36 +509,17 @@ def lease_is_current(run_id: str, index: int, nonce: str) -> bool:
     """Fence a worker before provider input and before committing a result."""
     client = redis_client()
     with _locked(client, _run_lock_key(run_id)):
-        run = _load_run(client, run_id)
-        if not run or index >= len(run.get("results", [])):
-            return False
-        item = run["results"][index]
-        now = _now()
-        lease_score = client.zscore(_lease_key(), _lease_member(run_id, index, nonce))
-        return bool(
-            item.get("state") == "running"
-            and item.get("_lease_nonce") == nonce
-            and now < float(item.get("_deadline_at", 0))
-            and lease_score is not None
-            and float(lease_score) > now
-        )
+        return _owned_item(client, run_id, index, nonce) is not None
 
 
 def checkpoint(run_id: str, index: int, nonce: str, task_id: str | None, context_id: str | None) -> bool:
     """Durably save A2A task/context identifiers immediately after observing them."""
     client = redis_client()
     with _locked(client, _run_lock_key(run_id)):
-        run = _load_run(client, run_id)
-        if not run or index >= len(run.get("results", [])):
+        owned = _owned_item(client, run_id, index, nonce)
+        if owned is None:
             return False
-        item = run["results"][index]
-        if item.get("state") != "running" or item.get("_lease_nonce") != nonce:
-            return False
-        now = _now()
-        lease_score = client.zscore(_lease_key(), _lease_member(run_id, index, nonce))
-        deadline = float(item.get("_deadline_at", 0))
-        if now >= deadline or lease_score is None or float(lease_score) <= now:
-            return False
+        run, item = owned
         if task_id:
             item["_a2a_task_id"] = task_id
         if context_id:
@@ -540,21 +534,11 @@ def begin_provider_attempt(run_id: str, index: int, nonce: str) -> dict[str, Any
     """Count one actual new inference request, not claims or candidate retries."""
     client = redis_client()
     with _locked(client, _run_lock_key(run_id)):
-        run = _load_run(client, run_id)
-        if not run or index >= len(run.get("results", [])):
+        owned = _owned_item(client, run_id, index, nonce)
+        if owned is None:
             return None
-        item = run["results"][index]
-        now = _now()
-        lease_score = client.zscore(_lease_key(), _lease_member(run_id, index, nonce))
-        if (
-            item.get("state") != "running"
-            or item.get("_lease_nonce") != nonce
-            or item.get("_candidate") is not None
-            or item.get("_a2a_task_id") is not None
-            or now >= float(item.get("_deadline_at", 0))
-            or lease_score is None
-            or float(lease_score) <= now
-        ):
+        run, item = owned
+        if item.get("_candidate") is not None or item.get("_a2a_task_id") is not None:
             return None
         if int(item.get("attempts", 0)) >= config.core.ai.max_attempts:
             return None
@@ -570,20 +554,10 @@ def store_candidate(run_id: str, index: int, nonce: str, candidate: dict[str, An
     """Persist a complete, validated provider candidate before dossier commit."""
     client = redis_client()
     with _locked(client, _run_lock_key(run_id)):
-        run = _load_run(client, run_id)
-        if not run or index >= len(run.get("results", [])):
+        owned = _owned_item(client, run_id, index, nonce)
+        if owned is None:
             return False
-        item = run["results"][index]
-        now = _now()
-        lease_score = client.zscore(_lease_key(), _lease_member(run_id, index, nonce))
-        if (
-            item.get("state") != "running"
-            or item.get("_lease_nonce") != nonce
-            or now >= float(item.get("_deadline_at", 0))
-            or lease_score is None
-            or float(lease_score) <= now
-        ):
-            return False
+        run, item = owned
         if item.get("_candidate") is not None:
             return item.get("_candidate") == candidate
         item["_candidate"] = candidate
