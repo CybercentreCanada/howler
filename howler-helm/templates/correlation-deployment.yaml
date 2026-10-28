@@ -13,8 +13,6 @@ metadata:
     app.kubernetes.io/component: correlation
 {{ include "howler.labels" . | indent 4 }}
 spec:
-  strategy:
-    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/version: {{ .Chart.AppVersion }}
@@ -55,7 +53,7 @@ spec:
         env:
         {{include "sharedEnv" . | indent 8}}
         - name: WORKERS
-          value: "1"
+          value: "4"
         - name: HWL_USE_REST_API
           value: "false"
         - name: HWL_USE_WEBSOCKET_API

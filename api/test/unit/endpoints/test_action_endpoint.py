@@ -131,12 +131,3 @@ def test_get_actions_caps_results(
     assert actions[-1]["action_id"] == "249"
     assert stream_closed
     mock_datastore.return_value.action.stream_search.assert_called_once_with("*:*", as_obj=False)
-
-
-def test_action_run_endpoints_are_removed():
-    from howler.api.v1.action import action_api
-
-    app = Flask("test_removed_action_runs")
-    app.register_blueprint(action_api)
-
-    assert not any("/runs" in rule.rule for rule in app.url_map.iter_rules())

@@ -38,6 +38,7 @@ vi.mock('@mui/material', () => ({
   ),
   FormGroup: ({ children }: any) => <div>{children}</div>,
   IconButton: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
+  LinearProgress: ({ value }: any) => <div>{`progress:${value ?? 'indeterminate'}`}</div>,
   Stack: ({ children }: any) => <div>{children}</div>,
   Typography: ({ children }: any) => <div>{children}</div>
 }));
@@ -140,6 +141,7 @@ vi.mock('../useMyActionFunctions', () => ({
     setLoading: mockSetLoading,
     executeAction: mockExecuteAction,
     deleteAction: mockDeleteAction,
+    progress: [2, 4],
     report: { status: 'done' }
   })
 }));
@@ -194,6 +196,7 @@ describe('ActionDetails', () => {
     expect(screen.getByText('avatar:alice')).toBeInTheDocument();
     expect(screen.getByText('query-result:7:status:open')).toBeInTheDocument();
     expect(screen.getByText('report:done')).toBeInTheDocument();
+    expect(screen.getByText('progress:50')).toBeInTheDocument();
     expect(screen.getByText('operation:direct-op:direct')).toBeInTheDocument();
     expect(screen.getByText('plugin-operation')).toBeInTheDocument();
 

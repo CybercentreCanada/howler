@@ -50,8 +50,10 @@ vi.mock('react-router', () => ({
 
 vi.mock('utils/actionUtils', () => ({
   checkArgsAreFilled: (step: any, values: string) => Object.keys(step.args).every(key => JSON.parse(values)[key]),
-  getArgsByContext: (args: any, _values: string, optionalArgs: string[] = []) =>
-    [...Object.keys(args), ...optionalArgs].filter((arg, index, values) => values.indexOf(arg) === index),
+  getArgsByContext: (args: any, _values: string, optionalArgs: string[] = []) => [
+    ...Object.keys(args),
+    ...optionalArgs
+  ],
   getOptionsByContext: (options: any, arg: string) => options[arg]
 }));
 

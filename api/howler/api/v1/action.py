@@ -304,9 +304,6 @@ def execute_action(id: str, **kwargs) -> Response:
 
     for operation in action.operations:
         op_data = json.loads(operation.data_json) if operation.data_json else {}
-        if not isinstance(op_data, dict):
-            return bad_request(err="Operation data must be a JSON object")
-        op_data = actions.sanitize_operation_kwargs(op_data)
 
         query = execute_req.get("query", action.query) or action.query
 
@@ -325,11 +322,10 @@ def execute_action(id: str, **kwargs) -> Response:
 
         report = actions.execute(
             operation_id=operation.operation_id,
-            request_id=execute_req.get("request_id"),
+            request_id=execute_req["request_id"],
             query=query,
             user=current_user,
-            trusted_auth_token=action_service._request_auth_token(),
-            action_id=id,
+            bearer_token=action_service._request_auth_token(),
             **op_data,
         )
 
@@ -418,9 +414,6 @@ def execute_operations(**kwargs) -> Response:
 
     for operation in operations:
         op_data = json.loads(operation["data_json"])
-        if not isinstance(op_data, dict):
-            return bad_request(err="Operation data must be a JSON object")
-        op_data = actions.sanitize_operation_kwargs(op_data)
 
         audit(
             [],
@@ -437,10 +430,10 @@ def execute_operations(**kwargs) -> Response:
 
         report = actions.execute(
             operation_id=operation["operation_id"],
-            request_id=execute_req.get("request_id"),
+            request_id=execute_req["request_id"],
             query=execute_req["query"],
             user=current_user,
-            trusted_auth_token=action_service._request_auth_token(),
+            bearer_token=action_service._request_auth_token(),
             **op_data,
         )
 

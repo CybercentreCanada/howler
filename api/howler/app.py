@@ -70,7 +70,6 @@ from howler.healthz import healthz
 from howler.telemetry import setup_telemetry
 
 logger = get_logger(__file__)
-_job_system_started = False
 
 
 def _should_start_background_services() -> bool:
@@ -81,14 +80,12 @@ def _should_start_background_services() -> bool:
     ``HWL_START_BACKGROUND_SERVICES`` only for its no-reload Flask server,
     preventing pytest imports from starting competing workers.
     """
-    explicit_start = (
-        os.environ.get("WERKZEUG_RUN_MAIN") == "true"
+    return (
+        not DEBUG
+        or os.environ.get("WERKZEUG_RUN_MAIN") == "true"
         or os.environ.get("HWL_START_BACKGROUND_SERVICES", "").lower() == "true"
         or Path(sys.argv[0]).name.lower().startswith("gunicorn")
     )
-    if os.environ.get("TESTING", "").lower() == "true":
-        return explicit_start
-    return not DEBUG or explicit_start
 
 
 app = Flask(
@@ -208,7 +205,7 @@ else:
 
 if HWL_USE_JOB_SYSTEM and _should_start_background_services():
     setup_jobs()
-    _job_system_started = True
+
 
 # Setup OAuth providers
 if config.auth.oauth.enabled:
@@ -254,22 +251,14 @@ if logger.parent:  # pragma: no cover
         wlog.addHandler(h)
 
 
-def main(*, use_reloader: bool | None = None):
-    """Run the application, starting background services for no-reloader servers."""
-    global _job_system_started
-    effective_use_reloader = DEBUG if use_reloader is None else use_reloader
-    if not effective_use_reloader:
-        if HWL_USE_JOB_SYSTEM and not _job_system_started:
-            setup_jobs()
-            _job_system_started = True
-
+def main():
+    """Main application function"""
     app.jinja_env.cache = {}
     app.run(
         host="0.0.0.0",  # noqa: S104
         debug=DEBUG,
         port=int(os.getenv("FLASK_RUN_PORT", os.getenv("PORT", 5000))),
         extra_files=os.environ.get("FLASK_RUN_EXTRA_FILES", "").split(":"),
-        use_reloader=effective_use_reloader,
     )
 
 

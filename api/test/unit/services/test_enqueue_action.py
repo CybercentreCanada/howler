@@ -18,8 +18,7 @@ class TestEnqueueActionExecution:
 
         with app.test_request_context(headers={"Authorization": "malformed-token"}):
             assert action_service._request_auth_token() is None
-
-        with app.test_request_context(headers={"Authorization": "Basic dXNlcjpwYXNzd29yZA=="}):
+        with app.test_request_context(headers={"Authorization": "Basic dXNlcjpwYXNz"}):
             assert action_service._request_auth_token() is None
 
     @patch.object(action_service, "get_action_queue")
@@ -59,9 +58,9 @@ class TestEnqueueActionExecution:
             action_service.enqueue_action_execution(["id1"], trigger="create", user=user)
 
         pushed = mock_queue.push.call_args.args[0]
-        assert pushed["bearer_token"] != "oauth-access-token"
-        assert "oauth-access-token" not in pushed["bearer_token"]
-        assert auth_service.decrypt_token(pushed["bearer_token"]) == "oauth-access-token"
+        assert pushed["auth_token"] != "oauth-access-token"
+        assert "oauth-access-token" not in pushed["auth_token"]
+        assert auth_service.decrypt_token(pushed["auth_token"]) == "oauth-access-token"
 
     @patch.object(action_service, "get_action_queue")
     @patch("howler.services.auth_service.config")
@@ -204,13 +203,7 @@ class TestProcessActionBatch:
 
         action_service.process_action_batch(
             "create",
-            [
-                {
-                    "hit_ids": ["id1"],
-                    "uname": "admin",
-                    "bearer_token": encrypted_auth_token,
-                }
-            ],
+            [{"hit_ids": ["id1"], "uname": "admin", "auth_token": encrypted_auth_token}],
         )
 
         assert mock_bulk.call_args.kwargs["auth_token"] == "oauth-access-token"
@@ -221,8 +214,8 @@ class TestProcessActionBatch:
     def test_process_batch_groups_by_encrypted_auth_token(self, mock_bulk, mock_datastore, mock_decrypt):
         """The worker decrypts one shared ciphertext once after grouping the batch."""
         items = [
-            {"hit_ids": ["id1"], "uname": "admin", "bearer_token": "same-ciphertext"},
-            {"hit_ids": ["id2"], "uname": "admin", "bearer_token": "same-ciphertext"},
+            {"hit_ids": ["id1"], "uname": "admin", "auth_token": "same-ciphertext"},
+            {"hit_ids": ["id2"], "uname": "admin", "auth_token": "same-ciphertext"},
         ]
 
         action_service.process_action_batch("create", items)
@@ -230,17 +223,6 @@ class TestProcessActionBatch:
         mock_decrypt.assert_called_once_with("same-ciphertext")
         mock_bulk.assert_called_once()
         assert mock_bulk.call_args.kwargs["auth_token"] == "oauth-access-token"
-
-    @patch.object(action_service, "datastore")
-    @patch.object(action_service, "bulk_execute_on_query")
-    def test_legacy_queue_token_without_bearer_provenance_is_ignored(self, mock_bulk, mock_datastore):
-        """Old queue entries are not guessed to have held a Bearer credential."""
-        action_service.process_action_batch(
-            "create",
-            [{"hit_ids": ["id1"], "uname": "admin", "auth_token": "legacy-ciphertext"}],
-        )
-
-        assert mock_bulk.call_args.kwargs["auth_token"] is None
 
     @patch.object(action_service, "bulk_execute_on_query")
     def test_process_batch_empty(self, mock_bulk):
@@ -342,7 +324,7 @@ class TestProcessActionBatch:
         """A malformed queued token should not prevent the batch from being processed."""
         action_service.process_action_batch(
             "create",
-            [{"hit_ids": ["id1"], "uname": "admin", "bearer_token": "invalid"}],
+            [{"hit_ids": ["id1"], "uname": "admin", "auth_token": "invalid"}],
         )
 
         mock_decrypt.assert_called_once_with("invalid")
@@ -357,7 +339,7 @@ class TestProcessActionBatch:
         """Tokens encrypted by another instance produce an actionable log message."""
         action_service.process_action_batch(
             "create",
-            [{"hit_ids": ["id1"], "uname": "admin", "bearer_token": "invalid"}],
+            [{"hit_ids": ["id1"], "uname": "admin", "auth_token": "invalid"}],
         )
 
         mock_decrypt.assert_called_once_with("invalid")
@@ -371,10 +353,8 @@ class TestBulkExecuteOnQuery:
     @patch.object(action_service, "audit")
     @patch.object(action_service.actions, "execute", return_value=[])
     @patch.object(action_service, "datastore")
-    def test_dispatch_receives_bearer_separately_without_action_data_injection(
-        self, mock_datastore, mock_execute, mock_audit
-    ):
-        """The shared dispatcher gets trusted bearer context separately for every operation."""
+    def test_only_plugin_operations_receive_auth_token(self, mock_datastore, mock_execute, mock_audit):
+        """Built-in actions omit auth_token while plugin actions receive it."""
         built_in_operation = SimpleNamespace(operation_id="add_label", data_json="{}", data={})
         plugin_operation = SimpleNamespace(operation_id="plugin_action", data_json="{}", data={})
         action = SimpleNamespace(
@@ -397,6 +377,6 @@ class TestBulkExecuteOnQuery:
 
         built_in_call, plugin_call = mock_execute.call_args_list
         assert "auth_token" not in built_in_call.kwargs
-        assert "auth_token" not in plugin_call.kwargs
-        assert built_in_call.kwargs["trusted_auth_token"] == "oauth-access-token"
-        assert plugin_call.kwargs["trusted_auth_token"] == "oauth-access-token"
+        assert plugin_call.kwargs["auth_token"] == "oauth-access-token"
+        assert built_in_call.kwargs["bearer_token"] == "oauth-access-token"
+        assert plugin_call.kwargs["bearer_token"] == "oauth-access-token"

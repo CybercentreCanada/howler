@@ -1,4 +1,4 @@
-import json as json_module
+import json
 import time
 from unittest.mock import MagicMock, Mock
 
@@ -8,28 +8,28 @@ from howler.odm.models.config import AITriage
 from howler.services import ai_transport as transport
 
 
-def json_response(payload, *, status=200, content_type="application/json"):
+def json_response(payload, *, status=200):
     response = MagicMock()
     response.status_code = status
-    response.headers = {"content-type": content_type}
-    response.iter_content.return_value = [json_module.dumps(payload).encode()]
+    response.iter_content.return_value = [json.dumps(payload).encode()]
     response.__enter__.return_value = response
     response.__exit__.return_value = False
     return response
 
 
-def settings(provider):
+def settings():
     return AITriage(
         enabled=True,
-        provider=provider,
-        endpoint="https://ai.invalid/triage",
+        endpoint="https://ai.invalid/v1/chat/completions",
         model="qa-model",
+        headers={"X-Provider-Key": "private-key"},
     )
 
 
-def run(provider, session):
+def generate(session, monkeypatch):
+    monkeypatch.setattr(transport.requests, "Session", Mock(return_value=session))
     return transport.generate(
-        settings(provider),
+        settings(),
         "qa-access-token",
         "Conservative system prompt",
         {"event": "alert"},
@@ -39,84 +39,60 @@ def run(provider, session):
 
 def test_openai_success_uses_bearer_and_closes_session(monkeypatch):
     session = Mock()
-    session.post.return_value = json_response(
-        {"choices": [{"message": {"role": "assistant", "content": "Conservative opinion"}, "finish_reason": "stop"}]}
-    )
-    monkeypatch.setattr(transport.requests, "Session", Mock(return_value=session))
+    session.post.return_value = json_response({"choices": [{"message": {"content": "Conservative opinion"}}]})
 
-    assert run("openai", session) == "Conservative opinion"
+    assert generate(session, monkeypatch) == "Conservative opinion"
 
-    call = session.post.call_args.kwargs
-    assert call["headers"]["Authorization"] == "Bearer qa-access-token"
-    assert call["json"]["stream"] is False
-    assert call["allow_redirects"] is False
-    assert session.close.called
+    call = session.post.call_args
+    assert call.args == ("https://ai.invalid/v1/chat/completions",)
+    assert call.kwargs["headers"] == {
+        "X-Provider-Key": "private-key",
+        "Authorization": "Bearer qa-access-token",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+    assert call.kwargs["json"] == {
+        "model": "qa-model",
+        "messages": [
+            {"role": "system", "content": "Conservative system prompt"},
+            {"role": "user", "content": '{"event":"alert"}'},
+        ],
+        "stream": False,
+    }
+    assert call.kwargs["allow_redirects"] is False
+    assert call.kwargs["stream"] is True
+    assert session.trust_env is False
+    session.close.assert_called_once()
 
 
 def test_openai_auth_error_is_reported_without_upstream_details(monkeypatch):
     session = Mock()
     session.post.return_value = json_response({"error": "private provider detail"}, status=401)
-    monkeypatch.setattr(transport.requests, "Session", Mock(return_value=session))
 
     with pytest.raises(transport.AITransportError, match="authorization token") as error:
-        run("openai", session)
+        generate(session, monkeypatch)
 
     assert "private provider detail" not in str(error.value)
     session.close.assert_called_once()
 
 
-def test_a2a_direct_message_success(monkeypatch):
+def test_non_auth_http_error_only_exposes_status(monkeypatch):
     session = Mock()
-    response = json_response({})
+    session.post.return_value = json_response({"error": "secret"}, status=503)
 
-    def post(_endpoint, *, json: dict, **_kwargs):
-        response.iter_content.return_value = [
-            json_module.dumps(
-                {
-                    "jsonrpc": "2.0",
-                    "id": json["id"],
-                    "result": {
-                        "kind": "message",
-                        "role": "agent",
-                        "messageId": "message-1",
-                        "parts": [{"kind": "text", "text": "A2A opinion"}],
-                    },
-                }
-            ).encode()
-        ]
-        return response
+    with pytest.raises(transport.AITransportError, match="HTTP 503") as error:
+        generate(session, monkeypatch)
 
-    session.post.side_effect = post
-    monkeypatch.setattr(transport.requests, "Session", Mock(return_value=session))
-    assert run("a2a", session) == "A2A opinion"
-
-    assert session.post.call_args.kwargs["headers"]["Authorization"] == "Bearer qa-access-token"
-    response.close.assert_called_once()
+    assert "secret" not in str(error.value)
     session.close.assert_called_once()
 
 
-def test_a2a_error_response_is_safe_and_does_not_retry(monkeypatch):
+def test_timeout_becomes_safe_transport_error(monkeypatch):
     session = Mock()
-    response = json_response({})
+    session.post.side_effect = transport.requests.Timeout("provider-secret")
 
-    def post(_endpoint, *, json: dict, **_kwargs):
-        response.iter_content.return_value = [
-            json_module.dumps(
-                {
-                    "jsonrpc": "2.0",
-                    "id": json["id"],
-                    "error": {"code": -32000, "message": "private upstream detail"},
-                }
-            ).encode()
-        ]
-        return response
+    with pytest.raises(transport.AITransportError, match="temporarily unavailable") as error:
+        generate(session, monkeypatch)
 
-    session.post.side_effect = post
-    monkeypatch.setattr(transport.requests, "Session", Mock(return_value=session))
-
-    with pytest.raises(transport.AITransportError, match="rejected the request") as error:
-        run("a2a", session)
-
-    assert session.post.call_count == 1
-    assert "private upstream detail" not in str(error.value)
+    assert "provider-secret" not in str(error.value)
     session.close.assert_called_once()

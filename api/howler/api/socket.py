@@ -104,7 +104,7 @@ def connect(ws: Server, *args: Any, ws_id: str, user: User | None = None, **kwar
         logger.debug("Sending broadcast: %s", data)
         ws.send(ws_response("broadcast", {"event": data}))
 
-    def send_action(data: dict[str, Any]):
+    def send_action(data: dict[str, str]):
         """Send an action update to the websocket client."""
         logger.debug("Sending action: %s", data)
         ws.send(ws_response("action", data))

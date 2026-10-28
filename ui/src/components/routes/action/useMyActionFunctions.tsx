@@ -2,18 +2,18 @@ import { Terminal } from '@mui/icons-material';
 import { LinearProgress, Stack } from '@mui/material';
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
+import type { RecievedDataType } from 'components/app/providers/SocketProvider';
+import { SocketContext } from 'components/app/providers/SocketProvider';
 import useMyApi from 'components/hooks/useMyApi';
-import useMyLocalStorage from 'components/hooks/useMyLocalStorage';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import type { ActionReport } from 'models/ActionTypes';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Operation } from 'models/entities/generated/Operation';
 import { useSnackbar, type SnackbarKey } from 'notistack';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { v4 as uuid } from 'uuid';
-import { StorageKey } from 'utils/constants';
 
 const useMyActionFunctions = () => {
   const { t } = useTranslation();
@@ -23,84 +23,27 @@ const useMyActionFunctions = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
-  const { get } = useMyLocalStorage();
-  const authSessionKey = get<string>(StorageKey.APP_TOKEN) ?? '';
-  const contextKey = JSON.stringify([authSessionKey, location.pathname, params.id ?? null]);
+  const { addListener, removeListener } = useContext(SocketContext);
 
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<HowlerSearchResponse<Hit>>();
   const [responseQuery, setResponseQuery] = useState('');
+  const [progress, setProgress] = useState<[number, number]>([0, 0]);
+  const [requestId, setRequestId] = useState<string>();
   const [report, setReport] = useState<ActionReport>();
-  const [stateContextKey, setStateContextKey] = useState(contextKey);
-  const [stateContextGeneration, setStateContextGeneration] = useState(0);
-  const activeContextRef = useRef({ contextKey, generation: 0 });
-  const mountedRef = useRef(true);
-  const contextGeneration = stateContextGeneration;
-  const isCurrentVisit = useCallback(
-    (generation: number) =>
-      mountedRef.current &&
-      activeContextRef.current.contextKey === contextKey &&
-      activeContextRef.current.generation === generation,
-    [contextKey]
-  );
-  const markCurrentVisit = useCallback(
-    (generation: number) => {
-      if (!isCurrentVisit(generation)) {
-        return false;
+
+  const handler = useCallback(
+    (data: RecievedDataType<{ request_id: string; processed: number; total: number }>) => {
+      if (data.type === 'action' && data.request_id === requestId) {
+        setProgress([data.processed, data.total]);
       }
-      setStateContextKey(contextKey);
-      setStateContextGeneration(generation);
-      return true;
     },
-    [contextKey, isCurrentVisit]
-  );
-  const isCurrentContext = stateContextKey === contextKey;
-
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (activeContextRef.current.contextKey === contextKey) {
-      return;
-    }
-
-    const generation = activeContextRef.current.generation + 1;
-    activeContextRef.current = { contextKey, generation };
-    setStateContextKey(contextKey);
-    setStateContextGeneration(generation);
-    setLoading(false);
-    setResponse(undefined);
-    setResponseQuery('');
-    setReport(undefined);
-  }, [contextKey]);
-
-  const setLoadingForContext = useCallback(
-    (value: boolean) => {
-      if (!markCurrentVisit(contextGeneration)) {
-        return;
-      }
-      setLoading(value);
-    },
-    [contextGeneration, markCurrentVisit]
-  );
-
-  const setResponseForContext = useCallback(
-    (value: HowlerSearchResponse<Hit> | undefined) => {
-      if (!markCurrentVisit(contextGeneration)) {
-        return;
-      }
-      setResponse(value);
-    },
-    [contextGeneration, markCurrentVisit]
+    [requestId]
   );
 
   const onSearch = useCallback(
     async (query: string) => {
-      const result = await dispatchApi(
+      const _response = await dispatchApi(
         api.search.hit.post({
           query,
           rows: 3,
@@ -108,38 +51,38 @@ const useMyActionFunctions = () => {
         })
       );
 
-      if (!markCurrentVisit(contextGeneration)) {
-        return;
-      }
-
-      setResponse(result);
+      setResponse(_response);
       setResponseQuery(query);
     },
-    [contextGeneration, dispatchApi, markCurrentVisit]
+    [dispatchApi]
   );
 
+  useEffect(() => {
+    addListener<{ request_id: string; processed: number; total: number }>('action', handler);
+
+    return () => removeListener('action');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handler]);
+
   return {
-    contextReady: isCurrentContext,
-    loading: isCurrentContext ? loading : false,
-    setLoading: setLoadingForContext,
-    response: isCurrentContext ? response : undefined,
-    setResponse: setResponseForContext,
-    responseQuery: isCurrentContext ? responseQuery : '',
-    report: isCurrentContext ? report : undefined,
+    loading,
+    setLoading,
+    response,
+    setResponse,
+    responseQuery,
+    report,
+    progress,
     onSearch,
     saveAction: useCallback(
       async (name: string, query: string, operations: Operation[], triggers: string[]) => {
         try {
-          if (!isCurrentVisit(contextGeneration)) {
-            return;
-          }
           if (!query) {
             showErrorMessage(t('route.actions.query.empty'));
             return;
           }
 
           if (params.id) {
-            setLoadingForContext(true);
+            setLoading(true);
             const result = await dispatchApi(
               api.action.put(params.id, {
                 name,
@@ -149,14 +92,11 @@ const useMyActionFunctions = () => {
               { showError: true, throwError: false }
             );
 
-            if (!isCurrentVisit(contextGeneration)) {
-              return;
-            }
             if (result) {
               void navigate(`/action/${params.id}`);
             }
           } else {
-            setLoadingForContext(true);
+            setLoading(true);
             const newAction = await dispatchApi(
               api.action.post({
                 name,
@@ -167,76 +107,58 @@ const useMyActionFunctions = () => {
               { showError: true, throwError: false }
             );
 
-            if (!isCurrentVisit(contextGeneration)) {
-              return;
-            }
             if (newAction) {
               void navigate(`/action/${newAction.action_id}`);
             }
           }
         } finally {
-          setLoadingForContext(false);
+          setLoading(false);
         }
       },
-      [contextGeneration, dispatchApi, isCurrentVisit, navigate, params.id, setLoadingForContext, showErrorMessage, t]
+      [dispatchApi, navigate, params.id, showErrorMessage, t]
     ),
     submitAction: useCallback(
       async (query: string, operations: Operation[]): Promise<void> => {
-        if (!isCurrentVisit(contextGeneration)) {
-          return;
-        }
         if (!query) {
           showErrorMessage(t('route.actions.query.empty'));
           return;
         }
 
-        setLoadingForContext(true);
+        setLoading(true);
+        const reqId = uuid();
+        setRequestId(reqId);
         setReport(undefined);
 
         try {
-          const result = await dispatchApi(
-            api.action.execute.post({
-              request_id: uuid(),
-              query,
-              operations
-            }),
-            { throwError: false, showError: true }
+          setReport(
+            await dispatchApi(
+              api.action.execute.post({
+                request_id: reqId,
+                query,
+                operations
+              }),
+              { throwError: false, showError: true }
+            )
           );
-          if (markCurrentVisit(contextGeneration)) {
-            setReport(result);
-          }
         } finally {
-          if (isCurrentVisit(contextGeneration)) {
-            setLoadingForContext(false);
-            void onSearch(query);
-          }
+          setLoading(false);
+          setRequestId(undefined);
+          setProgress([0, 0]);
+          void onSearch(query);
         }
       },
-      [
-        contextGeneration,
-        dispatchApi,
-        isCurrentVisit,
-        markCurrentVisit,
-        onSearch,
-        setLoadingForContext,
-        showErrorMessage,
-        t
-      ]
+      [dispatchApi, onSearch, showErrorMessage, t]
     ),
     executeAction: useCallback(
       async (actionId: string, query?: string) => {
-        if (!isCurrentVisit(contextGeneration)) {
-          return;
-        }
-        setLoadingForContext(true);
+        setLoading(true);
+        const reqId = uuid();
+        setRequestId(reqId);
         setReport(undefined);
 
         let key: SnackbarKey | null = null;
         try {
           const actionResponse = await api.search.action.post({ query: `action_id:${actionId}`, rows: 1 });
-          if (!isCurrentVisit(contextGeneration)) {
-            return;
-          }
           const actionName = actionResponse?.items[0]?.name ?? t('unknown');
 
           key = showInfoMessage(
@@ -259,20 +181,14 @@ const useMyActionFunctions = () => {
 
           const result = await dispatchApi(
             api.action.execute.post({
-              request_id: uuid(),
+              request_id: reqId,
               query,
               action_id: actionId
             }),
             { throwError: false, showError: false }
           );
 
-          if (!isCurrentVisit(contextGeneration)) {
-            return;
-          }
-
-          if (markCurrentVisit(contextGeneration)) {
-            setReport(result);
-          }
+          setReport(result);
 
           if (!result) {
             showErrorMessage(<Trans i18nKey="actions.error" values={{ action: actionName, message: t('unknown') }} />);
@@ -312,28 +228,16 @@ const useMyActionFunctions = () => {
           if (key) {
             closeSnackbar(key);
           }
-          setLoadingForContext(false);
+          setLoading(false);
+          setRequestId(undefined);
+          setProgress([0, 0]);
         }
       },
-      [
-        closeSnackbar,
-        contextGeneration,
-        dispatchApi,
-        isCurrentVisit,
-        markCurrentVisit,
-        setLoadingForContext,
-        showInfoMessage,
-        showSuccessMessage,
-        showErrorMessage,
-        t
-      ]
+      [closeSnackbar, dispatchApi, showInfoMessage, showSuccessMessage, showErrorMessage, t]
     ),
     deleteAction: useCallback(
       async (actionId: string) => {
-        if (!isCurrentVisit(contextGeneration)) {
-          return;
-        }
-        setLoadingForContext(true);
+        setLoading(true);
 
         try {
           const detailedActionView = location.pathname.endsWith(actionId);
@@ -342,14 +246,14 @@ const useMyActionFunctions = () => {
             throwError: true
           });
 
-          if (isCurrentVisit(contextGeneration) && detailedActionView) {
+          if (detailedActionView) {
             void navigate('/action');
           }
         } finally {
-          setLoadingForContext(false);
+          setLoading(false);
         }
       },
-      [contextGeneration, dispatchApi, isCurrentVisit, location.pathname, navigate, setLoadingForContext]
+      [dispatchApi, location.pathname, navigate]
     )
   };
 };
