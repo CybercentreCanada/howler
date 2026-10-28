@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 from pydantic import Field, ValidationError
 
-from howler.actions import _load_specification, execute, specifications
+from howler.actions import _load_specification, ai_triage, execute, specifications
 from howler.actions.models import DISPATCHER_ARGUMENTS, ActionArguments, ActionSpecification, ActionStep
 from howler.config import config
 from howler.odm.models.howler_data import HitStatusTransition
@@ -29,10 +29,12 @@ def test_specifications():
     for folder in folders:
         files += list(path for path in folder.glob("*.py") if path.stem not in ("__init__", "models"))
 
-    # We ignore the example action, which isn't included in the list of valid actions
-    assert len(result) == len(files) - 1
+    # The example action is excluded, and locally unavailable actions are not advertised.
+    expected_ids = {f.stem for f in files if f.stem != "example_plugin"}
+    if not ai_triage.is_available():
+        expected_ids.discard(ai_triage.OPERATION_ID)
 
-    assert sorted([data["id"] for data in result]) == sorted([f.stem for f in files if f.stem != "example_plugin"])
+    assert {data["id"] for data in result} == expected_ids
 
 
 def test_execute_bad_plugin():

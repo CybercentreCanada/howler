@@ -38,7 +38,7 @@ describe('Markdown', () => {
         untrusted
         disableLinks
         md={
-          '<img src="https://attacker.invalid/raw" onerror="alert(1)" />\n\n![remote](https://attacker.invalid/image)\n\n[external](https://attacker.invalid/page)'
+          '<img src="https://attacker.invalid/raw" onerror="alert(1)" />\n\n![remote](https://attacker.invalid/image)\n\n[external](https://attacker.invalid/page)\n\n[protocol relative](//evil.com)'
         }
       />
     );
@@ -46,5 +46,6 @@ describe('Markdown', () => {
     expect(container.querySelector('img')).toBeNull();
     expect(container.querySelector('[onerror]')).toBeNull();
     expect(container.querySelector('a[href*="attacker.invalid"]')).toBeNull();
+    expect(container.querySelector('a[href^="//"]')).toBeNull();
   });
 });

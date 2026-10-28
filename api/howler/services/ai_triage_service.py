@@ -1,8 +1,7 @@
 """Small shared helpers for the asynchronous AI triage action."""
 
 import json
-from datetime import datetime, timezone
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -12,21 +11,13 @@ from howler.odm.models.hit import Hit
 from howler.odm.models.lead import Lead
 from howler.odm.models.user import User
 from howler.remote.datatypes.queues.named import NamedQueue
-from howler.security.utils import is_classification_accessible
-from howler.services import auth_service, comms_service, hit_service
+from howler.services import auth_service, hit_service
 
 logger = get_logger(__file__)
 
-OPERATION_ID = "ai_triage"
 LEAD_OWNER = "howler.ai_triage"
-LEAD_SCHEMA_VERSION = 1
-ADVANCED_ROLES = {"automation_advanced", "actionrunner_advanced", "admin"}
-AI_TRIAGE_QUEUE_NAME = "howler.ai_triage.alerts.v2"
+AI_TRIAGE_QUEUE_NAME = "howler.ai_triage.alerts"
 CAS_RETRIES = 3
-
-
-class AIQueueValidationError(ValueError):
-    """The requested alerts cannot safely be queued."""
 
 
 class AIAlertJob(TypedDict):
@@ -42,7 +33,7 @@ _queue: NamedQueue[AIAlertJob] | None = None
 
 
 def get_queue() -> NamedQueue[AIAlertJob]:
-    """Return the persistent queue used only by this worker generation."""
+    """Return the persistent queue used by the AI triage workers."""
     global _queue
     if _queue is None:
         _queue = NamedQueue(
@@ -59,75 +50,39 @@ def is_available() -> bool:
     return config.core.ai.locally_valid() and config.system.encryption_key is not None
 
 
-def user_can_run_ai_triage(user: User) -> bool:
-    """Return whether an active user still has an action-runner role."""
-    return user.is_active and bool(ADVANCED_ROLES.union({"automation_basic", "actionrunner_basic"}) & set(user.type))
-
-
 def _eligible_hit(hit: Hit) -> bool:
     return hit.howler.status != "resolved" and not hit.howler.assessment
 
 
-def _selection_limit(user: User) -> int:
-    limits = config.core.ai
-    return limits.max_hits_advanced if ADVANCED_ROLES & set(user.type) else limits.max_hits_basic
-
-
-def _eligible_targets(query: str, user: User) -> list[Hit]:
-    if not isinstance(query, str) or not query.strip():
-        raise AIQueueValidationError("A non-empty alert query is required")
-    if len(query.encode("utf-8")) > 8192:
-        raise AIQueueValidationError("The alert query is too large")
-
-    limit = _selection_limit(user)
+def _eligible_targets(query: str, user: User, max_hits: int) -> list[Hit] | None:
     filtered_query = f"({query}) AND NOT howler.status:resolved AND NOT howler.assessment:*"
     result = datastore().hit.search(
         filtered_query,
         as_obj=True,
-        rows=limit + 1,
+        rows=max_hits + 1,
         access_control=user.access_control,
         track_total_hits=True,
     )
     items = result.get("items", [])
     total = int(result.get("total", 0))
-    if total > limit or len(items) > limit:
-        raise AIQueueValidationError(f"This request matches {total} eligible alerts; the limit is {limit}.")
+    if total > max_hits or len(items) > max_hits:
+        return None
 
-    hits = [
-        hit
-        for hit in items
-        if isinstance(hit, Hit) and _eligible_hit(hit) and is_classification_accessible(user, hit.classification)
-    ]
-    if len(hits) != len(items):
-        raise AIQueueValidationError("The query returned alerts that are not eligible or accessible")
-    if not hits:
-        raise AIQueueValidationError("No unresolved, unassessed alerts matched the query")
-    return hits
+    return [hit for hit in items if _eligible_hit(hit)]
 
 
 def enqueue_alerts(
-    query: str,
-    user: User,
-    bearer_token: str,
-    prompt: str | None = None,
-) -> int:
+    query: str, user: User, bearer_token: str, prompt: str | None = None, *, max_hits: int
+) -> int | None:
     """Select eligible hits and enqueue one minimal job per alert."""
-    if not is_available():
-        raise AIQueueValidationError("AI triage is not enabled or is missing valid local configuration")
-    if not user_can_run_ai_triage(user):
-        raise AIQueueValidationError("The user is not authorized to run AI triage")
-    if not bearer_token:
-        raise AIQueueValidationError("A Bearer authorization token is required")
-    if prompt is not None and not isinstance(prompt, str):
-        raise AIQueueValidationError("The optional prompt must be text")
-    if prompt and len(prompt.encode("utf-8")) > 16_000:
-        raise AIQueueValidationError("The optional prompt is too large")
+    targets = _eligible_targets(query, user, max_hits)
+    if targets is None:
+        return None
+    if not targets:
+        return 0
 
-    targets = _eligible_targets(query, user)
-    encrypted_token = auth_service.encrypt_token(bearer_token)
-    if not encrypted_token:
-        raise AIQueueValidationError("The Bearer authorization token could not be protected")
-    safe_prompt = prompt.strip() if prompt and prompt.strip() else None
+    encrypted_token = cast(str, auth_service.encrypt_token(bearer_token))
+    safe_prompt = prompt.strip() if isinstance(prompt, str) and prompt.strip() else None
     jobs: list[AIAlertJob] = [
         {
             "hit_id": str(hit.howler.id),
@@ -148,17 +103,6 @@ def load_current_user(uname: str) -> User | None:
     except Exception:
         logger.warning("AI triage initiator is no longer available")
         return None
-
-
-def load_current_hit(hit_id: str, user: User) -> tuple[Hit | None, str | None]:
-    """Read the current alert and version through Howler's access-controlled service."""
-    try:
-        hit, version = hit_service.get_hit(hit_id, as_odm=True, version=True, user=user)
-    except Exception:
-        return None, None
-    if hit is None or not is_classification_accessible(user, hit.classification):
-        return None, None
-    return hit, version
 
 
 def filter_input_field(value: Any, path: str) -> None:
@@ -202,60 +146,32 @@ def _lead_owner(lead: Any) -> str | None:
     return metadata.get("owner") if isinstance(metadata, dict) else None
 
 
-def _managed_lead(content: str, source_version: str | None) -> Lead:
-    metadata = json.dumps(
-        {
-            "owner": LEAD_OWNER,
-            "schema_version": LEAD_SCHEMA_VERSION,
-            "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            "source_version": source_version,
-            "provider": config.core.ai.provider,
-        },
-        sort_keys=True,
-        separators=(",", ":"),
-    )
+def _managed_lead(content: str) -> Lead:
     return Lead(
         {
             "label": {"en": "AI Triage", "fr": "Triage IA"},
             "format": "markdown",
             "content": content,
-            "metadata": metadata,
+            "metadata": json.dumps({"owner": LEAD_OWNER}),
         }
     )
 
 
-def save_ai_lead(hit_id: str, user: User, content: str, source_version: str | None) -> bool:
-    """Save to the managed lead slot without overwriting other leads or hit edits."""
-    if not content.strip() or len(content.encode("utf-8")) > config.core.ai.max_output_bytes:
-        return False
-
+def save_ai_lead(hit_id: str, user: User, content: str) -> bool:
+    """Replace only the managed lead, retrying optimistic write conflicts."""
     for _ in range(CAS_RETRIES):
-        current_user = load_current_user(str(user.uname))
-        if current_user is None or not user_can_run_ai_triage(current_user):
-            return False
-        hit, version = load_current_hit(hit_id, current_user)
-        if hit is None or version is None or not _eligible_hit(hit):
+        hit, version = hit_service.get_hit(hit_id, as_odm=True, version=True, user=user)
+        if hit is None or not _eligible_hit(hit):
             return False
 
         preserved = [lead for lead in hit.howler.dossier or [] if _lead_owner(lead) != LEAD_OWNER]
-        # Keep provenance tied to the hit read sent to the provider. `version`
-        # is the fresh CAS version and may reflect edits made during generation.
-        preserved.append(_managed_lead(content, source_version))
+        preserved.append(_managed_lead(content))
         hit.howler.dossier = preserved
-        try:
-            datastore().hit.save(hit_id, hit, version=version)
-        except VersionConflictException:
-            continue
-        except Exception:
-            logger.warning("AI triage lead save failed for alert %s", hit_id)
-            return False
 
         try:
-            saved_data, saved_version = datastore().hit.get_if_exists(key=hit_id, as_obj=False, version=True)
-            if saved_data:
-                comms_service.emit("hits", {"hit": saved_data, "version": saved_version})
-        except Exception:
-            logger.warning("AI triage lead saved but hit notification could not be refreshed for alert %s", hit_id)
+            hit_service.save_hit(hit, version=version)
+        except VersionConflictException:
+            continue
         return True
 
     return False

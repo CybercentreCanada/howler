@@ -22,12 +22,6 @@ PLUGIN_PATH = Path(os.environ.get("HWL_PLUGIN_DIRECTORY", "/etc/howler/plugins")
 ADVANCED_ROLES = {"automation_advanced", "actionrunner_advanced", "admin"}
 
 
-def _is_builtin_operation(operation_id: str) -> bool:
-    """Whether an operation resolves to a module shipped in this package."""
-    module = Path(__file__).parent / f"{operation_id}.py"
-    return module.parent == Path(__file__).parent and module.is_file()
-
-
 def __sanitize_specification(spec: ActionSpecification) -> dict[str, Any]:
     """Adapt the specification for use in the UI
 
@@ -74,16 +68,12 @@ def __sanitize_report(report: list[dict[str, Any]]) -> list[dict[str, Any]]:
     Returns:
         list[dict[str, Any]]: The sanitized, concise report
     """
-    by_message: dict[tuple[str, str, str], list[str]] = {}
+    by_message: dict[str, Any] = {}
 
     for entry in report:
         # if these three keys match, we should merge the queries that use them both. For example, when multiple hits
         # fail to transition for the same reason.
-        key = (
-            entry["title"],
-            entry["message"],
-            entry["outcome"],
-        )
+        key = f"{entry['title']}==={entry['message']}==={entry['outcome']}"
 
         if key in by_message:
             by_message[key].append(f"({entry['query']})")
@@ -92,14 +82,16 @@ def __sanitize_report(report: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     sanitized: list[dict[str, Any]] = []
     for key, queries in by_message.items():
-        title, message, outcome = key
-        entry = {
-            "query": " OR ".join(queries),
-            "outcome": outcome,
-            "title": title,
-            "message": message,
-        }
-        sanitized.append(entry)
+        (title, message, outcome) = key.split("===")
+
+        sanitized.append(
+            {
+                "query": " OR ".join(queries),
+                "outcome": outcome,
+                "title": title,
+                "message": message,
+            }
+        )
 
     return sanitized
 
@@ -182,9 +174,7 @@ def execute(
     user: User | None,
     request_id: Optional[str] = None,
     auth_token: Optional[str] = None,
-    trusted_auth_token: str | None = None,
-    action_id: str | None = None,
-    trigger: str | None = None,
+    bearer_token: str | None = None,
     **kwargs,
 ) -> list[dict[str, Any]]:
     """Execute an operation with strict validation of its arguments."""
@@ -230,17 +220,6 @@ def execute(
             }
         ]
 
-    operation_requires_token = bool(getattr(specification, "requires_auth_token", False))
-    if operation_requires_token and not trusted_auth_token:
-        return [
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "Authentication required",
-                "message": "This operation requires a Bearer authorization token.",
-            }
-        ]
-
     try:
         validated_arguments = specification.validate_arguments(kwargs)
     except ValidationError as e:
@@ -248,7 +227,9 @@ def execute(
 
     # Unset arguments are left out so the operation's own defaults still apply
     operation_kwargs = validated_arguments.model_dump(exclude_unset=True)
-    if auth_token is not None and not operation_requires_token:
+    if getattr(specification, "requires_auth_token", False):
+        operation_kwargs["auth_token"] = bearer_token
+    elif auth_token is not None:
         operation_kwargs["auth_token"] = auth_token
 
     # Skip central limit check if operation handles it locally with transformed query
@@ -256,14 +237,6 @@ def execute(
         limit_error = _check_hit_limit(operation, query, user)
         if limit_error:
             return [limit_error]
-
-    if operation_requires_token:
-        operation_kwargs["trusted_auth_token"] = trusted_auth_token
-        operation_kwargs["action_id"] = action_id
-        operation_kwargs["trigger"] = trigger
-    elif not _is_builtin_operation(operation_id) and trusted_auth_token:
-        # Older plugins consume auth_token without declaring the capability.
-        operation_kwargs["auth_token"] = trusted_auth_token
 
     report = operation.execute(query=query, request_id=request_id, user=user, **operation_kwargs)
 

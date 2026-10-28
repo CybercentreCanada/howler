@@ -210,10 +210,6 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
           return containsMappedComponent ? <div>{children}</div> : <p>{children}</p>;
         },
         a({ children, ...props }) {
-          if (untrusted && props.href && !props.href.startsWith('#') && !props.href.startsWith('/')) {
-            return <span>{children}</span>;
-          }
-
           if (!props.href) {
             return <a {...props}>{children}</a>;
           }

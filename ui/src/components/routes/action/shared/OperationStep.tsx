@@ -163,7 +163,7 @@ const OperationStep: FC<{
           return (
             <TextField
               key={arg}
-              disabled={readonly || loading}
+              disabled={readonly}
               value={parsedValues?.[arg] || ''}
               onChange={e => setValues?.(JSON.stringify({ ...parsedValues, [arg]: e.target.value }))}
               label={getInputLabel(arg)}

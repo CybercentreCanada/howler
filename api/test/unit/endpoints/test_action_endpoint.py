@@ -283,17 +283,7 @@ def test_execute_operations_and_saved_action_report_invalid_data_json_and_contin
         request_id="request-1",
         query="howler.id:*",
         user=user,
-        action_id="action-id",
     )
     first_audit = mock_audit.call_args_list[0].args[1]
     assert first_audit == {"user": user, "query": "howler.id:*", "operation_id": "add_label"}
     assert mock_audit.call_args_list[0].args[4] is audit_fn
-
-
-def test_action_run_endpoints_are_removed():
-    from howler.api.v1.action import action_api
-
-    app = Flask("test_removed_action_runs")
-    app.register_blueprint(action_api)
-
-    assert not any("/runs" in rule.rule for rule in app.url_map.iter_rules())

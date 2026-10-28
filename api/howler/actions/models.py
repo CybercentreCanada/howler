@@ -20,7 +20,17 @@ from howler.odm.models.action import VALID_TRIGGERS
 
 # Supplied to every operation by the dispatcher, never by the user
 DISPATCHER_ARGUMENTS = frozenset(
-    {"query", "user", "request_id", "auth_token", "trusted_auth_token", "action_id", "trigger", "operation_id"}
+    {
+        "query",
+        "user",
+        "request_id",
+        "auth_token",
+        "bearer_token",
+        "trusted_auth_token",
+        "action_id",
+        "trigger",
+        "operation_id",
+    }
 )
 MAX_LISTED_VALUES = 20
 
