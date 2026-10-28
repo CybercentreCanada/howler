@@ -445,6 +445,7 @@
   "open": "Open",
   "operations.add_label": "Add Label",
   "operations.add_to_case": "Add to Case",
+  "operations.ai_triage": "AI Triage",
   "operations.change_field": "Change Field",
   "operations.demote": "Demote Hit",
   "operations.prioritization": "Change Prioritization",
