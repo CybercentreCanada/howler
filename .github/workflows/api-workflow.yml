@@ -190,7 +190,10 @@ jobs:
         run: |
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
             git fetch origin "$BASE_SHA"
-            merge_base="$(git merge-base "$BASE_SHA" "$HEAD_SHA")"
+            if ! merge_base="$(git merge-base "$BASE_SHA" "$HEAD_SHA")"; then
+              echo "::error::Unable to find a merge base between PR base $BASE_SHA and head $HEAD_SHA. Verify that both commits are available and share repository history."
+              exit 1
+            fi
             git diff --name-only "$merge_base..$HEAD_SHA"
             git diff "$merge_base..$HEAD_SHA" > diff.txt
           else

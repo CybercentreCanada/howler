@@ -1,4 +1,5 @@
 import json
+import threading
 import time
 from unittest.mock import MagicMock, Mock
 
@@ -39,7 +40,8 @@ def generate(session, monkeypatch):
 
 def test_openai_success_uses_bearer_and_closes_session(monkeypatch):
     session = Mock()
-    session.post.return_value = json_response({"choices": [{"message": {"content": "Conservative opinion"}}]})
+    response = json_response({"choices": [{"message": {"content": "Conservative opinion"}}]})
+    session.post.return_value = response
 
     assert generate(session, monkeypatch) == "Conservative opinion"
 
@@ -62,7 +64,23 @@ def test_openai_success_uses_bearer_and_closes_session(monkeypatch):
     assert call.kwargs["allow_redirects"] is False
     assert call.kwargs["stream"] is True
     assert session.trust_env is False
+    response.raw.shutdown.assert_not_called()
     session.close.assert_called_once()
+
+
+def test_repeated_transport_calls_cancel_their_watchdogs(monkeypatch):
+    session = Mock()
+    responses = [json_response({"choices": [{"message": {"content": f"opinion {index}"}}]}) for index in range(2)]
+    session.post.side_effect = responses
+    monkeypatch.setattr(transport.requests, "Session", Mock(return_value=session))
+
+    for index in range(2):
+        assert generate(session, monkeypatch) == f"opinion {index}"
+
+    assert session.close.call_count == 2
+    for response in responses:
+        response.raw.shutdown.assert_not_called()
+    assert not any(thread.name.startswith("ai-triage-deadline-") for thread in threading.enumerate())
 
 
 def test_openai_auth_error_is_reported_without_upstream_details(monkeypatch):

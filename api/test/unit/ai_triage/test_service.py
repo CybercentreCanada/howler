@@ -83,8 +83,53 @@ def test_provider_input_excludes_analyst_content_and_prompt_is_additive(settings
     assert hit.as_primitives() == original
 
 
+def test_provider_input_redacts_comment_values_in_all_list_items_without_mutating_hit(settings):
+    settings.excluded_input_fields = ["howler.comment.value"]
+    hit = make_hit(
+        comment=[
+            {"id": "00000000-0000-4000-8000-000000000001", "user": "analyst-1", "value": "private first"},
+            {"id": "00000000-0000-4000-8000-000000000002", "user": "analyst-2", "value": "private second"},
+        ]
+    )
+    original = hit.as_primitives()
+
+    data = service.provider_input(hit)
+
+    assert [comment.get("value") for comment in data["howler"]["comment"]] == [None, None]
+    assert [comment["user"] for comment in data["howler"]["comment"]] == ["analyst-1", "analyst-2"]
+    assert data["event"]["original"] == "current telemetry"
+    assert "private first" not in json.dumps(data)
+    assert "private second" not in json.dumps(data)
+    assert hit.as_primitives() == original
+
+
+def test_filter_input_field_recurses_nested_lists_without_consuming_path(settings):
+    data = {
+        "howler": {
+            "comment": [
+                [[{"value": "private nested", "user": "analyst"}, {"value": "private sibling", "keep": True}]],
+                [{"value": "private second item", "other": "preserved"}],
+            ],
+            "unrelated": "preserved",
+        }
+    }
+
+    service.filter_input_field(data, "howler.comment.value")
+
+    assert data == {
+        "howler": {
+            "comment": [
+                [[{"user": "analyst"}, {"keep": True}]],
+                [{"other": "preserved"}],
+            ],
+            "unrelated": "preserved",
+        }
+    }
+
+
 def test_action_checks_limit_on_eligibility_filtered_query(settings, monkeypatch):
     user = make_user()
+    user.access_control = "howler.classification:TLP:U"
     check_limit = Mock(return_value=None)
     enqueue = Mock(return_value=2)
     monkeypatch.setattr(ai_triage, "check_hit_limit", check_limit)
@@ -98,6 +143,7 @@ def test_action_checks_limit_on_eligibility_filtered_query(settings, monkeypatch
         user,
         ai_triage.MAX_HITS_BASIC,
         ai_triage.MAX_HITS_ADVANCED,
+        access_control=user.access_control,
     )
     enqueue.assert_called_once_with("event.kind:alert", user, "qa-token", prompt="Be concise", max_hits=10)
 

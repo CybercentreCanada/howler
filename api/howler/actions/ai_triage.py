@@ -45,7 +45,13 @@ def execute(
         filtered_query = f"({query}) AND NOT howler.status:resolved AND NOT howler.assessment:*"
         current_user = cast(User, user)
         max_hits = MAX_HITS_ADVANCED if ADVANCED_ROLES & set(current_user["type"]) else MAX_HITS_BASIC
-        limit_error = check_hit_limit(filtered_query, current_user, MAX_HITS_BASIC, MAX_HITS_ADVANCED)
+        limit_error = check_hit_limit(
+            filtered_query,
+            current_user,
+            MAX_HITS_BASIC,
+            MAX_HITS_ADVANCED,
+            access_control=current_user.access_control,
+        )
         if limit_error:
             return [limit_error]
 

@@ -2,6 +2,7 @@
 
 import json
 import time
+from threading import Event, Thread
 from typing import Any
 
 import requests
@@ -27,6 +28,38 @@ def _session() -> requests.Session:
     return session
 
 
+def _start_deadline_watchdog(
+    response: requests.Response, deadline: float, deadline_reached: Event
+) -> tuple[Event, Thread]:
+    """Interrupt a response body read when its absolute deadline expires."""
+    cancelled = Event()
+
+    def abort_body_read() -> None:
+        while not cancelled.is_set():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                deadline_reached.set()
+                try:
+                    # urllib3 exposes this public API from 2.3.0. It shuts down
+                    # the socket read side and wakes a blocking iter_content().
+                    response.raw.shutdown()
+                except (AttributeError, OSError, RuntimeError, ValueError):
+                    # The response may have completed, closed, or been released
+                    # to the pool concurrently.
+                    pass
+                return
+            if cancelled.wait(remaining):
+                return
+
+    watchdog = Thread(
+        target=abort_body_read,
+        name=f"ai-triage-deadline-{id(response):x}",
+        daemon=True,
+    )
+    watchdog.start()
+    return cancelled, watchdog
+
+
 def _read_bounded_json(response: requests.Response, deadline: float) -> dict[str, Any]:
     body = bytearray()
     for chunk in response.iter_content(chunk_size=8192):
@@ -45,6 +78,8 @@ def _read_bounded_json(response: requests.Response, deadline: float) -> dict[str
         raise AITransportError("Provider returned an invalid response") from exc
     if not isinstance(payload, dict):
         raise AITransportError("Provider returned an invalid response")
+    if time.monotonic() >= deadline:
+        raise AITransportError("Provider exceeded its timeout")
     return payload
 
 
@@ -59,9 +94,6 @@ def _post_json(
     endpoint = config.endpoint
     if not endpoint:
         raise AITransportError("AI triage is not configured")
-    remaining = deadline - time.monotonic()
-    if remaining <= 0:
-        raise AITransportError("AI triage exceeded its time limit")
 
     headers = {
         **config.headers,
@@ -69,6 +101,11 @@ def _post_json(
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise AITransportError("Provider exceeded its timeout")
+
+    deadline_reached = Event()
     try:
         with session.post(
             endpoint,
@@ -78,16 +115,25 @@ def _post_json(
             allow_redirects=False,
             stream=True,
         ) as response:
+            if deadline_reached.is_set() or time.monotonic() >= deadline:
+                raise AITransportError("Provider exceeded its timeout")
             if not 200 <= response.status_code < 300:
                 if response.status_code in {401, 403}:
                     raise AITransportError("Provider rejected the authorization token")
                 raise AITransportError(f"Provider returned HTTP {response.status_code}")
-            return _read_bounded_json(response, deadline)
-    except (
-        requests.Timeout,
-        requests.ConnectionError,
-        requests.exceptions.ChunkedEncodingError,
-    ) as exc:
+
+            cancelled, watchdog = _start_deadline_watchdog(response, deadline, deadline_reached)
+            try:
+                payload = _read_bounded_json(response, deadline)
+                if deadline_reached.is_set() or time.monotonic() >= deadline:
+                    raise AITransportError("Provider exceeded its timeout")
+                return payload
+            finally:
+                cancelled.set()
+                watchdog.join()
+    except requests.RequestException as exc:
+        if deadline_reached.is_set() or time.monotonic() >= deadline:
+            raise AITransportError("Provider exceeded its timeout") from exc
         raise AITransportError("AI provider is temporarily unavailable") from exc
 
 
