@@ -325,6 +325,7 @@ def execute_action(id: str, **kwargs) -> Response:
             request_id=execute_req["request_id"],
             query=query,
             user=current_user,
+            bearer_token=action_service._request_auth_token(),
             **op_data,
         )
 
@@ -432,6 +433,7 @@ def execute_operations(**kwargs) -> Response:
             request_id=execute_req["request_id"],
             query=execute_req["query"],
             user=current_user,
+            bearer_token=action_service._request_auth_token(),
             **op_data,
         )
 

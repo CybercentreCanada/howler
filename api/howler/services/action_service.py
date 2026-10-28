@@ -82,15 +82,19 @@ def _is_builtin_operation(operation_id: str) -> bool:
 
 
 def _request_auth_token() -> str | None:
-    """Extract the credential portion of the current request's authorization header."""
+    """Return only the credential from a well-formed Bearer authorization header.
+
+    Basic user/password and API-key credentials are not action-provider
+    credentials and therefore must not be forwarded or persisted.
+    """
     if not has_request_context():
         return None
 
-    authorization = request.headers.get("Authorization")
-    if authorization is None or " " not in authorization:
+    parts = request.headers.get("Authorization", "").split()
+    if len(parts) != 2 or parts[0].lower() != "bearer":
         return None
 
-    return authorization.split(" ", maxsplit=1)[1]
+    return parts[1] or None
 
 
 def get_action_queue(trigger: str) -> NamedQueue[TriggeredAction]:
@@ -298,6 +302,7 @@ def bulk_execute_on_query(
                 operation_id=operation.operation_id,
                 query=intersected_query,
                 user=user,
+                bearer_token=auth_token,
                 **parsed_data,
             )
 

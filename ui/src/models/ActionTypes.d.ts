@@ -4,6 +4,7 @@ export interface ActionOperationStep {
   args: {
     [index: string]: string[];
   };
+  optional_args?: string[];
   options: {
     [index: string]: string[] | { [index: string]: string[] };
   };

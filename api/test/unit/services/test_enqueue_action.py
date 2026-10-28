@@ -18,6 +18,8 @@ class TestEnqueueActionExecution:
 
         with app.test_request_context(headers={"Authorization": "malformed-token"}):
             assert action_service._request_auth_token() is None
+        with app.test_request_context(headers={"Authorization": "Basic dXNlcjpwYXNz"}):
+            assert action_service._request_auth_token() is None
 
     @patch.object(action_service, "get_action_queue")
     @patch("howler.services.action_service.config")
@@ -376,3 +378,5 @@ class TestBulkExecuteOnQuery:
         built_in_call, plugin_call = mock_execute.call_args_list
         assert "auth_token" not in built_in_call.kwargs
         assert plugin_call.kwargs["auth_token"] == "oauth-access-token"
+        assert built_in_call.kwargs["bearer_token"] == "oauth-access-token"
+        assert plugin_call.kwargs["bearer_token"] == "oauth-access-token"

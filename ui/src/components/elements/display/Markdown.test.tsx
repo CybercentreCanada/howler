@@ -31,4 +31,21 @@ describe('Markdown', () => {
       JSON.stringify({ data: { value: 'visible' }, hideSearch: true })
     );
   });
+
+  it('renders untrusted markdown without raw HTML, images, or external links', () => {
+    const { container } = render(
+      <Markdown
+        untrusted
+        disableLinks
+        md={
+          '<img src="https://attacker.invalid/raw" onerror="alert(1)" />\n\n![remote](https://attacker.invalid/image)\n\n[external](https://attacker.invalid/page)\n\n[protocol relative](//evil.com)'
+        }
+      />
+    );
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('[onerror]')).toBeNull();
+    expect(container.querySelector('a[href*="attacker.invalid"]')).toBeNull();
+    expect(container.querySelector('a[href^="//"]')).toBeNull();
+  });
 });

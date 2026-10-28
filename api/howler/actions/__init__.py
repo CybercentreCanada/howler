@@ -100,7 +100,12 @@ def _get_operation(operation_id: str) -> ModuleType | None:
 
 
 def check_hit_limit(
-    query: str, user: User, max_hits_basic: int | None, max_hits_advanced: int | None
+    query: str,
+    user: User,
+    max_hits_basic: int | None,
+    max_hits_advanced: int | None,
+    *,
+    access_control: str | None = None,
 ) -> dict[str, Any] | None:
     """Check if the user exceeds hit count limits. Returns error dict if exceeded, None otherwise.
 
@@ -109,6 +114,7 @@ def check_hit_limit(
         user: The user executing the action.
         max_hits_basic: Maximum hits allowed for basic users (None for no limit).
         max_hits_advanced: Maximum hits allowed for advanced users (None for no limit).
+        access_control: Optional access control filter for the count query.
 
     Returns:
         Error dict if limit exceeded, None otherwise.
@@ -117,7 +123,11 @@ def check_hit_limit(
     limit = max_hits_advanced if is_advanced else max_hits_basic
 
     if limit is not None:
-        hit_count = datastore().hit.search(query, rows=0)["total"]
+        search = datastore().hit.search
+        if access_control is None:
+            hit_count = search(query, rows=0)["total"]
+        else:
+            hit_count = search(query, rows=0, access_control=access_control)["total"]
         if hit_count > limit:
             return {
                 "query": query,
@@ -143,6 +153,7 @@ def execute(
     query: str,
     user: User | None,
     request_id: Optional[str] = None,
+    bearer_token: str | None = None,
     **kwargs,
 ) -> list[dict[str, Any]]:
     """Execute a specification
@@ -180,7 +191,8 @@ def execute(
 
     user_roles = set(user["type"])
     is_admin = "admin" in user_roles
-    required_roles = set(operation.specification()["roles"])
+    specification = operation.specification()
+    required_roles = set(specification["roles"])
     has_roles = required_roles & user_roles
     if not is_admin and not has_roles:
         return [
@@ -195,6 +207,9 @@ def execute(
                 ),
             }
         ]
+
+    if specification.get("requires_auth_token"):
+        kwargs["auth_token"] = bearer_token
 
     # Skip central limit check if operation handles it locally with transformed query
     if not getattr(operation, "SKIP_CENTRAL_LIMIT", False):
@@ -222,6 +237,9 @@ def specifications() -> list[dict[str, Any]]:
     ):
         try:
             operation = importlib.import_module(f"howler.actions.{module.stem}")
+
+            if hasattr(operation, "is_available") and not operation.is_available():
+                continue
 
             specifications.append(__sanitize_specification(operation.specification()))
 

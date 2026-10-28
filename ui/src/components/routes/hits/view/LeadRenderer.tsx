@@ -1,5 +1,6 @@
 import { Box, Divider, Stack, Typography } from '@mui/material';
 import HandlebarsMarkdown from 'components/elements/display/HandlebarsMarkdown';
+import Markdown from 'components/elements/display/Markdown';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Lead } from 'models/entities/generated/Lead';
 import { memo, type FC } from 'react';
@@ -11,13 +12,24 @@ const LeadRenderer: FC<{ lead: Lead; hit?: Hit }> = ({ lead, hit }) => {
   const pluginStore = usePluginStore();
 
   if (lead.format === 'markdown') {
+    let isAiTriageLead = false;
+    try {
+      isAiTriageLead = (JSON.parse(lead.metadata ?? '{}') as { owner?: string }).owner === 'howler.ai_triage';
+    } catch {
+      // Invalid metadata is treated as a regular, trusted lead.
+    }
+
     return (
       <Box
         sx={{
           mt: -2
         }}
       >
-        <HandlebarsMarkdown disableLinks md={lead.content!} object={hit ?? lead} />
+        {isAiTriageLead ? (
+          <Markdown md={lead.content!} disableLinks untrusted />
+        ) : (
+          <HandlebarsMarkdown disableLinks md={lead.content!} object={hit ?? lead} />
+        )}
       </Box>
     );
   }

@@ -48,7 +48,10 @@ const OperationStep: FC<{
         ? 'success'
         : null;
 
-  const args = useMemo(() => getArgsByContext(step.args, values), [step.args, values]);
+  const args = useMemo(
+    () => getArgsByContext(step.args, values, step.optional_args),
+    [step.args, step.optional_args, values]
+  );
   const parsedValues = useMemo(() => JSON.parse(values), [values]);
 
   /**
@@ -71,6 +74,12 @@ const OperationStep: FC<{
         .map(part => capitalize(part))
         .join(' '),
     []
+  );
+
+  const getInputLabel = useCallback(
+    (arg: string) =>
+      step.optional_args?.includes(arg) ? `${getLabel(arg)} (${t('route.actions.optional')})` : getLabel(arg),
+    [getLabel, step.optional_args, t]
   );
 
   /**
@@ -144,7 +153,7 @@ const OperationStep: FC<{
                       </InputAdornment>
                     )
                   }}
-                  label={getLabel(arg)}
+                  label={getInputLabel(arg)}
                 />
               )}
               onChange={(_, value) => setValues?.(JSON.stringify({ ...parsedValues, [arg]: value }))}
@@ -157,7 +166,7 @@ const OperationStep: FC<{
               disabled={readonly}
               value={parsedValues?.[arg] || ''}
               onChange={e => setValues?.(JSON.stringify({ ...parsedValues, [arg]: e.target.value }))}
-              label={getLabel(arg)}
+              label={getInputLabel(arg)}
             />
           );
         }
