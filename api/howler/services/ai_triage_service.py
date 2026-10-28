@@ -108,13 +108,20 @@ def load_current_user(uname: str) -> User | None:
 def filter_input_field(value: Any, path: str) -> None:
     """Remove one nested path from a serialized hit in place."""
     keys = path.split(".")
-    node = value
-    for key in keys[:-1]:
-        if not isinstance(node, dict):
+
+    def remove_path(node: Any, remaining: list[str]) -> None:
+        if isinstance(node, list):
+            for item in node:
+                remove_path(item, remaining)
             return
-        node = node.get(key)
-    if isinstance(node, dict):
-        node.pop(keys[-1], None)
+        if not isinstance(node, dict) or not remaining:
+            return
+        if len(remaining) == 1:
+            node.pop(remaining[0], None)
+            return
+        remove_path(node.get(remaining[0]), remaining[1:])
+
+    remove_path(value, keys)
 
 
 def provider_input(hit: Hit) -> dict[str, Any]:

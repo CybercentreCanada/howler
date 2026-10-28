@@ -120,17 +120,11 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
-      - name: Get base depth of PR
-        if: github.event_name == 'pull_request'
-        id: base-depth
-        working-directory: .
-        run: echo "base-depth=$((${{ github.event.pull_request.commits }} + 1))" >> "$GITHUB_OUTPUT"
-
       - name: Checkout current ref
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: ${{ steps.base-depth.outputs.base-depth || 1 }}
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -204,8 +198,11 @@ jobs:
         if: steps.tests.outcome == 'success'
         run: |
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-            git fetch --depth=1 origin "$BASE_SHA"
-            merge_base="$(git merge-base "$BASE_SHA" "$HEAD_SHA")"
+            git fetch origin "$BASE_SHA"
+            if ! merge_base="$(git merge-base "$BASE_SHA" "$HEAD_SHA")"; then
+              echo "::error::Unable to find a merge base between PR base $BASE_SHA and head $HEAD_SHA. Verify that both commits are available and share repository history."
+              exit 1
+            fi
             git diff --name-only "$merge_base..$HEAD_SHA"
             git diff "$merge_base..$HEAD_SHA" > diff.txt
           else

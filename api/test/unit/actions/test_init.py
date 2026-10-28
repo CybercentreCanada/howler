@@ -2,7 +2,9 @@ import os
 from pathlib import Path
 from unittest.mock import patch
 
-from howler.actions import ai_triage, execute, specifications
+import pytest
+
+from howler.actions import ai_triage, check_hit_limit, execute, specifications
 from howler.config import config
 from howler.odm.models.user import User
 from howler.odm.randomizer import random_model_obj
@@ -157,3 +159,48 @@ def test_execute_user_with_both_basic_and_advanced_roles(mock_ds, mock_add_label
 
     # Should use advanced limit, so 50 hits should be allowed
     assert all(r["title"] != "Hit limit exceeded" for r in result)
+
+
+@pytest.mark.parametrize(
+    ("accessible_count", "limit", "expected_error_count"),
+    [(2, 5, None), (6, 5, 6)],
+)
+@patch("howler.actions.datastore")
+def test_check_hit_limit_counts_only_hits_visible_to_access_control(
+    mock_ds, accessible_count, limit, expected_error_count
+):
+    """The limit and its message must use only the caller's accessible hit count."""
+    acl = "__access_lvl__:[0 TO 100]"
+    inaccessible_count = 8
+    basic_user: User = random_model_obj(User)
+    basic_user.type = ["user", "actionrunner_basic"]
+    basic_user.access_control = acl
+
+    def search(_query, *, rows, access_control=None):
+        assert rows == 0
+        if access_control == acl:
+            return {"total": accessible_count}
+        return {"total": accessible_count + inaccessible_count}
+
+    mock_ds.return_value.hit.search.side_effect = search
+
+    result = check_hit_limit("howler.id:*", basic_user, limit, None, access_control=acl)
+
+    mock_ds.return_value.hit.search.assert_called_once_with("howler.id:*", rows=0, access_control=acl)
+    if expected_error_count is None:
+        assert result is None
+    else:
+        assert result is not None
+        assert f"{expected_error_count} hits" in result["message"]
+        assert f"{accessible_count + inaccessible_count} hits" not in result["message"]
+
+
+@patch("howler.actions.datastore")
+def test_check_hit_limit_preserves_default_unfiltered_call(mock_ds):
+    """Non-AI actions keep the existing count-search arguments when no ACL is passed."""
+    user: User = random_model_obj(User)
+    mock_ds.return_value.hit.search.return_value = {"total": 0}
+
+    assert check_hit_limit("howler.id:*", user, 10, 100) is None
+
+    mock_ds.return_value.hit.search.assert_called_once_with("howler.id:*", rows=0)
