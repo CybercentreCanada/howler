@@ -1,17 +1,15 @@
-import { Delete, DriveFileRenameOutline, OpenInNew } from "@mui/icons-material";
-import api from "api";
-import { ModalContext } from "components/app/providers/ModalProvider";
-import ContextMenu, {
-  type ContextMenuEntry,
-} from "components/elements/ContextMenu";
-import ConfirmDeleteModal from "components/elements/display/modals/ConfirmDeleteModal";
-import useMyApi from "components/hooks/useMyApi";
-import RenameItemModal from "components/routes/cases/modals/RenameItemModal";
-import type { Case } from "models/entities/generated/Case";
-import type { Item } from "models/entities/generated/Item";
-import { useContext, useMemo, type FC, type PropsWithChildren } from "react";
-import { Trans, useTranslation } from "react-i18next";
-import type { Tree } from "./types";
+import { Delete, DriveFileRenameOutline, OpenInNew } from '@mui/icons-material';
+import api from 'api';
+import { ModalContext } from 'components/app/providers/ModalProvider';
+import ContextMenu, { type ContextMenuEntry } from 'components/elements/ContextMenu';
+import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
+import useMyApi from 'components/hooks/useMyApi';
+import RenameItemModal from 'components/routes/cases/modals/RenameItemModal';
+import type { Case } from 'models/entities/generated/Case';
+import type { Item } from 'models/entities/generated/Item';
+import { useContext, useMemo, type FC, type PropsWithChildren } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
+import type { Tree } from './types';
 
 /**
  * Recursively collects all leaf items from a folder tree.
@@ -34,19 +32,19 @@ export const collectAllLeaves = (tree: Tree): Item[] => {
  */
 export const getOpenUrl = (leaf: Item): string | null => {
   const type = leaf.type?.toLowerCase();
-  if (type === "reference") {
+  if (type === 'reference') {
     return leaf.value ?? null;
   }
-  if (type === "hit") {
+  if (type === 'hit') {
     return leaf.value ? `/hits/${leaf.value}` : null;
   }
-  if (type === "event") {
+  if (type === 'event') {
     return leaf.value ? `/events/${leaf.value}` : null;
   }
-  if (type === "case") {
+  if (type === 'case') {
     return leaf.value ? `/cases/${leaf.value}` : null;
   }
-  if (type === "markdown") {
+  if (type === 'markdown') {
     return null;
   }
   return null;
@@ -68,12 +66,7 @@ export interface CaseFolderContextMenuProps extends PropsWithChildren {
  * - **Open item** – opens the item in a new tab (only for leaf items with a navigable URL).
  * - **Remove item / Remove folder** – deletes the leaf item or all items under a folder.
  */
-const CaseFolderContextMenu: FC<CaseFolderContextMenuProps> = ({
-  case: _case,
-  item,
-  onUpdate,
-  children,
-}) => {
+const CaseFolderContextMenu: FC<CaseFolderContextMenuProps> = ({ case: _case, item, onUpdate, children }) => {
   const { dispatchApi } = useMyApi();
   const { t } = useTranslation();
   const { showModal } = useContext(ModalContext);
@@ -84,39 +77,31 @@ const CaseFolderContextMenu: FC<CaseFolderContextMenuProps> = ({
     const openUrl = getOpenUrl(item);
     if (openUrl) {
       entries.push({
-        kind: "item",
-        id: "open-item",
-        label: t("page.cases.sidebar.item.open"),
+        kind: 'item',
+        id: 'open-item',
+        label: t('page.cases.sidebar.item.open'),
         icon: <OpenInNew fontSize="small" />,
-        onClick: () => window.open(openUrl, "_blank", "noopener noreferrer"),
+        onClick: () => window.open(openUrl, '_blank', 'noopener noreferrer')
       });
     }
 
     if (entries.length > 0) {
-      entries.push({ kind: "divider", id: "divider-remove" });
+      entries.push({ kind: 'divider', id: 'divider-remove' });
     }
 
-    const isFolder = item.type === "folder";
+    const isFolder = item.type === 'folder';
     entries.push({
-      kind: "item",
-      id: "rename-item",
-      label: isFolder
-        ? t("page.cases.sidebar.folder.rename")
-        : t("page.cases.sidebar.item.rename"),
+      kind: 'item',
+      id: 'rename-item',
+      label: isFolder ? t('page.cases.sidebar.folder.rename') : t('page.cases.sidebar.item.rename'),
       icon: <DriveFileRenameOutline fontSize="small" />,
-      onClick: () =>
-        showModal(
-          <RenameItemModal _case={_case} item={item} onRenamed={onUpdate} />,
-          { height: null },
-        ),
+      onClick: () => showModal(<RenameItemModal _case={_case} item={item} onRenamed={onUpdate} />, { height: null })
     });
 
     entries.push({
-      kind: "item",
-      id: "remove-item",
-      label: isFolder
-        ? t("page.cases.sidebar.folder.remove")
-        : t("page.cases.sidebar.item.remove"),
+      kind: 'item',
+      id: 'remove-item',
+      label: isFolder ? t('page.cases.sidebar.folder.remove') : t('page.cases.sidebar.item.remove'),
       icon: <Delete fontSize="small" />,
       onClick: () => {
         const caseId = _case.case_id;
@@ -135,25 +120,22 @@ const CaseFolderContextMenu: FC<CaseFolderContextMenuProps> = ({
                   components={{ bold: <strong /> }}
                 />
               ) : (
-                t("page.cases.sidebar.item.remove.confirm", { name: item.name })
+                t('page.cases.sidebar.item.remove.confirm', { name: item.name })
               )
             }
             onConfirm={async () => {
-              const updatedCase = await dispatchApi(
-                api.v2.case.items.del(caseId, [itemId], isFolder),
-                {
-                  throwError: false,
-                },
-              );
+              const updatedCase = await dispatchApi(api.v2.case.items.del(caseId, [itemId], isFolder), {
+                throwError: false
+              });
 
               if (updatedCase) {
                 onUpdate?.(updatedCase);
               }
             }}
           />,
-          { height: "auto" },
+          { height: 'auto' }
         );
-      },
+      }
     });
 
     return entries;
