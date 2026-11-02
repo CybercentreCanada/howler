@@ -1,5 +1,7 @@
 import asyncio
+import base64
 import logging
+from pathlib import Path
 from typing import Any
 
 import jwt
@@ -14,6 +16,8 @@ from jwt.exceptions import (
     PyJWKClientError,
 )
 from mcp.server.auth.provider import AccessToken, TokenVerifier
+
+from .config import HOWLER_API
 
 logger = logging.getLogger(__name__)
 
@@ -190,13 +194,79 @@ class JSONWebTokenVerifier(TokenVerifier):
         return "unknown-client"
 
 
-class AuthProvider:
-    """Manage backend API access tokens using token pass-through.
+AUTH_MODES = frozenset({"passthrough", "apikey"})
 
-    The MCP client token verified by ``JSONWebTokenVerifier`` is already
-    fully qualified for the downstream Howler API, so no additional token
-    exchange is required.
+
+class AuthProvider:
+    """Build the ``Authorization`` header used for Howler API requests.
+
+    Two modes are supported:
+
+    - ``passthrough`` (default): the MCP caller token verified by ``JSONWebTokenVerifier`` is already
+      fully qualified for the downstream Howler API and is forwarded unchanged as a bearer token.
+    - ``apikey`` (opt-in): requests use HTTP basic authentication with a dedicated Howler username and
+      API key. The MCP caller is still authenticated by ``JSONWebTokenVerifier``, but its token is not
+      sent to Howler; backend permissions are those of the API key ACL, so each deployment can be
+      bounded independently of the caller token (for example a read-only key).
     """
+
+    def __init__(
+        self,
+        mode: str | None = None,
+        username: str | None = None,
+        api_key: str | None = None,
+        api_key_file: str | None = None,
+    ) -> None:
+        """Initialise the provider, falling back to ``HOWLER_API`` configuration for unset values.
+
+        Args:
+            mode: ``passthrough`` or ``apikey``.
+            username: Howler username owning the API key (``apikey`` mode only).
+            api_key: Howler API key value. Mutually exclusive with ``api_key_file``.
+            api_key_file: Path to a file containing the Howler API key.
+
+        Raises:
+            ValueError: If the mode is unknown or ``apikey`` mode is missing its credentials.
+        """
+        self.mode = (mode or HOWLER_API.AUTH_MODE).strip().lower()
+        if self.mode not in AUTH_MODES:
+            raise ValueError(f"Unsupported HOWLER_API_AUTH_MODE: {self.mode!r}")
+
+        self._basic_credentials: str | None = None
+        if self.mode == "passthrough":
+            return
+
+        username = username or HOWLER_API.USERNAME
+        if api_key is not None and api_key_file is not None:
+            raise ValueError("Provide either a Howler API key or a key file, not both.")
+        if api_key is None:
+            api_key = self._read_api_key(api_key_file or HOWLER_API.API_KEY_FILE)
+        if not username or not api_key:
+            raise ValueError("HOWLER_API_AUTH_MODE=apikey requires HOWLER_API_USERNAME and HOWLER_API_KEY_FILE.")
+
+        self._basic_credentials = base64.b64encode(f"{username}:{api_key}".encode()).decode("ascii")
+
+    @staticmethod
+    def _read_api_key(api_key_file: str | None) -> str | None:
+        if not api_key_file:
+            return None
+        path = Path(api_key_file)
+        if not path.is_file():
+            raise ValueError("HOWLER_API_KEY_FILE must point to a readable file.")
+        return path.read_text(encoding="utf-8").strip() or None
+
+    async def get_authorization_header(self, user_token: str) -> str:
+        """Return the ``Authorization`` header value for a Howler API request.
+
+        Args:
+            user_token: The raw JWT bearer token from the MCP client session.
+
+        Returns:
+            str: ``Bearer <user token>`` in pass-through mode, ``Basic <credentials>`` in API key mode.
+        """
+        if self._basic_credentials is not None:
+            return f"Basic {self._basic_credentials}"
+        return f"Bearer {await self.get_howler_token(user_token)}"
 
     async def get_howler_token(self, user_token: str) -> str:
         """Return the Howler-compatible bearer token for a given user token.
@@ -205,8 +275,7 @@ class AuthProvider:
             user_token: The raw JWT bearer token from the MCP client session.
 
         Returns:
-            str: Token to use as the ``Authorization`` header value when
-            calling the Howler API.
+            str: Token to use as the bearer credential when calling the Howler API.
         """
         # Token Pass-through: The token verified by JSONWebTokenVerifier
         # is already fully qualified for the downstream backend API.
