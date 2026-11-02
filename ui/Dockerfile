@@ -5,7 +5,7 @@ FROM cgr.dev/ssc-spc.gc.ca/nginx:latest
 COPY --chown=nginx:nginx ./build /usr/share/nginx/html
 
 # Fallback to index.html for client-side routing
-COPY --chown=nginx:nginx ./nginx.conf /etc/nginx/http.d/default.conf
+COPY --chown=nginx:nginx ./nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 3000
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["-g", "daemon off;"]
