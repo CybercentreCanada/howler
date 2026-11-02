@@ -14,6 +14,7 @@ from howler.datastore.collection import CREATE_TOKEN
 from howler.datastore.exceptions import DataStoreException, VersionConflictException
 from howler.datastore.migrations.action_owner import ActionOwnerMigration
 from howler.datastore.migrations.base import Migration
+from howler.datastore.migrations.case_insensitive_metadata import CaseInsensitiveMetadataMigration
 from howler.utils.isotime import now_as_iso
 
 if TYPE_CHECKING:
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("howler.datastore.migrations")
 
-MIGRATIONS: tuple[Migration, ...] = (ActionOwnerMigration(),)
+MIGRATIONS: tuple[Migration, ...] = (ActionOwnerMigration(), CaseInsensitiveMetadataMigration())
 DEFAULT_WAIT_TIMEOUT = 14400.0
 DEFAULT_POLL_INTERVAL = 0.5
 # Keep this above the default task/retry budget so a live long-running migration is not reclaimed.
@@ -309,5 +310,27 @@ def run_migrations(
     selected_migrations = MIGRATIONS if migrations is None else tuple(migrations)
     _validate_migrations(selected_migrations)
 
+    record_collection = datastore.migration
+    # Active migrations can create temporary indexes that preflight must not mistake for leftovers.
+    while True:
+        statuses = []
+        active_claims = []
+        for migration in selected_migrations:
+            record = record_collection.get_if_exists(migration.migration_id, as_obj=False)
+            status = _record_status(record, migration.migration_id)
+            statuses.append(status)
+            if status == "running" and record is not None and not _is_stale_claim(record, migration.migration_id):
+                active_claims.append(migration)
+
+        if not active_claims:
+            break
+
+        for migration in active_claims:
+            _wait_for_existing_claim(record_collection, migration.migration_id)
+
+    if any(status != "applied" for status in statuses):
+        for migration in selected_migrations:
+            migration.preflight(datastore)
+
     for migration in selected_migrations:
-        _run_migration(datastore, datastore.migration, migration)
+        _run_migration(datastore, record_collection, migration)

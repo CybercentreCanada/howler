@@ -24,10 +24,13 @@ let mockParameterContext = {
   sort: 'event.created desc',
   span: 'date.range.1.month',
   views: ['test-view-id'],
+  disabledViewIndexes: [],
   setQuery: vi.fn(),
   setSort: vi.fn(),
   setSpan: vi.fn(),
   removeView: vi.fn(),
+  enableView: vi.fn(),
+  disableView: vi.fn(),
   setView: vi.fn()
 };
 
@@ -68,7 +71,10 @@ describe('ViewLink', () => {
     mockParameterContext.sort = 'event.created desc';
     mockParameterContext.span = 'date.range.1.month';
     mockParameterContext.views = ['test-view-id'];
+    mockParameterContext.disabledViewIndexes = [];
     mockParameterContext.removeView = vi.fn();
+    mockParameterContext.enableView = vi.fn();
+    mockParameterContext.disableView = vi.fn();
     mockParameterContext.setView = vi.fn();
     mockRecordSearchContext.search = vi.fn();
     mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView()]);
@@ -85,6 +91,7 @@ describe('ViewLink', () => {
       render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 
       expect(screen.getByRole('progressbar')).toBeInTheDocument();
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     });
 
     it('should hide loading spinner after view is fetched', async () => {
@@ -112,6 +119,7 @@ describe('ViewLink', () => {
 
       const autocomplete = screen.getByRole('combobox');
       expect(autocomplete).toBeInTheDocument();
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     });
 
     it('should filter out views already in currentViews', async () => {
@@ -178,6 +186,7 @@ describe('ViewLink', () => {
 
       expect(await screen.findByRole('alert')).toBeInTheDocument();
       expect(screen.getByText(i18n.t('view.notfound'))).toBeInTheDocument();
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     });
 
     it('should have proper accessibility attributes on error alert', async () => {
@@ -279,6 +288,92 @@ describe('ViewLink', () => {
         await user.click(deleteButton);
         expect(mockParameterContext.removeView).toHaveBeenCalledWith('test-view-id');
       }
+    });
+  });
+
+  describe('Temporary disabling', () => {
+    it('disables and re-enables the selected entry without editing or removing it', async () => {
+      mockParameterContext.views = ['another-view-id', 'test-view-id'];
+      mockParameterContext.disableView.mockImplementation(index => {
+        mockParameterContext = { ...mockParameterContext, disabledViewIndexes: [index] };
+      });
+      mockParameterContext.enableView.mockImplementation(() => {
+        mockParameterContext = { ...mockParameterContext, disabledViewIndexes: [] };
+      });
+      const { rerender } = render(<ViewLink id={1} viewId="test-view-id" />, { wrapper: Wrapper });
+      const title = await screen.findByText('Test View');
+      await user.click(title.parentElement);
+
+      const checkbox = screen.getByRole('checkbox', { name: i18n.t('hit.search.view.disable') });
+      expect(checkbox).not.toBeChecked();
+      await user.click(checkbox);
+      expect(mockParameterContext.disableView).toHaveBeenCalledExactlyOnceWith(1);
+      rerender(<ViewLink id={1} viewId="test-view-id" />);
+
+      expect(screen.getByRole('checkbox', { name: i18n.t('hit.search.view.disable') })).toBeChecked();
+      expect(title.closest('.MuiChip-root')).toHaveStyle({ opacity: 0.5 });
+      await user.click(screen.getByRole('checkbox', { name: i18n.t('hit.search.view.disable') }));
+      expect(mockParameterContext.enableView).toHaveBeenCalledExactlyOnceWith(1);
+      rerender(<ViewLink id={1} viewId="test-view-id" />);
+
+      expect(screen.getByRole('checkbox', { name: i18n.t('hit.search.view.disable') })).not.toBeChecked();
+      expect(title.closest('.MuiChip-root')).not.toHaveStyle({ opacity: 0.5 });
+      expect(mockParameterContext.views).toEqual(['another-view-id', 'test-view-id']);
+      expect(mockParameterContext.setView).not.toHaveBeenCalled();
+      expect(mockParameterContext.removeView).not.toHaveBeenCalled();
+      expect(mockViewContext.getCurrentViews).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows restored disabled state and keeps view actions available', async () => {
+      mockParameterContext.disabledViewIndexes = [0];
+      render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
+      const title = await screen.findByText('Test View');
+
+      expect(title.closest('.MuiChip-root')).toHaveStyle({ opacity: 0.5 });
+      await user.click(title.parentElement);
+      expect(screen.getByRole('checkbox', { name: i18n.t('hit.search.view.disable') })).toBeChecked();
+      expect(screen.getByLabelText(i18n.t('route.views.edit'))).toHaveAttribute('href', '/views/test-view-id/edit');
+      expect(screen.getByLabelText(i18n.t('view.open'))).toHaveAttribute('href', '/search?query=howler.status:open');
+      await user.click(screen.getByLabelText(i18n.t('view.refresh')));
+      expect(mockRecordSearchContext.search).toHaveBeenCalledWith('howler.id:*');
+    });
+
+    it('uses the updated entry position when re-enabling after another view is removed', async () => {
+      mockParameterContext.views = ['another-view-id', 'test-view-id'];
+      mockParameterContext.disabledViewIndexes = [1];
+      const { rerender } = render(<ViewLink id={1} viewId="test-view-id" />, { wrapper: Wrapper });
+      await user.click((await screen.findByText('Test View')).parentElement);
+      expect(screen.getByRole('checkbox', { name: i18n.t('hit.search.view.disable') })).toBeChecked();
+
+      mockParameterContext = { ...mockParameterContext, views: ['test-view-id'], disabledViewIndexes: [0] };
+      rerender(<ViewLink id={0} viewId="test-view-id" />);
+      await user.click(screen.getByRole('checkbox', { name: i18n.t('hit.search.view.disable') }));
+      expect(mockParameterContext.enableView).toHaveBeenCalledExactlyOnceWith(0);
+      expect(mockParameterContext.disableView).not.toHaveBeenCalled();
+    });
+
+    it('allows keyboard interaction with the labeled disable checkbox', async () => {
+      render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
+      await user.click((await screen.findByText('Test View')).parentElement);
+      const checkbox = screen.getByRole('checkbox', { name: i18n.t('hit.search.view.disable') });
+      checkbox.focus();
+      await user.keyboard(' ');
+
+      expect(mockParameterContext.disableView).toHaveBeenCalledExactlyOnceWith(0);
+      expect(mockParameterContext.removeView).not.toHaveBeenCalled();
+    });
+
+    it('keeps disabled views removable from their chip', async () => {
+      mockParameterContext.disabledViewIndexes = [0];
+      render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
+      const chip = (await screen.findByText('Test View')).closest('.MuiChip-root');
+      const deleteIcon = chip.querySelector('.MuiChip-deleteIcon');
+      expect(deleteIcon).not.toBeNull();
+      await user.click(deleteIcon);
+
+      expect(mockParameterContext.removeView).toHaveBeenCalledExactlyOnceWith('test-view-id');
+      expect(mockParameterContext.enableView).not.toHaveBeenCalled();
+      expect(mockParameterContext.disableView).not.toHaveBeenCalled();
     });
   });
 

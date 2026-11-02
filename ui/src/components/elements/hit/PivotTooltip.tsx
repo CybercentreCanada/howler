@@ -1,10 +1,12 @@
 import { Box, Link, Typography } from '@mui/material';
 import type { Dossier } from 'models/entities/generated/Dossier';
+import type { Pivot } from 'models/entities/generated/Pivot';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
-const PivotTooltip: FC<{ dossier: Dossier; resolvedUrl: string }> = ({ dossier, resolvedUrl }) => {
+const PivotTooltip: FC<{ dossier: Dossier; pivot: Pivot; resolvedUrl: string }> = ({ dossier, pivot, resolvedUrl }) => {
   const dossierUrl = `/dossiers/${dossier.dossier_id}/edit?tab=leads&query=${encodeURIComponent(dossier.query ?? '')}`;
+  const description = pivot.description?.trim();
   const { t } = useTranslation();
 
   return (
@@ -13,9 +15,14 @@ const PivotTooltip: FC<{ dossier: Dossier; resolvedUrl: string }> = ({ dossier, 
       <Typography variant="body2" color="text.secondary">
         {dossier.owner}
       </Typography>
-      <Typography variant="body2" sx={{ mt: 2 }}>
-        {dossier.leads?.[0]?.content?.slice(0, 120) ?? t('pivot.description.none')}
-      </Typography>
+      {description && (
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="caption" display="block">
+            {t('pivot.description.header')}
+          </Typography>
+          <Typography variant="body2">{description.slice(0, 120)}</Typography>
+        </Box>
+      )}
       <Box sx={{ mt: 2, wordBreak: 'break-all' }}>
         <Typography variant="caption" display="block">
           {t('pivot.url')}

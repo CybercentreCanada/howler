@@ -8,7 +8,7 @@ from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.types import SearchResult
 from howler.odm.models.hit import Hit
-from howler.security import api_login
+from howler.security.login import api_login
 
 from sync.services import sync_service
 from sync.utils.parsers import ip_format_type, parse_ip_format, parse_tz_datetime

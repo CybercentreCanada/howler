@@ -5,7 +5,7 @@ import { ViewContext } from 'components/app/providers/ViewProvider';
 import ChipPopper from 'components/elements/display/ChipPopper';
 import dayjs from 'dayjs';
 import type { FC } from 'react';
-import { memo, useEffect } from 'react';
+import { memo, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
@@ -29,8 +29,13 @@ const SearchSpan: FC<{
   const location = useLocation();
 
   const views = useContextSelector(ParameterContext, ctx => ctx.views);
+  const disabledViewIndexes = useContextSelector(ParameterContext, ctx => ctx.disabledViewIndexes);
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
   const setSpan = useContextSelector(ParameterContext, ctx => ctx.setSpan);
+  const enabledViews = useMemo(
+    () => (views ?? []).filter((_, index) => !disabledViewIndexes?.includes(index)),
+    [disabledViewIndexes, views]
+  );
 
   const defaultStartDate = dayjs().subtract(2, 'days');
   const defaultEndDate = dayjs().subtract(1, 'day');
@@ -48,7 +53,9 @@ const SearchSpan: FC<{
     }
 
     void (async () => {
-      const selectedViewSpan = (await getCurrentViews({ lazy: true })).find(view => view?.span)?.span;
+      const selectedViewSpan = (await getCurrentViews({ views: enabledViews, lazy: true, ignoreParams: true })).find(
+        view => view?.span
+      )?.span;
 
       if (!selectedViewSpan) {
         return;
@@ -61,7 +68,7 @@ const SearchSpan: FC<{
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getCurrentViews, views]);
+  }, [enabledViews, getCurrentViews]);
 
   return (
     <ChipPopper

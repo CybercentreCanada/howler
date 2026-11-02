@@ -1,0 +1,124 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/v17.3.0/schemas/config.json",
+  "always-update": true,
+  "bootstrap-sha": "564b1765f4e19ced1db2e5fa923475f51e8e547d",
+  "changelog-sections": [
+    {
+      "section": "Features",
+      "type": "feat"
+    },
+    {
+      "section": "Bug Fixes",
+      "type": "fix"
+    },
+    {
+      "section": "Performance Improvements",
+      "type": "perf"
+    },
+    {
+      "hidden": true,
+      "section": "Dependencies",
+      "type": "deps"
+    },
+    {
+      "section": "Reverts",
+      "type": "revert"
+    },
+    {
+      "section": "Documentation",
+      "type": "docs"
+    },
+    {
+      "hidden": true,
+      "section": "Styles",
+      "type": "style"
+    },
+    {
+      "hidden": true,
+      "section": "Miscellaneous Chores",
+      "type": "chore"
+    },
+    {
+      "section": "Code Refactoring",
+      "type": "refactor"
+    },
+    {
+      "section": "Tests",
+      "type": "test"
+    },
+    {
+      "section": "Tests",
+      "type": "tests"
+    },
+    {
+      "hidden": true,
+      "section": "Build System",
+      "type": "build"
+    },
+    {
+      "hidden": true,
+      "section": "Continuous Integration",
+      "type": "ci"
+    },
+    {
+      "section": "Infrastructure",
+      "type": "infra"
+    },
+    {
+      "section": "Improvements",
+      "type": "improvement"
+    },
+    {
+      "hidden": true,
+      "section": "Releases",
+      "type": "release"
+    }
+  ],
+  "packages": {
+    "api": {
+      "changelog-path": "CHANGELOG.md",
+      "component": "api",
+      "package-name": "howler-api",
+      "release-type": "python"
+    },
+    "client": {
+      "changelog-path": "CHANGELOG.md",
+      "component": "client",
+      "package-name": "howler-client",
+      "release-type": "python"
+    },
+    "mcp": {
+      "changelog-path": "CHANGELOG.md",
+      "component": "mcp",
+      "package-name": "howler-mcp",
+      "release-type": "python"
+    },
+    "plugins/evidence": {
+      "changelog-path": "CHANGELOG.md",
+      "component": "evidence",
+      "package-name": "howler-evidence-plugin",
+      "release-type": "python"
+    },
+    "plugins/sentinel": {
+      "changelog-path": "CHANGELOG.md",
+      "component": "sentinel",
+      "package-name": "howler-sentinel-plugin",
+      "release-type": "python"
+    },
+    "plugins/sync": {
+      "changelog-path": "CHANGELOG.md",
+      "component": "sync",
+      "package-name": "howler-sync-plugin",
+      "release-type": "python"
+    },
+    "ui": {
+      "changelog-path": "CHANGELOG.md",
+      "component": "ui",
+      "package-name": "@cccsaurora/howler-ui",
+      "release-type": "node"
+    }
+  },
+  "pull-request-title-pattern": "chore${scope}: release${component} ${version}",
+  "separate-pull-requests": true,
+  "tag-separator": "-"
+}

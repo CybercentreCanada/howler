@@ -14,6 +14,15 @@ class Migration(ABC):
 
     migration_id: ClassVar[str]
 
+    def preflight(self, datastore: "HowlerDatastore") -> None:
+        """Perform read-only validation before any selected migration starts.
+
+        Preflights must not initialize protected lazy collections, mutate
+        datastore state, or acquire/release migration claims. The runner calls
+        them as a batch before executing any selected migration.
+        """
+        return None
+
     @abstractmethod
     def run(self, datastore: "HowlerDatastore") -> int:
         """Apply the migration and return the number of affected documents."""

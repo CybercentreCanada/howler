@@ -1,12 +1,16 @@
 import json
 from pathlib import Path
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
+import pytest
 import requests
 from howler.app import app
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.hit import Hit
+from howler.odm.models.howler_data import Assessment, Status
 from howler.odm.randomizer import random_model_obj
+from howler.services import hit_service
 
 with (Path(__file__).parent / "sentinel.json").open() as _alert:
     SENTINEL_ALERT = json.load(_alert)
@@ -50,7 +54,10 @@ def test_send_to_sentinel(datastore_connection: HowlerDatastore):
     with app.test_request_context():
         from sentinel.actions.send_to_sentinel import execute
 
-        hit_id = datastore_connection.hit.search("howler.id:*", fl="howler.id", rows=1)["items"][0].howler.id
+        # Use a seeded legacy hit, not a Sentinel record left by ingestion tests.
+        hit_id = datastore_connection.hit.search("howler.id:* AND NOT sentinel.record_type:*", fl="howler.id", rows=1)[
+            "items"
+        ][0].howler.id
 
         result = execute(f"howler.id:{hit_id}")
 
@@ -86,7 +93,24 @@ def test_update_defender_xdr_alert(datastore_connection: HowlerDatastore):
     with app.test_request_context():
         from sentinel.actions.update_defender_xdr_alert import execute
 
-        hit: Hit = datastore_connection.hit.search("howler.id:*", fl="howler.id", rows=1)["items"][0]
+        hit, _ = hit_service.convert_hit(
+            {
+                "howler.analytic": "MSGraph",
+                "howler.detection": "Source alert",
+                "organization": {"name": "Example", "id": "tenant-id"},
+                "rule": {"id": "graph-alert-id"},
+                "sentinel": {
+                    "id": "graph-alert-id",
+                    "tenant_id": "tenant-id",
+                    "record_type": "alert",
+                    "incident_id": "graph-incident-id",
+                    "alert_id": "graph-alert-id",
+                },
+            },
+            unique=False,
+        )
+        datastore_connection.hit.save(hit.howler.id, hit)
+        datastore_connection.hit.commit()
         hit_id = hit.howler.id
 
         result = execute(f"howler.id:{hit_id}")
@@ -97,3 +121,147 @@ def test_update_defender_xdr_alert(datastore_connection: HowlerDatastore):
             "title": "Alert updated in XDR Defender",
             "message": "Howler has successfully propagated changes to this alert to XDR Defender.",
         }
+
+
+def test_update_defender_xdr_incident_uses_full_token(datastore_connection: HowlerDatastore, monkeypatch):
+    from sentinel.actions import update_defender_xdr_incident
+
+    incident_hit, _ = hit_service.convert_hit(
+        {
+            "howler.analytic": "Sentinel",
+            "howler.detection": "Incident summary",
+            "organization": {"name": "Example", "id": "tenant-id"},
+            "sentinel": {
+                "id": "graph-incident-id",
+                "tenant_id": "tenant-id",
+                "record_type": "incident",
+                "incident_id": "graph-incident-id",
+            },
+        },
+        unique=False,
+    )
+    datastore_connection.hit.save(incident_hit.howler.id, incident_hit)
+    datastore_connection.hit.commit()
+    token_provider = Mock(return_value="test-access-token")
+    monkeypatch.setattr(update_defender_xdr_incident, "get_token", token_provider)
+
+    graph_response = Mock(ok=True)
+    graph_response.json.return_value = {
+        "classification": "unknown",
+        "determination": "unknown",
+        "assignedTo": "analyst@example.test",
+    }
+    with (
+        app.test_request_context(),
+        patch("requests.get", return_value=graph_response) as graph_get,
+        patch("requests.patch", return_value=Mock(ok=True)) as graph_patch,
+    ):
+        result = update_defender_xdr_incident.execute(f"howler.id:{incident_hit.howler.id}")
+
+    assert result[0]["outcome"] == "success"
+    token_provider.assert_called_once_with("tenant-id", "https://graph.microsoft.com/.default")
+    assert graph_get.call_args.kwargs["headers"]["Authorization"] == "Bearer test-access-token"
+    assert graph_patch.call_args.kwargs["headers"]["Authorization"] == "Bearer test-access-token"
+
+
+@pytest.mark.parametrize("record_type", ["alert", "incident"])
+@pytest.mark.parametrize(
+    ("assessment", "expected_classification", "expected_determination"),
+    [
+        (None, "truePositive", "malware"),
+        (Assessment.FALSE_POSITIVE, "falsePositive", "other"),
+    ],
+)
+def test_update_defender_xdr_preserves_graph_disposition_without_assessment(
+    monkeypatch,
+    record_type: str,
+    assessment: Assessment | None,
+    expected_classification: str,
+    expected_determination: str,
+):
+    from sentinel.actions import update_defender_xdr_alert, update_defender_xdr_incident
+
+    action = update_defender_xdr_alert if record_type == "alert" else update_defender_xdr_incident
+    record_id = f"graph-{record_type}-id"
+    howler_data = random_model_obj(Hit).howler
+    howler_data.assessment = assessment
+    howler_data.status = Status.IN_PROGRESS
+    hit = SimpleNamespace(
+        howler=howler_data,
+        azure=SimpleNamespace(tenant_id="tenant-id"),
+        organization=SimpleNamespace(id="tenant-id"),
+        sentinel=SimpleNamespace(id=record_id),
+        rule=SimpleNamespace(id=record_id),
+    )
+    assert "assessment" in hit.howler
+    assert hit.howler.assessment == assessment
+
+    datastore = Mock()
+    datastore.hit.search.return_value = {"items": [hit]}
+    monkeypatch.setattr(action, "datastore", Mock(return_value=datastore))
+    monkeypatch.setattr(action, "sentinel_record_type", Mock(return_value=record_type))
+    monkeypatch.setattr(action, "get_token", Mock(return_value="test-access-token"))
+    graph_response = Mock(ok=True)
+    graph_response.json.return_value = {
+        "classification": "truePositive",
+        "determination": "malware",
+        "assignedTo": "analyst@example.test",
+    }
+    with (
+        app.test_request_context(),
+        patch("requests.get", return_value=graph_response),
+        patch("requests.patch", return_value=Mock(ok=True)) as graph_patch,
+    ):
+        result = action.execute(f"howler.id:{hit.howler.id}")
+
+    assert result[0]["outcome"] == "success"
+    assert graph_patch.call_args.kwargs["json"] == {
+        "assignedTo": "analyst@example.test",
+        "classification": expected_classification,
+        "determination": expected_determination,
+        "status": "inProgress",
+    }
+
+
+def test_derived_evidence_is_not_sent_as_graph_alert_or_incident(datastore_connection: HowlerDatastore):
+    evidence_hit, _ = hit_service.convert_hit(
+        {
+            "howler.analytic": "Sentinel Evidence",
+            "howler.detection": "Sentinel Evidence",
+            "organization": {"name": "Example", "id": "tenant-id"},
+            "sentinel": {
+                "tenant_id": "tenant-id",
+                "record_type": "evidence",
+                "incident_id": "incident-id",
+                "alert_id": "alert-id",
+                "evidence_id": "evidence-key",
+            },
+        },
+        unique=False,
+    )
+    datastore_connection.hit.save(evidence_hit.howler.id, evidence_hit)
+    datastore_connection.hit.commit()
+
+    with (
+        app.test_request_context(),
+        patch("requests.get") as graph_get,
+        patch("requests.patch") as graph_patch,
+        patch("requests.post") as external_post,
+    ):
+        from sentinel.actions.azure_emit_hash import execute as emit_hash
+        from sentinel.actions.send_to_sentinel import execute as send_to_sentinel
+        from sentinel.actions.update_defender_xdr_alert import execute as update_alert
+        from sentinel.actions.update_defender_xdr_incident import execute as update_incident
+
+        query = f"howler.id:{evidence_hit.howler.id}"
+        for result in (
+            update_alert(query),
+            update_incident(query),
+            send_to_sentinel(query),
+            emit_hash(query, url="https://example.test/webhook"),
+        ):
+            assert result[0]["outcome"] == "skipped"
+
+    graph_get.assert_not_called()
+    graph_patch.assert_not_called()
+    external_post.assert_not_called()

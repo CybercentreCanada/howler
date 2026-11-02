@@ -110,6 +110,16 @@ describe('PivotForm', () => {
     expect(screen.getByTestId('dossier-state')).not.toHaveTextContent('"group"');
   });
 
+  it('updates the pivot description when edited', async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    const descriptionInput = screen.getByRole('textbox', { name: 'tooltip.pivot.description' });
+    await user.type(descriptionInput, 'A useful description');
+
+    expect(screen.getByTestId('dossier-state')).toHaveTextContent('"description":"A useful description"');
+  });
+
   it('loads at most ten group suggestions after the throttled request', async () => {
     const user = userEvent.setup();
     mockGroupsGet.mockResolvedValue(Array.from({ length: 12 }, (_, index) => `network/${index}`));

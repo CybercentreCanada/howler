@@ -62,7 +62,7 @@ const PageCenterRoot = styled(PageCenter)(({ theme }) => ({
     wordBreak: 'break-word'
   },
   '.paragraph': {
-    marginTop: '-96px',
+    marginTop: theme.spacing(-12),
     '& .spacer': {
       height: theme.spacing(14)
     },

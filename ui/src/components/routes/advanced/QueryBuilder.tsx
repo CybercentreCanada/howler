@@ -1,34 +1,12 @@
 /* eslint-disable no-useless-escape */
 import { useMonaco } from '@monaco-editor/react';
-import { OpenInNew, PlayArrowOutlined } from '@mui/icons-material';
-import {
-  Alert,
-  AlertTitle,
-  Autocomplete,
-  Box,
-  Card,
-  Checkbox,
-  Chip,
-  CircularProgress,
-  FormControlLabel,
-  IconButton,
-  ListItemText,
-  Slider,
-  Stack,
-  TextField,
-  Tooltip,
-  Typography,
-  useMediaQuery,
-  useTheme
-} from '@mui/material';
-import Popper, { type PopperProps } from '@mui/material/Popper';
+import { Alert, AlertTitle, Box, Stack, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { PageCenter, parseEvent } from '@tui/core';
 import api from 'api';
 import type { HowlerEQLSearchResponse, HowlerExplainSearchResponse, HowlerSearchResponse } from 'api/search';
 import type { HowlerFacetSearchResponse } from 'api/search/facet';
 import type { HowlerGroupedSearchResponse } from 'api/search/grouped';
 import { FieldContext } from 'components/app/providers/FieldProvider';
-import CustomButton from 'components/elements/addons/buttons/CustomButton';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import JSONViewer from 'components/elements/display/json/JSONViewer';
 import dayjs from 'dayjs';
@@ -44,14 +22,21 @@ import {
   type KeyboardEventHandler
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
 import { sanitizeMultilineLucene } from 'utils/stringUtils';
 import { v4 as uuid } from 'uuid';
+import {
+  ExecuteQueryButton,
+  FieldsControl,
+  GroupByFieldSelect,
+  type LuceneQueryType,
+  LuceneQueryTypeSelect,
+  OpenInSearchButton,
+  QueryLanguageSelect,
+  RowsControl,
+  STEPS,
+  type QueryLanguage
+} from './QueryBuilderControls';
 import QueryEditor from './QueryEditor';
-
-const QUERY_TYPES = ['eql', 'lucene', 'yaml'];
-
-const STEPS = [1, 5, 25, 50, 100, 250, 500, 1000, 2500, 10000];
 
 const DEFAULT_VALUES = {
   eql: `sequence with maxspan=30m
@@ -93,35 +78,23 @@ level: informational
 `
 };
 
-const LUCENE_QUERY_OPTIONS: ('default' | 'facet' | 'groupby' | 'explain')[] = [
-  'default',
-  'facet',
-  'groupby',
-  'explain'
-];
-
 type SearchResponse<T> =
   | HowlerSearchResponse<T>
   | HowlerEQLSearchResponse<T>
   | HowlerFacetSearchResponse
   | HowlerGroupedSearchResponse<T>;
 
-const CustomPopper = (props: PopperProps) => {
-  return <Popper {...props} style={{ width: 'fit-content' }} placement="bottom-start" />;
-};
-
 const QueryBuilder: FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const smallButtons = useMediaQuery('(max-width:1150px)');
   const compactLayout = useMediaQuery('(max-width:870px)');
   const monaco = useMonaco();
   const { hitFields, getHitFields } = useContext(FieldContext);
 
-  const [type, setType] = useState<'eql' | 'lucene' | 'yaml'>('lucene');
+  const [type, setType] = useState<QueryLanguage>('lucene');
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState(DEFAULT_VALUES.lucene);
-  const [queryType, setQueryType] = useState<'default' | 'facet' | 'groupby' | 'explain'>('default');
+  const [queryType, setQueryType] = useState<LuceneQueryType>('default');
   const [groupByField, setGroupByField] = useState<string>('');
   const [allFields, setAllFields] = useState(true);
   const [fields, setFields] = useState<string[]>(['howler.id']);
@@ -287,188 +260,31 @@ const QueryBuilder: FC = () => {
             }
           }}
         >
-          {smallButtons ? (
-            <Tooltip title={t('route.actions.execute')}>
-              <IconButton
-                size="small"
-                sx={{ alignSelf: 'start' }}
-                color="success"
-                onClick={execute}
-                disabled={searchDisabled}
-              >
-                {loading ? (
-                  <CircularProgress size={18} color="success" />
-                ) : (
-                  <PlayArrowOutlined color={searchDisabled ? 'disabled' : 'success'} />
-                )}
-              </IconButton>
-            </Tooltip>
-          ) : (
-            <CustomButton
-              size="small"
-              variant="outlined"
-              startIcon={
-                loading ? (
-                  <CircularProgress size={18} color="success" />
-                ) : (
-                  <PlayArrowOutlined
-                    color={searchDisabled ? 'disabled' : 'success'}
-                    sx={{ '& path': { stroke: 'currentcolor', strokeWidth: '1px' } }}
-                  />
-                )
-              }
-              color="success"
-              onClick={execute}
-              disabled={searchDisabled}
-            >
-              {t('route.actions.execute')}
-            </CustomButton>
-          )}
+          <ExecuteQueryButton loading={loading} searchDisabled={searchDisabled} onExecute={execute} />
           <Stack direction={compactLayout ? 'column' : 'row'} spacing={1}>
-            <Autocomplete
-              value={type}
-              onChange={(__, value) => setType(value as 'eql' | 'lucene' | 'yaml')}
-              options={QUERY_TYPES}
-              getOptionLabel={option => t(`route.advanced.query.${option}`)}
-              renderOption={(props, option) => (
-                <ListItemText
-                  {...(props as any)}
-                  sx={{ flexDirection: 'column', alignItems: 'start !important' }}
-                  primary={t(`route.advanced.query.${option}`)}
-                  secondary={t(`route.advanced.query.${option}.description`)}
-                />
-              )}
-              renderInput={params => (
-                <TextField {...params} size="small" label={t('route.advanced.query.type')} sx={{ minWidth: '250px' }} />
-              )}
-              sx={[
-                !compactLayout && {
-                  height: '100%',
-                  '& .MuiFormControl-root': { height: '100%', '& > div': { height: '100%' } }
-                }
-              ]}
-              slotProps={{ paper: { sx: { minWidth: '600px' } } }}
-            />
-            <Card variant="outlined" sx={{ flex: 1, maxWidth: '350px', minWidth: '210px' }}>
-              <Stack spacing={0.5} sx={{ px: 1, alignItems: 'start' }}>
-                <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
-                  {t('route.advanced.rows')}: {STEPS[rows]}
-                </Typography>
-                <Slider
-                  size="small"
-                  valueLabelDisplay="off"
-                  value={rows}
-                  onChange={(_, value) => setRows(value as number)}
-                  min={0}
-                  max={9}
-                  step={1}
-                  marks
-                  track={false}
-                  sx={{ py: 0.5 }}
-                />
-              </Stack>
-            </Card>
+            <QueryLanguageSelect value={type} onChange={setType} compactLayout={compactLayout} />
+            <RowsControl value={rows} onChange={setRows} />
           </Stack>
-          {type === 'lucene' && (
-            <Autocomplete
-              size="small"
-              getOptionLabel={opt => t(`route.advanced.query.type.${opt}`)}
-              options={LUCENE_QUERY_OPTIONS}
-              value={queryType}
-              onChange={(_event, value) => setQueryType(value ?? 'default')}
-              renderInput={params => (
-                <TextField {...params} label={t('route.advanced.query.lucene.type')} sx={{ minWidth: '230px' }} />
-              )}
-              renderOption={(props, option) => (
-                <ListItemText
-                  {...(props as any)}
-                  sx={{ flexDirection: 'column', alignItems: 'start !important' }}
-                  primary={t(`route.advanced.query.type.${option}`)}
-                  secondary={t(`route.advanced.query.type.${option}.description`)}
-                />
-              )}
-            />
-          )}
+          {type === 'lucene' && <LuceneQueryTypeSelect value={queryType} onChange={setQueryType} />}
           {queryType === 'groupby' && (
-            <Autocomplete
-              size="small"
+            <GroupByFieldSelect
               options={fieldOptions}
               value={groupByField}
-              onChange={(__, value) => setGroupByField(value ?? '')}
-              renderInput={params => <TextField {...params} label={t('route.advanced.pivot.field')} />}
-              sx={{ minWidth: '200px', '& label': { zIndex: 1200 } }}
+              onChange={setGroupByField}
               onKeyDown={onKeyDown}
-              PopperComponent={CustomPopper}
             />
           )}
-          {allFields && queryType !== 'facet' ? (
-            <FormControlLabel
-              control={<Checkbox size="small" checked={allFields} onChange={(__, checked) => setAllFields(checked)} />}
-              label={t('route.advanced.fields.all')}
-              sx={{ '& > span': { color: 'text.secondary' }, alignSelf: 'start' }}
-            />
-          ) : (
-            <Autocomplete
-              fullWidth
-              renderTags={values =>
-                values.length <= 3 ? (
-                  <Stack direction="row" spacing={0.5}>
-                    {values.map(_value => (
-                      <Chip key={_value} label={_value} />
-                    ))}
-                  </Stack>
-                ) : (
-                  <Tooltip
-                    title={
-                      <Stack spacing={1}>
-                        {values.map(_value => (
-                          <span key={_value}>{_value}</span>
-                        ))}
-                      </Stack>
-                    }
-                  >
-                    <Chip label={values.length} />
-                  </Tooltip>
-                )
-              }
-              multiple
-              size="small"
-              options={fieldOptions}
-              value={fields}
-              onChange={(__, values) => (values.length > 0 ? setFields(values) : setAllFields(true))}
-              renderInput={params => <TextField {...params} label={t('route.advanced.fields')} />}
-              sx={{ maxWidth: '500px', width: '20vw', minWidth: '200px', '& label': { zIndex: 1200 } }}
-              onKeyDown={onKeyDown}
-              slots={{ popper: CustomPopper }}
-            />
-          )}
+          <FieldsControl
+            allFields={allFields}
+            onAllFieldsChange={setAllFields}
+            queryType={queryType}
+            fieldOptions={fieldOptions}
+            fields={fields}
+            onFieldsChange={setFields}
+            onKeyDown={onKeyDown}
+          />
           <FlexOne />
-          {type === 'lucene' &&
-            (smallButtons ? (
-              <Tooltip title={t('route.advanced.open')}>
-                <IconButton
-                  color="primary"
-                  sx={{ alignSelf: 'center' }}
-                  component={Link}
-                  disabled={!response}
-                  to={`/hits?query=${sanitizeMultilineLucene(query).replaceAll('\n', ' ').trim()}`}
-                >
-                  <OpenInNew fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            ) : (
-              <CustomButton
-                size="small"
-                variant="outlined"
-                startIcon={<OpenInNew />}
-                component={Link}
-                disabled={!response}
-                // TuiButton doesn't accept this prop even through the underlying component does, so we do a hack
-                {...({ to: `/hits?query=${sanitizeMultilineLucene(query).replaceAll('\n', ' ').trim()}` } as any)}
-              >
-                {t('route.advanced.open')}
-              </CustomButton>
-            ))}
+          {type === 'lucene' && <OpenInSearchButton query={query} hasResponse={!!response} />}
         </Stack>
         <Box
           width="100%"

@@ -7,8 +7,10 @@ from howler import odm
 @odm.model(index=True, store=True, description="Model of templates")
 class Template(odm.Model):
     template_id: str = odm.UUID(description="A UUID for this template")
-    analytic: str = odm.Keyword(description="The analytic which this template applies to.")
-    detection: Optional[str] = odm.Keyword(description="The detection which this template applies to.", optional=True)
+    analytic: str = odm.CaseInsensitiveKeyword(description="The analytic which this template applies to.")
+    detection: Optional[str] = odm.CaseInsensitiveKeyword(
+        description="The detection which this template applies to.", optional=True
+    )
     type: Union[Literal["personal"], Literal["global"]] = odm.Enum(
         values=["personal", "global"],
         description="The type of template - personal or global?",

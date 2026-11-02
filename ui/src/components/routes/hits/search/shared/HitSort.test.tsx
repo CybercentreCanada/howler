@@ -8,7 +8,12 @@ const mockSetSavedSort = vi.hoisted(() => vi.fn());
 const mockGetCurrentViews = vi.hoisted(() => vi.fn());
 
 let locationValue = { search: '' };
-let parameterValue: any = { views: [], sort: 'event.created desc', setSort: mockSetSavedSort };
+let parameterValue: any = {
+  views: [],
+  disabledViewIndexes: [],
+  sort: 'event.created desc',
+  setSort: mockSetSavedSort
+};
 
 vi.mock('@mui/icons-material', async importOriginal => {
   const actual = await importOriginal<typeof import('@mui/icons-material')>();
@@ -62,7 +67,12 @@ import HitSort from './HitSort';
 describe('HitSort', () => {
   beforeEach(() => {
     locationValue = { search: '' };
-    parameterValue = { views: [], sort: 'event.created desc', setSort: mockSetSavedSort };
+    parameterValue = {
+      views: ['selected_view'],
+      disabledViewIndexes: [],
+      sort: 'event.created desc',
+      setSort: mockSetSavedSort
+    };
     mockSetSavedSort.mockReset();
     mockGetCurrentViews.mockReset();
   });
@@ -71,9 +81,24 @@ describe('HitSort', () => {
     mockGetCurrentViews.mockResolvedValueOnce([{ sort: 'howler.score asc' }]);
     render(<HitSort />);
     await waitFor(() => expect(mockSetSavedSort).toHaveBeenCalledWith('howler.score asc'));
+    expect(mockGetCurrentViews).toHaveBeenCalledWith({ views: ['selected_view'], lazy: true, ignoreParams: true });
 
     fireEvent.click(screen.getAllByText('change-sort')[0]!);
     expect(screen.getByText('custom-sort')).toBeInTheDocument();
+  });
+
+  it('loads sort only from enabled views', async () => {
+    parameterValue = {
+      ...parameterValue,
+      views: ['disabled_view', 'enabled_view'],
+      disabledViewIndexes: [0]
+    };
+    mockGetCurrentViews.mockResolvedValueOnce([{ sort: 'howler.score asc' }]);
+
+    render(<HitSort />);
+
+    await waitFor(() => expect(mockSetSavedSort).toHaveBeenCalledWith('howler.score asc'));
+    expect(mockGetCurrentViews).toHaveBeenCalledWith({ views: ['enabled_view'], lazy: true, ignoreParams: true });
   });
 
   it('skips view lookup when sort is in the URL', () => {

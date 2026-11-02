@@ -182,6 +182,71 @@ configuration and recovery procedure.
     - Running Howler in development mode
 <!-- markdownlint-enable -->
 
+## Microsoft Sentinel tenant mapping
+
+The maintained `howler-sentinel-plugin` source lives in
+[`plugins/sentinel/`](https://github.com/CybercentreCanada/howler/tree/main/plugins/sentinel).
+Use an API image that includes a published plugin release supporting `tenant_mapping`. Sentinel no longer requires the
+Evidence plugin. Installing/enabling a plugin and supplying its configuration are separate steps: Helm configuration
+alone does not install Python packages.
+
+Add tenant IDs and their Howler customer/organization names to your deployment's Helm values:
+
+```yaml
+config:
+  core:
+    plugins:
+      - sentinel
+
+plugins:
+  sentinel:
+    tenant_mapping:
+      "11111111-1111-1111-1111-111111111111": "Example Organization"
+      "22222222-2222-2222-2222-222222222222": "Another Organization"
+```
+
+`plugins.sentinel.tenant_mapping` is a non-secret `dict[str, str]`. It belongs in ordinary Helm values, **not a
+Kubernetes Secret**. The chart writes `plugins.sentinel` to `sentinel.yml` in the `howler-server-conf` ConfigMap and
+mounts it at `/etc/howler/conf/sentinel.yml`. Keep authentication credentials in your existing Secret-backed
+configuration; do not include link keys or client secrets in this example.
+
+The incoming incident's top-level `tenantId` is matched exactly against the configured keys. Its mapped name becomes
+`organization.name` on the incident summary, source alert, and evidence hits; `organization.id` remains the tenant ID.
+All child hits use the incident's tenant, rather than looking up a separate customer from each alert payload.
+
+Each newly ingested incident creates one Howler case, including incidents with zero alerts. The incident summary hit is
+at the case root. Each source alert and its former Graph evidence objects are placed under an
+`alerts/<stable-source-alert-hit-id>/` folder; every evidence object is a normal hit with its raw object in
+`howler.data`. Replays add new alerts/evidence without duplicating stable records, and omitted collections do not delete
+case data. Status updates affect Sentinel-owned case hits only, not unrelated analyst-added hits.
+
+The default mapping is empty (`{}`). An authenticated request with a missing, blank, malformed, or unmapped tenant
+ID, or a mapping whose customer name is blank, receives **HTTP 400 before any datastore access or hit/case writes**.
+There is no implicit sample-customer or unknown-customer fallback. Configure every expected tenant before upgrading;
+otherwise ingestion for those tenants will be rejected, including replays of existing incidents. Callers should
+correct the configuration or payload before retrying.
+
+Apply the values with your normal `helm upgrade` process, retaining the rest of your deployment values and selecting
+the API image containing the new plugin release via `images.rest.repository` / `images.rest.tag`. The chart's
+configuration checksum triggers a pod rollout when the mapping changes; ensure the rollout completes before sending
+incidents. Outside Helm, configure `tenant_mapping` directly in `sentinel.yml` and restart the API workers after changes.
+Changing a name affects newly created hits only. This case-based Sentinel hierarchy is a breaking change and does not
+migrate or backfill historical Sentinel bundles, Evidence-plugin fields, hits, or cases. Re-ingestion does not convert
+those historical records; only incidents newly ingested by this release use the case hierarchy.
+
+### Releasing and consuming the plugin change
+
+Follow the [release runbook](https://github.com/CybercentreCanada/howler/blob/main/docs/patching.md): merge the reviewed
+Sentinel source change, then merge its Release Please release PR after checks pass. The resulting `sentinel-vX.Y.Z`
+tag dispatches the Sentinel workflow, which builds and publishes `howler-sentinel-plugin` to PyPI. Verify publication
+before updating a consuming application's dependency to that exact released version; regenerate its lockfile with
+Poetry, run `poetry check --lock` and `poetry install`, and rebuild/redeploy the API image. Do not pin an unreleased
+version, edit installed `.venv` files, or add runtime monkey patches.
+
+This monorepo's API package does not currently declare a Sentinel dependency or lock entry. If a separate deployment
+repository owns that pin, update it there after publication; do not add a new mandatory API dependency solely to
+configure an optional plugin.
+
 ## Configuring OAuth Authentication
 
 OAuth provides single sign-on (SSO) capabilities, allowing users to authenticate with Howler using their existing

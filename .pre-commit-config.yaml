@@ -51,6 +51,13 @@ repos:
         language: script
         stages: [pre-commit]
         files: ^plugins/sentinel/.*\.(toml|lock)
+      - id: poetry-check-sync
+        name: Poetry Check (Sync Plugin)
+        entry: hooks/check_poetry.sh
+        args: [plugins/sync]
+        language: script
+        stages: [pre-commit]
+        files: ^plugins/sync/.*\.(toml|lock)
       - id: poetry-check-mcp
         name: Poetry Check (MCP Server)
         entry: hooks/check_poetry.sh

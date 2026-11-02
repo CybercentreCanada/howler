@@ -31,8 +31,13 @@ const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
   const getCurrentViews = useContextSelector(ViewContext, ctx => ctx.getCurrentViews);
 
   const views = useContextSelector(ParameterContext, ctx => ctx.views);
+  const disabledViewIndexes = useContextSelector(ParameterContext, ctx => ctx.disabledViewIndexes);
   const savedSort = useContextSelector(ParameterContext, ctx => ctx.sort);
   const setSavedSort = useContextSelector(ParameterContext, ctx => ctx.setSort);
+  const enabledViews = useMemo(
+    () => (views ?? []).filter((_, index) => !disabledViewIndexes?.includes(index)),
+    [disabledViewIndexes, views]
+  );
 
   const sortEntries = useMemo(() => savedSort?.split(',').filter(part => !!part) ?? [], [savedSort]);
 
@@ -76,14 +81,16 @@ const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
     }
 
     void (async () => {
-      const selectedViewSort = (await getCurrentViews({ lazy: true })).find(view => view?.sort)?.sort;
+      const selectedViewSort = (await getCurrentViews({ views: enabledViews, lazy: true, ignoreParams: true })).find(
+        view => view?.sort
+      )?.sort;
 
       if (selectedViewSort && !location.search.includes('sort')) {
         setSavedSort(selectedViewSort);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getCurrentViews, views]);
+  }, [enabledViews, getCurrentViews]);
 
   return (
     <ChipPopper icon={<Sort fontSize="small" />} label={savedSort ?? ''} slotProps={{ chip: { size: 'small' } }}>

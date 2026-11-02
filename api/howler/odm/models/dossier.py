@@ -23,9 +23,9 @@ class Dossier(Ownership):
         default=[],
         description="A list of the pivots to show when the query matches the given alert.",
     )
-    title: str = odm.Keyword(description="The title of this dossier.")
+    title: str = odm.CaseInsensitiveKeyword(description="The title of this dossier.")
 
-    query: Optional[str] = odm.Keyword(
+    query: Optional[str] = odm.CaseInsensitiveKeyword(
         description="The query that controls when this dossier should be shown in the UI.", optional=True, default=None
     )
     type: Union[Literal["personal"], Literal["global"]] = odm.Enum(

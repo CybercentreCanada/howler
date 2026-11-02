@@ -1,0 +1,27 @@
+# Changelog
+
+## [3.4.0](https://github.com/CybercentreCanada/howler/compare/client-v3.3.0...client-v3.4.0) (2026-10-24)
+
+
+### Features
+
+* **client:** support ingesting from a jsonl file ([#691](https://github.com/CybercentreCanada/howler/issues/691)) ([9ade526](https://github.com/CybercentreCanada/howler/commit/9ade526245567f74b078081ed3eadec20c4123c6))
+* **client:** support template strings for mappings ([#689](https://github.com/CybercentreCanada/howler/issues/689)) ([b555864](https://github.com/CybercentreCanada/howler/commit/b555864dd907e1a3b39d69446f355a684e36bf4b))
+
+## [3.3.0](https://github.com/CybercentreCanada/howler/compare/client-v3.2.0...client-v3.3.0) (2026-10-24)
+
+
+### Features
+
+* **client:** include the raw data pre-transformation by default ([#688](https://github.com/CybercentreCanada/howler/issues/688)) ([802a500](https://github.com/CybercentreCanada/howler/commit/802a500a0305cb2b050eb805abfce1be38127809))
+
+## [3.2.0](https://github.com/CybercentreCanada/howler/compare/client-v3.1.0...client-v3.2.0) (2026-10-22)
+
+
+### Features
+
+* **client:** add howler clientside mapping functionality ([#675](https://github.com/CybercentreCanada/howler/issues/675)) ([f3fbf4d](https://github.com/CybercentreCanada/howler/commit/f3fbf4dedce956fcbd1f506c6a9ab7e86fd787e9))
+
+## Changelog
+
+The native release baseline is **v3.1.0**. This baseline is recorded in the release manifest; no generated release entry is created for it. Earlier client release notes are archived in the [historical release archive](../docs/RELEASES.md#howler-client-v310).

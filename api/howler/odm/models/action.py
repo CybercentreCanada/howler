@@ -19,8 +19,8 @@ class Operation(odm.Model):
 @odm.model(index=True, store=True, description="Model of actions")
 class Action(Ownership):
     action_id: str = odm.UUID(description="A UUID for this action")
-    name: str = odm.Keyword(description="The name of the action.")
-    query: str = odm.Keyword(description="The query this action is run against.")
+    name: str = odm.CaseInsensitiveKeyword(description="The name of the action.")
+    query: str = odm.CaseInsensitiveKeyword(description="The query this action is run against.")
     triggers: list[str] = odm.List(
         odm.Enum(VALID_TRIGGERS),
         default=[],

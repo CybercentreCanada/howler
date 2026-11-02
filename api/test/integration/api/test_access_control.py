@@ -152,12 +152,7 @@ class TestHitClassificationField:
     """Verify the new 'classification' field is present on Hit records via the API."""
 
     def test_hit_has_classification_field(self, admin_session, classified_hits):
-        """A GET on a specific hit returns the 'classification' field in the response.
-
-        This confirms that the Hit model now exposes classification through the API.
-        Note: Direct GET by hit ID does NOT enforce classification-based access control --
-        it's the search endpoint that applies the access_control Lucene filter.
-        """
+        """An admin can directly GET a hit and see its classification field."""
         session, host = admin_session
         unrestricted_id, _ = classified_hits
 
@@ -174,6 +169,19 @@ class TestHitClassificationField:
 
         result = get_api_data(session, f"{host}/api/v1/hit/{restricted_id}/")
         assert result["classification"] == CLASSIFICATION.RESTRICTED
+
+
+@_enforce_only
+class TestHitDirectAccessControl:
+    """Direct hit retrieval must not bypass the classification filter used by search."""
+
+    def test_unrestricted_user_cannot_get_restricted_hit(self, huey_session, classified_hits):
+        session, host = huey_session
+        _, restricted_id = classified_hits
+
+        response = get_api_data(session, f"{host}/api/v1/hit/{restricted_id}/", raw=True)
+
+        assert response.status_code == 404
 
 
 # ===================================================================

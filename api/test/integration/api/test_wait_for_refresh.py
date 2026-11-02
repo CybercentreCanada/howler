@@ -33,6 +33,12 @@ def _build_request(test_client, endpoint: str, method: str, data: str):
     return test_client.open(request)
 
 
+def _external_hit_payload(hit: Hit) -> dict[str, Any]:
+    payload = hit.as_primitives()
+    payload.pop("__index", None)
+    return payload
+
+
 SPY_INDEXES = ("action", "analytic", "dossier", "overview", "template", "view", "user", "hit")
 
 
@@ -298,7 +304,7 @@ def test_hit_post_refresh_forwards_all_writes(test_client, datastore_connection,
         test_client,
         endpoint=endpoint,
         method=method,
-        data=json.dumps([hit.as_primitives() for hit in hit_list]),
+        data=json.dumps([_external_hit_payload(hit) for hit in hit_list]),
     )
 
     assert response.status_code == 201, response.data.decode("utf-8")
@@ -323,7 +329,7 @@ def test_hit_post_force_refresh_mixed_by_index(test_client, datastore_connection
         test_client,
         endpoint=endpoint,
         method=method,
-        data=json.dumps([hit.as_primitives() for hit in hit_list]),
+        data=json.dumps([_external_hit_payload(hit) for hit in hit_list]),
     )
 
     assert response.status_code == 201, response.data.decode("utf-8")

@@ -2,6 +2,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 from howler_client.client import Client
 from howler_client.connection import Connection
+from howler_client.module.mapping import MappingError, RowMapping, RowMappingResult, map_rows
 
 try:
     __version__ = version("howler-client")
@@ -10,6 +11,16 @@ except PackageNotFoundError:
 
 RETRY_FOREVER = 0
 SUPPORTED_APIS = {"v1"}
+
+__all__ = [
+    "Client",
+    "Connection",
+    "MappingError",
+    "RowMapping",
+    "RowMappingResult",
+    "get_client",
+    "map_rows",
+]
 
 
 def get_client(

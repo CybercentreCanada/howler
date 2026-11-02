@@ -5,6 +5,7 @@ from howler_client.connection import Connection
 from howler_client.module.action import Action
 from howler_client.module.help import Help
 from howler_client.module.hit import Hit
+from howler_client.module.mapping import HowlerMapping
 from howler_client.module.search import Search
 from howler_client.module.user import User
 from howler_client.module.v2 import V2
@@ -27,6 +28,7 @@ class Client(object):
         self.hit = Hit(self._connection, self.search)
         self.user = User(self._connection)
         self.v2 = V2(self._connection)
+        self.mapping = HowlerMapping()
 
         paths: list[str] = []
         walk_api_path(self, [""], paths)

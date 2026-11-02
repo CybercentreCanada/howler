@@ -330,6 +330,22 @@ describe('ChipPopper', () => {
   });
 
   describe('Styling', () => {
+    it('dims disabled chips and restores full opacity on hover', () => {
+      const { container } = render(
+        <ChipPopper icon={<Info />} label="Disabled filter" dimmed>
+          <div>Content</div>
+        </ChipPopper>
+      );
+
+      const chip = container.querySelector('.MuiChip-root');
+      expect(chip).toHaveStyle({ opacity: '0.5' });
+
+      const generatedStyles = Array.from(document.querySelectorAll('style'))
+        .map(style => style.textContent ?? '')
+        .join(' ');
+      expect(generatedStyles).toMatch(/:hover\{opacity:1/);
+    });
+
     it('should apply border radius transition styles to chip', () => {
       const { container } = render(
         <ChipPopper icon={<Info />} label="Test">

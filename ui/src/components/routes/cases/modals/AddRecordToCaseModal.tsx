@@ -1,13 +1,13 @@
-import { Autocomplete, Button, CircularProgress, Divider, Stack, TextField, Typography } from '@mui/material';
+import { Button, CircularProgress, Divider, Stack, Typography } from '@mui/material';
 import api from 'api';
 import { ModalContext } from 'components/app/providers/ModalProvider';
-import CaseCard from 'components/elements/case/CaseCard';
 import useMyApi from 'components/hooks/useMyApi';
 import type { Case } from 'models/entities/generated/Case';
 import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
 import { useContext, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import CaseSelector from './CaseSelector';
 import CaseRecordRow from './CaseRecordRow';
 import { useFolderOptions, useRecordEntries } from './hooks';
 
@@ -68,28 +68,7 @@ const AddRecordToCaseModal: FC<{ records: (Hit | Event)[] }> = ({ records }) => 
   return (
     <Stack spacing={2} p={2} sx={{ minWidth: 'min(800px, 60vw)', maxHeight: '90vh', height: '100%' }}>
       <Typography variant="h4">{t('modal.cases.add_to_case')}</Typography>
-      <Autocomplete<Case>
-        options={cases}
-        getOptionLabel={option => option.title ?? option.case_id ?? ''}
-        isOptionEqualToValue={(option, value) => option.case_id === value.case_id}
-        value={selectedCase}
-        disablePortal
-        onChange={(_ev, newVal) => {
-          setSelectedCase(newVal);
-        }}
-        renderOption={(props, option) => (
-          <li
-            {...props}
-            key={option.case_id}
-            style={{ ...props.style, display: 'flex', justifyContent: 'stretch', alignItems: 'stretch' }}
-          >
-            <CaseCard case={option} slotProps={{ card: { sx: { width: '100%' } } }} />
-          </li>
-        )}
-        renderInput={params => (
-          <TextField {...params} size="small" placeholder={t('modal.cases.add_to_case.select_case')} fullWidth />
-        )}
-      />
+      <CaseSelector options={cases} value={selectedCase} onChange={setSelectedCase} />
       {selectedCase && entries.length > 0 ? (
         <>
           <Divider>

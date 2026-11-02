@@ -1,14 +1,36 @@
 /// <reference types="vitest" />
 import { render } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockDefineTheme = vi.hoisted(() => vi.fn());
 const mockRegisterLanguage = vi.hoisted(() => vi.fn());
 const mockSetTheme = vi.hoisted(() => vi.fn());
 const capturedProps = vi.hoisted(() => ({ current: null as any }));
 
-let themeMode: 'light' | 'dark' = 'light';
+const createPalette = (
+  mode: 'light' | 'dark' = 'light',
+  paper = mode === 'light' ? '#fff' : '#111',
+  primary = mode === 'light' ? '#0055aa' : '#268bd2',
+  foreground = mode === 'light' ? '#202020' : '#eee8d5',
+  warningDark = '#abc'
+) => ({
+  mode,
+  background: { paper },
+  primary: { main: primary },
+  text: { primary: foreground, secondary: '#777777', disabled: '#aaaaaa' },
+  divider: '#dddddd',
+  action: {
+    selected: 'rgba(10, 20, 30, 0.2)',
+    hover: 'rgba(10, 20, 30, 0.1)',
+    active: 'rgba(10, 20, 30, 0.3)'
+  },
+  warning: { dark: warningDark, light: '#def' },
+  error: { main: '#123456' },
+  success: { main: '#654321' }
+});
+
 let monacoValue: any = null;
+let themePalette = createPalette();
 
 vi.mock('@monaco-editor/react', () => ({
   Editor: (props: any) => {
@@ -19,36 +41,20 @@ vi.mock('@monaco-editor/react', () => ({
 }));
 
 vi.mock('@mui/material', () => ({
-  useTheme: () => ({ palette: { mode: themeMode, background: { paper: themeMode === 'light' ? '#fff' : '#111' } } })
-}));
-
-vi.mock('@tui/core', () => ({
-  useAppTheme: () => ({ current: 'default', optionsOverride: { dense: true } }),
-  useAppThemeBuilder: () => () => ({
-    lightTheme: {
-      palette: {
-        background: { paper: '#fff' },
-        warning: { dark: '#abc', light: '#def' },
-        error: { main: '#123456' },
-        success: { main: '#654321' }
-      }
-    },
-    darkTheme: {
-      palette: {
-        background: { paper: '#111' },
-        warning: { dark: '#aaa', light: '#bbb' },
-        error: { main: '#222222' },
-        success: { main: '#333333' }
-      }
-    }
-  })
+  useTheme: () => ({ palette: themePalette })
 }));
 
 import ThemedEditor from './ThemedEditor';
 
 describe('ThemedEditor', () => {
+  beforeEach(() => {
+    themePalette = createPalette();
+    monacoValue = null;
+    vi.clearAllMocks();
+  });
+
   it('defines custom monaco themes and merges editor options', () => {
-    monacoValue = { editor: { setTheme: mockSetTheme } };
+    monacoValue = { editor: { defineTheme: mockDefineTheme, setTheme: mockSetTheme } };
     render(<ThemedEditor id="the-editor" options={{ readOnly: true }} beforeMount={vi.fn()} value="x" />);
 
     const fakeMonaco = {
@@ -59,11 +65,10 @@ describe('ThemedEditor', () => {
 
     expect(mockDefineTheme).toHaveBeenCalledWith(
       'howler',
-      expect.objectContaining({ colors: { 'editor.background': '#ffffff' } })
-    );
-    expect(mockDefineTheme).toHaveBeenCalledWith(
-      'howler-dark',
-      expect.objectContaining({ colors: { 'editor.background': '#111111' } })
+      expect.objectContaining({
+        base: 'vs',
+        colors: expect.objectContaining({ 'editor.background': '#FFFFFF', 'editor.foreground': '#202020' })
+      })
     );
     expect(mockRegisterLanguage).toHaveBeenCalledWith({ id: 'lucene' });
     expect(capturedProps.current.wrapperProps).toEqual({ id: 'the-editor' });
@@ -71,11 +76,56 @@ describe('ThemedEditor', () => {
     expect(mockSetTheme).toHaveBeenCalledWith('howler');
   });
 
-  it('switches to the dark theme when the mui theme changes', () => {
-    themeMode = 'dark';
-    monacoValue = { editor: { setTheme: mockSetTheme } };
+  it('converts RGB palette colors to Monaco token colors', () => {
+    themePalette = createPalette('light', '#fff', '#0055aa', '#202020', 'RGB(126, 95, 0)');
+    monacoValue = { editor: { defineTheme: mockDefineTheme, setTheme: mockSetTheme } };
     render(<ThemedEditor value="x" />);
-    expect(capturedProps.current.theme).toBe('howler-dark');
-    expect(mockSetTheme).toHaveBeenCalledWith('howler-dark');
+
+    capturedProps.current.beforeMount({
+      editor: { defineTheme: mockDefineTheme },
+      languages: { register: mockRegisterLanguage }
+    });
+
+    expect(mockDefineTheme).toHaveBeenCalledWith(
+      'howler',
+      expect.objectContaining({
+        rules: expect.arrayContaining([expect.objectContaining({ token: 'handlebars', foreground: '7E5F00' })])
+      })
+    );
+  });
+
+  it('uses and updates colors from the active app theme', () => {
+    themePalette = createPalette('dark', '#002B36');
+    monacoValue = { editor: { defineTheme: mockDefineTheme, setTheme: mockSetTheme } };
+    const { rerender } = render(<ThemedEditor value="x" />);
+
+    expect(capturedProps.current.theme).toBe('howler');
+    expect(mockDefineTheme).toHaveBeenLastCalledWith(
+      'howler',
+      expect.objectContaining({
+        base: 'vs-dark',
+        colors: expect.objectContaining({
+          'editor.background': '#002B36',
+          'editor.foreground': '#EEE8D5',
+          'editor.selectionBackground': '#0A141E33'
+        })
+      })
+    );
+    expect(mockSetTheme).toHaveBeenCalledWith('howler');
+
+    themePalette = createPalette('dark', '#101010', '#cc5500', '#f0f0f0');
+    rerender(<ThemedEditor value="y" />);
+
+    expect(mockDefineTheme).toHaveBeenLastCalledWith(
+      'howler',
+      expect.objectContaining({
+        base: 'vs-dark',
+        colors: expect.objectContaining({
+          'editor.background': '#101010',
+          'editor.foreground': '#F0F0F0',
+          'editorCursor.foreground': '#CC5500'
+        })
+      })
+    );
   });
 });

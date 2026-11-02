@@ -1,4 +1,4 @@
-import re
+import os
 import sys
 from pathlib import Path
 
@@ -8,15 +8,15 @@ load_dotenv()
 load_dotenv(Path(__file__).parent / ".env.test")
 
 # We append the plugin directory for howler to the python part
-sys.path.insert(0, str(Path.cwd()))
-api_path = Path(re.sub(r"^(.+)/plugins.+$", r"\1", str(Path.cwd())) + "/api")
+plugin_path = Path(__file__).resolve().parents[1]
+os.environ["HWL_PLUGIN_DIRECTORY"] = str(plugin_path.parent)
+sys.path.insert(0, str(plugin_path))
+api_path = plugin_path.parents[1] / "api"
 sys.path.insert(0, str(api_path))
 
-# Ensure the evidence plugin is on sys.path
-sys.path.append(str(Path.cwd().parent / "evidence"))
 from howler.config import config
 
-config.core.plugins.add("evidence")
+config.core.plugins.discard("evidence")
 config.core.plugins.add("sentinel")
 
 import pytest
