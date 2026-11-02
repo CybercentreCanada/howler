@@ -514,7 +514,7 @@
   "page.cases.sidebar.add_item": "Add item",
   "page.cases.sidebar.collapse_all": "Collapse all folders",
   "page.cases.sidebar.folder.remove": "Remove folder",
-  "page.cases.sidebar.folder.remove.confirm": "Are you sure you want to delete the folder \"{{name}}\" and everything inside it?",
+  "page.cases.sidebar.folder.remove.confirm": "Are you sure you want to delete the folder \"{{name}}\" and <bold>everything inside it</bold>?",
   "page.cases.sidebar.folder.rename": "Rename folder",
   "page.cases.sidebar.item.open": "Open item",
   "page.cases.sidebar.item.remove": "Remove item",
