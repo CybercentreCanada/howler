@@ -52,6 +52,12 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
         return;
       }
 
+      await dispatchApi(api.v2.notification.notify(analytic.analytic_id!, user.username!), {
+        showError: true,
+        throwError: true,
+        logError: false
+      });
+
       setAnalytic(result);
 
       input.current!.value = '';
@@ -59,7 +65,7 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
     } finally {
       setLoading(false);
     }
-  }, [analytic, dispatchApi, searchParams, setAnalytic]);
+  }, [analytic, dispatchApi, searchParams, setAnalytic, user.username]);
 
   const onClear = useCallback(() => {
     input.current!.value = '';

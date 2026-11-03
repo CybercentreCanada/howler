@@ -232,7 +232,10 @@ def _modifies_prop(prop: str, operations: list[OdmUpdateOperation]) -> bool:
 
 
 def convert_hit(  # noqa: C901
-    data: dict[str, Any], unique: bool, user: User | None = None, ignore_extra_values: bool = False
+    data: dict[str, Any],
+    unique: bool,
+    user: User | None = None,
+    ignore_extra_values: bool = False,
 ) -> tuple[Hit, list[str]]:
     """Validate and convert a dictionary to a Hit ODM object.
 

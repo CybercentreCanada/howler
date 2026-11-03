@@ -52,6 +52,11 @@ vi.mock('api', () => ({
           del: (analyticId: string, commentId: string) => ({ analyticId, commentId, op: 'react-del' })
         }
       }
+    },
+    v2: {
+      notification: {
+        notify: (analyticId: string, commenter: string) => ({ analyticId, commenter, op: 'notify' })
+      }
     }
   }
 }));
@@ -121,6 +126,11 @@ describe('AnalyticComments', () => {
         { showError: true, throwError: true, logError: false }
       )
     );
+    expect(mockDispatchApi).toHaveBeenCalledWith(
+      { analyticId: 'an-1', commenter: 'demo', op: 'notify' },
+      { showError: true, throwError: true, logError: false }
+    );
+    expect(mockDispatchApi.mock.invocationCallOrder[0]).toBeLessThan(mockDispatchApi.mock.invocationCallOrder[1]);
     expect(setAnalytic).toHaveBeenCalledWith({ analytic_id: 'an-1', comment: [] });
     expect(input).toHaveValue('');
   });
