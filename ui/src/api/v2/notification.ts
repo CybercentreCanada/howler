@@ -2,11 +2,11 @@ import { hpost, joinAllUri } from 'api';
 import { uri as parentUri } from 'api/v2';
 
 export interface AnalyticCommentNotification {
-  type: 'analytic_comment';
   recipient: string;
-  actor: string;
-  analytic_id: string;
-  analytic_name: string;
+  resource_id: string;
+  resource_type: 'analytic';
+  resource_commenter: string;
+  resource_name: string;
   message: string;
 }
 

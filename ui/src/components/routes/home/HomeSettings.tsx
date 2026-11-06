@@ -1,7 +1,8 @@
-import { Edit, Settings } from '@mui/icons-material';
+import { Edit, Mail, Settings } from '@mui/icons-material';
 import { FormControl, FormLabel, IconButton, ListItemIcon, Menu, MenuItem, Slider, Tooltip } from '@mui/material';
 import { useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import NotificationCard from './NotificationCard';
 
 const REFRESH_RATES = [15, 30, 60, 300];
 
@@ -18,20 +19,30 @@ interface HomeSettingsProps {
 
 const HomeSettings: FC<HomeSettingsProps> = ({ isEditing, refreshRate, onRefreshRateChange, onEdit }) => {
   const { t } = useTranslation();
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
+  const [notificationAnchorEl, setNotificationAnchorEl] = useState<null | HTMLElement>(null);
 
   return (
     <>
       <Tooltip title={t('page.dashboard.settings.edit')}>
-        <IconButton onClick={e => setAnchorEl(e.currentTarget)} size="small">
+        <IconButton
+          aria-label="Open dashboard settings"
+          onClick={e => setSettingsAnchorEl(e.currentTarget)}
+          size="small"
+        >
           <Settings color="primary" />
         </IconButton>
       </Tooltip>
-      <Menu id="settings-menu" anchorEl={anchorEl} open={!!anchorEl} onClose={() => setAnchorEl(null)}>
+      <Menu
+        id="settings-menu"
+        anchorEl={settingsAnchorEl}
+        open={!!settingsAnchorEl}
+        onClose={() => setSettingsAnchorEl(null)}
+      >
         <MenuItem
           disabled={isEditing}
           onClick={() => {
-            setAnchorEl(null);
+            setSettingsAnchorEl(null);
             onEdit();
           }}
         >
@@ -67,6 +78,20 @@ const HomeSettings: FC<HomeSettingsProps> = ({ isEditing, refreshRate, onRefresh
           </FormControl>
         </MenuItem>
       </Menu>
+      <Tooltip title="Notifications">
+        <IconButton
+          aria-label="Open notifications"
+          onClick={e => setNotificationAnchorEl(e.currentTarget)}
+          size="small"
+        >
+          <Mail color="primary" />
+        </IconButton>
+      </Tooltip>
+      <NotificationCard
+        anchorEl={notificationAnchorEl}
+        analyticName="Test_analytic"
+        onClose={() => setNotificationAnchorEl(null)}
+      />
     </>
   );
 };

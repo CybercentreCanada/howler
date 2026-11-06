@@ -59,9 +59,7 @@ hit_helper = OdmHelper(Hit)
 @hit_api.route("/", methods=["POST"])
 @api_login(required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def create_hits(
-    user: User, refresh: Literal["true", "false", "wait_for"] | None = None, skip_validation: bool = False, **kwargs
-):
+def create_hits(user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
     """Create hits.
 
     Variables:

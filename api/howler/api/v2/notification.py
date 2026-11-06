@@ -3,19 +3,14 @@ from typing import Any
 from flask import request
 
 from howler.api import bad_request, make_subapi_blueprint, not_found, ok
-from howler.common.loader import datastore
-from howler.common.logging import get_logger
+from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.swagger import generate_swagger_docs
-from howler.datastore.exceptions import SearchException
 from howler.security.login import api_login
-from howler.services import comms_service
-from howler.utils.str_utils import sanitize_lucene_query
+from howler.services import notification_service
 
 SUB_API = "notification"
 notification_api = make_subapi_blueprint(SUB_API, api_version=2)
 notification_api._doc = "Send user notifications"  # type: ignore[attr-defined]
-
-logger = get_logger(__file__)
 
 
 @generate_swagger_docs()
@@ -63,34 +58,8 @@ def notify_user(user: dict[str, Any], **kwargs):
         return bad_request(err="'commenter' must match the authenticated user.")
 
     try:
-        result = datastore().analytic.search(
-            f'analytic_id:"{sanitize_lucene_query(analytic_id)}"',
-            as_obj=False,
-            rows=2,
-        )
-    except SearchException as error:
-        logger.exception("Unable to find analytic %s for notification", analytic_id)
+        return ok(notification_service.create_analytic_comment_notification(analytic_id, commenter))
+    except NotFoundException as error:
+        return not_found(err=str(error))
+    except InvalidDataException as error:
         return bad_request(err=str(error))
-
-    analytics = result["items"]
-    if not analytics:
-        return not_found(err=f"Analytic {analytic_id} does not exist.")
-    if len(analytics) > 1:
-        logger.warning("Multiple analytics found for analytic_id %s", analytic_id)
-
-    analytic = analytics[0]
-    owner = analytic.get("owner")
-    if not owner:
-        return bad_request(err=f"Analytic {analytic_id} does not have an owner.")
-
-    notification = {
-        "type": "analytic_comment",
-        "recipient": owner,
-        "actor": commenter,
-        "analytic_id": analytic["analytic_id"],
-        "analytic_name": analytic["name"],
-        "message": f"{commenter} commented on your analytic {analytic['name']}.",
-    }
-
-    comms_service.emit("notification", notification)
-    return ok(notification)

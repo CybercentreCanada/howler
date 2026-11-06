@@ -52,11 +52,13 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
         return;
       }
 
-      await dispatchApi(api.v2.notification.notify(analytic.analytic_id!, user.username!), {
-        showError: true,
-        throwError: true,
-        logError: false
-      });
+      if (analytic.owner && analytic.owner !== user.username) {
+        await dispatchApi(api.v2.notification.notify(analytic.analytic_id!, user.username!), {
+          showError: true,
+          throwError: false,
+          logError: false
+        });
+      }
 
       setAnalytic(result);
 

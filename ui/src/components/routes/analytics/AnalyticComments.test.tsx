@@ -108,30 +108,58 @@ describe('AnalyticComments', () => {
     mockDispatchApi.mockReset().mockImplementation(async value => value);
   });
 
-  it('submits comments and clears the input', async () => {
+  it('submits comments, notifies the owner, and clears the input', async () => {
     const setAnalytic = vi.fn();
-    mockDispatchApi.mockResolvedValueOnce({ analytic_id: 'an-1', comment: [] });
+    mockDispatchApi.mockResolvedValueOnce({ analytic_id: 'an-1', owner: 'user2', comment: [] });
 
-    render(<AnalyticComments analytic={{ analytic_id: 'an-1', comment: [] } as any} setAnalytic={setAnalytic} />);
+    render(
+      <AnalyticComments
+        analytic={{ analytic_id: 'an-1', owner: 'user2', comment: [] } as any}
+        setAnalytic={setAnalytic}
+      />
+    );
 
     const input = screen.getByLabelText('comments.add.analytic');
     fireEvent.change(input, { target: { value: 'hello world' } });
     fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true });
 
-    await Promise.resolve();
-    await Promise.resolve();
-    await waitFor(() =>
-      expect(mockDispatchApi).toHaveBeenCalledWith(
-        { analyticId: 'an-1', value: 'hello world', filter: undefined, op: 'post' },
-        { showError: true, throwError: true, logError: false }
-      )
-    );
-    expect(mockDispatchApi).toHaveBeenCalledWith(
-      { analyticId: 'an-1', commenter: 'demo', op: 'notify' },
+    await waitFor(() => expect(setAnalytic).toHaveBeenCalledWith({ analytic_id: 'an-1', owner: 'user2', comment: [] }));
+    expect(mockDispatchApi).toHaveBeenCalledTimes(2);
+    expect(mockDispatchApi).toHaveBeenNthCalledWith(
+      1,
+      { analyticId: 'an-1', value: 'hello world', filter: undefined, op: 'post' },
       { showError: true, throwError: true, logError: false }
     );
-    expect(mockDispatchApi.mock.invocationCallOrder[0]).toBeLessThan(mockDispatchApi.mock.invocationCallOrder[1]);
-    expect(setAnalytic).toHaveBeenCalledWith({ analytic_id: 'an-1', comment: [] });
+    expect(mockDispatchApi).toHaveBeenNthCalledWith(
+      2,
+      { analyticId: 'an-1', commenter: 'demo', op: 'notify' },
+      { showError: true, throwError: false, logError: false }
+    );
+    expect(input).toHaveValue('');
+  });
+
+  it('does not notify when the owner comments on their own analytic', async () => {
+    const setAnalytic = vi.fn();
+    mockDispatchApi.mockResolvedValueOnce({ analytic_id: 'an-1', owner: 'demo', comment: [] });
+
+    render(
+      <AnalyticComments
+        analytic={{ analytic_id: 'an-1', owner: 'demo', comment: [] } as any}
+        setAnalytic={setAnalytic}
+      />
+    );
+
+    const input = screen.getByLabelText('comments.add.analytic');
+    fireEvent.change(input, { target: { value: 'hello world' } });
+    fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true });
+
+    await waitFor(() => expect(setAnalytic).toHaveBeenCalledWith({ analytic_id: 'an-1', owner: 'demo', comment: [] }));
+    expect(mockDispatchApi).toHaveBeenCalledTimes(1);
+    expect(mockDispatchApi).toHaveBeenCalledWith(
+      { analyticId: 'an-1', value: 'hello world', filter: undefined, op: 'post' },
+      { showError: true, throwError: true, logError: false }
+    );
+    expect(mockDispatchApi).not.toHaveBeenCalledWith(expect.objectContaining({ op: 'notify' }), expect.anything());
     expect(input).toHaveValue('');
   });
 

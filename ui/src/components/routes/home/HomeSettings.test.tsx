@@ -25,7 +25,7 @@ describe('HomeSettings', () => {
       <HomeSettings isEditing={false} refreshRate={30} onRefreshRateChange={onRefreshRateChange} onEdit={onEdit} />,
       { wrapper: Wrapper }
     );
-    expect(screen.getByRole('button')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open dashboard settings' })).toBeInTheDocument();
   });
 
   it('opens the settings menu when the icon button is clicked', async () => {
@@ -35,7 +35,7 @@ describe('HomeSettings', () => {
       { wrapper: Wrapper }
     );
 
-    await user.click(screen.getByRole('button'));
+    await user.click(screen.getByRole('button', { name: 'Open dashboard settings' }));
     // The menu should now be open – the edit menu item should be visible
     expect(screen.getByRole('menu')).toBeInTheDocument();
   });
@@ -47,7 +47,7 @@ describe('HomeSettings', () => {
       { wrapper: Wrapper }
     );
 
-    await user.click(screen.getByRole('button'));
+    await user.click(screen.getByRole('button', { name: 'Open dashboard settings' }));
     const editItem = screen.getAllByRole('menuitem')[0];
     await user.click(editItem);
     expect(onEdit).toHaveBeenCalledTimes(1);
@@ -60,8 +60,21 @@ describe('HomeSettings', () => {
       { wrapper: Wrapper }
     );
 
-    await user.click(screen.getByRole('button'));
+    await user.click(screen.getByRole('button', { name: 'Open dashboard settings' }));
     const editItem = screen.getAllByRole('menuitem')[0];
     expect(editItem).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('opens the notification card when the notification icon is clicked', async () => {
+    const user = userEvent.setup();
+    render(
+      <HomeSettings isEditing={false} refreshRate={30} onRefreshRateChange={onRefreshRateChange} onEdit={onEdit} />,
+      { wrapper: Wrapper }
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Open notifications' }));
+
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    expect(screen.getByText('A user commented on your analytic: Test_analytic')).toBeInTheDocument();
   });
 });
