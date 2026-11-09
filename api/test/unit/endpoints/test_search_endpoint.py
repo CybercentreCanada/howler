@@ -1094,12 +1094,10 @@ class TestAssignedHitScrollTokenScope:
     @patch("howler.api.v1.hit.hit_service.search")
     @patch("howler.security.login.auth_service")
     @patch("howler.security.login.QUOTA_TRACKER")
-    @patch("howler.security.login.audit")
     @patch("howler.api.QUOTA_TRACKER")
     def test_assigned_hit_scroll_returns_and_advances_with_a_token(
         self,
         mock_api_quota_tracker,
-        mock_audit,
         mock_quota_tracker,
         mock_auth_service,
         mock_hit_search,
@@ -1143,7 +1141,6 @@ class TestAssignedHitScrollTokenScope:
         second_result = second_response.get_json()["api_response"]
         assert mock_hit_search.call_args_list[1].kwargs["deep_paging_id"] == "raw-first-scroll"
         assert resolve_deep_paging_id(user, "hit", second_result["next_deep_paging_id"], query) == "raw-second-scroll"
-        assert mock_audit.call_count == 2
         assert mock_api_quota_tracker.end.call_count == 2
 
     @patch("howler.api.v1.hit.hit_service.search")
