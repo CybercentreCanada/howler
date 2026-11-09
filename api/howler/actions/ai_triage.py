@@ -6,7 +6,7 @@ from howler.actions import ADVANCED_ROLES, check_hit_limit
 from howler.common.logging import get_logger
 from howler.odm.models.action import VALID_TRIGGERS
 from howler.odm.models.user import User
-from howler.services import ai_triage_service
+from howler.services import ai_service
 
 logger = get_logger(__file__)
 
@@ -19,7 +19,7 @@ SKIP_CENTRAL_LIMIT = True
 
 def is_available() -> bool:
     """Return local configuration availability without contacting the provider."""
-    return ai_triage_service.is_available()
+    return ai_service.is_available()
 
 
 def execute(
@@ -55,7 +55,7 @@ def execute(
         if limit_error:
             return [limit_error]
 
-        count = ai_triage_service.enqueue_alerts(query, current_user, auth_token, prompt=prompt, max_hits=max_hits)
+        count = ai_service.enqueue_alerts(query, current_user, auth_token, prompt=prompt, max_hits=max_hits)
     except Exception:
         # Redis and datastore errors can contain connection details or secrets.
         logger.error("Unable to enqueue AI triage alerts")  # noqa: TRY400
