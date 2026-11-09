@@ -78,9 +78,12 @@ print(f"\tWriting {len(exports)} entries to exports")
 package_json["exports"] = {"./i18n": "./i18n.js", "./index.css": "./index.css"}
 for path in exports:
     if "." in path.name:
-        package_json["exports"][f"./{path.parent.relative_to(src_path)}"] = (
-            f"./{path.parent.relative_to(src_path)}/index.js"
-        )
+        parent = path.parent
+        if parent == Path("."):
+            continue
+
+        subpath = parent.as_posix()
+        package_json["exports"][f"./{subpath}"] = f"./{subpath}/index.js"
     elif str(path).startswith("locales"):
         package_json["exports"][f"./{path}/*.json"] = f"./{path}/*.json"
     elif "markdown" in str(path):
