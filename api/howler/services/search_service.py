@@ -235,10 +235,16 @@ def search(  # noqa: C901
         else:
             result = client.search(index=parsed_indexes, **params, **query_body)
     except (elasticsearch.exceptions.ConnectionError, elasticsearch.exceptions.ConnectionTimeout) as error:
+        if deep_paging_id not in (None, "*"):
+            raise SearchRetryException("The scroll context could not be continued. Please retry.") from error
         raise SearchRetryException(f"indexes: {parsed_indexes}, query: {query}, error: {str(error)}") from error
     except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.RequestError) as error:
+        if deep_paging_id not in (None, "*"):
+            raise SearchException("The scroll context could not be continued.") from error
         raise SearchException(str(error)) from error
     except Exception as error:
+        if deep_paging_id not in (None, "*"):
+            raise SearchException("The scroll context could not be continued.") from error
         raise SearchException(f"indexes: {parsed_indexes}, query: {query}, error: {str(error)}") from error
 
     total = result.get("hits", {}).get("total", {}).get("value", 0)

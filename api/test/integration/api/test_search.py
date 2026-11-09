@@ -7,7 +7,7 @@ import pytest
 from howler.datastore.collection import ESCollection
 from howler.datastore.howler_store import HowlerDatastore
 from howler.datastore.utils import project_stored_fields
-from howler.odm.base import BANNED_FIELDS
+from howler.odm.constants import BANNED_FIELDS
 from howler.odm.models.hit import Hit
 from howler.odm.random_data import (
     create_hits,

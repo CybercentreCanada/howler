@@ -3,10 +3,11 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import elasticsearch
 import pytest
 
 from howler.api.search_utils import issue_scroll_token
-from howler.datastore.exceptions import SearchException
+from howler.datastore.exceptions import SearchException, SearchRetryException
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
 from howler.services.search_service import (
@@ -374,6 +375,44 @@ def test_scroll_search_delegates_projection_without_resolving_collections():
     assert "resolved_collections" not in mock_search.call_args.kwargs
     assert result["items"] == [{"__index": "user", "uname": "alice"}]
     assert params == {"deep_paging_id": "*", "fl": "uname", "rows": 10}
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_exception"),
+    [
+        (elasticsearch.exceptions.ConnectionError("raw-scroll-id"), SearchRetryException),
+        (elasticsearch.exceptions.ConnectionTimeout("raw-scroll-id"), SearchRetryException),
+        (elasticsearch.exceptions.TransportError("raw-scroll-id"), SearchException),
+        (RuntimeError("raw-scroll-id"), SearchException),
+    ],
+)
+def test_scroll_continuation_errors_do_not_expose_raw_id(error, expected_exception):
+    caller = _caller()
+    token = issue_scroll_token(caller, "hit", "raw-scroll-id", "id:*")
+    with (
+        patch("howler.services.search_service.datastore") as mock_datastore,
+        patch("howler.services.search_service.get_collection", return_value=lambda: _collection(Hit)),
+    ):
+        client = mock_datastore.return_value.ds.client
+        client.scroll.side_effect = error
+        with pytest.raises(expected_exception, match="scroll context could not be continued") as raised:
+            scroll_search("hit", "id:*", caller, {"deep_paging_id": token}, None)
+
+    client.scroll.assert_called_once_with(scroll_id="raw-scroll-id", scroll="5m")
+    assert "raw-scroll-id" not in str(raised.value)
+    assert raised.value.__cause__ is error
+
+
+@pytest.mark.parametrize("deep_paging_id", [None, "*"])
+def test_non_continuation_search_errors_keep_backend_details(deep_paging_id):
+    with (
+        patch("howler.services.search_service.datastore") as mock_datastore,
+        patch("howler.services.search_service.INDEX_MAP", {"hit": lambda: _collection(Hit)}),
+    ):
+        client = mock_datastore.return_value.ds.client
+        client.search.side_effect = elasticsearch.exceptions.TransportError("backend details")
+        with pytest.raises(SearchException, match="backend details"):
+            search("hit", "id:*", deep_paging_id=deep_paging_id)
 
 
 @pytest.mark.parametrize("continuation", [False, True])

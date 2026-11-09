@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, patch
 
+import elasticsearch
 import pytest
 from flask import Flask, Response
 
@@ -880,6 +881,37 @@ def _scroll_collection(*stored_fields: str) -> MagicMock:
 
 class TestScrollTokens:
     """Scroll IDs handed to clients are bound to their opener and cannot be replayed by other callers."""
+
+    @pytest.mark.parametrize("version", [1, 2])
+    @pytest.mark.parametrize(
+        ("error", "status"),
+        [
+            (elasticsearch.exceptions.TransportError("No search context found for raw-es-scroll"), 400),
+            (elasticsearch.exceptions.ConnectionError("raw-es-scroll"), 503),
+        ],
+    )
+    def test_continuation_backend_errors_do_not_expose_scroll_id(self, request_context: Flask, version, error, status):
+        from howler.api.search_utils import issue_scroll_token
+
+        user = _build_user()
+        token = issue_scroll_token(user, "hit", "raw-es-scroll", "id:*")
+        endpoint = importlib.import_module(f"howler.api.v{version}.search")
+        with (
+            patch("howler.security.login.auth_service") as mock_auth,
+            patch("howler.services.search_service.get_collection", return_value=lambda: _scroll_collection("name")),
+            patch("howler.services.search_service.datastore") as mock_datastore,
+            request_context.test_request_context(
+                method="POST",
+                json={"query": "id:*", "deep_paging_id": token, "fl": "name"},
+                headers={"Authorization": "Bearer ."},
+            ),
+        ):
+            _mock_auth(mock_auth, user)
+            mock_datastore.return_value.ds.client.scroll.side_effect = error
+            result: Response = endpoint.search(**{"index" if version == 1 else "indexes": "hit"}, user=user)
+
+        assert result.status_code == status
+        assert "raw-es-scroll" not in result.get_data(as_text=True)
 
     @patch("howler.services.search_service.get_collection")
     @patch("howler.services.search_service.search")
