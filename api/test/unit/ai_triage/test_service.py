@@ -9,7 +9,7 @@ from howler import actions
 from howler.actions import ai_triage
 from howler.datastore.exceptions import VersionConflictException
 from howler.odm.models.config import AITriage, config
-from howler.services import ai_triage_service as service
+from howler.services import ai_service as service
 
 from .support import make_hit, make_lead, make_user
 

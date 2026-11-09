@@ -9,7 +9,7 @@ from apscheduler.schedulers.base import BaseScheduler
 from howler.actions.ai_triage import ROLES
 from howler.common.logging import get_logger
 from howler.config import config
-from howler.services import ai_transport, ai_triage_service, auth_service, hit_service
+from howler.services import ai_service, ai_transport, auth_service, hit_service
 
 logger = get_logger(__file__)
 
@@ -27,25 +27,25 @@ def _process(job: Any) -> None:
         prompt = job["prompt"]
         deadline = time.monotonic() + config.core.ai.timeout_seconds
 
-        user = ai_triage_service.load_current_user(uname)
+        user = ai_service.load_current_user(uname)
         if user is None or not user.is_active or not (set(ROLES) | {"admin"}) & set(user.type):
             logger.info("Discarding AI triage job because its initiator is no longer authorized")
             return
 
         token = auth_service.decrypt_token(encrypted_token)
         hit, _version = hit_service.get_hit(hit_id, as_odm=True, version=True, user=user)
-        if hit is None or not ai_triage_service._eligible_hit(hit):
+        if hit is None or not ai_service._eligible_hit(hit):
             logger.info("Discarding AI triage job because its alert is no longer eligible or accessible")
             return
 
         result = ai_transport.generate(
             config.core.ai,
             cast(str, token),
-            ai_triage_service.build_system_prompt(prompt),
-            ai_triage_service.provider_input(hit),
+            ai_service.build_system_prompt(prompt),
+            ai_service.provider_input(hit),
             deadline=deadline,
         )
-        if not ai_triage_service.save_ai_lead(hit_id, user, result):
+        if not ai_service.save_ai_lead(hit_id, user, result):
             logger.warning("AI triage result was not saved for alert %s", hit_id)
     except ai_transport.AITransportError as exc:
         logger.warning("AI triage provider failed for alert %s: %s", hit_id, exc.reason)
@@ -56,7 +56,7 @@ def _process(job: Any) -> None:
 
 def run_worker() -> None:  # pragma: no cover – exercised through job processing helpers
     """Consume jobs from the persistent queue until the process exits."""
-    queue = ai_triage_service.get_queue()
+    queue = ai_service.get_queue()
     while True:
         try:
             job = queue.pop(blocking=True, timeout=1)
@@ -68,7 +68,7 @@ def run_worker() -> None:  # pragma: no cover – exercised through job processi
 
 def setup_job(_scheduler: BaseScheduler) -> None:
     """Start the configured number of daemon consumers when AI triage is available."""
-    if not ai_triage_service.is_available():
+    if not ai_service.is_available():
         logger.info("AI triage worker not started because local configuration is unavailable")
         return
 

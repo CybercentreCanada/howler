@@ -2,7 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 from howler.cronjobs import ai_triage_worker
-from howler.services import ai_transport, ai_triage_service, auth_service, hit_service
+from howler.services import ai_service, ai_transport, auth_service, hit_service
 
 from .support import make_hit, make_user
 
@@ -22,10 +22,10 @@ def setup_worker(monkeypatch, *, hit=None, user=None):
         ai_triage_worker, "config", SimpleNamespace(core=SimpleNamespace(ai=SimpleNamespace(timeout_seconds=30)))
     )
     monkeypatch.setattr(ai_triage_worker.time, "monotonic", lambda: 10)
-    monkeypatch.setattr(ai_triage_service, "load_current_user", load_user)
-    monkeypatch.setattr(ai_triage_service, "build_system_prompt", Mock(return_value="safe system prompt"))
-    monkeypatch.setattr(ai_triage_service, "provider_input", Mock(return_value={"event": "alert"}))
-    monkeypatch.setattr(ai_triage_service, "save_ai_lead", save)
+    monkeypatch.setattr(ai_service, "load_current_user", load_user)
+    monkeypatch.setattr(ai_service, "build_system_prompt", Mock(return_value="safe system prompt"))
+    monkeypatch.setattr(ai_service, "provider_input", Mock(return_value={"event": "alert"}))
+    monkeypatch.setattr(ai_service, "save_ai_lead", save)
     monkeypatch.setattr(hit_service, "get_hit", get_hit)
     monkeypatch.setattr(auth_service, "decrypt_token", Mock(return_value="trusted-token"))
     monkeypatch.setattr(ai_transport, "generate", generate)
@@ -95,7 +95,7 @@ def test_setup_starts_configured_threads_idempotently(monkeypatch):
     monkeypatch.setattr(
         ai_triage_worker, "config", SimpleNamespace(core=SimpleNamespace(ai=SimpleNamespace(max_concurrent_jobs=3)))
     )
-    monkeypatch.setattr(ai_triage_service, "is_available", lambda: True)
+    monkeypatch.setattr(ai_service, "is_available", lambda: True)
 
     ai_triage_worker.setup_job(Mock())
     ai_triage_worker.setup_job(Mock())
@@ -115,7 +115,7 @@ def test_setup_does_not_start_threads_when_unavailable(monkeypatch):
     factory = Mock()
     monkeypatch.setattr(ai_triage_worker, "_threads", {})
     monkeypatch.setattr(ai_triage_worker.threading, "Thread", factory)
-    monkeypatch.setattr(ai_triage_service, "is_available", lambda: False)
+    monkeypatch.setattr(ai_service, "is_available", lambda: False)
 
     ai_triage_worker.setup_job(Mock())
 
