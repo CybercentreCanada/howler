@@ -2,12 +2,13 @@ import { Delete, DriveFileRenameOutline, OpenInNew } from '@mui/icons-material';
 import api from 'api';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import ContextMenu, { type ContextMenuEntry } from 'components/elements/ContextMenu';
+import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
 import useMyApi from 'components/hooks/useMyApi';
 import RenameItemModal from 'components/routes/cases/modals/RenameItemModal';
 import type { Case } from 'models/entities/generated/Case';
 import type { Item } from 'models/entities/generated/Item';
 import { useContext, useMemo, type FC, type PropsWithChildren } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import type { Tree } from './types';
 
 /**
@@ -102,19 +103,37 @@ const CaseFolderContextMenu: FC<CaseFolderContextMenuProps> = ({ case: _case, it
       id: 'remove-item',
       label: isFolder ? t('page.cases.sidebar.folder.remove') : t('page.cases.sidebar.item.remove'),
       icon: <Delete fontSize="small" />,
-      onClick: async () => {
+      onClick: () => {
         const caseId = _case.case_id;
         const itemId = item.id;
         if (!caseId || !itemId) {
           return;
         }
 
-        void dispatchApi(api.v2.case.items.del(_case.case_id!, [item.id!], isFolder), { throwError: false }).then(
-          updatedCase => {
-            if (updatedCase) {
-              onUpdate?.(updatedCase);
+        showModal(
+          <ConfirmDeleteModal
+            description={
+              isFolder ? (
+                <Trans
+                  i18nKey="page.cases.sidebar.folder.remove.confirm"
+                  values={{ name: item.name }}
+                  components={{ bold: <strong /> }}
+                />
+              ) : (
+                t('page.cases.sidebar.item.remove.confirm', { name: item.name })
+              )
             }
-          }
+            onConfirm={async () => {
+              const updatedCase = await dispatchApi(api.v2.case.items.del(caseId, [itemId], isFolder), {
+                throwError: false
+              });
+
+              if (updatedCase) {
+                onUpdate?.(updatedCase);
+              }
+            }}
+          />,
+          { height: 'auto' }
         );
       }
     });

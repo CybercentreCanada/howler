@@ -11,11 +11,12 @@ import {
   Tooltip,
   Typography
 } from '@mui/material';
+import { ModalContext } from 'components/app/providers/ModalProvider';
 import UserList from 'components/elements/UserList';
 import type { Case } from 'models/entities/generated/Case';
 import type { Item } from 'models/entities/generated/Item';
 import type { Task } from 'models/entities/generated/Task';
-import { useEffect, useMemo, useState, type FC } from 'react';
+import { useContext, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { notNil } from 'utils/utils';
@@ -32,6 +33,7 @@ const CaseTask: FC<{
   readOnly?: boolean;
 }> = ({ case: _case, task, onEdit, onDelete, newTask = false, readOnly = false }) => {
   const { t } = useTranslation();
+  const { withConfirmDeleteModal } = useContext(ModalContext);
 
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(newTask);
@@ -145,8 +147,10 @@ const CaseTask: FC<{
               size="small"
               color="error"
               onClick={() => {
-                setLoading(true);
-                void onDelete().finally(() => setLoading(false));
+                withConfirmDeleteModal(() => {
+                  setLoading(true);
+                  void onDelete().finally(() => setLoading(false));
+                }, true);
               }}
               disabled={loading}
             >
