@@ -8,6 +8,8 @@ from howler.odm.models.action import VALID_TRIGGERS
 from howler.odm.models.hit import Hit
 from pydash import get
 
+from sentinel.utils.hit_types import is_derived_evidence
+
 logger = get_logger(__file__)
 
 OPERATION_ID = "azure_emit_hash"
@@ -57,6 +59,17 @@ def execute(
         )
 
     for hit in hits:
+        if is_derived_evidence(hit):
+            report.append(
+                {
+                    "query": f"howler.id:{hit.howler.id}",
+                    "outcome": "skipped",
+                    "title": "Derived Sentinel evidence is not an alert",
+                    "message": "Evidence child hits are not emitted as independent indicators.",
+                }
+            )
+            continue
+
         hash_value = get(hit, field)
         if hash_value:
             try:

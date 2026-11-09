@@ -1,7 +1,9 @@
 """Client module for the v2 Ingest API."""
 
 import json
+import os
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, Union
 
 from howler_client.common.utils import ClientError, api_path_v2
@@ -63,6 +65,41 @@ class Ingest(object):
             data=json.dumps(data),
             headers={"Content-Type": "application/json"},
         )
+
+    def from_file(
+        self: Self,
+        path: str | os.PathLike[str] = "alerts.jsonl",
+        index: Literal["hit", "event"] = "hit",
+        refresh: bool | Literal["true", "false", "wait_for"] = False,
+    ) -> list[str]:
+        """Ingest a JSON Lines file containing one alert per line.
+
+        The whole file is parsed before a single bulk create request is sent. An empty file
+        returns an empty list without making a request.
+
+        Args:
+            path: UTF-8 JSON Lines file to read. Defaults to ``alerts.jsonl``.
+            index: Target index (``hit`` or ``event``). Defaults to ``hit``.
+            refresh: Whether to refresh the index, as for :meth:`create`.
+
+        Returns:
+            List of created record IDs returned by the API.
+
+        Raises:
+            ValueError: If ``index`` is not ``hit`` or ``event``.
+            OSError: If the file cannot be read.
+            json.JSONDecodeError: If any line is not valid JSON.
+        """
+        if index not in ("hit", "event"):
+            raise ValueError("index must be 'hit' or 'event'")
+
+        with Path(path).open(encoding="utf-8") as source:
+            records: list[dict[str, Any]] = [json.loads(line) for line in source]
+
+        if not records:
+            return []
+
+        return self.create(index, records, refresh=refresh)
 
     def delete(
         self: Self, indexes: str, ids: list[str], refresh: bool | Literal["true", "false", "wait_for"] = False

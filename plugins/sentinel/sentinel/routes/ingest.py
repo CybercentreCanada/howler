@@ -4,15 +4,11 @@ from typing import Any
 from flask import request
 from howler.api import bad_request, created, internal_error, make_subapi_blueprint, ok, unauthorized
 from howler.common.exceptions import HowlerException
-from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
-from howler.config import CLASSIFICATION
-from howler.odm.models.user import User
-from howler.services import action_service, analytic_service, case_service, hit_service
 
-from sentinel.mapping.sentinel_incident import SentinelIncident
-from sentinel.mapping.xdr_alert import XDRAlert
+from sentinel.services import ingest_service
+from sentinel.services.ingest_service import SentinelIngestMappingError
 
 SUB_API = "sentinel"
 sentinel_api = make_subapi_blueprint(SUB_API, api_version=1)
@@ -20,20 +16,10 @@ sentinel_api._doc = "Ingest Microsoft Sentinel XDR incidents into Howler"  # typ
 
 logger = get_logger(__file__)
 
-SYSTEM_USER = User(
-    {
-        "uname": "system",
-        "name": "system",
-        "type": ["admin", "user"],
-        "classification": CLASSIFICATION.RESTRICTED,
-        "password": "__NO_PASSWORD__",
-    }
-)
-
 
 @generate_swagger_docs()
 @sentinel_api.route("/ingest", methods=["POST"])
-def ingest_xdr_incident(**kwargs) -> tuple[dict[str, Any], int]:  # noqa C901
+def ingest_xdr_incident(**kwargs) -> tuple[dict[str, Any], int]:
     """Ingest a Microsoft Sentinel XDR incident into Howler.
 
     Variables:
@@ -53,250 +39,57 @@ def ingest_xdr_incident(**kwargs) -> tuple[dict[str, Any], int]:  # noqa C901
     Result Example (201 Created):
         {
             "success": True,
-            "bundle_hit_id": "howler-bundle-id",
-            "bundle_id": "sentinel-incident-id",
-            "individual_hit_ids": ["alert-hit-id-1", "alert-hit-id-2"],
+            "incident_hit_id": "howler-incident-hit-id",
+            "incident_id": "sentinel-incident-id",
+            "source_alert_hit_ids": ["source-alert-hit-id"],
+            "evidence_hit_ids": ["evidence-hit-id"],
+            "case_id": "case-id",
             "total_hits_created": 3,
-            "bundle_size": 2,
             "organization": "Acme Corporation"
         }
 
-    Result Example (200 OK, update):
-        {
-            "success": True,
-            "bundle_hit_id": "howler-bundle-id",
-            "bundle_id": "sentinel-incident-id",
-            "individual_hit_ids": ["alert-hit-id-1", "alert-hit-id-2"],
-            "total_hits_updated": 3,
-            "bundle_size": 2,
-            "organization": "Acme Corporation",
-            "updated": True
-        }
-
     Error Codes:
-        400 - Bad request (e.g., missing JSON)
+        400 - Bad request (e.g., missing JSON or invalid tenant)
         401 - Unauthorized (invalid API key)
         500 - Internal server error
 
     Description:
-        Receives a Microsoft Sentinel XDR incident as JSON, maps it to Howler format, and creates or updates a bundle
-        and its underlying alerts in Howler. Returns details about the created or updated bundle and alerts.
+        Receives a Microsoft Sentinel XDR incident, creates or updates its
+        summary hit, and represents source alerts and their evidence objects as
+        hits nested in one Howler case.
     """
     from sentinel.config import config
 
-    # API Key authentication
     apikey = request.headers.get("Authorization", "Basic ", type=str).split(" ")[1]
-
-    link_key = config.auth.link_key
-
-    if not apikey or apikey != link_key:
+    if not apikey or apikey != config.auth.link_key:
         return unauthorized(err="API Key does not match expected value.")
 
     logger.info("Received authorization header with value %s", re.sub(r"^(.{3}).+(.{3})$", r"\1...\2", apikey))
 
-    xdr_incident = request.json
-    if not xdr_incident:
-        return bad_request(err="No JSON data provided in request body")
+    xdr_incident = request.get_json(silent=True)
+    if not isinstance(xdr_incident, dict):
+        return bad_request(err="Request body must be a JSON object")
+
+    tenant_id = xdr_incident.get("tenantId")
+    if not isinstance(tenant_id, str) or not tenant_id.strip():
+        return bad_request(err="Incident must include a non-blank string tenantId")
+
+    tenant_mapping = config.tenant_mapping
+    customer_name = tenant_mapping.get(tenant_id)
+    if customer_name is None:
+        return bad_request(err="Tenant ID is not configured for Sentinel ingestion")
+    if not isinstance(customer_name, str) or not customer_name.strip():
+        return bad_request(err="Configured organization name for tenant ID must not be blank")
 
     try:
-        # TODO needs to be replaced with actual tenant mapping logic
-        tenant_mapping = {"020cd98f-1002-45b7-90ff-69fc68bdd027": "Acme Corporation"}
-        incident_mapper = SentinelIncident(tid_mapping=tenant_mapping)
-        bundle_hit = incident_mapper.map_incident_to_bundle(xdr_incident)
-        if bundle_hit is None:
-            return internal_error(err="Failed to map XDR incident to Howler bundle format")
-
-        sentinel_id = xdr_incident.get("id")
-        if sentinel_id:
-            existing_bundles = datastore().hit.search(f"sentinel.id:{sentinel_id}", as_obj=True)["items"]
-            if existing_bundles:
-                return _update_existing_incident(existing_bundles[0], xdr_incident, incident_mapper)
-
-        return _create_new_incident(bundle_hit, xdr_incident, tenant_mapping)
-
+        response_body, status_code = ingest_service.ingest_incident(xdr_incident, tenant_mapping)
+        return created(response_body) if status_code == 201 else ok(response_body)
+    except SentinelIngestMappingError as e:
+        logger.exception("Failed to map XDR incident")
+        return internal_error(err=str(e))
     except HowlerException as e:
         logger.exception("Failed to process XDR incident")
         return internal_error(err=f"Failed to process XDR incident: {str(e)}")
     except Exception as e:
         logger.exception("Unexpected error during XDR incident ingestion")
         return internal_error(err=f"Internal error occurred during ingestion: {str(e)}")
-
-
-def _update_existing_incident(
-    existing_bundle: Any, xdr_incident: dict[str, Any], incident_mapper: SentinelIncident
-) -> tuple[dict[str, Any], int]:
-    """Update an existing incident and its underlying alerts in Howler.
-
-    Finds the associated case via ``howler.related`` on the root hit, then
-    updates the status on the root hit and all child hits referenced by the case.
-
-    Args:
-        existing_bundle: The existing Howler root hit object.
-        xdr_incident: The incoming XDR incident data.
-        incident_mapper: The incident mapper instance.
-
-    Returns:
-        Tuple containing response dictionary and HTTP status code.
-    """
-    ds = datastore()
-    new_status = xdr_incident.get("status")
-
-    # Find child hit IDs via the case items
-    child_hit_ids: list[str] = []
-    for related_id in getattr(existing_bundle.howler, "related", []):
-        case = ds.case.get(related_id)
-        if case is not None:
-            child_hit_ids = [
-                item.value for item in case.items if item.type == "hit" and item.value != existing_bundle.howler.id
-            ]
-            break
-
-    if new_status:
-        existing_bundle.howler.status = incident_mapper.map_sentinel_status_to_howler(new_status)
-        ds.hit.save(existing_bundle.howler.id, existing_bundle)
-
-        for child_id in child_hit_ids:
-            child_hit = ds.hit.get(child_id, as_obj=True)
-            if child_hit:
-                child_hit.howler.status = incident_mapper.map_sentinel_status_to_howler(new_status)
-                ds.hit.save(child_id, child_hit)
-
-    ds.hit.commit()
-    logger.info("Updated status for existing incident %s and its child hits", existing_bundle.howler.id)
-    return ok(
-        {
-            "success": True,
-            "bundle_hit_id": existing_bundle.howler.id,
-            "bundle_id": existing_bundle.sentinel.id if hasattr(existing_bundle, "sentinel") else None,
-            "individual_hit_ids": child_hit_ids,
-            "total_hits_updated": 1 + len(child_hit_ids),
-            "bundle_size": len(child_hit_ids),
-            "organization": getattr(existing_bundle, "organization", {}).get("name", ""),
-            "updated": True,
-        }
-    )
-
-
-def _create_alert_hits(alerts: list[dict[str, Any]], tenant_id: str, alert_mapper: XDRAlert) -> list[str]:
-    """Create alert hits from the provided alerts and return their IDs.
-
-    Args:
-        alerts: List of alert dictionaries.
-        tenant_id: The tenant ID string.
-        alert_mapper: The alert mapper instance.
-
-    Returns:
-        List of created alert hit IDs.
-    """
-    child_hit_ids = []
-    for i, alert in enumerate(alerts):
-        try:
-            mapped_hit = alert_mapper.map_alert(alert, tenant_id)
-            if mapped_hit:
-                alert_hit_odm, _ = hit_service.convert_hit(mapped_hit, unique=True, ignore_extra_values=True)
-                if alert_hit_odm.event is not None:
-                    alert_hit_odm.event.id = alert_hit_odm.howler.id
-                logger.info("Creating individual alert hit %s with ID %s", i, alert_hit_odm.howler.id)
-                hit_service.create_hit(alert_hit_odm.howler.id, alert_hit_odm, user="system")
-                analytic_service.save_from_hits(alert_hit_odm, SYSTEM_USER)
-                child_hit_ids.append(alert_hit_odm.howler.id)
-                logger.debug("Successfully created alert hit %s: %s", i, alert_hit_odm.howler.id)
-            else:
-                logger.warning("Alert mapper returned None for alert %s: %s", i, alert.get("id", "unknown"))
-        except Exception:
-            logger.exception("Failed to create individual alert hit %s", i)
-            continue
-    return child_hit_ids
-
-
-def _create_new_incident(
-    bundle_hit: dict[str, Any], xdr_incident: dict[str, Any], tenant_mapping: dict[str, str]
-) -> tuple[dict[str, Any], int]:
-    """Create a new incident as a root hit plus a case with child alert items.
-
-    Args:
-        bundle_hit: The mapped Howler hit data for the root incident hit.
-        xdr_incident: The incoming XDR incident data.
-        tenant_mapping: The tenant mapping dictionary.
-
-    Returns:
-        Tuple containing response dictionary and HTTP status code.
-    """
-    alerts = xdr_incident.get("alerts", [])
-    tenant_id = xdr_incident.get("tenantId", "")
-    alert_mapper = XDRAlert(tid_mapping=tenant_mapping)
-    child_hit_ids = _create_alert_hits(alerts, tenant_id, alert_mapper)
-    try:
-        # Strip legacy bundle fields so convert_hit doesn't choke
-        if isinstance(bundle_hit.get("howler"), dict):
-            bundle_hit["howler"].pop("is_bundle", None)
-            bundle_hit["howler"].pop("hits", None)
-            bundle_hit["howler"].pop("bundle_size", None)
-            bundle_hit["howler"].pop("bundles", None)
-
-        bundle_odm, _ = hit_service.convert_hit(bundle_hit, unique=True, ignore_extra_values=True)
-
-        if bundle_odm.event is not None:
-            bundle_odm.event.id = bundle_odm.howler.id
-
-        logger.info("Creating incident hit with ID %s", bundle_odm.howler.id)
-        hit_service.create_hit(bundle_odm.howler.id, bundle_odm, user="system")
-        analytic_service.save_from_hits(bundle_odm, SYSTEM_USER)
-
-        # Create a case linking root hit and children
-        if child_hit_ids:
-            analytic = bundle_odm.howler.analytic or "Sentinel"
-            detection = bundle_odm.howler.detection or "XDR Incident"
-            case = case_service.create_case(
-                {"title": f"{analytic} - {detection}", "summary": f"Sentinel incident {bundle_odm.howler.id}"},
-                user=SYSTEM_USER,
-            )
-
-            case_service.append_case_item(
-                case,
-                item_type="hit",
-                item_value=bundle_odm.howler.id,
-                item_name=analytic,
-            )
-
-            # Create the "hits" folder before adding children beneath it.
-            hits_folder = case_service.get_parent_from_path(case, "hits", create_if_missing=True)
-            case.save()
-
-            for child_id in child_hit_ids:
-                child_hit = hit_service.get_hit(child_id, as_odm=True)
-                if child_hit:
-                    child_name = f"{child_hit.howler.analytic} ({child_id})"
-                    try:
-                        case_service.append_case_item(
-                            case,
-                            item_type="hit",
-                            item_value=child_id,
-                            item_parent=hits_folder.id if hits_folder else None,
-                            item_name=child_name,
-                        )
-                    except Exception:
-                        logger.exception("Failed to add child hit %s to case", child_id)
-
-            case.save()
-            datastore().case.commit()
-
-        datastore().hit.commit()
-
-        if child_hit_ids:
-            action_service.bulk_execute_on_query(f"howler.id:{bundle_odm.howler.id}", user=SYSTEM_USER)
-
-        logger.info("Successfully completed XDR incident ingestion")
-        response_body = {
-            "success": True,
-            "bundle_hit_id": bundle_odm.howler.id,
-            "bundle_id": bundle_hit["howler"].get("xdr.incident.id"),
-            "individual_hit_ids": child_hit_ids,
-            "total_hits_created": len(child_hit_ids) + 1,
-            "bundle_size": len(child_hit_ids),
-            "organization": bundle_hit["organization"]["name"],
-        }
-        return created(response_body)
-    except HowlerException as e:
-        logger.exception("Failed to create incident")
-        return internal_error(err=f"Failed to create incident: {str(e)}")

@@ -1,6 +1,7 @@
 """Unit tests for the v2 Ingest client module."""
 
 import json
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -38,6 +39,111 @@ class TestIngestCreate:
 
         sent_data = json.loads(conn.post.call_args[1]["data"])
         assert len(sent_data) == 2
+
+
+class TestIngestFromFile:
+    def test_defaults_to_alerts_jsonl_and_hit(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.chdir(tmp_path)
+        records = [{"howler": {"analytic": "A"}}, {"howler": {"analytic": "B"}}]
+        (tmp_path / "alerts.jsonl").write_text("\n".join(json.dumps(record) for record in records), encoding="utf-8")
+        ingest, conn = _make_ingest_module()
+        response = ["id-1", "id-2"]
+        conn.post.return_value = response
+
+        result = ingest.from_file()
+
+        assert result is response
+        conn.post.assert_called_once()
+        assert "ingest/hit" in conn.post.call_args.args[0]
+        assert json.loads(conn.post.call_args.kwargs["data"]) == records
+        assert conn.post.call_args.kwargs["headers"] == {"Content-Type": "application/json"}
+        assert "refresh=False" in conn.post.call_args.args[0]
+
+    def test_supports_event_pathlike_and_refresh(self, tmp_path: Path):
+        path = tmp_path / "events.jsonl"
+        records = [{"howler": {"analytic": "A"}}]
+        path.write_text(json.dumps(records[0]) + "\n", encoding="utf-8")
+        ingest, conn = _make_ingest_module()
+        conn.post.return_value = ["event-1"]
+
+        assert ingest.from_file(path, index="event", refresh="wait_for") == ["event-1"]
+
+        conn.post.assert_called_once()
+        assert "ingest/event" in conn.post.call_args.args[0]
+        assert "refresh=wait_for" in conn.post.call_args.args[0]
+        assert json.loads(conn.post.call_args.kwargs["data"]) == records
+
+    def test_parses_entire_file_before_post_and_does_not_skip_malformed_suffix(self, tmp_path: Path):
+        path = tmp_path / "alerts.jsonl"
+        path.write_text('{"howler":{"analytic":"A"}}\nnot-json\n', encoding="utf-8")
+        ingest, conn = _make_ingest_module()
+
+        with pytest.raises(json.JSONDecodeError):
+            ingest.from_file(path)
+
+        conn.post.assert_not_called()
+
+    def test_empty_file_returns_empty_without_post(self, tmp_path: Path):
+        path = tmp_path / "empty.jsonl"
+        path.write_text("", encoding="utf-8")
+        ingest, conn = _make_ingest_module()
+
+        assert ingest.from_file(path) == []
+
+        conn.post.assert_not_called()
+
+    def test_blank_line_is_invalid_and_does_not_post(self, tmp_path: Path):
+        path = tmp_path / "blank.jsonl"
+        path.write_text('{"howler":{}}\n\n', encoding="utf-8")
+        ingest, conn = _make_ingest_module()
+
+        with pytest.raises(json.JSONDecodeError):
+            ingest.from_file(path)
+
+        conn.post.assert_not_called()
+
+    def test_missing_file_raises_without_post(self, tmp_path: Path):
+        ingest, conn = _make_ingest_module()
+
+        with pytest.raises(FileNotFoundError):
+            ingest.from_file(tmp_path / "missing.jsonl")
+
+        conn.post.assert_not_called()
+
+    def test_unreadable_file_raises_without_post(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        def deny_read(self: Path, *args, **kwargs):
+            raise PermissionError("permission denied")
+
+        monkeypatch.setattr(Path, "open", deny_read)
+        ingest, conn = _make_ingest_module()
+
+        with pytest.raises(PermissionError, match="permission denied"):
+            ingest.from_file(tmp_path / "unreadable.jsonl")
+
+        conn.post.assert_not_called()
+
+    def test_unsupported_index_raises_before_reading_or_posting(self, tmp_path: Path):
+        ingest, conn = _make_ingest_module()
+
+        with pytest.raises(ValueError, match="hit.*event"):
+            ingest.from_file(tmp_path / "missing.jsonl", index="invalid")  # type: ignore[arg-type]
+
+        conn.post.assert_not_called()
+
+    def test_does_not_call_validate_or_rewrite_records(self, tmp_path: Path):
+        path = tmp_path / "alerts.jsonl"
+        records = [{"custom": [1, {"nested": True}]}, {"howler": {"analytic": "raw"}}]
+        path.write_text("\n".join(json.dumps(record) for record in records), encoding="utf-8")
+        ingest, conn = _make_ingest_module()
+        response = ["one", "two"]
+        conn.post.return_value = response
+
+        result = ingest.from_file(path)
+
+        assert result is response
+        conn.post.assert_called_once()
+        assert json.loads(conn.post.call_args.kwargs["data"]) == records
+        assert "validate" not in conn.post.call_args.args[0]
 
 
 class TestIngestDelete:
