@@ -1,0 +1,14 @@
+.github/workflows/git-ai.yaml
+  h_f221159cc9f457 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "8caefdf9490cda65458af55e5eb21496f8421827",
+  "prompts": {},
+  "humans": {
+    "h_f221159cc9f457": {
+      "author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
