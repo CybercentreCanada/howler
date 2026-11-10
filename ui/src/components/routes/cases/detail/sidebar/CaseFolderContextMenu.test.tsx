@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { Case } from 'models/entities/generated/Case';
 import type { Item } from 'models/entities/generated/Item';
 import { act } from 'react';
@@ -124,14 +124,19 @@ describe('CaseFolderContextMenu', () => {
     expect(mockShowModal).toHaveBeenCalledTimes(1);
   });
 
-  it('calls delete API with force=true for folders', async () => {
+  it('asks for confirmation before deleting, then calls the delete API with force=true for folders', async () => {
     renderMenu({ item: folderItem });
     act(() => {
       fireEvent.click(screen.getByText('page.cases.sidebar.folder.remove'));
     });
-    await waitFor(() => {
-      expect(mockDel).toHaveBeenCalledWith('case-1', ['folder-id'], true);
+
+    expect(mockShowModal).toHaveBeenCalledTimes(1);
+    expect(mockDel).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await mockShowModal.mock.calls[0][0].props.onConfirm();
     });
+    expect(mockDel).toHaveBeenCalledWith('case-1', ['folder-id'], true);
   });
 
   it('does not call the delete API when the item id is missing', () => {
@@ -139,16 +144,23 @@ describe('CaseFolderContextMenu', () => {
     act(() => {
       fireEvent.click(screen.getByText('page.cases.sidebar.item.remove'));
     });
+    expect(mockShowModal).not.toHaveBeenCalled();
     expect(mockDel).not.toHaveBeenCalled();
     expect(mockDispatchApi).not.toHaveBeenCalled();
   });
 
-  it('passes updated case to onUpdate after delete', async () => {
+  it('passes updated case to onUpdate after confirmed delete', async () => {
     const onUpdate = vi.fn();
     renderMenu({ item: hitLeaf, onUpdate });
     act(() => {
       fireEvent.click(screen.getByText('page.cases.sidebar.item.remove'));
     });
-    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith(mockCase));
+    expect(onUpdate).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await mockShowModal.mock.calls[0][0].props.onConfirm();
+    });
+    expect(mockDel).toHaveBeenCalledWith('case-1', ['id-hit'], false);
+    expect(onUpdate).toHaveBeenCalledWith(mockCase);
   });
 });

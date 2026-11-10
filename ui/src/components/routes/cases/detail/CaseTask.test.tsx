@@ -7,6 +7,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockUserListOnChange = vi.hoisted(() => ({ fn: null as ((vals: (string | undefined)[]) => void) | null }));
 const mockPathAutocompleteOnChange = vi.hoisted(() => ({ fn: null as ((e: unknown, val: any | null) => void) | null }));
+const mockWithConfirmDeleteModal = vi.hoisted(() => vi.fn());
+
+vi.mock('components/app/providers/ModalProvider', async () => {
+  const { createContext } = await vi.importActual<typeof import('react')>('react');
+  return {
+    ModalContext: createContext({
+      withConfirmDeleteModal: mockWithConfirmDeleteModal
+    })
+  };
+});
 
 vi.mock('components/elements/UserList', () => ({
   default: ({ onChange, userIds, disabled }: any) => {
@@ -79,9 +89,13 @@ const getSaveButton = (container: HTMLElement) =>
 const getCancelButton = (container: HTMLElement) =>
   (container.querySelector('[data-testid="CloseIcon"]')?.closest('button') ?? null) as HTMLElement | null;
 
+const getDeleteButton = (container: HTMLElement) =>
+  (container.querySelector('[data-testid="DeleteIcon"]')?.closest('button') ?? null) as HTMLElement | null;
+
 beforeEach(() => {
   mockUserListOnChange.fn = null;
   mockPathAutocompleteOnChange.fn = null;
+  mockWithConfirmDeleteModal.mockReset();
 });
 
 describe('CaseTask', () => {
@@ -141,6 +155,20 @@ describe('CaseTask', () => {
         fireEvent.click(getSaveButton(container)!);
       });
       expect(mockOnEdit).toHaveBeenCalledWith(expect.objectContaining({ item: 'item-2' }));
+    });
+
+    it('asks for confirmation before deleting an existing task', async () => {
+      const { container, mockOnDelete } = renderTask(mkTask());
+      fireEvent.click(getEditButton(container)!);
+      fireEvent.click(getDeleteButton(container)!);
+
+      expect(mockWithConfirmDeleteModal).toHaveBeenCalledOnce();
+      expect(mockOnDelete).not.toHaveBeenCalled();
+
+      await act(async () => {
+        mockWithConfirmDeleteModal.mock.calls[0][0]();
+      });
+      expect(mockOnDelete).toHaveBeenCalledOnce();
     });
   });
 

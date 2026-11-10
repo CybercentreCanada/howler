@@ -659,6 +659,8 @@ class TestProcessBatch:
 
         correlation_service.process_batch(["hit-1"])
 
+        assert mock_search_svc.search.call_args.kwargs["include_unstored_fields"] is True
+
         hit_items = [i for i in case.items if i.type == "hit"]
         assert len(hit_items) == 1
         assert hit_items[0].name == "My Detection"

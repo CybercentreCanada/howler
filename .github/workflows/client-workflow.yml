@@ -64,7 +64,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install Poetry
-        uses: abatilo/actions-poetry@v4
+        run: pipx install poetry
       - uses: actions/cache@v4
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:
@@ -102,18 +102,12 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
-      - name: Get base depth of PR
-        if: github.event_name == 'pull_request'
-        id: base-depth
-        working-directory: .
-        run: |
-          echo "base-depth=$((${{ github.event.pull_request.commits }} + 1))" >> "$GITHUB_OUTPUT"
-
       - name: Checkout current ref
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: ${{ steps.base-depth.outputs.base-depth || 1 }}
+          # Coverage diffs require the common ancestor, even when the base branch has advanced.
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -121,7 +115,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install Poetry
-        uses: abatilo/actions-poetry@v4
+        run: pipx install poetry
 
       - name: Setup Howler API environment
         working-directory: api
@@ -144,9 +138,9 @@ jobs:
           poetry run sigma
 
       - name: Spin up test dependencies
-        uses: hoverkraft-tech/compose-action@v2.6.0
-        with:
-          compose-file: "client/test/docker-compose.yml"
+        id: compose-start
+        working-directory: .
+        run: docker compose -f client/test/docker-compose.yml up -d
 
       - name: Start Howler API server
         working-directory: api
@@ -190,7 +184,7 @@ jobs:
         if: steps.tests.outcome == 'success'
         run: |
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-            git fetch --depth=1 origin "$BASE_SHA"
+            git fetch origin "$BASE_SHA"
             merge_base="$(git merge-base "$BASE_SHA" "$HEAD_SHA")"
             git diff --name-only "$merge_base..$HEAD_SHA"
             git diff "$merge_base..$HEAD_SHA" > diff.txt
@@ -216,6 +210,18 @@ jobs:
         if: steps.tests.outcome == 'failure'
         run: |
           exit 1
+
+      - name: Stop test dependencies
+        if: always() && steps.compose-start.outcome != '' && steps.compose-start.outcome != 'skipped'
+        working-directory: .
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if [[ "$JOB_STATUS" != "success" || "${RUNNER_DEBUG:-}" == "1" ]]; then
+            docker compose -f client/test/docker-compose.yml logs --no-color || true
+          fi
+          docker compose -f client/test/docker-compose.yml down
+
   push_to_pypi:
     if: needs.release_validation.outputs.channel == 'stable'
     runs-on: ubuntu-latest
@@ -237,7 +243,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install Poetry
-        uses: abatilo/actions-poetry@v4
+        run: pipx install poetry
       - name: Install dependencies
         run: poetry install --no-interaction
       - name: Build package

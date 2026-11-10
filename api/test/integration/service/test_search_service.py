@@ -6,6 +6,7 @@ import pytest
 
 from howler.common.loader import DATASTORE_INDEX_PREFIX
 from howler.datastore.exceptions import SearchException, SearchRetryException
+from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
 from howler.odm.random_data import (
     create_events,
@@ -19,6 +20,14 @@ from howler.odm.randomizer import random_model_obj
 from howler.services import search_service
 
 TEST_SIZE = 12
+
+
+def _stored_hit_collection() -> SimpleNamespace:
+    """Build a collection fixture with the real Hit model's stored-field metadata."""
+    return SimpleNamespace(
+        model_class=Hit,
+        stored_fields={name: field for name, field in Hit.flat_fields().items() if field.store},
+    )
 
 
 @pytest.fixture(scope="module")
@@ -475,11 +484,11 @@ class TestFormatItems:
 class TestSearch:
     """Tests for search_service.search."""
 
-    @pytest.mark.parametrize("sensitive_field", ["password", "apikeys", "*"])
+    @pytest.mark.parametrize("sensitive_field", ["password", "apikeys"])
     @patch("howler.services.search_service.datastore")
     def test_search_rejects_sensitive_user_fields(self, mock_ds_fn, sensitive_field):
         """Rejects sensitive source fields before accessing Elasticsearch."""
-        with pytest.raises(search_service.SensitiveUserFieldsException, match="Invalid fields to retrieve"):
+        with pytest.raises(SearchException, match="not stored"):
             search_service.search("user", query="uname:*", fl=sensitive_field)
 
         mock_ds_fn.assert_not_called()
@@ -617,10 +626,13 @@ class TestSearch:
 
         mock_client.search.return_value = {"hits": {"total": {"value": 0}, "hits": []}}
 
-        search_service.search("hit", query="*:*", fl="howler.id,event.kind")
+        with patch(
+            "howler.services.search_service.INDEX_MAP", {"hit": MagicMock(return_value=_stored_hit_collection())}
+        ):
+            search_service.search("hit", query="*:*", fl="howler.id,event.kind")
 
         call_kwargs = mock_client.search.call_args
-        assert call_kwargs.kwargs["_source"] == ["howler.id", "event.kind"]
+        assert set(call_kwargs.kwargs["_source"]) == {"howler.id", "event.kind"}
 
     @patch("howler.services.search_service.datastore")
     def test_search_with_fl_list(self, mock_ds_fn):
@@ -632,14 +644,17 @@ class TestSearch:
 
         mock_client.search.return_value = {"hits": {"total": {"value": 0}, "hits": []}}
 
-        search_service.search("hit", query="*:*", fl=["howler.id"])
+        with patch(
+            "howler.services.search_service.INDEX_MAP", {"hit": MagicMock(return_value=_stored_hit_collection())}
+        ):
+            search_service.search("hit", query="*:*", fl=["howler.id"])
 
         call_kwargs = mock_client.search.call_args
         assert call_kwargs.kwargs["_source"] == ["howler.id"]
 
     @patch("howler.services.search_service.datastore")
-    def test_search_no_fl_omits_source(self, mock_ds_fn):
-        """When fl is None, _source is not constrained."""
+    def test_search_no_fl_limits_source_to_stored_fields(self, mock_ds_fn):
+        """Default searches, including correlation callers, retrieve stored fields only."""
         mock_client = MagicMock()
         mock_ds = MagicMock()
         mock_ds.ds.client = mock_client
@@ -647,10 +662,15 @@ class TestSearch:
 
         mock_client.search.return_value = {"hits": {"total": {"value": 0}, "hits": []}}
 
-        search_service.search("hit", query="*:*", fl=None)
+        with patch(
+            "howler.services.search_service.INDEX_MAP", {"hit": MagicMock(return_value=_stored_hit_collection())}
+        ):
+            search_service.search("hit", query="*:*", fl=None)
 
         call_kwargs = mock_client.search.call_args
-        assert "_source" not in call_kwargs.kwargs
+        source_fields = call_kwargs.kwargs["_source"]
+        assert "howler.id" in source_fields
+        assert "howler.data" not in source_fields
 
     @patch("howler.services.search_service.datastore")
     def test_search_with_timeout(self, mock_ds_fn):
@@ -739,10 +759,11 @@ class TestSearch:
             "_scroll_id": "scroll-abc",
         }
 
-        result = search_service.search("hit", query="*:*", deep_paging_id="*", rows=1)
+        result = search_service.search("hit", query="*:*", deep_paging_id="*", rows=1, timeout=2500)
 
         call_kwargs = mock_client.search.call_args
         assert call_kwargs.kwargs["scroll"] == search_service.SCROLL_TIMEOUT
+        assert call_kwargs.kwargs["timeout"] == "2500ms"
         assert result["next_deep_paging_id"] == "scroll-abc"
 
     @patch("howler.services.search_service.datastore")
@@ -759,8 +780,128 @@ class TestSearch:
 
         search_service.search("hit", query="*:*", deep_paging_id="scroll-abc", rows=100)
 
-        mock_client.scroll.assert_called_once()
+        mock_client.scroll.assert_called_once_with(scroll_id="scroll-abc", scroll=search_service.SCROLL_TIMEOUT)
         mock_client.search.assert_not_called()
+
+    @patch("howler.services.search_service.datastore")
+    def test_deep_paging_scroll_keepalive_is_passed_when_opening(self, mock_ds_fn):
+        """A requested keep-alive is passed through unchanged when opening a scroll."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.search.return_value = {
+            "hits": {
+                "total": {"value": 2},
+                "hits": [{"_source": {"howler": {"id": "h1"}}, "_index": "howler-hit"}],
+            },
+            "_scroll_id": "scroll-next",
+        }
+
+        result = search_service.search("hit", query="*:*", deep_paging_id="*", scroll="37s", rows=1)
+
+        assert mock_client.search.call_args.kwargs["scroll"] == "37s"
+        assert result["next_deep_paging_id"] == "scroll-next"
+
+    @patch("howler.services.search_service.datastore")
+    def test_deep_paging_scroll_keepalive_is_passed_when_advancing(self, mock_ds_fn):
+        """A requested keep-alive is passed through unchanged for scroll continuation."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.scroll.return_value = {
+            "hits": {
+                "total": {"value": 2},
+                "hits": [{"_source": {"howler": {"id": "h1"}}, "_index": "howler-hit"}],
+            },
+            "_scroll_id": "scroll-next",
+        }
+
+        result = search_service.search("hit", query="*:*", deep_paging_id="scroll-current", scroll="37s", rows=1)
+
+        mock_client.scroll.assert_called_once_with(scroll_id="scroll-current", scroll="37s")
+        assert mock_client.search.call_count == 0
+        assert result["next_deep_paging_id"] == "scroll-next"
+
+    @patch("howler.services.search_service.datastore")
+    def test_deep_paging_continuation_does_not_pass_timeout_to_scroll(self, mock_ds_fn):
+        """A timeout is a search option and must not be forwarded to Elasticsearch.scroll."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.scroll.return_value = {"hits": {"total": {"value": 1}, "hits": []}}
+
+        search_service.search("hit", query="*:*", deep_paging_id="scroll-current", timeout=2500)
+
+        mock_client.scroll.assert_called_once_with(scroll_id="scroll-current", scroll=search_service.SCROLL_TIMEOUT)
+        mock_client.search.assert_not_called()
+
+    @patch("howler.services.search_service.datastore")
+    def test_clear_scroll_returns_elasticsearch_result(self, mock_ds_fn):
+        """Clearing a scroll returns the response from Elasticsearch."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+        mock_client.clear_scroll.return_value.body = {"succeeded": True, "num_freed": 1}
+
+        result = search_service.clear_scroll("scroll-abc")
+
+        mock_client.clear_scroll.assert_called_once_with(scroll_id="scroll-abc")
+        assert result == {"succeeded": True, "num_freed": 1}
+
+    @patch("howler.services.search_service.datastore")
+    def test_clear_scroll_connection_error_raises_retry(self, mock_ds_fn):
+        """Connection failures while clearing a scroll use the retryable search error."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+        mock_client.clear_scroll.side_effect = elasticsearch.exceptions.ConnectionError(
+            "N/A", "scroll service unavailable"
+        )
+
+        with pytest.raises(SearchRetryException) as raised:
+            search_service.clear_scroll("scroll-abc")
+
+        assert "scroll-abc" not in str(raised.value)
+
+    @patch("howler.services.search_service.datastore")
+    def test_clear_scroll_transport_error_raises_search_exception(self, mock_ds_fn):
+        """Elasticsearch request failures while clearing a scroll use SearchException."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+        mock_client.clear_scroll.side_effect = elasticsearch.exceptions.TransportError("bad request")
+
+        with patch.object(search_service.logger, "exception") as mock_log:
+            with pytest.raises(SearchException, match="scroll context could not be cleared") as raised:
+                search_service.clear_scroll("raw-scroll-id")
+
+        assert "raw-scroll-id" not in str(raised.value)
+        mock_log.assert_called_once_with("Failed to clear Elasticsearch scroll")
+
+    @patch("howler.services.search_service.datastore")
+    def test_clear_scroll_unexpected_error_is_sanitized(self, mock_ds_fn):
+        """Unexpected clear failures do not expose the decrypted scroll ID."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+        mock_client.clear_scroll.side_effect = RuntimeError("backend failure")
+
+        with patch.object(search_service.logger, "exception") as mock_log:
+            with pytest.raises(SearchException, match="scroll context could not be cleared") as raised:
+                search_service.clear_scroll("raw-scroll-id")
+
+        assert "raw-scroll-id" not in str(raised.value)
+        mock_log.assert_called_once_with("Failed to clear Elasticsearch scroll")
 
     @patch("howler.services.search_service.datastore")
     def test_deep_paging_clears_scroll_when_exhausted(self, mock_ds_fn):

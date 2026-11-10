@@ -9,7 +9,7 @@ from howler.datastore.collection import ESCollection
 from howler.datastore.operations import OdmUpdateOperation
 from howler.helper.hit import HitStatusTransition
 from howler.helper.workflow import Workflow
-from howler.odm.base import UTC_TZ
+from howler.odm.constants import UTC_TZ
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
 from howler.odm.randomizer import random_model_obj

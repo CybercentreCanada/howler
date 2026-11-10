@@ -45,7 +45,6 @@ from howler.datastore.support.schemas import (
 from howler.datastore.types import AggSearchResult, SearchResult
 from howler.datastore.utils import expand_field_patterns
 from howler.odm.base import (
-    BANNED_FIELDS,
     IP,
     ClassificationObject,
     Enum,
@@ -57,6 +56,7 @@ from howler.odm.base import (
     ValidatedKeyword,
     _Field,
 )
+from howler.odm.constants import BANNED_FIELDS
 from howler.utils.compat import Self
 from howler.utils.dict_utils import prune, recursive_update
 

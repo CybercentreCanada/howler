@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from howler.common.exceptions import HowlerTypeError, HowlerValueError, ResourceExists
-from howler.odm.base import UTC_TZ
+from howler.odm.constants import UTC_TZ
 from howler.odm.models.event import Event
 from howler.services import event_service
 
