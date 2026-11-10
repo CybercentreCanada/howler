@@ -1,0 +1,14 @@
+api/howler/api/v1/hit.py
+  h_f221159cc9f457 19,33,542-544,548-571,573
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "71a7450376fd373e11023220f388f0e7cc02e61b",
+  "prompts": {},
+  "humans": {
+    "h_f221159cc9f457": {
+      "author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
