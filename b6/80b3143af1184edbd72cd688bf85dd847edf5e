@@ -1,0 +1,215 @@
+api/test/unit/endpoints/test_action_endpoint.py
+  s_0e1e0c0d70abcf::t_35b65707f455ba 6
+  s_0e1e0c0d70abcf::t_3fa6b01d5d45e8 7,18,32-40
+api/howler/models/view.py
+  s_0e1e0c0d70abcf::t_d38f0c2696dbcd 19,46,52-53
+api/howler/models/action.py
+  s_0e1e0c0d70abcf::t_d38f0c2696dbcd 8,17,31,35-36
+api/howler/services/task_service.py
+  s_0e1e0c0d70abcf::t_e1541260e25adb 7
+api/howler/api/v1/utils/permission_helper.py
+  s_0e1e0c0d70abcf::t_e1541260e25adb 8-9,14,47,86
+api/howler/api/v1/hit.py
+  s_0e1e0c0d70abcf::t_e1541260e25adb 39,62
+api/howler/models/event.py
+  s_0e1e0c0d70abcf::t_e0ed4cd81d8034 21-22,69,79
+api/howler/actions/add_to_bundle.py
+  s_0e1e0c0d70abcf::t_02ee86e00e5107 94
+api/test/unit/endpoints/test_classification_access_control.py
+  s_0e1e0c0d70abcf::t_6dc114fc6b33a4 109,128-130
+  s_0e1e0c0d70abcf::t_67136fc8ad7955 170,184,198,212,226,240,255,272,281,480-482
+  s_0e1e0c0d70abcf::t_844c4ab64f07d8 29-33
+  s_0e1e0c0d70abcf::t_5c17677efaf2aa 651,812,850,852,854,896,931
+api/howler/services/hit_service.py
+  s_0e1e0c0d70abcf::t_e1541260e25adb 33-34
+api/test/unit/test_migrations.py
+  s_0e1e0c0d70abcf::t_100e1dd0432ed6 69,83
+api/howler/models/howler_data.py
+  s_0e1e0c0d70abcf::t_e0ed4cd81d8034 22,24,228,236
+api/howler/api/v2/task.py
+  s_0e1e0c0d70abcf::t_e1541260e25adb 10
+api/test/unit/services/test_bundle_compat_service.py
+  s_0e1e0c0d70abcf::t_35b65707f455ba 3
+api/howler/models/pivot.py
+  s_0e1e0c0d70abcf::t_57d26445a5a391 5-7,34-48,58-66,73-79
+api/test/unit/models/test_supporting_differential.py
+  s_0e1e0c0d70abcf::t_ce45683c0a6abd 21,24,31-36,43,88-89,91-94,98,121-126
+api/test/integration/service/test_dossier_service.py
+  s_0e1e0c0d70abcf::t_d82ec75a5b275b 126
+api/test/unit/endpoints/test_task_endpoint.py
+  s_0e1e0c0d70abcf::t_35b65707f455ba 8,19
+api/howler/models/ownership.py
+  s_0e1e0c0d70abcf::t_6f4bbc6080797d 1-13
+api/test/integration/api/test_dossier.py
+  s_0e1e0c0d70abcf::t_d82ec75a5b275b 29,135,152
+api/howler/datastore/howler_store.py
+  s_0e1e0c0d70abcf::t_3e4e1a23ac0ca6 16
+api/test/unit/test_ilm_collection.py
+  s_0e1e0c0d70abcf::t_bf2ff48adc9bb9 229-230,460
+  s_0e1e0c0d70abcf::t_fdd6cacb10b402 663
+  s_0e1e0c0d70abcf::t_c387d6cc7c6feb 675-676
+  s_0e1e0c0d70abcf::t_dd700781500299 662,666-669
+  s_0e1e0c0d70abcf::t_2307e857c27790 982
+  s_0e1e0c0d70abcf::t_19c157e76ce2a1 228,552,558,569,577,579
+api/test/unit/services/test_search_service_user_fields.py
+  s_0e1e0c0d70abcf::t_35b65707f455ba 12,14,52,54-56
+  s_0e1e0c0d70abcf::t_102039d8186ef1 26
+  s_0e1e0c0d70abcf::t_cc0ee7b3cb8d58 11,13,32-42,128,262,317-318,324-325,366,391
+  s_0e1e0c0d70abcf::t_87639f37b25fbf 53
+  s_0e1e0c0d70abcf::t_4b53bd70de934d 43-44
+api/test/integration/service/test_search_service.py
+  s_0e1e0c0d70abcf::t_542c42f8b05003 10,30-34
+api/test/unit/models/test_pivot.py
+  s_0e1e0c0d70abcf::t_672ed4e3d0577d 4,20,26,32,38,45-52
+api/howler/models/template.py
+  s_0e1e0c0d70abcf::t_d38f0c2696dbcd 5-14,22-23
+api/howler/services/search_service.py
+  s_0e1e0c0d70abcf::t_e1541260e25adb 45
+  s_0e1e0c0d70abcf::t_02ee86e00e5107 34
+api/test/unit/test_socket.py
+  s_0e1e0c0d70abcf::t_35b65707f455ba 3-4
+api/test/unit/services/test_correlation_service.py
+  s_0e1e0c0d70abcf::t_d97231add7e5c4 504
+  s_0e1e0c0d70abcf::t_d82ec75a5b275b 508,517-519
+api/howler/models/base.py
+  s_0e1e0c0d70abcf::t_390d84cb8dd780 549
+api/test/unit/actions/test_add_to_bundle.py
+  s_0e1e0c0d70abcf::t_ef503fc14f9d7e 141
+api/test/unit/endpoints/test_case_endpoint.py
+  s_0e1e0c0d70abcf::t_ef503fc14f9d7e 402,439,555
+api/test/unit/test_datastore_field_selection.py
+  s_0e1e0c0d70abcf::t_c4caab444b3b7b 9-10,12-19,23-25,29-30,34-39,45-49
+  s_0e1e0c0d70abcf::t_14fada1aeb310d 11
+  s_0e1e0c0d70abcf::t_a5cd59f40bf214 22,28,33
+api/howler/datastore/utils.py
+  s_0e1e0c0d70abcf::t_3e4e1a23ac0ca6 11,92-98,103,109,111,117-119
+api/howler/services/correlation_service.py
+  s_0e1e0c0d70abcf::t_390d84cb8dd780 253
+  s_0e1e0c0d70abcf::t_7788294b0435fe 251,266
+api/test/unit/services/test_user_service.py
+  s_0e1e0c0d70abcf::t_56e3926a00a159 313
+  s_0e1e0c0d70abcf::t_bf2ff48adc9bb9 314
+api/test/unit/test_response_functions.py
+  s_0e1e0c0d70abcf::t_19c157e76ce2a1 134,144,158
+api/howler/models/user.py
+  s_0e1e0c0d70abcf::t_d38f0c2696dbcd 25
+api/test/unit/endpoints/test_ingest_endpoint.py
+  s_0e1e0c0d70abcf::t_bf8a67009d5827 692,736
+  s_0e1e0c0d70abcf::t_56e3926a00a159 694,738
+api/test/unit/test_step9_application.py
+  s_0e1e0c0d70abcf::t_5a5eee0cf9f74c 29,46,59-62,77-79,82,85-87,89,91,99,101-102
+api/test/unit/services/test_case_service.py
+  s_0e1e0c0d70abcf::t_4cf5366f0d7cb2 70,82,408,639,3225,3244,3264,3275,3283,3285,3302,3305,3307,3399
+  s_0e1e0c0d70abcf::t_ad9fa031b43777 234-235,253-254,268,288
+  s_0e1e0c0d70abcf::t_bb0ea3c819dc0c 28
+  s_0e1e0c0d70abcf::t_7b848f26014a70 934,938
+  s_0e1e0c0d70abcf::t_d088559b4725fd 4
+  s_0e1e0c0d70abcf::t_9b8c3105b2f03d 211-212,223-224
+  s_0e1e0c0d70abcf::t_1240b81053fc45 674-676,706,781-787
+  s_0e1e0c0d70abcf::t_ac4a98264339e1 1637-1645,1671-1675
+  s_0e1e0c0d70abcf::t_97234e17e9b75a 3041,3053-3058,3075,3083-3086
+  s_0e1e0c0d70abcf::t_b2ca53a283083d 230,922
+  s_0e1e0c0d70abcf::t_0aef5e489a31a5 1047-1049,1064,1078-1080,1104,1249-1251
+api/howler/models/overview.py
+  s_0e1e0c0d70abcf::t_fc666f8df07e2e 5
+  s_0e1e0c0d70abcf::t_d38f0c2696dbcd 13-14,16
+api/test/unit/test_socket_utils.py
+  s_0e1e0c0d70abcf::t_35b65707f455ba 3-4
+api/howler/models/permission_request.py
+  s_0e1e0c0d70abcf::t_6f4bbc6080797d 1,3,5,7-17,21
+api/test/unit/endpoints/test_search_endpoint.py
+  s_0e1e0c0d70abcf::t_6c244d38b20354 13
+  s_0e1e0c0d70abcf::t_542c42f8b05003 351-355
+  s_0e1e0c0d70abcf::t_6a9e85062260cc 12,44-56,198,240-242,245,300-301,305,897
+api/test/unit/models/test_field_parity_differential.py
+  s_0e1e0c0d70abcf::t_24496757006072 92-97
+api/test/unit/models/test_model_contract_metadata.py
+  s_0e1e0c0d70abcf::t_24496757006072 126
+api/test/integration/service/test_dossier_group.py
+  s_0e1e0c0d70abcf::t_35b65707f455ba 6,20
+api/howler/models/migration.py
+  s_0e1e0c0d70abcf::t_6f4bbc6080797d 1,3,5,7-8,14-21,24-25
+api/howler/actions/add_to_case.py
+  s_0e1e0c0d70abcf::t_02ee86e00e5107 101
+api/howler/cronjobs/retention.py
+  s_0e1e0c0d70abcf::t_e1541260e25adb 13-14
+api/test/unit/test_case_insensitive_metadata.py
+  s_0e1e0c0d70abcf::t_24d0cf57dac4ec 690,706,717-723,725,741
+  s_0e1e0c0d70abcf::t_94c96e7a44aaed 25-30,69-70,72-74,78-81,84-87,168,178,188,198-201,489,788
+  s_0e1e0c0d70abcf::t_3fa6b01d5d45e8 666
+api/howler/services/case_service.py
+  s_0e1e0c0d70abcf::t_e0ed4cd81d8034 29
+api/howler/security/utils.py
+  s_0e1e0c0d70abcf::t_e1541260e25adb 14,17,25,50
+api/howler/services/event_service.py
+  s_0e1e0c0d70abcf::t_e0ed4cd81d8034 15,232,258
+api/test/unit/endpoints/test_notebook.py
+  s_0e1e0c0d70abcf::t_fa06b750181873 10,35-43
+api/test/unit/services/test_action_pydantic_execution.py
+  s_0e1e0c0d70abcf::t_19c157e76ce2a1 14
+api/howler/models/dossier.py
+  s_0e1e0c0d70abcf::t_d38f0c2696dbcd 5-14,16,25,37,39-41
+api/howler/models/fields.py
+  s_0e1e0c0d70abcf::t_57d26445a5a391 337-347,504,514
+  s_0e1e0c0d70abcf::t_3fa6b01d5d45e8 541,555
+  s_0e1e0c0d70abcf::t_2bc3a48c7fd68b 577
+api/howler/datastore/operations.py
+  s_0e1e0c0d70abcf::t_3e4e1a23ac0ca6 16
+  s_0e1e0c0d70abcf::t_f3ca46d02c8bf0 1
+api/howler/models/header.py
+  s_0e1e0c0d70abcf::t_1a6886f1705924 19
+  s_0e1e0c0d70abcf::t_b5b530ef662e47 14-15,17
+  s_0e1e0c0d70abcf::t_6f4bbc6080797d 1,3,5-13
+api/howler/services/permission_service.py
+  s_0e1e0c0d70abcf::t_e1541260e25adb 8-9,48
+  s_0e1e0c0d70abcf::t_390d84cb8dd780 72,128
+  s_0e1e0c0d70abcf::t_f3ca46d02c8bf0 10
+api/howler/api/socket.py
+  s_0e1e0c0d70abcf::t_e1541260e25adb 16
+api/test/integration/api/test_search.py
+  s_0e1e0c0d70abcf::t_35b65707f455ba 11
+api/test/integration/test_ilm.py
+  s_0e1e0c0d70abcf::t_d82ec75a5b275b 377,380,390,405-408,414
+api/test/unit/actions/test_add_to_case.py
+  s_0e1e0c0d70abcf::t_ef503fc14f9d7e 284
+api/howler/models/log.py
+  s_0e1e0c0d70abcf::t_55c4a598519cdd 33-34,41
+  s_0e1e0c0d70abcf::t_6f4bbc6080797d 1-6,8-9,12-14,20-31,36-37
+api/howler/utils/socket_utils.py
+  s_0e1e0c0d70abcf::t_e1541260e25adb 2
+api/test/unit/test_retention_unit.py
+  s_0e1e0c0d70abcf::t_35b65707f455ba 4
+api/test/unit/endpoints/test_dossier_endpoint.py
+  s_0e1e0c0d70abcf::t_91de4d3b731857 7-8,19
+api/howler/datastore/migrations/case_insensitive_metadata.py
+  s_0e1e0c0d70abcf::t_74775ad4b58dfc 9,78
+api/howler/api/search_utils.py
+  s_0e1e0c0d70abcf::t_e1541260e25adb 15
+api/test/integration/test_case_insensitive_metadata.py
+  s_0e1e0c0d70abcf::t_dbfa42be9b30a4 19-23
+  s_0e1e0c0d70abcf::t_14fada1aeb310d 10
+api/test/unit/services/test_step7_runtime_compat.py
+  s_0e1e0c0d70abcf::t_bf2ff48adc9bb9 247
+api/test/unit/services/test_permission_service.py
+  s_0e1e0c0d70abcf::t_56e3926a00a159 97-101
+api/howler/api/v1/utils/etag.py
+  s_0e1e0c0d70abcf::t_e1541260e25adb 14-15,26
+api/test/unit/models/test_contract_golden.py
+  s_0e1e0c0d70abcf::t_5a5eee0cf9f74c 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b680b3143af1184edbd72cd688bf85dd847edf5e",
+  "prompts": {},
+  "sessions": {
+    "s_0e1e0c0d70abcf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e3955143fffehFddgMslgG1AK1",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
