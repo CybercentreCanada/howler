@@ -1,0 +1,25 @@
+.agents/agents/orchestrator/agent.md
+  s_69df2ce1f316a9::t_7ac018e188ec70 16
+.agents/skills/howler-worktrees/SKILL.md
+  s_69df2ce1f316a9::t_815db8d86c8c4b 36-37
+  s_69df2ce1f316a9::t_511080032187f5 19
+AGENTS.md
+  s_69df2ce1f316a9::t_cf8ce31a0e7d4d 153
+  s_69df2ce1f316a9::t_7a1cd3fcbe0e31 137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "27a2a6a06b05154b14472e07746c2f22b5afaa56",
+  "prompts": {},
+  "sessions": {
+    "s_69df2ce1f316a9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e39b53c75ffe7TajA30Dx2YT6V",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": null
+    }
+  }
+}
