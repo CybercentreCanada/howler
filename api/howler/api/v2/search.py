@@ -7,17 +7,17 @@ from elasticsearch import BadRequestError
 from elasticsearch._sync.client.indices import IndicesClient
 from flask import request
 
-from howler.api import bad_request, forbidden, internal_error, make_subapi_blueprint, ok
+from howler.api import bad_request, forbidden, internal_error, make_subapi_blueprint, ok, service_unavailable
+from howler.api.search_utils import InvalidScrollTokenException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.logging.audit import audit
 from howler.common.swagger import generate_swagger_docs
-from howler.datastore.exceptions import SearchException
+from howler.datastore.exceptions import SearchException, SearchRetryException, SensitiveUserFieldsException
 from howler.helper.search import get_collection, has_access_control
 from howler.odm.models.user import User
 from howler.security.login import api_login
 from howler.services import hit_service, lucene_service, search_service
-from howler.services.search_service import SensitiveUserFieldsException
 from howler.utils.net_utils import generate_params
 
 SUB_API = "search"
@@ -46,6 +46,7 @@ def search(indexes: str, user: User, **kwargs):
 
     Optional Arguments:
     deep_paging_id      =>   ID of the next page or * to start deep paging
+    scroll              =>   Scroll keep-alive duration for deep paging (default: 5m, max: 10m)
     filters             =>   List of additional filter queries limit the data
     offset              =>   Offset in the results
     rows                =>   Number of results per page
@@ -63,6 +64,7 @@ def search(indexes: str, user: User, **kwargs):
      "rows": 100,               # Max number of results
      "sort": "field asc",       # How to sort the results
      "fl": "id,score",          # List of fields to return
+     "scroll": "5m",            # Scroll keep-alive duration for deep paging
      "timeout": 1000,           # Maximum execution time (ms)
      "filters": ['fq'],         # List of additional filter queries limit the data
      "metadata": ["dossiers"]}  # List of additional features to add to the search
@@ -75,7 +77,7 @@ def search(indexes: str, user: User, **kwargs):
      "next_deep_paging_id": "asX3f...342",  # ID to pass back for the next page during deep paging
      "items": []}                           # List of results
     """
-    index_list = indexes.split(",")
+    index_list = [index.strip() for index in indexes.split(",") if index.strip()]
 
     fields = [
         "offset",
@@ -84,6 +86,7 @@ def search(indexes: str, user: User, **kwargs):
         "fl",
         "timeout",
         "deep_paging_id",
+        "scroll",
         "track_total_hits",
     ]
     multi_fields = ["filters", "metadata"]
@@ -111,11 +114,19 @@ def search(indexes: str, user: User, **kwargs):
     _audit_request(user, search, index=indexes, query=query)
 
     metadata = params.pop("metadata", [])
+    scroll = params.pop("scroll", None)
 
     try:
-        result = search_service.search(indexes, query, user=user, **params)
+        if params.get("deep_paging_id") is not None:
+            result = search_service.scroll_search(indexes, query, user, params, scroll)
+        else:
+            result = search_service.search(indexes, query, user=user, **params)
     except SensitiveUserFieldsException as e:
         return forbidden(err=e.message)
+    except InvalidScrollTokenException:
+        return forbidden(err="Invalid scroll ID for this user or search.")
+    except SearchRetryException:
+        return service_unavailable(err="The search service is temporarily unavailable. Please retry.")
     except (SearchException, BadRequestError) as e:
         logger.exception(f"SearchException on query {query}")
         return bad_request(err=f"SearchException on query {query}: {str(e)}")
@@ -123,10 +134,40 @@ def search(indexes: str, user: User, **kwargs):
         logger.exception(f"Exception on search with query {query}")
         return internal_error(f"Exception on search with query {query}: {e}")
 
-    if metadata and any(idx in index_list for idx in ["hit"]):
+    if metadata and "hit" in index_list:
         hit_service.augment_metadata(result["items"], metadata, user)
 
     return ok(result)
+
+
+@generate_swagger_docs()
+@search_api.route("/scroll", methods=["DELETE"])
+@api_login(required_priv=["R"])
+def clear_scroll(user: User, **kwargs):
+    """Clear an Elasticsearch scroll context.
+
+    Variables:
+    None
+
+    Arguments:
+    scroll_id => Scroll token returned as next_deep_paging_id by a search, provided in the request body
+
+    Result Example:
+    {"succeeded": true, "num_freed": 1}
+    """
+    data = request.get_json(silent=True)
+    scroll_id = data.get("scroll_id") if isinstance(data, dict) else None
+    if not isinstance(scroll_id, str) or not scroll_id:
+        return bad_request(err="A scroll_id must be provided.")
+
+    try:
+        return ok(search_service.clear_owned_scroll(user, scroll_id))
+    except InvalidScrollTokenException:
+        return forbidden(err="Invalid scroll ID for this user.")
+    except SearchRetryException:
+        return service_unavailable(err="The scroll context could not be cleared. Please retry.")
+    except (SearchException, BadRequestError) as e:
+        return bad_request(err=f"SearchException: {e}")
 
 
 @generate_swagger_docs()
@@ -323,6 +364,8 @@ def facet(indexes: str, **kwargs):
         )
 
         return ok(facet_result)
+    except SensitiveUserFieldsException as e:
+        return forbidden(err=e.message)
     except (SearchException, BadRequestError) as e:
         query = params.get("query", "id:*")
         logger.exception(f"SearchException on query {query}")

@@ -9,15 +9,16 @@ from sigma.backends.elasticsearch import LuceneBackend
 from sigma.rule import SigmaRule
 from yaml.scanner import ScannerError
 
-from howler.api import bad_request, forbidden, make_subapi_blueprint, ok
+from howler.api import bad_request, forbidden, make_subapi_blueprint, ok, service_unavailable
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
-from howler.datastore.exceptions import SearchException
+from howler.datastore.exceptions import InvalidScrollTokenException, SearchException, SearchRetryException
 from howler.helper.search import get_collection, get_default_sort, has_access_control, list_all_fields
 from howler.odm.models.user import User
 from howler.security.login import api_login
-from howler.services import hit_service, lucene_service
+from howler.services import hit_service, lucene_service, search_service
+from howler.services.search_service import SensitiveUserFieldsException
 from howler.utils.net_utils import generate_params
 
 SUB_API = "search"
@@ -26,13 +27,43 @@ search_api._doc = "Perform search queries"  # type: ignore
 
 logger = get_logger(__file__)
 
-SENSITIVE_USER_FIELDS = ["password", "apikeys", "*"]
+
+@generate_swagger_docs()
+@search_api.route("/scroll", methods=["DELETE"])
+@api_login(required_priv=["R"])
+def clear_scroll(user: User, **kwargs):
+    """Clear an Elasticsearch scroll context.
+
+    Variables:
+    None
+
+    Arguments:
+    scroll_id => Scroll token returned as next_deep_paging_id by a search, provided in the request body
+
+    Result Example:
+    {"succeeded": true, "num_freed": 1}
+    """
+    del kwargs
+
+    data = request.get_json(silent=True)
+    scroll_id = data.get("scroll_id") if isinstance(data, dict) else None
+    if not isinstance(scroll_id, str) or not scroll_id:
+        return bad_request(err="A scroll_id must be provided.")
+
+    try:
+        return ok(search_service.clear_owned_scroll(user, scroll_id))
+    except InvalidScrollTokenException:
+        return forbidden(err="Invalid scroll ID for this user.")
+    except SearchRetryException:
+        return service_unavailable(err="The scroll context could not be cleared. Please retry.")
+    except (SearchException, BadRequestError) as e:
+        return bad_request(err=f"SearchException: {e}")
 
 
 @generate_swagger_docs()
 @search_api.route("/<index>", methods=["GET", "POST"])
 @api_login(required_priv=["R"])
-def search(index: str, user: User, **kwargs):
+def search(index: str, user: User, **kwargs):  # noqa: C901
     """Search through specified index for a given query. Uses lucene search syntax for query.
 
     Variables:
@@ -43,6 +74,7 @@ def search(index: str, user: User, **kwargs):
 
     Optional Arguments:
     deep_paging_id      =>   ID of the next page or * to start deep paging
+    scroll              =>   Scroll keep-alive duration for deep paging (default: 5m, max: 10m)
     filters             =>   List of additional filter queries limit the data
     offset              =>   Offset in the results
     rows                =>   Number of results per page
@@ -60,6 +92,7 @@ def search(index: str, user: User, **kwargs):
      "sort": "field asc",       # How to sort the results
      "fl": "id,score",          # List of fields to return
      "timeout": 1000,           # Maximum execution time (ms)
+     "scroll": "5m",           # Scroll keep-alive duration for deep paging
      "filters": ['fq'],         # List of additional filter queries limit the data
      "metadata": ["dossiers"]}  # List of additional features to add to the search
 
@@ -84,14 +117,14 @@ def search(index: str, user: User, **kwargs):
         "fl",
         "timeout",
         "deep_paging_id",
+        "scroll",
         "track_total_hits",
     ]
     multi_fields = ["filters", "metadata"]
 
     params, req_data = generate_params(request, fields, multi_fields)
 
-    if has_access_control(index):
-        params.update({"access_control": user.access_control})
+    scroll = params.pop("scroll", None)
 
     params.update({"sort": (params.get("sort", None) or default_sort).split(",")})
 
@@ -99,21 +132,28 @@ def search(index: str, user: User, **kwargs):
     if not query:
         return bad_request(err="There was no search query.")
 
-    if (
-        "fl" in params
-        and index == "user"
-        and any(sensitive_field in params["fl"] for sensitive_field in SENSITIVE_USER_FIELDS)
-    ):
+    if params.get("deep_paging_id") is None and not search_service.user_fields_allowed(index, params.get("fl"), user):
         return forbidden(err="Invalid fields to retrieve.")
 
     try:
         metadata = params.pop("metadata", [])
-        result = collection().search(query, as_obj=False, **params)
+        if params.get("deep_paging_id") is not None:
+            result = search_service.scroll_search(index, query, user, params, scroll)
+        else:
+            if has_access_control(index):
+                params.update({"access_control": user.access_control})
+            result = collection().search(query, as_obj=False, **params)
 
         if index == "hit" and len(metadata) > 0:
             hit_service.augment_metadata(result["items"], metadata, user)
 
         return ok(result)
+    except SensitiveUserFieldsException as e:
+        return forbidden(err=e.message)
+    except InvalidScrollTokenException:
+        return forbidden(err="Invalid scroll ID for this user or search.")
+    except SearchRetryException:
+        return service_unavailable(err="The search service is temporarily unavailable. Please retry.")
     except (SearchException, BadRequestError) as e:
         return bad_request(err=f"SearchException: {e}")
 
@@ -244,11 +284,7 @@ def eql_search(index: str, user: User, **kwargs):
     if not eql_query:
         return bad_request(err="There was no EQL search query.")
 
-    if (
-        "fl" in params
-        and index == "user"
-        and any(sensitive_field in params["fl"] for sensitive_field in SENSITIVE_USER_FIELDS)
-    ):
+    if not search_service.user_fields_allowed(index, params.get("fl"), user):
         return forbidden(err="Invalid fields to retrieve.")
 
     try:
@@ -316,6 +352,9 @@ def sigma_search(index: str, user: User, **kwargs):
     params["as_obj"] = False
     params.update({"sort": (params.get("sort", None) or default_sort).split(",")})
 
+    if params.pop("deep_paging_id", None) is not None:
+        return bad_request(err="Deep paging is not supported for sigma searches.")
+
     sigma = req_data.get("sigma", None)
     if not sigma:
         return bad_request(err="There was no sigma rule.")
@@ -329,11 +368,7 @@ def sigma_search(index: str, user: User, **kwargs):
 
     lucene_queries = LuceneBackend(index_names=[es_collection.index_name]).convert_rule(rule)
 
-    if (
-        "fl" in params
-        and index == "user"
-        and any(sensitive_field in params["fl"] for sensitive_field in SENSITIVE_USER_FIELDS)
-    ):
+    if not search_service.user_fields_allowed(index, params.get("fl"), user):
         return forbidden(err="Invalid fields to retrieve.")
 
     try:
@@ -403,12 +438,15 @@ def group_search(index: str, group_field: str, user: User, **kwargs):
     if not group_field:
         return bad_request(err="The field to group on was not specified.")
 
-    if (
-        "fl" in params
-        and index == "user"
-        and any(sensitive_field in params["fl"] for sensitive_field in SENSITIVE_USER_FIELDS)
-    ):
-        return forbidden(err="Invalid fields to retrieve.")
+    fields_to_check = [group_field]
+    requested_fields = params.get("fl")
+    if isinstance(requested_fields, list):
+        fields_to_check.extend(requested_fields)
+    elif requested_fields is not None:
+        fields_to_check.append(requested_fields)
+
+    if not search_service.user_fields_allowed(index, fields_to_check, user):
+        return forbidden(err="Invalid field to group on or retrieve.")
 
     try:
         return ok(collection().grouped_search(group_field, **params))
@@ -559,7 +597,7 @@ def facet(index: str, user: User, **kwargs):
                 logger.warning("Invalid field %s requested for faceting, skipping", field)
                 continue
 
-            if index == "user" and any(sensitive_field in field for sensitive_field in SENSITIVE_USER_FIELDS):
+            if not search_service.user_fields_allowed(index, [field], user):
                 return forbidden(err="Invalid fields to facet on.")
 
             facet_result[field] = collection().facet(field, **params)
@@ -611,7 +649,7 @@ def facet_field(index: str, field: str, user: User, **kwargs):
     if field_info is None:
         return bad_request(err=f"Field '{field}' is not a valid field in index: {index}")
 
-    if index == "user" and any(sensitive_field in field for sensitive_field in SENSITIVE_USER_FIELDS):
+    if not search_service.user_fields_allowed(index, [field], user):
         return forbidden(err="Invalid field to facet on.")
 
     fields = ["query", "mincount", "rows"]
@@ -670,6 +708,9 @@ def histogram(index: str, field: str, user: User, **kwargs):
     collection = get_collection(index, user)
     if collection is None:
         return bad_request(err=f"Not a valid index to search in: {index}")
+
+    if not search_service.user_fields_allowed(index, [field], user):
+        return forbidden(err="Invalid field to histogram on.")
 
     # Get fields default values
     field_info = collection().fields().get(field, None)
@@ -734,6 +775,9 @@ def stats(index: str, int_field: str, user: User, **kwargs):
     collection = get_collection(index, user)
     if collection is None:
         return bad_request(err=f"Not a valid index to search in: {index}")
+
+    if not search_service.user_fields_allowed(index, [int_field], user):
+        return forbidden(err="Invalid field to stats on.")
 
     field_info = collection().fields().get(int_field, None)
     if field_info is None:
