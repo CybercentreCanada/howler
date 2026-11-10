@@ -1,0 +1,21 @@
+api/test/unit/odm/test_case.py
+  s_aedb8de23420dd::t_ff014f68f3a395 360-376
+api/test/unit/services/test_config_service.py
+  s_aedb8de23420dd::t_ff014f68f3a395 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d97c107987bac0a2354208480438485d703de738",
+  "prompts": {},
+  "sessions": {
+    "s_aedb8de23420dd": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e39c9cb82ffesoHfhAX65Xilzo",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
