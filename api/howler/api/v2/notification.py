@@ -19,7 +19,7 @@ notification_api._doc = "Send user notifications"  # type: ignore[attr-defined]
 @notification_api.route("/notify", methods=["POST"])
 @api_login(required_priv=["W"])
 def notify_user(user: dict[str, Any], **kwargs):
-    """Notifies user that a comment has been made on their analytic.
+    """Notifies user that a comment has been made on their resource.
 
     Variables:
     None
@@ -35,11 +35,11 @@ def notify_user(user: dict[str, Any], **kwargs):
 
     Result Example:
     {
-        "type": "analytic_comment",
+        "resource_type": "analytic",
         "recipient": "analytic-owner",
-        "actor": "analyst",
-        "analytic_id": "d23e8c2d-0f09-4a60-a50d-aac7db97b10a",
-        "analytic_name": "Suspicious Login",
+        "sender": "analyst",
+        "resource_id": "d23e8c2d-0f09-4a60-a50d-aac7db97b10a",
+        "resource_name": "Suspicious Login",
         "message": "analyst commented on your analytic Suspicious Login."
     }
     """
