@@ -248,8 +248,9 @@ def count_backfill_matches(case_id: str, rule_id: str, since_value: object, user
     rule, since = get_backfill_rule(case_id, rule_id, user, since_value)
     # SearchService applies classification access control for this user. Tracking
     # the full total ensures the confirmation count is exact even above 10,000.
+    indexes = [str(index) for index in rule.indexes] if rule.indexes else [RuleIndexTypes.HIT.value]
     result = search_service.search(
-        indexes=rule.indexes or [RuleIndexTypes.HIT],
+        indexes=indexes,
         query=rule.query,
         filters=[f'timestamp:["{since.isoformat()}" TO *]'],
         rows=0,
@@ -262,7 +263,7 @@ def count_backfill_matches(case_id: str, rule_id: str, since_value: object, user
 def enqueue_backfill(case_id: str, rule_id: str, since_value: object, user: User) -> int:
     """Stream matching accessible records into the rule-scoped correlation queue."""
     rule, since = get_backfill_rule(case_id, rule_id, user, since_value)
-    indexes = rule.indexes or [RuleIndexTypes.HIT]
+    indexes = [str(index) for index in rule.indexes] if rule.indexes else [RuleIndexTypes.HIT.value]
     query = rule.query
     count = 0
     # Deep paging keeps memory bounded for large historical ranges. Only fetch the

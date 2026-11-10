@@ -689,9 +689,9 @@ class TestOverwrite:
     """Tests for the overwrite endpoint."""
 
     @patch("howler.api.QUOTA_TRACKER")
-    @patch("howler.security.QUOTA_TRACKER")
+    @patch("howler.security.login.QUOTA_TRACKER")
     @patch("howler.api.v2.ingest.datastore")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_overwrite_ignores_stored_index_helper_but_preserves_read_response(
         self, mock_auth_service, mock_ds, mock_security_quota_tracker, mock_api_quota_tracker, request_context: Flask
     ):
@@ -733,9 +733,9 @@ class TestOverwrite:
         assert index.save.call_args.kwargs == {"version": "v1", "refresh": "wait_for"}
 
     @patch("howler.api.QUOTA_TRACKER")
-    @patch("howler.security.QUOTA_TRACKER")
+    @patch("howler.security.login.QUOTA_TRACKER")
     @patch("howler.api.v2.ingest.datastore")
-    @patch("howler.security.auth_service")
+    @patch("howler.security.login.auth_service")
     def test_overwrite_rejects_client_supplied_index_helper(
         self, mock_auth_service, mock_ds, mock_security_quota_tracker, mock_api_quota_tracker, request_context: Flask
     ):

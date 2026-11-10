@@ -8,7 +8,7 @@ from howler.datastore.collection import ESCollection
 from howler.datastore.howler_store import HowlerDatastore
 from howler.datastore.utils import project_stored_fields
 from howler.models.hit import Hit
-from howler.odm.constants import BANNED_FIELDS
+from howler.models.registry import BANNED_FIELDS
 from howler.sample_data.random_data import (
     create_hits,
     create_overviews,

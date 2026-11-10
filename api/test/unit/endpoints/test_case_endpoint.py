@@ -399,7 +399,7 @@ class TestAppendItemEndpoint:
 
             assert result.status_code == 200
             mock_case_service.append_case_item.assert_called_once()
-            record.save.assert_called_once_with(refresh=None, version=None)
+            mock_case_service.save_case.assert_called_once_with(record, refresh=None, version=None)
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
@@ -436,7 +436,7 @@ class TestAppendItemEndpoint:
             assert appended_item.parent == "folder-123"
             assert appended_item.name == "Example"
             assert "path" not in mock_case_service.append_case_item.call_args.kwargs
-            record.save.assert_called_once_with(refresh=None, version=None)
+            mock_case_service.save_case.assert_called_once_with(record, refresh=None, version=None)
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.login.auth_service")
@@ -552,7 +552,7 @@ class TestAppendItemEndpoint:
         mock_datastore.return_value.__getitem__.return_value.get.return_value = {"classification": "UNRESTRICTED"}
 
         record = _build_case()
-        record.save.side_effect = DataStoreException("save failed")
+        mock_case_service.save_case.side_effect = DataStoreException("save failed")
 
         with request_context.test_request_context(
             method="POST",

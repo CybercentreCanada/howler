@@ -131,7 +131,7 @@ def test_format_api_error_message_clips_to_innermost_frame(request_context):
 
 def test_coerce_response_data_handles_model_instances():
     """Model instances should be converted to primitive dictionaries."""
-    user = SchemaAction.model_validate({"action_id": "action-1", "owner_id": "user-1", "name": "Test", "query": "id:*"})
+    user = SchemaAction.model_validate({"action_id": "action-1", "owner": "user-1", "name": "Test", "query": "id:*"})
 
     coerced = api._coerce_response_data(user)
 
@@ -141,7 +141,7 @@ def test_coerce_response_data_handles_model_instances():
 def test_coerce_response_data_handles_lists_of_models():
     """Lists of registered models should be converted element by element."""
     users = [
-        SchemaAction.model_validate({"action_id": action_id, "owner_id": "user-1", "name": "Test", "query": "id:*"})
+        SchemaAction.model_validate({"action_id": action_id, "owner": "user-1", "name": "Test", "query": "id:*"})
         for action_id in ("action-1", "action-2")
     ]
 
@@ -155,7 +155,7 @@ def test_coerce_response_data_handles_pydantic_models():
     action = SchemaAction.model_validate(
         {
             "action_id": "action-1",
-            "owner_id": "user-1",
+            "owner": "user-1",
             "name": "Test",
             "query": "id:*",
         }

@@ -7,6 +7,7 @@ import pytest
 from howler.common.loader import DATASTORE_INDEX_PREFIX
 from howler.datastore.exceptions import SearchException, SearchRetryException
 from howler.models.hit import Hit
+from howler.models.registry import model_registry
 from howler.models.user import User
 from howler.sample_data.random_data import (
     create_events,
@@ -26,7 +27,11 @@ def _stored_hit_collection() -> SimpleNamespace:
     """Build a collection fixture with the real Hit model's stored-field metadata."""
     return SimpleNamespace(
         model_class=Hit,
-        stored_fields={name: field for name, field in Hit.flat_fields().items() if field.store},
+        stored_fields={
+            name: field
+            for name, field in model_registry.flat_fields(Hit).items()
+            if field.metadata is not None and field.metadata.store
+        },
     )
 
 

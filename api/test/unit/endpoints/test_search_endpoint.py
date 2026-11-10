@@ -9,6 +9,8 @@ import elasticsearch
 import pytest
 from flask import Flask, Response
 
+from howler.models.fields import HowlerFieldMetadata
+from howler.models.registry import FieldDefinition, model_registry
 from howler.models.user import User
 from howler.sample_data.randomizer import random_model_obj
 
@@ -37,6 +39,19 @@ def _build_user(user_type: list[str] | None = None) -> User:
     user_data.uname = f"test_{uuid.uuid4().hex[:12]}"
     user_data.api_quota = 1000
     return user_data
+
+
+def _stored_field(name: str) -> FieldDefinition:
+    return FieldDefinition(
+        name=name,
+        path=name,
+        annotation=str,
+        metadata=HowlerFieldMetadata(kind="Keyword", index=True, store=True),
+        required=False,
+        default=None,
+        default_factory=None,
+        description=None,
+    )
 
 
 def _mock_auth(mock_auth_service, user, priv=None):
@@ -180,7 +195,7 @@ class TestSearch:
 
         collection = MagicMock()
         collection.model_class = None
-        collection.stored_fields = {"name": SimpleNamespace(store=True)}
+        collection.stored_fields = {"name": _stored_field("name")}
         mock_get_collection.return_value = lambda: collection
         mock_search.return_value = {
             "total": 1,
@@ -222,10 +237,12 @@ class TestSearch:
 
         hit_collection = MagicMock()
         hit_collection.model_class = None
-        hit_collection.stored_fields = {"action.operations.operation_id": SimpleNamespace(store=True)}
+        hit_collection.stored_fields = {
+            "action.operations.operation_id": _stored_field("action.operations.operation_id")
+        }
         user_collection = MagicMock()
         user_collection.model_class = None
-        user_collection.stored_fields = {"uname": SimpleNamespace(store=True)}
+        user_collection.stored_fields = {"uname": _stored_field("uname")}
         collections = {"hit": hit_collection, "user": user_collection}
         mock_get_collection.side_effect = lambda index, _user: lambda: collections[index]
         mock_search.return_value = {
@@ -280,12 +297,12 @@ class TestSearch:
         hit_collection = MagicMock()
         hit_collection.model_class = None
         hit_collection.stored_fields = {
-            "uname": SimpleNamespace(store=True),
-            "hit_only": SimpleNamespace(store=True),
+            "uname": _stored_field("uname"),
+            "hit_only": _stored_field("hit_only"),
         }
         user_collection = MagicMock()
         user_collection.model_class = None
-        user_collection.stored_fields = {"uname": SimpleNamespace(store=True)}
+        user_collection.stored_fields = {"uname": _stored_field("uname")}
         collections = {"hit": hit_collection, "user": user_collection}
         mock_get_collection.side_effect = lambda index, _user: lambda: collections[index]
         mock_search.return_value = {
@@ -331,7 +348,11 @@ class TestSearch:
         mock_quota_tracker.begin.return_value = True
         mock_get_collection.return_value = lambda: SimpleNamespace(
             model_class=User,
-            stored_fields={name: field for name, field in User.flat_fields().items() if field.store},
+            stored_fields={
+                name: field
+                for name, field in model_registry.flat_fields(User).items()
+                if field.metadata is not None and field.metadata.store
+            },
         )
 
         with request_context.test_request_context(
@@ -873,7 +894,7 @@ class TestFacet:
 def _scroll_collection(*stored_fields: str) -> MagicMock:
     collection = MagicMock()
     collection.model_class = None
-    collection.stored_fields = {field: SimpleNamespace(store=True) for field in stored_fields}
+    collection.stored_fields = {field: _stored_field(field) for field in stored_fields}
     return collection
 
 

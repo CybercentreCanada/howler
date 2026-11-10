@@ -98,7 +98,7 @@ def execute(  # noqa: C901
 
     if len(case.items) != original_item_count:
         try:
-            case.save(refresh="wait_for", version=version)
+            case_service.save_case(case, refresh="wait_for", version=version)
         except (DataStoreException, VersionConflictException):
             logger.exception("Exception on save:")
             return [

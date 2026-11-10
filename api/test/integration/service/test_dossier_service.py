@@ -123,7 +123,7 @@ def test_update_dossier(datastore: HowlerDatastore):
 
 def test_update_dossier_allows_visibility_change_for_shared_dossier(datastore: HowlerDatastore):
     owner = datastore.user.search("uname:user")["items"][0]
-    dossier = Dossier(
+    dossier = Dossier.validate_howler(
         {
             "title": "Shared visibility test",
             "query": "howler.hash:*",

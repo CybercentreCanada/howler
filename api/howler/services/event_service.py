@@ -12,7 +12,7 @@ from howler.datastore.collection import CREATE_TOKEN
 from howler.models import strip_unknown_fields
 from howler.models.ecs.event import ECSEvent
 from howler.models.event import Event
-from howler.models.event import Log as EventLog
+from howler.models.log import Log
 from howler.models.registry import model_registry
 from howler.models.user import User
 from howler.security.utils import is_classification_accessible
@@ -229,7 +229,7 @@ def create_event(
 
     if user:
         cast(Any, event).howler.log = [
-            cast(Any, EventLog).validate_howler({"timestamp": "NOW", "explanation": "Created event", "user": user})
+            cast(Any, Log).validate_howler({"timestamp": "NOW", "explanation": "Created event", "user": user})
         ]
 
     CREATED_EVENTS.inc()
@@ -255,7 +255,7 @@ def create_events(
 
         if user:
             event.howler.log = [
-                cast(Any, EventLog).validate_howler({"timestamp": "NOW", "explanation": "Created event", "user": user})
+                cast(Any, Log).validate_howler({"timestamp": "NOW", "explanation": "Created event", "user": user})
             ]
 
         CREATED_EVENTS.inc()

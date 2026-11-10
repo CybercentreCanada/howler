@@ -1,4 +1,4 @@
-from typing import Any, Iterator, Optional, cast
+from typing import Any, Iterator, Optional
 
 from pydantic import BaseModel
 
@@ -13,7 +13,7 @@ class OdmHelper:
         if obj and issubclass(obj, BaseModel):
             self.fields = model_registry.flat_fields(obj)
         else:
-            self.fields = cast(Any, obj).flat_fields() if obj else {}
+            self.fields = {}
         self.valid_fields = list(self.fields) if obj else None
 
     def list_add(

@@ -2,8 +2,18 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerESModel, compound, enum, keyword, list_field, optional, register_model, uuid
+from howler.models import (
+    HowlerESModel,
+    case_insensitive_keyword,
+    compound,
+    enum,
+    list_field,
+    optional,
+    register_model,
+    uuid,
+)
 from howler.models.lead import Lead
+from howler.models.ownership import Ownership
 from howler.models.pivot import Pivot
 
 
@@ -12,7 +22,7 @@ from howler.models.pivot import Pivot
     store=True,
     description="The dossier object stores individual tabs/fields for a given alert.",
 )
-class Dossier(HowlerESModel):
+class Dossier(Ownership, HowlerESModel):
     """The dossier object stores individual tabs/fields for a given alert."""
 
     dossier_id: uuid(description="A UUID for this dossier.")
@@ -24,9 +34,10 @@ class Dossier(HowlerESModel):
         default=[],
         description="A list of the pivots to show when the query matches the given alert.",
     )
-    title: keyword(description="The title of this dossier.")
-    owner: keyword(description="The person to whom this dossier belongs.")
+    title: case_insensitive_keyword(description="The title of this dossier.")
     query: optional(
-        keyword(), default=None, description="The query that controls when this dossier should be shown in the UI."
+        case_insensitive_keyword(),
+        default=None,
+        description="The query that controls when this dossier should be shown in the UI.",
     )
     type: enum(values=["personal", "global"], description="The type of dossier - personal or global.")

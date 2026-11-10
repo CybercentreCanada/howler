@@ -22,7 +22,7 @@ from howler.models import (
 )
 
 ACL = {"R", "W", "E", "I"}
-DASHBOARD_TYPES = {"view", "analytic"}
+DASHBOARD_TYPES = {"view", "analytic", "case", "tasks"}
 
 
 @register_model(index=False, store=False, description="Model for API keys", embedded=True)

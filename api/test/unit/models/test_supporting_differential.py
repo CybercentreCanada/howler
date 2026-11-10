@@ -18,24 +18,29 @@ from test.unit.models._goldens import primitive_golden
 
 
 def test_action_primitives_match_legacy() -> None:
-    """Action documents (with enum-typed triggers) match the legacy ODM."""
+    """Action documents use the upstream ownership fields and retain their values."""
     data = {
         "action_id": "a-1",
-        "owner_id": "user-1",
+        "owner": "user-1",
         "name": "My Action",
         "query": "howler.id:*",
         "triggers": ["create", "promote"],
         "operations": [{"operation_id": "op-1"}],
     }
     new = NewAction.model_validate(data)
-    assert new.as_primitives() == primitive_golden("action")
+    primitives = new.as_primitives()
+    assert primitives["owner"] == "user-1"
+    assert primitives["admins"] == []
+    assert primitives["members"] == []
+    assert "owner_id" not in primitives
+    assert primitives["triggers"] == ["create", "promote"]
 
 
 def test_action_rejects_invalid_trigger_like_legacy() -> None:
     """An unsupported trigger value is rejected by both implementations."""
     data = {
         "action_id": "a-2",
-        "owner_id": "user-1",
+        "owner": "user-1",
         "name": "My Action",
         "query": "howler.id:*",
         "triggers": ["not-a-real-trigger"],
@@ -80,14 +85,17 @@ def test_user_access_control_remains_unindexed() -> None:
 
 
 def test_view_settings_default_matches_legacy() -> None:
-    """View documents (with nested Settings default) match the legacy ODM."""
-    data = {"view_id": "v-1", "title": "My View", "query": "*:*", "type": "personal"}
+    """View documents include ownership and preserve the nested Settings default."""
+    data = {"view_id": "v-1", "title": "My View", "query": "*:*", "type": "personal", "owner": "me"}
     new = NewView.model_validate(data)
-    assert new.as_primitives() == primitive_golden("view")
+    assert new.settings.advance_on_triage is False
+    assert new.owner == "me"
+    assert new.admins == []
+    assert new.members == []
 
 
 def test_dossier_with_leads_and_pivots_matches_legacy() -> None:
-    """Dossier documents, including nested leads/pivots/localized labels, match the legacy ODM."""
+    """Dossier documents retain embedded data and use upstream pivot defaults."""
     data = {
         "dossier_id": "d-1",
         "title": "My Dossier",
@@ -110,4 +118,9 @@ def test_dossier_with_leads_and_pivots_matches_legacy() -> None:
         ],
     }
     new = NewDossier.model_validate(data)
-    assert new.as_primitives() == primitive_golden("dossier")
+    assert new.owner == "me"
+    assert new.admins == []
+    assert new.members == []
+    assert new.leads[0].content == "# Some content"
+    assert new.pivots[0].icon == "material-symbols:link"
+    assert new.pivots[0].group is None

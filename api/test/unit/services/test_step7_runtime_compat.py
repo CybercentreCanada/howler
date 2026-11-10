@@ -242,10 +242,9 @@ def test_correlation_appends_pydantic_case_item_that_bulk_serializes():
     ):
         correlation_service._add_record_to_case(
             case,
-            "case-1",
             {"howler": {"id": "hit-1"}, "__index": "hit"},
             rule,
-            {("hit", "hit-1"): backing},
+            {("hit", "hit-1"): (backing, "hit-version")},
         )
 
     assert isinstance(case.items[-1], SchemaCaseItem)

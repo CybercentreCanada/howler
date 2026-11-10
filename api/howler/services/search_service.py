@@ -31,6 +31,7 @@ from howler.datastore.utils import (
     stored_field_paths,
 )
 from howler.helper.search import INDEX_MAP, get_collection, get_default_sort, has_access_control
+from howler.models.registry import model_registry
 from howler.models.user import User
 from howler.services import case_service
 from howler.utils.indexes import get_logical_index_name, normalize_indexes
@@ -41,7 +42,7 @@ DEFAULT_SORT: list[dict[str, str]] = [{"_id": "asc"}]
 DEFAULT_SEARCH_FIELD = "__text__"
 SCROLL_TIMEOUT = "5m"
 
-USER_STORED_FIELDS: frozenset[str] = frozenset(stored_field_paths(User.flat_fields()))
+USER_STORED_FIELDS: frozenset[str] = frozenset(stored_field_paths(model_registry.flat_fields(User)))
 _USER_ALLOWED_FIELD_PATHS = frozenset(field_paths_with_parents(USER_STORED_FIELDS))
 
 logger = get_logger(__file__)

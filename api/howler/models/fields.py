@@ -334,12 +334,17 @@ def _field_metadata(annotation: TypingAny) -> HowlerFieldMetadata | None:
     return None
 
 
-def _keyword_validator(value: TypingAny) -> str:
-    if isinstance(value, bytes):
-        raise ValueError("Keyword doesn't accept bytes values")  # noqa: TRY004
-    if value in ("", None):
-        raise ValueError("Empty strings are not allowed without defaults")
-    return str(value)
+def _keyword_validator(*, coerce: bool = True) -> Callable[[TypingAny], str]:
+    def validate(value: TypingAny) -> str:
+        if isinstance(value, bytes):
+            raise ValueError("Keyword doesn't accept bytes values")  # noqa: TRY004
+        if not coerce and not isinstance(value, str):
+            raise ValueError("Keyword value must be a string when coercion is disabled")
+        if value in ("", None):
+            raise ValueError("Empty strings are not allowed without defaults")
+        return str(value)
+
+    return validate
 
 
 def _empty_or_none(value: TypingAny) -> bool:
@@ -496,6 +501,7 @@ def _mapping_validator(pattern: re.Pattern[str]) -> Callable[[TypingAny], Typing
 
 def keyword(**kwargs: TypingAny) -> TypingAny:
     """Create a non-empty string stored as an Elasticsearch keyword."""
+    coerce = kwargs.pop("coerce", True)
     copy_to = _copy_to(kwargs.get("copyto"))
     mapping = dsl.Keyword(
         ignore_above=8191,
@@ -505,7 +511,7 @@ def keyword(**kwargs: TypingAny) -> TypingAny:
         str,
         "Keyword",
         mapping,
-        validator=_keyword_validator,
+        validator=_keyword_validator(coerce=coerce),
         default_when=_empty_or_none,
         **kwargs,
     )
@@ -532,7 +538,7 @@ def upper_keyword(**kwargs: TypingAny) -> TypingAny:
     """Create a keyword normalized to uppercase."""
 
     def validate(value: TypingAny) -> str:
-        return _keyword_validator(value).upper()
+        return _keyword_validator()(value).upper()
 
     copy_to = _copy_to(kwargs.get("copyto"))
     mapping = dsl.Keyword(
@@ -546,7 +552,7 @@ def lower_keyword(**kwargs: TypingAny) -> TypingAny:
     """Create a keyword normalized to lowercase."""
 
     def validate(value: TypingAny) -> str:
-        return _keyword_validator(value).lower()
+        return _keyword_validator()(value).lower()
 
     copy_to = _copy_to(kwargs.get("copyto"))
     mapping = dsl.Keyword(
@@ -568,7 +574,7 @@ def case_insensitive_keyword(**kwargs: TypingAny) -> TypingAny:
         str,
         "CaseInsensitiveKeyword",
         mapping,
-        validator=_keyword_validator,
+        validator=_keyword_validator(),
         default_when=_empty_or_none,
         **kwargs,
     )

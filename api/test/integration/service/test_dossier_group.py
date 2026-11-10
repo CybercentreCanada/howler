@@ -3,7 +3,7 @@ import uuid
 import pytest
 
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.models.dossier import Dossier
+from howler.models.dossier import Dossier
 from howler.services import dossier_service
 
 
@@ -17,7 +17,7 @@ def group_dossiers(datastore: HowlerDatastore):
     created_ids = []
 
     def create(groups: list[str], owner: str = "admin", dossier_type: str = "global") -> Dossier:
-        dossier = Dossier(
+        dossier = Dossier.validate_howler(
             {
                 "title": f"Pivot group integration test {uuid.uuid4().hex}",
                 "query": "howler.id:*",

@@ -3,7 +3,8 @@ from unittest.mock import patch
 import pytest
 from flask import Flask, Response
 
-from howler.odm.models.action import Action
+from howler.models.action import Action
+from howler.models.user import User
 
 
 @pytest.fixture(scope="module")
@@ -14,7 +15,7 @@ def request_context():
 
 
 def _build_action() -> Action:
-    return Action(
+    return Action.validate_howler(
         {
             "action_id": "11111111-1111-4111-8111-111111111111",
             "owner": "test",
@@ -28,7 +29,15 @@ def _build_action() -> Action:
 
 def _configure_auth(mock_auth_service, mock_quota_tracker):
     mock_auth_service.bearer_auth.return_value = (
-        {"uname": "test", "type": ["admin"], "api_quota": 1000},
+        User.validate_howler(
+            {
+                "uname": "test",
+                "name": "Test user",
+                "password": "__NO_PASSWORD__",
+                "type": ["admin"],
+                "api_quota": 1000,
+            }
+        ),
         ["R", "E"],
     )
     mock_quota_tracker.begin.return_value = True

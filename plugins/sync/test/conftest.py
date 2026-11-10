@@ -8,7 +8,7 @@ from howler.config import config
 from howler.datastore.howler_store import HowlerDatastore
 from howler.datastore.store import ESCollection, ESStore
 from howler.models.ecs.client import Client
-from howler.models.howler_data import Log
+from howler.models.log import Log
 from howler.sample_data import random_data
 
 sys.path.insert(0, str(Path.cwd()))

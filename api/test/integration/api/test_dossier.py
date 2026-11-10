@@ -26,7 +26,7 @@ def pivot_group_dossiers(datastore: HowlerDatastore):
     created_ids = []
 
     def create(groups: list[str], owner: str = "admin", dossier_type: str = "global") -> Dossier:
-        dossier = Dossier(
+        dossier = Dossier.validate_howler(
             {
                 "title": f"Pivot group API integration test {uuid.uuid4().hex}",
                 "query": "howler.id:*",
@@ -132,7 +132,7 @@ def test_get_pivot_groups_scopes_results_and_matches_prefix(
     session, host = login_session
     prefix = f"integration-{uuid.uuid4().hex[:12]}"
 
-    global_dossier = Dossier(
+    global_dossier = Dossier.validate_howler(
         {
             "title": "Global Pivot Group Test",
             "query": "howler.id:*",
@@ -149,7 +149,7 @@ def test_get_pivot_groups_scopes_results_and_matches_prefix(
             "leads": [],
         }
     )
-    other_user_dossier = Dossier(
+    other_user_dossier = Dossier.validate_howler(
         {
             "title": "Other User Pivot Group Test",
             "query": "howler.id:*",

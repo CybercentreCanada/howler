@@ -26,7 +26,7 @@ from howler.models.case import Case, CaseItem, CaseItemTypes, CaseLog, CaseRule
 from howler.models.ecs.related import Related
 from howler.models.event import Event
 from howler.models.hit import Hit
-from howler.models.howler_data import Log
+from howler.models.log import Log
 from howler.models.registry import model_registry
 from howler.models.user import User
 from howler.security.utils import is_classification_accessible

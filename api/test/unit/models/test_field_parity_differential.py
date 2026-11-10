@@ -89,8 +89,12 @@ MODEL_GROUPS: list[tuple[str, str, list[str]]] = [
     ("howler.odm.models.ecs.vulnerability", "howler.models.ecs.vulnerability", ["Vulnerability"]),
     # Top-level documents and their embedded data
     ("howler.odm.models.hit", "howler.models.hit", ["Hit"]),
-    ("howler.odm.models.event", "howler.models.event", ["Event", "EventData", "Comment", "Log"]),
-    ("howler.odm.models.howler_data", "howler.models.howler_data", ["HowlerData", "Link", "Comment", "Log", "Header"]),
+    ("howler.odm.models.event", "howler.models.event", ["Event", "EventData", "Comment"]),
+    ("howler.odm.models.howler_data", "howler.models.howler_data", ["HowlerData", "Link", "Comment"]),
+    ("howler.odm.models.header", "howler.models.header", ["Header"]),
+    ("howler.odm.models.log", "howler.models.log", ["Log"]),
+    ("howler.odm.models.migration", "howler.models.migration", ["MigrationRecord"]),
+    ("howler.odm.models.permission_request", "howler.models.permission_request", ["PermissionRequest"]),
     (
         "howler.odm.models.case",
         "howler.models.case",

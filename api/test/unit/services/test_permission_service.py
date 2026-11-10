@@ -94,7 +94,11 @@ def test_build_permissions_request_maps_model_validation_errors(app, monkeypatch
     def raise_value_error(payload):
         raise ValueError("invalid payload")
 
-    monkeypatch.setattr(permission_service, "PermissionRequest", raise_value_error)
+    monkeypatch.setattr(
+        permission_service,
+        "PermissionRequest",
+        SimpleNamespace(validate_howler=raise_value_error),
+    )
 
     with app.test_request_context(json=[{"privilege": "members", "user_id": "analyst"}]):
         with pytest.raises(InvalidDataException, match="invalid payload"):

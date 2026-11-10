@@ -7,6 +7,7 @@ import elasticsearch
 import pytest
 
 from howler.common.exceptions import HowlerRuntimeError
+from howler.config_models import ILMIndexConfig
 from howler.datastore import collection as collection_module
 from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import DataStoreException
@@ -15,12 +16,11 @@ from howler.datastore.migrations import case_insensitive_metadata as migration_m
 from howler.datastore.migrations.case_insensitive_metadata import COLLECTION_NAMES, CaseInsensitiveMetadataMigration
 from howler.datastore.migrations.runner import run_migrations
 from howler.datastore.store import ESStore
-from howler.odm.models.action import Action
-from howler.odm.models.config import ILMIndexConfig
-from howler.odm.models.dossier import Dossier
-from howler.odm.models.overview import Overview
-from howler.odm.models.template import Template
-from howler.odm.models.view import View
+from howler.models.action import Action
+from howler.models.dossier import Dossier
+from howler.models.overview import Overview
+from howler.models.template import Template
+from howler.models.view import View
 
 MODEL_CLASSES = {
     "view": View,

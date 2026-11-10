@@ -501,11 +501,11 @@ def _uuid(value: int) -> str:
 
 
 def _make_real_case(case_id: str) -> Case:
-    return Case({"case_id": case_id, "title": f"case {case_id}", "summary": "keep this summary"})
+    return Case.validate_howler({"case_id": case_id, "title": f"case {case_id}", "summary": "keep this summary"})
 
 
 def _make_real_hit(record_id: str) -> Hit:
-    return Hit(
+    return Hit.validate_howler(
         {
             "howler": {"id": record_id, "analytic": "Correlation test", "hash": "0123456789abcdef"},
             "message": "keep this hit message",
@@ -514,7 +514,9 @@ def _make_real_hit(record_id: str) -> Hit:
 
 
 def _make_real_event(record_id: str) -> Event:
-    return Event({"howler": {"id": record_id, "hash": "abcdef0123456789"}, "message": "keep this event message"})
+    return Event.validate_howler(
+        {"howler": {"id": record_id, "hash": "abcdef0123456789"}, "message": "keep this event message"}
+    )
 
 
 def _bulk_updates(plan: ElasticBulkPlan) -> list[tuple[str, str, dict[str, Any]]]:

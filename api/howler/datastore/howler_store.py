@@ -13,11 +13,11 @@ from howler.models.clue import declare_hit_extension as declare_clue_hit_extensi
 from howler.models.dossier import Dossier
 from howler.models.event import Event
 from howler.models.hit import Hit
+from howler.models.migration import MigrationRecord
 from howler.models.overview import Overview
 from howler.models.template import Template
 from howler.models.user import User
 from howler.models.view import View
-from howler.odm.models.migration import MigrationRecord
 from howler.plugins import get_plugins
 
 if TYPE_CHECKING:

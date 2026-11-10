@@ -36,9 +36,9 @@ from howler.datastore.operations import OdmHelper, OdmUpdateOperation
 from howler.helper.workflow import WorkflowException
 from howler.models.hit import Hit
 from howler.models.howler_data import Comment, HitStatusTransition
+from howler.models.log import LogOperationType
 from howler.models.registry import model_registry
 from howler.models.user import User
-from howler.odm.models.log import LogOperationType
 from howler.security.login import api_login
 from howler.security.utils import is_classification_accessible, validate_bulk_operation_targets
 from howler.services import action_service, analytic_service, comms_service, correlation_service, hit_service
@@ -59,7 +59,7 @@ hit_helper = OdmHelper(Hit)
 def _runtime_hit_fields(hit: Any) -> dict[str, Any]:
     if isinstance(hit, BaseModel):
         return model_registry.flat_fields(type(hit))
-    return hit.flat_fields()
+    return {}
 
 
 @generate_swagger_docs()

@@ -8,8 +8,10 @@ import pytest
 
 from howler.api.search_utils import issue_scroll_token
 from howler.datastore.exceptions import SearchException, SearchRetryException
-from howler.odm.models.hit import Hit
-from howler.odm.models.user import User
+from howler.models.fields import HowlerFieldMetadata
+from howler.models.hit import Hit
+from howler.models.registry import FieldDefinition, model_registry
+from howler.models.user import User
 from howler.services.search_service import (
     USER_STORED_FIELDS,
     SensitiveUserFieldsException,
@@ -21,10 +23,23 @@ from howler.services.search_service import (
 
 
 class _Caller(dict):
-    """A dict-backed caller that also exposes attributes, as the ODM user model does."""
+    """A dict-backed caller that also exposes model-like attributes."""
 
     def __getattr__(self, name):
         return self[name]
+
+
+def _stored_field(name: str) -> FieldDefinition:
+    return FieldDefinition(
+        name=name,
+        path=name,
+        annotation=str,
+        metadata=HowlerFieldMetadata(kind="Keyword", index=True, store=True),
+        required=False,
+        default=None,
+        default_factory=None,
+        description=None,
+    )
 
 
 def _caller(access_control: str | None = None) -> _Caller:
@@ -34,7 +49,11 @@ def _caller(access_control: str | None = None) -> _Caller:
 def _collection(model):
     return SimpleNamespace(
         model_class=model,
-        stored_fields={name: field for name, field in model.flat_fields().items() if field.store},
+        stored_fields={
+            name: field
+            for name, field in model_registry.flat_fields(model).items()
+            if field.metadata is not None and field.metadata.store
+        },
     )
 
 
@@ -106,7 +125,7 @@ def test_public_synthetic_document_id_is_allowed_for_user_search():
 def test_mixed_index_search_only_returns_stored_user_fields_from_user_documents():
     hit_collection = SimpleNamespace(
         model_class=None,
-        stored_fields={"howler.id": SimpleNamespace(store=True)},
+        stored_fields={"howler.id": _stored_field("howler.id")},
     )
     user_collection = _collection(User)
     collections = {"hit": hit_collection, "user": user_collection}
@@ -240,7 +259,7 @@ def test_projected_user_wildcards_cannot_return_credentials(fl):
 
 
 def test_search_projects_non_user_defaults_to_stored_fields():
-    collection = SimpleNamespace(model_class=None, stored_fields={"name": SimpleNamespace(store=True)})
+    collection = SimpleNamespace(model_class=None, stored_fields={"name": _stored_field("name")})
     with (
         patch("howler.services.search_service.datastore") as mock_datastore,
         patch("howler.services.search_service.INDEX_MAP", {"hit": lambda: collection}),
@@ -295,15 +314,15 @@ def test_projected_search_uses_each_index_schema_for_mixed_fields():
     hit_collection = SimpleNamespace(
         model_class=None,
         stored_fields={
-            "shared": SimpleNamespace(store=True),
-            "hit_only": SimpleNamespace(store=True),
+            "shared": _stored_field("shared"),
+            "hit_only": _stored_field("hit_only"),
         },
     )
     event_collection = SimpleNamespace(
         model_class=None,
         stored_fields={
-            "shared": SimpleNamespace(store=True),
-            "event_only": SimpleNamespace(store=True),
+            "shared": _stored_field("shared"),
+            "event_only": _stored_field("event_only"),
         },
     )
     with (
@@ -344,7 +363,7 @@ def test_projected_search_uses_each_index_schema_for_mixed_fields():
 
 
 def test_mixed_projection_uses_elasticsearch_index_not_source_metadata():
-    collection = SimpleNamespace(model_class=None, stored_fields={"shared": SimpleNamespace(store=True)})
+    collection = SimpleNamespace(model_class=None, stored_fields={"shared": _stored_field("shared")})
     with (
         patch("howler.services.search_service.datastore") as mock_datastore,
         patch(
@@ -369,7 +388,7 @@ def test_mixed_projection_uses_elasticsearch_index_not_source_metadata():
 
 
 def test_mixed_index_search_without_fields_selects_stored_defaults_per_index():
-    hit_collection = SimpleNamespace(model_class=None, stored_fields={"howler.id": SimpleNamespace(store=True)})
+    hit_collection = SimpleNamespace(model_class=None, stored_fields={"howler.id": _stored_field("howler.id")})
     user_collection = _collection(User)
     collections = {"hit": hit_collection, "user": user_collection}
 
