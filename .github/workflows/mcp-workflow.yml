@@ -66,7 +66,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install Poetry
-        uses: abatilo/actions-poetry@v4
+        run: pipx install poetry
 
       - name: Check Poetry configuration
         run: |
@@ -116,7 +116,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install Poetry
-        uses: abatilo/actions-poetry@v4
+        run: pipx install poetry
 
       - name: Check Poetry configuration
         run: |
@@ -129,16 +129,11 @@ jobs:
         run: poetry install --verbose --with dev
 
       - name: Spin up full test dependencies
-        uses: hoverkraft-tech/compose-action@v2.6.0
-        with:
-          compose-file: "mcp/docker-compose.yml"
-          compose-flags: "--profile full"
-          up-flags: "-d"
-          services: |
-            howler-api
-            elasticsearch
-            redis
-            keycloak
+        id: compose-start
+        working-directory: .
+        run: >-
+          docker compose --profile full -f mcp/docker-compose.yml up -d
+          howler-api elasticsearch redis keycloak
 
       - name: Seed Howler API test hits
         run: docker compose -f docker-compose.yml exec -T howler-api python -m howler.odm.random_data users hits
@@ -224,6 +219,17 @@ jobs:
       - name: Force Failure if Tests Failed
         if: steps.tests.outcome == 'failure'
         run: exit 1
+
+      - name: Stop test dependencies
+        if: always() && steps.compose-start.outcome != '' && steps.compose-start.outcome != 'skipped'
+        working-directory: .
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if [[ "$JOB_STATUS" != "success" || "${RUNNER_DEBUG:-}" == "1" ]]; then
+            docker compose --profile full -f mcp/docker-compose.yml logs --no-color howler-api elasticsearch redis keycloak || true
+          fi
+          docker compose --profile full -f mcp/docker-compose.yml down
 
   build_docker_image:
     if: needs.release_validation.outputs.channel == 'preview' || needs.release_validation.outputs.channel == 'stable'
