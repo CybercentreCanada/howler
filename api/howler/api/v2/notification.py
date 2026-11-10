@@ -84,9 +84,6 @@ def get_user_notifications(user: User, offset: int = 0, rows: int = 25, **kwargs
     offset  => Zero-based offset of the first notification to return. Defaults to 0.
     rows    => Number of notifications to return, from 1 to 100. Defaults to 25.
 
-    Data Block:
-    None
-
     Result Example:
     {
         "items": [
