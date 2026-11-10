@@ -11,6 +11,7 @@ on:
       - "!api/doc/**"
       - "!api/build_scripts/generate_classes.py"
       - .github/workflows/api-workflow.yml
+      - .github/actions/compose/**
       - .github/workflows/release-validation.yml
       - scripts/validate_release.py
     tags:
@@ -25,6 +26,7 @@ on:
       - "!api/doc/**"
       - "!api/build_scripts/generate_classes.py"
       - .github/workflows/api-workflow.yml
+      - .github/actions/compose/**
       - .github/workflows/release-validation.yml
       - scripts/validate_release.py
   workflow_dispatch:
@@ -132,9 +134,12 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Spin up test dependencies
-        id: compose-start
-        working-directory: .
-        run: docker compose -f api/dev/docker-compose.yml up -d --build
+        uses: ./.github/actions/compose
+        with:
+          compose-file: api/dev/docker-compose.yml
+          build: "true"
+        env:
+          JOB_STATUS: ${{ job.status }}
 
       - name: Install poetry
         shell: bash
@@ -165,17 +170,6 @@ jobs:
           poetry run sigma
       - name: Ensure docker compose is healthy
         run: poetry run python build_scripts/docker_health.py
-
-      - name: Docker compose log dump on failure
-        if: failure()
-        run: |
-          echo "Status:"
-          docker compose ls
-          docker compose ps
-
-          echo "Logs:"
-          docker compose logs
-        working-directory: api/dev
 
       - name: Run tests
         id: tests
@@ -214,17 +208,6 @@ jobs:
       - name: Force Failure if Tests Failed
         if: steps.tests.outcome == 'failure'
         run: exit 1
-
-      - name: Stop test dependencies
-        if: always() && steps.compose-start.outcome != '' && steps.compose-start.outcome != 'skipped'
-        working-directory: .
-        env:
-          JOB_STATUS: ${{ job.status }}
-        run: |
-          if [[ "$JOB_STATUS" != "success" || "${RUNNER_DEBUG:-}" == "1" ]]; then
-            docker compose -f api/dev/docker-compose.yml logs --no-color || true
-          fi
-          docker compose -f api/dev/docker-compose.yml down
 
   push_to_pypi:
     if: needs.release_validation.outputs.channel == 'stable'

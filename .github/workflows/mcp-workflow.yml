@@ -9,6 +9,7 @@ on:
       - api/test/unit/config.yml
       - client/test/config/classification.yml
       - .github/workflows/mcp-workflow.yml
+      - .github/actions/compose/**
       - .github/workflows/release-validation.yml
       - scripts/validate_release.py
     tags:
@@ -21,6 +22,7 @@ on:
       - api/test/unit/config.yml
       - client/test/config/classification.yml
       - .github/workflows/mcp-workflow.yml
+      - .github/actions/compose/**
       - .github/workflows/release-validation.yml
       - scripts/validate_release.py
   workflow_dispatch:
@@ -125,11 +127,13 @@ jobs:
         run: poetry install --verbose --with dev
 
       - name: Spin up full test dependencies
-        id: compose-start
-        working-directory: .
-        run: >-
-          docker compose --profile full -f mcp/docker-compose.yml up -d
-          howler-api elasticsearch redis keycloak
+        uses: ./.github/actions/compose
+        with:
+          compose-file: mcp/docker-compose.yml
+          profile: full
+          services: howler-api elasticsearch redis keycloak
+        env:
+          JOB_STATUS: ${{ job.status }}
 
       - name: Seed Howler API test hits
         run: docker compose -f docker-compose.yml exec -T howler-api python -m howler.odm.random_data users hits
@@ -167,11 +171,9 @@ jobs:
             echo 'Tests failed before a report was generated. See the test logs.' >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Print dependency logs after failed tests
+      - name: Print MCP server logs after failed tests
         if: steps.tests.outcome == 'failure'
         run: |
-          echo "--- Howler API and Keycloak logs ---"
-          docker compose -f docker-compose.yml logs --no-color howler-api keycloak
           echo "--- Howler MCP server logs ---"
           if [ -f /tmp/howler-mcp-server.log ]; then
             cat /tmp/howler-mcp-server.log
@@ -209,17 +211,6 @@ jobs:
       - name: Force Failure if Tests Failed
         if: steps.tests.outcome == 'failure'
         run: exit 1
-
-      - name: Stop test dependencies
-        if: always() && steps.compose-start.outcome != '' && steps.compose-start.outcome != 'skipped'
-        working-directory: .
-        env:
-          JOB_STATUS: ${{ job.status }}
-        run: |
-          if [[ "$JOB_STATUS" != "success" || "${RUNNER_DEBUG:-}" == "1" ]]; then
-            docker compose --profile full -f mcp/docker-compose.yml logs --no-color howler-api elasticsearch redis keycloak || true
-          fi
-          docker compose --profile full -f mcp/docker-compose.yml down
 
   build_docker_image:
     if: needs.release_validation.outputs.channel == 'preview' || needs.release_validation.outputs.channel == 'stable'

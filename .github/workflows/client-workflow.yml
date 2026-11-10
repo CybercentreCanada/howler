@@ -10,6 +10,7 @@ on:
       - "!client/README.md"
       - "api/**"
       - .github/workflows/client-workflow.yml
+      - .github/actions/compose/**
       - .github/workflows/release-validation.yml
       - scripts/validate_release.py
     tags:
@@ -23,6 +24,7 @@ on:
       - "!client/README.md"
       - "api/**"
       - .github/workflows/client-workflow.yml
+      - .github/actions/compose/**
       - .github/workflows/release-validation.yml
       - scripts/validate_release.py
   workflow_dispatch:
@@ -137,9 +139,11 @@ jobs:
           poetry run sigma
 
       - name: Spin up test dependencies
-        id: compose-start
-        working-directory: .
-        run: docker compose -f client/test/docker-compose.yml up -d
+        uses: ./.github/actions/compose
+        with:
+          compose-file: client/test/docker-compose.yml
+        env:
+          JOB_STATUS: ${{ job.status }}
 
       - name: Start Howler API server
         working-directory: api
@@ -200,17 +204,6 @@ jobs:
         if: steps.tests.outcome == 'failure'
         run: |
           exit 1
-
-      - name: Stop test dependencies
-        if: always() && steps.compose-start.outcome != '' && steps.compose-start.outcome != 'skipped'
-        working-directory: .
-        env:
-          JOB_STATUS: ${{ job.status }}
-        run: |
-          if [[ "$JOB_STATUS" != "success" || "${RUNNER_DEBUG:-}" == "1" ]]; then
-            docker compose -f client/test/docker-compose.yml logs --no-color || true
-          fi
-          docker compose -f client/test/docker-compose.yml down
 
   push_to_pypi:
     if: needs.release_validation.outputs.channel == 'stable'

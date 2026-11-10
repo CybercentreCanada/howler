@@ -9,6 +9,7 @@ on:
     paths:
       - plugins/sentinel/**
       - .github/workflows/sentinel-plugin-workflow.yml
+      - .github/actions/compose/**
       - .github/workflows/release-validation.yml
       - scripts/validate_release.py
   pull_request:
@@ -17,6 +18,7 @@ on:
     paths:
       - plugins/sentinel/**
       - .github/workflows/sentinel-plugin-workflow.yml
+      - .github/actions/compose/**
       - .github/workflows/release-validation.yml
       - scripts/validate_release.py
   workflow_dispatch:
@@ -95,9 +97,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Start isolated API test dependencies
-        id: compose-start
-        working-directory: .
-        run: docker compose -f api/dev/docker-compose.yml up -d --build
+        uses: ./.github/actions/compose
+        with:
+          compose-file: api/dev/docker-compose.yml
+          build: "true"
+        env:
+          JOB_STATUS: ${{ job.status }}
       - name: Install Poetry
         run: pipx install poetry
       - name: Cache Poetry environment
@@ -148,17 +153,6 @@ jobs:
         run: |
           poetry run python build_scripts/coverage_reports.py
           cat coverage-results.md >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Stop test dependencies
-        if: always() && steps.compose-start.outcome != '' && steps.compose-start.outcome != 'skipped'
-        working-directory: .
-        env:
-          JOB_STATUS: ${{ job.status }}
-        run: |
-          if [[ "$JOB_STATUS" != "success" || "${RUNNER_DEBUG:-}" == "1" ]]; then
-            docker compose -f api/dev/docker-compose.yml logs --no-color || true
-          fi
-          docker compose -f api/dev/docker-compose.yml down
 
   publish:
     if: needs.release_validation.outputs.channel == 'stable'
