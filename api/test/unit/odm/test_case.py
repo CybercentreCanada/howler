@@ -357,6 +357,23 @@ class TestCaseEnrichment:
 class TestCase:
     """Tests for the Case ODM model."""
 
+    def test_default_escalation(self):
+        case = Case({"title": "Incident", "summary": "Summary"})
+
+        assert case.escalation == "normal"
+        assert case.as_primitives()["escalation"] == "normal"
+
+    @pytest.mark.parametrize("escalation", ["normal", "focus", "crisis"])
+    def test_valid_escalation(self, escalation):
+        case = Case({"title": "Incident", "summary": "Summary", "escalation": escalation})
+
+        assert case.escalation == escalation
+        assert case.as_primitives()["escalation"] == escalation
+
+    def test_invalid_escalation(self):
+        with pytest.raises(HowlerValueError, match="escalation"):
+            Case({"title": "Incident", "summary": "Summary", "escalation": "urgent"})
+
     def test_case_missing_required_field(self):
         """Case raises HowlerValueError when a required field is missing."""
         with pytest.raises(HowlerValueError):

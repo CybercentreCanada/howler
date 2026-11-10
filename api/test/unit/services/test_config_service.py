@@ -27,6 +27,7 @@ def test_config_service_config_on_oauth():
 
         result = config_service.get_configuration(user=cast(User, None), discovery_url=None)
 
+        assert result["lookups"]["case.escalation"] == ["normal", "focus", "crisis"]
         assert result["configuration"]["auth"]["max_apikey_duration_amount"] <= 10
         assert result["configuration"]["auth"]["max_apikey_duration_unit"] <= "seconds"
 
