@@ -1,6 +1,16 @@
-import { Edit, Mail, Settings } from '@mui/icons-material';
-import { FormControl, FormLabel, IconButton, ListItemIcon, Menu, MenuItem, Slider, Tooltip } from '@mui/material';
-import { useState, type FC } from 'react';
+import { Edit, NotificationsActiveOutlined, NotificationsNoneOutlined, Settings } from '@mui/icons-material';
+import {
+  Badge,
+  FormControl,
+  FormLabel,
+  IconButton,
+  ListItemIcon,
+  Menu,
+  MenuItem,
+  Slider,
+  Tooltip
+} from '@mui/material';
+import { useState, type Dispatch, type FC, type SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
 import NotificationCard from './NotificationCard';
 
@@ -15,9 +25,20 @@ interface HomeSettingsProps {
   onRefreshRateChange: (rate: number) => void;
   /** Called when the user clicks the "Edit" menu item. */
   onEdit: () => void;
+  /** Number of unread notifications for the current user. */
+  unreadNotifications: number;
+  /** Called when the notification card changes the unread count. */
+  onUnreadNotificationsChange: Dispatch<SetStateAction<number>>;
 }
 
-const HomeSettings: FC<HomeSettingsProps> = ({ isEditing, refreshRate, onRefreshRateChange, onEdit }) => {
+const HomeSettings: FC<HomeSettingsProps> = ({
+  isEditing,
+  refreshRate,
+  onRefreshRateChange,
+  onEdit,
+  unreadNotifications,
+  onUnreadNotificationsChange
+}) => {
   const { t } = useTranslation();
   const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
   const [notificationAnchorEl, setNotificationAnchorEl] = useState<null | HTMLElement>(null);
@@ -78,19 +99,25 @@ const HomeSettings: FC<HomeSettingsProps> = ({ isEditing, refreshRate, onRefresh
           </FormControl>
         </MenuItem>
       </Menu>
-      <Tooltip title="Notifications">
+      <Tooltip title={t('route.home.notifications.title')}>
         <IconButton
           aria-label="Open notifications"
           onClick={e => setNotificationAnchorEl(e.currentTarget)}
           size="small"
         >
-          <Mail color="primary" />
+          <Badge id="notification-badge" badgeContent={unreadNotifications} color="error" max={99}>
+            {unreadNotifications > 0 ? (
+              <NotificationsActiveOutlined id="notifications-active-icon" color="primary" />
+            ) : (
+              <NotificationsNoneOutlined id="notifications-none-icon" color="primary" />
+            )}
+          </Badge>
         </IconButton>
       </Tooltip>
       <NotificationCard
         anchorEl={notificationAnchorEl}
-        analyticName="Test_analytic"
         onClose={() => setNotificationAnchorEl(null)}
+        onUnreadChange={onUnreadNotificationsChange}
       />
     </>
   );
