@@ -1,0 +1,170 @@
+api/test/integration/api/test_hit_transition.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 17
+api/howler/models/fields.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 242-321,977-982,984
+api/test/unit/services/test_case_service.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 898-934,936-937,941-946
+api/test/unit/models/test_nullable_annotation_runtime.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-146
+api/test/unit/models/fixtures/legacy_dynamic_template_order.json
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-100
+api/howler/models/base.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 7,202,204-342,387,545,782
+api/test/unit/models/test_field_parity_differential.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1,10,123,125-129
+api/test/integration/api/test_user.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 54
+api/build_scripts/step9_application.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-496
+api/build_scripts/generate_odm_contract.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-5,19-20,23-30
+api/test/unit/test_config.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 37,42
+api/test/unit/test_count_access_control.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-58
+api/test/unit/test_ilm_collection.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 294,296
+documentation/docs/ingestion/user.md
+  s_69df2ce1f316a9::t_e61710cdab9b73 13,26-29
+api/howler/sample_data/helper.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 346-362
+plugins/sentinel/test/unit/models/legacy_sentinel_contract.json
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-39
+api/test/unit/models/test_ecs_differential.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1,20,29,36,46,60,71,84-85,92,101
+api/test/integration/api/test_hit.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 36
+mcp/docker-compose.yml
+  s_69df2ce1f316a9::t_e61710cdab9b73 45-47
+api/test/integration/regression/fixtures/step9_es8_es9_corpus.json
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-82
+plugins/sync/sync/iceberg/build.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 33
+api/test/unit/models/test_model_contract_metadata.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-132
+api/build_scripts/step9_application_rehearsal.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-1884
+api/test/unit/models/test_contract_golden.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-50
+.opencode/opencode.jsonc
+  s_69df2ce1f316a9::t_e61710cdab9b73 3,12,36
+api/test/integration/regression/test_step9_fixed_corpus.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-287
+api/test/unit/models/test_annotation_runtime.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-66
+api/test/unit/models/fixtures/legacy_field_validation_goldens.json
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-499
+api/test/unit/test_step9_application.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-351
+api/test/integration/api/test_wait_for_refresh.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 108-117,317,342
+api/pyproject.toml
+  s_69df2ce1f316a9::t_e61710cdab9b73 56,60
+api/test/unit/models/test_record_hit_event_differential.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 11,38-39,57-58,67,69-72,109
+plugins/evidence/pyproject.toml
+  s_69df2ce1f316a9::t_e61710cdab9b73 4
+plugins/evidence/test/unit/models/legacy_evidence_contract.json
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-6184
+plugins/sentinel/sentinel/models/__init__.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1
+api/test/unit/models/test_hit_nested_ingest.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-104
+api/test/integration/regression/test_step9_es8_es9_baseline.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-779
+api/test/unit/test_step9_application_rehearsal.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-289
+api/test/integration/regression/fixtures/step9_search_corpus.json
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-74
+api/test/unit/models/test_schema.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1,9-11,16,43,62-64,134-161,172-177,212-214,217,221-236,242
+documentation/docs/ingestion/user.fr.md
+  s_69df2ce1f316a9::t_e61710cdab9b73 14,27-30
+plugins/evidence/test/unit/models/test_evidence.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-98
+api/test/unit/test_upgrade_rehearsal.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-816
+plugins/evidence/evidence/models/evidence.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1
+plugins/sentinel/test/unit/models/test_sentinel.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-70
+api/test/fixtures/step9_application/application-v1.json
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-24506
+api/test/integration/regression/fixtures/step9_es8_es9_results.json
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-4644
+api/test/unit/models/fixtures/legacy_primitive_goldens.json
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-364
+plugins/evidence/README.md
+  s_69df2ce1f316a9::t_e61710cdab9b73 3
+api/test/unit/services/test_user_service.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 16-19,201-329
+api/test/integration/test_hit_mixin.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1,3-5,8-11,17,20-23,27-28,31-41,44-45,47-54,57-70
+plugins/sync/test/integration/test_sync.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 6,121
+api/howler/sample_data/random_data.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 91-98,357,359,434,436,513,531,584,597,712,751,837-838
+api/test/unit/models/test_serialization_goldens.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-142
+api/howler/services/user_service.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 341-344
+api/test/unit/models/test_case_differential.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 13,25,53,57,65-66,85,89
+api/test/integration/api/test_comment.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 35,79,121,165
+docs/migration/step9-upgrade-rehearsal.md
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-158
+api/test/unit/models/test_fields.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1,5-6,56-94,98-99,102,104-107,111-130,133-137,140-146,148-158,162,164-168,170,176-179,183,185-189,192-201,242
+api/howler/services/case_service.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 619-621
+plugins/evidence/evidence/models/__init__.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1
+api/test/unit/models/test_supporting_differential.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 17,31,51,58,65,72,86,113
+api/test/unit/models/fixtures/legacy_serialization_edge_goldens.json
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-338
+api/howler/api/v2/ingest.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 298-300
+  s_69df2ce1f316a9::t_ceeaa21c49cdf8 301
+.github/workflows/mcp-workflow.yml
+  s_69df2ce1f316a9::t_e61710cdab9b73 9,21,93-97,133-137,143
+api/build_scripts/upgrade_rehearsal.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-1422
+api/howler/api/v1/hit.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 351-354,358
+  s_69df2ce1f316a9::t_ecc2952bd4bb81 350
+api/test/unit/models/test_domain_error_messages.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-47
+plugins/sentinel/test/unit/models/test_joint_plugin_startup.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-47
+api/howler/datastore/collection.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 2849-2852,2857
+api/test/unit/models/_goldens.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-39
+api/test/unit/endpoints/test_hit_overwrite.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-94
+api/build_scripts/generate_md_docs.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 39
+api/test/unit/models/test_public_validation_errors.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 1-190
+api/test/unit/endpoints/test_ingest_endpoint.py
+  s_69df2ce1f316a9::t_e61710cdab9b73 10,691-763
+  s_69df2ce1f316a9::t_622669d2d66034 764
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "203dbbd2b7856fa84c5d9319d495cad7120a353e",
+  "prompts": {},
+  "sessions": {
+    "s_69df2ce1f316a9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e39b53c75ffe7TajA30Dx2YT6V",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
