@@ -29,7 +29,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   release_validation:
@@ -146,14 +145,9 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: git diff "$BASE_SHA...$HEAD_SHA" > diff.txt
       - name: Generate coverage report
-        run: poetry run python build_scripts/coverage_reports.py
-      - name: Add coverage PR comment
-        if: github.event_name == 'pull_request' && matrix.python-version == '3.12'
-        uses: marocchino/sticky-pull-request-comment@v2
-        continue-on-error: true
-        with:
-          path: plugins/sentinel/coverage-results.md
-          header: sentinel
+        run: |
+          poetry run python build_scripts/coverage_reports.py
+          cat coverage-results.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Stop test dependencies
         if: always() && steps.compose-start.outcome != '' && steps.compose-start.outcome != 'skipped'

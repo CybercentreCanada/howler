@@ -33,7 +33,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   release_validation:
@@ -159,6 +158,15 @@ jobs:
           HOWLER_API_BASE_URL: http://localhost:5000/api
           COVERAGE_FILE: .coverage.tests
 
+      - name: Summarize failed tests
+        if: steps.tests.outcome == 'failure'
+        run: |
+          if [ -f test-results.md ]; then
+            cat test-results.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Tests failed before a report was generated. See the test logs.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Print dependency logs after failed tests
         if: steps.tests.outcome == 'failure'
         run: |
@@ -180,14 +188,6 @@ jobs:
           fi
           poetry run coverage combine
 
-      - name: Add Failed Test PR Comment
-        uses: marocchino/sticky-pull-request-comment@v2
-        if: github.event_name == 'pull_request' && steps.tests.outcome == 'failure'
-        continue-on-error: true
-        with:
-          path: mcp/test-results.md
-          header: mcp
-
       - name: Coverage Results
         if: steps.tests.outcome == 'success'
         run: |
@@ -200,18 +200,11 @@ jobs:
             rm -f diff.txt
           fi
           poetry run coverage_report
+          cat coverage-results.md >> "$GITHUB_STEP_SUMMARY"
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GIT_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
-
-      - name: Add Coverage PR Comment
-        uses: marocchino/sticky-pull-request-comment@v2
-        if: steps.tests.outcome == 'success' && github.event_name == 'pull_request'
-        continue-on-error: true
-        with:
-          path: mcp/coverage-results.md
-          header: mcp
 
       - name: Force Failure if Tests Failed
         if: steps.tests.outcome == 'failure'
