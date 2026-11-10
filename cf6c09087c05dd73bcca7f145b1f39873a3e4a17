@@ -1,0 +1,37 @@
+.github/workflows/mcp-workflow.yml
+  s_0672cba4f06362::t_56783258b35e44 12,25,130-136,174
+.github/workflows/sentinel-plugin-workflow.yml
+  s_0672cba4f06362::t_56783258b35e44 12,21,100-105
+.github/workflows/client-workflow.yml
+  s_0672cba4f06362::t_56783258b35e44 13,27,142-146
+.github/actions/compose/action.yml
+  s_0672cba4f06362::t_56783258b35e44 1-20
+.github/actions/compose/compose.js
+  s_0672cba4f06362::t_56783258b35e44 1-35
+.github/actions/compose/main.js
+  s_0672cba4f06362::t_56783258b35e44 1-13
+.github/workflows/sync-plugin-workflow.yml
+  s_0672cba4f06362::t_56783258b35e44 12,21,105-110
+.github/actions/compose/post.js
+  s_0672cba4f06362::t_56783258b35e44 1-19
+.github/workflows/api-workflow.yml
+  s_0672cba4f06362::t_56783258b35e44 14,29,137-142
+.github/actions/compose/compose.test.js
+  s_0672cba4f06362::t_56783258b35e44 1-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "cf6c09087c05dd73bcca7f145b1f39873a3e4a17",
+  "prompts": {},
+  "sessions": {
+    "s_0672cba4f06362": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e393d6e5bffePSiqwUdSaB7rJq",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
