@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from howler.odm.models.case import CaseItemTypes
+from howler.models.case import CaseItemTypes
 from howler.services import bundle_compat_service
 
 

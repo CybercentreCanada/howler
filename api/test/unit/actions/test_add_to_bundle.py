@@ -138,7 +138,7 @@ def test_execute_adds_hits_successfully(mock_compat, mock_ds_fn, mock_case_svc):
         user=None,
     )
     mock_case_svc.append_case_item.assert_called_once()
-    mock_case.save.assert_called_once_with(refresh="wait_for")
+    mock_case_svc.save_case.assert_called_once_with(mock_case, refresh="wait_for")
 
 
 def test_specification():

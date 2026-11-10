@@ -13,7 +13,7 @@ import howler.services.viewer_service as viewer_service
 from howler.api import ok, unauthorized
 from howler.common.logging import get_logger
 from howler.helper.ws import ConnectionClosed, Server
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.security.login import api_login
 from howler.security.socket import websocket_auth, ws_response
 from howler.security.utils import is_classification_accessible

@@ -7,7 +7,7 @@ from flask import request
 from howler.api import bad_request, forbidden, make_subapi_blueprint, ok
 from howler.common.exceptions import ForbiddenException
 from howler.common.swagger import generate_swagger_docs
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.security.login import api_login
 from howler.services import task_service
 

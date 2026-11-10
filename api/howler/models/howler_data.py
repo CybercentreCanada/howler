@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from pydantic import model_validator
-
 from howler.models import (
     HowlerEmbeddedModel,
     case_insensitive_keyword,
@@ -23,7 +19,9 @@ from howler.models import (
     uuid,
 )
 from howler.models.constants import HowlerStrEnum, Status
+from howler.models.header import Header as _Header
 from howler.models.lead import Lead
+from howler.models.log import Log as _Log
 
 
 class Scrutiny(HowlerStrEnum):
@@ -50,14 +48,6 @@ class HitStatusTransition(HowlerStrEnum):
     RE_EVALUATE = "re_evaluate"
     PROMOTE = "promote"
     DEMOTE = "demote"
-
-
-class HitOperationType(HowlerStrEnum):
-    """Type of operation recorded in a hit log entry."""
-
-    APPENDED = "appended"
-    REMOVED = "removed"
-    SET = "set"
 
 
 class Escalation(HowlerStrEnum):
@@ -136,42 +126,6 @@ class Comment(HowlerEmbeddedModel):
     value: text(description="The comment itself.")
     user: keyword(description="User ID who created the comment.")
     reactions: mapping(keyword(), default={}, description="A list of reactions to the comment.")
-
-
-@register_model(index=True, store=True, description="Log definition.", embedded=True)
-class Log(HowlerEmbeddedModel):
-    """Log definition."""
-
-    timestamp: date(description="Timestamp at which the Log event took place.")
-    key: optional(keyword(), description="The key whose value changed.")
-    explanation: optional(text(), description="A manual description of the changes made.")
-    previous_version: optional(keyword(), description="The version this action was applied to.")
-    new_value: optional(keyword(), description="The value the key is changing to.")
-    type: optional(enum(values=HitOperationType), description="The operation performed on the value.")
-    previous_value: optional(keyword(), description="The value the key is changing from.")
-    user: keyword(description="User ID who created the log event.")
-
-    @model_validator(mode="before")
-    @classmethod
-    def _require_explanation_or_details(cls, data: Any) -> Any:
-        """Mirror the legacy ``Log.__init__`` requirement."""
-        if isinstance(data, dict) and "explanation" not in data:
-            required_keys = {"key", "new_value", "type", "previous_value"}
-            if required_keys.intersection(set(data.keys())) != required_keys:
-                raise ValueError(
-                    f"If no explanation provided, you must provide the following values: {','.join(required_keys)}"
-                )
-        return data
-
-
-@register_model(index=True, store=True, description="Hit outline header.", embedded=True)
-class Header(HowlerEmbeddedModel):
-    """Hit outline header."""
-
-    threat: optional(keyword(), description="The IP of the threat.")
-    target: optional(keyword(), description="The target of the hit.")
-    indicators: list_field(keyword(), default=[], description="Indicators of the hit.")
-    summary: optional(keyword(), description="Summary of the hit.")
 
 
 @register_model(
@@ -271,7 +225,7 @@ class HowlerData(HowlerEmbeddedModel):
         sync=False,
     )
     log: list_field(
-        compound(Log),
+        compound(_Log),
         default=[],
         description="A list of changes to the hit with timestamps and attribution.",
         sync=False,
@@ -279,7 +233,7 @@ class HowlerData(HowlerEmbeddedModel):
     monitored: optional(keyword(), description="Link to the incident monitoring dashboard.")
     reported: optional(keyword(), description="Link to the incident report.")
     mitigated: optional(keyword(), description="Link to the mitigation record (tool dependent).")
-    outline: optional(compound(Header), description="The user specified header of the hit")
+    outline: optional(compound(_Header), description="The user specified header of the hit")
     incidents: list_field(
         compound(Incident),
         default=[],

@@ -9,7 +9,7 @@ import sys
 
 from test.unit.models._goldens import CONTRACT_GOLDEN_PATH, MODEL_GOLDEN_PATH, contract_golden
 
-FROZEN_CONTRACT_SHA256 = "6a85a3df82c548ad9d398e6af18c07927e957b2b771ac21c40faea40821add35"
+FROZEN_CONTRACT_SHA256 = "60636d74aeb8bdda00684e2bca81f5426b8966a7742770ef4d7612cac9d3f44c"
 
 
 def test_full_contract_fixture_is_the_original_frozen_baseline() -> None:

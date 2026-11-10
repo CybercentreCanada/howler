@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from pydantic import model_validator
-
 from howler.models import (
     HowlerEmbeddedModel,
     compound,
@@ -22,6 +18,8 @@ from howler.models import (
     uuid,
 )
 from howler.models.constants import HowlerStrEnum
+from howler.models.header import Header as _Header
+from howler.models.log import Log as _Log
 from howler.models.record import Record
 
 
@@ -43,30 +41,6 @@ class Comment(HowlerEmbeddedModel):
     value: text(description="The comment itself.")
     user: keyword(description="User ID who created the comment.")
     reactions: mapping(keyword(), default={}, description="A list of reactions to the comment.")
-
-
-@register_model(index=True, store=True, description="Log definition.", embedded=True)
-class Log(HowlerEmbeddedModel):
-    """Log definition."""
-
-    timestamp: date(description="Timestamp at which the Log event took place.")
-    key: optional(keyword(), description="The key whose value changed.")
-    explanation: optional(text(), description="A manual description of the changes made.")
-    new_value: optional(keyword(), description="The value the key is changing to.")
-    previous_value: optional(keyword(), description="The value the key is changing from.")
-    user: keyword(description="User ID who created the log event.")
-
-    @model_validator(mode="before")
-    @classmethod
-    def _require_explanation_or_details(cls, data: Any) -> Any:
-        """Mirror the legacy ``Log.__init__`` requirement."""
-        if isinstance(data, dict) and "explanation" not in data:
-            required_keys = {"key", "new_value", "previous_value"}
-            if required_keys.intersection(set(data.keys())) != required_keys:
-                raise ValueError(
-                    f"If no explanation provided, you must provide the following values: {','.join(required_keys)}"
-                )
-        return data
 
 
 DEFAULT_LABELS = {"assignments": [], "generic": []}
@@ -92,6 +66,7 @@ class EventData(HowlerEmbeddedModel):
         )
     )
     related: list_field(keyword(), default=[], description="Related records.")
+    outline: optional(compound(_Header), description="The user specified header of the event.")
     score: optional(
         float_field(), default=0, description="A score assigned by an enrichment to help prioritize triage."
     )
@@ -101,7 +76,7 @@ class EventData(HowlerEmbeddedModel):
         compound(Comment), default=[], description="A list of comments with timestamps and attribution."
     )
     log: list_field(
-        compound(Log), default=[], description="A list of changes to the event with timestamps and attribution."
+        compound(_Log), default=[], description="A list of changes to the event with timestamps and attribution."
     )
 
 

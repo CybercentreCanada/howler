@@ -12,7 +12,7 @@ from authlib.jose import JsonWebEncryption
 from howler.common.logging import get_logger
 from howler.config import config
 from howler.datastore.exceptions import InvalidScrollTokenException, SearchException
-from howler.odm.models.user import User
+from howler.models.user import User
 
 logger = get_logger(__file__)
 

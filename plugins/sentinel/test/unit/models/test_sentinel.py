@@ -11,8 +11,8 @@ from sentinel.models.hit import declare_hit_extension
 from sentinel.models.sentinel import Sentinel
 
 LEGACY_SENTINEL_CONTRACT = json.loads(Path(__file__).with_name("legacy_sentinel_contract.json").read_text())
-LEGACY_SOURCE_COMMIT = "3071fc4ea45d4b2dd44a7ee1646095426097d061"
-LEGACY_SOURCE_SHA256 = "5d3dd7753f76ba8095e6f998f5d4f58e6731472baef6fa75804f00c1974a0487"
+LEGACY_SOURCE_COMMIT = "2d7cf109e34e324c659d1eef6d2ff34e098db7c0"
+LEGACY_SOURCE_SHA256 = "a8a3b0b6a13d712daa986d4ad4c9557bb38df527af0db168f4eab98e002322b9"
 
 
 @pytest.fixture
@@ -32,7 +32,14 @@ def test_sentinel_matches_pinned_legacy_contract(registered_hit):
     assert provenance["source_sha256"] == LEGACY_SOURCE_SHA256
 
     assert sorted(model_registry.flat_fields(Sentinel)) == LEGACY_SENTINEL_CONTRACT["flat_fields"]
-    assert Sentinel.model_fields["id"].default is None
+    assert (
+        sorted(model_registry.flat_fields(Sentinel, show_compound=True))
+        == LEGACY_SENTINEL_CONTRACT["flat_fields_with_compounds"]
+    )
+    assert all(
+        Sentinel.model_fields[field].default is None
+        for field in ("id", "tenant_id", "record_type", "incident_id", "alert_id", "evidence_id")
+    )
 
     hit_mapping = schema.document_mapping(registered_hit)
     properties = {

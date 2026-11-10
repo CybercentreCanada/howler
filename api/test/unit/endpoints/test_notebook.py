@@ -7,6 +7,7 @@ from flask import Response as FlaskResponse
 from mock import MagicMock, patch
 
 from howler.config import cache
+from howler.models.user import User
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -31,7 +32,15 @@ def mock_auth_service():
     with patch("howler.security.login.auth_service") as auth_service:
         auth_service.bearer_auth = MagicMock(
             return_value=(
-                {"uname": "test", "type": ["user"], "api_quota": 1000},
+                User.validate_howler(
+                    {
+                        "uname": "test",
+                        "name": "Test user",
+                        "password": "__NO_PASSWORD__",
+                        "type": ["user"],
+                        "api_quota": 1000,
+                    }
+                ),
                 ["R"],
             )
         )

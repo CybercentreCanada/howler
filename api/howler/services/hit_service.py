@@ -30,10 +30,10 @@ from howler.helper.workflow import Transition, Workflow
 from howler.models.base import strip_unknown_fields
 from howler.models.ecs.event import ECSEvent
 from howler.models.hit import Hit
-from howler.models.howler_data import Assessment, HitStatusTransition, Log, Status
+from howler.models.howler_data import Assessment, HitStatusTransition, Status
+from howler.models.log import Log, LogOperationType
 from howler.models.registry import model_registry
 from howler.models.user import User
-from howler.odm.models.log import LogOperationType
 from howler.security.utils import is_classification_accessible
 from howler.services import action_service, analytic_service, dossier_service, overview_service, template_service
 from howler.utils.dict_utils import extra_keys, flatten

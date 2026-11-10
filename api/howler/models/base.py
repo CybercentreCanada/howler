@@ -546,7 +546,7 @@ def construct_partial(
 
     if "meta" in model_type.model_fields:
         meta_info = model_type.model_fields["meta"]
-        values["meta"] = TypeAdapter(meta_info.annotation).validate_python(meta or {})
+        values["meta"] = TypeAdapter(cast(Any, meta_info.annotation)).validate_python(meta or {})
     instance = model_type.model_construct(_fields_set=set(values), **values)
     instance_values = cast(dict[str, Any], object.__getattribute__(instance, "__dict__"))
     for python_name, info in model_type.model_fields.items():

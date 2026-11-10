@@ -123,7 +123,7 @@ def test_nullable_and_required_fields_match_frozen_expectations_in_both_directio
     agent_expected = INVENTORY_MODELS["howler.odm.models.ecs.agent.Agent"]["fields"]["id"]
     action_expected = INVENTORY_MODELS["howler.odm.models.action.Action"]["fields"]["name"]
     assert agent_expected["type"].endswith(".Optional")
-    assert action_expected["type"].endswith(".Keyword")
+    assert action_expected["type"].endswith(".CaseInsensitiveKeyword")
 
     agent_id = model_registry.fields(Agent)["id"].annotation
     action_name = model_registry.fields(Action)["name"].annotation

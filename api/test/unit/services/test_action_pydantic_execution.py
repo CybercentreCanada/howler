@@ -11,7 +11,7 @@ def test_bulk_execute_uses_typed_operation_json():
     action = Action.validate_howler(
         {
             "action_id": "action-1",
-            "owner_id": "user-1",
+            "owner": "user-1",
             "name": "Label hits",
             "query": "howler.status:open",
             "triggers": ["create"],

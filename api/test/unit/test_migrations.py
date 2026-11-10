@@ -66,6 +66,7 @@ def make_datastore(records=None):
 
 def test_loader_constructs_datastore_without_running_migrations(monkeypatch):
     from howler.common import loader
+    from howler.config_models import config
 
     datastore = MagicMock()
     store = MagicMock()
@@ -79,7 +80,7 @@ def test_loader_constructs_datastore_without_running_migrations(monkeypatch):
 
     assert loader.datastore() is datastore
 
-    store_constructor.assert_called_once_with(config=loader.config, archive_access=True)
+    store_constructor.assert_called_once_with(config=config, archive_access=True)
     datastore_constructor.assert_called_once_with(store)
     migrations.assert_not_called()
 

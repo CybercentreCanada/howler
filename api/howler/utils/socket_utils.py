@@ -1,5 +1,5 @@
 from howler.common.logging import get_logger
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.services import comms_service, viewer_service
 
 logger = get_logger(__file__)

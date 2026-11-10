@@ -16,7 +16,37 @@
       }
     ],
     "properties": {
+      "alert_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "evidence_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
       "id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "incident_id": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "record_type": {
+        "doc_values": true,
+        "ignore_above": 8191,
+        "index": true,
+        "type": "keyword"
+      },
+      "tenant_id": {
         "doc_values": true,
         "ignore_above": 8191,
         "index": true,
@@ -25,15 +55,25 @@
     }
   },
   "flat_fields": [
-    "id"
+    "alert_id",
+    "evidence_id",
+    "id",
+    "incident_id",
+    "record_type",
+    "tenant_id"
   ],
   "flat_fields_with_compounds": [
-    "id"
+    "alert_id",
+    "evidence_id",
+    "id",
+    "incident_id",
+    "record_type",
+    "tenant_id"
   ],
   "provenance": {
-    "generator": "legacy Model.flat_fields and howler.odm.mapping.build_mapping executed from source at source_commit",
-    "source_commit": "3071fc4ea45d4b2dd44a7ee1646095426097d061",
+    "generator": "legacy Model.flat_fields and howler.odm.mapping.build_mapping executed from 2bd92801 (equivalent to howler.datastore.support.build.build_mapping at source_commit)",
+    "source_commit": "2d7cf109e34e324c659d1eef6d2ff34e098db7c0",
     "source_path": "plugins/sentinel/sentinel/odm/models/sentinel.py",
-    "source_sha256": "5d3dd7753f76ba8095e6f998f5d4f58e6731472baef6fa75804f00c1974a0487"
+    "source_sha256": "a8a3b0b6a13d712daa986d4ad4c9557bb38df527af0db168f4eab98e002322b9"
   }
 }

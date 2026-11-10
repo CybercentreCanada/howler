@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
-from howler.odm.models.user import User
-from howler.odm.randomizer import random_model_obj
+from howler.models.user import User
+from howler.sample_data.randomizer import random_model_obj
 from howler.utils.socket_utils import check_action
 
 _ID = "test_id"

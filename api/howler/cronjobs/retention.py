@@ -10,8 +10,8 @@ from howler.common.logging import get_logger
 from howler.config import DEBUG, config
 from howler.datastore.howler_store import HowlerDatastore
 from howler.datastore.operations import OdmHelper
-from howler.odm.models.case import CaseItemTypes
-from howler.odm.models.hit import Hit
+from howler.models.case import CaseItemTypes
+from howler.models.hit import Hit
 from howler.services import case_service
 
 logger = get_logger(__file__)

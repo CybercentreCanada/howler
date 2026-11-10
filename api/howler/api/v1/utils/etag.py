@@ -10,9 +10,9 @@ from typing import Any, Callable, Literal, Protocol, TypeAlias
 
 from flask import Response, request
 
-from howler import odm
 from howler.api import not_modified
-from howler.odm.models.user import User
+from howler.models.base import HowlerESModel
+from howler.models.user import User
 
 
 class _Getter(Protocol):
@@ -23,7 +23,7 @@ class _Getter(Protocol):
         as_odm: Literal[True],
         version: Literal[True],
         user: User | None,
-    ) -> tuple[odm.Model | None, str | None]: ...
+    ) -> tuple[HowlerESModel | None, str | None]: ...
 
 
 _EtagResult: TypeAlias = Response | tuple[Response, str | None]

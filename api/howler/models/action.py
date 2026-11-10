@@ -5,6 +5,7 @@ from __future__ import annotations
 from howler.models import (
     HowlerEmbeddedModel,
     HowlerESModel,
+    case_insensitive_keyword,
     compound,
     enum,
     keyword,
@@ -13,6 +14,7 @@ from howler.models import (
     register_model,
     uuid,
 )
+from howler.models.ownership import Ownership
 
 VALID_TRIGGERS = ["create", "demote", "promote", "add_label", "remove_label"]
 
@@ -26,13 +28,12 @@ class Operation(HowlerEmbeddedModel):
 
 
 @register_model(index=True, store=True, description="Model of actions")
-class Action(HowlerESModel):
+class Action(Ownership, HowlerESModel):
     """Model of actions."""
 
     action_id: uuid(description="A UUID for this action")
-    owner_id: keyword(description="The id of the user that created this action")
-    name: keyword(description="The name of the action.")
-    query: keyword(description="The query this action is run against.")
+    name: case_insensitive_keyword(description="The name of the action.")
+    query: case_insensitive_keyword(description="The query this action is run against.")
     triggers: list_field(
         enum(values=VALID_TRIGGERS), default=[], description="A list of events for which trigger this action"
     )

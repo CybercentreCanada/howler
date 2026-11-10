@@ -7,14 +7,11 @@ from collections.abc import Mapping as ABCMapping
 from fnmatch import fnmatchcase
 from typing import TYPE_CHECKING, Any, Iterable, Optional
 
-from howler import odm
 from howler.datastore.exceptions import SearchException
-from howler.models.registry import model_registry
-from howler.odm.constants import BANNED_FIELDS
+from howler.models.registry import BANNED_FIELDS, FieldDefinition, model_registry
 
 if TYPE_CHECKING:
     from howler.datastore.collection import ESCollection
-    from howler.odm.base import _Field
 
 
 def expand_field_patterns(model: Optional[type], patterns: Iterable[str], preserve_all: bool = False) -> set[str]:
@@ -92,28 +89,34 @@ def field_paths_with_parents(field_names: Iterable[str]) -> set[str]:
     return paths
 
 
-def stored_field_paths(fields: ABCMapping[str, "_Field"]) -> set[str]:
-    """Return stored, non-internal source paths from ODM field metadata."""
-    return {name for name, field in fields.items() if field.store and name not in BANNED_FIELDS}
+def stored_field_paths(fields: ABCMapping[str, FieldDefinition]) -> set[str]:
+    """Return stored, non-internal source paths from model field metadata."""
+    return {
+        name
+        for name, field in fields.items()
+        if field.metadata is not None and field.metadata.store and name not in BANNED_FIELDS
+    }
 
 
 def _field_status(collection: ESCollection, path: str) -> bool | None:
     """Return whether a declared field, compound parent, or Mapping child is stored."""
-    fields = collection.model_class.flat_fields() if collection.model_class else collection.stored_fields
+    fields = model_registry.flat_fields(collection.model_class) if collection.model_class else collection.stored_fields
     matches = [
         field
         for name, field in fields.items()
         if name == path
         or name.startswith(f"{path}.")
-        or (isinstance(field, odm.Mapping) and path.startswith(f"{name}."))
+        or (field.metadata is not None and field.metadata.kind == "Mapping" and path.startswith(f"{name}."))
     ]
-    return any(field.store for field in matches) if matches else None
+    return any(field.metadata is not None and field.metadata.store for field in matches) if matches else None
 
 
 def _select_collection_fields(collection: ESCollection, requested_fields: list[str]) -> list[str]:
     fields = collection.stored_fields
     stored_names = stored_field_paths(fields) - {"id", "__index"}
-    mapping_names = {name for name in stored_names if isinstance(fields[name], odm.Mapping)}
+    mapping_names = {
+        name for name in stored_names if fields[name].metadata is not None and fields[name].metadata.kind == "Mapping"
+    }
     selected: set[str] = set()
 
     def add_path(path: str) -> None:

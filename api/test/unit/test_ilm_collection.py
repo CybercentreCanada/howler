@@ -225,7 +225,9 @@ class TestAsyncTaskOperations:
 def _action_data() -> dict:
     return {
         "action_id": "action-1",
-        "owner_id": "user-1",
+        "owner": "user-1",
+        "admins": [],
+        "members": [],
         "name": "Test Action",
         "query": "id:*",
         "triggers": ["create"],
@@ -455,7 +457,7 @@ class TestPydanticPersistence:
         }
         col._update_async = MagicMock(return_value={"updated": 2})
 
-        assert col.update("event-1", [("SET", "classification", "UNRESTRICTED")])[0] is True
+        assert col.update("event-1", [("SET", "classification", "UNRESTRICTED")]) == (True, "1---1")
         assert col.update_by_query("event.kind:alert", [("SET", "classification", "UNRESTRICTED")]) == 2
 
         expected_params = {
@@ -547,13 +549,13 @@ class TestSearchConstruction:
         result = col._search(
             [
                 ("query", "name:test"),
-                ("filters", ["owner_id:user-1"]),
+                ("filters", ["owner:user-1"]),
                 ("field_list", ["name"]),
                 ("start", 2),
                 ("rows", 3),
                 ("sort", [{"name": "desc"}]),
                 ("facet_active", True),
-                ("facet_fields", ["owner_id"]),
+                ("facet_fields", ["owner"]),
                 ("facet_mincount", 2),
             ]
         )
@@ -564,7 +566,7 @@ class TestSearchConstruction:
             "query": {
                 "bool": {
                     "must": {"query_string": {"query": "name:test"}},
-                    "filter": [{"query_string": {"query": "owner_id:user-1"}}],
+                    "filter": [{"query_string": {"query": "owner:user-1"}}],
                 }
             },
             "from_": 2,
@@ -572,9 +574,9 @@ class TestSearchConstruction:
             "sort": [{"name": "desc"}],
             "_source": ["name"],
             "aggregations": {
-                "owner_id": {
+                "owner": {
                     "terms": {
-                        "field": "owner_id",
+                        "field": "owner",
                         "min_doc_count": 2,
                         "size": 3,
                     }
@@ -657,31 +659,21 @@ class TestElasticsearchErrors:
 
     def test_task_polling_retries_timeout_error_types(self, mock_datastore):
         col = _make_collection(mock_datastore)
-        meta = ApiResponseMeta(status=500, http_version="1.1", headers={}, duration=0.0, node=None)
-        timeout = elasticsearch.ApiError(
-            "timeout",
-            meta,
-            {
-                "error": {
-                    "type": "timeout_exception",
-                    "reason": "Timed out waiting for completion",
-                    "root_cause": [
-                        {
-                            "type": "timeout_exception",
-                            "reason": "Timed out waiting for completion",
-                        }
-                    ],
-                }
-            },
-        )
+        timeout = elasticsearch.ConnectionTimeout("Timed out waiting for completion")
+        mock_datastore.client.tasks.get.__name__ = "tasks.get"
         mock_datastore.client.tasks.get.side_effect = [
             timeout,
-            {"response": {"updated": 1, "version_conflicts": 0}},
+            {
+                "completed": True,
+                "response": {"updated": 1, "version_conflicts": 0, "timed_out": False, "failures": []},
+            },
         ]
 
         assert col._get_task_results({"task": "task-id"}) == {
             "updated": 1,
             "version_conflicts": 0,
+            "timed_out": False,
+            "failures": [],
         }
         assert mock_datastore.client.tasks.get.call_count == 2
 
@@ -987,6 +979,7 @@ class TestILMVersionedOperations:
     def test_versioned_delete_uses_optimistic_concurrency(self, mock_datastore):
         col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
         concrete_index = f"{col.name}-000001"
+        mock_datastore.client.delete.return_value = {"result": "not_found"}
 
         deleted = col.delete("document-id", version=f"{concrete_index}---5---2")
         assert deleted is False
