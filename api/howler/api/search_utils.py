@@ -43,23 +43,53 @@ def validate_scroll_keep_alive(scroll: Any) -> str | None:
 
 @cache
 def _warn_if_default_secret() -> None:
+    """Warn on the first call if the scroll-token secret is still the default."""
     if config.auth.hmac_secret_key == "changeme":  # noqa: S105
         logger.warning("Scroll tokens are protected by the default auth.hmac_secret_key; set a unique secret.")
 
 
 def _scroll_token_key() -> bytes:
+    """Derive a scroll-token encryption key from the configured HMAC secret.
+
+    Returns:
+        The HMAC-SHA256 digest of the scroll-token label as key bytes.
+    """
     return hmac.new(config.auth.hmac_secret_key.encode(), _SCROLL_TOKEN_LABEL, hashlib.sha256).digest()
 
 
 def _access_fingerprint(user: User) -> str:
+    """Hash the user's access-control filter, using an empty string when it is absent.
+
+    Args:
+        user: The user whose access-control filter is fingerprinted.
+
+    Returns:
+        The SHA-256 hex digest of the stringified filter.
+    """
     return hashlib.sha256(str(user["access_control"] or "").encode()).hexdigest()
 
 
 def _query_fingerprint(query: str) -> str:
+    """Hash the exact query string to bind a token to its original search.
+
+    Args:
+        query: The search query to fingerprint.
+
+    Returns:
+        The SHA-256 hex digest of the query.
+    """
     return hashlib.sha256(query.encode()).hexdigest()
 
 
 def _normalize_indexes(indexes: str) -> str:
+    """Canonicalize a comma-separated list of indexes.
+
+    Args:
+        indexes: Index names separated by commas.
+
+    Returns:
+        The trimmed, nonempty index names, deduplicated and sorted, joined by commas.
+    """
     return ",".join(sorted({index.strip() for index in indexes.split(",") if index.strip()}))
 
 
