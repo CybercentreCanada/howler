@@ -60,7 +60,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install Poetry
-        uses: abatilo/actions-poetry@v4
+        run: pipx install poetry
       - name: Cache Poetry environment
         uses: actions/cache@v4
         with:
@@ -99,7 +99,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install Poetry
-        uses: abatilo/actions-poetry@v4
+        run: pipx install poetry
       - name: Cache Poetry environment
         uses: actions/cache@v4
         with:
@@ -160,7 +160,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install Poetry
-        uses: abatilo/actions-poetry@v4
+        run: pipx install poetry
       - name: Build package
         run: poetry build
       - name: Publish stable package to PyPI

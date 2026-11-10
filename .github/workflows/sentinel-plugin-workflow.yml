@@ -57,7 +57,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install Poetry
-        uses: abatilo/actions-poetry@v4
+        run: pipx install poetry
       - name: Cache Poetry environment
         uses: actions/cache@v4
         with:
@@ -96,12 +96,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Start isolated API test dependencies
-        uses: hoverkraft-tech/compose-action@v2.6.0
-        with:
-          compose-file: api/dev/docker-compose.yml
-          up-flags: --build
+        id: compose-start
+        working-directory: .
+        run: docker compose -f api/dev/docker-compose.yml up -d --build
       - name: Install Poetry
-        uses: abatilo/actions-poetry@v4
+        run: pipx install poetry
       - name: Cache Poetry environment
         uses: actions/cache@v4
         with:
@@ -156,6 +155,17 @@ jobs:
           path: plugins/sentinel/coverage-results.md
           header: sentinel
 
+      - name: Stop test dependencies
+        if: always() && steps.compose-start.outcome != '' && steps.compose-start.outcome != 'skipped'
+        working-directory: .
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if [[ "$JOB_STATUS" != "success" || "${RUNNER_DEBUG:-}" == "1" ]]; then
+            docker compose -f api/dev/docker-compose.yml logs --no-color || true
+          fi
+          docker compose -f api/dev/docker-compose.yml down
+
   publish:
     if: needs.release_validation.outputs.channel == 'stable'
     needs:
@@ -180,7 +190,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install Poetry
-        uses: abatilo/actions-poetry@v4
+        run: pipx install poetry
       - name: Build package
         run: poetry build
       - name: Publish stable package to PyPI
