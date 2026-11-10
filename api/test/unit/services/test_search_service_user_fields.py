@@ -166,6 +166,14 @@ def test_search_rejects_non_stored_user_fields_before_querying(fl):
     mock_datastore.assert_not_called()
 
 
+def test_user_search_cannot_bypass_stored_field_filtering():
+    with patch("howler.services.search_service.datastore") as mock_datastore:
+        with pytest.raises(SensitiveUserFieldsException, match="user indexes"):
+            search("user", query="uname:*", include_unstored_fields=True)
+
+    mock_datastore.assert_not_called()
+
+
 @pytest.mark.parametrize("fl", [None, "", []])
 def test_user_search_without_fields_returns_only_stored_fields(fl):
     collection = _collection(User)
@@ -254,6 +262,33 @@ def test_search_projects_non_user_defaults_to_stored_fields():
 
     assert client.search.call_args.kwargs["_source"] == ["name"]
     assert result["items"] == [{"name": "stored", "__index": "hit"}]
+
+
+def test_search_can_include_unstored_fields_for_internal_callers():
+    collection = _collection(Hit)
+    assert "howler.data" not in collection.stored_fields
+
+    with (
+        patch("howler.services.search_service.datastore") as mock_datastore,
+        patch("howler.services.search_service.INDEX_MAP", {"hit": lambda: collection}),
+    ):
+        client = mock_datastore.return_value.ds.client
+        client.search.return_value = {
+            "hits": {
+                "total": {"value": 1},
+                "hits": [
+                    {
+                        "_index": "howler-hit_hot",
+                        "_source": {"howler": {"id": "hit-1", "data": "template value"}},
+                    }
+                ],
+            }
+        }
+
+        result = search("hit", query="howler.id:hit-1", include_unstored_fields=True)
+
+    assert "_source" not in client.search.call_args.kwargs
+    assert result["items"] == [{"howler": {"id": "hit-1", "data": "template value"}, "__index": "hit"}]
 
 
 def test_projected_search_uses_each_index_schema_for_mixed_fields():

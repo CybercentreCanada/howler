@@ -429,10 +429,13 @@ def process_batch(record_ids: list[str], rule_id: str | None = None) -> int:  # 
             continue
 
         try:
-            # Correlation destination templates are user-provided, so search results
-            # contain only schema-declared stored fields.
+            # Destination templates may reference fields that are not schema-stored.
             results = search_service.search(
-                indexes=indexes, query=rule.query, filters=[id_filter], rows=len(record_ids)
+                indexes=indexes,
+                query=rule.query,
+                filters=[id_filter],
+                rows=len(record_ids),
+                include_unstored_fields=True,
             )
         except Exception:
             logger.exception("ES query failed for rule %s (case %s): %s", rule.rule_id, case_id, rule.query)

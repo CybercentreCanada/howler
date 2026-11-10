@@ -130,6 +130,7 @@ def search(  # noqa: C901
     user: User | None = None,
     scroll: str | None = None,
     include_id: bool = False,
+    include_unstored_fields: bool = False,
 ) -> SearchResult[dict[str, Any]]:
     """Search through specified index for a given query. Uses lucene search syntax for query.
 
@@ -141,6 +142,8 @@ def search(  # noqa: C901
     deep_paging_id   : ID of the next page or * to start deep paging
     scroll           : Scroll keep-alive duration (defaults to 5m for deep paging)
     include_id       : Include Elasticsearch's document ID in each formatted item
+    include_unstored_fields: Include non-stored source fields when no explicit field list is provided.
+                            Not allowed for user indexes.
     filters          : List of additional filter queries limit the data
     offset           : Offset in the results
     rows             : Number of results per page
@@ -160,11 +163,20 @@ def search(  # noqa: C901
     del metadata
 
     index_list = _parse_index_list(indexes)
+    include_all_source = include_unstored_fields and fl is None
+    if include_all_source and "user" in index_list:
+        raise SensitiveUserFieldsException("Unstored fields cannot be requested from user indexes.")
+
     search_collections = _resolve_search_collections(index_list, user)
-    source_fields, allowed_fields_by_index, selected_id = select_stored_fields(search_collections, fl)
+    if include_all_source:
+        source_fields = None
+        allowed_fields_by_index: dict[str, list[str]] = {}
+        selected_id = False
+    else:
+        source_fields, allowed_fields_by_index, selected_id = select_stored_fields(search_collections, fl)
     include_id = include_id or selected_id
 
-    if user and user.classification and "case" in allowed_fields_by_index:
+    if source_fields is not None and user and user.classification and "case" in allowed_fields_by_index:
         selected_case_fields = allowed_fields_by_index["case"]
         if any(field == "items" or field.startswith("items.") for field in selected_case_fields):
             if "items.classification" not in source_fields:
@@ -226,8 +238,9 @@ def search(  # noqa: C901
         "from_": offset,
         "size": rows,
         "sort": parse_sort(sort),
-        "_source": source_fields,
     }
+    if source_fields is not None:
+        query_body["_source"] = source_fields
 
     try:
         if deep_paging_id is not None and deep_paging_id != "*":
@@ -251,7 +264,8 @@ def search(  # noqa: C901
     hits = result.get("hits", {}).get("hits", [])
 
     items = _format_items(hits, user.classification if user else None, include_id=include_id)
-    items = project_stored_fields(items, allowed_fields_by_index, include_id, fields=fl)
+    if not include_all_source:
+        items = project_stored_fields(items, allowed_fields_by_index, include_id, fields=fl)
 
     response: SearchResult[dict[str, Any]] = {
         "offset": int(offset),
