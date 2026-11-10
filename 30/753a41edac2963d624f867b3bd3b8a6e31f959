@@ -1,0 +1,36 @@
+.github/workflows/api-workflow.yml
+  s_b253d7f9807c80::t_9c6f05123d0f17 141-143,232,234-241
+  s_b253d7f9807c80::t_4f780f77d4f8c7 233
+  s_b253d7f9807c80::t_6c4b296f4c6a00 242
+.github/workflows/sentinel-plugin-workflow.yml
+  s_b253d7f9807c80::t_4f780f77d4f8c7 159
+  s_b253d7f9807c80::t_9c6f05123d0f17 60,99-101,103,158,160-168,193
+.github/workflows/client-workflow.yml
+  s_b253d7f9807c80::t_9c6f05123d0f17 67,124,147-149,219-220,222-229,252
+  s_b253d7f9807c80::t_4f780f77d4f8c7 221,230
+.github/workflows/evidence-plugin-workflow.yml
+  s_b253d7f9807c80::t_9c6f05123d0f17 63,102,163
+.github/workflows/sync-plugin-workflow.yml
+  s_b253d7f9807c80::t_9c6f05123d0f17 63,104-106,108,163,165-173,198
+  s_b253d7f9807c80::t_4f780f77d4f8c7 164
+.github/workflows/mcp-workflow.yml
+  s_b253d7f9807c80::t_4f780f77d4f8c7 224
+  s_b253d7f9807c80::t_9c6f05123d0f17 69,119,132-136,223,225-232
+  s_b253d7f9807c80::t_7a6230c04383a7 233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "30753a41edac2963d624f867b3bd3b8a6e31f959",
+  "prompts": {},
+  "sessions": {
+    "s_b253d7f9807c80": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e39c56b2effets4Uxif7Ta6M9f",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
