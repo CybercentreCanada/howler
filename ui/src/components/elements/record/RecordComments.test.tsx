@@ -199,7 +199,7 @@ describe('RecordComments', () => {
         expect.any(Object)
       )
     );
-    expect(screen.getByText('saved comment')).toBeInTheDocument();
+    expect(await screen.findByText('saved comment')).toBeInTheDocument();
 
     await act(async () => {
       socketHandler?.({ event: { action: 'typing', username: 'bob' } });
