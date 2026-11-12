@@ -1,0 +1,97 @@
+ui/src/models/entities/generated/UserUser.d.ts
+  s_041bc237c776d0::t_825e3c6300eab7 10
+ui/src/components/app/hooks/useTitle.test.tsx
+  s_041bc237c776d0::t_a9275990d24a0a 130-142,144,146-149
+  s_041bc237c776d0::t_3c3b82c3ab6e5d 3,95,105,125-129,143,145,150-164
+  s_041bc237c776d0::t_270b3bc93866c0 165
+ui/src/components/elements/hit/grid/RecordRow.test.tsx
+  s_041bc237c776d0::t_a9275990d24a0a 30-37,43-54,65-66,89-100,102-113
+  s_041bc237c776d0::t_717e4657514c27 1-29,38-42,55-64,67-88,101,114
+ui/src/components/elements/hit/grid/RecordRow.tsx
+  s_041bc237c776d0::t_a9275990d24a0a 89-92
+  s_041bc237c776d0::t_dbe49269be160f 86-88,93-100,102
+ui/src/models/entities/generated/CaseLog.d.ts
+  s_041bc237c776d0::t_825e3c6300eab7 1-11
+ui/src/components/elements/record/RecordRelated.tsx
+  s_041bc237c776d0::t_dbe49269be160f 24-25,31,51
+ui/src/components/routes/cases/modals/ResolveModal.tsx
+  s_041bc237c776d0::t_dbe49269be160f 37,112,119,134-135
+  s_041bc237c776d0::t_3c3b82c3ab6e5d 180-182,236
+ui/src/components/elements/record/RecordRelated.test.tsx
+  s_041bc237c776d0::t_3c3b82c3ab6e5d 3-4,116-133,135-137,142-143,145,149-158
+  s_041bc237c776d0::t_a9275990d24a0a 138-141,146-148
+  s_71823f7d2ac076::t_8a3cadd8218e68 134,144
+ui/src/components/routes/cases/modals/ResolveModal.test.tsx
+  s_041bc237c776d0::t_f2aa4a31d4f026 101-104,224-240,244-251,253
+  s_041bc237c776d0::t_8299a66be89b18 241-243
+  s_041bc237c776d0::t_a9275990d24a0a 185-187,206-208
+  s_041bc237c776d0::t_4d0932b61e0960 8,26,33-36,44,183-184,188-205,209-223,252
+  s_041bc237c776d0::t_84a90145d4eff5 109-120
+  s_041bc237c776d0::t_584bef77ded507 254
+ui/src/models/entities/generated/Hit.d.ts
+  s_041bc237c776d0::t_825e3c6300eab7 13,75
+ui/src/plugins/clue/utils.test.tsx
+  s_041bc237c776d0::t_a9275990d24a0a 12-13,20-30,32-36,40-42,53-54
+  s_041bc237c776d0::t_717e4657514c27 1-11,14-19,31,37-39,43-52,55-87
+ui/src/components/routes/help/components/CaseDocumentationPreviews.test.tsx
+  s_041bc237c776d0::t_4d0932b61e0960 1-32
+api/build_scripts/generate_classes.py
+  s_041bc237c776d0::t_c0da4472991c0f 114,390,672-678
+  s_041bc237c776d0::t_11a3675403e9a4 2,12,80-93,97,117-134,137-170,173-179,182-184,186,278-286,305-319,324,330,332,357-362,365,379
+  s_041bc237c776d0::t_c544407e75fa86 254-255,287-303,371-373,456-457,464-467,472-474,604-605,608,610
+  s_041bc237c776d0::t_a53ea6278cd204 59-60,201-202,204-209,211-225,227-239,241-244,253,257-274,653-654,681
+  s_041bc237c776d0::t_56260676ef901d 304
+  s_041bc237c776d0::t_73a1ed3e7bab89 94-96,98-113,115-116,135-136,245-252,256
+  s_041bc237c776d0::t_dc26abdd614d5f 36
+  s_041bc237c776d0::t_8f502e4c1df915 187-194,196-198
+  s_041bc237c776d0::t_8570b1b980a443 400-401,403-415,419,428,440-455,460,463,490,494,505,524,529-561,611,625-630,638,644
+  s_71823f7d2ac076::t_743003d951d76a 277,679
+ui/src/components/elements/record/RecordComments.test.tsx
+  s_041bc237c776d0::t_4d0932b61e0960 3-5,219-221,224-227,230-241,249-253,256-258,261-275,278-280,284-285,292-294,301-302,306-308
+  s_041bc237c776d0::t_a9275990d24a0a 222-223,228-229,242-247,254-255,259-260,276-277,281-283,286-291,295-300,303-305
+  s_71823f7d2ac076::t_1009b557822b88 248
+ui/src/models/entities/generated/ECSRule.d.ts
+  s_041bc237c776d0::t_825e3c6300eab7 1-15
+ui/src/components/app/hooks/useTitle.tsx
+  s_041bc237c776d0::t_dbe49269be160f 7,42-44,48-57
+ui/src/models/entities/generated/Case.d.ts
+  s_041bc237c776d0::t_825e3c6300eab7 1,15,30-32
+ui/src/models/entities/generated/ApiType.d.ts
+  s_041bc237c776d0::t_825e3c6300eab7 25,27,92-93,97-98
+ui/src/plugins/clue/utils.ts
+  s_041bc237c776d0::t_dbe49269be160f 6,13
+ui/src/components/routes/help/components/CaseDocumentationPreviews.tsx
+  s_041bc237c776d0::t_dbe49269be160f 71
+ui/src/components/elements/record/RecordComments.tsx
+  s_041bc237c776d0::t_dbe49269be160f 97,100-103,106-108,259,299
+ui/src/models/entities/generated/Event.d.ts
+  s_041bc237c776d0::t_825e3c6300eab7 10,48,73
+ui/src/models/entities/generated/Enrichments.d.ts
+  s_041bc237c776d0::t_825e3c6300eab7 5-6
+ui/src/models/entities/generated/Analytic.d.ts
+  s_041bc237c776d0::t_825e3c6300eab7 17-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "23f28ab126f22f38984c18f4e2680b3a0d84a012",
+  "prompts": {},
+  "sessions": {
+    "s_041bc237c776d0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e302191a3ffeFhkXOEDjEMa6x4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_71823f7d2ac076": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e38dbe261ffeBB1fW67Tyw5yFl",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

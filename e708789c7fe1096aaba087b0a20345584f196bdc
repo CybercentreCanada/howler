@@ -1,0 +1,48 @@
+documentation/docs/odm/class/header.md
+  s_55a2e187067866::t_abbc7e76d9b515 6,10-13
+documentation/docs/odm/class/hit.md
+  s_55a2e187067866::t_abbc7e76d9b515 50
+documentation/docs/odm/class/assemblyline.md
+  s_55a2e187067866::t_abbc7e76d9b515 15
+documentation/docs/odm/class/localizedlabel.md
+  s_55a2e187067866::t_abbc7e76d9b515 1-11
+documentation/docs/odm/class/mitre.md
+  s_55a2e187067866::t_abbc7e76d9b515 1-11
+documentation/docs/odm/class/howlerdata.md
+  s_55a2e187067866::t_abbc7e76d9b515 10,22,37-38
+api/build_scripts/generate_md_docs.py
+  s_55a2e187067866::t_15d616637bcaa2 65
+  s_55a2e187067866::t_7ba3746ea3264c 67-69
+  s_55a2e187067866::t_6364b9e85fbf55 148-149,151-157
+  s_55a2e187067866::t_8415b738db3d5c 7,11,15,17,20,22-23,43,63,66,70-90,93,146-147,150,158-159,171-172,206-208
+  s_55a2e187067866::t_74ab256787d53b 16
+  s_55a2e187067866::t_df22ec4b0e1707 173-176
+documentation/docs/odm/class/user.md
+  s_55a2e187067866::t_abbc7e76d9b515 17
+documentation/docs/odm/class/comment.md
+  s_55a2e187067866::t_abbc7e76d9b515 10
+documentation/docs/odm/getting_started.md
+  s_55a2e187067866::t_abbc7e76d9b515 14-37
+documentation/docs/odm/class/usernested.md
+  s_55a2e187067866::t_abbc7e76d9b515 16
+documentation/docs/odm/class/organization.md
+  s_55a2e187067866::t_809e1f408607f8 6,10-11
+documentation/docs/odm/class/alrecord.md
+  s_55a2e187067866::t_abbc7e76d9b515 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e708789c7fe1096aaba087b0a20345584f196bdc",
+  "prompts": {},
+  "sessions": {
+    "s_55a2e187067866": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e3021433effeMV36qb9fF4DQK9",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

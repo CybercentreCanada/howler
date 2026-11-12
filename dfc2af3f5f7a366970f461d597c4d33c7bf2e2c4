@@ -1,0 +1,33 @@
+api/howler/models/__init__.py
+  s_69df2ce1f316a9::t_0a0c8c80eb9c3f 1-110
+api/howler/models/fields.py
+  s_69df2ce1f316a9::t_0a0c8c80eb9c3f 1-884
+api/test/unit/models/test_construction.py
+  s_69df2ce1f316a9::t_0a0c8c80eb9c3f 1-79
+api/howler/models/registry.py
+  s_69df2ce1f316a9::t_0a0c8c80eb9c3f 1-356
+api/test/unit/models/test_base.py
+  s_69df2ce1f316a9::t_0a0c8c80eb9c3f 1-259
+api/test/unit/models/test_fields.py
+  s_69df2ce1f316a9::t_0a0c8c80eb9c3f 1-239
+api/howler/models/base.py
+  s_69df2ce1f316a9::t_0a0c8c80eb9c3f 1-387
+api/howler/models/construction.py
+  s_69df2ce1f316a9::t_0a0c8c80eb9c3f 1-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "dfc2af3f5f7a366970f461d597c4d33c7bf2e2c4",
+  "prompts": {},
+  "sessions": {
+    "s_69df2ce1f316a9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e39b53c75ffe7TajA30Dx2YT6V",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
