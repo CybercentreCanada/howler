@@ -108,12 +108,39 @@ jobs:
       - name: Run unit tests
         run: pnpm test
 
+      - name: Save coverage for GitHub Code Quality
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-ui
+          path: ui/target/coverage/cobertura-coverage.xml
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Report coverage
         if: github.event_name == 'pull_request'
         uses: davelosert/vitest-coverage-report-action@v2
         with:
           json-summary-path: ui/target/coverage/coverage-summary.json
           json-final-path: ui/target/coverage/coverage-final.json
+
+  upload_coverage:
+    name: Upload UI coverage to GitHub Code Quality
+    needs: formatting
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      code-quality: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: code-coverage-ui
+      - uses: actions/upload-code-coverage@v1
+        with:
+          file: cobertura-coverage.xml
+          language: TypeScript
+          label: code-coverage/ui
 
   push_npm_package:
     if: needs.release_validation.outputs.channel == 'preview' || needs.release_validation.outputs.channel == 'stable'
