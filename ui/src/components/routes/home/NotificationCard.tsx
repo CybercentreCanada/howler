@@ -45,54 +45,58 @@ const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnre
 
   const pageCount = Math.ceil(total / NOTIFICATION_ROWS);
 
-  const runAction = useCallback(async (id: string, action: () => Promise<void>) => {
-    setPending(current => new Set(current).add(id));
-
-    try {
-      await action();
-    } catch {
-      // dispatchApi surfaces the error to the user
-    } finally {
-      setPending(current => {
-        const next = new Set(current);
-        next.delete(id);
-        return next;
-      });
-    }
-  }, []);
-
   const markRead = useCallback(
-    (event: MouseEvent, notification: Notification) => {
+    async (event: MouseEvent, notification: Notification) => {
       event.stopPropagation();
 
-      void runAction(notification.notification_id, async () => {
-        await dispatchApi(api.v2.notification.read.post(notification.notification_id));
+      const id = notification.notification_id;
+      setPending(current => new Set(current).add(id));
+
+      try {
+        await dispatchApi(api.v2.notification.read.post(id));
         setNotifications(current =>
-          current.map(entry =>
-            entry.notification_id === notification.notification_id ? { ...entry, read: true } : entry
-          )
+          current.map(entry => (entry.notification_id === id ? { ...entry, read: true } : entry))
         );
         onUnreadChange?.(current => Math.max(current - 1, 0));
-      });
+      } catch {
+        // dispatchApi surfaces the error to the user
+      } finally {
+        setPending(current => {
+          const next = new Set(current);
+          next.delete(id);
+          return next;
+        });
+      }
     },
-    [dispatchApi, onUnreadChange, runAction]
+    [dispatchApi, onUnreadChange]
   );
 
   const deleteNotification = useCallback(
-    (event: MouseEvent, notification: Notification) => {
+    async (event: MouseEvent, notification: Notification) => {
       event.stopPropagation();
 
-      void runAction(notification.notification_id, async () => {
-        await dispatchApi(api.v2.notification.del(notification.notification_id));
-        setNotifications(current => current.filter(entry => entry.notification_id !== notification.notification_id));
+      const id = notification.notification_id;
+      setPending(current => new Set(current).add(id));
+
+      try {
+        await dispatchApi(api.v2.notification.del(id));
+        setNotifications(current => current.filter(entry => entry.notification_id !== id));
         setTotal(current => Math.max(current - 1, 0));
         setDeleted(true);
         if (!notification.read) {
           onUnreadChange?.(current => Math.max(current - 1, 0));
         }
-      });
+      } catch {
+        // dispatchApi surfaces the error to the user
+      } finally {
+        setPending(current => {
+          const next = new Set(current);
+          next.delete(id);
+          return next;
+        });
+      }
     },
-    [dispatchApi, onUnreadChange, runAction]
+    [dispatchApi, onUnreadChange]
   );
 
   const openNotification = useCallback(
@@ -226,7 +230,7 @@ const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnre
                         size="small"
                         aria-label={t('route.home.notifications.mark_read')}
                         disabled={busy}
-                        onClick={event => markRead(event, notification)}
+                        onClick={event => void markRead(event, notification)}
                       >
                         <MarkEmailRead fontSize="small" />
                       </IconButton>
@@ -239,7 +243,7 @@ const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnre
                       size="small"
                       aria-label={t('route.home.notifications.delete')}
                       disabled={busy}
-                      onClick={event => deleteNotification(event, notification)}
+                      onClick={event => void deleteNotification(event, notification)}
                     >
                       <Delete fontSize="small" />
                     </IconButton>
