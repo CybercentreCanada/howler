@@ -27,9 +27,6 @@ def create_analytic_comment_notification(analytic_id: str, actor: str) -> Notifi
     analytics = result["items"]
     if not analytics:
         raise NotFoundException(f"Analytic {analytic_id} does not exist.")
-    # Can two analytics have the same ID?
-    if len(analytics) > 1:
-        logger.warning("Multiple analytics found for analytic_id %s", analytic_id)
 
     analytic = analytics[0]
     owner = analytic.get("owner")
