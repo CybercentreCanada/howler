@@ -67,6 +67,27 @@ def parse_parameters(**requested_params: parser_t | Literal["required"] | tuple[
     return decorator
 
 
+def int_parser(name: str, default: int, *, minimum: int, maximum: int | None = None) -> parser_t:
+    """Build a parser that validates an integer query parameter within the given bounds."""
+
+    def parse(raw_value: str | None) -> int:
+        if raw_value is None:
+            return default
+
+        if not raw_value.isascii() or not raw_value.isdigit():
+            raise HowlerInvalidParameterException(f"'{name}' must be an integer.")
+
+        value = int(raw_value)
+        if value < minimum:
+            raise HowlerInvalidParameterException(f"'{name}' must be at least {minimum}.")
+        if maximum is not None and value > maximum:
+            raise HowlerInvalidParameterException(f"'{name}' must be at most {maximum}.")
+
+        return value
+
+    return parse
+
+
 def parse_refresh(refresh: str | None):
     """Check the request args for the refresh flag and return the correct es key or a parse exception"""
     if refresh:

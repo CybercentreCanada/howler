@@ -1,7 +1,18 @@
-import { Edit, Settings } from '@mui/icons-material';
-import { FormControl, FormLabel, IconButton, ListItemIcon, Menu, MenuItem, Slider, Tooltip } from '@mui/material';
-import { useState, type FC } from 'react';
+import { Edit, NotificationsActiveOutlined, NotificationsNoneOutlined, Settings } from '@mui/icons-material';
+import {
+  Badge,
+  FormControl,
+  FormLabel,
+  IconButton,
+  ListItemIcon,
+  Menu,
+  MenuItem,
+  Slider,
+  Tooltip
+} from '@mui/material';
+import { useState, type Dispatch, type FC, type SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
+import NotificationCard from './NotificationCard';
 
 const REFRESH_RATES = [15, 30, 60, 300];
 
@@ -14,24 +25,45 @@ interface HomeSettingsProps {
   onRefreshRateChange: (rate: number) => void;
   /** Called when the user clicks the "Edit" menu item. */
   onEdit: () => void;
+  /** Number of unread notifications for the current user. */
+  unreadNotifications: number;
+  /** Called when the notification card changes the unread count. */
+  onUnreadNotificationsChange: Dispatch<SetStateAction<number>>;
 }
 
-const HomeSettings: FC<HomeSettingsProps> = ({ isEditing, refreshRate, onRefreshRateChange, onEdit }) => {
+const HomeSettings: FC<HomeSettingsProps> = ({
+  isEditing,
+  refreshRate,
+  onRefreshRateChange,
+  onEdit,
+  unreadNotifications,
+  onUnreadNotificationsChange
+}) => {
   const { t } = useTranslation();
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
+  const [notificationAnchorEl, setNotificationAnchorEl] = useState<null | HTMLElement>(null);
 
   return (
     <>
       <Tooltip title={t('page.dashboard.settings.edit')}>
-        <IconButton onClick={e => setAnchorEl(e.currentTarget)} size="small">
+        <IconButton
+          aria-label="Open dashboard settings"
+          onClick={e => setSettingsAnchorEl(e.currentTarget)}
+          size="small"
+        >
           <Settings color="primary" />
         </IconButton>
       </Tooltip>
-      <Menu id="settings-menu" anchorEl={anchorEl} open={!!anchorEl} onClose={() => setAnchorEl(null)}>
+      <Menu
+        id="settings-menu"
+        anchorEl={settingsAnchorEl}
+        open={!!settingsAnchorEl}
+        onClose={() => setSettingsAnchorEl(null)}
+      >
         <MenuItem
           disabled={isEditing}
           onClick={() => {
-            setAnchorEl(null);
+            setSettingsAnchorEl(null);
             onEdit();
           }}
         >
@@ -67,6 +99,26 @@ const HomeSettings: FC<HomeSettingsProps> = ({ isEditing, refreshRate, onRefresh
           </FormControl>
         </MenuItem>
       </Menu>
+      <Tooltip title={t('route.home.notifications.title')}>
+        <IconButton
+          aria-label="Open notifications"
+          onClick={e => setNotificationAnchorEl(e.currentTarget)}
+          size="small"
+        >
+          <Badge id="notification-badge" badgeContent={unreadNotifications} color="error" max={99}>
+            {unreadNotifications > 0 ? (
+              <NotificationsActiveOutlined id="notifications-active-icon" color="primary" />
+            ) : (
+              <NotificationsNoneOutlined id="notifications-none-icon" color="primary" />
+            )}
+          </Badge>
+        </IconButton>
+      </Tooltip>
+      <NotificationCard
+        anchorEl={notificationAnchorEl}
+        onClose={() => setNotificationAnchorEl(null)}
+        onUnreadChange={onUnreadNotificationsChange}
+      />
     </>
   );
 };

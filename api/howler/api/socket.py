@@ -109,6 +109,14 @@ def connect(ws: Server, *args: Any, ws_id: str, user: User | None = None, **kwar
         logger.debug("Sending action: %s", data)
         ws.send(ws_response("action", data))
 
+    def send_notification(data: dict[str, str]):
+        """Send a notification only to its intended recipient."""
+        if not user or data.get("recipient") != user.uname:
+            return
+
+        logger.debug("Sending notification to %s", user.uname)
+        ws.send(ws_response("notification", data))
+
     def send_case(data: dict[str, Any]):  # pragma: no cover
         """Send an access-controlled case update to the websocket client."""
         case_data = data.get("case", {})
@@ -129,12 +137,13 @@ def connect(ws: Server, *args: Any, ws_id: str, user: User | None = None, **kwar
 
     try:
         logger.debug(
-            "%s: Registering comms listeners: hits, broadcast, action, cases, viewers_update",
+            "%s: Registering comms listeners: hits, broadcast, action, notification, cases, viewers_update",
             ws_id,
         )
         comms_service.on("hits", send_hit)
         comms_service.on("broadcast", send_broadcast)
         comms_service.on("action", send_action)
+        comms_service.on("notification", send_notification)
         comms_service.on("cases", send_case)
         comms_service.on("viewers_update", send_viewers_update)
         while ws.connected:
@@ -177,6 +186,7 @@ def connect(ws: Server, *args: Any, ws_id: str, user: User | None = None, **kwar
         comms_service.off("hits", send_hit)
         comms_service.off("broadcast", send_broadcast)
         comms_service.off("action", send_action)
+        comms_service.off("notification", send_notification)
         comms_service.off("cases", send_case)
         comms_service.off("viewers_update", send_viewers_update)
 

@@ -14,6 +14,7 @@ import { PageCenter, useAppUser } from '@tui/core';
 import api from 'api';
 import { AppBrand } from 'branding/AppBrand';
 import { AppBarContext } from 'components/app/providers/AppBarProvider';
+import { SocketContext, type RecievedDataType } from 'components/app/providers/SocketProvider';
 import CustomButton from 'components/elements/addons/buttons/CustomButton';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
@@ -21,7 +22,7 @@ import useMyUserFunctions from 'components/hooks/useMyUserFunctions';
 import dayjs from 'dayjs';
 import isEqual from 'lodash-es/isEqual';
 import type { HowlerUser } from 'models/entities/HowlerUser';
-import { useCallback, useContext, useEffect, useMemo, useRef, useState, type FC } from 'react';
+import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { StorageKey } from 'utils/constants';
@@ -42,6 +43,8 @@ const Home: FC = () => {
   const { dispatchApi } = useMyApi();
   const { user, setUser } = useAppUser<HowlerUser>();
   const { addToAppBar, removeFromAppBar } = useContext(AppBarContext);
+  const { addListener, removeListener } = useContext(SocketContext);
+  const notificationListenerKey = `home-notifications-${useId()}`;
 
   const { setDashboard, setRefreshRate: setRefreshRateBackend } = useMyUserFunctions();
   const sensors = useSensors(
@@ -60,6 +63,7 @@ const Home: FC = () => {
   const [dashboard, setStateDashboard] = useState<NonNullable<HowlerUser['dashboard']>>(user.dashboard ?? []);
   const [refreshRate, setRefreshRate] = useState(user.refresh_rate ?? 15);
   const [refreshTick, setRefreshTick] = useState<symbol>();
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const viewRefreshRef = useRef<ViewRefreshHandle>(null);
   const refreshRateRef = useRef(refreshRate);
   const refreshableCardIdsRef = useRef<string[]>([]);
@@ -207,6 +211,37 @@ const Home: FC = () => {
   }, [addToAppBar, handleRefresh, removeFromAppBar]);
 
   useEffect(() => {
+    const controller = new AbortController();
+
+    const loadUnreadNotifications = async () => {
+      const response = await dispatchApi(api.v2.notification.get.user.get({ rows: 1 }, controller.signal), {
+        showError: false,
+        throwError: false
+      });
+
+      if (response && !controller.signal.aborted) {
+        setUnreadNotifications(response.unread);
+      }
+    };
+
+    void loadUnreadNotifications();
+
+    return () => {
+      controller.abort();
+    };
+  }, [dispatchApi]);
+
+  useEffect(() => {
+    addListener(notificationListenerKey, (data: RecievedDataType) => {
+      if (data.type === 'notification' && !data.read) {
+        setUnreadNotifications(current => current + 1);
+      }
+    });
+
+    return () => removeListener(notificationListenerKey);
+  }, [addListener, notificationListenerKey, removeListener]);
+
+  useEffect(() => {
     addToAppBar(
       'left',
       'home_settings',
@@ -215,13 +250,15 @@ const Home: FC = () => {
         refreshRate={refreshRate}
         onRefreshRateChange={handleRefreshRateChange}
         onEdit={() => setIsEditing(true)}
+        unreadNotifications={unreadNotifications}
+        onUnreadNotificationsChange={setUnreadNotifications}
       />
     );
 
     return () => {
       removeFromAppBar('home_settings');
     };
-  }, [addToAppBar, handleRefreshRateChange, isEditing, refreshRate, removeFromAppBar]);
+  }, [addToAppBar, handleRefreshRateChange, isEditing, refreshRate, removeFromAppBar, unreadNotifications]);
 
   return (
     <PageCenter maxWidth="100%" textAlign="left" height="100%">
