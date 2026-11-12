@@ -8,7 +8,6 @@
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
 | timestamp | Date | Date/time when the event originated.<br><a href="https://www.elastic.co/guide/en/ecs/8.5/ecs-base.html">Reference Link</a><br> | :material-checkbox-marked-outline: Yes | `NOW` |
-| howler | [HowlerData](/howler/odm/class/howlerdata) | Howler specific definition of the hit that matches the outline.<br><a href="https://confluence.devtools.cse-cst.gc.ca/display/~jjgalar/Hit+Schema">Reference Link</a><br> | :material-checkbox-marked-outline: Yes | `None` |
 | classification | Classification | Maximum classification for the hit | :material-checkbox-marked-outline: Yes | `UNRESTRICTED` |
 | labels | Mapping [Keyword] | Custom key/value pairs.<br><a href="https://www.elastic.co/guide/en/ecs/8.5/ecs-base.html">Reference Link</a><br> | :material-checkbox-marked-outline: Yes | `{}` |
 | tags | List [Keyword] | List of keywords used to tag each event.<br><a href="https://www.elastic.co/guide/en/ecs/8.5/ecs-base.html">Reference Link</a><br> | :material-checkbox-marked-outline: Yes | `[]` |
@@ -48,3 +47,4 @@
 | user | [User](/howler/odm/class/user) | The user fields describe information about the user that is relevant to the event.<br><a href="https://www.elastic.co/guide/en/ecs/8.5/ecs-user.html">Reference Link</a><br> | :material-minus-box-outline: Optional | `None` |
 | user_agent | [UserAgent](/howler/odm/class/useragent) | The user_agent fields normally come from a browser request.<br><a href="https://www.elastic.co/guide/en/ecs/8.5/ecs-user_agent.html">Reference Link</a><br> | :material-minus-box-outline: Optional | `None` |
 | vulnerability | [Vulnerability](/howler/odm/class/vulnerability) | The vulnerability fields describe information about a vulnerability that is relevant to an event.<br><a href="https://www.elastic.co/guide/en/ecs/8.5/ecs-vulnerability.html">Reference Link</a><br> | :material-minus-box-outline: Optional | `None` |
+| howler | [HowlerData](/howler/odm/class/howlerdata) | Howler specific definition of the hit that matches the outline.<br><a href="https://confluence.devtools.cse-cst.gc.ca/display/~jjgalar/Hit+Schema">Reference Link</a><br> | :material-checkbox-marked-outline: Yes | `None` |

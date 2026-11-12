@@ -131,17 +131,43 @@ aborts instead of publishing a port or switching to a non-internal network.
 
 ## Application ACL/query gate
 
-Expected application behavior for a later executable verifier: an unrestricted Howler user
-sees only the unrestricted hit; a restricted user sees both. Filtering the shared
-`STEP9-SHARED` query token returns two hits for the restricted user; sorting by sequence
-ascending returns unrestricted then restricted; the visibility aggregation has one bucket
-document each. The RESTRICTED case links both hits.
+`upgrade_rehearsal.py` checks only Elasticsearch, so its own report always records
+`BLOCKED_UNAVAILABLE`. It exits `3` with `BLOCKED_APPLICATION_VERIFICATION_UNAVAILABLE`, even
+when every Elasticsearch phase passes. Don't claim an application PASS from this runner alone.
 
-This slice has no executable Howler authentication/ACL/query verifier or credentials.
-Therefore the report always records `BLOCKED_UNAVAILABLE` and the command exits `3` with
-`BLOCKED_APPLICATION_VERIFICATION_UNAVAILABLE`, even when every Elasticsearch phase passes.
-There is no operator status/evidence file that can clear this gate. Do not claim application
-or production PASS from the synthetic Elasticsearch rehearsal.
+Two runners reuse these mechanics to verify the application:
+
+- `build_scripts/step9_application_rehearsal.py` seeds the frozen full-mapping
+  `test/fixtures/step9_application/application-v2.json` corpus on 8.19.11 before taking the
+  snapshot. It upgrades the same volume to 9.5.2 and then checks the following through real
+  HTTP requests to a short-lived Howler WSGI child process:
+  - authentication: a missing API key is denied with `401` and a wrong key with `403`;
+  - per-user ACL search results, counts, and facets;
+  - ETags;
+  - Case reads.
+
+  It also compares raw query, relevance, and aggregation results between 8.19 and 9.5. It
+  confirms that no application data changed, and it runs an independent 8.19 rollback restore.
+- `build_scripts/step9_upgrade_writes.py` wraps that rehearsal. It adds checks of real writes
+  through the registered Howler collections against the existing 8.19-created `_hot` indices:
+  - a full save and read-back;
+  - rejection of a stale-version write;
+  - typed SET, APPEND, REMOVE, and mapping DELETE updates;
+  - create, delete, and bulk merge.
+
+  It then restores the exact original source.
+
+```bash
+cd api
+poetry run python build_scripts/step9_upgrade_writes.py \
+  --api-root "$PWD" --run-id <run-id> \
+  --work-dir /tmp/opencode/step9-writes-<run-id> \
+  --report /tmp/opencode/step9-writes-<run-id>.json --timeout 900
+```
+
+Both runners own every Docker resource they use: containers, volumes, networks, and Redis.
+They never touch the shared development stack. See `step9-verification-evidence.md` for the
+recorded results.
 
 ## Validation
 

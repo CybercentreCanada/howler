@@ -1,4 +1,4 @@
-"""Offline coverage for the frozen application-v1 cutover corpus and seed-plan API.
+"""Offline coverage for the frozen application-v2 cutover corpus and seed-plan API.
 
 These tests validate fixtures with the current Pydantic models and compare collection contracts
 to the independent frozen inventory. They do not import the legacy ODM or claim a live ES/API
@@ -18,6 +18,7 @@ from unittest.mock import Mock
 import bcrypt
 import pytest
 
+import build_scripts.step9_application as application_fixture
 import howler.datastore.collection as collection_module
 from build_scripts.step9_application import (
     ACCESS_FIELDS,
@@ -26,6 +27,9 @@ from build_scripts.step9_application import (
     COLLECTION_NAMES,
     DOCUMENT_COUNTS,
     FIXTURE_NAMESPACE,
+    LEGACY_INDEX_HELPERS,
+    LEGACY_SOURCE_COMMIT,
+    SOURCE_INVENTORY_COMMIT,
     SOURCE_INVENTORY_SHA256,
     FixtureContractError,
     application_environment,
@@ -52,16 +56,20 @@ def _model_input(source: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in source.items() if key not in ACCESS_FIELDS and key != "__index"}
 
 
-def test_fixture_is_versioned_from_the_unchanged_independent_inventory() -> None:
+def test_fixture_is_versioned_from_the_refreshed_independent_inventory() -> None:
     fixture = load_application_fixture()
 
-    assert APPLICATION_FIXTURE_VERSION == "application-v1"
+    assert APPLICATION_FIXTURE_VERSION == "application-v2"
     assert hashlib.sha256(INVENTORY_PATH.read_bytes()).hexdigest() == EXPECTED_INVENTORY_SHA256
-    # application-v1 remains pinned to the original branch-head inventory. The current ODM
-    # inventory is a newer upstream baseline and is validated by the model/schema parity tests.
     assert fixture["metadata"]["source_inventory_sha256"] == SOURCE_INVENTORY_SHA256
-    assert fixture["metadata"]["captured_from_commit"] == "3071fc4ea45d4b2dd44a7ee1646095426097d061"
-    assert fixture["metadata"]["stored_document_capture"]["runtime_legacy_imports"] is False
+    assert fixture["metadata"]["source_inventory_commit"] == SOURCE_INVENTORY_COMMIT
+    assert fixture["metadata"]["captured_from_commit"] == LEGACY_SOURCE_COMMIT
+    capture = fixture["metadata"]["stored_document_capture"]
+    assert capture["runtime_legacy_imports"] is False
+    assert "ESCollection.save" in capture["producer"]
+    assert "poetry run python" in capture["provenance"]["capture_command"]
+    assert capture["provenance"]["inventory_sha256"] == SOURCE_INVENTORY_SHA256
+    assert not any("__index" in item and "remove" in item.lower() for item in capture["source_postprocessing"])
     canonical = json.dumps(fixture, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     assert hashlib.sha256(canonical).hexdigest() == APPLICATION_FIXTURE_SHA256
 
@@ -124,13 +132,16 @@ def test_pydantic_models_validate_and_roundtrip_all_frozen_legacy_stored_outputs
         for entry in fixture["documents"][collection]:
             model_primitives = entry["model_primitives"]
             source = entry["source"]
-            assert "__index" not in model_primitives
+            expected_index = LEGACY_INDEX_HELPERS.get(collection)
+            if expected_index is None:
+                assert "__index" not in model_primitives and "__index" not in source
+            else:
+                assert model_primitives["__index"] == expected_index
+                assert source["__index"] == expected_index
             assert set(ACCESS_FIELDS).issubset(model_primitives)
             assert source["id"] == entry["id"]
             model = model_type.model_validate(_model_input(model_primitives))
             serialized = model.as_primitives(hidden_fields=True)
-            # Hit/Case keep the historical in-memory __index annotation; datastore source omits it.
-            serialized.pop("__index", None)
             assert serialized == model_primitives
             stored_expected = deepcopy(serialized)
             stored_expected["id"] = entry["id"]
@@ -155,6 +166,9 @@ def test_frozen_documents_are_deterministic_linked_and_have_real_read_only_ident
                 if field != "__access_lvl__"
             )
             assert isinstance(entry["model_primitives"]["__access_lvl__"], int)
+    for collection, expected_index in LEGACY_INDEX_HELPERS.items():
+        assert all(entry["source"]["__index"] == expected_index for entry in fixture["documents"][collection])
+    assert all("__index" not in entry["source"] for entry in users)
 
     assert len(users) == 2
     assert set(fixture["test_credentials"]) == {entry["id"] for entry in users}
@@ -274,6 +288,11 @@ def test_fixture_structure_rejects_default_alias_and_unverified_app_status() -> 
     with pytest.raises(FixtureContractError, match="ILM pattern"):
         validate_application_fixture_data(fixture)
 
+    fixture = load_application_fixture()
+    fixture["documents"]["hit"][0]["source"]["__index"] = "case"
+    with pytest.raises(FixtureContractError, match="persisted __index=hit"):
+        validate_application_fixture_data(fixture)
+
 
 @pytest.mark.parametrize("section", ["source", "credentials", "mappings", "queries"])
 def test_code_pinned_artifact_hash_rejects_tampering(tmp_path: Path, section: str) -> None:
@@ -303,6 +322,11 @@ def test_fixture_rejects_unknown_keys_and_query_counts_not_derived_from_document
     first_hit = fixture["documents"]["hit"][0]
     first_hit["model_primitives"]["howler"]["status"] = "on-hold"
     first_hit["source"]["howler"]["status"] = "on-hold"
+    provenance = fixture["metadata"]["stored_document_capture"]["provenance"]
+    provenance["model_primitives_sha256"] = application_fixture._captured_documents_sha256(
+        fixture["documents"], "model_primitives"
+    )
+    provenance["stored_sources_sha256"] = application_fixture._captured_documents_sha256(fixture["documents"], "source")
     with pytest.raises(FixtureContractError, match="aggregation expectations must be derived"):
         validate_application_fixture_data(fixture)
 

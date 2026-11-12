@@ -1,4 +1,4 @@
-"""Pure Step 9 application-v1 rehearsal fixture helpers.
+"""Pure Step 9 application-v2 rehearsal fixture helpers.
 
 The JSON fixture is a permanent, versioned contract artifact. Its collection schemas were
 copied from the independent frozen Step 1 inventory, and its stored document sources were
@@ -28,11 +28,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-APPLICATION_FIXTURE_VERSION = "application-v1"
-SOURCE_INVENTORY_SHA256 = "6a85a3df82c548ad9d398e6af18c07927e957b2b771ac21c40faea40821add35"
+APPLICATION_FIXTURE_VERSION = "application-v2"
+SOURCE_INVENTORY_SHA256 = "60636d74aeb8bdda00684e2bca81f5426b8966a7742770ef4d7612cac9d3f44c"
+SOURCE_INVENTORY_COMMIT = "a920c751a345561f2685ddd2b1e5726ed250cfd5"
+LEGACY_SOURCE_COMMIT = "2da444e40820f3fed8732705d1b378482f4a1218"
+CAPTURE_INPUT_FIXTURE_SHA256 = "40cdfa52998f419a706d5088795a1c953d9fb652fc291fa57ed840d35d8fe843"
 # Updated only alongside the complete fixture after review. This code-pinned fingerprint covers
 # the canonical JSON artifact, not a value trusted from its mutable metadata.
-APPLICATION_FIXTURE_SHA256 = "e5c6f8f8d4948fef9e49dde93abeb54da8c527351d660150f02ed18617ceac20"
+APPLICATION_FIXTURE_SHA256 = "29617daf5fa55e832f083bae9b08aa36f5ba3033ae288ae54f11ff251b9daae1"
 COLLECTION_NAMES = (
     "action",
     "analytic",
@@ -48,9 +51,11 @@ COLLECTION_NAMES = (
 )
 DOCUMENT_COUNTS = {"hit": 8, "case": 1, "user": 2}
 ACCESS_FIELDS = ("__access_lvl__", "__access_req__", "__access_grp1__", "__access_grp2__")
+LEGACY_INDEX_HELPERS = {"hit": "hit", "case": "case"}
 FIXTURE_NAMESPACE = "step9-appverify"
 _NAMESPACE_PATTERN = re.compile(r"step9-[a-z0-9]+(?:-[a-z0-9]+)*\Z")
-_FIXTURE_PATH = Path(__file__).resolve().parents[1] / "test" / "fixtures" / "step9_application" / "application-v1.json"
+_FIXTURE_PATH = Path(__file__).resolve().parents[1] / "test" / "fixtures" / "step9_application" / "application-v2.json"
+_SHA256_PATTERN = re.compile(r"[0-9a-f]{64}\Z")
 
 
 class FixtureContractError(ValueError):
@@ -136,6 +141,114 @@ def _replace_namespace(value: Any, old_namespace: str, new_namespace: str) -> An
     return deepcopy(value)
 
 
+def _validate_capture_provenance(value: Any) -> dict[str, Any]:
+    provenance = _required_dict(value, "legacy document capture provenance")
+    _require_keys(
+        provenance,
+        {
+            "source_commit",
+            "capture_command",
+            "capture_working_directory",
+            "capture_script_sha256",
+            "capture_output_sha256",
+            "input_fixture_sha256",
+            "inventory_sha256",
+            "model_primitives_sha256",
+            "stored_sources_sha256",
+            "legacy_source_file_sha256",
+            "fixture_generator_sha256",
+            "fixture_generation_command",
+        },
+        "legacy document capture provenance",
+    )
+    if provenance.get("source_commit") != LEGACY_SOURCE_COMMIT:
+        raise FixtureContractError("legacy document capture provenance commit changed")
+    for name in (
+        "capture_script_sha256",
+        "capture_output_sha256",
+        "input_fixture_sha256",
+        "inventory_sha256",
+        "model_primitives_sha256",
+        "stored_sources_sha256",
+        "fixture_generator_sha256",
+    ):
+        if not isinstance(provenance.get(name), str) or not _SHA256_PATTERN.fullmatch(provenance[name]):
+            raise FixtureContractError(f"legacy document capture {name} must be a SHA-256 hex digest")
+    if provenance["input_fixture_sha256"] != CAPTURE_INPUT_FIXTURE_SHA256:
+        raise FixtureContractError("legacy document capture seed fixture hash changed")
+    if provenance["inventory_sha256"] != SOURCE_INVENTORY_SHA256:
+        raise FixtureContractError("legacy document capture inventory hash changed")
+    for name in ("capture_command", "capture_working_directory", "fixture_generation_command"):
+        if not isinstance(provenance.get(name), str) or not provenance[name]:
+            raise FixtureContractError(f"legacy capture provenance is missing {name}")
+    source_hashes = _required_dict(provenance.get("legacy_source_file_sha256"), "legacy source file hashes")
+    expected_source_files = {
+        "howler/odm/base.py",
+        "howler/odm/models/record.py",
+        "howler/odm/models/case.py",
+        "howler/odm/models/user.py",
+        "howler/datastore/collection.py",
+    }
+    if set(source_hashes) != expected_source_files or any(
+        not isinstance(digest, str) or not _SHA256_PATTERN.fullmatch(digest) for digest in source_hashes.values()
+    ):
+        raise FixtureContractError("legacy source file hash inventory is incomplete or invalid")
+    return provenance
+
+
+def _validate_capture_metadata(value: Any) -> dict[str, Any]:
+    capture = _required_dict(value, "stored document capture metadata")
+    _require_keys(
+        capture,
+        {
+            "producer",
+            "timestamp_format",
+            "source_postprocessing",
+            "runtime_legacy_imports",
+            "source_fields",
+            "user_password_safety",
+            "provenance",
+        },
+        "stored document capture metadata",
+    )
+    if capture.get("runtime_legacy_imports") is not False:
+        raise FixtureContractError("delivered fixture metadata must not require legacy ODM imports")
+    postprocessing = capture.get("source_postprocessing")
+    if not isinstance(postprocessing, list) or any(
+        "__index" in str(item) and "remov" in str(item).lower() for item in postprocessing
+    ):
+        raise FixtureContractError("application-v2 may not strip a helper persisted by the legacy save path")
+    return _validate_capture_provenance(capture.get("provenance"))
+
+
+def _validate_fixture_metadata(value: Any) -> tuple[dict[str, Any], dict[str, Any]]:
+    metadata = _required_dict(value, "fixture metadata")
+    _require_keys(
+        metadata,
+        {
+            "source_inventory",
+            "source_inventory_sha256",
+            "source_inventory_commit",
+            "captured_from_commit",
+            "collection_contract_source",
+            "stored_document_capture",
+            "namespace",
+            "dynamic_template_order",
+        },
+        "fixture metadata",
+    )
+    if metadata.get("source_inventory_sha256") != SOURCE_INVENTORY_SHA256:
+        raise FixtureContractError("fixture source inventory hash does not match the frozen Step 1 inventory")
+    if metadata.get("source_inventory_commit") != SOURCE_INVENTORY_COMMIT:
+        raise FixtureContractError("fixture inventory commit does not match the refreshed legacy contract baseline")
+    if metadata.get("captured_from_commit") != LEGACY_SOURCE_COMMIT:
+        raise FixtureContractError("stored documents were not captured from the pinned origin/main commit")
+    if metadata.get("namespace") != FIXTURE_NAMESPACE:
+        raise FixtureContractError("fixture namespace metadata is missing or unsafe")
+    provenance = _validate_capture_metadata(metadata.get("stored_document_capture"))
+    return metadata, provenance
+
+
 def _validate_fixture(fixture: Any) -> dict[str, Any]:
     data = _required_dict(fixture, "application fixture")
     _require_keys(
@@ -156,42 +269,14 @@ def _validate_fixture(fixture: Any) -> dict[str, Any]:
     if data.get("schema_version") != APPLICATION_FIXTURE_VERSION:
         raise FixtureContractError(f"unsupported application fixture version: {data.get('schema_version')!r}")
 
-    metadata = _required_dict(data.get("metadata"), "fixture metadata")
-    _require_keys(
-        metadata,
-        {
-            "source_inventory",
-            "source_inventory_sha256",
-            "captured_from_commit",
-            "collection_contract_source",
-            "stored_document_capture",
-            "namespace",
-            "dynamic_template_order",
-        },
-        "fixture metadata",
-    )
-    if metadata.get("source_inventory_sha256") != SOURCE_INVENTORY_SHA256:
-        raise FixtureContractError("fixture source inventory hash does not match the frozen Step 1 inventory")
-    if metadata.get("namespace") != FIXTURE_NAMESPACE:
-        raise FixtureContractError("fixture namespace metadata is missing or unsafe")
-    capture = _required_dict(metadata.get("stored_document_capture"), "stored document capture metadata")
-    _require_keys(
-        capture,
-        {
-            "producer",
-            "timestamp_format",
-            "source_postprocessing",
-            "runtime_legacy_imports",
-            "source_fields",
-            "user_password_safety",
-        },
-        "stored document capture metadata",
-    )
-    if capture.get("runtime_legacy_imports") is not False:
-        raise FixtureContractError("delivered fixture metadata must not require legacy ODM imports")
+    _metadata, provenance = _validate_fixture_metadata(data.get("metadata"))
 
     _validate_collections(data.get("collections"))
     documents = _validate_documents(data.get("documents"), data.get("test_credentials"))
+    if provenance["model_primitives_sha256"] != _captured_documents_sha256(documents, "model_primitives"):
+        raise FixtureContractError("captured model-primitive hash does not match fixture documents")
+    if provenance["stored_sources_sha256"] != _captured_documents_sha256(documents, "source"):
+        raise FixtureContractError("captured stored-source hash does not match fixture documents")
     _validate_query_contracts(data.get("query_contracts"), documents)
     if data.get("access_fields") != list(ACCESS_FIELDS):
         raise FixtureContractError("fixture access helper inventory must match the four Howler access fields")
@@ -225,6 +310,16 @@ def validate_application_fixture_data(fixture: Any) -> dict[str, Any]:
 
 def _canonical_sha256(fixture: Any) -> str:
     canonical = json.dumps(fixture, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _captured_documents_sha256(documents: dict[str, Any], field: str) -> str:
+    rows = [
+        {"collection": collection, "id": entry["id"], field: entry[field]}
+        for collection in ("hit", "case", "user")
+        for entry in documents[collection]
+    ]
+    canonical = json.dumps(rows, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(canonical).hexdigest()
 
 
@@ -302,8 +397,14 @@ def _validate_document(collection: str, value: Any) -> None:
         raise FixtureContractError(f"{collection} document is missing its Elasticsearch _id")
     source = _required_dict(entry.get("source"), f"{collection} source")
     model_primitives = _required_dict(entry.get("model_primitives"), f"{collection} model primitives")
-    if "__index" in source or "__index" in model_primitives:
-        raise FixtureContractError("frozen sources must not include the synthetic __index annotation")
+    expected_index = LEGACY_INDEX_HELPERS.get(collection)
+    if expected_index is None:
+        if "__index" in source or "__index" in model_primitives:
+            raise FixtureContractError(f"{collection} sources may not contain legacy __index")
+    elif source.get("__index") != expected_index or model_primitives.get("__index") != expected_index:
+        raise FixtureContractError(
+            f"{collection} source and model primitives must contain persisted __index={expected_index}"
+        )
     if "id" in model_primitives or source.get("id") != entry["id"]:
         raise FixtureContractError(f"{collection} stored source id must equal its Elasticsearch _id")
     expected_source = deepcopy(model_primitives)
@@ -401,7 +502,7 @@ def _contains_now_sentinel(value: Any) -> bool:
 
 
 def load_application_fixture(path: str | Path | None = None) -> dict[str, Any]:
-    """Load and validate a fresh copy of the frozen application-v1 JSON fixture.
+    """Load and validate a fresh copy of the frozen application-v2 JSON fixture.
 
     The runtime helper reads only the frozen application fixture; it does not load the legacy
     inventory or any legacy model implementation. A caller-supplied path is primarily useful for

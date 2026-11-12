@@ -1,5 +1,7 @@
 /// <reference types="vitest" />
 import { fireEvent, render, screen } from '@testing-library/react';
+import type { Event } from 'models/entities/generated/Event';
+import type { Hit } from 'models/entities/generated/Hit';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@mui/material', () => ({
@@ -110,5 +112,48 @@ describe('RecordRelated', () => {
   it('returns nothing when no record is provided', () => {
     const { container } = render(<RecordRelated record={undefined as any} />);
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it('shows related records, but no hit-only links, for an event', () => {
+    const event: Event = {
+      __index: 'event',
+      timestamp: '2026-01-01T00:00:00Z',
+      howler: { id: 'event-source', hash: 'abc', related: ['hit-2', 'case-1', 'event-1'] }
+    };
+
+    render(<RecordRelated record={event} />);
+
+    expect(screen.queryByText('hit.related.tab.links')).not.toBeInTheDocument();
+    expect(screen.getByText('hit:hit-2')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('hit.related.tab.event'));
+    expect(screen.getByText('event:event-1')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'event:event-1' })).toHaveAttribute('href', '/events/event-1');
+  });
+
+  it('switches away from a selected links tab when the source changes to an event', () => {
+    const hit: Hit = {
+      __index: 'hit',
+      timestamp: '2026-01-01T00:00:00Z',
+      howler: {
+        id: 'hit-source',
+        hash: 'abc',
+        analytic: 'Analytic',
+        assignment: 'unassigned',
+        links: [{ title: 'Example', href: 'https://example.com' }]
+      }
+    };
+    const event: Event = {
+      __index: 'event',
+      timestamp: '2026-01-01T00:00:00Z',
+      howler: { id: 'event-source', hash: 'abc' }
+    };
+    const { rerender } = render(<RecordRelated record={hit} />);
+    fireEvent.click(screen.getByText('hit.related.tab.links'));
+
+    rerender(<RecordRelated record={event} />);
+
+    expect(screen.queryByText('Example:https://example.com')).not.toBeInTheDocument();
+    expect(screen.queryByText('hit.related.tab.links')).not.toBeInTheDocument();
+    expect(screen.getByText('hit:hit-2')).toBeInTheDocument();
   });
 });

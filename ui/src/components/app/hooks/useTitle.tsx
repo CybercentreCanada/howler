@@ -4,6 +4,7 @@ import { useCallback, useContext, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useParams, useSearchParams } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
+import { isHit } from 'utils/typeUtils';
 import { AnalyticContext } from '../providers/AnalyticProvider';
 import { RecordContext } from '../providers/RecordProvider';
 
@@ -38,18 +39,23 @@ const useTitle = () => {
       } else {
         setTitle(`Howler - ${t('route.analytics')}`);
       }
-    } else if (searchType === 'hit' && params.id) {
-      const hit = hits[params.id] ?? (await getHit(params.id));
-      if (!hit) {
+    } else if ((searchType === 'hit' || searchType === 'event') && params.id) {
+      const record = hits[params.id] ?? (await getHit(params.id));
+      if (!record) {
         return;
       }
 
-      let newTitle = `${capitalize(hit.howler.escalation)} - ${hit.howler.analytic}`;
-      if (hit.howler.detection) {
-        newTitle += `: ${hit.howler.detection}`;
+      if (isHit(record)) {
+        let newTitle = `${capitalize(record.howler.escalation)} - ${record.howler.analytic}`;
+        if (record.howler.detection) {
+          newTitle += `: ${record.howler.detection}`;
+        }
+        setTitle(newTitle);
+      } else {
+        setTitle(
+          `${t('page.cases.observables.origin.event')} - ${record.message || record.event?.provider || record.howler.id}`
+        );
       }
-
-      setTitle(newTitle);
     } else if (searchType === 'template' && location.pathname.endsWith('view') && searchParams.has('analytic')) {
       let title = t('route.templates.view');
 

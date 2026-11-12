@@ -7,7 +7,7 @@
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
-| id | UUID | A unique ID for the comment. | :material-minus-box-outline: Optional | `None` |
+| id | UUID | A unique ID for the comment. | :material-checkbox-marked-outline: Yes | `None` |
 | timestamp | Date | Timestamp at which the comment took place. | :material-checkbox-marked-outline: Yes | `NOW` |
 | modified | Date | Timestamp at which the comment was last edited. | :material-checkbox-marked-outline: Yes | `NOW` |
 | value | Text | The comment itself. | :material-checkbox-marked-outline: Yes | `None` |

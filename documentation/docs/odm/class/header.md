@@ -3,11 +3,11 @@
 
 # Header
 
-> Hit outline header.
+> Record outline header.
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
-| threat | Keyword | The IP of the threat. | :material-minus-box-outline: Optional | `None` |
-| target | Keyword | The target of the hit. | :material-minus-box-outline: Optional | `None` |
-| indicators | List [Keyword] | Indicators of the hit. | :material-checkbox-marked-outline: Yes | `[]` |
-| summary | Keyword | Summary of the hit. | :material-minus-box-outline: Optional | `None` |
+| threat | Keyword | The threat of the record. | :material-minus-box-outline: Optional | `None` |
+| target | Keyword | The target of the record. | :material-minus-box-outline: Optional | `None` |
+| indicators | List [Keyword] | Indicators of the record. | :material-checkbox-marked-outline: Yes | `[]` |
+| summary | Keyword | Summary of the record. | :material-minus-box-outline: Optional | `None` |

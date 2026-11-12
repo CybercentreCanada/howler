@@ -1,5 +1,6 @@
 /// <reference types="vitest" />
 import { renderHook, waitFor } from '@testing-library/react';
+import type { Event } from 'models/entities/generated/Event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const analyticContextToken = vi.hoisted(() => ({ name: 'analytic-context' }));
@@ -91,7 +92,7 @@ describe('useTitle', () => {
     paramsValue = { id: 'h1' };
     recordValue = {
       records: {
-        h1: { howler: { escalation: 'alert', analytic: 'One', detection: 'Two' } }
+        h1: { __index: 'hit', howler: { escalation: 'alert', analytic: 'One', detection: 'Two' } }
       },
       getRecord: vi.fn()
     };
@@ -101,7 +102,7 @@ describe('useTitle', () => {
 
     recordValue = {
       records: {},
-      getRecord: vi.fn().mockResolvedValue({ howler: { escalation: 'hit', analytic: 'Three' } })
+      getRecord: vi.fn().mockResolvedValue({ __index: 'hit', howler: { escalation: 'hit', analytic: 'Three' } })
     };
     paramsValue = { id: 'h2' };
     renderHook(() => useTitle());
@@ -120,5 +121,46 @@ describe('useTitle', () => {
     breadcrumbsValue = [{ i18nKey: 'route.views' }];
     renderHook(() => useTitle());
     await waitFor(() => expect(document.title).toBe('Howler - translated:route.views'));
+  });
+
+  it.each([
+    { message: 'VPN activity', provider: 'collector', label: 'VPN activity' },
+    { message: '', provider: 'collector', label: 'collector' },
+    { message: '', provider: undefined, label: 'event-1' }
+  ])(
+    'uses the event message, provider, or id for cached event titles: $label',
+    async ({ message, provider, label }) => {
+      const event: Event = {
+        __index: 'event',
+        timestamp: '2026-01-01T00:00:00Z',
+        message,
+        event: { provider },
+        howler: { id: 'event-1', hash: 'abc' }
+      };
+      locationValue = { pathname: '/events/event-1', search: '' };
+      paramsValue = { id: 'event-1' };
+      recordValue = { records: { 'event-1': event }, getRecord: vi.fn() };
+
+      renderHook(() => useTitle());
+
+      await waitFor(() => expect(document.title).toBe(`translated:page.cases.observables.origin.event - ${label}`));
+      expect(recordValue.getRecord).not.toHaveBeenCalled();
+    }
+  );
+
+  it('narrows a fetched event even when it is requested from a hit route', async () => {
+    const event: Event = {
+      __index: 'event',
+      timestamp: '2026-01-01T00:00:00Z',
+      howler: { id: 'event-2', hash: 'abc' }
+    };
+    locationValue = { pathname: '/hits/event-2', search: '' };
+    paramsValue = { id: 'event-2' };
+    recordValue = { records: {}, getRecord: vi.fn().mockResolvedValue(event) };
+
+    renderHook(() => useTitle());
+
+    await waitFor(() => expect(document.title).toBe('translated:page.cases.observables.origin.event - event-2'));
+    expect(recordValue.getRecord).toHaveBeenCalledWith('event-2');
   });
 });

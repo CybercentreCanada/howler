@@ -7,7 +7,7 @@ export interface UserUser {
   access_control?: string;
   api_quota?: number;
   classification?: string;
-  dashboard?: Dashboard;
+  dashboard?: Dashboard[];
   email?: string;
   favourite_analytics?: string[];
   favourite_views?: string[];

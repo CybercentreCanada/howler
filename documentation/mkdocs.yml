@@ -66,6 +66,7 @@ nav:
     - odm/class/account.md
     - odm/class/address.md
     - odm/class/agent.md
+    - odm/class/alrecord.md
     - odm/class/as.md
     - odm/class/assemblyline.md
     - odm/class/attachment.md
@@ -114,9 +115,11 @@ nav:
     - odm/class/label.md
     - odm/class/lead.md
     - odm/class/link.md
+    - odm/class/localizedlabel.md
     - odm/class/log.md
     - odm/class/machine.md
     - odm/class/matched.md
+    - odm/class/mitre.md
     - odm/class/nat.md
     - odm/class/network.md
     - odm/class/observer.md

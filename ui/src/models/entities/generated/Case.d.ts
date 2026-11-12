@@ -1,3 +1,4 @@
+import type { CaseLog } from './CaseLog';
 import type { Enrichments } from './Enrichments';
 import type { Item } from './Item';
 import type { Rule } from './Rule';
@@ -11,7 +12,7 @@ export interface Case {
   case_id?: string;
   created?: string;
   end?: string;
-  enrichments?: Enrichments;
+  enrichments?: Enrichments[];
   escalation?: string;
   indicators?: string[];
   items?: Item[];
@@ -26,4 +27,7 @@ export interface Case {
   threats?: string[];
   title?: string;
   updated?: string;
+  classification?: string;
+  log?: CaseLog[];
+  visible?: boolean;
 }

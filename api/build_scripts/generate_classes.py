@@ -1,4 +1,5 @@
 import base64
+import copy
 import json
 import logging as log
 import os
@@ -8,7 +9,7 @@ import sys
 import textwrap
 from os import path
 from pathlib import Path
-from typing import Any, Dict
+from typing import get_origin
 
 import requests
 
@@ -32,43 +33,7 @@ log.basicConfig(level=log.INFO)
 # randomized data added to each of the endpoints we want to pull from, so we can validate the model we create.
 API_PATH = "http://localhost:5000/api/v1/"
 
-# We'll try and find the howler client and howler-ui paths this way
-howler_client_default_path = None
-howler_ui_default_path = None
-exclude = [
-    "node_modules",
-    "env",
-    "venv",
-    "pkg",
-    "plugins",
-    "snap",
-    "build",
-    "src",
-    "target",
-    "master_modules",
-]
-
-# Let's walk the user's home directory and find the howler client and howler ui repos
-for root, dirs, files in os.walk(os.environ["HOME"]):
-    # We've found what we needed, stop iteration
-    if howler_client_default_path and howler_ui_default_path:
-        break
-
-    # Remove any unnecessary child folders
-    dirs[:] = [d for d in dirs if (not d.startswith(".") or d == ".git") and d not in exclude]
-
-    # Found the howler ui! Remove child dirs and continue
-    if re.search(r"howler[-_]ui([-_]internal)?$", root) and ".git" in dirs:
-        howler_ui_default_path = root
-        dirs[:] = []
-        continue
-
-    # If this isn't either the howler ui or client, but is a git repo, don't bother checking the child dirs
-    if ".git" in dirs:
-        dirs[:] = []
-        continue
-
-# Where should we place the generated classes?
+# Resolve relative to this script, including when it runs in a Git worktree.
 HOWLER_UI_PATH = (Path(__file__).parent.parent.parent / "ui").resolve()
 TS_GENERATED_PATH = HOWLER_UI_PATH / "src/models/entities/generated"
 
@@ -91,18 +56,8 @@ TYPE_TS_MAPPING = {
     "text": "string",
     "object": "{ [index: string]: string }",
     "long": "number",
-}
-
-# This mapping mirrors the above - we use it for type validation on the dummy data.
-TYPE_PYTHON_MAPPING = {
-    "keyword": str,
-    "date": str,
-    "integer": int,
-    "float": float,
-    "ip": str,
-    "boolean": bool,
-    "text": str,
-    "long": int,
+    "double": "number",
+    "nested": "object",
 }
 
 PYTHON_TS_MAPPING = {"str": "string", "bool": "boolean"}
@@ -122,227 +77,259 @@ TS_MEMBER_LIST_TEMPLATE = "  {}?: {}[];"
 TS_MEMBER_LIST_TEMPLATE_NOTNULL = "  {}: {}[];"
 TS_IMPORT_TEMPLATE = "import type {{ {name} }} from './{name}';"
 
+# These public names predate automatic generation. Keep their namespaces stable
+# rather than letting traversal order or random document shape choose an owner.
+CLASS_NAMES = {
+    "user": "UserUser",
+    "hit.event": "ECSEvent",
+    "event.event": "ECSEvent",
+    "hit.file": "HitFile",
+    "hit.organization": "HitOrganization",
+    "hit.howler": "Howler",
+    "event.howler": "EventHowler",
+    "case.enrichments": "Enrichments",
+    "case.rules": "Rule",
+    "hit.rule": "ECSRule",
+    "event.rule": "ECSRule",
+    "analytic.comment": "Comment",
+    "hit.howler.comment": "HowlerComment",
+    "event.howler.comment": "HowlerComment",
+}
+for _index in ("hit", "event"):
+    for _path, _name in {
+        "cloud.account": "CloudAccount",
+        "source.original": "SourceOriginal",
+        "http.response": "HttpResponse",
+        "threat.enrichments": "ThreatEnrichment",
+        "threat.indicator": "ThreatIndicator",
+    }.items():
+        CLASS_NAMES[f"{_index}.{_path}"] = _name
+CLASS_NAMES.update(
+    {
+        "event.destination.original": "DestinationOriginal",
+        "event.email.attachments": "EmailAttachment",
+        "event.email.attachments.file": "AttachmentsFile",
+        "event.email.parent": "EmailParent",
+        "event.observer.ingress": "ObserverIngress",
+        "hit.http.response": "Response",
+    }
+)
+for _field in (
+    "cloud",
+    "destination",
+    "email",
+    "file",
+    "http",
+    "observer",
+    "organization",
+    "process",
+    "source",
+    "threat",
+    "tls",
+):
+    CLASS_NAMES[f"event.{_field}"] = "Event" + to_pascal_case(_field)
 
-def generate_structure():  # noqa: C901
-    """Step 1: Generate the type structure based on the ES indexes, and validate it on an example object"""
+MEMBER_ORDER = {
+    "Action": ["action_id", "name", "operations", "owner", "query", "triggers", "admins", "members"],
+    "Dossier": ["dossier_id", "leads", "owner", "pivots", "query", "title", "type", "admins", "members"],
+    "View": ["owner", "query", "settings", "sort", "span", "title", "type", "view_id", "indexes", "admins", "members"],
+    "Pivot": ["format", "icon", "label", "mappings", "value", "group", "description"],
+    "Case": [
+        "__index",
+        "case_id",
+        "created",
+        "end",
+        "enrichments",
+        "escalation",
+        "indicators",
+        "items",
+        "overview",
+        "participants",
+        "rules",
+        "status",
+        "start",
+        "summary",
+        "targets",
+        "tasks",
+        "threats",
+        "title",
+        "updated",
+    ],
+    "Item": ["id", "classification", "parent", "name", "type", "value", "visible"],
+    "Rule": [
+        "rule_id",
+        "destination",
+        "query",
+        "author",
+        "enabled",
+        "created_at",
+        "timeframe",
+        "expire_after_resolved",
+        "indexes",
+    ],
+}
+
+
+def class_name(name, structure):
+    """Resolve a stable export name, preserving explicitly assigned legacy names."""
+    if "__class_name" in structure:
+        return structure["__class_name"]
+    if structure.get("__list", False) and name != "antivirus":
+        name = re.sub(r"(.+)s$", r"\1", name)
+    return to_pascal_case(name)
+
+
+def member_names(structure):
+    """Include the serialized __index discriminator, but exclude generator bookkeeping."""
+    return [key for key in structure if key == "__index" or not key.startswith("__")]
+
+
+def get_api_response(endpoint):
+    """Fail on API errors before interpreting the response as configuration or sample data."""
     headers = {"Authorization": f"Basic {base64.b64encode(b'user:devkey:user').decode('utf-8')}"}
-    config_req = requests.get(API_PATH + "configs", headers=headers)
-    indexes: Dict[str, Dict[str, dict]] = config_req.json()["api_response"]["indexes"]
-
-    # This object will actually contain the links between our various generated classes, as well as any primitives
-    # in each class.
-    structure: dict[str, Any] = dict()
-    for index, index_data in indexes.items():
-        validation_req = requests.get(API_PATH + "search/" + index + "/?query=*:*", headers=headers)
-
-        if validation_req.status_code == 401:
-            log.fatal(
-                "User account doesn't exist in Howler!\n"
-                + "Run howler/odm/random_data.py in howler-api before this script."
-            )
-            sys.exit(1)
-
-        if validation_req.status_code == 400:
-            log.fatal("400 when pulling validation data! Response: %s", validation_req.json())
-            sys.exit(1)
-
-        validation_list = validation_req.json()["api_response"]["items"]
-
-        if len(validation_list) == 0:
-            log.critical("No validation object found for index %s, aborting", index)
-            sys.exit(1)
-
-        validation_obj = next(
-            obj
-            for obj in validation_list
-            if index in ["user", "template", "overview", "analytic", "view", "action", "dossier", "case"]
-            or obj.get("agent", {}).get("id", False)
+    response = requests.get(API_PATH + endpoint, headers=headers, timeout=60)
+    if response.status_code == 401:
+        log.fatal(
+            "User account doesn't exist in Howler!\n"
+            "Run poetry run python -m howler.sample_data.random_data from api/ before this script."
         )
-        log.debug("  Processing %s", index)
+        sys.exit(1)
+    response.raise_for_status()
+    return response.json()["api_response"]
 
-        structure[index] = dict()
-        for key in index_data.keys():
-            if key[:-1].endswith("key_") and not key.endswith("a"):
-                continue
 
-            # The indexes returned by the API are flattened. In order to rebuild the tree, we need to unflatten them.
-            # The keys are in the form:
-            #
-            # key1.key2.key3
-            # key1.key2.key4
-            # key1.key5.key6
-            #
-            # So we split them up and build the tree from there.
-            fields = [part for part in key.split(sep=".") if not part.startswith("key_")]
-            required = key in REQUIRED_FIELDS
+def generate_model_structure(model, index_data, prefix="", parent_list=False):
+    """Use live scalar metadata and declared container boundaries, never sample cardinality.
 
-            # We hava two parts to keep track of - where we are in the tree we are building, and where we are in
-            # the validation object. The goal is to keep these in sync so we can easily compare the two and resolve
-            # any discrepancies.
-            current = structure[index]
-            current_validation = validation_obj
+    The public configs endpoint flattens compound boundaries and propagates ``list`` to
+    their leaves. The canonical registry supplies only those missing container boundaries
+    and dynamic mapping value types; scalar types still come from the API.
+    """
+    from howler.models.registry import field_metadata, model_annotation, model_registry, unwrap_annotation
+    from howler.models.schema import KIND_TYPE_MAPPING, mapping_value_annotation
 
-            indent = "    "
+    structure = {}
+    for name, definition in sorted(model_registry.fields(model).items()):
+        if name == "apikeys":
+            # API keys are redacted and are deliberately absent from the public UI entity.
+            continue
+        key = f"{prefix}.{name}" if prefix else name
+        annotation = unwrap_annotation(definition.annotation)
+        is_list = get_origin(annotation) is list
+        child_model = model_annotation(annotation)
+        if child_model is not None:
+            child = generate_model_structure(child_model, index_data, key, parent_list or is_list)
+            child["__list"] = is_list
+            child["__required"] = any(field == key or field.startswith(key + ".") for field in REQUIRED_FIELDS)
+            structure[name] = child
+            continue
 
-            # Process the intermediate nodes. The leaves of the tree are special cased.
-            while len(fields) > 1:
-                # Starting at the top, and working our way downward.
-                current_field = fields.pop(0)
+        is_mapping = get_origin(annotation) is dict
+        if is_mapping:
+            # A Mapping summary may not exist until a random document populates a key.
+            # Its declared value type is invariant even for empty mappings or different keys.
+            value_annotation = mapping_value_annotation(definition)
+            value_metadata = field_metadata(value_annotation)
+            if value_metadata is None:
+                raise ValueError(f"Missing mapping value metadata for {key}")
+            es_type = KIND_TYPE_MAPPING[value_metadata.kind]
+            value_type = TYPE_TS_MAPPING[es_type]
+            if get_origin(unwrap_annotation(value_annotation)) is list:
+                value_type += "[]"
+            ts_type = f"{{ [index: string]: {value_type} }}"
+        else:
+            metadata = index_data.get(key)
+            if metadata is None:
+                raise ValueError(f"API configs is missing declared field {key}")
+            ts_type = TYPE_TS_MAPPING[metadata["type"]]
+            if key in {"settings.display", "rules.indexes"}:
+                # Preserve the two literal unions already exposed by the UI baseline.
+                values = metadata["values"]
+                preferred = ["list", "grid"] if key == "settings.display" else ["hit", "event"]
+                ordered_values = [value for value in preferred if value in values] + sorted(
+                    set(values) - set(preferred)
+                )
+                ts_type = " | ".join(repr(value) for value in ordered_values)
+            # Only an ancestor array makes the flattened list flag ambiguous.
+            leaf_list = is_list if parent_list else metadata["list"]
+            if leaf_list:
+                ts_type = f"({ts_type})[]" if " | " in ts_type else ts_type + "[]"
+        structure[name] = {"__ts_field_type": ts_type, "__required": key in REQUIRED_FIELDS}
+    return structure
 
-                if current.get(current_field, None) is None:
-                    # If we haven't initialized this node yet, we'll do so now
-                    current[current_field] = dict()
-                    log.debug("%s%s:", indent, current_field)
 
-                # Descend down the tree we're creating, and the validation object.
-                current = current[current_field]
-                current["__required"] = required or current.get("__required", False)
-                current_validation = current_validation.get(current_field, None)
+def generate_structure(config):
+    """Generate from metadata; samples are only a check that the API was seeded."""
+    from howler.common.loader import datastore
 
-                # The index information returned by the server doesn't actually tell us if intermediate nodes in the
-                # tree are arrays, so we need to check that ourselves.
-                if isinstance(current_validation, list):
-                    # We also need to descend into the array, so we can continue validating the types.
-                    current_validation = current_validation[0]
-
-                    # We'll annotate the structure we are generating with some private context info. Anything starting
-                    # with __ we know we can safely ignore later!
-                    current["__list"] = True
-
-                indent = indent + "  "
-
-            # We've now arrived at the leaf! Time to figure out the types of the primitives, and check that they match
-            # the example object we fetched earlier.
-            current_field = fields[0]
-
-            # The specification will tell us if the primitive keys are of type list, BUT this can lead to trouble if any
-            # of the parent nodes are list as well, as this will be set to true in that case too. So we'll need to
-            # verify this using the validation object.
-            is_list = index_data[key]["list"]
-            is_dict = False
-            try:
-                if isinstance(current_validation, list):
-                    current_value = current_validation[0].get(current_field)
-                else:
-                    try:
-                        current_value = current_validation.get(current_field)
-                    except Exception:
-                        log.info("\tMissing value at %s.%s, setting to None.", index, key)
-                        current_value = None
-
-                if isinstance(current_value, list):
-                    # Even though the specification claimed the type isn't list, it actually is. We'll reflect that in
-                    # the generated class.
-                    is_list = True
-                    try:
-                        current_value = current_value[0]
-                    except IndexError:
-                        current_value = TYPE_PYTHON_MAPPING[index_data[key]["type"]]()
-                else:
-                    # Even though the specification claimed the type is list, it actually isn't. We'll reflect that in
-                    # the generated class.
-                    is_list = False
-
-                if isinstance(current_value, dict):
-                    is_dict = True
-                    current_value = current_value.get("key_a", None)
-
-                # Verify the claimed type in the specification matches the type of the validation object.
-                python_type: type = str
-                try:
-                    python_type = TYPE_PYTHON_MAPPING[index_data[key]["type"]]
-                except KeyError:
-                    # apikeys currently doesn't work, but we shouldn't really care about them, so we can skip
-                    if key == "apikeys":
-                        continue
-
-                if current_value is not None:
-                    assert isinstance(
-                        current_value,
-                        python_type,
-                    ), f"Type {key} does not match: {type(current_value)}, {python_type} from {index_data[key]['type']}"
-            except KeyError as e:
-                # We have to special case dossier models, since they have up to five defined fields but often only the
-                # first few are actually set. We can safely ignore KeyErrors from them if they aren't set.
-                if not current_field.startswith("key_"):
-                    raise e
-
-            # Get the corresponding Typescript type, and make it an array if necessary
-            ts_field_type = TYPE_TS_MAPPING[index_data[key]["type"]]
-
-            if is_dict and index_data[key]["type"] != "object":
-                ts_field_type = f"{{ [index: string]: {ts_field_type} }}"
-
-            if is_list:
-                ts_field_type = f"{ts_field_type}[]"
-
-            # We're done processing this leaf! Onto the next
-            current[current_field] = {
-                **index_data[key],
-                "__ts_field_type": ts_field_type,
-                "__required": key in REQUIRED_FIELDS,
-            }
-            log.debug("%s%s: ts:%s", indent, current_field, ts_field_type)
-
+    structure = {}
+    for index, index_data in sorted(config["indexes"].items()):
+        items = get_api_response("search/" + index + "/?query=*:*")["items"]
+        if not items:
+            raise ValueError(f"No validation object found for index {index}; seed the API first")
+        model = datastore().get_collection(index).schema_model
+        structure[index] = generate_model_structure(model, index_data)
+        if index in {"hit", "event", "case"}:
+            structure[index]["__index"] = {"__ts_field_type": f"'{index}'", "__required": True}
     return structure
 
 
 def dedupe_objects(names, structure, existing_classes):
-    """Step 2: Look for any duplicate classes and remove them, preserving the reference"""
-    # This is a primitive type definition, we don't want to mess with this stuff
-    if len(names) > 0 and "__ts_field_type" in structure:
-        return None
-
-    if len(names) > 0:
-        # If we have two models with the same name but different types, one will need to be renamed
-        # This can likely be made more efficient and remove duplicate classes that *don't* share a name, but for now we
-        # just want to avoid conflicts!
-        if names[-1] in existing_classes:
-            # We need to pop this property if it exists, so equality checks work
-            existing_names = existing_classes[names[-1]].pop("__name")
-
-            # Luckily, we are working with pretty basic types so a simple == will check deep equality correctly.
-            if existing_classes[names[-1]] == structure:
-                log.debug("Model Match: %s and %s" % (".".join(names), existing_names))
-
-                # If a class doesn't need to be generated (since it's a duplicate) we simply skip the rest of the
-                # tree, basically making it a leaf (but a special case leaf!)
-                structure["__skip"] = True
-            else:
-                # We'll name the class after its parent. This is sufficient for now - if we get further conflicts down
-                # the road, we can just add the parent's parent, or make this a bit smarter ;)
-                try:
-                    structure["__class_name"] = names[-2] + "_" + names[-1]
-                except IndexError:
-                    structure["__class_name"] = names[0] + "_" + names[0]
-
-            # Add the property back, if it exists
-            existing_classes[names[-1]]["__name"] = existing_names
-        else:
-            # No class of this name exists yet, so add it
-            existing_classes[names[-1]] = {**structure, "__name": ".".join(names)}
-
-    for entry in list(structure.keys()):
-        # Ignore any private fields
-        if entry.startswith("__"):
-            continue
-
-        # RECURSION TIME BABY
+    """Deduplicate using immutable type structures, not mutable traversal annotations."""
+    if "__ts_field_type" in structure:
+        return
+    if names:
+        signature = copy.deepcopy(structure)
+        assigned = CLASS_NAMES.get(".".join(names))
+        if assigned is not None:
+            structure["__class_name"] = assigned
+        candidate = class_name(names[-1], structure)
+        if (
+            assigned is None
+            and len(names) > 1
+            and candidate
+            in {
+                "Hit",
+                "Event",
+                "Case",
+                "Action",
+                "Analytic",
+                "Dossier",
+                "Template",
+                "Overview",
+                "View",
+                "UserUser",
+            }
+        ):
+            candidate = to_pascal_case("_".join(names[-2:]))
+        if candidate in existing_classes and existing_classes[candidate] != signature:
+            candidate = to_pascal_case("_".join(names[-2:]))
+            if candidate in existing_classes and existing_classes[candidate] != signature:
+                candidate = to_pascal_case("_".join(names))
+        if candidate in existing_classes:
+            if existing_classes[candidate] != signature:
+                raise ValueError(f"Conflicting generated class {candidate}")
+            structure["__class_name"] = candidate
+            structure["__skip"] = True
+            return
+        existing_classes[candidate] = signature
+        structure["__class_name"] = candidate
+    # Give the alert record first ownership of shared ECS exports.
+    priority = {"hit": 0, "event": 1} if not names else {}
+    for entry in sorted(member_names(structure), key=lambda key: (priority.get(key, 2), key)):
         dedupe_objects([*names, entry], structure[entry], existing_classes)
 
 
 def generate_class_member_and_field(name, structure):
-    structure_name = structure.get("__class_name", name)
-    if structure.get("__list", False) and structure_name.lower() not in ["antivirus"]:
-        structure_name = re.sub(r"(.+)s$", r"\1", structure_name)
+    structure_name = class_name(name, structure)
 
     ts_member_rendered = (
         (TS_MEMBER_LIST_TEMPLATE_NOTNULL if structure.get("__required", False) else TS_MEMBER_LIST_TEMPLATE)
         if structure.get("__list", False)
         else (TS_MEMBER_TEMPLATE_NOTNULL if structure.get("__required", False) else TS_MEMBER_TEMPLATE)
-    ).format(name, to_pascal_case(structure_name))
+    ).format(name, structure_name)
 
-    ts_import_rendered = TS_IMPORT_TEMPLATE.format(name=to_pascal_case(structure_name))
+    ts_import_rendered = TS_IMPORT_TEMPLATE.format(name=structure_name)
 
     return (
         ts_member_rendered,
@@ -367,26 +354,29 @@ def generate_class(name, structure):
         return generate_primitive_member_and_field(name, structure)
     else:
         # Generate the references for this class
-        values = [generate_class(obj, structure[obj]) for obj in structure.keys() if not obj.startswith("__")]
-
-        structure_name = structure.get("__class_name", name)
-        if structure.get("__list", False) and structure_name.lower() not in ["antivirus"]:
-            structure_name = re.sub(r"(.+)s$", r"\1", structure_name)
+        structure_name = class_name(name, structure)
+        order = MEMBER_ORDER.get(structure_name, [])
+        members = sorted(
+            member_names(structure), key=lambda key: (order.index(key) if key in order else len(order), key)
+        )
+        values = [generate_class(obj, structure[obj]) for obj in members]
 
         # Generate the file name
-        file_name = "{}/{}.d.ts".format(TS_GENERATED_PATH, to_pascal_case(structure_name))
+        file_name = "{}/{}.d.ts".format(TS_GENERATED_PATH, structure_name)
         if not path.exists(file_name):
             with open(
                 file_name,
                 "w",
             ) as file:
-                file_contents = "\n".join(sorted([x[1] for x in values if x[1]]))
+                file_contents = "\n".join(
+                    sorted({x[1] for x in values if x[1]}, key=lambda value: (value.casefold(), value))
+                )
 
                 if file_contents:
                     file_contents += "\n\n"
 
                 file_contents += BASE_TS_TEMPLATE.format(
-                    name=to_pascal_case(structure_name),
+                    name=structure_name,
                     members="\n".join([x[0] for x in values]),
                 )
 
@@ -397,10 +387,7 @@ def generate_class(name, structure):
         return generate_class_member_and_field(name, structure)
 
 
-def generate_api_config_types():
-    headers = {"Authorization": f"Basic {base64.b64encode(b'user:devkey:user').decode('utf-8')}"}
-    config_req = requests.get(API_PATH + "configs", headers=headers).json()["api_response"]
-
+def generate_api_config_types(config_req):  # noqa: C901
     ts_file_name = TS_GENERATED_PATH / "ApiType.d.ts"
     with open(ts_file_name, "w") as file:
         # We handle each field slightly differently. First up is the indexes!
@@ -410,14 +397,26 @@ def generate_api_config_types():
         log.info("Step 4.1: Handling 'indexes' key")
         indexes = config_req.pop("indexes")
 
+        # A Mapping summary lacks some flags; nullable regex/values also vary by
+        # the first field. Describe the metadata contract, not one arbitrary leaf.
         index_fields = "\n".join(
-            [
-                TS_MEMBER_TEMPLATE_NOTNULL.format(k, PYTHON_TS_MAPPING.get(type(v).__name__, "string"))
-                for k, v in indexes["hit"][next(key for key in indexes["hit"].keys())].items()
-            ]
+            TS_MEMBER_TEMPLATE_NOTNULL.format(key, ts_type)
+            for key, ts_type in {
+                "default": "boolean",
+                "indexed": "boolean",
+                "list": "boolean",
+                "stored": "boolean",
+                "deprecated": "boolean",
+                "type": "string",
+                "description": "string",
+                "regex": "string",
+                "values": "string[]",
+                "deprecated_description": "string",
+            }.items()
         )
 
         # First we write the reused type
+        file.write("import type { ClassificationDefinition } from 'utils/classificationParser';\n\n")
         file.write(BASE_TS_TEMPLATE.format(imports="", name="APIIndex", members=index_fields) + "\n")
 
         # Then we write the overarching dict containing a key for each index
@@ -426,7 +425,7 @@ def generate_api_config_types():
                 imports="",
                 name="APIIndexes",
                 members="\n".join(
-                    TS_MEMBER_TEMPLATE_NOTNULL.format(key, "{ [index: string]: APIIndex }") for key in indexes.keys()
+                    TS_MEMBER_TEMPLATE_NOTNULL.format(key, "{ [index: string]: APIIndex }") for key in sorted(indexes)
                 ),
             )
             + "\n"
@@ -438,20 +437,41 @@ def generate_api_config_types():
         log.info("Step 4.2: Handling 'lookups' key")
         lookups = config_req.pop("lookups")
         lookup_members = []
-        for lookup_name, lookup_data in lookups.items():
+        lookup_order = [
+            "howler.status",
+            "howler.scrutiny",
+            "howler.escalation",
+            "howler.assessment",
+            "case.escalation",
+            "transitions",
+            "techniques",
+            "tactics",
+            "icons",
+            "roles",
+        ]
+        for lookup_name in sorted(
+            lookups, key=lambda key: (lookup_order.index(key) if key in lookup_order else len(lookup_order), key)
+        ):
+            lookup_data = lookups[lookup_name]
+            if lookup_name == "roles":
+                lookup_data = sorted(lookup_data, key=lambda value: (value != "admin", value))
             # "simple" list format (i.e. ["one", "two"])
             if isinstance(lookup_data, list):
-                sub_type = type(lookup_data[0]).__name__
+                sub_type = type(lookup_data[0]).__name__ if lookup_data else "str"
 
                 # If there's only a few values in the lookup, we create an enum style list instead
-                if len(lookup_data) < 12 and sub_type == "str":
+                if lookup_data and len(lookup_data) < 12 and sub_type == "str":
+                    compact = len(lookup_data) <= 5 or lookup_name == "roles"
+                    quoted_values = [
+                        json.dumps(value) if lookup_name == "case.escalation" else repr(value) for value in lookup_data
+                    ]
                     lookup_members.append(
                         TS_MEMBER_TEMPLATE_NOTNULL.format(
                             f"'{lookup_name}'" if "." in lookup_name else lookup_name,
                             "["
-                            + ("" if len(lookup_data) <= 5 else "\n    ")
-                            + (", " if len(lookup_data) <= 5 else ",\n    ").join(f"'{val}'" for val in lookup_data)
-                            + ("" if len(lookup_data) <= 5 else "\n  ")
+                            + ("" if compact else "\n    ")
+                            + (", " if compact else ",\n    ").join(quoted_values)
+                            + ("" if compact else "\n  ")
                             + "]",
                         )
                     )
@@ -467,11 +487,11 @@ def generate_api_config_types():
 
             # Dict is next
             elif isinstance(lookup_data, dict):
-                entry = lookup_data[next(key for key in lookup_data.keys())]
+                entry = lookup_data[min(lookup_data)]
 
                 # Dict of lists
                 if isinstance(entry, list):
-                    sub_type = type(entry[0]).__name__
+                    sub_type = type(entry[0]).__name__ if entry else "str"
                     lookup_members.append(
                         TS_MEMBER_TEMPLATE_NOTNULL.format(
                             f"'{lookup_name}'" if "." in lookup_name else lookup_name,
@@ -482,7 +502,7 @@ def generate_api_config_types():
 
                 # Dict of dicts (we reuse the logic from the indexes, basically)
                 elif isinstance(entry, dict):
-                    fields = [f"{k}: {PYTHON_TS_MAPPING[type(v).__name__]};" for k, v in entry.items()]
+                    fields = [f"{k}: {PYTHON_TS_MAPPING[type(v).__name__]};" for k, v in sorted(entry.items())]
 
                     lookup_members.append(
                         TS_MEMBER_TEMPLATE_NOTNULL.format(
@@ -501,12 +521,44 @@ def generate_api_config_types():
         # The last two are hilariously complex objects, so instead of doing it in a logical way, we just
         # #CHEESEIT instead. We use a bunch of regexes to convert a JSON version of the entry into a TS type.
         step = 3
-        for key in ["configuration", "c12nDef"]:
+        for key in ["configuration"]:
             log.info("Step 4.%s: Handling '%s' key", step, key)
             step += 1
 
             # Setting up the basic interface format
-            config_type = f"export interface API{to_pascal_case(key)} " + json.dumps(config_req.pop(key), indent=2)
+            configuration = config_req.pop(key)
+            configuration.pop("mapping")
+            # Follow the stable public layout, independent of Flask's JSON key ordering.
+            orders = {
+                "": ["auth", "system", "ui", "features", "clue"],
+                "auth": [
+                    "allow_apikeys",
+                    "allow_extended_apikeys",
+                    "max_apikey_duration_amount",
+                    "max_apikey_duration_unit",
+                    "oauth_providers",
+                    "internal",
+                ],
+                "system": ["type", "version", "branch", "commit", "retention"],
+                "system.retention": ["enabled", "limit_unit", "limit_amount"],
+                "features": ["clue", "notebook"],
+            }
+
+            def ordered(data, prefix=""):
+                if not isinstance(data, dict):
+                    return data
+                order = orders.get(prefix, [])
+                return {
+                    k: ordered(v, f"{prefix}.{k}" if prefix else k)
+                    for k, v in sorted(
+                        data.items(),
+                        key=lambda item: (order.index(item[0]) if item[0] in order else len(order), item[0]),
+                    )
+                }
+
+            config_type = "export interface APIConfiguration extends APIMappings " + json.dumps(
+                ordered(configuration), indent=2
+            )
 
             # |    "key":| -> |    key:|
             config_type = re.sub(r'^( +)"(\w+)":', r"\1\2:", config_type, flags=re.MULTILINE)
@@ -549,11 +601,14 @@ def generate_api_config_types():
                 config_type,
             )
 
-            config_type = config_type.replace(
-                "apps: [],",
+            config_type = re.sub(
+                r"apps: \[\],?",
                 "apps: { alt: string; name: string; img_d: string; img_l: string; route: "
                 "string; classification: string }[];",
+                config_type,
             )
+            config_type = re.sub(r"status_checks: \[\],?", "status_checks: string[];", config_type)
+            config_type = re.sub(r"(    notebook: boolean;)", r"\1\n    [feature: string]: boolean;", config_type)
 
             # Finally, we convert any null values into unknown types.
             config_type = re.sub(r"(.+): null.+", r"\1?: unknown;", config_type)
@@ -567,6 +622,12 @@ def generate_api_config_types():
             # All done!
             file.write("\n\n" + config_type)
 
+        # Deployment markings are data, not property names in a static type. The
+        # UI already uses this generic definition; retain the old export name.
+        config_req.pop("c12nDef")
+        file.write("\n\nexport interface APIC12Ndef extends ClassificationDefinition {}\n")
+        file.write("\nexport interface APIMappings {\n  mapping: { [index: string]: string };\n}\n")
+
         # We'll check for any keys we missed and throw a warning so we know what the problem is in the future
         leftover_keys = list(config_req.keys())
         if len(leftover_keys) > 0:
@@ -574,14 +635,13 @@ def generate_api_config_types():
 
         # Write the final section of the new type
         file.write(
-            "\n"
-            + textwrap.dedent(
+            textwrap.dedent(
                 f"""
                 export interface ApiType {{
                   indexes: API{to_pascal_case("indexes")};
                   lookups: API{to_pascal_case("lookups")};
                   configuration: API{to_pascal_case("configuration")};
-                  c12nDef: API{to_pascal_case("c12nDef")};
+                  c12nDef: ClassificationDefinition;
                 }}
                 """
             )
@@ -590,7 +650,8 @@ def generate_api_config_types():
 
 def run():
     log.info("Step 1: Generate and validate type structure")
-    structure = generate_structure()
+    config = get_api_response("configs")
+    structure = generate_structure(config)
 
     log.info("Step 2: Deduplicate objects")
     dedupe_objects([], structure, {})
@@ -608,8 +669,16 @@ def run():
     for root in structure.keys():
         generate_class(root, structure[root])
 
+    # Retain this historically exported duplicate even though no current entity
+    # references it. Its contents are derived from the canonical generated type.
+    indicator = TS_GENERATED_PATH / "Indicator.d.ts"
+    (TS_GENERATED_PATH / "EnrichmentsIndicator.d.ts").write_text(
+        indicator.read_text().replace("export interface Indicator {", "export interface EnrichmentsIndicator {"),
+        encoding="utf-8",
+    )
+
     log.info("Step 4: Generate API configs")
-    generate_api_config_types()
+    generate_api_config_types(config)
 
 
 if __name__ == "__main__":

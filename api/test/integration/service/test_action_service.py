@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 
 from howler.common import loader
 from howler.datastore.howler_store import HowlerDatastore
@@ -28,6 +29,18 @@ def _process_queued_actions():
             batch.append(item)
         if batch:
             action_service.process_action_batch(trigger, batch)
+
+
+def _wait_for_hit_label(datastore_connection: HowlerDatastore, hit_id: str, label: str, timeout: float = 15) -> bool:
+    """Poll until the expected label appears on a hit or timeout elapses."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        datastore_connection.hit.commit()
+        hit = datastore_connection.hit.get(hit_id)
+        if hit and label in (hit.howler.labels.generic or []):
+            return True
+        time.sleep(0.5)
+    return False
 
 
 def test_execute_action(datastore_connection: HowlerDatastore):
@@ -108,10 +121,12 @@ def test_execute_action(datastore_connection: HowlerDatastore):
         test_hit_promote.howler.id, HitStatusTransition.ASSESS, user=user, assessment=Assessment.COMPROMISE
     )
 
-    _process_queued_actions()
-    datastore_connection.hit.commit()
-    assert "demoted" in datastore_connection.hit.get(test_hit_demote.howler.id).howler.labels.generic
-    assert "promoted" in datastore_connection.hit.get(test_hit_promote.howler.id).howler.labels.generic
+    assert _wait_for_hit_label(datastore_connection, test_hit_demote.howler.id, "demoted"), (
+        "Label 'demoted' was not applied by the action queue worker within the timeout"
+    )
+    assert _wait_for_hit_label(datastore_connection, test_hit_promote.howler.id, "promoted"), (
+        "Label 'promoted' was not applied by the action queue worker within the timeout"
+    )
 
     datastore_connection.hit.delete(test_hit_demote.howler.id)
     datastore_connection.action.delete(action_demote.action_id)

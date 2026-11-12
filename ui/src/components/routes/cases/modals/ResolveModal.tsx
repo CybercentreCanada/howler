@@ -34,6 +34,7 @@ import { useCallback, useContext, useEffect, useMemo, useState, type FC } from '
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
+import { isHit } from 'utils/typeUtils';
 import { notNil } from 'utils/utils';
 import useCase from '../hooks/useCase';
 
@@ -108,14 +109,14 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
         (_case?.items ?? [])
           .filter(item => item.type === 'hit')
           .map(item => item.value)
-          .filter(Boolean) as string[]
+          .filter((id): id is string => !!id)
       ),
     [_case?.items]
   );
 
   const loadRecords = useContextSelector(RecordContext, ctx => ctx.loadRecords);
   const records = useContextSelector(RecordContext, ctx => ctx.records);
-  const hits = useMemo(() => hitIds.map(id => records[id] as Hit).filter(Boolean) as Hit[], [hitIds, records]);
+  const hits = useMemo(() => hitIds.map(id => records[id]).filter(isHit), [hitIds, records]);
 
   const selectedHits = useMemo(() => hits.filter(hit => selectedHitIds.has(hit.howler.id)), [hits, selectedHitIds]);
   const { assess } = useHitActions(selectedHits);
@@ -130,7 +131,8 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
           return true;
         }
 
-        return record.howler.status !== 'resolved';
+        // A cached event cannot resolve or be assessed as a declared alert.
+        return !isHit(record) || record.howler.status !== 'resolved';
       }),
     [hitIds, records]
   );
@@ -175,6 +177,9 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
   useEffect(() => {
     void (async () => {
       try {
+        if (hitIds.length === 0) {
+          return;
+        }
         const result = await dispatchApi(
           api.search.hit.post({
             query: `howler.id:(${hitIds.join(' OR ')})`,
@@ -228,7 +233,7 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
             variant="outlined"
             color="primary"
             onClick={onAssess}
-            disabled={selectedHitIds.size < 1 || !assessment}
+            disabled={selectedHits.length < 1 || !assessment}
           >
             {t('modal.cases.alerts.assess')}
           </Button>

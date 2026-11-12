@@ -115,7 +115,7 @@ def _select_collection_fields(collection: ESCollection, requested_fields: list[s
     fields = collection.stored_fields
     stored_names = stored_field_paths(fields) - {"id", "__index"}
     mapping_names = {
-        name for name in stored_names if fields[name].metadata is not None and fields[name].metadata.kind == "Mapping"
+        name for name in stored_names if (metadata := fields[name].metadata) is not None and metadata.kind == "Mapping"
     }
     selected: set[str] = set()
 

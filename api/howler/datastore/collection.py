@@ -671,6 +671,9 @@ class ESCollection(Generic[ModelType]):
             try:
                 res = self.datastore.client.cluster.health(index=index, timeout="5s", wait_for_status=min_status)
                 status_ok = not res["timed_out"]
+                if not status_ok:
+                    # Elasticsearch 8+ reports health timeouts as HTTP 200 with timed_out=true.
+                    logger.warning("Waiting for index %s to get to status %s...", index, min_status)
             except elasticsearch.exceptions.TransportError as e:
                 if error_status(e) == 408:
                     logger.warning("Waiting for index %s to get to status %s...", index, min_status)
@@ -724,12 +727,12 @@ class ESCollection(Generic[ModelType]):
             responses.append(response_body(response))
 
         has_errors = False
-        for response in responses:
-            if not response["errors"]:
+        for body in responses:
+            if not body["errors"]:
                 continue
 
             has_errors = True
-            for item in response.get("items", []):
+            for item in body.get("items", []):
                 for action, result in item.items():
                     error = result.get("error")
                     if error:
@@ -3630,6 +3633,10 @@ class ESCollection(Generic[ModelType]):
                 if "resource_already_exists_exception" not in str(e):
                     raise
                 logger.warning("Tried to create an index template that already exists: %s", self.name.upper())
+
+            # Index creation can acknowledge before its primary shard starts on a loaded cluster. Schema
+            # verification uses field_caps, which fails on RECOVERING shards, so wait for allocation first.
+            self._wait_for_status(self.index_name)
         elif not self.with_retries(
             self.datastore.client.indices.exists, index=self.index_name
         ) and not self.with_retries(self.datastore.client.indices.exists_alias, name=self.name):
@@ -3834,6 +3841,9 @@ class ESCollection(Generic[ModelType]):
                 if "resource_already_exists_exception" not in str(e):
                     raise
                 logger.warning("ILM index already exists: %s", ilm_initial_index)
+
+            # See _ensure_collection: field_caps in _check_fields needs started shards.
+            self._wait_for_status(ilm_initial_index)
 
             # Update index_name to point to the ILM initial index
             self.index_name = ilm_initial_index

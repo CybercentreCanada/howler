@@ -1,7 +1,7 @@
-"""Run an isolated Elasticsearch upgrade with the frozen Howler application corpus.
+"""Run an isolated Elasticsearch upgrade with the frozen Howler application-v2 corpus.
 
 This is a live synthetic rehearsal, not a status-file consumer. It creates a fresh,
-run-owned 8.19.11 donor, seeds the reviewed application-v1 plan before snapshotting,
+run-owned 8.19.11 donor, seeds the reviewed application-v2 plan before snapshotting,
 restores into a second fresh 8.19.11 volume, upgrades that same volume to 9.5.2, and
 restores the saved snapshot into a third fresh 8.19.11 volume. The only application
 checks are real HTTP requests to a short-lived local WSGI child using the API keys
@@ -99,7 +99,7 @@ else:
 def _get_application_module_path() -> Path:
     module_file = application_fixture.__file__
     if module_file is None:
-        raise ImportError("The application-v1 fixture module has no source file.")
+        raise ImportError("The application-v2 fixture module has no source file.")
     return Path(module_file).resolve()
 
 
@@ -108,7 +108,7 @@ if _requested_api_root is not None:
     _requested_build_scripts = (_requested_api_root / "build_scripts").resolve()
     if not _application_module_path.is_relative_to(_requested_build_scripts):
         raise ImportError(
-            f"The application-v1 plan was imported from {_application_module_path}, not the requested API root "
+            f"The application-v2 plan was imported from {_application_module_path}, not the requested API root "
             f"{_requested_api_root}. Set --api-root before importing this runner."
         )
 
@@ -144,6 +144,7 @@ class RedisHandle:
     container_id: str
     host: str
     port: int
+    network: str
 
 
 @dataclass(frozen=True)
@@ -171,7 +172,10 @@ def derive_namespace(run_id: str) -> str:
 def validate_seed_plan(plan: SeedPlan, namespace: str) -> list[str]:
     """Fail closed unless the pure fixture plan is complete and strictly namespaced."""
     _require(plan.namespace == namespace, "Seed plan namespace differs from the requested rehearsal namespace.")
-    _require(plan.fixture_version == "application-v1", "Unsupported application seed-plan version.")
+    _require(
+        plan.fixture_version == application_fixture.APPLICATION_FIXTURE_VERSION,
+        "Unsupported application seed-plan version.",
+    )
     _require(plan.compatibility_validation_required is True, "The fixture no longer requires compatibility validation.")
     _require(
         plan.application_verification_status == "NOT_RUN", "A prefilled application status cannot authorize a run."
@@ -279,6 +283,23 @@ from step9_application import build_seed_plan
 from howler.datastore.howler_store import INDEXES
 from howler.models import model_extensions
 from howler.models.schema import document_mapping, index_settings
+
+def differences(expected, actual, path=""):
+    if isinstance(expected, dict) and isinstance(actual, dict):
+        result = []
+        for key in sorted(set(expected) | set(actual)):
+            child_path = f"{path}.{key}" if path else key
+            if key not in expected:
+                result.append({"path": child_path, "expected": "<missing>", "actual": actual[key]})
+            elif key not in actual:
+                result.append({"path": child_path, "expected": expected[key], "actual": "<missing>"})
+            else:
+                result.extend(differences(expected[key], actual[key], child_path))
+        return result
+    if expected != actual:
+        return [{"path": path or "$", "expected": expected, "actual": actual}]
+    return []
+
 plan = build_seed_plan(sys.argv[2])
 model_extensions.clear()
 mismatches = []
@@ -293,9 +314,21 @@ for item in plan.indexes:
     )
     actual_mapping = document_mapping(finalized)
     if index_settings_body != expected_settings:
-        mismatches.append({"collection": item.collection, "kind": "settings"})
+        mismatches.append(
+            {
+                "collection": item.collection,
+                "kind": "settings",
+                "differences": differences(expected_settings, index_settings_body),
+            }
+        )
     if actual_mapping != item.mappings:
-        mismatches.append({"collection": item.collection, "kind": "mappings"})
+        mismatches.append(
+            {
+                "collection": item.collection,
+                "kind": "mappings",
+                "differences": differences(item.mappings, actual_mapping),
+            }
+        )
 result = {"checked_collections": len(plan.indexes), "mismatches": mismatches}
 Path(sys.argv[3]).write_text(json.dumps(result, sort_keys=True) + "\\n", encoding="utf-8")
 if mismatches:
@@ -327,7 +360,7 @@ if mismatches:
     _require(
         details.get("checked_collections") == len(COLLECTION_NAMES), "Mapping parity skipped one or more collections."
     )
-    _require(not details.get("mismatches"), f"Current schema mappings differ from application-v1: {details!r}.")
+    _require(not details.get("mismatches"), f"Current schema mappings differ from application-v2: {details!r}.")
     result_path.unlink(missing_ok=True)
     return {
         "result": "PASS",
@@ -365,7 +398,7 @@ def verify_seeded_documents(client: Any, plan: SeedPlan) -> None:
         )
         _require(
             actual.get("found") is True and actual.get("_source") == document.source,
-            f"Application-v1 source identity differs for {document.collection}/{document.document_id}.",
+            f"Application-v2 source identity differs for {document.collection}/{document.document_id}.",
         )
     for index in plan.indexes:
         expected = sum(document.collection == index.collection for document in plan.documents)
@@ -465,6 +498,51 @@ def internal_system_state_delta(before: dict[str, Any], after: dict[str, Any]) -
         "added_indices": sorted(after_names - before_names),
         "removed_indices": sorted(before_names - after_names),
         "changed_existing_indices": changed,
+    }
+
+
+def verify_application_write_state_transition(
+    before: dict[str, Any],
+    after: dict[str, Any],
+    application_verification: dict[str, Any],
+) -> dict[str, Any]:
+    """Separate read-only API identity from a write probe's exactly explained mapping change."""
+    before_state = before["application_state"]
+    after_state = after["application_state"]
+    read_only = application_verification.get("read_only_state", {})
+    _require(read_only.get("result") == "PASS", "Read-only application checks did not prove an unchanged baseline.")
+    _require(
+        read_only.get("application_state_before") == before_state
+        and read_only.get("application_state_after") == before_state,
+        "Read-only application requests changed the frozen application-v2 state.",
+    )
+
+    write_probe = application_verification.get("write_probe", {})
+    write_state = write_probe.get("state_after_restore", {})
+    _require(write_probe.get("result") == "PASS", "Registered collection write probe did not pass.")
+    _require(write_state.get("result") == "PASS", "Write-probe state restoration did not pass.")
+    _require(
+        write_state.get("application_state_before") == before_state
+        and write_state.get("application_state_after") == after_state,
+        "Outer rehearsal state differs from the request-derived write-probe capture.",
+    )
+
+    for key in ("index_uuids", "aliases", "counts", "document_sha256"):
+        _require(before_state[key] == after_state[key], f"Write probe changed application {key}.")
+    changed_mappings = sorted(
+        name for name in before_state["mappings"] if before_state["mappings"][name] != after_state["mappings"][name]
+    )
+    explained = write_state.get("explained_mapping_changes", {})
+    _require(
+        changed_mappings == sorted(explained),
+        "Application mapping changes do not match the exact write-probe explanation.",
+    )
+    return {
+        "result": "PASS",
+        "read_only_api_state_unchanged": True,
+        "index_uuids_aliases_counts_sources_unchanged": True,
+        "mappings_unchanged": not bool(explained),
+        "explained_mapping_changes": explained,
     }
 
 
@@ -634,6 +712,7 @@ def _minimal_python_environment(
     config_dir: Path,
     plugin_dir: Path,
     log_dir: Path,
+    redis_host: str = "127.0.0.1",
 ) -> dict[str, str]:
     """Return a deliberately small environment; all Howler controls are explicit."""
     hosts = [
@@ -671,9 +750,9 @@ def _minimal_python_environment(
         "HWL_CORE__CLUE__ENABLED": "false",
         "HWL_CORE__NOTEBOOK__ENABLED": "false",
         "HWL_CORE__TELEMETRY__ENABLED": "false",
-        "HWL_CORE__REDIS__NONPERSISTENT__HOST": "127.0.0.1",
+        "HWL_CORE__REDIS__NONPERSISTENT__HOST": redis_host,
         "HWL_CORE__REDIS__NONPERSISTENT__PORT": str(redis_port),
-        "HWL_CORE__REDIS__PERSISTENT__HOST": "127.0.0.1",
+        "HWL_CORE__REDIS__PERSISTENT__HOST": redis_host,
         "HWL_CORE__REDIS__PERSISTENT__PORT": str(redis_port),
         "HWL_LOGGING__LOG_DIRECTORY": str(log_dir),
         "HWL_LOGGING__LOG_TO_FILE": "true",
@@ -768,6 +847,36 @@ def _write_app_config(work_dir: Path, plan: SeedPlan, *, api_root: Path) -> tupl
     return config_dir, plugin_dir, log_dir, classification_sha256
 
 
+def _inspect_owned_redis_network(
+    runtime: es_rehearsal.DockerRuntime,
+    name: str,
+    *,
+    expected_members: set[str],
+) -> dict[str, Any]:
+    try:
+        response = json.loads(runtime._docker(["network", "inspect", name]))[0]
+    except (IndexError, json.JSONDecodeError) as error:
+        raise RehearsalAbort("Redis Docker network inspect did not return its owned network object.") from error
+    labels = response.get("Labels", {})
+    _require(
+        response.get("Name") == name
+        and labels.get(es_rehearsal.LABEL_KEY) == "true"
+        and labels.get("howler.step9.run") == runtime.run_id
+        and labels.get("howler.step9.role") == "application-redis-network",
+        "Redis network is not owned by this exact Step 9 application rehearsal.",
+    )
+    _require(
+        response.get("Driver") == "bridge" and response.get("Internal") is True,
+        "Redis must use its separate run-owned internal bridge network.",
+    )
+    members = set((response.get("Containers") or {}).keys())
+    _require(
+        members == expected_members,
+        f"Redis network has unexpected container membership: {sorted(members ^ expected_members)}.",
+    )
+    return response
+
+
 def _inspect_redis(runtime: es_rehearsal.DockerRuntime, handle: RedisHandle) -> dict[str, Any]:
     try:
         response = json.loads(runtime._docker(["inspect", handle.container_id]))[0]
@@ -788,7 +897,7 @@ def _inspect_redis(runtime: es_rehearsal.DockerRuntime, handle: RedisHandle) -> 
     )
     _require(response.get("State", {}).get("Status") == "running", "Owned Redis container is not running.")
     host_config = response.get("HostConfig", {})
-    _require(host_config.get("NetworkMode") == "bridge", "Redis must use only the separate default Docker bridge.")
+    _require(host_config.get("NetworkMode") == handle.network, "Redis must use its run-owned Docker network.")
     _require(
         not host_config.get("Privileged") and not host_config.get("Devices") and not host_config.get("CapAdd"),
         "Redis container has unexpected elevated host privileges.",
@@ -800,38 +909,34 @@ def _inspect_redis(runtime: es_rehearsal.DockerRuntime, handle: RedisHandle) -> 
         "Rehearsal Redis data must use only its container-owned ephemeral /data tmpfs.",
     )
     bindings = host_config.get("PortBindings") or {}
-    expected = bindings.get(f"{REDIS_PORT}/tcp")
-    if set(bindings) != {f"{REDIS_PORT}/tcp"} or not isinstance(expected, list) or len(expected) != 1:
-        raise RehearsalAbort("Redis publishes unexpected ports.")
-    binding = expected[0]
-    _require(binding.get("HostIp") == "127.0.0.1", "Redis host port must bind only to IPv4 loopback.")
     _require(
-        binding.get("HostPort") in {"", str(handle.port)},
-        "Redis requested host port differs from the Docker-assigned ephemeral port.",
+        not any(bindings.values()) and not host_config.get("PublishAllPorts"),
+        "Redis must not publish a port on the host.",
     )
-    try:
-        address = ipaddress.ip_address(binding["HostIp"])
-    except (KeyError, ValueError) as error:
-        raise RehearsalAbort("Redis host port is not a valid loopback IPv4 binding.") from error
-    _require(address == ipaddress.ip_address("127.0.0.1"), "Redis host port is not IPv4 loopback.")
     _require(
-        set(response.get("NetworkSettings", {}).get("Networks", {})) == {"bridge"},
-        "Redis is attached outside the separate default Docker bridge.",
+        set(response.get("NetworkSettings", {}).get("Networks", {})) == {handle.network},
+        "Redis is attached outside its run-owned internal Docker network.",
+    )
+    redis_network = _inspect_owned_redis_network(runtime, handle.network, expected_members={handle.container_id})
+    address = response.get("NetworkSettings", {}).get("Networks", {}).get(handle.network, {}).get("IPAddress", "")
+    try:
+        parsed_address = ipaddress.ip_address(address)
+    except ValueError as error:
+        raise RehearsalAbort("Redis run-owned network address is not valid private IPv4.") from error
+    _require(parsed_address.version == 4 and parsed_address.is_private, "Redis address is not private IPv4.")
+    _require(address == handle.host, "Redis connection host differs from the inspected private network address.")
+    member_address = str(redis_network.get("Containers", {}).get(handle.container_id, {}).get("IPv4Address", ""))
+    _require(
+        member_address.split("/", 1)[0] == address,
+        "Redis network membership IP differs from its inspected container IP.",
     )
     published = response.get("NetworkSettings", {}).get("Ports") or {}
-    published_binding = published.get(f"{REDIS_PORT}/tcp")
-    _require(
-        isinstance(published_binding, list)
-        and len(published_binding) == 1
-        and published_binding[0].get("HostIp") == "127.0.0.1"
-        and published_binding[0].get("HostPort") == str(handle.port),
-        "Redis runtime port publication differs from its verified configuration.",
-    )
+    _require(not any(published.values()), "Redis unexpectedly has a host-published port.")
     return response
 
 
 def verify_redis_owned(runtime: es_rehearsal.DockerRuntime, handle: RedisHandle, *, ping: bool = True) -> None:
-    """Verify the exact labels, container identity, network, and loopback-only port."""
+    """Verify exact ownership and ping Redis through its private run-owned bridge IP."""
     _inspect_redis(runtime, handle)
     if ping:
         with socket.create_connection((handle.host, handle.port), timeout=3) as connection:
@@ -841,10 +946,29 @@ def verify_redis_owned(runtime: es_rehearsal.DockerRuntime, handle: RedisHandle,
 
 
 def start_owned_redis(runtime: es_rehearsal.DockerRuntime) -> RedisHandle:
-    """Start a dedicated, ephemeral Redis process on a random loopback host port."""
+    """Start Redis without host port publication on its private run-owned bridge IP."""
     name = f"howler-step9-{runtime.run_id}-app-redis"
+    network = f"howler-step9-{runtime.run_id}-app-redis-network"
     existing = set(runtime._docker(["ps", "-a", "--format", "{{.Names}}"], check=True).splitlines())
     _require(name not in existing, f"Refusing a pre-existing application Redis container name: {name!r}.")
+    existing_networks = set(runtime._docker(["network", "ls", "--format", "{{.Name}}"], check=True).splitlines())
+    _require(network not in existing_networks, f"Refusing a pre-existing application Redis network: {network!r}.")
+    runtime._docker(
+        [
+            "network",
+            "create",
+            "--internal",
+            "--label",
+            f"{es_rehearsal.LABEL_KEY}=true",
+            "--label",
+            f"howler.step9.run={runtime.run_id}",
+            "--label",
+            "howler.step9.role=application-redis-network",
+            network,
+        ]
+    )
+    runtime.resources["application_redis_network"] = network
+    _inspect_owned_redis_network(runtime, network, expected_members=set())
     result = runtime._docker(
         [
             "run",
@@ -858,11 +982,9 @@ def start_owned_redis(runtime: es_rehearsal.DockerRuntime) -> RedisHandle:
             "--label",
             "howler.step9.role=application-redis",
             "--network",
-            "bridge",
+            network,
             "--tmpfs",
             "/data:rw,noexec,nosuid,size=16m",
-            "-p",
-            f"127.0.0.1::{REDIS_PORT}",
             REDIS_IMAGE,
             "redis-server",
             "--save",
@@ -877,11 +999,9 @@ def start_owned_redis(runtime: es_rehearsal.DockerRuntime) -> RedisHandle:
     _require(bool(re.fullmatch(r"[0-9a-f]{12,64}", container_id)), "Docker returned an invalid Redis container ID.")
     try:
         raw = json.loads(runtime._docker(["inspect", container_id]))[0]
-        bindings = raw.get("NetworkSettings", {}).get("Ports", {}).get(f"{REDIS_PORT}/tcp") or []
-        _require(len(bindings) == 1, "Docker did not assign exactly one ephemeral Redis port.")
-        port = int(bindings[0].get("HostPort", "0"))
-        _require(1 <= port <= 65535, "Docker assigned an invalid ephemeral Redis port.")
-        handle = RedisHandle(name, container_id, "127.0.0.1", port)
+        address = raw.get("NetworkSettings", {}).get("Networks", {}).get(network, {}).get("IPAddress", "")
+        _require(bool(address), "Docker did not assign a private IP on the owned Redis network.")
+        handle = RedisHandle(name, container_id, address, REDIS_PORT, network)
         _inspect_redis(runtime, handle)
         deadline = time.monotonic() + min(runtime.timeout, 60)
         last_error: OSError | None = None
@@ -898,29 +1018,9 @@ def start_owned_redis(runtime: es_rehearsal.DockerRuntime) -> RedisHandle:
             return handle
         raise RehearsalAbort(f"Owned Redis did not become ready: {last_error or 'timeout'}.")
     except Exception:
-        _remove_failed_owned_redis(runtime, name, container_id)
+        # Leave any partial run-labelled resources in place for the outer runner to report
+        # and remove only after its external report has been durably written.
         raise
-
-
-def _remove_failed_owned_redis(runtime: es_rehearsal.DockerRuntime, name: str, container_id: str) -> None:
-    """Remove a just-created, failed Redis container only if its exact labels still prove ownership."""
-    try:
-        response = json.loads(runtime._docker(["inspect", container_id]))[0]
-    except (IndexError, json.JSONDecodeError, RehearsalAbort):
-        return
-    labels = response.get("Config", {}).get("Labels", {})
-    if not (
-        response.get("Id") == container_id
-        and response.get("Name", "").lstrip("/") == name
-        and labels.get(es_rehearsal.LABEL_KEY) == "true"
-        and labels.get("howler.step9.run") == runtime.run_id
-        and labels.get("howler.step9.role") == "application-redis"
-        and response.get("Config", {}).get("Image") == REDIS_IMAGE
-    ):
-        return
-    if response.get("State", {}).get("Status") == "running":
-        runtime._docker(["stop", "--time", "10", container_id])
-    runtime._docker(["rm", "-v", container_id])
 
 
 def remove_owned_redis(runtime: es_rehearsal.DockerRuntime, handle: RedisHandle) -> None:
@@ -985,6 +1085,7 @@ def start_application_child(
     api_root: Path,
     plan: SeedPlan,
     es_endpoint: str,
+    redis_host: str,
     redis_port: int,
     config_dir: Path,
     plugin_dir: Path,
@@ -1000,6 +1101,7 @@ def start_application_child(
         config_dir=config_dir,
         plugin_dir=plugin_dir,
         log_dir=log_dir,
+        redis_host=redis_host,
     )
     environment.update(plan.environment)
     environment["STEP9_ES_ENDPOINT"] = es_endpoint
@@ -1161,7 +1263,7 @@ def _parse_ok(status: int, response: dict[str, Any] | None, *, path: str) -> Any
 def verify_user_identity_sources(client: Any, plan: SeedPlan) -> dict[str, Any]:
     """Compare frozen non-admin test identities, including their hashed API keys, verbatim."""
     expected_users = [document for document in plan.documents if document.collection == "user"]
-    _require(len(expected_users) == 2, "Application-v1 must carry exactly two non-admin read identities.")
+    _require(len(expected_users) == 2, "Application-v2 must carry exactly two non-admin read identities.")
     for document in expected_users:
         response = client.request(
             "GET",
@@ -1190,6 +1292,7 @@ def run_application_checks(  # noqa: C901
     fixture: dict[str, Any],
     redis_runtime: es_rehearsal.DockerRuntime,
     redis: RedisHandle,
+    before_application_state: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Exercise real API authentication, ACL searches/count/facets, and GET/ETag behavior."""
     verify_redis_owned(redis_runtime, redis)
@@ -1201,6 +1304,16 @@ def run_application_checks(  # noqa: C901
         "resource_reads": {},
         "failures": [],
     }
+    cutover = redis_runtime.handles.get("cutover")
+    _require(cutover is not None, "No live cutover container remains for read-only application checks.")
+    assert cutover is not None  # narrowed by _require for type checkers
+    state_client = es_rehearsal.RestClient(cutover.base_url, redis_runtime.timeout)
+    if before_application_state is None:
+        before_application_state = capture_application_state(
+            state_client,
+            [index.index_name for index in plan.indexes],
+            es_rehearsal.MAX_DOCS_PER_INDEX,
+        )
 
     # Missing and invalid API-key requests use the actual Flask security decorator and
     # real Redis-backed failure/quota paths; no auth function is mocked or bypassed.
@@ -1237,7 +1350,7 @@ def run_application_checks(  # noqa: C901
             credentials.get("api_key_name") and credentials.get("api_key_secret"),
             f"{username} has no real API key secret.",
         )
-        search_body = {"query": "id:*", "rows": 20, "sort": "id asc", "track_total_hits": True}
+        search_body = {"query": "id:*", "rows": 20, "sort": "id asc", "track_total_hits": True, "fl": ["id"]}
         status, response, _headers = _api_call(
             app,
             username,
@@ -1375,6 +1488,26 @@ def run_application_checks(  # noqa: C901
         results["failures"].append(str(error))
 
     verify_redis_owned(redis_runtime, redis)
+    try:
+        after_read_only_state = capture_application_state(
+            state_client,
+            [index.index_name for index in plan.indexes],
+            es_rehearsal.MAX_DOCS_PER_INDEX,
+        )
+        es_rehearsal.verify_data_identity(
+            before_application_state["application_state"],
+            after_read_only_state["application_state"],
+            phase="read-only application HTTP checks",
+            require_uuid_match=True,
+        )
+        results["read_only_state"] = {
+            "result": "PASS",
+            "application_state_before": before_application_state["application_state"],
+            "application_state_after": after_read_only_state["application_state"],
+        }
+    except Exception as error:
+        results["read_only_state"] = {"result": "FAIL", "reason": f"{type(error).__name__}: {error}"}
+        results["failures"].append(f"read-only application state verification failed: {type(error).__name__}: {error}")
     return finalize_application_checks(app.process, results)
 
 
@@ -1529,7 +1662,7 @@ def run_rehearsal(args: argparse.Namespace) -> dict[str, Any]:  # noqa: C901
         "api_root": str(api_root),
         "datastore_index_prefix": plan.environment["HWL_DATASTORE_INDEX_PREFIX"],
         "fixture_version": plan.fixture_version,
-        "scope": "synthetic_application_v1_isolated_es_upgrade_not_production_evidence",
+        "scope": "synthetic_application_v2_isolated_es_upgrade_not_production_evidence",
         "source_version": es_rehearsal.SOURCE_VERSION,
         "target_version": es_rehearsal.TARGET_VERSION,
         "index_names": fixture_indices,
@@ -1578,6 +1711,12 @@ def run_rehearsal(args: argparse.Namespace) -> dict[str, Any]:  # noqa: C901
         redis_name = f"howler-step9-{run_id}-app-redis"
         existing_containers = set(runtime._docker(["ps", "-a", "--format", "{{.Names}}"], check=True).splitlines())
         _require(redis_name not in existing_containers, f"Refusing to reuse pre-existing Redis name {redis_name!r}.")
+        redis_network = f"howler-step9-{run_id}-app-redis-network"
+        existing_networks = set(runtime._docker(["network", "ls", "--format", "{{.Name}}"], check=True).splitlines())
+        _require(
+            redis_network not in existing_networks,
+            f"Refusing to reuse pre-existing Redis network {redis_network!r}.",
+        )
         runtime.create_base_resources()
 
         donor = runtime.start("donor", es_rehearsal.SOURCE_VERSION, "donor", repository_readonly=False)
@@ -1632,7 +1771,7 @@ def run_rehearsal(args: argparse.Namespace) -> dict[str, Any]:  # noqa: C901
             "preflight": donor_preflight,
             **es_rehearsal._state_summary(donor_state),
         }
-        report["phases"].append("application_v1_plan_seeded_on_es8_and_snapshot_verified")
+        report["phases"].append("application_v2_plan_seeded_on_es8_and_snapshot_verified")
         runtime.stop_and_remove_container(donor)
 
         # Restore donor snapshot to a new ES 8 volume, then use this restored cluster
@@ -1716,6 +1855,7 @@ def run_rehearsal(args: argparse.Namespace) -> dict[str, Any]:  # noqa: C901
                 api_root=api_root,
                 plan=plan,
                 es_endpoint=endpoint,
+                redis_host=redis.host,
                 redis_port=redis.port,
                 config_dir=config_dir,
                 plugin_dir=plugin_dir,
@@ -1728,12 +1868,19 @@ def run_rehearsal(args: argparse.Namespace) -> dict[str, Any]:  # noqa: C901
                 / "test"
                 / "fixtures"
                 / "step9_application"
-                / "application-v1.json"
+                / "application-v2.json"
             )
             fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
             # The fixture loader has already authenticated the frozen file hash via
             # build_seed_plan; this fresh read supplies the non-secret request credentials.
-            result = run_application_checks(app, plan=plan, fixture=fixture, redis_runtime=runtime, redis=redis)
+            result = run_application_checks(
+                app,
+                plan=plan,
+                fixture=fixture,
+                redis_runtime=runtime,
+                redis=redis,
+                before_application_state=before_app_capture,
+            )
             application_verification = result
             report["application_verification"] = application_verification
             report["gates"]["application"] = result["result"]
@@ -1756,14 +1903,13 @@ def run_rehearsal(args: argparse.Namespace) -> dict[str, Any]:  # noqa: C901
             if redis is not None:
                 try:
                     verify_redis_owned(runtime, redis)
-                    remove_owned_redis(runtime, redis)
-                    report["resources"].pop("application_redis", None)
+                    report["resources"]["application_redis_retained_until_report"] = True
                 except Exception as error:
                     application_verification.setdefault("failures", []).append(
-                        f"Redis ownership/cleanup check failed: {type(error).__name__}: {error}"
+                        f"Redis ownership check failed: {type(error).__name__}: {error}"
                     )
                     report["gates"]["application"] = "FAIL"
-                    report["resources"]["application_redis_cleanup_error"] = f"{type(error).__name__}: {error}"
+                    report["resources"]["application_redis_verification_error"] = f"{type(error).__name__}: {error}"
 
         no_mutation_errors: list[str] = []
         after_app_capture: dict[str, Any] | None = None
@@ -1789,12 +1935,18 @@ def run_rehearsal(args: argparse.Namespace) -> dict[str, Any]:  # noqa: C901
                 before_app_capture, after_app_capture
             )
             try:
-                es_rehearsal.verify_data_identity(
-                    before_app_capture["application_state"],
-                    after_app_capture["application_state"],
-                    phase="application HTTP verification of all 11 protected Howler indices and frozen sources",
-                    require_uuid_match=True,
-                )
+                application_verification = report.get("application_verification", {})
+                if application_verification.get("write_probe", {}).get("result") == "PASS":
+                    report["application_write_state"] = verify_application_write_state_transition(
+                        before_app_capture, after_app_capture, application_verification
+                    )
+                else:
+                    es_rehearsal.verify_data_identity(
+                        before_app_capture["application_state"],
+                        after_app_capture["application_state"],
+                        phase="application HTTP verification of all 11 protected Howler indices and frozen sources",
+                        require_uuid_match=True,
+                    )
             except Exception as error:
                 no_mutation_errors.append(f"{type(error).__name__}: {error}")
             try:
@@ -1808,12 +1960,22 @@ def run_rehearsal(args: argparse.Namespace) -> dict[str, Any]:  # noqa: C901
         else:
             report["gates"]["no_app_mutation"] = "PASS"
         if report["gates"]["application"] == "PASS":
-            report["phases"].append("real_authenticated_howler_application_checks_passed_without_es_mutation")
+            report["phases"].append("authenticated_read_checks_and_registered_write_gate_passed")
         else:
             report["phases"].append("real_authenticated_howler_application_checks_completed_with_gate_failures")
 
     except Exception as error:
         report["fatal_error"] = f"{type(error).__name__}: {error}"
+        parity_path = config_dir / "mapping-parity.json"
+        if parity_path.is_file():
+            try:
+                parity_result = json.loads(parity_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as parity_error:
+                report["mapping_parity_diagnostics_error"] = f"{type(parity_error).__name__}: {parity_error}"
+            else:
+                report["mapping_parity_diagnostics"] = parity_result
+                if parity_result.get("mismatches"):
+                    report["gates"]["mapping_parity"] = "FAIL"
         if report["gates"].get("upgrade") == "NOT_RUN":
             report["gates"]["upgrade"] = "FAIL"
     finally:
