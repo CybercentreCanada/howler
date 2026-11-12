@@ -143,10 +143,15 @@ redis-persistent:
 
   architecture: standalone
 
+  # Pin the publicly available Bitnami community image; update the digest deliberately.
+  image:
+    digest: sha256:59078af5aec997137eb95f34fed376487b471e05c9a244c2812a13598c434950
+
   auth:
     enabled: false
 
   master:
+    # For NodePort services, nodePorts.redis must be a string (e.g. "30379").
     persistence:
       enabled: false
 
@@ -165,10 +170,14 @@ redis-nonpersistent:
 
   architecture: standalone
 
+  image:
+    digest: sha256:59078af5aec997137eb95f34fed376487b471e05c9a244c2812a13598c434950
+
   auth:
     enabled: false
 
   master:
+    # For NodePort services, nodePorts.redis must be a string (e.g. "30380").
     persistence:
       enabled: false
 
