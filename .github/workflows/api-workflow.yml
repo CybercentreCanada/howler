@@ -173,13 +173,12 @@ jobs:
 
       - name: Run tests
         id: tests
-        continue-on-error: true
         run: poetry run test
         env:
           WRITE_MARKDOWN: "true"
 
       - name: Summarize failed tests
-        if: steps.tests.outcome == 'failure'
+        if: failure() && steps.tests.outcome == 'failure'
         run: |
           if [ -f test-results.md ]; then
             cat test-results.md >> "$GITHUB_STEP_SUMMARY"
@@ -188,7 +187,6 @@ jobs:
           fi
 
       - name: Coverage Results
-        if: steps.tests.outcome == 'success'
         run: |
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
             git fetch origin "$BASE_SHA"
@@ -205,9 +203,32 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GIT_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
 
-      - name: Force Failure if Tests Failed
-        if: steps.tests.outcome == 'failure'
-        run: exit 1
+      - name: Save coverage for GitHub Code Quality
+        if: matrix.python-version == '3.12' && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push' && github.ref == 'refs/heads/main')
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-api
+          path: api/coverage.xml
+          if-no-files-found: error
+          retention-days: 1
+
+  upload_coverage:
+    name: Upload API coverage to GitHub Code Quality
+    needs: test
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      code-quality: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: code-coverage-api
+      - uses: actions/upload-code-coverage@v1
+        with:
+          file: coverage.xml
+          language: Python
+          label: code-coverage/api
 
   push_to_pypi:
     if: needs.release_validation.outputs.channel == 'stable'

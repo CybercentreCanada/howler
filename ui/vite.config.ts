@@ -100,7 +100,7 @@ export default defineConfig(({ mode }) => {
       coverage: {
         enabled: true,
         provider: 'v8',
-        reporter: ['text-summary', 'json-summary', 'json', 'html'],
+        reporter: ['text-summary', 'json-summary', 'json', 'html', 'cobertura'],
         reportsDirectory: './target/coverage',
         exclude: [
           'vite*config.ts',

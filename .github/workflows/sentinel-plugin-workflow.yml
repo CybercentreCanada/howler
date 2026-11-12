@@ -154,6 +154,33 @@ jobs:
           poetry run python build_scripts/coverage_reports.py
           cat coverage-results.md >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Save coverage for GitHub Code Quality
+        if: matrix.python-version == '3.12' && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push' && github.ref == 'refs/heads/main')
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-sentinel
+          path: plugins/sentinel/coverage.xml
+          if-no-files-found: error
+          retention-days: 1
+
+  upload_coverage:
+    name: Upload Sentinel coverage to GitHub Code Quality
+    needs: test
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      code-quality: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: code-coverage-sentinel
+      - uses: actions/upload-code-coverage@v1
+        with:
+          file: coverage.xml
+          language: Python
+          label: code-coverage/sentinel
+
   publish:
     if: needs.release_validation.outputs.channel == 'stable'
     needs:
