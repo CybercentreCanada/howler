@@ -7,6 +7,7 @@ import {
   ListItemText,
   Menu,
   MenuItem,
+  Pagination,
   Stack,
   Tooltip,
   Typography
@@ -37,6 +38,12 @@ const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnre
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [pending, setPending] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [reload, setReload] = useState(0);
+  const [deleted, setDeleted] = useState(false);
+
+  const pageCount = Math.ceil(total / NOTIFICATION_ROWS);
 
   const runAction = useCallback(async (id: string, action: () => Promise<void>) => {
     setPending(current => new Set(current).add(id));
@@ -78,6 +85,8 @@ const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnre
       void runAction(notification.notification_id, async () => {
         await dispatchApi(api.v2.notification.del(notification.notification_id));
         setNotifications(current => current.filter(entry => entry.notification_id !== notification.notification_id));
+        setTotal(current => Math.max(current - 1, 0));
+        setDeleted(true);
         if (!notification.read) {
           onUnreadChange?.(current => Math.max(current - 1, 0));
         }
@@ -98,6 +107,29 @@ const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnre
 
   useEffect(() => {
     if (!open) {
+      setPage(1);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!deleted || notifications.length > 0) {
+      return;
+    }
+
+    setDeleted(false);
+    if (total < 1) {
+      return;
+    }
+
+    if (page > pageCount) {
+      setPage(Math.max(pageCount, 1));
+    } else {
+      setReload(current => current + 1);
+    }
+  }, [deleted, notifications.length, page, pageCount, total]);
+
+  useEffect(() => {
+    if (!open) {
       return;
     }
 
@@ -109,12 +141,16 @@ const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnre
 
       try {
         const response = await dispatchApi(
-          api.v2.notification.get.user.get({ rows: NOTIFICATION_ROWS }, controller.signal),
+          api.v2.notification.get.user.get(
+            { offset: (page - 1) * NOTIFICATION_ROWS, rows: NOTIFICATION_ROWS },
+            controller.signal
+          ),
           { showError: false }
         );
 
         if (!controller.signal.aborted) {
           setNotifications(response?.items ?? []);
+          setTotal(response?.total ?? 0);
           if (response) {
             onUnreadChange?.(response.unread);
           }
@@ -123,6 +159,7 @@ const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnre
         if (!controller.signal.aborted) {
           setError(true);
           setNotifications([]);
+          setTotal(0);
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -136,7 +173,7 @@ const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnre
     return () => {
       controller.abort();
     };
-  }, [dispatchApi, onUnreadChange, open]);
+  }, [dispatchApi, onUnreadChange, open, page, reload]);
 
   const itemSx = { width: 360, maxWidth: 'calc(100vw - 32px)', whiteSpace: 'normal' };
 
@@ -212,6 +249,17 @@ const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnre
             </MenuItem>
           );
         })
+      )}
+      {!error && pageCount > 1 && (
+        <Stack id="notifications-pagination" sx={itemSx} alignItems="center" pt={1}>
+          <Pagination
+            size="small"
+            count={pageCount}
+            page={page}
+            disabled={loading}
+            onChange={(_event, value) => setPage(value)}
+          />
+        </Stack>
       )}
     </Menu>
   );

@@ -104,7 +104,7 @@ describe('NotificationCard', () => {
 
     expect(await screen.findByText('analyst commented on your analytic Suspicious Login.')).toBeInTheDocument();
     expect(screen.getByText('analyst commented on your analytic Brute Force.')).toBeInTheDocument();
-    expect(mockGetUserNotifications).toHaveBeenCalledWith({ rows: 25 }, expect.any(AbortSignal));
+    expect(mockGetUserNotifications).toHaveBeenCalledWith({ offset: 0, rows: 25 }, expect.any(AbortSignal));
     expect(mockDispatchApi).toHaveBeenCalledWith('notification-request', { showError: false });
     expect(screen.getAllByRole('menuitem')).toHaveLength(2);
   });
@@ -281,5 +281,82 @@ describe('NotificationCard', () => {
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Mark as read' })).toBeEnabled());
     expect(onUnreadChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides pagination when all notifications fit on one page', async () => {
+    mockDispatchApi.mockResolvedValue(listResponse(notification('n-1', 'Suspicious Login')));
+
+    render(<NotificationCard anchorEl={anchor} onClose={vi.fn()} />, { wrapper: Wrapper });
+
+    await screen.findByText('analyst commented on your analytic Suspicious Login.');
+
+    expect(screen.queryByTestId('notifications-pagination')).not.toBeInTheDocument();
+  });
+
+  it('fetches the selected page of notifications', async () => {
+    mockDispatchApi
+      .mockResolvedValueOnce({ ...listResponse(notification('n-1', 'Suspicious Login')), total: 60 })
+      .mockResolvedValueOnce({ ...listResponse(notification('n-26', 'Brute Force')), offset: 25, total: 60 });
+
+    render(<NotificationCard anchorEl={anchor} onClose={vi.fn()} />, { wrapper: Wrapper });
+
+    await screen.findByText('analyst commented on your analytic Suspicious Login.');
+    expect(screen.getByTestId('notifications-pagination')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Go to page 3' })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Go to page 2' }));
+
+    expect(await screen.findByText('analyst commented on your analytic Brute Force.')).toBeInTheDocument();
+    expect(mockGetUserNotifications).toHaveBeenLastCalledWith({ offset: 25, rows: 25 }, expect.any(AbortSignal));
+  });
+
+  it('returns to the first page when reopened', async () => {
+    mockDispatchApi.mockResolvedValue({ ...listResponse(notification('n-1', 'Suspicious Login')), total: 60 });
+
+    const { rerender } = render(<NotificationCard anchorEl={anchor} onClose={vi.fn()} />, { wrapper: Wrapper });
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Go to page 2' }));
+    await waitFor(() =>
+      expect(mockGetUserNotifications).toHaveBeenLastCalledWith({ offset: 25, rows: 25 }, expect.any(AbortSignal))
+    );
+
+    rerender(<NotificationCard anchorEl={null} onClose={vi.fn()} />);
+    rerender(<NotificationCard anchorEl={anchor} onClose={vi.fn()} />);
+
+    await waitFor(() =>
+      expect(mockGetUserNotifications).toHaveBeenLastCalledWith({ offset: 0, rows: 25 }, expect.any(AbortSignal))
+    );
+  });
+
+  it('moves to the previous page when the last page is emptied', async () => {
+    mockDispatchApi
+      .mockResolvedValueOnce({ ...listResponse(notification('n-1', 'Suspicious Login')), total: 26 })
+      .mockResolvedValueOnce({ ...listResponse(notification('n-26', 'Brute Force')), offset: 25, total: 26 })
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({ ...listResponse(notification('n-1', 'Suspicious Login')), total: 25 });
+
+    render(<NotificationCard anchorEl={anchor} onClose={vi.fn()} />, { wrapper: Wrapper });
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Go to page 2' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete notification' }));
+
+    expect(await screen.findByText('analyst commented on your analytic Suspicious Login.')).toBeInTheDocument();
+    expect(mockGetUserNotifications).toHaveBeenLastCalledWith({ offset: 0, rows: 25 }, expect.any(AbortSignal));
+    expect(screen.queryByTestId('notifications-pagination')).not.toBeInTheDocument();
+  });
+
+  it('refills the current page when it is emptied but still exists', async () => {
+    mockDispatchApi
+      .mockResolvedValueOnce({ ...listResponse(notification('n-1', 'Suspicious Login')), total: 30 })
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({ ...listResponse(notification('n-2', 'Brute Force')), total: 29 });
+
+    render(<NotificationCard anchorEl={anchor} onClose={vi.fn()} />, { wrapper: Wrapper });
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete notification' }));
+
+    expect(await screen.findByText('analyst commented on your analytic Brute Force.')).toBeInTheDocument();
+    expect(mockGetUserNotifications).toHaveBeenCalledTimes(2);
+    expect(mockGetUserNotifications).toHaveBeenLastCalledWith({ offset: 0, rows: 25 }, expect.any(AbortSignal));
   });
 });
