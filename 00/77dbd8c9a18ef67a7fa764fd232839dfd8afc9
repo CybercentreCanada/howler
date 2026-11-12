@@ -1,0 +1,43 @@
+api/pyproject.toml
+  s_69df2ce1f316a9::t_cb8e334e169969 296
+api/howler/services/lucene_service.py
+  s_69df2ce1f316a9::t_cb8e334e169969 198-199,215,229,234-249,257,259-266
+documentation/docs/installation/deployment.md
+  s_69df2ce1f316a9::t_cb8e334e169969 35
+api/dev/docker-compose.yml
+  s_69df2ce1f316a9::t_3e16d989a1f8a8 6,39
+api/howler/odm/contract.py
+  s_69df2ce1f316a9::t_3e16d989a1f8a8 26,30,119,138-140,199
+documentation/docs/installation/elasticsearch_9_preflight.md
+  s_69df2ce1f316a9::t_3e16d989a1f8a8 7-11
+api/test/unit/endpoints/test_search_endpoint.py
+  s_69df2ce1f316a9::t_cb8e334e169969 692,699,701,703-707
+api/howler/api/v2/search.py
+  s_69df2ce1f316a9::t_cb8e334e169969 228-234
+api/test/unit/odm/test_contract.py
+  s_69df2ce1f316a9::t_cb8e334e169969 1-2,11-21
+api/howler/api/v1/search.py
+  s_69df2ce1f316a9::t_cb8e334e169969 213-219
+demo/docker-compose.yml
+  s_69df2ce1f316a9::t_3e16d989a1f8a8 6,35
+client/test/docker-compose.yml
+  s_69df2ce1f316a9::t_cb8e334e169969 5
+mcp/docker-compose.yml
+  s_69df2ce1f316a9::t_cb8e334e169969 75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0077dbd8c9a18ef67a7fa764fd232839dfd8afc9",
+  "prompts": {},
+  "sessions": {
+    "s_69df2ce1f316a9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e39b53c75ffe7TajA30Dx2YT6V",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
