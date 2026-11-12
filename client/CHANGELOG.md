@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.5.0](https://github.com/CybercentreCanada/howler/compare/client-v3.4.0...client-v3.5.0) (2026-11-12)
+
+
+### Features
+
+* **client,api:** added elasticsearch scroll support ([#652](https://github.com/CybercentreCanada/howler/issues/652)) ([2d7cf10](https://github.com/CybercentreCanada/howler/commit/2d7cf109e34e324c659d1eef6d2ff34e098db7c0))
+
+
+### Bug Fixes
+
+* remove sticky pull requests pr comment ([#728](https://github.com/CybercentreCanada/howler/issues/728)) ([ca54427](https://github.com/CybercentreCanada/howler/commit/ca5442796b626ab38194d7c165a72be3a8b854a7))
+
 ## [3.4.0](https://github.com/CybercentreCanada/howler/compare/client-v3.3.0...client-v3.4.0) (2026-10-24)
 
 
