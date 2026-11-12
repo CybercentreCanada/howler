@@ -4,18 +4,23 @@ import inspect
 import textwrap
 from pathlib import Path
 from types import NoneType
-from typing import get_args, get_origin
+from typing import Annotated, get_args, get_origin
 
 import yaml
 from pydantic import BaseModel
+from pydantic.fields import FieldInfo
 from pydantic_settings import SettingsConfigDict
 
 from howler.config_models import Config
-from howler.models import fields as model_fields
-from howler.models.assemblyline import AssemblyLine
+from howler.models.assemblyline import ALRecord, AssemblyLine, Mitre
+from howler.models.aws import Organization as AWSOrganization
+from howler.models.ecs.elf import Header as ELFHeader
 from howler.models.ecs.event import ECSEvent
 from howler.models.ecs.process import ParentProcess
+from howler.models.header import Header
 from howler.models.lead import Lead
+from howler.models.localized_label import LocalizedLabel
+from howler.models.log import Log
 from howler.models.record import ECSVersion
 from howler.models.registry import FieldDefinition, field_metadata, model_annotation, model_registry, unwrap_annotation
 
@@ -35,7 +40,7 @@ MODELS_TO_EXPORT = [
         if _file.stem != "__init__"
     ),
 ]
-EXTRA_MODELS = (AssemblyLine, Lead, ParentProcess)
+EXTRA_MODELS = (ALRecord, AssemblyLine, Header, Lead, LocalizedLabel, Log, Mitre, ParentProcess)
 PUBLISHED_NAMES: dict[type[BaseModel], str] = {ECSEvent: "Event"}
 
 
@@ -55,35 +60,37 @@ intro_data = """
     |:---|:----------|
 """  # noqa: E501
 
-for class_name, function_name in sorted(
+for class_name, description in sorted(
     {
-        "Any": "any_field",
-        "Boolean": "boolean",
-        "CaseInsensitiveKeyword": "case_insensitive_keyword",
-        "Classification": "classification",
-        "ClassificationString": "classification_string",
-        "Date": "date",
-        "EmptyableKeyword": "emptyable_keyword",
-        "Enum": "enum",
-        "FlattenedListObject": "flattened_list_object",
-        "FlattenedObject": "flattened_object",
-        "Float": "float_field",
-        "IndexText": "index_text",
-        "Integer": "integer",
-        "Json": "json_field",
-        "Keyword": "keyword",
-        "List": "list_field",
-        "LowerKeyword": "lower_keyword",
-        "Mapping": "mapping",
-        "Optional": "optional",
-        "Text": "text",
-        "UUID": "uuid",
-        "UpperKeyword": "upper_keyword",
-        "ValidatedKeyword": "validated_keyword",
+        "Any": "A field that can hold any value whatsoever but which is stored as a",
+        "Boolean": "A field storing a boolean value.",
+        "CaseInsensitiveKeyword": (
+            "A field storing a string with a technical interpretation, but is case-insensitive when searching."
+        ),
+        "Classification": "A field storing access control classification.",
+        "ClassificationString": "A field storing the classification as a string only.",
+        "Date": "A field storing a datetime value.",
+        "EmptyableKeyword": "A keyword which allow to differentiate between empty and None values.",
+        "Enum": "A field storing a short string that has predefined list of possible values.",
+        "FlattenedListObject": "A field storing a flattened object",
+        "FlattenedObject": "A field storing a flattened object",
+        "Float": "A field storing a floating point value.",
+        "IndexText": "A special field with special processing rules to simplify searching.",
+        "Integer": "A field storing an integer value.",
+        "Json": "A field storing serializeable structure with their JSON encoded representations.",
+        "Keyword": "A field storing a short string with a technical interpretation.",
+        "List": "A field storing a sequence of typed elements.",
+        "Long": "A field storing a long value. Equivalent to Integer in python, but sets the ES datatype to long.",
+        "LowerKeyword": "A field storing a short lowercase string with a technical interpretation.",
+        "Mapping": "A field storing a sequence of typed elements.",
+        "Optional": "A wrapper field to allow simple types (int, float, bool) to take None values.",
+        "Text": "A field storing human readable text data.",
+        "UUID": "A field storing an auto-generated unique ID if None is provided",
+        "UpperKeyword": "A field storing a short uppercase string with a technical interpretation.",
+        "ValidatedKeyword": "Keyword field which the values are validated by a regular expression",
     }.items()
 ):
-    description = inspect.getdoc(getattr(model_fields, function_name)) or ""
-    intro_data += f"    | `{class_name}` | {description.splitlines()[0]} |\n"
+    intro_data += f"    | `{class_name}` | {description} |\n"
 
 intro_data += """
     ## Field States
@@ -136,6 +143,20 @@ def _field_type(definition: FieldDefinition) -> str:
     return definition.metadata.kind if definition.metadata else "Any"
 
 
+def _has_optional_wrapper(annotation: object) -> bool:
+    """Return whether the annotation contains the nullable wrapper emitted by ``optional()``."""
+    args = get_args(annotation)
+    if NoneType not in args:
+        return False
+    for branch in args:
+        if branch is NoneType or get_origin(branch) is not Annotated:
+            continue
+        _, *metadata = get_args(branch)
+        if any(isinstance(item, FieldInfo) and item.annotation is None for item in metadata):
+            return True
+    return False
+
+
 def _classes_to_export() -> list[type[BaseModel]]:
     """Resolve all published model pages before generating any files."""
     classes: dict[str, type[BaseModel]] = {}
@@ -146,6 +167,12 @@ def _classes_to_export() -> list[type[BaseModel]]:
             lambda member: inspect.isclass(member) and issubclass(member, BaseModel),
         ):
             if obj.__module__ != module.__name__:
+                continue
+            if obj is ELFHeader:
+                # The public ``header`` page is Howler's outline header, not the ECS ELF header.
+                continue
+            if obj is AWSOrganization:
+                # The published ``organization`` page is the ECS organization field set.
                 continue
             name = _published_name(obj).lower()
             if name == "file" and module_name == "howler.models.ecs.email":
@@ -166,9 +193,6 @@ def render_model(model: type[BaseModel]) -> str:
         "| Field | Type | Description | Required | Default |\n| :--- | :--- | :--- | :--- | :--- |\n"
     )
     definitions = model_registry.fields(model)
-    if model.__name__ == "Hit":
-        # The published Hit schema has always presented the required Howler core before ECS.
-        definitions = {"timestamp": definitions["timestamp"], "howler": definitions["howler"], **definitions}
     for name, definition in definitions.items():
         metadata = definition.metadata
         kind = _field_type(definition)
@@ -179,7 +203,9 @@ def render_model(model: type[BaseModel]) -> str:
             values = dict(metadata.options).get("values", ())
             rendered_values = ", ".join('"{}"'.format(v) if v else str(v) for v in sorted(values))
             description += f"<br>Values:<br>`{rendered_values}`"
-        optional = not definition.required and definition.default is None
+        optional = _has_optional_wrapper(definition.annotation) or (
+            not definition.required and definition.default is None and definition.default_factory is None
+        )
         required = ":material-minus-box-outline: Optional" if optional else ":material-checkbox-marked-outline: Yes"
         if metadata and metadata.deprecated:
             required += f" :material-alert-box-outline: Deprecated - {metadata.deprecated_description}"

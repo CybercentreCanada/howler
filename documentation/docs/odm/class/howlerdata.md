@@ -7,7 +7,7 @@
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
-| id | UUID | A UUID for this hit. | :material-minus-box-outline: Optional | `None` |
+| id | UUID | A UUID for this hit. | :material-checkbox-marked-outline: Yes | `None` |
 | analytic | CaseInsensitiveKeyword | Title of the analytic. | :material-checkbox-marked-outline: Yes | `None` |
 | assignment | Keyword | Unique identifier of the assigned user. | :material-checkbox-marked-outline: Yes | `unassigned` |
 | data | List [Keyword] | Raw telemetry records associated with this hit. | :material-checkbox-marked-outline: Yes | `[]` |
@@ -19,7 +19,7 @@
 | severity | Float | Metric decoupled from the value in the detection information. | :material-minus-box-outline: Optional | `None` |
 | volume | Float | Metric decoupled from the value in the detection information. | :material-minus-box-outline: Optional | `None` |
 | confidence | Float | Metric decoupled from the value in the detection information. | :material-minus-box-outline: Optional | `None` |
-| score | Float | A score assigned by an enrichment to help prioritize triage. | :material-checkbox-marked-outline: Yes | `0` |
+| score | Float | A score assigned by an enrichment to help prioritize triage. | :material-minus-box-outline: Optional | `0` |
 | status | Enum | Status of the hit.<br>Values:<br>`"in-progress", "on-hold", "open", "resolved"` | :material-checkbox-marked-outline: Yes | `open` |
 | scrutiny | Enum | Level of scrutiny done to this hit.<br>Values:<br>`"inspected", "investigated", "scanned", "surveyed", "unseen"` | :material-checkbox-marked-outline: Yes | `unseen` |
 | escalation | Enum | Level of escalation of this hit.<br>Values:<br>`"alert", "evidence", "hit", "miss"` | :material-checkbox-marked-outline: Yes | `hit` |
@@ -34,6 +34,6 @@
 | mitigated | Keyword | Link to the mitigation record (tool dependent). | :material-minus-box-outline: Optional | `None` |
 | outline | [Header](/howler/odm/class/header) | The user specified header of the hit | :material-minus-box-outline: Optional | `None` |
 | incidents | List [[Incident](/howler/odm/class/incident)] | Fields describing an incident associated with this alert. | :material-checkbox-marked-outline: Yes | `[]` |
-| labels | [Label](/howler/odm/class/label) | List of labels relating to the hit | :material-checkbox-marked-outline: Yes | See [Label](/howler/odm/class/label) for more details. |
-| votes | [Votes](/howler/odm/class/votes) | Votes relating to the hit | :material-checkbox-marked-outline: Yes | See [Votes](/howler/odm/class/votes) for more details. |
+| labels | [Label](/howler/odm/class/label) | List of labels relating to the hit | :material-minus-box-outline: Optional | See [Label](/howler/odm/class/label) for more details. |
+| votes | [Votes](/howler/odm/class/votes) | Votes relating to the hit | :material-minus-box-outline: Optional | See [Votes](/howler/odm/class/votes) for more details. |
 | dossier | List [[Lead](/howler/odm/class/lead)] | A list of leads forming the dossier associated with this hit | :material-checkbox-marked-outline: Yes | `[]` |

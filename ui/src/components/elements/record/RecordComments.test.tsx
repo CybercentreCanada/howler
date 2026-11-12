@@ -1,5 +1,8 @@
 /// <reference types="vitest" />
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { Analytic } from 'models/entities/generated/Analytic';
+import type { Event } from 'models/entities/generated/Event';
+import type { Hit } from 'models/entities/generated/Hit';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockDispatchApi = vi.hoisted(() => vi.fn());
@@ -212,5 +215,95 @@ describe('RecordComments', () => {
 
     fireEvent.blur(input);
     expect(mockEmit).toHaveBeenCalledWith({ broadcast: true, action: 'stop_typing', id: 'hit-1' });
+  });
+
+  it('keeps event comments and typing without looking up or showing hit analytic comments', async () => {
+    const event: Event = {
+      __index: 'event',
+      timestamp: '2026-01-01T00:00:00Z',
+      howler: { id: 'event-1', hash: 'abc', comment: [{ id: 'comment-1', value: 'event note' }] }
+    };
+    mockGetMatchingAnalytic.mockResolvedValue({ comment: [{ value: 'unexpected analytic note' }] });
+    mockDispatchApi.mockResolvedValue({
+      ...event,
+      howler: { ...event.howler, comment: [{ id: 'comment-2', value: 'saved event note' }] }
+    });
+
+    render(<RecordComments record={event} users={{}} />);
+
+    expect(screen.getByText('event note')).toBeInTheDocument();
+    expect(mockGetMatchingAnalytic).not.toHaveBeenCalled();
+    expect(screen.queryByText('unexpected analytic note')).not.toBeInTheDocument();
+    const input = screen.getByLabelText('comments.add');
+    fireEvent.focus(input);
+    expect(mockEmit).toHaveBeenCalledWith({ broadcast: true, action: 'typing', id: 'event-1' });
+    fireEvent.change(input, { target: { value: 'new event comment' } });
+    fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true });
+    await waitFor(() =>
+      expect(mockDispatchApi).toHaveBeenCalledWith(
+        { op: 'post', id: 'event-1', value: 'new event comment' },
+        expect.any(Object)
+      )
+    );
+    expect(await screen.findByText('saved event note')).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('hides previously loaded analytic comments when switching from a hit to an event', async () => {
+    const hit: Hit = {
+      __index: 'hit',
+      timestamp: '2026-01-01T00:00:00Z',
+      howler: { id: 'hit-1', hash: 'abc', analytic: 'Analytic', assignment: 'unassigned' }
+    };
+    const event: Event = {
+      __index: 'event',
+      timestamp: '2026-01-01T00:00:00Z',
+      howler: { id: 'event-1', hash: 'abc', comment: [{ value: 'event note' }] }
+    };
+    mockGetMatchingAnalytic.mockResolvedValue({ comment: [{ id: 'pinned', value: 'pinned note' }] });
+    const { rerender } = render(<RecordComments record={hit} users={{}} />);
+    expect(await screen.findByText('pinned note')).toBeInTheDocument();
+
+    rerender(<RecordComments record={event} users={{}} />);
+
+    expect(screen.queryByText('pinned note')).not.toBeInTheDocument();
+    expect(screen.getByText('event note')).toBeInTheDocument();
+    expect(mockGetMatchingAnalytic).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores a pending hit analytic lookup after visiting an event and another hit', async () => {
+    const hit: Hit = {
+      __index: 'hit',
+      timestamp: '2026-01-01T00:00:00Z',
+      howler: { id: 'hit-1', hash: 'abc', analytic: 'Old analytic', assignment: 'unassigned' }
+    };
+    const event: Event = {
+      __index: 'event',
+      timestamp: '2026-01-01T00:00:00Z',
+      howler: { id: 'event-1', hash: 'abc' }
+    };
+    let resolveAnalytic: (analytic: Analytic) => void = () => {};
+    mockGetMatchingAnalytic
+      .mockReturnValueOnce(
+        new Promise<Analytic>(resolve => {
+          resolveAnalytic = resolve;
+        })
+      )
+      .mockResolvedValueOnce(undefined);
+    const { rerender } = render(<RecordComments record={hit} users={{}} />);
+    rerender(<RecordComments record={event} users={{}} />);
+    rerender(
+      <RecordComments
+        record={{ ...hit, howler: { ...hit.howler, id: 'hit-2', analytic: 'New analytic' } }}
+        users={{}}
+      />
+    );
+    await waitFor(() => expect(mockGetMatchingAnalytic).toHaveBeenCalledTimes(2));
+
+    await act(async () => {
+      resolveAnalytic({ comment: [{ id: 'old', value: 'stale analytic note' }] });
+    });
+
+    expect(screen.queryByText('stale analytic note')).not.toBeInTheDocument();
   });
 });

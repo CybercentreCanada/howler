@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 from dataclasses import replace
+from typing import Any
 
 import pytest
 
@@ -25,11 +26,13 @@ from build_scripts.step9_application_rehearsal import (
     require_subprocess_success,
     validate_fresh_empty_cluster,
     validate_seed_plan,
+    verify_application_write_state_transition,
     verify_redis_owned,
 )
 
 
-def _redis_inspect(*, run_id: str = "offline-test") -> dict:
+def _redis_inspect(*, run_id: str = "offline-test") -> dict[str, Any]:
+    network = f"howler-step9-{run_id}-app-redis-network"
     return {
         "Id": "a" * 64,
         "Name": "/howler-step9-offline-test-app-redis",
@@ -44,16 +47,16 @@ def _redis_inspect(*, run_id: str = "offline-test") -> dict:
         "State": {"Status": "running"},
         "Mounts": [],
         "HostConfig": {
-            "NetworkMode": "bridge",
+            "NetworkMode": network,
             "Privileged": False,
             "Devices": [],
             "CapAdd": [],
             "Tmpfs": {"/data": "rw,noexec,nosuid,size=16m"},
-            "PortBindings": {"6379/tcp": [{"HostIp": "127.0.0.1", "HostPort": "49152"}]},
+            "PortBindings": {},
         },
         "NetworkSettings": {
-            "Networks": {"bridge": {"IPAddress": "172.17.0.2"}},
-            "Ports": {"6379/tcp": [{"HostIp": "127.0.0.1", "HostPort": "49152"}]},
+            "Networks": {network: {"IPAddress": "172.28.0.2"}},
+            "Ports": {"6379/tcp": None},
         },
     }
 
@@ -62,8 +65,22 @@ class _FakeDocker:
     def __init__(self, data: dict):
         self.run_id = "offline-test"
         self.data = data
+        self.network_data: dict[str, Any] = {
+            "Name": "howler-step9-offline-test-app-redis-network",
+            "Driver": "bridge",
+            "Internal": True,
+            "Labels": {
+                "howler.step9.rehearsal": "true",
+                "howler.step9.run": "offline-test",
+                "howler.step9.role": "application-redis-network",
+            },
+            "Containers": {"a" * 64: {"IPv4Address": "172.28.0.2/16"}},
+        }
 
     def _docker(self, arguments: list[str], *, check: bool = True) -> str:
+        if arguments[:2] == ["network", "inspect"]:
+            assert arguments[2] == self.network_data["Name"]
+            return json.dumps([self.network_data])
         assert arguments[:2] == ["inspect", "a" * 64]
         return json.dumps([self.data])
 
@@ -117,16 +134,25 @@ def test_explicit_api_root_is_the_only_application_python_path(tmp_path) -> None
         config_dir=config_dir,
         plugin_dir=plugin_dir,
         log_dir=log_dir,
+        redis_host="172.20.0.3",
     )
     assert environment["PYTHONPATH"] == str(api_root)
     assert environment["HWL_DATASTORE_INDEX_PREFIX"] == "step9-app-offline-howler"
     assert environment["HWL_UI__DEBUG"] == "false"
     assert environment["HWL_USE_JOB_SYSTEM"] == "false"
     assert environment["HWL_AUTH__INTERNAL__ENABLED"] == "false"
+    assert environment["HWL_CORE__REDIS__NONPERSISTENT__HOST"] == "172.20.0.3"
+    assert environment["HWL_CORE__REDIS__PERSISTENT__HOST"] == "172.20.0.3"
 
 
-def test_redis_ownership_gate_rejects_foreign_container_and_non_loopback_port() -> None:
-    handle = RedisHandle("howler-step9-offline-test-app-redis", "a" * 64, "127.0.0.1", 49152)
+def test_redis_ownership_gate_rejects_foreign_container_and_host_published_port() -> None:
+    handle = RedisHandle(
+        "howler-step9-offline-test-app-redis",
+        "a" * 64,
+        "172.28.0.2",
+        6379,
+        "howler-step9-offline-test-app-redis-network",
+    )
     verify_redis_owned(_FakeDocker(_redis_inspect()), handle, ping=False)
 
     foreign = _redis_inspect()
@@ -135,9 +161,14 @@ def test_redis_ownership_gate_rejects_foreign_container_and_non_loopback_port() 
         verify_redis_owned(_FakeDocker(foreign), handle, ping=False)
 
     exposed = _redis_inspect()
-    exposed["HostConfig"]["PortBindings"]["6379/tcp"][0]["HostIp"] = "0.0.0.0"
-    with pytest.raises(RehearsalAbort, match="loopback"):
+    exposed["HostConfig"]["PortBindings"] = {"6379/tcp": [{"HostIp": "0.0.0.0", "HostPort": "6379"}]}
+    with pytest.raises(RehearsalAbort, match="must not publish"):
         verify_redis_owned(_FakeDocker(exposed), handle, ping=False)
+
+    foreign_network = _FakeDocker(_redis_inspect())
+    foreign_network.network_data["Labels"]["howler.step9.run"] = "somebody-elses-run"
+    with pytest.raises(RehearsalAbort, match="Redis network is not owned"):
+        verify_redis_owned(foreign_network, handle, ping=False)
 
 
 def test_application_state_capture_rejects_unrecognized_system_index() -> None:
@@ -287,3 +318,69 @@ def test_child_failure_is_an_application_failure_and_cannot_yield_acceptance_pas
     }
     assert acceptance_result(gates) == "FAIL"
     assert acceptance_result({key: "PASS" for key in gates if key != "rollback"}) == "BLOCKED"
+
+
+def test_no_app_mutation_accepts_only_the_exact_write_probe_mapping_delta() -> None:
+    before_state: dict[str, Any] = {
+        "index_uuids": {"hit": "index-uuid"},
+        "aliases": {"hit": {"howler-hit": {}}},
+        "counts": {"hit": 8},
+        "document_sha256": {"hit": "source-hash"},
+        "mappings": {
+            "hit": {
+                "mappings": {
+                    "properties": {
+                        "labels": {"type": "object"},
+                    },
+                    "dynamic_templates": [
+                        {"strings_as_keywords": {"mapping": {"ignore_above": 8191, "type": "keyword"}}}
+                    ],
+                }
+            }
+        },
+    }
+    after_state = {
+        **before_state,
+        "mappings": {
+            "hit": {
+                "mappings": {
+                    "properties": {
+                        "labels": {"properties": {"step9-write-probe-test": {"ignore_above": 8191, "type": "keyword"}}}
+                    },
+                    "dynamic_templates": before_state["mappings"]["hit"]["mappings"]["dynamic_templates"],
+                }
+            }
+        },
+    }
+    before = {"application_state": before_state, "inventory": ["hit"]}
+    after = {"application_state": after_state, "inventory": ["hit"]}
+    verification = {
+        "read_only_state": {
+            "result": "PASS",
+            "application_state_before": before_state,
+            "application_state_after": before_state,
+        },
+        "write_probe": {
+            "result": "PASS",
+            "state_after_restore": {
+                "result": "PASS",
+                "application_state_before": before_state,
+                "application_state_after": after_state,
+                "explained_mapping_changes": {
+                    "hit": {"field": "labels.step9-write-probe-test", "mapping": {"type": "keyword"}}
+                },
+            },
+        },
+    }
+
+    result = verify_application_write_state_transition(before, after, verification)
+
+    assert result["result"] == "PASS"
+    assert result["read_only_api_state_unchanged"] is True
+    assert result["mappings_unchanged"] is False
+    assert result["explained_mapping_changes"]["hit"]["field"] == "labels.step9-write-probe-test"
+
+    invalid_after_state = {**after_state, "counts": {"hit": 9}}
+    invalid_after = {"application_state": invalid_after_state, "inventory": ["hit"]}
+    with pytest.raises(RehearsalAbort, match="request-derived write-probe capture"):
+        verify_application_write_state_transition(before, invalid_after, verification)

@@ -420,7 +420,7 @@ class TestILMCorrelationUpdates:
         latest_indexes = {kind: collections[kind].index_name for kind in collection_names}
         assert all(latest_indexes[kind] != historical_indexes[kind] for kind in collection_names)
 
-        rule = CaseRule(
+        rule = CaseRule.model_validate(
             {
                 "rule_id": str(uuid4()),
                 "query": "*:*",

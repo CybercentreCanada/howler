@@ -41,6 +41,7 @@ def mock_datastore():
     ds.client = MagicMock()
     ds.client.ilm = MagicMock()
     ds.client.indices = MagicMock()
+    ds.client.cluster.health.return_value = {"timed_out": False}
     ds.DEFAULT_SORT = "id asc"
     return ds
 
@@ -1493,6 +1494,9 @@ class TestEnsureCollectionILM:
 
         # index_name should be updated
         assert col.index_name == f"{col.name}-000001"
+        mock_datastore.client.cluster.health.assert_called_once_with(
+            index=f"{col.name}-000001", timeout="5s", wait_for_status="yellow"
+        )
 
     def test_existing_ilm_indices_skips_creation(self, mock_datastore, ilm_global):
         """When ILM indices already exist, no new index is created."""
@@ -1762,6 +1766,31 @@ class TestEnsureCollectionILMDispatch:
         assert create_kwargs["index"] == col.index_name
         assert create_kwargs["aliases"] == {col.name: {}}
         mock_datastore.client.indices.put_alias.assert_not_called()
+
+    def test_legacy_creation_waits_for_shards_before_checking_fields(self, mock_datastore):
+        """field_caps fails on RECOVERING shards, so creation waits for yellow before schema checks."""
+        col = _make_collection(mock_datastore, ilm_config=None)
+        mock_datastore.client.indices.exists.return_value = False
+        order = MagicMock()
+        mock_datastore.client.indices.create.side_effect = lambda **_: order.create()
+        order.health.return_value = {"timed_out": False}
+        mock_datastore.client.cluster.health.side_effect = order.health
+
+        with patch.object(col, "_check_fields", side_effect=lambda: order.check_fields()):
+            col._ensure_collection()
+
+        assert [name for name, *_ in order.mock_calls] == ["create", "health", "check_fields"]
+        assert order.health.call_args.kwargs == {"index": col.index_name, "timeout": "5s", "wait_for_status": "yellow"}
+
+    def test_existing_legacy_collection_does_not_wait_for_status(self, mock_datastore):
+        """Existing collections keep their startup path unchanged."""
+        col = _make_collection(mock_datastore, ilm_config=None)
+        mock_datastore.client.indices.exists.return_value = True
+
+        with patch.object(col, "_check_fields"):
+            col._ensure_collection()
+
+        mock_datastore.client.cluster.health.assert_not_called()
 
 
 class TestAddFieldsILMTemplateSync:

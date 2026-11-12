@@ -3,9 +3,9 @@
 
 # Organization
 
-> Organization information.
+> The organization fields enrich data with information about the company or entity the data is associated with.
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
-| id | Keyword | The ID of the AWS Organization. | :material-minus-box-outline: Optional | `None` |
-| organizational_unit | Keyword | The Organizational Unit the Account belongs to. | :material-minus-box-outline: Optional | `None` |
+| id | Keyword | Unique identifier for the organization. | :material-minus-box-outline: Optional | `None` |
+| name | Keyword | Organization name. | :material-checkbox-marked-outline: Yes | `None` |

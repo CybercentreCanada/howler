@@ -117,8 +117,7 @@ def _document_data(collection_name: str) -> dict:
 def _create_legacy_collection(store: ESStore, collection_name: str, document_id: str) -> tuple[ESCollection, dict]:
     model_class = MODEL_CLASSES[collection_name]
     collection = ESCollection(store, collection_name, model_class=model_class)
-    model = model_class(_document_data(collection_name))
-    source_document = deepcopy(model.as_primitives())
+    source_document = deepcopy(_document_data(collection_name))
 
     legacy_mappings = collection._get_index_mappings()
     for field_name in SEARCH_FIELDS[collection_name]:
@@ -193,7 +192,7 @@ def _create_legacy_ilm_collection(store: ESStore, config, collection_name: str):
     for suffix in ("000001", "000002"):
         index_name = f"{collection.name}-{suffix}"
         document_id = str(uuid4())
-        source_document = deepcopy(MODEL_CLASSES[collection_name](_ilm_document_data(collection_name)).as_primitives())
+        source_document = deepcopy(_ilm_document_data(collection_name))
         store.client.indices.create(
             index=index_name,
             mappings=deepcopy(legacy_mappings),
@@ -308,7 +307,7 @@ def _rollover_and_verify_ilm_collection(store: ESStore, collection_name: str, co
     collection._refresh_ilm_index_name()
     assert collection.index_name == new_index
     new_document_id = str(uuid4())
-    new_document = MODEL_CLASSES[collection_name](_ilm_document_data(collection_name))
+    new_document = MODEL_CLASSES[collection_name].model_validate(_ilm_document_data(collection_name))
     assert collection.save(new_document_id, new_document, refresh="wait_for")
     assert store.client.get(index=new_index, id=new_document_id)["_id"] == new_document_id
 
@@ -433,8 +432,9 @@ def test_metadata_case_insensitive_migration_preserves_documents_and_enables_wil
         assert datastore_store.validate is True
         assert datastore_store._collections == {}
 
-        # Normal application access still rejects the old keyword mapping before migration.
-        with pytest.raises(HowlerRuntimeError, match="Field content didn't have the expected store type"):
+        # Pydantic mapping validation rejects the old metadata normalizer before it reaches Overview.content's
+        # historical keyword mapping. The legacy ODM only compared field types, so upstream raised on content.
+        with pytest.raises(HowlerRuntimeError, match="Field analytic has incompatible normalizer"):
             _ = datastore.overview
         assert "overview" not in datastore_store._collections
         assert datastore_store.validate is True

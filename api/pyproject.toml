@@ -84,6 +84,7 @@ exclude = [
     "**/node_modules",
     "**/__pycache__",
     "**/.*",
+    "test/fixtures/step9_application/provenance",
 ]
 ignore = [
     "**/build",
@@ -187,6 +188,8 @@ root = "test"
 line-length = 120
 indent-width = 4
 target-version = "py310"
+# Byte-for-byte provenance scripts whose SHA-256 values are pinned by the Step 9 fixture.
+extend-exclude = ["test/fixtures/step9_application/provenance"]
 
 [tool.ruff.format]
 exclude = ["howler/patched.py"]

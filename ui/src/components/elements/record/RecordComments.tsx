@@ -94,12 +94,18 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
   }, [handler]);
 
   useEffect(() => {
+    let active = true;
     if (isHit(record) && record.howler.analytic) {
       void getMatchingAnalytic(record).then(analytic => {
-        setAnalyticId(analytic?.analytic_id);
-        setAnalyticComments(sortByTimestamp(analytic?.comment ?? []));
+        if (active) {
+          setAnalyticId(analytic?.analytic_id);
+          setAnalyticComments(sortByTimestamp(analytic?.comment ?? []));
+        }
       });
     }
+    return () => {
+      active = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getMatchingAnalytic, record]);
 
@@ -250,7 +256,7 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
    * list, as if they've been pinned
    */
   const renderedAnalyticComments = useMemo(() => {
-    if (analyticComments.length < 1) {
+    if (!isHit(record) || analyticComments.length < 1) {
       return null;
     }
 
@@ -290,7 +296,7 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
         </AccordionDetails>
       </Accordion>
     );
-  }, [analyticComments, analyticId, record?.howler.analytic, record?.howler.detection, navigate, t, users]);
+  }, [analyticComments, analyticId, record, navigate, t, users]);
 
   const renderedComments = useMemo(
     () =>

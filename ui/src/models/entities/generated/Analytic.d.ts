@@ -14,5 +14,8 @@ export interface Analytic {
   name?: string;
   notebooks?: Notebook[];
   owner?: string;
+  rule?: string;
+  rule_crontab?: string;
+  rule_type?: string;
   triage_settings?: TriageSettings;
 }

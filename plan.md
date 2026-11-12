@@ -23,13 +23,13 @@ The implementation can be developed in incremental workstreams, but it will ship
 
 **Branch:** `elasticsearch-dsl`
 
-**Completed:** Steps 1–8
+**Completed:** Steps 1–9, except gates delegated to CI and to Step 10. See below.
 
-**Next:** Step 9, permanent golden fixtures, legacy reference deletion, and cutover verification
+**Next:** Step 10, the coordinated cutover runbook and execution.
 
-**Working tree at the latest continuation:** The earlier Step 8 work was committed as
-`1225396c` (`step 8 partial commit`). The new continuation changes are uncommitted.
-Step 8 is complete and ready for the user's signed commit. Changes remain uncommitted.
+**Working tree:** On 2026-11-12 the branch was rebased onto `origin/main` (`2da444e4`). The Step 9
+wrap-up changes are uncommitted in the working tree. Evidence:
+`docs/migration/step9-verification-evidence.md`.
 
 | Step | Status | Commit | Result |
 | ---- | ------ | ------ | ------ |
@@ -40,7 +40,29 @@ Step 8 is complete and ready for the user's signed commit. Changes remain uncomm
 | 5. Rewrite every model | Complete | `67f46f5d` | Rewrote the domain/ECS/provider/plugin model surface with Pydantic and Elasticsearch DSL metadata. |
 | 6. Mapping and index registration | Complete | `a293c452` | Switched index schemas, templates, introspection, and reconciliation to finalized Pydantic models. |
 | 7. Persistence, updates, and searches | Complete | `7a44156f` | Switched registered collection CRUD, bulk/update validation, projections, searches, EQL, and Lucene normalization to finalized models and Elasticsearch 9 response semantics. |
-| 8. Consumers and generated surfaces | Complete | Uncommitted | Runtime and sample-data consumers use Pydantic; plugin migration notes and Markdown freshness are verified. Exact generated-output parity is deferred. |
+| 8. Consumers and generated surfaces | Complete | `30863bdb` | Runtime and sample-data consumers use Pydantic. Plugin migration notes and Markdown freshness are verified. |
+| 9. Verification and legacy removal | Complete (CI and production gates open) | `4f0d69af`, `a920c751`, and uncommitted | Legacy ODM deleted. Frozen goldens replace the differential tests. Upstream ODM changes ported. The isolated 8.19→9.5.2 rehearsal passes application read/ACL, write/concurrency, raw-query, and rollback gates. Markdown and TypeScript generators have parity with approved differences. |
+
+### Step 9 wrap-up (2026-11-12)
+
+- Refreshed the application fixture to `application-v2`. It was captured through `origin/main`'s legacy
+  save path, and the capture scripts are stored in `api/test/fixtures/step9_application/provenance/`.
+  Added `build_scripts/step9_upgrade_writes.py`, which checks registered-collection writes on
+  existing 8.19-created indices after an in-place upgrade. Live run: all gates PASS, exit 0.
+- Markdown docs: the generator restores the legacy layout. 28 metadata differences were approved.
+- TypeScript: the generator is deterministic and metadata-driven. The regenerated types fix a committed
+  baseline that was stale against main's own legacy models. Seven UI consumers now narrow hit vs event.
+- Fixed 4 integration tests that had been ported from upstream (test-only issues). Added a
+  wait-for-yellow after index creation, so that `field_caps` schema checks don't fail on RECOVERING shards.
+- API 3.12 full suite, plugins, and UI checks pass locally. The Python 3.10, 3.11, and 3.13 suites, and the
+  client and MCP live integration, are left to CI. Representative production snapshot rehearsal and the
+  runbook move to Step 10.
+- Follow-ups:
+  - Commit the TypeScript generator regression tests.
+  - Add Case write-probe coverage.
+  - Stop the API test wrapper leaking `howler-test-*` indices.
+  - Make `test_execute_action_no_results` actually wait for the queue worker.
+  - Fix the time-zone-dependent UI test `constants.test.tsx`.
 
 ### Work completed in Steps 1–3
 
