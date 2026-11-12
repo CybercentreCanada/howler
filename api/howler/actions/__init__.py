@@ -5,6 +5,9 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, Optional
 
+from pydantic import ValidationError
+
+from howler.actions.models import RESERVED_ARGUMENTS, ActionSpecification, invalid_arguments_report
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.odm.models.user import User
@@ -12,31 +15,51 @@ from howler.plugins import get_plugins
 
 logger = get_logger(__file__)
 
+_warned_legacy_operations: set[str] = set()
+
 PLUGIN_PATH = Path(os.environ.get("HWL_PLUGIN_DIRECTORY", "/etc/howler/plugins"))
 
 # Roles that grant advanced hit limits
 ADVANCED_ROLES = {"automation_advanced", "actionrunner_advanced", "admin"}
 
 
-def __sanitize_specification(spec: dict[str, Any]) -> dict[str, Any]:
+def __sanitize_specification(spec: ActionSpecification) -> dict[str, Any]:
     """Adapt the specification for use in the UI
 
     Args:
-        spec (dict[str, Any]): The raw specification
+        spec (ActionSpecification): The raw specification
 
     Returns:
         dict[str, Any]: The sanitized specification for use in the UI
     """
-    return {
-        **spec,
-        "description": {
-            **spec["description"],
-            "long": re.sub(r"\n +(request_id|query).+", "", spec["description"]["long"])
+    sanitized = spec.to_ui_dict()
+
+    if long_description := sanitized["description"].get("long"):
+        sanitized["description"]["long"] = (
+            re.sub(r"\n +(request_id|query).+", "", long_description)
             .replace("\n    ", "\n")
-            .replace("Args:", "Args:\n"),
-        },
-        "steps": [{**step, "args": {k: list(v) for k, v in step["args"].items()}} for step in spec.get("steps", [])],
-    }
+            .replace("Args:", "Args:\n")
+        )
+
+    return sanitized
+
+
+def _load_specification(operation: ModuleType) -> ActionSpecification:
+    """Load the specification of an operation, adapting the legacy dict format."""
+    specification = operation.specification()
+
+    if isinstance(specification, ActionSpecification):
+        return specification
+
+    if operation.OPERATION_ID not in _warned_legacy_operations:
+        _warned_legacy_operations.add(operation.OPERATION_ID)
+        logger.warning(
+            "Operation %s returns a dict specification, so its arguments are not validated. "
+            "Return an ActionSpecification instead.",
+            operation.OPERATION_ID,
+        )
+
+    return ActionSpecification.from_legacy(specification)
 
 
 def __sanitize_report(report: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -84,6 +107,9 @@ def _get_operation(operation_id: str) -> ModuleType | None:
     except ImportError:
         pass
 
+    if operation and not hasattr(operation, "OPERATION_ID"):
+        operation = None
+
     if not operation:
         for plugin in get_plugins():
             if not plugin.modules.operations:
@@ -97,6 +123,13 @@ def _get_operation(operation_id: str) -> ModuleType | None:
                 break
 
     return operation
+
+
+def get_specification(operation_id: str) -> ActionSpecification | None:
+    """Get the specification of an operation by ID, or None if no enabled operation matches."""
+    operation = _get_operation(operation_id)
+
+    return _load_specification(operation) if operation else None
 
 
 def check_hit_limit(
@@ -145,13 +178,39 @@ def execute(
     request_id: Optional[str] = None,
     **kwargs,
 ) -> list[dict[str, Any]]:
-    """Execute a specification
+    """Execute an operation with strict validation of its arguments."""
+    return _execute(operation_id, query, user, request_id, kwargs, ignore_extra_arguments=False)
+
+
+def execute_stored_action(
+    operation_id: str,
+    query: str,
+    user: User | None,
+    request_id: Optional[str] = None,
+    **kwargs,
+) -> list[dict[str, Any]]:
+    """Execute a saved action, allowing unknown legacy arguments to be ignored."""
+    return _execute(operation_id, query, user, request_id, kwargs, ignore_extra_arguments=True)
+
+
+def _execute(
+    operation_id: str,
+    query: str,
+    user: User | None,
+    request_id: Optional[str],
+    arguments: dict[str, Any],
+    *,
+    ignore_extra_arguments: bool,
+) -> list[dict[str, Any]]:
+    """Execute a specification.
 
     Args:
         operation_id (str): The id of the operation to run
         query (str): The query to run this action on
         user (dict[str, Any]): The user running this action
         request_id (str, None): A user-provided ID, can be used to track the progress of their excecution via websockets
+        arguments (dict[str, Any]): User-supplied operation arguments.
+        ignore_extra_arguments (bool): Drop unknown arguments instead of rejecting them. Used only for stored actions.
 
     Returns:
         list[dict[str, Any]]: A report on the execution
@@ -178,9 +237,11 @@ def execute(
             }
         ]
 
+    specification = _load_specification(operation)
+
     user_roles = set(user["type"])
     is_admin = "admin" in user_roles
-    required_roles = set(operation.specification()["roles"])
+    required_roles = set(specification.roles)
     has_roles = required_roles & user_roles
     if not is_admin and not has_roles:
         return [
@@ -196,13 +257,25 @@ def execute(
             }
         ]
 
+    try:
+        validated_arguments = specification.validate_arguments(arguments, ignore_extra=ignore_extra_arguments)
+    except ValidationError as e:
+        report = invalid_arguments_report(query, e)
+        report["query"] = f"({query})"
+        return [report]
+
+    operation_kwargs = {key: value for key, value in arguments.items() if key in RESERVED_ARGUMENTS}
+    operation_kwargs.update(validated_arguments.model_extra or {})
+    # Unset arguments are left out so the operation's own defaults still apply
+    operation_kwargs.update(validated_arguments.model_dump(exclude_unset=True))
+
     # Skip central limit check if operation handles it locally with transformed query
     if not getattr(operation, "SKIP_CENTRAL_LIMIT", False):
         limit_error = _check_hit_limit(operation, query, user)
         if limit_error:
             return [limit_error]
 
-    report = operation.execute(query=query, request_id=request_id, user=user, **kwargs)
+    report = operation.execute(query=query, request_id=request_id, user=user, **operation_kwargs)
 
     return __sanitize_report(report)
 
@@ -218,12 +291,12 @@ def specifications() -> list[dict[str, Any]]:
     for module in (
         _file
         for _file in Path(__file__).parent.iterdir()
-        if _file.suffix == ".py" and _file.name not in ["__init__.py", "example_plugin.py"]
+        if _file.suffix == ".py" and _file.name not in ["__init__.py", "example_plugin.py", "models.py"]
     ):
         try:
             operation = importlib.import_module(f"howler.actions.{module.stem}")
 
-            specifications.append(__sanitize_specification(operation.specification()))
+            specifications.append(__sanitize_specification(_load_specification(operation)))
 
         except Exception:  # pragma: no cover
             logger.exception("Error when initializing %s", module)
@@ -233,6 +306,9 @@ def specifications() -> list[dict[str, Any]]:
             continue
 
         for operation in plugin.modules.operations:
-            specifications.append(__sanitize_specification(operation.specification()))
+            try:
+                specifications.append(__sanitize_specification(_load_specification(operation)))
+            except Exception:  # pragma: no cover
+                logger.exception("Error when initializing plugin operation %s", operation)
 
     return specifications

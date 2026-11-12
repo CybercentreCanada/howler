@@ -349,7 +349,7 @@ class TestBulkExecuteOnQuery:
     """Tests for action-operation authorization token forwarding."""
 
     @patch.object(action_service, "audit")
-    @patch.object(action_service.actions, "execute", return_value=[])
+    @patch.object(action_service.actions, "execute_stored_action", return_value=[])
     @patch.object(action_service, "datastore")
     def test_only_plugin_operations_receive_auth_token(self, mock_datastore, mock_execute, mock_audit):
         """Built-in actions omit auth_token while plugin actions receive it."""

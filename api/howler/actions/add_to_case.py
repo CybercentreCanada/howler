@@ -1,5 +1,6 @@
 import chevron
 
+from howler.actions.models import ActionArguments, ActionDescription, ActionSpecification, ActionStep, NonEmptyStr
 from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -11,12 +12,20 @@ from howler.services import case_service, comms_service
 logger = get_logger(__file__)
 
 OPERATION_ID = "add_to_case"
+DEFAULT_DESTINATION = "related/{{howler.analytic}} ({{howler.id}})"
+
+
+class AddToCaseArguments(ActionArguments):
+    """Arguments of the add_to_case operation."""
+
+    case_id: NonEmptyStr
+    destination: NonEmptyStr = DEFAULT_DESTINATION
 
 
 def execute(  # noqa: C901
     query: str,
     case_id: str | None = None,
-    destination: str = "related/{{howler.analytic}} ({{howler.id}})",
+    destination: str = DEFAULT_DESTINATION,
     user: User | None = None,
     **kwargs,
 ):
@@ -134,26 +143,16 @@ def execute(  # noqa: C901
     return report
 
 
-def specification():
+def specification() -> ActionSpecification:
     """Specify various properties of the action, such as title, descriptions, permissions and input steps."""
-    return {
-        "id": OPERATION_ID,
-        "title": "Add to Case",
-        "priority": 9,
-        "i18nKey": f"operations.{OPERATION_ID}",
-        "description": {
-            "short": "Add matching alerts to a case",
-            "long": execute.__doc__,
-        },
-        "roles": ["automation_basic"],
-        "steps": [
-            {
-                "args": {
-                    "case_id": [],
-                    "destination": [],
-                },
-                "options": {},
-            }
-        ],
-        "triggers": VALID_TRIGGERS,
-    }
+    return ActionSpecification(
+        id=OPERATION_ID,
+        title="Add to Case",
+        priority=9,
+        i18n_key=f"operations.{OPERATION_ID}",
+        description=ActionDescription(short="Add matching alerts to a case", long=execute.__doc__),
+        roles=["automation_basic"],
+        steps=[ActionStep(args={"case_id": [], "destination": []})],
+        triggers=VALID_TRIGGERS,
+        arguments=AddToCaseArguments,
+    )

@@ -205,7 +205,7 @@ def update_action(id: str, user: User, **kwargs) -> Response:
         "action_id": existing_action["action_id"],
     }
 
-    if error := action_service.validate_action(updated_action):
+    if error := action_service.validate_action(updated_action, existing_action=existing_action):
         return error
 
     try:
@@ -320,7 +320,7 @@ def execute_action(id: str, **kwargs) -> Response:
             execute_action,
         )
 
-        report = actions.execute(
+        report = actions.execute_stored_action(
             operation_id=operation.operation_id,
             request_id=execute_req["request_id"],
             query=query,

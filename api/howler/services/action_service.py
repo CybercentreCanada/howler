@@ -1,12 +1,15 @@
 import json
 from collections import defaultdict
+from collections.abc import Mapping
 from importlib.util import find_spec
 from typing import Any, Literal, Optional, TypedDict, overload
 
 from cryptography.exceptions import InvalidTag
 from flask import Response, has_request_context, request
+from pydantic import ValidationError
 
 from howler import actions
+from howler.actions.models import ActionModel, OperationModel, format_validation_error
 from howler.api import bad_request
 from howler.common.exceptions import HowlerValueError
 from howler.common.loader import datastore
@@ -14,6 +17,7 @@ from howler.common.logging import get_logger
 from howler.common.logging.audit import audit
 from howler.config import config
 from howler.odm.models.action import VALID_TRIGGERS, Action
+from howler.odm.models.howler_data import Escalation, HitStatusTransition
 from howler.odm.models.user import User
 from howler.remote.datatypes.queues.named import NamedQueue
 from howler.services import auth_service
@@ -21,6 +25,11 @@ from howler.utils.constants import TESTING
 from howler.utils.str_utils import sanitize_lucene_query
 
 logger = get_logger(__file__)
+
+_DEFAULT_TRANSITION_ESCALATIONS = {
+    HitStatusTransition.PROMOTE.value: Escalation.ALERT.value,
+    HitStatusTransition.DEMOTE.value: Escalation.HIT.value,
+}
 
 
 class TriggeredAction(TypedDict):
@@ -211,7 +220,34 @@ def process_action_batch(trigger: str, items: list[TriggeredAction]) -> None:
             logger.exception("Error processing action batch for trigger=%s user=%s", trigger, uname)
 
 
-def validate_action(new_action: Any) -> Optional[Response]:  # noqa: C901
+def _is_unchanged_operation(operation: OperationModel, stored_operation: Mapping[str, Any] | None) -> bool:
+    """Return whether the submitted operation keeps a stored operation's arguments unchanged."""
+    if stored_operation is None or stored_operation.get("operation_id") != operation.operation_id:
+        return False
+
+    stored_data_json = stored_operation.get("data_json")
+    try:
+        stored_data = json.loads(stored_data_json) if stored_data_json else {}
+    except (TypeError, json.JSONDecodeError):
+        return False
+
+    if not isinstance(stored_data, dict):
+        return False
+
+    if stored_data == operation.data:
+        return True
+
+    # The editor adds the server's default escalation when loading legacy transitions. Treat
+    # that normalization as unchanged so obsolete legacy arguments remain compatible on save.
+    transition = stored_data.get("transition")
+    default_escalation = _DEFAULT_TRANSITION_ESCALATIONS.get(transition) if isinstance(transition, str) else None
+    if operation.operation_id == "transition" and default_escalation and not stored_data.get("escalation"):
+        return {**stored_data, "escalation": default_escalation} == operation.data
+
+    return False
+
+
+def validate_action(new_action: Any, existing_action: Mapping[str, Any] | None = None) -> Optional[Response]:  # noqa: C901
     """Validate a new action"""
     if not isinstance(new_action, dict):
         return bad_request(err="Incorrect data structure!")
@@ -242,6 +278,32 @@ def validate_action(new_action: Any) -> Optional[Response]:  # noqa: C901
 
     if set(new_action.get("triggers", [])) - set(VALID_TRIGGERS):
         return bad_request(err="Invalid trigger provided.")
+
+    try:
+        action = ActionModel.model_validate(new_action)
+    except ValidationError as e:
+        return bad_request(err=format_validation_error(e))
+
+    stored_operations = {
+        operation["operation_id"]: operation
+        for operation in (existing_action or {}).get("operations", [])
+        if isinstance(operation, Mapping) and isinstance(operation.get("operation_id"), str)
+    }
+
+    for operation in action.operations:
+        specification = actions.get_specification(operation.operation_id)
+        if specification is None:
+            return bad_request(
+                err=f"The operation ID provided ({operation.operation_id}) does not match any enabled operations."
+            )
+
+        try:
+            ignore_extra = _is_unchanged_operation(operation, stored_operations.get(operation.operation_id))
+            specification.validate_arguments(operation.data, ignore_extra=ignore_extra)
+        except ValidationError as e:
+            return bad_request(
+                err=f"Invalid arguments for operation {operation.operation_id}: {format_validation_error(e)}"
+            )
 
     return None
 
@@ -294,7 +356,7 @@ def bulk_execute_on_query(
                 logger.debug("Appending auth token to external operation %s", operation.operation_id)
                 parsed_data["auth_token"] = auth_token
 
-            report = actions.execute(
+            report = actions.execute_stored_action(
                 operation_id=operation.operation_id,
                 query=intersected_query,
                 user=user,

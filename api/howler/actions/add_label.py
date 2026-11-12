@@ -1,5 +1,14 @@
-from typing import Optional
+from typing import Annotated, Optional
 
+from howler.actions.models import (
+    ActionArguments,
+    ActionDescription,
+    ActionSpecification,
+    ActionStep,
+    NonEmptyStr,
+    StepValidationRule,
+    one_of,
+)
 from howler.common.loader import datastore
 from howler.datastore.operations import OdmHelper
 from howler.odm.models.action import VALID_TRIGGERS
@@ -14,6 +23,13 @@ MAX_HITS_BASIC = 20
 MAX_HITS_ADVANCED = 1000
 
 CATEGORIES = list(Label.fields().keys())
+
+
+class AddLabelArguments(ActionArguments):
+    """Arguments of the add_label operation."""
+
+    category: Annotated[str, one_of("category", CATEGORIES)] = "generic"
+    label: NonEmptyStr
 
 
 def execute(query: str, category: str = "generic", label: Optional[str] = None, **kwargs):
@@ -90,24 +106,22 @@ def execute(query: str, category: str = "generic", label: Optional[str] = None, 
     return report
 
 
-def specification():
+def specification() -> ActionSpecification:
     """Specify various properties of the action, such as title, descriptions, permissions and input steps."""
-    return {
-        "id": OPERATION_ID,
-        "title": "Add Label",
-        "priority": 8,
-        "i18nKey": "operations.add_label",
-        "description": {
-            "short": "Add a label to a hit",
-            "long": execute.__doc__,
-        },
-        "roles": ["automation_basic", "actionrunner_basic"],
-        "steps": [
-            {
-                "args": {"category": [], "label": []},
-                "options": {"category": CATEGORIES},
-                "validation": {"warn": {"query": "howler.labels.$category:$label"}},
-            }
+    return ActionSpecification(
+        id=OPERATION_ID,
+        title="Add Label",
+        priority=8,
+        i18n_key="operations.add_label",
+        description=ActionDescription(short="Add a label to a hit", long=execute.__doc__),
+        roles=["automation_basic", "actionrunner_basic"],
+        steps=[
+            ActionStep(
+                args={"category": [], "label": []},
+                options={"category": CATEGORIES},
+                validation={"warn": StepValidationRule(query="howler.labels.$category:$label")},
+            )
         ],
-        "triggers": VALID_TRIGGERS,
-    }
+        triggers=VALID_TRIGGERS,
+        arguments=AddLabelArguments,
+    )

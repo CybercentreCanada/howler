@@ -3,6 +3,7 @@
 from typing import Optional
 
 from howler.actions import check_hit_limit
+from howler.actions.models import ActionArguments, ActionDescription, ActionSpecification, ActionStep, NonEmptyStr
 from howler.common.exceptions import NotFoundException
 from howler.common.loader import datastore
 from howler.odm.models.action import VALID_TRIGGERS
@@ -15,6 +16,12 @@ OPERATION_ID = "add_to_bundle"
 MAX_HITS_BASIC = 10
 MAX_HITS_ADVANCED = 1000
 SKIP_CENTRAL_LIMIT = True  # This operation transforms the query, handles limit check locally
+
+
+class AddToBundleArguments(ActionArguments):
+    """Arguments of the add_to_bundle operation."""
+
+    bundle_id: NonEmptyStr
 
 
 def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = None, **kwargs):  # noqa: C901
@@ -136,23 +143,18 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
     return report
 
 
-def specification():
+def specification() -> ActionSpecification:
     """Specify various properties of the action, such as title, descriptions, permissions and input steps."""
-    return {
-        "id": OPERATION_ID,
-        "title": "Add to Bundle (Deprecated)",
-        "priority": 6,
-        "i18nKey": f"operations.{OPERATION_ID}",
-        "description": {
-            "short": "Add a set of hits to a bundle (deprecated — uses cases)",
-            "long": execute.__doc__,
-        },
-        "roles": ["automation_basic", "actionrunner_basic"],
-        "steps": [
-            {
-                "args": {"bundle_id": []},
-                "options": {},
-            }
-        ],
-        "triggers": VALID_TRIGGERS,
-    }
+    return ActionSpecification(
+        id=OPERATION_ID,
+        title="Add to Bundle (Deprecated)",
+        priority=6,
+        i18n_key=f"operations.{OPERATION_ID}",
+        description=ActionDescription(
+            short="Add a set of hits to a bundle (deprecated — uses cases)", long=execute.__doc__
+        ),
+        roles=["automation_basic", "actionrunner_basic"],
+        steps=[ActionStep(args={"bundle_id": []})],
+        triggers=VALID_TRIGGERS,
+        arguments=AddToBundleArguments,
+    )
