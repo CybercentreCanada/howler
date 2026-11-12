@@ -345,7 +345,7 @@ coverage = { extras = ["toml"], version = "^7.4.4" }
 
 [tool.poetry.group.types.dependencies]
 typing-extensions = "^4.12.2"
-types-PyYAML = "6.0.12.20261030"
+types-PyYAML = "6.0.12.20261103"
 types-paramiko = "3.5.0.20250801"
 types-pyOpenSSL = "23.3.0.20240106"
 types-six = "1.17.0.20261008"
