@@ -1,0 +1,36 @@
+documentation/docs/installation/deployment.md
+  s_569ada2c1e1228::t_87d1774739e218 70-74
+  s_569ada2c1e1228::t_19fab35b891e57 75-76
+  s_569ada2c1e1228::t_52279532c75f76 64-67
+  s_569ada2c1e1228::t_1f3091c69fe629 68-69
+  s_569ada2c1e1228::t_f4f104f91695f2 47,59-63
+  s_569ada2c1e1228::t_4d1ff56410fafc 77
+howler-helm/values.yaml
+  s_569ada2c1e1228::t_f4f104f91695f2 146-149,154,173-175,180
+howler-helm/Chart.yaml
+  s_569ada2c1e1228::t_f4f104f91695f2 17,25,28,30,33,37,40
+howler-helm/tests/values.yaml
+  s_569ada2c1e1228::t_e9e26d0828ebb1 4-5
+  s_569ada2c1e1228::t_59032bd74e6822 1-3,6-9
+howler-helm/tests/test_chart.py
+  s_569ada2c1e1228::t_52279532c75f76 1-113,131-133
+  s_569ada2c1e1228::t_7325f720c9e595 114-130
+howler-helm/Chart.lock
+  s_569ada2c1e1228::t_0aef1d6e9a01ad 1-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f86c947bb13fa63c9a45a28187e50c0fcba5978d",
+  "prompts": {},
+  "sessions": {
+    "s_569ada2c1e1228": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e2ed4ffe3ffeFGEqt3vJ09c7Lv",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
