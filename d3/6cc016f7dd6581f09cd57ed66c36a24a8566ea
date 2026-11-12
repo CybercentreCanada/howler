@@ -1,0 +1,24 @@
+AGENTS.md
+  s_69df2ce1f316a9::t_08a235f746d8b2 165
+  s_69df2ce1f316a9::t_a1dddb6c1369a9 76
+api/howler/datastore/collection.py
+  s_69df2ce1f316a9::t_0a86965a8ac7e6 234
+api/howler/datastore/howler_store.py
+  s_69df2ce1f316a9::t_d70fd693a623de 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d36cc016f7dd6581f09cd57ed66c36a24a8566ea",
+  "prompts": {},
+  "sessions": {
+    "s_69df2ce1f316a9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e39b53c75ffe7TajA30Dx2YT6V",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
