@@ -1,0 +1,19 @@
+ui/src/components/elements/record/RecordComments.test.tsx
+  s_267a5b33a43d2a::t_0d4bb2294a94ac 202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6e95985d76e70eaded820f60756ea0962a2b7a28",
+  "prompts": {},
+  "sessions": {
+    "s_267a5b33a43d2a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e302725dbffe1dCAn0ndzJsy3f",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
