@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.0](https://github.com/CybercentreCanada/howler/compare/sync-v0.0.2...sync-v0.1.0) (2026-11-12)
+
+
+### Features
+
+* **client,api:** added elasticsearch scroll support ([#652](https://github.com/CybercentreCanada/howler/issues/652)) ([2d7cf10](https://github.com/CybercentreCanada/howler/commit/2d7cf109e34e324c659d1eef6d2ff34e098db7c0))
+
 ## [0.0.2](https://github.com/CybercentreCanada/howler/compare/sync-v0.0.1...sync-v0.0.2) (2026-10-08)
 
 
