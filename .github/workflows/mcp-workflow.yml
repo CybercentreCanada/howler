@@ -9,6 +9,7 @@ on:
       - api/test/unit/config.yml
       - client/test/config/classification.yml
       - .github/workflows/mcp-workflow.yml
+      - .github/actions/compose/**
       - .github/workflows/release-validation.yml
       - scripts/validate_release.py
     tags:
@@ -21,6 +22,7 @@ on:
       - api/test/unit/config.yml
       - client/test/config/classification.yml
       - .github/workflows/mcp-workflow.yml
+      - .github/actions/compose/**
       - .github/workflows/release-validation.yml
       - scripts/validate_release.py
   workflow_dispatch:
@@ -33,7 +35,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   release_validation:
@@ -58,8 +59,7 @@ jobs:
       - name: Checkout current ref
         uses: actions/checkout@v4
         with:
-          # Pull request workflows run from the merge commit, so test the same code.
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup Python 3.12
         uses: actions/setup-python@v5
@@ -102,8 +102,7 @@ jobs:
       - name: Checkout current ref
         uses: actions/checkout@v4
         with:
-          # Keep the checked-out code aligned with the workflow's merge commit.
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           # Coverage diffs require the common ancestor, even when the base branch has advanced.
           fetch-depth: 0
 
@@ -126,11 +125,13 @@ jobs:
         run: poetry install --verbose --with dev
 
       - name: Spin up full test dependencies
-        id: compose-start
-        working-directory: .
-        run: >-
-          docker compose --profile full -f mcp/docker-compose.yml up -d
-          howler-api elasticsearch redis keycloak
+        uses: ./.github/actions/compose
+        with:
+          compose-file: mcp/docker-compose.yml
+          profile: full
+          services: howler-api elasticsearch redis keycloak
+        env:
+          JOB_STATUS: ${{ job.status }}
 
       - name: Seed Howler API test hits
         run: docker compose -f docker-compose.yml exec -T howler-api python -m howler.odm.random_data users hits
@@ -148,7 +149,6 @@ jobs:
 
       - name: Run tests
         id: tests
-        continue-on-error: true
         run: poetry run test
         env:
           WRITE_MARKDOWN: "true"
@@ -159,11 +159,18 @@ jobs:
           HOWLER_API_BASE_URL: http://localhost:5000/api
           COVERAGE_FILE: .coverage.tests
 
-      - name: Print dependency logs after failed tests
-        if: steps.tests.outcome == 'failure'
+      - name: Summarize failed tests
+        if: failure() && steps.tests.outcome == 'failure'
         run: |
-          echo "--- Howler API and Keycloak logs ---"
-          docker compose -f docker-compose.yml logs --no-color howler-api keycloak
+          if [ -f test-results.md ]; then
+            cat test-results.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Tests failed before a report was generated. See the test logs.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Print MCP server logs after failed tests
+        if: failure() && steps.tests.outcome == 'failure'
+        run: |
           echo "--- Howler MCP server logs ---"
           if [ -f /tmp/howler-mcp-server.log ]; then
             cat /tmp/howler-mcp-server.log
@@ -180,16 +187,7 @@ jobs:
           fi
           poetry run coverage combine
 
-      - name: Add Failed Test PR Comment
-        uses: marocchino/sticky-pull-request-comment@v2
-        if: github.event_name == 'pull_request' && steps.tests.outcome == 'failure'
-        continue-on-error: true
-        with:
-          path: mcp/test-results.md
-          header: mcp
-
       - name: Coverage Results
-        if: steps.tests.outcome == 'success'
         run: |
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
             git fetch origin "$BASE_SHA"
@@ -200,33 +198,38 @@ jobs:
             rm -f diff.txt
           fi
           poetry run coverage_report
+          cat coverage-results.md >> "$GITHUB_STEP_SUMMARY"
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GIT_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
 
-      - name: Add Coverage PR Comment
-        uses: marocchino/sticky-pull-request-comment@v2
-        if: steps.tests.outcome == 'success' && github.event_name == 'pull_request'
-        continue-on-error: true
+      - name: Save coverage for GitHub Code Quality
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
         with:
-          path: mcp/coverage-results.md
-          header: mcp
+          name: code-coverage-mcp
+          path: mcp/coverage.xml
+          if-no-files-found: error
+          retention-days: 1
 
-      - name: Force Failure if Tests Failed
-        if: steps.tests.outcome == 'failure'
-        run: exit 1
-
-      - name: Stop test dependencies
-        if: always() && steps.compose-start.outcome != '' && steps.compose-start.outcome != 'skipped'
-        working-directory: .
-        env:
-          JOB_STATUS: ${{ job.status }}
-        run: |
-          if [[ "$JOB_STATUS" != "success" || "${RUNNER_DEBUG:-}" == "1" ]]; then
-            docker compose --profile full -f mcp/docker-compose.yml logs --no-color howler-api elasticsearch redis keycloak || true
-          fi
-          docker compose --profile full -f mcp/docker-compose.yml down
+  upload_coverage:
+    name: Upload MCP coverage to GitHub Code Quality
+    needs: test
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      code-quality: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: code-coverage-mcp
+      - uses: actions/upload-code-coverage@v1
+        with:
+          file: coverage.xml
+          language: Python
+          label: code-coverage/mcp
 
   build_docker_image:
     if: needs.release_validation.outputs.channel == 'preview' || needs.release_validation.outputs.channel == 'stable'

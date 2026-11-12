@@ -10,6 +10,7 @@ on:
       - "!client/README.md"
       - "api/**"
       - .github/workflows/client-workflow.yml
+      - .github/actions/compose/**
       - .github/workflows/release-validation.yml
       - scripts/validate_release.py
     tags:
@@ -23,6 +24,7 @@ on:
       - "!client/README.md"
       - "api/**"
       - .github/workflows/client-workflow.yml
+      - .github/actions/compose/**
       - .github/workflows/release-validation.yml
       - scripts/validate_release.py
   workflow_dispatch:
@@ -35,7 +37,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   release_validation:
@@ -138,9 +139,11 @@ jobs:
           poetry run sigma
 
       - name: Spin up test dependencies
-        id: compose-start
-        working-directory: .
-        run: docker compose -f client/test/docker-compose.yml up -d
+        uses: ./.github/actions/compose
+        with:
+          compose-file: client/test/docker-compose.yml
+        env:
+          JOB_STATUS: ${{ job.status }}
 
       - name: Start Howler API server
         working-directory: api
@@ -165,23 +168,20 @@ jobs:
 
       - name: Run tests
         id: tests
-        continue-on-error: true
-        run: |
-          poetry run test
+        run: poetry run test
         env:
           WRITE_MARKDOWN: "true"
 
-      - name: Add Failed Test PR Comment
-        uses: marocchino/sticky-pull-request-comment@v2
-        if: github.event_name == 'pull_request' && steps.tests.outcome == 'failure'
-        # https://github.com/marocchino/sticky-pull-request-comment/issues/227
-        continue-on-error: true
-        with:
-          path: client/test-results.md
-          header: client
+      - name: Summarize failed tests
+        if: failure() && steps.tests.outcome == 'failure'
+        run: |
+          if [ -f test-results.md ]; then
+            cat test-results.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Tests failed before a report was generated. See the test logs.' >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Coverage Results
-        if: steps.tests.outcome == 'success'
         run: |
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
             git fetch origin "$BASE_SHA"
@@ -192,35 +192,38 @@ jobs:
             rm -f diff.txt
           fi
           poetry run coverage_report
+          cat coverage-results.md >> "$GITHUB_STEP_SUMMARY"
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GIT_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
 
-      - name: Add Coverage PR Comment
-        uses: marocchino/sticky-pull-request-comment@v2
-        if: steps.tests.outcome == 'success' && github.event_name == 'pull_request' && matrix.python-version == '3.12'
-        # https://github.com/marocchino/sticky-pull-request-comment/issues/227
-        continue-on-error: true
+      - name: Save coverage for GitHub Code Quality
+        if: matrix.python-version == '3.12' && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push' && github.ref == 'refs/heads/main')
+        uses: actions/upload-artifact@v4
         with:
-          path: client/coverage-results.md
-          header: client
+          name: code-coverage-client
+          path: client/coverage.xml
+          if-no-files-found: error
+          retention-days: 1
 
-      - name: Force Failure if Tests Failed
-        if: steps.tests.outcome == 'failure'
-        run: |
-          exit 1
-
-      - name: Stop test dependencies
-        if: always() && steps.compose-start.outcome != '' && steps.compose-start.outcome != 'skipped'
-        working-directory: .
-        env:
-          JOB_STATUS: ${{ job.status }}
-        run: |
-          if [[ "$JOB_STATUS" != "success" || "${RUNNER_DEBUG:-}" == "1" ]]; then
-            docker compose -f client/test/docker-compose.yml logs --no-color || true
-          fi
-          docker compose -f client/test/docker-compose.yml down
+  upload_coverage:
+    name: Upload client coverage to GitHub Code Quality
+    needs: test
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      code-quality: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: code-coverage-client
+      - uses: actions/upload-code-coverage@v1
+        with:
+          file: coverage.xml
+          language: Python
+          label: code-coverage/client
 
   push_to_pypi:
     if: needs.release_validation.outputs.channel == 'stable'

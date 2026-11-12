@@ -1,0 +1,20 @@
+name: Start Docker Compose stack
+description: Start a test stack and tear it down in the action's post step.
+inputs:
+  compose-file:
+    description: Compose file relative to the workspace root.
+    required: true
+  profile:
+    description: Optional Compose profile.
+    required: false
+  services:
+    description: Optional whitespace-separated services to start and log.
+    required: false
+  build:
+    description: Build images when starting the stack.
+    default: "false"
+runs:
+  using: node24
+  main: main.js
+  post: post.js
+  post-if: always()
