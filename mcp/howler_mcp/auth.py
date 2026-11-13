@@ -222,7 +222,8 @@ class AuthProvider:
         Args:
             mode: ``passthrough`` or ``apikey``.
             username: Howler username owning the API key (``apikey`` mode only).
-            api_key: Howler API key value. Mutually exclusive with ``api_key_file``.
+            api_key: Howler API key value. Mutually exclusive with ``api_key_file``. Falls back to
+                ``HOWLER_API_KEY``, then to the file in ``HOWLER_API_KEY_FILE``.
             api_key_file: Path to a file containing the Howler API key.
 
         Raises:
@@ -239,10 +240,15 @@ class AuthProvider:
         username = username or HOWLER_API.USERNAME
         if api_key is not None and api_key_file is not None:
             raise ValueError("Provide either a Howler API key or a key file, not both.")
-        if api_key is None:
-            api_key = self._read_api_key(api_key_file or HOWLER_API.API_KEY_FILE)
+        if api_key is None and api_key_file is not None:
+            api_key = self._read_api_key(api_key_file)
+        elif api_key is None:
+            # Configuration fallback: HOWLER_API_KEY takes precedence over HOWLER_API_KEY_FILE.
+            api_key = HOWLER_API.API_KEY or self._read_api_key(HOWLER_API.API_KEY_FILE)
         if not username or not api_key:
-            raise ValueError("HOWLER_API_AUTH_MODE=apikey requires HOWLER_API_USERNAME and HOWLER_API_KEY_FILE.")
+            raise ValueError(
+                "HOWLER_API_AUTH_MODE=apikey requires HOWLER_API_USERNAME and HOWLER_API_KEY or HOWLER_API_KEY_FILE."
+            )
 
         self._basic_credentials = base64.b64encode(f"{username}:{api_key}".encode()).decode("ascii")
 

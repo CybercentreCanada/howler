@@ -58,6 +58,7 @@ class HOWLER_API:
     # Howler user and API key, so backend privileges are bounded by the key ACL instead of the caller token.
     AUTH_MODE = os.environ.get("HOWLER_API_AUTH_MODE", "passthrough")
     USERNAME = os.environ.get("HOWLER_API_USERNAME")
+    API_KEY = os.environ.get("HOWLER_API_KEY")
     API_KEY_FILE = os.environ.get("HOWLER_API_KEY_FILE")
 
 

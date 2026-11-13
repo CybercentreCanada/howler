@@ -114,7 +114,8 @@ Primary runtime variables:
 - HOWLER_API_KEEPALIVE_EXPIRY
 - HOWLER_API_AUTH_MODE (`passthrough` by default, or `apikey`)
 - HOWLER_API_USERNAME (required in `apikey` mode)
-- HOWLER_API_KEY_FILE (required in `apikey` mode; file containing the Howler API key)
+- HOWLER_API_KEY (`apikey` mode; the Howler API key, takes precedence over HOWLER_API_KEY_FILE)
+- HOWLER_API_KEY_FILE (`apikey` mode; file containing the Howler API key)
 - AUTH_ISSUER
 - AUTH_JWKS_URI
 - AUTH_TOKEN_URL
