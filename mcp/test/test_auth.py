@@ -281,6 +281,7 @@ def test_auth_provider_rejects_unknown_mode():
 def test_auth_provider_apikey_mode_requires_username_and_key(kwargs):
     with (
         patch("howler_mcp.auth.HOWLER_API.USERNAME", None),
+        patch("howler_mcp.auth.HOWLER_API.API_KEY", None),
         patch("howler_mcp.auth.HOWLER_API.API_KEY_FILE", None),
         pytest.raises(ValueError, match="requires HOWLER_API_USERNAME"),
     ):
@@ -304,8 +305,54 @@ def test_auth_provider_reads_mode_from_configuration():
     with (
         patch("howler_mcp.auth.HOWLER_API.AUTH_MODE", "apikey"),
         patch("howler_mcp.auth.HOWLER_API.USERNAME", "mcp-reader"),
+        patch("howler_mcp.auth.HOWLER_API.API_KEY", None),
         patch("howler_mcp.auth.HOWLER_API.API_KEY_FILE", None),
     ):
         provider = AuthProvider(api_key="secret-key")
 
     assert provider.mode == "apikey"
+
+
+@pytest.mark.asyncio
+async def test_auth_provider_reads_api_key_from_environment():
+    with (
+        patch("howler_mcp.auth.HOWLER_API.USERNAME", "mcp-reader"),
+        patch("howler_mcp.auth.HOWLER_API.API_KEY", "env-key"),
+        patch("howler_mcp.auth.HOWLER_API.API_KEY_FILE", None),
+    ):
+        provider = AuthProvider(mode="apikey")
+
+    expected = base64.b64encode(b"mcp-reader:env-key").decode("ascii")
+    assert await provider.get_authorization_header("user-token") == f"Basic {expected}"
+
+
+@pytest.mark.asyncio
+async def test_auth_provider_environment_key_takes_precedence_over_key_file(tmp_path):
+    key_file = tmp_path / "howler-api-key"
+    key_file.write_text("file-key", encoding="utf-8")
+
+    with (
+        patch("howler_mcp.auth.HOWLER_API.USERNAME", "mcp-reader"),
+        patch("howler_mcp.auth.HOWLER_API.API_KEY", "env-key"),
+        patch("howler_mcp.auth.HOWLER_API.API_KEY_FILE", str(key_file)),
+    ):
+        provider = AuthProvider(mode="apikey")
+
+    expected = base64.b64encode(b"mcp-reader:env-key").decode("ascii")
+    assert await provider.get_authorization_header("user-token") == f"Basic {expected}"
+
+
+@pytest.mark.asyncio
+async def test_auth_provider_falls_back_to_key_file_when_environment_key_is_unset(tmp_path):
+    key_file = tmp_path / "howler-api-key"
+    key_file.write_text("file-key\n", encoding="utf-8")
+
+    with (
+        patch("howler_mcp.auth.HOWLER_API.USERNAME", "mcp-reader"),
+        patch("howler_mcp.auth.HOWLER_API.API_KEY", ""),
+        patch("howler_mcp.auth.HOWLER_API.API_KEY_FILE", str(key_file)),
+    ):
+        provider = AuthProvider(mode="apikey")
+
+    expected = base64.b64encode(b"mcp-reader:file-key").decode("ascii")
+    assert await provider.get_authorization_header("user-token") == f"Basic {expected}"
