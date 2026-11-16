@@ -1,0 +1,38 @@
+.github/workflows/client-workflow.yml
+  s_49e9abb5fdcaab::t_1a9fdd791b3344 201,203-226
+  s_49e9abb5fdcaab::t_79617f4022099c 176,202
+.github/workflows/sentinel-plugin-workflow.yml
+  s_49e9abb5fdcaab::t_1a9fdd791b3344 157-183
+ui/vite.config.ts
+  s_49e9abb5fdcaab::t_1a9fdd791b3344 103
+.github/workflows/mcp-workflow.yml
+  s_49e9abb5fdcaab::t_674709bb62a436 62,105,219
+  s_49e9abb5fdcaab::t_79617f4022099c 163,172,208
+  s_49e9abb5fdcaab::t_1a9fdd791b3344 207,209-218,220-232
+.github/workflows/evidence-plugin-workflow.yml
+  s_49e9abb5fdcaab::t_1a9fdd791b3344 133-159
+.github/workflows/api-workflow.yml
+  s_49e9abb5fdcaab::t_79617f4022099c 181,207
+  s_49e9abb5fdcaab::t_1a9fdd791b3344 206,208-231
+.github/workflows/sync-plugin-workflow.yml
+  s_49e9abb5fdcaab::t_1a9fdd791b3344 162-188
+.github/workflows/ui-workflow.yml
+  s_49e9abb5fdcaab::t_1a9fdd791b3344 111-119,127-143
+  s_49e9abb5fdcaab::t_a4d6922d431d04 144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6766531d87fda3bf9d12a269722f1c5dcf5b2460",
+  "prompts": {},
+  "sessions": {
+    "s_49e9abb5fdcaab": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e38ec57b4ffe4P4pLt3iy4Sb3w",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

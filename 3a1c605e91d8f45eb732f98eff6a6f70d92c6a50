@@ -1,0 +1,26 @@
+documentation/docs/installation/deployment.md
+  s_569ada2c1e1228::t_1d96e2570857dc 47,59-76
+  s_569ada2c1e1228::t_41e97e7054ec55 77
+helm/Chart.lock
+  s_569ada2c1e1228::t_d780efbd1f4662 1-12
+helm/Chart.yaml
+  s_569ada2c1e1228::t_3e454cbb3a98a0 17,25,28,30,33,37,40
+helm/values.yaml
+  s_569ada2c1e1228::t_6369035a28b63d 146-149,154,173-175,180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3a1c605e91d8f45eb732f98eff6a6f70d92c6a50",
+  "prompts": {},
+  "sessions": {
+    "s_569ada2c1e1228": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e2ed4ffe3ffeFGEqt3vJ09c7Lv",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

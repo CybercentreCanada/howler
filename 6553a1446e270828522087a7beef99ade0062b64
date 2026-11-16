@@ -1,0 +1,21 @@
+scripts/diff_summary.py
+  s_7fd3e0f4cf7393::t_58f9d6c62f569e 1-1504
+.pre-commit-config.yaml
+  s_7fd3e0f4cf7393::t_4c3a3f779cd973 106-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6553a1446e270828522087a7beef99ade0062b64",
+  "prompts": {},
+  "sessions": {
+    "s_7fd3e0f4cf7393": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1b70e15dffeZNunu2Qwbepo3m",
+        "model": "gemini-4-carbon"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
