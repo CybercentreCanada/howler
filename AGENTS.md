@@ -163,3 +163,17 @@ The Python workflows in `.github/workflows/` are the source of truth for CI. To 
 - Elasticsearch ILM maintenance must enumerate `index_list_full`, exclude `__reindex` temporary indexes, preserve source lifecycle metadata, and leave only the latest ILM index as the write target. Legacy aliases must be swapped atomically when creating indexes.
 - `SocketProvider.addListener` replaces a listener with the same key; case consumers must retain a stable per-instance suffix rather than keying only by case ID.
 - MCP process-wide async HTTP clients belong to the returned Starlette application's lifespan, not FastMCP's per-session lifespan; close only clients owned by the application.
+
+## Agent skills
+
+### Issue tracker
+
+Issues for Howler are tracked in GitHub Issues; use `gh` from this repository. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Triage uses `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Howler uses a single-context domain-doc layout with a root `GLOSSARY.md` and `docs/adr/`. See `docs/agents/domain.md`.
