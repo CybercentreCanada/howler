@@ -103,3 +103,12 @@ repos:
         stages: [pre-commit]
         always_run: true
         pass_filenames: false
+      - id: diff-summary
+        name: Print Branch Churn Summary
+        entry: scripts/diff_summary.py
+        args: [--compact, --never-fail]
+        language: python
+        stages: [pre-commit]
+        always_run: true
+        pass_filenames: false
+        verbose: true
