@@ -1,0 +1,19 @@
+.github/workflows/mcp-workflow.yml
+  s_9f73908e04e066::t_1046945c8eb3f8 143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d3f9d7275309f900cb69a62c2b4dfc1fe5a0bce5",
+  "prompts": {},
+  "sessions": {
+    "s_9f73908e04e066": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1ad33cf5ffeCtfHqnBzlZuuq4",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
