@@ -1,0 +1,25 @@
+docs/agents/triage-labels.md
+  s_168b92e72278cd::t_e4eba64bcf9dbd 1-15
+docs/agents/domain.md
+  s_168b92e72278cd::t_e4eba64bcf9dbd 1-51
+docs/agents/issue-tracker.md
+  s_168b92e72278cd::t_e4eba64bcf9dbd 1-50
+AGENTS.md
+  s_168b92e72278cd::t_e4eba64bcf9dbd 166-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "04dc8cb29bb54d1d10ccd84da5beff6eb20546c7",
+  "prompts": {},
+  "sessions": {
+    "s_168b92e72278cd": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e2a97ac03ffe41l4Xts2LmNROn",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
