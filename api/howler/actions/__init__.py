@@ -2,7 +2,6 @@ import functools
 import importlib
 import os
 import re
-from collections.abc import Mapping
 from pathlib import Path
 from types import ModuleType
 from typing import Any, Optional
@@ -175,7 +174,6 @@ def execute(
     user: User | None,
     request_id: Optional[str] = None,
     auth_token: Optional[str] = None,
-    arguments: Optional[Mapping[str, Any]] = None,
     **kwargs,
 ) -> list[dict[str, Any]]:
     """Execute an operation with strict validation of its arguments."""
@@ -221,9 +219,8 @@ def execute(
             }
         ]
 
-    raw_arguments = kwargs if arguments is None else {**kwargs, **arguments}
     try:
-        validated_arguments = specification.validate_arguments(raw_arguments)
+        validated_arguments = specification.validate_arguments(kwargs)
     except ValidationError as e:
         return [invalid_arguments_report(query, e)]
 

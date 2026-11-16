@@ -506,9 +506,7 @@ def test_execute_transition_multiple(datastore: HowlerDatastore, login_session):
                     "data_json": json.dumps(
                         {
                             "status": "on-hold",
-                            "transition": "assess",
-                            "assignee": "admin",
-                            "assessment": "legitimate",
+                            "transition": "resume",
                         }
                     ),
                 }

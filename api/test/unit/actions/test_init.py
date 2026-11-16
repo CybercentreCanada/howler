@@ -73,48 +73,53 @@ def test_execute_missing_roles():
 
 @patch("howler.actions.datastore")
 @patch("howler.actions.add_label.execute")
-def test_execute_rejects_extra_and_reserved_arguments(mock_execute, mock_datastore):
+def test_execute_rejects_extra_arguments(mock_execute, mock_datastore):
     user: User = random_model_obj(User)
     user.type = ["actionrunner_basic"]
 
-    result = execute(
-        "add_label",
-        "howler.id:*",
-        user=user,
-        category="generic",
-        label="test",
-        **{"===": "unexpected"},
-    )
-
-    assert result == [
-        {
-            "query": "(howler.id:*)",
-            "outcome": "error",
-            "title": "Invalid Arguments",
-            "message": "===: Extra inputs are not permitted (received 'unexpected')",
-        }
-    ]
-    for reserved in sorted(DISPATCHER_ARGUMENTS):
-        reserved_result = execute(
+    for extra_kwargs, expected_message in [
+        ({"===": "unexpected"}, "===: Extra inputs are not permitted (received 'unexpected')"),
+        ({"arguments": 42}, "arguments: Extra inputs are not permitted (received 42)"),
+    ]:
+        result = execute(
             "add_label",
             "howler.id:*",
             user=user,
-            arguments={"category": "generic", "label": "test", reserved: "spoofed"},
+            category="generic",
+            label="test",
+            **extra_kwargs,
         )
-        assert reserved_result[0]["title"] == "Invalid Arguments"
-        assert reserved in reserved_result[0]["message"]
+        assert result == [
+            {
+                "query": "(howler.id:*)",
+                "outcome": "error",
+                "title": "Invalid Arguments",
+                "message": expected_message,
+            }
+        ]
 
     mock_execute.assert_not_called()
     mock_datastore.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    ("transition_name", "extra_kwargs", "expected_escalation"),
+    [
+        ("demote", {"escalation": "alert"}, "alert"),
+        ("promote", {"escalation": ""}, "alert"),
+        ("demote", {"escalation": None}, "hit"),
+    ],
+)
 @patch("howler.actions.transition.datastore")
 @patch("howler.actions.datastore")
 @patch("howler.actions.transition.hit_service.transition_hit")
-def test_execute_transition_preserves_explicit_escalation(
+def test_execute_transition_escalation_handling(
     mock_transition_hit,
     mock_action_datastore,
     mock_transition_datastore,
+    transition_name,
+    extra_kwargs,
+    expected_escalation,
 ):
     user: User = random_model_obj(User)
     user.type = ["admin"]
@@ -130,12 +135,17 @@ def test_execute_transition_preserves_explicit_escalation(
         "howler.id:*",
         user=user,
         status="in-progress",
-        transition="demote",
-        escalation="alert",
+        transition=transition_name,
+        **extra_kwargs,
     )
 
     assert result[0]["outcome"] == "success"
-    mock_transition_hit.assert_called_once_with(hit_id, HitStatusTransition.DEMOTE, user, escalation="alert")
+    mock_transition_hit.assert_called_once_with(
+        hit_id,
+        HitStatusTransition(transition_name),
+        user,
+        escalation=expected_escalation,
+    )
 
 
 @patch("howler.actions.datastore")

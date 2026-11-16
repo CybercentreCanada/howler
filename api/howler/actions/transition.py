@@ -38,6 +38,12 @@ SKIP_CENTRAL_LIMIT = True  # This operation transforms the query, handles limit 
 
 log = get_logger(__file__)
 
+TRANSITION_ESCALATIONS = [Escalation.HIT.value, Escalation.ALERT.value]
+DEFAULT_TRANSITION_ESCALATIONS: dict[str, str] = {
+    HitStatusTransition.PROMOTE.value: Escalation.ALERT.value,
+    HitStatusTransition.DEMOTE.value: Escalation.HIT.value,
+}
+
 # Arguments the workflow actions need for a given transition
 REQUIRED_TRANSITION_ARGUMENTS: dict[str, list[str]] = {
     HitStatusTransition.ASSESS.value: ["assessment"],
@@ -51,7 +57,7 @@ class TransitionArguments(ActionArguments):
 
     status: Annotated[str, one_of("status", Status.list)]
     transition: Annotated[str, one_of("transition", HitStatusTransition.list)]
-    escalation: Annotated[Optional[str], EmptyToNone, one_of("escalation", Escalation.list)] = None
+    escalation: Annotated[Optional[str], EmptyToNone, one_of("escalation", TRANSITION_ESCALATIONS)] = None
     assessment: Annotated[Optional[str], EmptyToNone, one_of("assessment", Assessment.list)] = None
     rationale: Annotated[Optional[str], EmptyToNone] = None
     assignee: Annotated[Optional[str], EmptyToNone] = None
@@ -60,9 +66,19 @@ class TransitionArguments(ActionArguments):
 
     @model_validator(mode="after")
     def _validate_transition_arguments(self) -> "TransitionArguments":
+        allowed_transitions = sorted(map(str, hit_service.get_transitions(cast(Status, self.status))))
+        if self.transition not in allowed_transitions:
+            raise ValueError(
+                f"The transition '{self.transition}' is not valid for status '{self.status}'."
+                f" Must be one of: {', '.join(allowed_transitions)}."
+            )
+
         required = REQUIRED_TRANSITION_ARGUMENTS.get(self.transition, [])
         if missing := [name for name in required if not getattr(self, name)]:
             raise ValueError(f"The transition {self.transition} requires: {', '.join(missing)}.")
+
+        if self.escalation is None and self.transition in DEFAULT_TRANSITION_ESCALATIONS:
+            self.escalation = DEFAULT_TRANSITION_ESCALATIONS[self.transition]
 
         return self
 
@@ -274,7 +290,7 @@ def specification() -> ActionSpecification:
                 options={
                     "vote": Vote.list(),
                     "assessment": Assessment.list(),
-                    "escalation": Escalation.list(),
+                    "escalation": TRANSITION_ESCALATIONS,
                 },
             ),
         ],

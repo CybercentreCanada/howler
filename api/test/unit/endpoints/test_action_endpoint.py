@@ -76,13 +76,18 @@ def test_validate_action_structure(payload, expected_error, request_context: Fla
         ("add_label", "{", "data_json must be valid JSON"),
         ("add_label", "[]", "data_json must be a JSON object"),
         ("add_label", '{"category":"generic","label":"ok","extra":1}', "extra"),
+        ("add_label", '{"category":"generic","label":"ok","arguments":42}', "arguments"),
         ("add_label", '{"category":"generic","label":"ok","query":"x"}', "query"),
         ("promote", '{"escalation":"evidence"}', "must provide an assessment"),
         ("promote", '{"escalation":"evidence","assessment":"development"}', "not an evidence assessment"),
         ("demote", '{"escalation":"miss"}', "must provide an assessment value when demoting to miss"),
         ("demote", '{"escalation":"miss","assessment":"attempt"}', "not a miss assessment"),
+        ("transition", '{"status":"open","transition":"resume"}', "not valid for status 'open'"),
+        ("transition", '{"status":"open","transition":"promote","escalation":"evidence"}', "not a valid escalation"),
+        ("transition", '{"status":"open","transition":"demote","escalation":"miss"}', "not a valid escalation"),
         ("promote", '{"escalation":"evidence","assessment":"attempt"}', None),
         ("demote", '{"escalation":"miss","assessment":"false-positive"}', None),
+        ("transition", '{"status":"open","transition":"promote","escalation":""}', None),
     ],
 )
 def test_validate_action_operation_arguments(operation_id, data_json, expected_error, request_context: Flask):
