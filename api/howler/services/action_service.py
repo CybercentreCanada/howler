@@ -1,4 +1,3 @@
-import json
 from collections import defaultdict
 from collections.abc import Callable, Mapping
 from importlib.util import find_spec
@@ -10,10 +9,9 @@ from pydantic import ValidationError
 
 from howler import actions
 from howler.actions.models import (
-    DISPATCHER_ARGUMENTS,
-    ActionModel,
-    format_action_validation_error,
     format_validation_error,
+    invalid_arguments_report,
+    parse_data_json,
 )
 from howler.api import bad_request
 from howler.common.exceptions import HowlerValueError
@@ -101,68 +99,28 @@ def _request_auth_token() -> str | None:
     return authorization.split(" ", maxsplit=1)[1]
 
 
-def _invalid_arguments_report(query: str, message: str) -> dict[str, str]:
-    return {
-        "query": f"({query})",
-        "outcome": "error",
-        "title": "Invalid Arguments",
-        "message": message,
-    }
-
-
-def _invalid_dispatcher_arguments_report(query: str, arguments: Mapping[str, Any]) -> dict[str, str] | None:
-    """Return an Invalid Arguments report for dispatcher-owned keys in user data."""
-    if reserved := DISPATCHER_ARGUMENTS & set(arguments):
-        message = "; ".join(
-            f"{key}: Extra inputs are not permitted (received {arguments[key]!r})" for key in sorted(reserved)
-        )
-        return _invalid_arguments_report(query, message)
-
-    return None
-
-
-def _parse_operation_data_json(data_json: Any, query: str) -> tuple[dict[str, Any], dict[str, str] | None]:
-    if data_json is None or data_json == "":
-        return {}, None
-
-    if not isinstance(data_json, str):
-        return {}, _invalid_arguments_report(query, "data_json must be a JSON string containing an object.")
-
-    try:
-        parsed_data = json.loads(data_json)
-    except json.JSONDecodeError as error:
-        return {}, _invalid_arguments_report(query, f"data_json must be valid JSON: {error.msg}.")
-
-    if not isinstance(parsed_data, dict):
-        return {}, _invalid_arguments_report(query, "data_json must be a JSON object.")
-
-    return parsed_data, None
-
-
-def _audit_action_operation(
+def _parse_and_audit_operation(
+    data_json: Any,
     query: str,
     operation_id: str,
-    arguments: Mapping[str, Any],
     user: User | None,
     audit_fn: Callable[..., Any],
-    *,
-    include_arguments: bool,
-) -> None:
-    audit_data = {
-        "user": user,
-        "query": query,
-        "operation_id": operation_id,
-    }
-    if include_arguments:
-        audit_data.update(arguments)
+) -> tuple[dict[str, Any], dict[str, str] | None]:
+    try:
+        op_data = parse_data_json(data_json, forbid_dispatcher_args=True)
+        invalid_report = None
+    except ValueError as error:
+        op_data = {}
+        invalid_report = invalid_arguments_report(query, str(error))
 
     audit(
         [],
-        audit_data,
+        {**op_data, "user": user, "query": query, "operation_id": operation_id},
         user["uname"] if user is not None else "unknown",
         user,
         audit_fn,
     )
+    return op_data, invalid_report
 
 
 def execute_saved_action(
@@ -199,19 +157,9 @@ def execute_operations(
     reports: dict[str, list[dict[str, Any]]] = {}
     for operation in operations:
         operation_id = operation["operation_id"]
-        op_data, invalid_report = _parse_operation_data_json(operation.get("data_json"), query)
-        if invalid_report is None:
-            invalid_report = _invalid_dispatcher_arguments_report(query, op_data)
-
-        _audit_action_operation(
-            query,
-            operation_id,
-            op_data,
-            user,
-            audit_fn,
-            include_arguments=invalid_report is None,
+        op_data, invalid_report = _parse_and_audit_operation(
+            operation.get("data_json"), query, operation_id, user, audit_fn
         )
-
         report = (
             [invalid_report]
             if invalid_report is not None
@@ -346,26 +294,86 @@ def process_action_batch(trigger: str, items: list[TriggeredAction]) -> None:
             logger.exception("Error processing action batch for trigger=%s user=%s", trigger, uname)
 
 
-def validate_action(new_action: Any) -> Optional[Response]:
-    """Validate a new action"""
-    try:
-        action = ActionModel.model_validate(new_action)
-    except ValidationError as e:
-        return bad_request(err=format_action_validation_error(e))
+def _validate_operations_list(operations: Any, *, scope: str) -> Optional[Response]:
+    if not isinstance(operations, list):
+        return bad_request(
+            err="'operations' must be a list of operations."
+            if scope == "action"
+            else "You must specify a list of operations."
+        )
 
-    for operation in action.operations:
-        specification = actions.get_specification(operation.operation_id)
+    if scope == "action" and not operations:
+        return bad_request(err="You must specify at least one operation.")
+
+    if any(
+        not isinstance(op, dict) or not isinstance(op.get("operation_id"), str) or not op["operation_id"]
+        for op in operations
+    ):
+        return bad_request(err="Every operation must specify an operation_id.")
+
+    operation_ids = [op["operation_id"] for op in operations]
+    if len(operation_ids) != len(set(operation_ids)):
+        target = "the action" if scope == "action" else "request"
+        return bad_request(err=f"You must have a maximum of one operation of each type in {target}.")
+
+    return None
+
+
+def validate_execute_request(execute_req: Any) -> Optional[Response]:
+    """Validate a direct operation execution request payload."""
+    if not isinstance(execute_req, dict):
+        return bad_request(err="Incorrect data structure!")
+
+    if error := _validate_operations_list(execute_req.get("operations"), scope="request"):
+        return error
+
+    query = execute_req.get("query")
+    if not isinstance(query, str) or not query:
+        return bad_request(err="You must specify a query.")
+
+    return None
+
+
+def validate_action(new_action: Any) -> Optional[Response]:  # noqa: C901
+    """Validate a new action"""
+    if not isinstance(new_action, dict):
+        return bad_request(err="Incorrect data structure!")
+
+    if "name" not in new_action:
+        return bad_request(err="You must specify a name.")
+    if not isinstance(new_action["name"], str) or not new_action["name"]:
+        return bad_request(err="Name cannot be empty.")
+
+    if "query" not in new_action:
+        return bad_request(err="You must specify a query.")
+    if not isinstance(new_action["query"], str) or not new_action["query"]:
+        return bad_request(err="Query cannot be empty.")
+
+    operations = new_action.get("operations")
+    if operations is None:
+        return bad_request(err="You must specify a list of operations.")
+    if error := _validate_operations_list(operations, scope="action"):
+        return error
+
+    triggers = new_action.get("triggers", [])
+    if not isinstance(triggers, list) or any(not isinstance(t, str) or t not in VALID_TRIGGERS for t in triggers):
+        return bad_request(err="Invalid trigger provided.")
+
+    for operation in operations:
+        op_id = operation["operation_id"]
+        try:
+            op_data = parse_data_json(operation.get("data_json"), allow_empty=False)
+        except ValueError as e:
+            return bad_request(err=f"Invalid arguments for operation {op_id}: {e}")
+
+        specification = actions.get_specification(op_id)
         if specification is None:
-            return bad_request(
-                err=f"The operation ID provided ({operation.operation_id}) does not match any enabled operations."
-            )
+            return bad_request(err=f"The operation ID provided ({op_id}) does not match any enabled operations.")
 
         try:
-            specification.validate_arguments(operation.data)
+            specification.validate_arguments(op_data)
         except ValidationError as e:
-            return bad_request(
-                err=f"Invalid arguments for operation {operation.operation_id}: {format_validation_error(e)}"
-            )
+            return bad_request(err=f"Invalid arguments for operation {op_id}: {format_validation_error(e)}")
 
     return None
 
@@ -377,17 +385,8 @@ def _execute_bulk_operation(
     user: Optional[User],
     auth_token: str | None,
 ) -> None:
-    parsed_data, invalid_report = _parse_operation_data_json(operation.data_json, intersected_query)
-    if invalid_report is None:
-        invalid_report = _invalid_dispatcher_arguments_report(intersected_query, parsed_data)
-
-    _audit_action_operation(
-        intersected_query,
-        operation.operation_id,
-        parsed_data,
-        user,
-        bulk_execute_on_query,
-        include_arguments=invalid_report is None,
+    parsed_data, invalid_report = _parse_and_audit_operation(
+        operation.data_json, intersected_query, operation.operation_id, user, bulk_execute_on_query
     )
 
     if invalid_report:

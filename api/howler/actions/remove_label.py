@@ -1,4 +1,4 @@
-from typing import Annotated, Optional
+from typing import Annotated
 
 from howler.actions.models import (
     ActionArguments,
@@ -32,7 +32,7 @@ class RemoveLabelArguments(ActionArguments):
     label: NonEmptyStr
 
 
-def execute(query: str, category: str = "generic", label: Optional[str] = None, **kwargs):
+def execute(query: str, category: str = "generic", label: str = "", **kwargs):
     """Remove a label from a hit.
 
     Args:
@@ -40,26 +40,6 @@ def execute(query: str, category: str = "generic", label: Optional[str] = None, 
         category (str, optional): The category of label from which to remove the label. Defaults to "generic".
         label (str, optional): The label to remove. Defaults to None.
     """
-    if category not in CATEGORIES:
-        return [
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "Invalid Category",
-                "message": f"'{category}' is not a valid category.",
-            }
-        ]
-
-    if not label:
-        return [
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "Invalid Label",
-                "message": "Label cannot be empty.",
-            }
-        ]
-
     report = []
 
     ds = datastore()

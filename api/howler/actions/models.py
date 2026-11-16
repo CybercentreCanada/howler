@@ -19,8 +19,7 @@ from pydantic.fields import FieldInfo
 from howler.odm.models.action import VALID_TRIGGERS
 
 # Supplied to every operation by the dispatcher, never by the user
-RESERVED_ARGUMENTS = frozenset({"query", "user", "request_id", "auth_token"})
-DISPATCHER_ARGUMENTS = RESERVED_ARGUMENTS | {"operation_id"}
+DISPATCHER_ARGUMENTS = frozenset({"query", "user", "request_id", "auth_token", "operation_id"})
 MAX_LISTED_VALUES = 20
 
 
@@ -34,12 +33,14 @@ def one_of(name: str, values: Iterable[str] | Callable[[], Iterable[str]]) -> Af
     Returns:
         AfterValidator: A validator to use in an ``Annotated`` argument type.
     """
+    static_allowed = None if callable(values) else dict.fromkeys(values)
 
     def _check(value: Any) -> Any:
         if value is None:
             return value
 
-        allowed = list(values() if callable(values) else values)
+        allowed = dict.fromkeys(values()) if callable(values) else static_allowed
+        assert allowed is not None  # noqa: S101
         if value not in allowed:
             hint = f" Must be one of: {', '.join(allowed)}." if len(allowed) <= MAX_LISTED_VALUES else ""
             raise ValueError(f"'{value}' is not a valid {name}.{hint}")
@@ -79,38 +80,43 @@ def format_validation_error(error: ValidationError) -> str:
     return "; ".join(messages)
 
 
-def format_action_validation_error(error: ValidationError) -> str:
-    """Preserve legacy action API messages while using model validation."""
-    messages: dict[tuple[tuple[int | str, ...], str], str] = {
-        ((), "model_type"): "Incorrect data structure!",
-        (("name",), "missing"): "You must specify a name.",
-        (("query",), "missing"): "You must specify a query.",
-        (("operations",), "missing"): "You must specify a list of operations.",
-        (("operations",), "list_type"): "'operations' must be a list of operations.",
-        (("operations",), "too_short"): "You must specify at least one operation.",
-        (("triggers",), "value_error"): "Invalid trigger provided.",
-    }
-    for details in error.errors(include_url=False):
-        location = details["loc"]
-        if location in (("name",), ("query",)) and details["type"] != "missing" and not details.get("input"):
-            return f"{str(location[0]).capitalize()} cannot be empty."
+def parse_data_json(
+    data_json: Any,
+    *,
+    allow_empty: bool = True,
+    forbid_dispatcher_args: bool = False,
+) -> dict[str, Any]:
+    """Parse an operation's raw JSON argument string into an argument dictionary."""
+    if data_json is None or (allow_empty and data_json == ""):
+        return {}
 
-        if location == ("operations",) and details.get("input") is None:
-            return "You must specify a list of operations."
+    if not isinstance(data_json, str):
+        raise ValueError("data_json must be a JSON string containing an object.")  # noqa: TRY004
 
-        if message := messages.get((location, details["type"])):
-            return message
+    try:
+        parsed = json.loads(data_json)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"data_json must be valid JSON: {e.msg}.") from e
 
-    return format_validation_error(error)
+    if not isinstance(parsed, dict):
+        raise ValueError("data_json must be a JSON object.")  # noqa: TRY004
+
+    if forbid_dispatcher_args and (reserved := DISPATCHER_ARGUMENTS & set(parsed)):
+        raise ValueError(
+            "; ".join(f"{key}: Extra inputs are not permitted (received {parsed[key]!r})" for key in sorted(reserved))
+        )
+
+    return parsed
 
 
-def invalid_arguments_report(query: str, error: ValidationError) -> dict[str, str]:
+def invalid_arguments_report(query: str, error: ValidationError | str) -> dict[str, str]:
     """Build the report entry returned when an operation is executed with invalid arguments."""
+    message = format_validation_error(error) if isinstance(error, ValidationError) else error
     return {
-        "query": query,
+        "query": f"({query})",
         "outcome": "error",
         "title": "Invalid Arguments",
-        "message": format_validation_error(error),
+        "message": message,
     }
 
 
@@ -222,8 +228,13 @@ class ActionSpecification(BaseModel):
     roles: list[str] = Field(min_length=1, description="The roles allowed to run the operation.")
     steps: list[ActionStep] = Field(default_factory=list, description="The arguments to ask for, grouped in steps.")
     triggers: list[str] = Field(default_factory=list, description="The events that can trigger the operation.")
-    arguments: Optional[type[ActionArguments]] = Field(
-        default=None, exclude=True, description="The model validating the arguments, if the operation accepts any."
+    arguments: Annotated[
+        type[ActionArguments],
+        BeforeValidator(lambda value: ActionArguments if value is None else value),
+    ] = Field(
+        default=ActionArguments,
+        exclude=True,
+        description="The model validating the arguments, if the operation accepts any.",
     )
 
     @field_validator("triggers")
@@ -236,7 +247,7 @@ class ActionSpecification(BaseModel):
 
     @model_validator(mode="after")
     def _validate_arguments_model(self) -> "ActionSpecification":
-        fields = (self.arguments or ActionArguments).model_fields
+        fields = self.arguments.model_fields
 
         if reserved := DISPATCHER_ARGUMENTS & set(fields):
             raise ValueError(f"The arguments model declares reserved argument(s): {', '.join(sorted(reserved))}.")
@@ -256,25 +267,18 @@ class ActionSpecification(BaseModel):
 
     @classmethod
     def from_legacy(cls, specification: Mapping[str, Any]) -> "ActionSpecification":
-        """Build a specification from the dict format, deriving allowed argument names from its steps.
-
-        Args:
-            specification (Mapping[str, Any]): The dict specification returned by an operation.
-
-        Returns:
-            ActionSpecification: The specification, accepting only arguments declared in ``steps``.
-        """
+        """Build a specification from the dict format, deriving allowed argument names from its steps."""
         field_definitions: dict[str, Any] = {}
         raw_steps = specification.get("steps")
         if isinstance(raw_steps, list):
             for raw_step in raw_steps:
-                if isinstance(raw_step, ActionStep):
-                    step_args: Any = raw_step.args
-                elif isinstance(raw_step, Mapping):
-                    step_args = raw_step.get("args")
-                else:
-                    step_args = None
-
+                step_args: Any = (
+                    raw_step.args
+                    if isinstance(raw_step, ActionStep)
+                    else raw_step.get("args")
+                    if isinstance(raw_step, Mapping)
+                    else None
+                )
                 if not isinstance(step_args, Mapping):
                     continue
 
@@ -292,80 +296,9 @@ class ActionSpecification(BaseModel):
         return cls.model_validate({**specification, "arguments": arguments_model})
 
     def validate_arguments(self, data: Mapping[str, Any]) -> ActionArguments:
-        """Validate the arguments an operation is executed with.
-
-        Args:
-            data (Mapping[str, Any]): The arguments to validate.
-
-        Raises:
-            ValidationError: The arguments are invalid.
-
-        Returns:
-            ActionArguments: The validated arguments.
-        """
-        return (self.arguments or ActionArguments).model_validate(dict(data))
+        """Validate the arguments an operation is executed with."""
+        return self.arguments.model_validate(dict(data))
 
     def to_ui_dict(self) -> dict[str, Any]:
         """Serialize the specification in the format expected by the UI."""
         return self.model_dump(mode="json", by_alias=True, exclude_none=True)
-
-
-class OperationModel(BaseModel):
-    """Pydantic counterpart of the ``Operation`` ODM model."""
-
-    operation_id: str = Field(min_length=1, description="The ID of the action.")
-    data_json: Optional[str] = Field(
-        default=None, description="The data necessary to execute the action, in raw JSON format."
-    )
-
-    @field_validator("data_json")
-    @classmethod
-    def _validate_data_json(cls, value: Optional[str]) -> Optional[str]:
-        if value is None:
-            return value
-
-        try:
-            parsed = json.loads(value)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"data_json must be valid JSON: {e.msg}") from e
-
-        if not isinstance(parsed, dict):
-            raise ValueError("data_json must be a JSON object.")  # noqa: TRY004
-
-        return value
-
-    @property
-    def data(self) -> dict[str, Any]:
-        """The parsed operation arguments."""
-        return json.loads(self.data_json) if self.data_json else {}
-
-
-class ActionModel(BaseModel):
-    """Pydantic counterpart of the ``Action`` ODM model."""
-
-    action_id: Optional[str] = Field(default=None, description="A UUID for this action")
-    name: str = Field(min_length=1, description="The name of the action.")
-    query: str = Field(min_length=1, description="The query this action is run against.")
-    triggers: list[str] = Field(default_factory=list, description="A list of events for which trigger this action")
-    operations: list[OperationModel] = Field(
-        min_length=1, description="A list of the operations this action consists of."
-    )
-    owner: Optional[str] = Field(default=None, description="The person owning the object.")
-    admins: list[str] = Field(default_factory=list, description="The group administrator for this object.")
-    members: list[str] = Field(default_factory=list, description="The group who can modify the object.")
-
-    @field_validator("triggers")
-    @classmethod
-    def _validate_triggers(cls, value: list[str]) -> list[str]:
-        if invalid := set(value) - set(VALID_TRIGGERS):
-            raise ValueError(f"Invalid trigger(s) provided: {', '.join(sorted(invalid))}")
-
-        return value
-
-    @model_validator(mode="after")
-    def _validate_unique_operations(self) -> "ActionModel":
-        operation_ids = [operation.operation_id for operation in self.operations]
-        if len(operation_ids) != len(set(operation_ids)):
-            raise ValueError("You must have a maximum of one operation of each type in the action.")
-
-        return self

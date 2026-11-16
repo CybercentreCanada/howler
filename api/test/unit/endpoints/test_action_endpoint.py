@@ -38,81 +38,99 @@ def _configure_auth(mock_auth_service, mock_quota_tracker):
 
 
 @pytest.mark.parametrize(
-    ("updates", "omitted", "message"),
+    ("payload", "expected_error"),
     [
-        ({}, "name", "You must specify a name."),
-        ({"name": ""}, None, "Name cannot be empty."),
-        ({"name": None}, None, "Name cannot be empty."),
-        ({}, "query", "You must specify a query."),
-        ({"query": ""}, None, "Query cannot be empty."),
-        ({"query": None}, None, "Query cannot be empty."),
-        ({}, "operations", "You must specify a list of operations."),
-        ({"operations": None}, None, "You must specify a list of operations."),
-        ({"operations": "banana"}, None, "'operations' must be a list of operations."),
-        ({"operations": []}, None, "You must specify at least one operation."),
+        (None, "Incorrect data structure!"),
+        ({"name": None, "query": "howler.id:*", "operations": []}, "Name cannot be empty."),
+        ({"name": "Test", "query": None, "operations": []}, "Query cannot be empty."),
+        ({"name": "Test", "query": "howler.id:*", "operations": None}, "You must specify a list of operations."),
         (
-            {"operations": [{"operation_id": "add_label"}, {"operation_id": "add_label"}]},
-            None,
+            {"name": "Test", "query": "howler.id:*", "operations": [{"operation_id": []}]},
+            "Every operation must specify an operation_id.",
+        ),
+        (
+            {
+                "name": "Test",
+                "query": "howler.id:*",
+                "operations": [{"operation_id": "add_label"}, {"operation_id": "add_label"}],
+            },
             "You must have a maximum of one operation of each type in the action.",
         ),
-        ({"triggers": ["invalid"]}, None, "Invalid trigger provided."),
     ],
 )
-def test_validate_action_preserves_legacy_messages(updates, omitted, message, request_context: Flask):
+def test_validate_action_structure(payload, expected_error, request_context: Flask):
     from howler.services.action_service import validate_action
 
-    action = {
-        "name": "Test action",
-        "query": "howler.id:*",
-        "operations": [{"operation_id": "add_label"}],
-        **updates,
-    }
-    if omitted is not None:
-        del action[omitted]
-
     with request_context.test_request_context():
-        response = validate_action(action)
+        response = validate_action(payload)
 
     assert response is not None
     assert response.status_code == 400
-    assert response.get_json()["api_error_message"] == message
+    assert response.get_json()["api_error_message"] == expected_error
 
 
 @pytest.mark.parametrize(
-    ("action", "message"),
+    ("operation_id", "data_json", "expected_error"),
     [
-        (None, "Incorrect data structure!"),
-        ([], "Incorrect data structure!"),
-        ("invalid", "Incorrect data structure!"),
-        (42, "Incorrect data structure!"),
-        ({}, "You must specify a name."),
-        ({"name": ""}, "Name cannot be empty."),
-        ({"name": "Test action"}, "You must specify a query."),
-        ({"name": "Test action", "query": ""}, "Query cannot be empty."),
-        ({"name": "Test action", "query": "howler.id:*"}, "You must specify a list of operations."),
+        ("unknown", "{}", "does not match any enabled operations"),
+        ("add_label", "{", "data_json must be valid JSON"),
+        ("add_label", "[]", "data_json must be a JSON object"),
+        ("add_label", '{"category":"generic","label":"ok","extra":1}', "extra"),
+        ("add_label", '{"category":"generic","label":"ok","query":"x"}', "query"),
+        ("promote", '{"escalation":"evidence"}', "must provide an assessment"),
+        ("promote", '{"escalation":"evidence","assessment":"development"}', "not an evidence assessment"),
+        ("demote", '{"escalation":"miss"}', "must provide an assessment value when demoting to miss"),
+        ("demote", '{"escalation":"miss","assessment":"attempt"}', "not a miss assessment"),
+        ("promote", '{"escalation":"evidence","assessment":"attempt"}', None),
+        ("demote", '{"escalation":"miss","assessment":"false-positive"}', None),
     ],
 )
-def test_validate_action_rejects_incomplete_payloads(action, message, request_context: Flask):
+def test_validate_action_operation_arguments(operation_id, data_json, expected_error, request_context: Flask):
     from howler.services.action_service import validate_action
 
+    payload = {
+        "name": "Test",
+        "query": "howler.id:*",
+        "operations": [{"operation_id": operation_id, "data_json": data_json}],
+    }
     with request_context.test_request_context():
-        response = validate_action(action)
+        response = validate_action(payload)
 
-    assert response is not None
-    assert response.status_code == 400
-    assert response.get_json()["api_error_message"] == message
+    if expected_error is None:
+        assert response is None
+    else:
+        assert response is not None
+        assert response.status_code == 400
+        assert expected_error in response.get_json()["api_error_message"]
 
 
-@pytest.mark.parametrize("operation", [{}, None, "invalid", {"operation_id": []}])
-def test_validate_action_reports_malformed_operations(operation, request_context: Flask):
-    from howler.services.action_service import validate_action
+@pytest.mark.parametrize(
+    ("payload", "expected_error"),
+    [
+        (None, "Incorrect data structure!"),
+        ({}, "You must specify a list of operations."),
+        ({"operations": [{}]}, "Every operation must specify an operation_id."),
+        (
+            {"operations": [{"operation_id": "add_label"}, {"operation_id": "add_label"}]},
+            "You must have a maximum of one operation of each type in request.",
+        ),
+        ({"operations": [{"operation_id": "add_label"}]}, "You must specify a query."),
+        ({"operations": [{"operation_id": "add_label"}], "query": ""}, "You must specify a query."),
+        ({"operations": [{"operation_id": "add_label"}], "query": "howler.id:*"}, None),
+    ],
+)
+def test_validate_execute_request(payload, expected_error, request_context: Flask):
+    from howler.services.action_service import validate_execute_request
 
     with request_context.test_request_context():
-        response = validate_action({"name": "Test action", "query": "howler.id:*", "operations": [operation]})
+        response = validate_execute_request(payload)
 
-    assert response is not None
-    assert response.status_code == 400
-    assert "operations.0" in response.get_json()["api_error_message"]
+    if expected_error is None:
+        assert response is None
+    else:
+        assert response is not None
+        assert response.status_code == 400
+        assert response.get_json()["api_error_message"] == expected_error
 
 
 @patch("howler.security.login.audit")
@@ -215,204 +233,52 @@ def test_get_actions_caps_results(
 
 
 @pytest.mark.parametrize(
-    "extra",
-    [{"obsolete_argument": "legacy"}, *[{key: "spoofed"} for key in sorted(DISPATCHER_ARGUMENTS)]],
+    "bad_data_json",
+    [
+        "{",
+        "[]",
+        42,
+        *[json.dumps({"category": "generic", "label": "ok", key: "spoofed"}) for key in sorted(DISPATCHER_ARGUMENTS)],
+    ],
 )
-@patch("howler.security.login.audit")
-@patch("howler.security.login.QUOTA_TRACKER")
-@patch("howler.security.login.auth_service")
-@patch("howler.services.action_service.audit")
-@patch("howler.actions.add_label.execute")
-@patch("howler.actions.datastore")
-def test_execute_operations_rejects_extra_and_reserved_arguments(
-    mock_datastore,
-    mock_add_label_execute,
-    mock_action_audit,
-    mock_auth_service,
-    mock_quota_tracker,
-    mock_login_audit,
-    extra: dict[str, str],
-    request_context: Flask,
-):
-    _configure_auth(mock_auth_service, mock_quota_tracker)
-    request_data = {
-        "query": "howler.id:*",
-        "request_id": "request-1",
-        "operations": [
-            {
-                "operation_id": "add_label",
-                "data_json": json.dumps(
-                    {
-                        "category": "generic",
-                        "label": "kept",
-                        **extra,
-                    }
-                ),
-            }
-        ],
-    }
-
-    with request_context.test_request_context(
-        "/api/v1/action/execute",
-        method="POST",
-        json=request_data,
-        headers={"Authorization": "Bearer ."},
-    ):
-        from howler.api.v1.action import execute_operations
-
-        result: Response = execute_operations()
-
-    assert result.status_code == 200
-    report = result.get_json()["api_response"]["add_label"][0]
-    assert report["title"] == "Invalid Arguments"
-    assert next(iter(extra)) in report["message"]
-    mock_add_label_execute.assert_not_called()
-    mock_datastore.assert_not_called()
-    audit_record = mock_action_audit.call_args.args[1]
-    assert audit_record["query"] == "howler.id:*"
-    assert audit_record["operation_id"] == "add_label"
-    assert audit_record["user"]["uname"] == "test"
-    assert mock_action_audit.call_args.args[4] is execute_operations
-
-
-@pytest.mark.parametrize("reserved", [{key: "spoofed"} for key in sorted(DISPATCHER_ARGUMENTS)])
-@patch("howler.security.login.audit")
-@patch("howler.security.login.QUOTA_TRACKER")
-@patch("howler.security.login.auth_service")
-@patch("howler.services.action_service.datastore")
-@patch("howler.services.action_service.audit")
-@patch("howler.actions.add_label.execute")
-def test_execute_action_rejects_reserved_stored_arguments(
-    mock_add_label_execute,
-    mock_action_audit,
-    mock_datastore,
-    mock_auth_service,
-    mock_quota_tracker,
-    mock_login_audit,
-    reserved: dict[str, str],
-    request_context: Flask,
-):
-    _configure_auth(mock_auth_service, mock_quota_tracker)
-    mock_datastore.return_value.action.get.return_value = SimpleNamespace(
-        query="howler.id:*",
-        operations=[
-            SimpleNamespace(
-                operation_id="add_label",
-                data_json=json.dumps({"category": "generic", "label": "stored", **reserved}),
-            )
-        ],
-    )
-
-    with request_context.test_request_context(
-        "/api/v1/action/action-id/execute",
-        method="POST",
-        json={"request_id": "request-1"},
-        headers={"Authorization": "Bearer ."},
-    ):
-        from howler.api.v1.action import execute_action
-
-        result: Response = execute_action(id="action-id")
-
-    assert result.status_code == 200
-    report = result.get_json()["api_response"]["add_label"][0]
-    assert report["title"] == "Invalid Arguments"
-    assert next(iter(reserved)) in report["message"]
-    mock_add_label_execute.assert_not_called()
-    audit_record = mock_action_audit.call_args.args[1]
-    assert audit_record["query"] == "howler.id:*"
-    assert audit_record["operation_id"] == "add_label"
-    assert audit_record["user"]["uname"] == "test"
-    assert mock_action_audit.call_args.args[4] is execute_action
-
-
-@pytest.mark.parametrize("data_json", ["{", "[]", 42])
-@patch("howler.security.login.audit")
-@patch("howler.security.login.QUOTA_TRACKER")
-@patch("howler.security.login.auth_service")
-@patch("howler.services.action_service.audit")
-@patch("howler.services.action_service.actions.execute", return_value=[])
-def test_execute_operations_reports_bad_data_json_and_continues(
-    mock_execute,
-    mock_action_audit,
-    mock_auth_service,
-    mock_quota_tracker,
-    mock_login_audit,
-    data_json,
-    request_context: Flask,
-):
-    _configure_auth(mock_auth_service, mock_quota_tracker)
-    request_data = {
-        "query": "howler.id:*",
-        "request_id": "request-1",
-        "operations": [
-            {"operation_id": "add_label", "data_json": data_json},
-            {"operation_id": "remove_label", "data_json": "{}"},
-        ],
-    }
-
-    with request_context.test_request_context(
-        "/api/v1/action/execute",
-        method="POST",
-        json=request_data,
-        headers={"Authorization": "Bearer ."},
-    ):
-        from howler.api.v1.action import execute_operations
-
-        result: Response = execute_operations()
-
-    reports = result.get_json()["api_response"]
-    assert reports["add_label"][0]["title"] == "Invalid Arguments"
-    assert reports["remove_label"] == []
-    mock_execute.assert_called_once_with(
-        operation_id="remove_label",
-        request_id="request-1",
-        query="howler.id:*",
-        user=mock_action_audit.call_args.args[1]["user"],
-    )
-
-
-@pytest.mark.parametrize("data_json", ["{", "[]", 42])
-@patch("howler.security.login.audit")
-@patch("howler.security.login.QUOTA_TRACKER")
-@patch("howler.security.login.auth_service")
 @patch("howler.services.action_service.datastore")
 @patch("howler.services.action_service.audit")
 @patch("howler.services.action_service.actions.execute", return_value=[])
-def test_execute_action_reports_bad_data_json_and_continues(
+def test_execute_operations_and_saved_action_report_invalid_data_json_and_continue(
     mock_execute,
-    mock_action_audit,
+    mock_audit,
     mock_datastore,
-    mock_auth_service,
-    mock_quota_tracker,
-    mock_login_audit,
-    data_json,
-    request_context: Flask,
+    bad_data_json,
 ):
-    _configure_auth(mock_auth_service, mock_quota_tracker)
+    from howler.services import action_service
+
+    user = {"uname": "test", "type": ["admin"]}
+    audit_fn = lambda: None  # noqa: E731
     mock_datastore.return_value.action.get.return_value = SimpleNamespace(
         query="howler.id:*",
         operations=[
-            SimpleNamespace(operation_id="add_label", data_json=data_json),
+            SimpleNamespace(operation_id="add_label", data_json=bad_data_json),
             SimpleNamespace(operation_id="remove_label", data_json="{}"),
         ],
     )
 
-    with request_context.test_request_context(
-        "/api/v1/action/action-id/execute",
-        method="POST",
-        json={"request_id": "request-1"},
-        headers={"Authorization": "Bearer ."},
-    ):
-        from howler.api.v1.action import execute_action
+    reports = action_service.execute_saved_action(
+        "action-id",
+        query_override=None,
+        request_id="request-1",
+        user=user,  # type: ignore[arg-type]
+        audit_fn=audit_fn,
+    )
 
-        result: Response = execute_action(id="action-id")
-
-    reports = result.get_json()["api_response"]
+    assert reports is not None
     assert reports["add_label"][0]["title"] == "Invalid Arguments"
     assert reports["remove_label"] == []
     mock_execute.assert_called_once_with(
         operation_id="remove_label",
         request_id="request-1",
         query="howler.id:*",
-        user=mock_action_audit.call_args.args[1]["user"],
+        user=user,
     )
+    first_audit = mock_audit.call_args_list[0].args[1]
+    assert first_audit == {"user": user, "query": "howler.id:*", "operation_id": "add_label"}
+    assert mock_audit.call_args_list[0].args[4] is audit_fn

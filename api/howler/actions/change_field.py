@@ -32,16 +32,6 @@ def execute(query: str, field: str, value: str, **kwargs):
         field (str): The field to update.
         value (str): The value to set it to. Must be a string.
     """
-    if field not in Hit.flat_fields():
-        return [
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "Invalid field",
-                "message": (f"Field '{field}' does not exist. You must pick a valid entry from the howler index."),
-            }
-        ]
-
     report = []
 
     try:

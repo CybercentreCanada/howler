@@ -1,19 +1,16 @@
 import json
-from importlib import import_module
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
 import requests
-from howler.actions.models import ActionArguments, ActionSpecification
 from howler.app import app
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import Assessment, Status
 from howler.odm.randomizer import random_model_obj
 from howler.services import hit_service
-from pydantic import ValidationError
 
 with (Path(__file__).parent / "sentinel.json").open() as _alert:
     SENTINEL_ALERT = json.load(_alert)
@@ -50,102 +47,6 @@ def mock_patch(url: str, **kwargs):
     res.headers["Content-Type"] = "application/json"
 
     return res
-
-
-@pytest.mark.parametrize(
-    ("module_name", "arguments"),
-    [
-        ("sentinel.actions.send_to_sentinel", {}),
-        ("sentinel.actions.update_defender_xdr_alert", {}),
-        ("sentinel.actions.update_defender_xdr_incident", {}),
-        (
-            "sentinel.actions.azure_emit_hash",
-            {"url": "https://example.test/logic-app", "field": "file.hash.sha256"},
-        ),
-    ],
-)
-def test_action_specifications_are_typed_serializable_and_validate_arguments(module_name: str, arguments: dict):
-    specification = import_module(module_name).specification()
-
-    assert isinstance(specification, ActionSpecification)
-    assert json.dumps(specification.to_ui_dict())
-    assert isinstance(specification.validate_arguments(arguments), specification.arguments or ActionArguments)
-
-
-@pytest.mark.parametrize(
-    ("module_name", "arguments"),
-    [
-        ("sentinel.actions.send_to_sentinel", {}),
-        ("sentinel.actions.update_defender_xdr_alert", {}),
-        ("sentinel.actions.update_defender_xdr_incident", {}),
-        (
-            "sentinel.actions.azure_emit_hash",
-            {"url": "https://example.test/logic-app", "field": "file.hash.sha256"},
-        ),
-    ],
-)
-def test_action_specifications_reject_unknown_arguments(module_name: str, arguments: dict):
-    specification = import_module(module_name).specification()
-
-    with pytest.raises(ValidationError):
-        specification.validate_arguments({**arguments, "unexpected": "value"})
-
-
-def test_azure_emit_hash_validates_sha256_fields(monkeypatch):
-    from sentinel.actions import azure_emit_hash
-
-    monkeypatch.delenv("SHA256_LOGIC_APP_URL", raising=False)
-    specification = azure_emit_hash.specification()
-    sha256_fields = azure_emit_hash._sha256_fields()
-
-    assert sha256_fields
-    assert specification.steps[0].options["field"] == sha256_fields
-    specification.validate_arguments({"url": "https://example.test/logic-app", "field": sha256_fields[0]})
-
-    with pytest.raises(ValidationError):
-        specification.validate_arguments({"url": "https://example.test/logic-app", "field": "not-a-sha256-field"})
-
-
-@pytest.mark.parametrize("arguments", [{}, {"url": ""}])
-def test_azure_emit_hash_requires_url_without_environment_variable(monkeypatch, arguments: dict):
-    from sentinel.actions.azure_emit_hash import specification
-
-    monkeypatch.delenv("SHA256_LOGIC_APP_URL", raising=False)
-
-    with pytest.raises(ValidationError, match="url argument cannot be empty"):
-        specification().validate_arguments(arguments)
-
-
-@pytest.mark.parametrize("arguments", [{}, {"url": ""}])
-def test_azure_emit_hash_accepts_environment_url_when_argument_is_omitted_or_empty(monkeypatch, arguments: dict):
-    from sentinel.actions.azure_emit_hash import specification
-
-    monkeypatch.setenv("SHA256_LOGIC_APP_URL", "https://example.test/from-environment")
-
-    validated = specification().validate_arguments(arguments)
-
-    assert validated.url is None
-
-
-def test_azure_emit_hash_resolves_environment_url_at_runtime(monkeypatch):
-    from sentinel.actions import azure_emit_hash
-
-    monkeypatch.delenv("SHA256_LOGIC_APP_URL", raising=False)
-    datastore = Mock()
-    hit = SimpleNamespace(howler=SimpleNamespace(id="hit-id"))
-    datastore.hit.search.return_value = {"items": [hit], "total": 1}
-    monkeypatch.setattr(azure_emit_hash, "datastore", Mock(return_value=datastore))
-    monkeypatch.setattr(azure_emit_hash, "is_derived_evidence", Mock(return_value=False))
-    monkeypatch.setattr(azure_emit_hash, "get", Mock(return_value="deadbeef"))
-    post = Mock()
-    monkeypatch.setattr(azure_emit_hash.requests, "post", post)
-
-    environment_url = "https://example.test/from-environment"
-    monkeypatch.setenv("SHA256_LOGIC_APP_URL", environment_url)
-    result = azure_emit_hash.execute("howler.id:hit-id")
-
-    assert result[0]["outcome"] == "success"
-    assert post.call_args.args[0] == environment_url
 
 
 @patch("requests.post", mock_post)

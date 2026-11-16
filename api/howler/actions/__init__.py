@@ -1,6 +1,8 @@
+import functools
 import importlib
 import os
 import re
+from collections.abc import Mapping
 from pathlib import Path
 from types import ModuleType
 from typing import Any, Optional
@@ -14,8 +16,6 @@ from howler.odm.models.user import User
 from howler.plugins import get_plugins
 
 logger = get_logger(__file__)
-
-_warned_legacy_operations: set[str] = set()
 
 PLUGIN_PATH = Path(os.environ.get("HWL_PLUGIN_DIRECTORY", "/etc/howler/plugins"))
 
@@ -44,6 +44,7 @@ def __sanitize_specification(spec: ActionSpecification) -> dict[str, Any]:
     return sanitized
 
 
+@functools.cache
 def _load_specification(operation: ModuleType) -> ActionSpecification:
     """Load the specification of an operation, adapting the legacy dict format."""
     specification = operation.specification()
@@ -51,14 +52,11 @@ def _load_specification(operation: ModuleType) -> ActionSpecification:
     if isinstance(specification, ActionSpecification):
         return specification
 
-    if operation.OPERATION_ID not in _warned_legacy_operations:
-        _warned_legacy_operations.add(operation.OPERATION_ID)
-        logger.warning(
-            "Operation %s returns a dict specification, so only its step argument names are validated. "
-            "Return an ActionSpecification instead.",
-            operation.OPERATION_ID,
-        )
-
+    logger.warning(
+        "Operation %s returns a dict specification, so only its step argument names are validated. "
+        "Return an ActionSpecification instead.",
+        operation.OPERATION_ID,
+    )
     return ActionSpecification.from_legacy(specification)
 
 
@@ -177,6 +175,7 @@ def execute(
     user: User | None,
     request_id: Optional[str] = None,
     auth_token: Optional[str] = None,
+    arguments: Optional[Mapping[str, Any]] = None,
     **kwargs,
 ) -> list[dict[str, Any]]:
     """Execute an operation with strict validation of its arguments."""
@@ -222,12 +221,11 @@ def execute(
             }
         ]
 
+    raw_arguments = kwargs if arguments is None else {**kwargs, **arguments}
     try:
-        validated_arguments = specification.validate_arguments(kwargs)
+        validated_arguments = specification.validate_arguments(raw_arguments)
     except ValidationError as e:
-        report = invalid_arguments_report(query, e)
-        report["query"] = f"({query})"
-        return [report]
+        return [invalid_arguments_report(query, e)]
 
     # Unset arguments are left out so the operation's own defaults still apply
     operation_kwargs = validated_arguments.model_dump(exclude_unset=True)

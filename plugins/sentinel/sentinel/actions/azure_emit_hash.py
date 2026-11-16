@@ -1,22 +1,11 @@
-import functools
 import os
-from typing import Annotated, Any, Optional
+from typing import Any, Optional
 
 import requests
-from howler.actions.models import (
-    ActionArguments,
-    ActionDescription,
-    ActionSpecification,
-    ActionStep,
-    EmptyToNone,
-    StepValidationRule,
-    one_of,
-)
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.odm.models.action import VALID_TRIGGERS
 from howler.odm.models.hit import Hit
-from pydantic import model_validator
 from pydash import get
 
 from sentinel.utils.hit_types import is_derived_evidence
@@ -26,39 +15,13 @@ logger = get_logger(__file__)
 OPERATION_ID = "azure_emit_hash"
 
 
-@functools.cache
-def _sha256_fields() -> list[str]:
-    return [field for field in Hit.flat_fields().keys() if field.endswith("sha256")]
-
-
-class AzureEmitHashArguments(ActionArguments):
-    """Arguments of the azure_emit_hash operation."""
-
-    url: Annotated[Optional[str], EmptyToNone] = None
-    field: Annotated[str, one_of("field", _sha256_fields)] = "file.hash.sha256"
-
-    @model_validator(mode="after")
-    def _require_url(self) -> "AzureEmitHashArguments":
-        if not self.url and not os.environ.get("SHA256_LOGIC_APP_URL"):
-            raise ValueError("url argument cannot be empty.")
-
-        return self
-
-
 def execute(
     query: str,
-    url: Optional[str] = None,
+    url: Optional[str] = os.environ.get("SHA256_LOGIC_APP_URL", None),
     field: str = "file.hash.sha256",
     **kwargs,
 ) -> list[dict[str, Any]]:
-    """Emit SHA256 hashes to Sentinel.
-
-    Args:
-        query (str): The query on which to apply this automation.
-        url (str, optional): The Logic App URL to send hashes to.
-        field (str): The SHA256 field to emit.
-    """
-    url = url or os.environ.get("SHA256_LOGIC_APP_URL")
+    "Emit hashes to sentinel"
     result = datastore().hit.search(query, rows=1)
     hits = result["items"]
 
@@ -111,7 +74,7 @@ def execute(
         if hash_value:
             try:
                 requests.post(
-                    url,
+                    url,  # noqa: F821
                     json={
                         "indicator": hash_value,
                         "type": "FileSha256",
@@ -152,21 +115,23 @@ def execute(
     return report
 
 
-def specification() -> ActionSpecification:
-    """Specify the action's UI metadata and argument validation."""
-    return ActionSpecification(
-        id=OPERATION_ID,
-        title="Emit sha256 hash to Sentinel",
-        priority=28,
-        description=ActionDescription(short="Emit sha256 hash to Sentinel", long=execute.__doc__),
-        roles=["automation_basic"],
-        steps=[
-            ActionStep(
-                args={"url": [], "field": []},
-                options={"field": _sha256_fields()},
-                validation={"warn": StepValidationRule(query="-_exists_:$field")},
-            )
+def specification():
+    "Specify various properties of the action, such as title, descriptions, permissions and input steps."
+    return {
+        "id": OPERATION_ID,
+        "title": "Emit sha256 hash to Sentinel",
+        "priority": 28,
+        "description": {
+            "short": "Emit sha256 hash to Sentinel",
+            "long": execute.__doc__,
+        },
+        "roles": ["automation_basic"],
+        "steps": [
+            {
+                "args": {"url": [], "field": []},
+                "options": {"field": [field for field in Hit.flat_fields().keys() if field.endswith("sha256")]},
+                "validation": {"warn": {"query": "-_exists_:$field"}},
+            }
         ],
-        triggers=VALID_TRIGGERS,
-        arguments=AzureEmitHashArguments,
-    )
+        "triggers": VALID_TRIGGERS,
+    }

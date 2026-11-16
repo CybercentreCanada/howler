@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from elasticsearch.exceptions import ConflictError, NotFoundError
+from elasticsearch.exceptions import NotFoundError
 from pydantic import Field
 
 from howler.actions.models import ActionArguments, ActionDescription, ActionSpecification, ActionStep
@@ -364,6 +364,12 @@ def _migration_specification(operation_id, arguments):
 def _install_migration_specifications(monkeypatch):
     specifications = {
         "typed": _migration_specification("typed", MigrationArguments),
+        "empty_typed": ActionSpecification(
+            id="empty_typed",
+            title="empty_typed",
+            description=ActionDescription(short="empty_typed"),
+            roles=["admin"],
+        ),
         "transition": _migration_specification("transition", MigrationTransitionArguments),
         "legacy": ActionSpecification.from_legacy(
             {
@@ -383,27 +389,35 @@ def _install_migration_specifications(monkeypatch):
     return specifications
 
 
-def test_action_arguments_migration_strips_typed_extra_and_reserved_keys(monkeypatch):
+@pytest.mark.parametrize(
+    ("operation_id", "input_data", "expected_data"),
+    [
+        ("typed", {"value": "kept", "obsolete": 1, "query": "spoofed", "auth_token": "spoofed"}, {"value": "kept"}),
+        ("empty_typed", {"obsolete": 1, "query": "spoofed"}, {}),
+        (
+            "legacy",
+            {"plugin_value": "kept", "undeclared": 1, "query": "x", "auth_token": "x", "operation_id": "x"},
+            {"plugin_value": "kept"},
+        ),
+    ],
+)
+def test_action_arguments_migration_strips_undeclared_and_reserved_keys(
+    monkeypatch, operation_id, input_data, expected_data
+):
     _install_migration_specifications(monkeypatch)
-    operations = [
-        {
-            "operation_id": "typed",
-            "data_json": json.dumps(
-                {"value": "kept", "obsolete": "removed", "query": "spoofed", "auth_token": "spoofed"}
-            ),
-        }
-    ]
+    operations = [{"operation_id": operation_id, "data_json": json.dumps(input_data)}]
 
     migrated, changed = _migrate_operations(operations, "action-id")
 
     assert changed
-    assert json.loads(migrated[0]["data_json"]) == {"value": "kept"}
+    assert json.loads(migrated[0]["data_json"]) == expected_data
 
 
 @pytest.mark.parametrize(
     ("transition", "escalation", "expected", "should_change"),
     [
         ("promote", None, "alert", True),
+        ("promote", "", "alert", True),
         ("demote", None, "hit", True),
         ("demote", "alert", "alert", False),
         ("assess", None, None, False),
@@ -422,92 +436,31 @@ def test_action_arguments_migration_backfills_transition_escalations(
 
     assert changed is should_change
     if not should_change:
-        assert migrated is operations or migrated == operations
-        return
-    assert json.loads(migrated[0]["data_json"]) == {"transition": transition, "escalation": expected}
+        assert migrated == operations
+    else:
+        assert json.loads(migrated[0]["data_json"]) == {"transition": transition, "escalation": expected}
 
 
-@pytest.mark.parametrize("escalation", ["", None])
-def test_action_arguments_migration_backfills_empty_or_none_escalation(monkeypatch, escalation):
+def test_action_arguments_migration_normalizes_empty_and_preserves_invalid_operations(monkeypatch, caplog):
     _install_migration_specifications(monkeypatch)
-    operations = [
-        {
-            "operation_id": "transition",
-            "data_json": json.dumps({"status": "open", "transition": "promote", "escalation": escalation}),
-        }
-    ]
+    migrated_empty, changed_empty = _migrate_operations([{"operation_id": "typed", "data_json": ""}], "action-id")
+    assert changed_empty
+    assert migrated_empty[0]["data_json"] == "{}"
 
-    migrated, changed = _migrate_operations(operations, "action-id")
-
-    assert changed
-    assert json.loads(migrated[0]["data_json"]) == {
-        "status": "open",
-        "transition": "promote",
-        "escalation": "alert",
-    }
-
-
-def test_action_arguments_migration_warns_on_unhashable_transition_without_aborting(monkeypatch, caplog):
-    _install_migration_specifications(monkeypatch)
-    operations = [{"operation_id": "transition", "data_json": '{"transition":["promote"]}'}]
-
-    migrated, changed = _migrate_operations(operations, "action-id")
-
-    assert not changed
-    assert migrated == operations
-    assert "invalid arguments after migration" in caplog.text
-    assert "transition" in caplog.text
-
-
-def test_action_arguments_migration_normalizes_empty_data_json(monkeypatch):
-    _install_migration_specifications(monkeypatch)
-    operations = [{"operation_id": "typed", "data_json": ""}]
-
-    migrated, changed = _migrate_operations(operations, "action-id")
-
-    assert changed
-    assert migrated[0]["data_json"] == "{}"
-
-
-def test_action_arguments_migration_strips_undeclared_and_reserved_keys_from_legacy_specs(monkeypatch):
-    _install_migration_specifications(monkeypatch)
-    operations = [
-        {
-            "operation_id": "legacy",
-            "data_json": json.dumps(
-                {
-                    "plugin_value": "kept",
-                    "undeclared": "removed",
-                    "query": "removed",
-                    "auth_token": "removed",
-                    "operation_id": "spoofed",
-                }
-            ),
-        }
-    ]
-
-    migrated, changed = _migrate_operations(operations, "action-id")
-
-    assert changed
-    assert json.loads(migrated[0]["data_json"]) == {"plugin_value": "kept"}
-
-
-def test_action_arguments_migration_warns_and_preserves_unknown_malformed_and_invalid_operations(monkeypatch, caplog):
-    _install_migration_specifications(monkeypatch)
     operations = [
         {"operation_id": "disabled_plugin", "data_json": '{"obsolete": 1}'},
         {"operation_id": "typed", "data_json": "{"},
         {"operation_id": "typed", "data_json": "[]"},
         {"operation_id": "typed", "data_json": json.dumps({"value": ""})},
+        {"operation_id": "transition", "data_json": '{"transition":["promote"]}'},
     ]
-
     migrated, changed = _migrate_operations(operations, "action-id")
 
     assert not changed
     assert migrated == operations
     assert "unknown or disabled" in caplog.text
-    assert "malformed data_json" in caplog.text
-    assert "data_json is not an object" in caplog.text
+    assert "data_json must be valid JSON" in caplog.text
+    assert "data_json must be a JSON object" in caplog.text
     assert "invalid arguments after migration" in caplog.text
 
 
@@ -521,15 +474,7 @@ def _make_action_arguments_datastore(source, *, update_side_effect=None):
         MAX_VERSION_CONFLICT_ATTEMPTS=3,
         datastore=SimpleNamespace(client=client),
         scan_with_retry=MagicMock(
-            return_value=iter(
-                [
-                    {
-                        "_id": "action-id",
-                        "_index": "howler-actions_hot",
-                        "_source": deepcopy(source),
-                    }
-                ]
-            )
+            return_value=iter([{"_id": "action-id", "_index": "howler-actions_hot", "_source": deepcopy(source)}])
         ),
     )
 
@@ -571,37 +516,21 @@ def test_action_arguments_migration_retries_conflicts_and_is_idempotent(monkeypa
     client.indices.refresh.assert_not_called()
 
 
-def test_action_arguments_migration_raises_after_conflict_retries_are_exhausted(monkeypatch):
+def test_action_arguments_migration_conflict_exhaustion_and_deleted_docs(monkeypatch):
     _install_migration_specifications(monkeypatch)
     source = {"operations": [{"operation_id": "typed", "data_json": '{"value":"kept","old":1}'}]}
-    datastore, collection, client = _make_action_arguments_datastore(source)
-    client.update.side_effect = VersionConflictException("write conflict")
+    datastore, collection, client = _make_action_arguments_datastore(
+        source, update_side_effect=VersionConflictException("write conflict")
+    )
 
     with pytest.raises(VersionConflictException, match="write conflict"):
         ActionArgumentsMigration().run(datastore)
-
     assert client.update.call_count == collection.MAX_VERSION_CONFLICT_ATTEMPTS
-    client.indices.refresh.assert_not_called()
 
-
-def test_action_arguments_migration_retries_elasticsearch_conflict_error(monkeypatch):
-    _install_migration_specifications(monkeypatch)
-    source = {"operations": [{"operation_id": "typed", "data_json": '{"value":"kept","old":1}'}]}
-    datastore, _, client = _make_action_arguments_datastore(source)
-    client.update.side_effect = [ConflictError("write conflict", None, {}), {"result": "updated"}]
-
-    assert ActionArgumentsMigration().run(datastore) == 1
-    assert client.update.call_count == 2
-
-
-def test_action_arguments_migration_ignores_document_deleted_before_update(monkeypatch):
-    _install_migration_specifications(monkeypatch)
-    source = {"operations": [{"operation_id": "typed", "data_json": '{"value":"kept","old":1}'}]}
-    datastore, _, client = _make_action_arguments_datastore(source)
-    client.update.side_effect = NotFoundError("document deleted", None, {})
-
+    datastore, _, client = _make_action_arguments_datastore(
+        source, update_side_effect=NotFoundError("document deleted", None, {})
+    )
     assert ActionArgumentsMigration().run(datastore) == 0
-    client.update.assert_called_once()
     client.indices.refresh.assert_not_called()
 
 

@@ -1,13 +1,13 @@
 import os
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from typing import Annotated, Literal
 from unittest.mock import patch
 
 import pytest
 from pydantic import Field, ValidationError
 
-from howler.actions import execute, get_specification, specifications
+from howler.actions import _load_specification, execute, specifications
 from howler.actions.models import DISPATCHER_ARGUMENTS, ActionArguments, ActionSpecification, ActionStep
 from howler.config import config
 from howler.odm.models.howler_data import HitStatusTransition
@@ -71,7 +71,9 @@ def test_execute_missing_roles():
     assert result["message"].startswith("The operation ID provided (add_label) requires permissions you do not have")
 
 
-def test_execute_invalid_argument_with_sanitizer_delimiter():
+@patch("howler.actions.datastore")
+@patch("howler.actions.add_label.execute")
+def test_execute_rejects_extra_and_reserved_arguments(mock_execute, mock_datastore):
     user: User = random_model_obj(User)
     user.type = ["actionrunner_basic"]
 
@@ -92,26 +94,16 @@ def test_execute_invalid_argument_with_sanitizer_delimiter():
             "message": "===: Extra inputs are not permitted (received 'unexpected')",
         }
     ]
+    for reserved in sorted(DISPATCHER_ARGUMENTS):
+        reserved_result = execute(
+            "add_label",
+            "howler.id:*",
+            user=user,
+            arguments={"category": "generic", "label": "test", reserved: "spoofed"},
+        )
+        assert reserved_result[0]["title"] == "Invalid Arguments"
+        assert reserved in reserved_result[0]["message"]
 
-
-@patch("howler.actions.datastore")
-@patch("howler.actions.add_label.execute")
-def test_execute_rejects_extra_arguments(mock_execute, mock_datastore):
-    user: User = random_model_obj(User)
-    user.type = ["actionrunner_basic"]
-
-    result = execute(
-        "add_label",
-        "howler.id:*",
-        user=user,
-        category="generic",
-        label="kept",
-        obsolete_argument="from an older action",
-    )
-
-    assert len(result) == 1
-    assert result[0]["title"] == "Invalid Arguments"
-    assert "obsolete_argument" in result[0]["message"]
     mock_execute.assert_not_called()
     mock_datastore.assert_not_called()
 
@@ -174,50 +166,31 @@ def test_execute_forwards_auth_token_separately_from_validated_arguments(mock_ex
     )
 
 
-@pytest.mark.parametrize("extra_key", ["undeclared", *sorted(DISPATCHER_ARGUMENTS)])
-def test_legacy_specification_derives_step_arguments_and_forbids_extras(extra_key):
-    specification = ActionSpecification.from_legacy(
-        {
-            "id": "legacy",
-            "title": "Legacy",
-            "description": {"short": "Legacy plugin operation"},
-            "roles": ["admin"],
-            "steps": [{"args": {"plugin_value": [], "conditional_value": ["plugin_value:enabled"]}}],
-        }
-    )
+def test_legacy_specification_loads_warns_once_and_forbids_extras(caplog):
+    legacy_module = ModuleType("legacy_plugin_op")
+    legacy_module.OPERATION_ID = "legacy_plugin_op"  # type: ignore[attr-defined]
+    legacy_module.specification = lambda: {  # type: ignore[attr-defined]
+        "id": "legacy_plugin_op",
+        "title": "Legacy",
+        "description": {"short": "Legacy plugin operation"},
+        "roles": ["admin"],
+        "steps": [
+            {"args": {}, "options": {}, "validation": {}},
+            {"args": {"plugin_value": [], "conditional_value": ["plugin_value:enabled"]}},
+        ],
+    }
 
-    assert specification.arguments is not None
-    assert issubclass(specification.arguments, ActionArguments)
+    specification = _load_specification(legacy_module)
+    assert _load_specification(legacy_module) is specification
+    assert caplog.text.count("legacy_plugin_op returns a dict specification") == 1
     assert set(specification.arguments.model_fields) == {"plugin_value", "conditional_value"}
+    assert specification.validate_arguments({"plugin_value": "enabled"}).model_dump(exclude_unset=True) == {
+        "plugin_value": "enabled"
+    }
 
-    validated = specification.validate_arguments({"plugin_value": "enabled"})
-    assert validated.model_dump(exclude_unset=True) == {"plugin_value": "enabled"}
-
-    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
-        specification.validate_arguments({"plugin_value": "enabled", extra_key: "not permitted"})
-
-
-@pytest.mark.parametrize("reserved", sorted(DISPATCHER_ARGUMENTS))
-def test_legacy_specification_cannot_declare_reserved_step_arguments(reserved):
-    with pytest.raises(ValidationError, match="declares reserved argument"):
-        ActionSpecification.from_legacy(
-            {
-                "id": "legacy",
-                "title": "Legacy",
-                "description": {"short": "Legacy plugin operation"},
-                "roles": ["admin"],
-                "steps": [{"args": {reserved: []}}],
-            }
-        )
-
-
-@pytest.mark.parametrize("reserved", sorted(DISPATCHER_ARGUMENTS))
-def test_typed_specification_does_not_strip_reserved_arguments(reserved):
-    specification = get_specification("add_label")
-    assert specification is not None
-
-    with pytest.raises(ValidationError):
-        specification.validate_arguments({"category": "generic", "label": "valid", reserved: "spoofed"})
+    for extra_key in ("undeclared", *sorted(DISPATCHER_ARGUMENTS)):
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            specification.validate_arguments({"plugin_value": "enabled", extra_key: "not permitted"})
 
 
 @pytest.mark.parametrize("model_options", [{}, {"arguments": None}, {"arguments": ActionArguments}])
@@ -232,18 +205,28 @@ def test_argument_free_specification(model_options):
         }
     )
 
-    assert isinstance(specification.validate_arguments({}), ActionArguments)
+    assert specification.arguments is ActionArguments
     assert specification.validate_arguments({}).model_dump() == {}
     assert specification.to_ui_dict()["steps"] == []
     assert "arguments" not in specification.to_ui_dict()
 
-    for extra_key in ("unexpected", *sorted(DISPATCHER_ARGUMENTS)):
-        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
-            specification.validate_arguments({extra_key: "not permitted"})
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        specification.validate_arguments({"unexpected": "not permitted"})
 
 
-@pytest.mark.parametrize("model_options", [{}, {"arguments": None}])
-def test_specification_without_argument_model_rejects_step_arguments(model_options):
+def test_specification_model_invariants():
+    for reserved in sorted(DISPATCHER_ARGUMENTS):
+        with pytest.raises(ValidationError, match="declares reserved argument"):
+            ActionSpecification.from_legacy(
+                {
+                    "id": "legacy",
+                    "title": "Legacy",
+                    "description": {"short": "Legacy"},
+                    "roles": ["admin"],
+                    "steps": [{"args": {reserved: []}}],
+                }
+            )
+
     with pytest.raises(ValidationError, match="Step argument\\(s\\) missing from the arguments model"):
         ActionSpecification.model_validate(
             {
@@ -252,17 +235,25 @@ def test_specification_without_argument_model_rejects_step_arguments(model_optio
                 "description": {"short": "Step requires an argument model"},
                 "roles": ["admin"],
                 "steps": [{"args": {"value": []}}],
-                **model_options,
             }
         )
 
+    class HiddenArguments(ActionArguments):
+        hidden: str
 
-def test_action_step_rejects_options_for_another_step():
+    with pytest.raises(ValidationError, match="not included in any step"):
+        ActionSpecification(
+            id="hidden-arg",
+            title="Hidden arg",
+            description={"short": "Hidden arg"},
+            roles=["admin"],
+            arguments=HiddenArguments,
+        )
+
     with pytest.raises(ValidationError, match="Options are provided for 'other'"):
         ActionStep(args={"count": []}, options={"other": ["1"]})
 
 
-@pytest.mark.parametrize("prebuilt", [False, True])
 @pytest.mark.parametrize(
     ("conditions", "options", "error"),
     [
@@ -278,20 +269,19 @@ def test_action_step_rejects_options_for_another_step():
         ([], {"mode:enabled": ["0"]}, "'0' is offered for 'count' but is invalid"),
     ],
 )
-def test_action_step_validates_against_specification_arguments(prebuilt, conditions, options, error):
+def test_action_step_validates_against_specification_arguments(conditions, options, error):
     class StepArguments(ActionArguments):
         mode: Literal["enabled", "disabled"]
         count: Annotated[int, Field(gt=0)]
 
     step = {"args": {"count": conditions}, "options": {"count": options}}
-    steps = [{"args": {"mode": []}}, ActionStep.model_validate(step) if prebuilt else step]
     specification = {
         "id": "step-validation",
         "title": "Step validation",
         "description": {"short": "Validate action steps"},
         "roles": ["admin"],
         "arguments": StepArguments,
-        "steps": steps,
+        "steps": [{"args": {"mode": []}}, step],
     }
 
     if error is not None:
@@ -300,20 +290,6 @@ def test_action_step_validates_against_specification_arguments(prebuilt, conditi
     else:
         result = ActionSpecification.model_validate(specification)
         assert result.to_ui_dict()["steps"][1] == step
-
-
-def test_typed_specification_cannot_declare_operation_id():
-    class OperationIdArguments(ActionArguments):
-        operation_id: str
-
-    with pytest.raises(ValidationError, match="declares reserved argument"):
-        ActionSpecification(
-            id="operation-id",
-            title="Operation ID",
-            description={"short": "Operation ID argument"},
-            roles=["admin"],
-            arguments=OperationIdArguments,
-        )
 
 
 @patch("howler.actions.datastore")

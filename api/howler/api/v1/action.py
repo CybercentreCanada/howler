@@ -370,31 +370,13 @@ def execute_operations(**kwargs) -> Response:
     }
     """
     execute_req = request.json
-    if not isinstance(execute_req, dict):
-        return bad_request(err="Incorrect data structure!")
-
-    operations = execute_req.get("operations")
-    if not isinstance(operations, list):
-        return bad_request(err="You must specify a list of operations.")
-
-    if any(
-        not isinstance(operation, dict) or not isinstance(operation.get("operation_id"), str)
-        for operation in operations
-    ):
-        return bad_request(err="Every operation must specify an operation_id.")
-
-    operation_ids = [operation["operation_id"] for operation in operations]
-    if len(operation_ids) != len(set(operation_ids)):
-        return bad_request(err="You must have a maximum of one operation of each type in request.")
-
-    query = execute_req.get("query")
-    if not isinstance(query, str) or not query:
-        return bad_request(err="You must specify a query.")
+    if error := action_service.validate_execute_request(execute_req):
+        return error
 
     reports = action_service.execute_operations(
-        query,
+        execute_req["query"],
         execute_req.get("request_id"),
-        operations,
+        execute_req["operations"],
         kwargs.get("user"),
         audit_fn=execute_operations,
     )

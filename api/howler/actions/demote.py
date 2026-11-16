@@ -76,16 +76,6 @@ def execute(
         assessment (str, optional): The assessment to apply if demoting to miss. Required if escalation is "miss".
         rationale (str, optional): The optional rationale to apply if demoting to miss.
     """
-    if escalation not in ESCALATIONS:
-        return [
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "Invalid Escalation",
-                "message": f"'{escalation}' is not a valid escalation.",
-            }
-        ]
-
     report = []
 
     ds = datastore()
@@ -117,17 +107,6 @@ def execute(
                 ],
             )
         else:
-            if not assessment:
-                report.append(
-                    {
-                        "query": query,
-                        "outcome": "error",
-                        "title": "Missing assessment",
-                        "message": "You must provide as assessment value when demoting to miss.",
-                    }
-                )
-                return report
-
             ds.hit.update_by_query(
                 query,
                 [

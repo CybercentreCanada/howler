@@ -1,5 +1,4 @@
 import requests
-from howler.actions.models import ActionDescription, ActionSpecification
 from howler.common.exceptions import HowlerRuntimeError
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -13,7 +12,6 @@ from sentinel.utils.tenant_utils import get_token
 logger = get_logger(__file__)
 
 OPERATION_ID = "update_defender_xdr_incident"
-
 
 properties_map = {
     "graph": {
@@ -193,13 +191,17 @@ def execute(query: str, **kwargs):
     return report
 
 
-def specification() -> ActionSpecification:
-    """Specify the Defender incident action's UI metadata and argument validation."""
-    return ActionSpecification(
-        id=OPERATION_ID,
-        title="Update Microsoft Defender XDR incident",
-        priority=8,
-        description=ActionDescription(short="Update Microsoft Defender XDR incident", long=execute.__doc__),
-        roles=["automation_basic"],
-        triggers=VALID_TRIGGERS,
-    )
+def specification():
+    "Update Defender action specification"
+    return {
+        "id": OPERATION_ID,
+        "title": "Update Microsoft Defender XDR incident",
+        "priority": 8,
+        "description": {
+            "short": "Update Microsoft Defender XDR incident",
+            "long": execute.__doc__,
+        },
+        "roles": ["automation_basic"],
+        "steps": [{"args": {}, "options": {}, "validation": {}}],
+        "triggers": VALID_TRIGGERS,
+    }

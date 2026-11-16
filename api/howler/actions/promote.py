@@ -73,16 +73,6 @@ def execute(
         assessment (str, optional): Required if escalation is evidence, assessment to apply.
         rationale (str, optional): The optional rationale to apply if promoting to evidence.
     """
-    if escalation not in ESCALATIONS:
-        return [
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "Invalid Escalation",
-                "message": f"'{escalation}' is not a valid escalation.",
-            }
-        ]
-
     report = []
 
     ds = datastore()
@@ -114,17 +104,6 @@ def execute(
                 ],
             )
         else:
-            if not assessment:
-                report.append(
-                    {
-                        "query": query,
-                        "outcome": "error",
-                        "title": "Missing assessment",
-                        "message": "You must provide as assessment value when promoting to evidence.",
-                    }
-                )
-                return report
-
             ds.hit.update_by_query(query, hit_helper.assess_hit(assessment, rationale))
 
         report.append(

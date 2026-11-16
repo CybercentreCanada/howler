@@ -5,11 +5,11 @@ import logging
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
-from elasticsearch.exceptions import ConflictError, NotFoundError
+from elasticsearch.exceptions import NotFoundError
 from pydantic import ValidationError
 
 from howler import actions
-from howler.actions.models import format_validation_error
+from howler.actions.models import format_validation_error, parse_data_json
 from howler.datastore.exceptions import VersionConflictException
 from howler.datastore.migrations.base import Migration
 
@@ -68,41 +68,15 @@ def _migrate_operations(operations: Any, action_id: str, *, log_warnings: bool =
             continue
 
         raw_data_json = operation.get("data_json")
-        parsed_data: dict[str, Any]
-        force_rewrite = False
-        if raw_data_json is None:
-            parsed_data = {}
-        elif raw_data_json == "":
-            parsed_data = {}
-            force_rewrite = True
-        elif isinstance(raw_data_json, str):
-            try:
-                parsed_data = json.loads(raw_data_json)
-            except json.JSONDecodeError as error:
-                _migration_warning(
-                    action_id,
-                    "operation %s has malformed data_json (%s); preserving it unchanged.",
-                    operation_id,
-                    error,
-                    log_warnings=log_warnings,
-                )
-                updated_operations.append(operation)
-                continue
-
-            if not isinstance(parsed_data, dict):
-                _migration_warning(
-                    action_id,
-                    "operation %s data_json is not an object; preserving it unchanged.",
-                    operation_id,
-                    log_warnings=log_warnings,
-                )
-                updated_operations.append(operation)
-                continue
-        else:
+        force_rewrite = raw_data_json == ""
+        try:
+            parsed_data = parse_data_json(raw_data_json)
+        except ValueError as error:
             _migration_warning(
                 action_id,
-                "operation %s data_json is not a string; preserving it unchanged.",
+                "operation %s has invalid data_json (%s); preserving it unchanged.",
                 operation_id,
+                error,
                 log_warnings=log_warnings,
             )
             updated_operations.append(operation)
@@ -160,42 +134,35 @@ class ActionArgumentsMigration(Migration):
         affected_documents = 0
         for hit in collection.scan_with_retry(query={"match_all": {}}, index=collection.name):
             doc_id = hit["_id"]
-            updated_operations, changed = _migrate_operations(hit.get("_source", {}).get("operations"), doc_id)
+            _, changed = _migrate_operations(hit.get("_source", {}).get("operations"), doc_id)
             if not changed:
                 continue
 
             for attempt in range(collection.MAX_VERSION_CONFLICT_ATTEMPTS):
                 try:
-                    try:
-                        current = collection.with_retries(client.get, index=hit["_index"], id=doc_id)
-                    except NotFoundError:
-                        break
-
+                    current = collection.with_retries(client.get, index=hit["_index"], id=doc_id)
                     updated_operations, still_changed = _migrate_operations(
                         current.get("_source", {}).get("operations"), doc_id, log_warnings=False
                     )
                     if not still_changed:
                         break
 
-                    try:
-                        collection.with_retries(
-                            client.update,
-                            index=hit["_index"],
-                            id=doc_id,
-                            doc={"operations": updated_operations},
-                            if_seq_no=current["_seq_no"],
-                            if_primary_term=current["_primary_term"],
-                            raise_conflicts=True,
-                        )
-                    except NotFoundError:
-                        break
+                    collection.with_retries(
+                        client.update,
+                        index=hit["_index"],
+                        id=doc_id,
+                        doc={"operations": updated_operations},
+                        if_seq_no=current["_seq_no"],
+                        if_primary_term=current["_primary_term"],
+                        raise_conflicts=True,
+                    )
                     affected_documents += 1
                     break
-                except (ConflictError, VersionConflictException) as error:
+                except NotFoundError:
+                    break
+                except VersionConflictException:
                     if attempt == collection.MAX_VERSION_CONFLICT_ATTEMPTS - 1:
-                        if isinstance(error, VersionConflictException):
-                            raise
-                        raise VersionConflictException(str(error)) from error
+                        raise
 
         if affected_documents:
             collection.with_retries(client.indices.refresh, index=collection.name)
