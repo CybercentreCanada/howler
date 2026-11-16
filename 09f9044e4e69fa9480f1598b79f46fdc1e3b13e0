@@ -1,0 +1,25 @@
+plan.md
+  h_f221159cc9f457 36,44,171,198,209,234
+  s_71823f7d2ac076::t_75a347e71a4f95 3-35,37-43,45-170,172-197,199-208,210-233,235-281,284-285,287-289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "09f9044e4e69fa9480f1598b79f46fdc1e3b13e0",
+  "prompts": {},
+  "humans": {
+    "h_f221159cc9f457": {
+      "author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  },
+  "sessions": {
+    "s_71823f7d2ac076": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e38dbe261ffeBB1fW67Tyw5yFl",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
