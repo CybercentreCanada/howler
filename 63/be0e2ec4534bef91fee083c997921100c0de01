@@ -1,0 +1,21 @@
+ui/src/utils/actionUtils.test.ts
+  s_cc645b80a72ac6::t_05360475d06590 5
+ui/src/components/routes/action/edit/ActionEditor.tsx
+  s_cc645b80a72ac6::t_05360475d06590 32,166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "63be0e2ec4534bef91fee083c997921100c0de01",
+  "prompts": {},
+  "sessions": {
+    "s_cc645b80a72ac6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19316787061843f418c4b0e2cfd4b8cd",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
