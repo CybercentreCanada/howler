@@ -1,0 +1,47 @@
+.agents/agents/orchestrator/agent.md
+  s_69df2ce1f316a9::t_7ac018e188ec70 16
+.agents/skills/howler-worktrees/SKILL.md
+  s_69df2ce1f316a9::t_815db8d86c8c4b 36-37
+  s_69df2ce1f316a9::t_511080032187f5 19
+AGENTS.md
+  s_69df2ce1f316a9::t_cf8ce31a0e7d4d 153
+  s_69df2ce1f316a9::t_7a1cd3fcbe0e31 137
+.github/workflows/api-workflow.yml
+  s_b253d7f9807c80::t_6c4b296f4c6a00 232
+.github/workflows/sentinel-plugin-workflow.yml
+  s_b253d7f9807c80::t_9c6f05123d0f17 61,107,183,208
+.github/workflows/client-workflow.yml
+  s_b253d7f9807c80::t_9c6f05123d0f17 68,119,209,249
+  s_b253d7f9807c80::t_4f780f77d4f8c7 227
+.github/workflows/evidence-plugin-workflow.yml
+  s_b253d7f9807c80::t_9c6f05123d0f17 62,101,184
+.github/workflows/sync-plugin-workflow.yml
+  s_b253d7f9807c80::t_9c6f05123d0f17 64,112,188,213
+.github/workflows/mcp-workflow.yml
+  s_b253d7f9807c80::t_9c6f05123d0f17 70,115
+  s_b253d7f9807c80::t_7a6230c04383a7 233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f90b22c614a451df72d0c151460a24b3be8e5560",
+  "prompts": {},
+  "sessions": {
+    "s_69df2ce1f316a9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e39b53c75ffe7TajA30Dx2YT6V",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": null
+    },
+    "s_b253d7f9807c80": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e39c56b2effets4Uxif7Ta6M9f",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

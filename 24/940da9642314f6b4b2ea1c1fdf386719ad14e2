@@ -1,0 +1,39 @@
+api/howler/external/elasticsearch_rest.py
+  s_16777664874710::t_c565c2e0238549 1-321
+api/howler/external/elasticsearch_initialize_collections.py
+  s_16777664874710::t_c565c2e0238549 1-100
+api/test/unit/test_elasticsearch_preflight.py
+  s_16777664874710::t_c565c2e0238549 1-5,13-18,21,23,28,31-42,45,52-100,109,113,118,139,144,161,163-220,222-224,226-278,280-317,319-324
+docs/migration/step9-upgrade-rehearsal.md
+  s_16777664874710::t_c565c2e0238549 169-171
+api/test/unit/test_elasticsearch_cutover_verify.py
+  s_16777664874710::t_c565c2e0238549 1-1851
+documentation/mkdocs.yml
+  s_16777664874710::t_c565c2e0238549 46
+documentation/docs/installation/elasticsearch_9_preflight.md
+  s_16777664874710::t_c565c2e0238549 8-11,15-19,30-43,45-50,57-61,64-78,97-98
+api/howler/external/elasticsearch_preflight.py
+  s_16777664874710::t_c565c2e0238549 8,11,13-20,26-28,31-95,97-114,116-118,157-159,162,223-260,267,271,275-277,283-296,308-320,329-331,337
+api/howler/external/elasticsearch_cutover_verify.py
+  s_16777664874710::t_c565c2e0238549 1-1765
+documentation/docs/installation/elasticsearch_9_cutover.md
+  s_16777664874710::t_c565c2e0238549 1-655
+api/test/unit/test_elasticsearch_initialize_collections.py
+  s_16777664874710::t_c565c2e0238549 1-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "24940da9642314f6b4b2ea1c1fdf386719ad14e2",
+  "prompts": {},
+  "sessions": {
+    "s_16777664874710": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e2f08cdf7ffe9fMEvqDq8vOb5S",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
