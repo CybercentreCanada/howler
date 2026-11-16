@@ -1,0 +1,27 @@
+api/test/unit/actions/test_init.py
+  s_cce5f05eeb5f52::t_f386e887612141 76,80-84,88-90,92-99,105-112,116,120-122,138-139,143-148
+api/howler/actions/transition.py
+  s_cce5f05eeb5f52::t_604038f8f8932e 41-46,60,69-75,80-82,293
+api/howler/actions/__init__.py
+  s_cce5f05eeb5f52::t_31f626745b65f5 223
+api/test/unit/endpoints/test_action_endpoint.py
+  s_cce5f05eeb5f52::t_d3bf952d0cfa40 79,85-87,90
+api/test/integration/api/test_actions.py
+  s_cce5f05eeb5f52::t_5d7444bcfe501a 509
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c39d591243979c6ce93218799872f3ee9667bcf0",
+  "prompts": {},
+  "sessions": {
+    "s_cce5f05eeb5f52": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1a4de8bcffe2zxfAPZV3I4Tm9",
+        "model": "gemini-4-carbon"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
