@@ -154,7 +154,7 @@ def test_disabled_extension_leaves_target_unmodified() -> None:
 
 
 def test_extension_field_still_forbids_unknown_input() -> None:
-    """Extra/unknown fields remain rejected on the finalized model, matching legacy strictness."""
+    """Extra and unknown fields remain rejected on the finalized model."""
     registry = ModelExtensionRegistry()
     registry.declare(ExtensionTarget, "evidence", optional(keyword()), plugin="evidence")
     finalized = registry.finalize(ExtensionTarget)

@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 import howler.models.base as model_base
 from howler.models import HowlerEmbeddedModel, HowlerModelValidationError
+from howler.models.case import CaseItem, CaseRule
 from howler.models.event import Event
 from howler.models.hit import Hit
 from howler.models.template import Template
@@ -188,3 +189,43 @@ def test_formatter_failure_falls_back_without_losing_howler_error(monkeypatch: p
 
     assert str(raised.value) == "[hit] Invalid value"
     assert isinstance(raised.value.cause, ValidationError)
+
+
+def test_rule_expiry_error_uses_a_safe_domain_message() -> None:
+    with pytest.raises(HowlerModelValidationError, match="expire after resolved") as raised:
+        CaseRule.validate_howler(
+            {
+                "rule_id": "rule-1",
+                "destination": "folder",
+                "query": "howler.id:*",
+                "author": "analyst",
+                "timeframe": None,
+                "expire_after_resolved": True,
+            }
+        )
+    assert str(raised.value).startswith("[caserule]")
+    assert raised.value.errors and raised.value.cause is not None
+
+
+def test_rule_timeframe_error_keeps_its_positive_integer_guidance() -> None:
+    with pytest.raises(HowlerModelValidationError, match="positive integer"):
+        CaseRule.validate_howler(
+            {"rule_id": "rule-1", "destination": "folder", "query": "q", "author": "a", "timeframe": -1}
+        )
+
+
+def test_case_item_error_explains_the_root_level_constraint() -> None:
+    with pytest.raises(HowlerModelValidationError, match="root-level"):
+        CaseItem.validate_howler({"type": "case", "parent": "folder", "value": "case-1"})
+
+
+def test_domain_message_filter_rejects_untrusted_suffixes() -> None:
+    assert (
+        model_base._public_error_message(
+            {
+                "type": "value_error",
+                "msg": "Value error, Rule cannot expire after resolved when no timeframe is set SECRET",
+            }
+        )
+        == "Invalid value"
+    )

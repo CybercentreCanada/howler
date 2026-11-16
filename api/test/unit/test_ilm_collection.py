@@ -12,11 +12,11 @@ import elasticsearch
 import pytest
 from elastic_transport import ApiResponseMeta, ObjectApiResponse
 
-from howler.common.exceptions import HowlerRuntimeError
+from howler.common.exceptions import HowlerRuntimeError, HowlerValueError
 from howler.config_models import ILMConfig, ILMIndexConfig
 from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import DataStoreException, SearchException
-from howler.models import HowlerModelValidationError
+from howler.models import HowlerESModel, HowlerModelValidationError, keyword, mapping, register_model
 from howler.models import schema as new_schema
 from howler.models.action import Action as SchemaAction
 from howler.models.analytic import Analytic as SchemaAnalytic
@@ -68,6 +68,15 @@ def _make_collection(mock_datastore, ilm_config=None, schema_model=None, model_c
         schema_model=schema_model,
     )
     return col
+
+
+@register_model(index=True, store=True, id_field="key")
+class ReconcileDoc(HowlerESModel):
+    """Small model used to exercise field discovery and reconciliation."""
+
+    key: keyword()
+    name: keyword(description="A plain, statically typed field.")
+    tags: mapping(keyword(), default={}, description="A dynamic-key mapping field.")
 
 
 class TestAsyncTaskOperations:
@@ -236,7 +245,7 @@ def _action_data() -> dict:
     }
 
 
-class TestPydanticPersistence:
+class TestModelPersistence:
     """Focused registered-model persistence and projection behavior."""
 
     def test_normalize_full_document_strips_stored_helpers_and_sets_metadata(self, mock_datastore):
@@ -585,7 +594,7 @@ class TestSearchConstruction:
             },
         }
 
-    def test_dictionary_projection_preserves_legacy_list_item_shape(self, mock_datastore):
+    def test_dictionary_projection_preserves_list_item_shape(self, mock_datastore):
         col = _make_collection(mock_datastore, schema_model=SchemaCase, model_class=SchemaCase)
 
         result = col._format_output(
@@ -1829,3 +1838,340 @@ class TestAddFieldsILMTemplateSync:
             col._add_schema_fields({"new_field": {"type": "keyword"}})
 
             mock_datastore.client.indices.put_index_template.assert_not_called()
+
+
+KEYWORD_MAPPING = {"type": "keyword", "ignore_above": 8191}
+
+
+class TestCollectionFieldDiscovery:
+    def test_fields_describe_registered_model_fields(self, mock_datastore):
+        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        mock_datastore.client.indices.get_mapping.return_value = {
+            "testcol_hot": {
+                "mappings": {
+                    "properties": {
+                        "key": {**KEYWORD_MAPPING, "index": True, "doc_values": True},
+                        "name": {**KEYWORD_MAPPING, "index": True, "doc_values": True},
+                        "tags": {"type": "object"},
+                        "id": {"type": "keyword", "store": True, "doc_values": True},
+                    }
+                }
+            }
+        }
+        mock_datastore.client.field_caps.return_value = {
+            "fields": {
+                "key": {"keyword": {"type": "keyword", "searchable": True, "aggregatable": True}},
+                "name": {"keyword": {"type": "keyword", "searchable": True, "aggregatable": True}},
+                "id": {"keyword": {"type": "keyword", "searchable": True, "aggregatable": True}},
+            }
+        }
+
+        fields = col.fields()
+
+        assert "id" not in fields
+        assert fields["key"]["indexed"] is True
+        assert fields["key"]["stored"] is True
+        assert fields["key"]["type"] == "keyword"
+        assert fields["key"]["description"] is None
+        assert fields["name"]["description"] == "A plain, statically typed field."
+
+    def test_fields_summarize_dynamic_mapping_children(self, mock_datastore):
+        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        mock_datastore.client.indices.get_mapping.return_value = {
+            "testcol_hot": {
+                "mappings": {
+                    "properties": {
+                        "key": KEYWORD_MAPPING,
+                        "name": KEYWORD_MAPPING,
+                        "tags": {"properties": {"first_key": {"type": "keyword", "index": True}}},
+                    }
+                }
+            }
+        }
+        mock_datastore.client.field_caps.return_value = {
+            "fields": {
+                "key": {"keyword": {"type": "keyword", "searchable": True}},
+                "name": {"keyword": {"type": "keyword", "searchable": True}},
+                "tags.first_key": {"keyword": {"type": "keyword", "searchable": True}},
+            }
+        }
+
+        fields = col.fields()
+
+        assert fields["tags"]["description"] == "A dynamic-key mapping field."
+        assert fields["tags"]["type"] == "keyword"
+        assert "tags.first_key" in fields
+
+    def test_fields_can_skip_mapping_children(self, mock_datastore):
+        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        mock_datastore.client.indices.get_mapping.return_value = {
+            "testcol_hot": {
+                "mappings": {
+                    "properties": {
+                        "key": KEYWORD_MAPPING,
+                        "name": KEYWORD_MAPPING,
+                        "tags": {"properties": {"first_key": {"type": "keyword", "index": True}}},
+                    }
+                }
+            }
+        }
+        mock_datastore.client.field_caps.return_value = {"fields": {}}
+
+        fields = col.fields(skip_mapping_children=True)
+
+        assert "tags" in fields
+        assert "tags.first_key" not in fields
+
+    def test_fields_reject_conflicting_mappings(self, mock_datastore):
+        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        mock_datastore.client.indices.get_mapping.return_value = {
+            "testcol-000001": {"mappings": {"properties": {"key": KEYWORD_MAPPING}}},
+            "testcol-000002": {"mappings": {"properties": {"key": {"type": "text", "index": True}}}},
+        }
+        mock_datastore.client.field_caps.return_value = {"fields": {}}
+
+        with pytest.raises(HowlerRuntimeError, match="conflicting mappings"):
+            col.fields()
+
+    def test_fields_reject_multiple_field_types(self, mock_datastore):
+        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        mock_datastore.client.indices.get_mapping.return_value = {
+            "testcol_hot": {"mappings": {"properties": {"key": KEYWORD_MAPPING}}},
+        }
+        mock_datastore.client.field_caps.return_value = {
+            "fields": {
+                "key": {
+                    "keyword": {"type": "keyword", "searchable": True},
+                    "text": {"type": "text", "searchable": True},
+                }
+            }
+        }
+
+        with pytest.raises(HowlerRuntimeError, match="conflicting types"):
+            col.fields()
+
+
+class TestFieldReconciliation:
+    def test_adds_missing_safe_field_to_every_backing_index(self, mock_datastore):
+        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        col._index_list = ["testcol-000001", "testcol-000002"]
+        expected_templates = new_schema.document_mapping(ReconcileDoc)["dynamic_templates"]
+        mock_datastore.client.indices.get_mapping.return_value = {
+            "testcol_hot": {
+                "mappings": {
+                    "properties": {"name": KEYWORD_MAPPING},
+                    "dynamic_templates": expected_templates,
+                }
+            }
+        }
+        mock_datastore.client.field_caps.return_value = {
+            "fields": {"name": {"keyword": {"type": "keyword", "searchable": True}}}
+        }
+        mock_datastore.client.indices.exists_template.return_value = False
+
+        col._check_fields()
+
+        put_mapping_calls = mock_datastore.client.indices.put_mapping.call_args_list
+        indexes_called = {call.kwargs["index"] for call in put_mapping_calls}
+        assert indexes_called == set(col.index_list_full)
+        assert all("key" in call.kwargs["properties"] for call in put_mapping_calls)
+
+    def test_refuses_a_missing_dynamic_template(self, mock_datastore):
+        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        col._index_list = ["testcol_hot"]
+        mock_datastore.client.indices.get_mapping.return_value = {
+            "testcol_hot": {
+                "mappings": {
+                    "properties": {"key": KEYWORD_MAPPING, "name": KEYWORD_MAPPING},
+                    "dynamic_templates": [],
+                }
+            }
+        }
+        mock_datastore.client.field_caps.return_value = {
+            "fields": {
+                "key": {"keyword": {"type": "keyword", "searchable": True}},
+                "name": {"keyword": {"type": "keyword", "searchable": True}},
+            }
+        }
+        mock_datastore.client.indices.exists_template.return_value = False
+
+        with pytest.raises(HowlerValueError, match="Refusing to add or change dynamic mapping templates"):
+            col._check_fields()
+        mock_datastore.client.indices.put_mapping.assert_not_called()
+        mock_datastore.client.indices.put_settings.assert_not_called()
+
+    def test_accepts_a_matching_dynamic_template(self, mock_datastore):
+        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        col._index_list = ["testcol_hot"]
+        expected_templates = new_schema.document_mapping(ReconcileDoc)["dynamic_templates"]
+        mock_datastore.client.indices.get_mapping.return_value = {
+            "testcol_hot": {
+                "mappings": {
+                    "properties": {"key": KEYWORD_MAPPING, "name": KEYWORD_MAPPING},
+                    "dynamic_templates": expected_templates,
+                }
+            }
+        }
+        mock_datastore.client.field_caps.return_value = {
+            "fields": {
+                "key": {"keyword": {"type": "keyword", "searchable": True}},
+                "name": {"keyword": {"type": "keyword", "searchable": True}},
+            }
+        }
+        mock_datastore.client.indices.exists_template.return_value = False
+
+        col._check_fields()
+
+    def test_warns_about_unused_dynamic_templates(self, mock_datastore, caplog):
+        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        expected_templates = new_schema.document_mapping(ReconcileDoc)["dynamic_templates"]
+        unused_template = {
+            "disabled_plugin.*_tpl": {
+                "path_match": "disabled_plugin.*",
+                "mapping": {"type": "keyword", "index": True},
+            }
+        }
+        mock_datastore.client.indices.get_mapping.return_value = {
+            "testcol_hot": {"mappings": {"dynamic_templates": [*expected_templates, unused_template]}}
+        }
+
+        with caplog.at_level("WARNING", logger="howler.api.datastore"):
+            col._check_dynamic_templates()
+
+        assert "retains dynamic templates not used by the active schema" in caplog.text
+
+    def test_requires_active_templates_on_every_backing_index(self, mock_datastore):
+        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        expected_templates = new_schema.document_mapping(ReconcileDoc)["dynamic_templates"]
+        mock_datastore.client.indices.get_mapping.return_value = {
+            "testcol-000001": {"mappings": {"dynamic_templates": expected_templates}},
+            "testcol-000002": {
+                "mappings": {
+                    "dynamic_templates": [
+                        template for template in expected_templates if next(iter(template)) != "tags.*_tpl"
+                    ]
+                }
+            },
+        }
+
+        with pytest.raises(HowlerValueError, match="tags\\.\\*_tpl"):
+            col._check_dynamic_templates()
+
+    def test_preserves_active_dynamic_template_order(self, mock_datastore):
+        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        expected_templates = new_schema.document_mapping(ReconcileDoc)["dynamic_templates"]
+        mock_datastore.client.indices.get_mapping.return_value = {
+            "testcol_hot": {"mappings": {"dynamic_templates": list(reversed(expected_templates))}}
+        }
+
+        with pytest.raises(HowlerValueError, match="order differs"):
+            col._check_dynamic_templates()
+
+    def test_retries_after_expanding_the_field_limit(self, mock_datastore):
+        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        mock_datastore.client.indices.get.return_value = {}
+        expected_templates = new_schema.document_mapping(ReconcileDoc)["dynamic_templates"]
+        mock_datastore.client.indices.get_mapping.return_value = {
+            "testcol_hot": {
+                "mappings": {"properties": {"name": KEYWORD_MAPPING}, "dynamic_templates": expected_templates}
+            }
+        }
+        mock_datastore.client.field_caps.return_value = {
+            "fields": {"name": {"keyword": {"type": "keyword", "searchable": True}}}
+        }
+        mock_datastore.client.indices.exists_template.return_value = False
+        api_error = elasticsearch.BadRequestError(
+            "boom", MagicMock(), {"error": {"reason": "Limit of total fields [10] has been exceeded"}}
+        )
+        mock_datastore.client.indices.put_mapping.side_effect = [api_error, None]
+
+        col._check_fields()
+
+        mock_datastore.client.indices.put_settings.assert_called_once_with(
+            index=[col.index_name], settings={"index.mapping.total_fields.limit": 510}
+        )
+        assert mock_datastore.client.indices.put_mapping.call_count == 2
+
+    @pytest.mark.parametrize(
+        ("live_mapping", "capability", "message"),
+        [
+            ({"type": "text", "index": True}, {"type": "text", "searchable": True}, "expected store type"),
+            (
+                {"type": "keyword", "index": False},
+                {"type": "keyword", "searchable": False},
+                "incompatible indexing",
+            ),
+            (
+                {"type": "keyword", "ignore_above": 128},
+                {"type": "keyword", "searchable": True},
+                "incompatible ignore_above",
+            ),
+        ],
+    )
+    def test_refuses_incompatible_existing_fields(self, mock_datastore, live_mapping, capability, message):
+        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        expected_templates = new_schema.document_mapping(ReconcileDoc)["dynamic_templates"]
+        mock_datastore.client.indices.get_mapping.return_value = {
+            "testcol_hot": {
+                "mappings": {
+                    "properties": {"key": live_mapping, "name": KEYWORD_MAPPING},
+                    "dynamic_templates": expected_templates,
+                }
+            }
+        }
+        cap_type = "keyword" if capability["type"] == "keyword" else "text"
+        mock_datastore.client.field_caps.return_value = {
+            "fields": {
+                "key": {cap_type: capability},
+                "name": {"keyword": {"type": "keyword", "searchable": True}},
+            }
+        }
+        mock_datastore.client.indices.exists_template.return_value = False
+
+        with pytest.raises(HowlerRuntimeError, match=message):
+            col._check_fields()
+
+    def test_refuses_conflicting_active_templates_across_indices(self, mock_datastore):
+        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        expected_templates = new_schema.document_mapping(ReconcileDoc)["dynamic_templates"]
+        mock_datastore.client.indices.get_mapping.return_value = {
+            "testcol-000001": {"mappings": {"dynamic_templates": expected_templates}},
+            "testcol-000002": {
+                "mappings": {
+                    "dynamic_templates": [
+                        template
+                        if next(iter(template)) != "tags.*_tpl"
+                        else {"tags.*_tpl": {"path_match": "tags.*", "mapping": {"type": "text", "index": True}}}
+                        for template in expected_templates
+                    ]
+                }
+            },
+        }
+
+        with pytest.raises(HowlerValueError, match="tags\\.\\*_tpl"):
+            col._check_dynamic_templates()
+
+
+class TestCollectionSchemaSettings:
+    def test_index_settings_use_registered_schema(self, mock_datastore):
+        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+
+        assert col._get_index_settings() == new_schema.index_settings(
+            ReconcileDoc,
+            shards=col.shards,
+            replicas=col.replicas,
+        )
+
+    def test_index_mappings_use_registered_schema(self, mock_datastore):
+        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+
+        assert col._get_index_mappings() == new_schema.document_mapping(ReconcileDoc)
+
+    def test_schema_less_collection_uses_shared_defaults(self, mock_datastore):
+        col = _make_collection(mock_datastore)
+
+        mappings = col._get_index_mappings()
+        settings = col._get_index_settings()
+
+        assert mappings["dynamic_templates"] == new_schema.default_dynamic_templates
+        assert settings["index"]["mapping"]["total_fields"]["limit"] == 1500

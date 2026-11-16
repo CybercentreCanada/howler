@@ -1,3 +1,4 @@
+import inspect
 import uuid
 from datetime import datetime, timedelta
 
@@ -191,3 +192,28 @@ def test_add_apikey_no_exp(mock_auth_service, request_context: Flask):
 
         assert result.status_code == 400
         assert result.json is not None and result.json["api_error_message"] == "API keys must have an expiry date."
+
+
+def test_add_apikey_saves_the_generated_key_on_the_user(request_context: Flask):
+    from howler.api.v1 import auth as auth_api
+
+    user = User.validate_howler({"uname": "user-1", "name": "User One", "password": "hash", "apikeys": {}})
+    storage = MagicMock()
+    storage.user.get_if_exists.return_value = user
+
+    with (
+        request_context.test_request_context(json={"name": "automation", "priv": "RW"}),
+        patch.object(auth_api, "datastore", return_value=storage),
+        patch.object(auth_api, "generate_random_secret", return_value="secret"),
+        patch.object(auth_api.bcrypt, "hash", return_value="bcrypt-hash"),
+        patch.object(auth_api.auth_service, "invalidate_apikey_cache"),
+        patch.object(auth_api.config.auth, "max_apikey_duration_amount", None),
+        patch.object(auth_api.config.auth, "max_apikey_duration_unit", None),
+    ):
+        response: Response = inspect.unwrap(auth_api.add_apikey)(user={"uname": "user-1"})
+
+    assert response.status_code == 200
+    assert response.get_json()["api_response"] == {"apikey": "automation:secret"}
+    assert user.apikeys["automation"].acl == ["R", "W"]
+    assert user.apikeys["automation"].password == "bcrypt-hash"
+    storage.user.save.assert_called_once_with("user-1", user)

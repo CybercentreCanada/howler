@@ -1,5 +1,3 @@
-"""Analytics generated from registered Hit models retain the stored contract."""
-
 from unittest.mock import MagicMock, patch
 
 from howler.models import construct_partial
@@ -8,7 +6,7 @@ from howler.models.user import User
 from howler.services import analytic_service
 
 
-def test_save_from_pydantic_hits_uses_typed_analytic():
+def test_save_from_hits_builds_an_analytic_from_detection_metadata():
     hit = construct_partial(Hit, {"howler": {"analytic": "New Analytic", "detection": "New Detection"}})
     user = User.validate_howler({"uname": "analyst", "name": "Analyst", "password": "hash"})
     storage = MagicMock()
@@ -24,9 +22,10 @@ def test_save_from_pydantic_hits_uses_typed_analytic():
     assert analytic.owner == "analyst"
     assert analytic.detections == ["New Detection"]
     assert analytic.triage_settings.valid_assessments
+    storage.analytic.bulk.assert_called_once_with(plan, refresh=None)
 
 
-def test_matching_analytics_accepts_pydantic_hits():
+def test_matching_analytics_searches_names_from_hit_models():
     hit = construct_partial(Hit, {"howler": {"analytic": "New Analytic"}})
     storage = MagicMock()
     storage.analytic.search.return_value = {"items": []}

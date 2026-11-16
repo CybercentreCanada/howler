@@ -1,15 +1,13 @@
-"""Elasticsearch index-contract builder for the new Pydantic/DSL model registry.
+"""Elasticsearch index-contract builder for the Pydantic/DSL model registry.
 
 Generates settings, mappings (properties + dynamic templates), aliases, and ILM composable
-template payloads directly from ``howler.models.registry.model_registry`` metadata. This module
-is structurally faithful to the legacy ``howler.odm.mapping.build_mapping``/
-``build_templates`` algorithm (same disabled-object rules, same dynamic template shapes, same
-``refuse_all_implicit_mappings``/``strings_as_keywords`` behavior) so the generated contract is
-normalized-compatible with the deterministic legacy contract fixture.
+template payloads directly from ``howler.models.registry.model_registry`` metadata. The generated
+mappings are compatible with indices created by the preceding Howler release (same disabled-object
+rules, dynamic template shapes, and ``refuse_all_implicit_mappings``/``strings_as_keywords``
+behavior).
 
-Only the *schema* (index settings/mappings/templates) is generated here. Document persistence,
-deserialization, search, and update continue to use the legacy ODM models until Step 7/8; callers
-must not use this module for document read/write conversion.
+Only the *schema* (index settings/mappings/templates) is generated here; document conversion is
+handled by the models themselves.
 """
 
 from __future__ import annotations

@@ -61,10 +61,7 @@ and configured Howler extensions. It must:
     read-only; never let two clusters write to one repository. Do not attempt an
     in-place Elasticsearch downgrade.
 
-Any failed or unverified step is **NO-GO**. The synthetic mechanics exercise in
-[`step9-upgrade-rehearsal.md`](https://github.com/CybercentreCanada/howler/blob/main/docs/migration/step9-upgrade-rehearsal.md)
-is developer background only. It is not a representative production rehearsal,
-not production evidence, and does not satisfy this gate.
+Any failed or unverified step is **NO-GO**.
 
 ## Production execution environment for the tools
 

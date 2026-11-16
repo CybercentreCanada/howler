@@ -33,11 +33,9 @@ PLUGIN_NAME = "clue"
 def declare_hit_extension() -> None:
     """Declare the ``clue`` field extension for the ``Hit`` model.
 
-    This is the Pydantic/DSL replacement for the legacy ``Hit.add_namespace("clue", ...)`` call
-    in ``howler.datastore.howler_store``, which is only made when ``config.core.clue.enabled``.
-    Declaring (or not declaring) this extension before ``Hit`` is finalized is what makes Clue
-    support toggle-able; actually finalizing ``Hit`` with this extension applied, and using the
-    finalized model at runtime, is Step 8 (datastore/consumer cutover) work.
+    ``howler.datastore.howler_store`` calls this only when ``config.core.clue.enabled``. Declaring
+    (or not declaring) this extension before ``Hit`` is finalized is what makes Clue support
+    toggle-able.
     """
     if "clue" not in model_extensions.pending(Hit) and not model_extensions.is_finalized(Hit):
         model_extensions.declare(

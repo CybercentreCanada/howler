@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 from flask import Flask, Response
 
+from howler.models import construct_partial
 from howler.models.hit import Hit
 from howler.sample_data.randomizer import random_model_obj
 from howler.services import hit_service
@@ -47,7 +48,7 @@ def _setup_overwrite(monkeypatch, cached_hit, saved_hit):
     return _direct_overwrite_endpoint(cached_hit), save_hit
 
 
-def test_overwrite_strips_cached_synthetic_index_and_preserves_etag_and_refresh(monkeypatch, request_context: Flask):
+def test_overwrite_strips_stored_index_and_preserves_etag_and_refresh(monkeypatch, request_context: Flask):
     cached_hit: Hit = random_model_obj(Hit)
     hit_id = cached_hit.howler.id
     assert cached_hit.as_primitives()["__index"] == "hit"
@@ -63,7 +64,6 @@ def test_overwrite_strips_cached_synthetic_index_and_preserves_etag_and_refresh(
         method="PUT",
         json={"source": {"ip": "127.0.0.1"}},
     ):
-        # Supply the ID as a keyword so the getter-backed ETag wrapper resolves the expected cached record.
         result: Response = endpoint(id=hit_id)
 
     assert result.status_code == 200
@@ -76,7 +76,7 @@ def test_overwrite_strips_cached_synthetic_index_and_preserves_etag_and_refresh(
     save_hit.assert_called_once_with(validated_hit, "v1", refresh="wait_for")
 
 
-def test_overwrite_rejects_client_supplied_synthetic_index(monkeypatch, request_context: Flask):
+def test_overwrite_rejects_client_supplied_stored_index(monkeypatch, request_context: Flask):
     cached_hit: Hit = random_model_obj(Hit)
     hit_id = cached_hit.howler.id
     endpoint, save_hit = _setup_overwrite(monkeypatch, cached_hit, {"howler": {"id": hit_id}})
@@ -92,3 +92,13 @@ def test_overwrite_rejects_client_supplied_synthetic_index(monkeypatch, request_
     assert "__index" in result.get_json()["api_error_message"]
     assert "ETag" not in result.headers
     save_hit.assert_not_called()
+
+
+def test_runtime_hit_fields_include_declared_fields_for_partial_hits():
+    from howler.api.v1.hit import _runtime_hit_fields
+
+    hit = construct_partial(Hit, {"howler": {"labels": {"generic": []}}})
+
+    assert "howler.labels.generic" in _runtime_hit_fields(hit)
+    assert "labels" in hit.howler
+    assert "missing" not in hit.howler

@@ -21,7 +21,7 @@ from howler.common import loader
 from howler.common.classification import Classification
 from howler.common.exceptions import InvalidClassification
 from howler.config_models import OAuthProvider
-from howler.datastore.collection import CREATE_TOKEN
+from howler.datastore.collection import CREATE_TOKEN, ESCollection
 from howler.helper import oauth as oauth_module
 from howler.services import hit_service, user_service
 
@@ -517,3 +517,56 @@ class TestExampleClassifications:
     def test_invalid_classifications(self, cl_engine: Classification, c12n: str):
         with pytest.raises(InvalidClassification):
             cl_engine.get_access_control_parts(c12n)
+
+
+@pytest.fixture()
+def count_collection(monkeypatch):
+    monkeypatch.setattr(ESCollection, "IGNORE_ENSURE_COLLECTION", True)
+    datastore = MagicMock()
+    datastore.client.count.return_value = {"count": 8}
+    return ESCollection(datastore, "testcol")
+
+
+@pytest.mark.parametrize(
+    ("filters", "expected_filters"),
+    [
+        (["status:open", "owner:alice"], ["status:open", "owner:alice", "classification:U"]),
+        ("status:open", ["status:open", "classification:U"]),
+        (None, ["classification:U"]),
+    ],
+)
+def test_collection_count_applies_access_control_without_mutating_filters(count_collection, filters, expected_filters):
+    original_filters = filters.copy() if isinstance(filters, list) else filters
+
+    result = count_collection.count("id:*", filters, access_control="classification:U")
+
+    assert result == {"count": 8}
+    count_collection.datastore.client.count.assert_called_once_with(
+        index=count_collection.name,
+        query={
+            "bool": {
+                "must": {"query_string": {"query": "id:*"}},
+                "filter": [{"query_string": {"query": value}} for value in expected_filters],
+            }
+        },
+    )
+    assert filters == original_filters
+
+
+@pytest.mark.parametrize("access_control", [None, ""])
+def test_collection_count_leaves_admin_queries_unrestricted(count_collection, access_control):
+    filters = ["status:open"]
+
+    result = count_collection.count("id:*", filters, access_control=access_control)
+
+    assert result == {"count": 8}
+    count_collection.datastore.client.count.assert_called_once_with(
+        index=count_collection.name,
+        query={
+            "bool": {
+                "must": {"query_string": {"query": "id:*"}},
+                "filter": [{"query_string": {"query": "status:open"}}],
+            }
+        },
+    )
+    assert filters == ["status:open"]

@@ -108,7 +108,7 @@ def test_safe_or_non_user_requests_are_allowed(indexes, fl):
     assert user_fields_allowed(indexes, fl) is True
 
 
-def test_legacy_user_guard_does_not_allow_other_index_fields():
+def test_mixed_index_guard_rejects_fields_from_other_indexes():
     assert user_fields_allowed("hit,user", ["howler.id", "uname"]) is False
 
 
@@ -557,3 +557,25 @@ def test_leading_space_index_still_applies_the_access_control_filter():
 
     filters = client.search.call_args.kwargs["query"]["bool"]["filter"]
     assert {"query_string": {"query": "group:analysts"}} in filters
+
+
+def test_admin_only_search_helpers_use_user_roles():
+    from howler.helper.search import get_collection, get_default_sort
+
+    def admin_collection():
+        return "admin-index"
+
+    admin_user = User.validate_howler({"uname": "admin", "name": "Admin", "password": "hash", "type": ["admin"]})
+    admin_mapping = {"type": ["admin"]}
+
+    with (
+        patch("howler.helper.search.INDEX_MAP", {}),
+        patch("howler.helper.search.ADMIN_INDEX_MAP", {"restricted": admin_collection}),
+        patch("howler.helper.search.ADMIN_INDEX_ORDER_MAP", {"restricted": "created desc"}),
+    ):
+        for user in (admin_user, admin_mapping):
+            assert get_collection("restricted", user) is admin_collection
+            assert get_default_sort("restricted", user) == "created desc"
+
+        assert get_collection("restricted", {"type": ["user"]}) is None
+        assert get_default_sort("restricted", {"type": ["user"]}) is None

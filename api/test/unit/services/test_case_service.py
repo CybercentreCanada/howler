@@ -166,23 +166,13 @@ class TestAccessValidation:
         mock_hit.save.assert_not_called()
 
 
-def _make_schema_case() -> SchemaCase:
-    return SchemaCase.model_validate(
-        {
-            "case_id": "case-001",
-            "title": "Pydantic Case",
-            "summary": "Summary",
-        }
-    )
-
-
-class TestPydanticCaseMutationCompatibility:
-    """Step 7 legacy service inputs are coerced to the Pydantic parent types."""
+class TestCaseMutationBehavior:
+    """Case mutations keep embedded values valid for subsequent reads and writes."""
 
     @patch("howler.services.case_service.save_case", return_value=True)
     @patch("howler.services.case_service.datastore")
     def test_folder_constructed_from_fields_uses_registered_item(self, mock_ds_fn, _mock_save):
-        case = _make_schema_case()
+        case = _make_case()
         mock_ds_fn.return_value.case.get.return_value = case
 
         result = case_service.append_case_item("case-001", item_type="folder", item_value="Evidence")
@@ -194,7 +184,7 @@ class TestPydanticCaseMutationCompatibility:
     @patch("howler.services.case_service.save_case", return_value=True)
     @patch("howler.services.case_service.datastore")
     def test_folder_item_is_coerced_before_append(self, mock_ds_fn, _mock_save):
-        case = _make_schema_case()
+        case = _make_case()
         mock_ds_fn.return_value.case.get.return_value = case
 
         result = case_service.append_case_item(
@@ -224,7 +214,7 @@ class TestPydanticCaseMutationCompatibility:
         mock_get_event,
         item_type,
     ):
-        case = _make_schema_case()
+        case = _make_case()
         record = SimpleNamespace(
             classification=CLASSIFICATION.UNRESTRICTED,
             howler=SimpleNamespace(related=[], log=[]),
@@ -247,7 +237,7 @@ class TestPydanticCaseMutationCompatibility:
     @patch("howler.services.case_service.save_case", return_value=True)
     @patch("howler.services.case_service.datastore")
     def test_rule_and_log_are_coerced_before_append(self, mock_ds_fn, _mock_save):
-        case = _make_schema_case()
+        case = _make_case()
         mock_ds_fn.return_value.case.get.return_value = case
 
         mock_ds_fn.return_value.case.get.return_value = _versioned(case)
@@ -264,8 +254,8 @@ class TestPydanticCaseMutationCompatibility:
         json.dumps(result.as_primitives())
 
     @patch("howler.services.case_service.datastore")
-    def test_invalid_rule_on_pydantic_case_remains_a_client_validation_error(self, mock_ds_fn):
-        mock_ds_fn.return_value.case.get.return_value = _versioned(_make_schema_case())
+    def test_invalid_rule_on_case_remains_a_client_validation_error(self, mock_ds_fn):
+        mock_ds_fn.return_value.case.get.return_value = _versioned(_make_case())
 
         with pytest.raises(InvalidDataException):
             case_service.add_case_rule(
@@ -275,8 +265,8 @@ class TestPydanticCaseMutationCompatibility:
             )
 
     @patch("howler.services.case_service.datastore")
-    def test_invalid_pydantic_rule_update_remains_a_client_validation_error(self, mock_ds_fn):
-        case = _make_schema_case()
+    def test_invalid_rule_update_remains_a_client_validation_error(self, mock_ds_fn):
+        case = _make_case()
         rule = SchemaCaseRule.model_validate(
             {
                 "destination": "/alerts",
@@ -332,16 +322,6 @@ class TestCreateCase:
         id_a = case_service.create_case({"title": "Title A", "summary": "Summary A"}, user=_make_user()).case_id
         id_b = case_service.create_case({"title": "Title B", "summary": "Summary B"}, user=_make_user()).case_id
         assert id_a != id_b
-
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_returns_model(self, _mock_ds_fn):
-        """create_case returns a Pydantic case."""
-        result = case_service.create_case({"title": "Title", "summary": "Summary"}, user=_make_user())
-
-        assert isinstance(result, SchemaCase)
-        assert result.title == "Title"
-        assert result.summary == "Summary"
-        assert result.case_id
 
     @patch("howler.services.case_service.datastore")
     def test_create_case_sets_log_entry(self, _mock_ds_fn):

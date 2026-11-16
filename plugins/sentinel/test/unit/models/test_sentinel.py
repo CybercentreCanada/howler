@@ -1,18 +1,15 @@
-import json
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from howler.config import config
+from howler.datastore.howler_store import HowlerDatastore
 from howler.models import model_extensions, model_registry, schema
 from howler.models.hit import Hit
+from howler.plugins import PLUGINS, get_plugins
 from howler.services import hit_service
 
 from sentinel.models.hit import declare_hit_extension
 from sentinel.models.sentinel import Sentinel
-
-LEGACY_SENTINEL_CONTRACT = json.loads(Path(__file__).with_name("legacy_sentinel_contract.json").read_text())
-LEGACY_SOURCE_COMMIT = "2d7cf109e34e324c659d1eef6d2ff34e098db7c0"
-LEGACY_SOURCE_SHA256 = "a8a3b0b6a13d712daa986d4ad4c9557bb38df527af0db168f4eab98e002322b9"
 
 
 @pytest.fixture
@@ -25,42 +22,19 @@ def registered_hit(monkeypatch):
     model_extensions.clear()
 
 
-def test_sentinel_matches_pinned_legacy_contract(registered_hit):
-    """Compare Sentinel fields/mappings to the legacy snapshot and assert the startup delta."""
-    provenance = LEGACY_SENTINEL_CONTRACT["provenance"]
-    assert provenance["source_commit"] == LEGACY_SOURCE_COMMIT
-    assert provenance["source_sha256"] == LEGACY_SOURCE_SHA256
+def test_sentinel_extension_mapping(registered_hit):
+    fields = model_registry.flat_fields(Sentinel)
+    assert set(fields) == {"id", "tenant_id", "record_type", "incident_id", "alert_id", "evidence_id"}
+    assert all(field.default is None for field in Sentinel.model_fields.values())
 
-    assert sorted(model_registry.flat_fields(Sentinel)) == LEGACY_SENTINEL_CONTRACT["flat_fields"]
-    assert (
-        sorted(model_registry.flat_fields(Sentinel, show_compound=True))
-        == LEGACY_SENTINEL_CONTRACT["flat_fields_with_compounds"]
-    )
-    assert all(
-        Sentinel.model_fields[field].default is None
-        for field in ("id", "tenant_id", "record_type", "incident_id", "alert_id", "evidence_id")
-    )
-
-    hit_mapping = schema.document_mapping(registered_hit)
-    properties = {
-        name.removeprefix("sentinel."): mapping
-        for name, mapping in hit_mapping["properties"].items()
-        if name.startswith("sentinel.")
-    }
-    assert properties == LEGACY_SENTINEL_CONTRACT["elasticsearch"]["properties"]
-
-    # The standalone legacy Sentinel model needed a catch-all refusal template. As a Hit
-    # extension it inherits Hit's dynamic policy instead, so that standalone fallback must not
-    # leak into the finalized Hit template set.
-    legacy_templates = LEGACY_SENTINEL_CONTRACT["elasticsearch"]["dynamic_templates"]
-    refusal_name = LEGACY_SENTINEL_CONTRACT["approved_differences"]["standalone_refusal_template"]
-    assert len(legacy_templates) == 1
-    assert refusal_name in legacy_templates[0]
-    assert hit_mapping["dynamic"] is True
-    assert all(refusal_name not in template for template in hit_mapping["dynamic_templates"])
+    mapping = schema.document_mapping(registered_hit)
+    properties = mapping["properties"]
+    keyword = {"doc_values": True, "ignore_above": 8191, "index": True, "type": "keyword"}
+    assert {path: properties[f"sentinel.{path}"] for path in fields} == {path: keyword for path in fields}
+    assert mapping["dynamic"] is True
     assert not any(
         str(definition.get("path_match", "")).startswith("sentinel.")
-        for template in hit_mapping["dynamic_templates"]
+        for template in mapping["dynamic_templates"]
         for definition in template.values()
     )
 
@@ -75,3 +49,53 @@ def test_build_sentinel_alert(registered_hit):
     assert isinstance(hit.sentinel, Sentinel)
     assert hit.sentinel.id == "Example Sentinel ID"
     assert warnings == []
+
+
+class RegistrationStore:
+    """Record startup schema registrations without connecting to Elasticsearch."""
+
+    def __init__(self):
+        self.registrations = {}
+
+    def register(self, name, model_class, **kwargs):
+        self.registrations[name] = (model_class, kwargs)
+
+
+def test_both_plugin_extensions_register_deterministically(monkeypatch):
+    previous_plugin_cache = PLUGINS.copy()
+    model_extensions.clear()
+    PLUGINS.clear()
+    monkeypatch.setattr(config.core, "plugins", {"evidence", "sentinel"})
+
+    try:
+        plugins = get_plugins()
+        assert {plugin.name for plugin in plugins} == {"evidence", "sentinel"}
+        assert all(set(plugin.modules.models.declare_extensions) == {"hit"} for plugin in plugins)
+
+        store = RegistrationStore()
+        HowlerDatastore(store)
+
+        hit_model, hit_registration = store.registrations["hit"]
+        assert model_extensions.is_finalized(Hit)
+        assert hit_registration["schema_model"] is hit_model
+
+        hit_fields = model_registry.flat_fields(hit_model)
+        assert "evidence.agent.id" in hit_fields
+        assert "sentinel.id" in hit_fields
+
+        hit_mapping = schema.document_mapping(hit_model)
+        assert "evidence.agent.id" in hit_mapping["properties"]
+        assert "sentinel.id" in hit_mapping["properties"]
+
+        extension_order = tuple(name for name in hit_model.model_fields if name in {"evidence", "sentinel"})
+        model_extensions.clear()
+        for plugin in reversed(plugins):
+            plugin.modules.models.declare_extensions["hit"]()
+        reverse_order_model = model_extensions.finalize(Hit)
+        assert tuple(name for name in reverse_order_model.model_fields if name in {"evidence", "sentinel"}) == (
+            extension_order
+        )
+    finally:
+        model_extensions.clear()
+        PLUGINS.clear()
+        PLUGINS.update(previous_plugin_cache)

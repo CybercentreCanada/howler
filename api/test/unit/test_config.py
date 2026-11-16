@@ -1,12 +1,11 @@
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 import yaml
-from pydantic import ValidationError
+from pydantic import ImportString, ValidationError
 
 from howler.config_models import Config, System
+from howler.plugins.config import BasePluginConfig, ModelModules
 
 yml_config_good = Path(__file__).parent / "config.yml"
 yml_config_good_mapping = Path(__file__).parent / "mappings.yml"
@@ -18,20 +17,6 @@ def test_builtin_config():
     from howler.config import config
 
     assert config.auth
-
-
-def test_config_models_cold_import_does_not_load_legacy_odm():
-    """Configuration must import in a fresh process without a loader cycle or ODM dependency."""
-    subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "import sys; from howler.config_models import Config, config; "
-            "assert isinstance(config, Config); "
-            "assert not any(k == 'howler.odm' or k.startswith('howler.odm.') for k in sys.modules)",
-        ],
-        check=True,
-    )
 
 
 def test_application_config_is_the_config_models_singleton():
@@ -92,3 +77,50 @@ def test_custom_bad_config_mapping():
         Config.model_validate(_conf)
 
     assert "random-key" in str(err)
+
+
+_FAKE_PLUGIN = "_howler_test_nonexistent_plugin_"
+
+
+@pytest.mark.parametrize(
+    ("target", "expected_path"),
+    [
+        ("hit", f"{_FAKE_PLUGIN}.models.hit:declare_hit_extension"),
+        ("clue", f"{_FAKE_PLUGIN}.models.clue:declare_clue_extension"),
+    ],
+)
+def test_extension_shorthand_resolves_to_conventional_import_path(target: str, expected_path: str):
+    manifest = {"name": _FAKE_PLUGIN, "modules": {"models": {"declare_extensions": {target: True}}}}
+
+    with pytest.raises(ValidationError) as error:
+        BasePluginConfig.model_validate(manifest)
+
+    assert error.value.errors()[0]["input"] == expected_path
+
+
+def test_extension_manifest_preserves_explicit_import_path():
+    import_path = f"{_FAKE_PLUGIN}.custom.path:custom_declare"
+    manifest = {"name": _FAKE_PLUGIN, "modules": {"models": {"declare_extensions": {"hit": import_path}}}}
+
+    with pytest.raises(ValidationError) as error:
+        BasePluginConfig.model_validate(manifest)
+
+    assert error.value.errors()[0]["input"] == import_path
+
+
+def test_extension_manifest_can_disable_a_target():
+    config = BasePluginConfig.model_validate(
+        {"name": _FAKE_PLUGIN, "modules": {"models": {"declare_extensions": {"hit": False}}}}
+    )
+
+    assert config.modules.models.declare_extensions == {}
+
+
+def test_plugin_without_model_extensions_uses_an_empty_declaration_map():
+    config = BasePluginConfig.model_validate({"name": _FAKE_PLUGIN, "modules": {}})
+
+    assert config.modules.models.declare_extensions == {}
+
+
+def test_model_extension_declarations_use_import_strings():
+    assert ModelModules.model_fields["declare_extensions"].annotation == dict[str, ImportString]

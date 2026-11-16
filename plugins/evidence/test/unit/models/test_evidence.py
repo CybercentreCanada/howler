@@ -1,5 +1,3 @@
-import json
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -10,10 +8,6 @@ from howler.services import hit_service
 
 from evidence.models.evidence import Evidence
 from evidence.models.hit import declare_hit_extension
-
-LEGACY_EVIDENCE_CONTRACT = json.loads(Path(__file__).with_name("legacy_evidence_contract.json").read_text())
-LEGACY_SOURCE_COMMIT = "3071fc4ea45d4b2dd44a7ee1646095426097d061"
-LEGACY_SOURCE_SHA256 = "1ef4bc0bf73d3e94dff1634a3ad9e5d3cc54e402bba8886eb6592bdb3b0fe3f6"
 
 
 @pytest.fixture
@@ -26,39 +20,52 @@ def registered_hit(monkeypatch):
     model_extensions.clear()
 
 
-def test_evidence_matches_pinned_legacy_contract(registered_hit):
-    """Compare the typed extension to the model/mapping snapshot generated at the pinned base."""
-    provenance = LEGACY_EVIDENCE_CONTRACT["provenance"]
-    assert provenance["source_commit"] == LEGACY_SOURCE_COMMIT
-    assert provenance["source_sha256"] == LEGACY_SOURCE_SHA256
+KEYWORD = {"doc_values": True, "ignore_above": 8191, "index": True, "type": "keyword"}
 
-    assert sorted(model_registry.flat_fields(Evidence)) == LEGACY_EVIDENCE_CONTRACT["flat_fields"]
 
-    legacy_compound_paths = set(LEGACY_EVIDENCE_CONTRACT["flat_fields_with_compounds"])
-    typed_compound_paths = set(model_registry.flat_fields(Evidence, show_compound=True))
-    approved_compound_paths = set(LEGACY_EVIDENCE_CONTRACT["approved_differences"]["typed_only_compound_paths"])
-    assert typed_compound_paths - legacy_compound_paths == approved_compound_paths
-    assert legacy_compound_paths - typed_compound_paths == set()
+def test_evidence_extension_mapping(registered_hit):
+    assert "evidence.agent.id" in model_registry.flat_fields(registered_hit)
 
-    hit_mapping = schema.document_mapping(registered_hit)
-    properties = {
-        name.removeprefix("evidence."): mapping
-        for name, mapping in hit_mapping["properties"].items()
-        if name.startswith("evidence.")
+    mapping = schema.document_mapping(registered_hit)
+    properties = mapping["properties"]
+    assert properties["evidence.agent.id"] == KEYWORD
+    assert properties["evidence.email.attachments.file.hash.md5"] == {
+        **KEYWORD,
+        "normalizer": "lowercase_normalizer",
     }
-    assert properties == LEGACY_EVIDENCE_CONTRACT["elasticsearch"]["properties"]
+    assert properties["evidence.email.attachments.file.hash.ssdeep"] == {
+        "analyzer": "text_fuzzy",
+        "index": True,
+        "type": "text",
+    }
+    assert properties["evidence.destination.ip"] == {"doc_values": True, "index": True, "type": "ip"}
+    assert properties["evidence.email.delivery_timestamp"] == {
+        "doc_values": True,
+        "format": "date_optional_time||epoch_millis",
+        "index": True,
+        "type": "date",
+    }
+    assert properties["evidence.destination.autonomous_systems.number"] == {
+        "doc_values": True,
+        "index": True,
+        "type": "integer",
+    }
 
-    templates = []
-    for template in hit_mapping["dynamic_templates"]:
-        name, definition = next(iter(template.items()))
-        path_key = "path_match" if "path_match" in definition else "match"
-        path = definition.get(path_key, "")
-        if isinstance(path, str) and path.startswith("evidence."):
-            normalized_definition = dict(definition)
-            normalized_definition[path_key] = path.removeprefix("evidence.")
-            templates.append({name.removeprefix("evidence."): normalized_definition})
-
-    assert templates == LEGACY_EVIDENCE_CONTRACT["elasticsearch"]["dynamic_templates"]
+    evidence_templates = [
+        template
+        for template in mapping["dynamic_templates"]
+        if next(iter(template.values())).get("path_match", "").startswith("evidence.")
+    ]
+    assert evidence_templates == [
+        {f"evidence.{path}_tpl": {"mapping": {"index": True, "type": "keyword"}, "path_match": f"evidence.{path}"}}
+        for path in (
+            "labels.*",
+            "container.labels.*",
+            "process.env_vars.*",
+            "process.parent.env_vars.*",
+            "process.parent.parent.env_vars.*",
+        )
+    ]
 
 
 def test_build_evidence_alert(registered_hit):

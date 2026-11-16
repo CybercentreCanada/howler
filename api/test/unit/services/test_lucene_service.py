@@ -8,7 +8,7 @@ from howler.datastore.exceptions import SearchRetryException
 from howler.services import lucene_service
 
 
-def test_response_body_accepts_decoded_mapping_and_elasticsearch_response():
+def test_response_body_accepts_mappings_and_elasticsearch_responses():
     body = {"valid": True, "explanations": []}
     meta = ApiResponseMeta(status=200, http_version="1.1", headers={}, duration=0.0, node=None)
 
@@ -36,7 +36,7 @@ def test_prepare_lucene_query_preserves_unbounded_ranges(bounds):
     assert "malware*" not in prepared
 
 
-def test_normalize_lucene_explanation_handles_nested_lucene_10_wrappers():
+def test_normalize_lucene_explanation_handles_nested_query_wrappers():
     lucene_service.SEARCH_PHRASE_CACHE.clear()
     query = 'howler.analytic:"Password Sprayer"'
     prepared = lucene_service.prepare_lucene_query(query)
@@ -52,7 +52,7 @@ def test_normalize_lucene_explanation_handles_nested_lucene_10_wrappers():
     assert lucene_service.normalize_lucene_explanation(explanation) == query
 
 
-def test_normalize_lucene_explanation_supports_old_and_new_exists_shapes():
+def test_normalize_lucene_explanation_handles_both_exists_query_shapes():
     assert (
         lucene_service.normalize_lucene_explanation("ConstantScore(FieldExistsQuery [field=howler.id])")
         == "_exists_:howler.id"
@@ -63,7 +63,7 @@ def test_normalize_lucene_explanation_supports_old_and_new_exists_shapes():
     )
 
 
-def test_normalize_lucene_explanation_preserves_nested_range_query():
+def test_normalize_lucene_explanation_preserves_nested_range_queries():
     explanation = (
         "ConstantScore(IndexOrDocValuesQuery(indexQuery=howler.score:[50 TO 100], dvQuery=howler.score:[50 TO 100]))"
     )
@@ -71,7 +71,7 @@ def test_normalize_lucene_explanation_preserves_nested_range_query():
     assert lucene_service.normalize_lucene_explanation(explanation) == "howler.score:[50 TO 100]"
 
 
-def test_match_accepts_elasticsearch_9_response_wrapper(monkeypatch):
+def test_match_accepts_elasticsearch_response_wrappers(monkeypatch):
     class Cache:
         def get(self, key):
             return None
@@ -96,7 +96,7 @@ def test_match_accepts_elasticsearch_9_response_wrapper(monkeypatch):
     assert lucene_service.match("howler.status:open", {"howler.status": "open"}) is True
 
 
-def test_match_returns_false_for_validation_errors(monkeypatch):
+def test_match_returns_false_for_query_validation_errors(monkeypatch):
     fake_client = SimpleNamespace(
         indices=SimpleNamespace(
             validate_query=lambda **kwargs: {

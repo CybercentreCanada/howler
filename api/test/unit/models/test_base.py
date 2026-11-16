@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from howler.common.exceptions import HowlerTypeError, HowlerValueError
 from howler.models import (
     HowlerEmbeddedModel,
     HowlerESModel,
@@ -17,8 +18,10 @@ from howler.models import (
     classification,
     compound,
     construct_partial,
+    construct_safe,
     date,
     document_adapter,
+    flat_to_nested,
     flattened_list_object,
     flattened_object,
     integer,
@@ -34,6 +37,7 @@ from howler.models import (
     text,
     uuid,
 )
+from howler.models.registry import ModelRegistry
 
 CLASSIFICATION_CONFIG = str(Path(__file__).parents[2] / "classification.yml")
 TIMESTAMP = "2024-01-02T03:04:05.000000Z"
@@ -89,6 +93,23 @@ class FoundationUnindexedDocument(HowlerESModel):
     body: text()
 
 
+@register_model(embedded=True)
+class IndexedChild(HowlerEmbeddedModel):
+    """Embedded fields used to verify inherited mapping defaults."""
+
+    inherited: keyword()
+    explicitly_indexed: keyword(index=True)
+    explicitly_unindexed: keyword(index=False)
+
+
+@register_model(index=True, store=True)
+class IndexedParent(HowlerESModel):
+    """Document used to check compound-level mapping overrides."""
+
+    child: compound(IndexedChild)
+    unindexed_child: compound(IndexedChild, index=False)
+
+
 def _document_data() -> dict:
     return {
         "document_id": "document-1",
@@ -129,6 +150,11 @@ def test_model_validation_aliases_and_defaults() -> None:
     model["child.count"] = "4"  # pyright: ignore[reportIndexIssue]
     assert model.from_ == "updated"
     assert model.child.count == 4
+    assert model["from"] == "updated"  # pyright: ignore[reportIndexIssue]
+    assert model["child.count"] == 4  # pyright: ignore[reportIndexIssue]
+    assert model.get("missing.field", "fallback") == "fallback"
+    assert "from" in model
+    assert "missing" not in model
 
 
 def test_flattened_compound_list_input() -> None:
@@ -160,6 +186,8 @@ def test_primitive_serialization_modes_and_access_fields() -> None:
     assert "from_" not in primitives
     assert primitives["from"] == "source"
     assert primitives["child"]["created"] == TIMESTAMP
+    assert primitives["flattened"] == {"a.b": '{"value": 1}'}
+    assert primitives["flattened_lists"] == {"a.b": ['{"value": 1}', "two"]}
     assert primitives["classification"] == "UNRESTRICTED"
     assert primitives["__access_lvl__"] == 100
     assert primitives["__access_grp1__"] == ["__EMPTY__"]
@@ -263,8 +291,8 @@ def test_partial_primitives_preserve_storage_serialization_and_access_fields() -
 def test_read_normalization_drops_unknown_fields_but_preserves_mapping_keys() -> None:
     """Removed plugin fields are ignored on reads without pruning dynamic mappings."""
     data = _document_data()
-    data["removed_plugin_field"] = "legacy"
-    data["child"]["removed_child_field"] = "legacy"
+    data["removed_plugin_field"] = "unrecognized"
+    data["child"]["removed_child_field"] = "unrecognized"
     data["counters"]["dynamic_key"] = "2"
 
     clean = strip_unknown_fields(FoundationDocument, data)
@@ -292,6 +320,7 @@ def test_registry_fields_flattening_and_mapping() -> None:
     assert flat["children.address"].multivalued
     assert flat["children.address"].metadata is not None
     assert flat["children.address"].metadata.kind == "IP"
+    assert "children" not in model_registry.flat_fields(FoundationDocument)
 
     assert properties["from"]["type"] == "keyword"
     assert properties["class"]["type"] == "keyword"
@@ -355,3 +384,157 @@ def test_stable_validation_error_translation() -> None:
 
     assert raised.value.errors
     assert isinstance(raised.value.cause, ValidationError)
+
+
+class SafeFlag(HowlerEmbeddedModel):
+    """Nested flag used by safe-construction tests."""
+
+    uuid: uuid()
+    name: keyword()
+    fans: list_field(integer(), default=[])
+
+
+class SafeSpeed(HowlerEmbeddedModel):
+    """Nested speed values used by safe-construction tests."""
+
+    fast: integer(default=1)
+    slow: keyword(default="abc")
+    count: list_field(integer())
+
+
+class SafeDocument(HowlerESModel):
+    """Document used to check partial recovery of valid values."""
+
+    speed: compound(SafeSpeed, default={})
+    flags: list_field(compound(SafeFlag))
+
+
+def test_safe_construction_keeps_valid_values_and_reports_rejected_paths() -> None:
+    """Lenient construction returns valid subvalues and the rejected input separately."""
+    model, dropped = construct_safe(
+        SafeDocument,
+        {
+            "speed": {"fast": "abc", "count": ["100", 100, "hundred", "9dy"]},
+            "flags": [
+                "abc",
+                {"uuid": "bad"},
+                {"name": "good"},
+                {"name": "some-good", "fans": [1, "99", "many"]},
+            ],
+            "cats": "red",
+        },
+    )
+
+    assert isinstance(model, SafeDocument)
+    assert model.speed.fast == 1
+    assert model.speed.slow == "abc"
+    assert model.speed.count == [100, 100]
+    assert [flag.name for flag in model.flags] == ["good", "some-good"]
+    assert all(flag.uuid for flag in model.flags)
+    assert model.flags[0].fans == []
+    assert model.flags[1].fans == [1, 99]
+    assert dropped["cats"] == "red"
+    assert dropped["speed"]["fast"] == "abc"
+    assert set(dropped["speed"]["count"]) == {"hundred", "9dy"}
+    assert dropped["flags"][0] == "abc"
+    assert dropped["flags"][1] == {"uuid": "bad"}
+    assert dropped["flags"][2] == {"fans": ["many"]}
+
+
+def test_safe_construction_returns_non_object_input_unchanged() -> None:
+    """A non-object input cannot produce a document and is returned as rejected input."""
+    model, dropped = construct_safe(SafeDocument, "invalid")
+    assert model is None
+    assert dropped == "invalid"
+
+
+def test_dotted_input_helper_builds_nested_objects() -> None:
+    """The dotted-input helper creates each nested mapping along a path."""
+    assert flat_to_nested({}) == {}
+    assert flat_to_nested({"a.b.c": None}) == {"a": {"b": {"c": None}}}
+
+
+def test_model_registry_resolves_identifiers_and_validates_explicit_fields() -> None:
+    """Model metadata derives identifiers and rejects invalid explicit declarations."""
+
+    class IdentifierDocument(HowlerESModel):
+        title: keyword()
+
+    class ExplicitIdentifierDocument(HowlerESModel):
+        document_key: keyword()
+        title: keyword()
+
+    registry = ModelRegistry()
+    registry.register(IdentifierDocument)
+    registry.register(ExplicitIdentifierDocument, id_field="document_key")
+    assert registry.metadata(IdentifierDocument).id_field == "identifierdocument_id"
+    assert registry.metadata(ExplicitIdentifierDocument).id_field == "document_key"
+
+    with pytest.raises(HowlerTypeError):
+        registry.register(IdentifierDocument, id_field=123)  # type: ignore[arg-type]
+    with pytest.raises(HowlerValueError):
+        registry.register(IdentifierDocument, id_field="missing")
+    with pytest.raises(HowlerValueError):
+        registry.register(IdentifierDocument, id_field="_id")
+
+    with pytest.raises(HowlerValueError):
+
+        class InvalidFieldDocument(HowlerESModel):
+            InvalidName: keyword()
+
+        registry.register(InvalidFieldDocument)
+
+
+def test_model_registry_inherits_field_metadata_without_sharing_field_views() -> None:
+    """Derived models include inherited fields while keeping each field view independent."""
+
+    class BaseDocument(HowlerESModel):
+        inherited: keyword()
+
+    class DerivedDocument(BaseDocument):
+        own: integer()
+
+    registry = ModelRegistry()
+    registry.register(BaseDocument, index=True, store=True)
+    registry.register_derived(DerivedDocument, BaseDocument)
+
+    base_fields = registry.fields(BaseDocument)
+    derived_fields = registry.fields(DerivedDocument)
+    assert set(derived_fields) == {"inherited", "own"}
+    assert "own" not in base_fields
+    assert base_fields is not derived_fields
+    assert registry.metadata(DerivedDocument).index is True
+    assert registry.mapping(DerivedDocument)["properties"]["inherited"]["type"] == "keyword"
+
+
+def test_derived_model_can_override_an_inherited_field() -> None:
+    """A derived Pydantic model uses its own definition for an overridden field."""
+
+    class BaseDocument(HowlerESModel):
+        shared: keyword(default="base")
+
+    class DerivedDocument(BaseDocument):
+        shared: keyword(default="derived")
+
+    registry = ModelRegistry()
+    registry.register(BaseDocument)
+    registry.register_derived(DerivedDocument, BaseDocument)
+
+    assert registry.fields(BaseDocument)["shared"].default == "base"
+    assert registry.fields(DerivedDocument)["shared"].default == "derived"
+    assert DerivedDocument.model_validate({}).shared == "derived"
+
+
+def test_index_defaults_and_compound_overrides_reach_flat_fields() -> None:
+    """Model-level mapping defaults flow into children unless a field overrides them."""
+    flat = model_registry.flat_fields(IndexedParent)
+    assert flat["child.inherited"].metadata is not None
+    assert flat["child.inherited"].metadata.index is True
+    assert flat["child.explicitly_indexed"].metadata is not None
+    assert flat["child.explicitly_indexed"].metadata.index is True
+    assert flat["child.explicitly_unindexed"].metadata is not None
+    assert flat["child.explicitly_unindexed"].metadata.index is False
+    assert flat["unindexed_child.inherited"].metadata is not None
+    assert flat["unindexed_child.inherited"].metadata.index is False
+    assert flat["unindexed_child.explicitly_indexed"].metadata is not None
+    assert flat["unindexed_child.explicitly_indexed"].metadata.index is True

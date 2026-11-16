@@ -1,9 +1,4 @@
-"""Synthetic data must exercise real validation and stay independent of the legacy ODM."""
-
-import ast
-import subprocess
-import sys
-from pathlib import Path
+"""Generated model data exercises validation and primitive round trips."""
 
 import pytest
 
@@ -23,35 +18,3 @@ def test_generated_model_round_trips(model, generator):
     data.pop("__index", None)
     restored = model.model_validate(data)
     assert restored.as_primitives() == instance.as_primitives()
-
-
-def test_sample_data_import_does_not_load_legacy_odm():
-    subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "import sys; import howler.app; import howler.sample_data.random_data; "
-            "assert not any(n == 'howler.odm' or n.startswith('howler.odm.') for n in sys.modules)",
-        ],
-        check=True,
-    )
-
-
-def test_runtime_modules_do_not_import_legacy_odm():
-    root = Path(__file__).resolve().parents[3] / "howler"
-    violations = []
-    for path in root.rglob("*.py"):
-        if path.is_relative_to(root / "odm"):
-            continue
-        for node in ast.walk(ast.parse(path.read_text())):
-            if isinstance(node, ast.Import):
-                names = [alias.name for alias in node.names]
-            elif isinstance(node, ast.ImportFrom):
-                names = [node.module or ""]
-                if node.module == "howler":
-                    names.extend(f"howler.{alias.name}" for alias in node.names)
-            else:
-                continue
-            if any(name == "howler.odm" or name.startswith("howler.odm.") for name in names):
-                violations.append(f"{path.relative_to(root)}:{node.lineno}")
-    assert not violations

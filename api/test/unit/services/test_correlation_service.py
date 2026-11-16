@@ -977,6 +977,29 @@ class TestProcessBatch:
         assert added == 0
         mock_ds.case.bulk.assert_not_called()
 
+    def test_added_case_item_is_serialized_for_bulk_update(self):
+        case = _make_real_case("case-1")
+        rule = _make_rule(destination="related")
+        backing = MagicMock()
+        backing.classification = CLASSIFICATION.UNRESTRICTED
+
+        with (
+            patch.object(correlation_service.case_service, "get_parent_from_path", return_value=None),
+            patch.object(correlation_service.case_service, "check_conflicts", return_value=False),
+            patch.object(correlation_service.case_service, "add_backreference", return_value=False),
+        ):
+            correlation_service._add_record_to_case(
+                case,
+                {"howler": {"id": "hit-1"}},
+                rule,
+                {("hit", "hit-1"): (backing, "hit-version")},
+            )
+
+        assert isinstance(case.items[-1], CaseItem)
+        plan = ElasticBulkPlan(["case"], Case)
+        plan.add_update_operation("case-1", case, fields=["items"])
+        assert _bulk_updates(plan)[0][2]["items"][0]["value"] == "hit-1"
+
 
 class TestCorrelationBulkRouting:
     """Regression coverage for routing correlation partial updates by read version."""
