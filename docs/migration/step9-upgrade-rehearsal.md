@@ -166,8 +166,9 @@ poetry run python build_scripts/step9_upgrade_writes.py \
 ```
 
 Both runners own every Docker resource they use: containers, volumes, networks, and Redis.
-They never touch the shared development stack. See `step9-verification-evidence.md` for the
-recorded results.
+They never touch the shared development stack. Their results are synthetic tooling evidence
+only and do not substitute for the representative production-snapshot rehearsal required by
+the [Elasticsearch 9 cutover runbook](https://github.com/CybercentreCanada/howler/blob/main/documentation/docs/installation/elasticsearch_9_cutover.md).
 
 ## Validation
 

@@ -5,44 +5,117 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
-from elasticsearch import Elasticsearch
+from howler.external.elasticsearch_rest import (
+    HOWLER_COLLECTION_NAMES,
+    ElasticsearchRestClient,
+    ElasticsearchRestError,
+    collect_primary_shard_stats,
+    credentials_from_environment,
+    primary_shard_sync_issues,
+)
 
 SOURCE_STACK_VERSION = "8.19.11"
 NO_MIGRATION_NEEDED = "NO_MIGRATION_NEEDED"
 
 
-def _body(response: Any) -> Any:
-    return response.body if hasattr(response, "body") else response
+def _index_prefix() -> str:
+    """Return the same index prefix selected by the Howler runtime."""
+    return os.environ.get("HWL_DATASTORE_INDEX_PREFIX", os.environ.get("APP_NAME", "howler"))
 
 
-def collect_inventory(client: Elasticsearch) -> dict[str, Any]:
-    """Collect the cluster state needed to assess an Elasticsearch 9 upgrade."""
+def _mapping_settings(index_data: dict[str, Any]) -> dict[str, Any]:
+    settings = index_data.get("settings", {})
+    nested = settings.get("index", {})
+    return {**nested, **settings} if isinstance(nested, dict) else settings
+
+
+def _is_closed(index_data: dict[str, Any]) -> bool:
+    return str(index_data.get("status", "")).lower() in {"close", "closed"}
+
+
+def _backs_configured_collection(index: str, index_data: dict[str, Any], prefix: str) -> bool:
+    aliases = index_data.get("aliases", {})
+    if not isinstance(aliases, dict):
+        aliases = {}
+    for collection in HOWLER_COLLECTION_NAMES:
+        alias = f"{prefix}-{collection}"
+        if alias in aliases or index == f"{alias}_hot" or re.fullmatch(rf"{re.escape(alias)}-\d{{6}}", index):
+            return True
+    return False
+
+
+def collect_inventory(client: ElasticsearchRestClient) -> dict[str, Any]:
+    """Collect upgrade state using plain, read-only REST requests."""
+    prefix = _index_prefix()
+    indices = client.get(
+        "/*",
+        {
+            "features": "aliases,settings",
+            "flat_settings": "true",
+            "expand_wildcards": "all",
+            "allow_no_indices": "true",
+        },
+    )
+    catalog_rows = client.get(
+        "/_cat/indices",
+        {
+            "format": "json",
+            "h": "index,health,status,docs.count",
+            "expand_wildcards": "all",
+        },
+    )
+    stats = collect_primary_shard_stats(client, prefix)
+    catalog = {row.get("index"): row for row in catalog_rows if row.get("index")}
+    health = client.get("/_cluster/health", {"level": "indices"})
+    index_health = health.get("indices", {})
+    for name, index_data in indices.items():
+        row = catalog.get(name, {})
+        index_stats = stats.get(name, {})
+        settings = _mapping_settings(index_data)
+        index_data["uuid"] = settings.get("index.uuid") or settings.get("uuid") or index_data.get("uuid")
+        index_data["doc_count"] = index_stats.get("doc_count")
+        index_data["primary_shards"] = index_stats.get("primary_shards", {})
+        index_data["health"] = index_health.get(name, {}).get("status", row.get("health"))
+        index_data["status"] = row.get("status")
+
+    try:
+        ilm_explain = client.get(
+            f"/{quote(prefix, safe='-_.')}-*/_ilm/explain",
+            {"only_managed": "false"},
+        )
+    except ElasticsearchRestError as error:
+        if error.status != 404:
+            raise
+        ilm_explain = {}
+
     return {
-        "cluster_health": _body(client.cluster.health()),
-        "cluster_settings": _body(client.cluster.get_settings(flat_settings=True, include_defaults=True)),
-        "component_templates": _body(client.cluster.get_component_template()),
-        "deprecations": _body(client.migration.deprecations()),
-        "feature_upgrade_status": _body(client.migration.get_feature_upgrade_status()),
-        "ilm_policies": _body(client.ilm.get_lifecycle(name="*")),
-        "index_templates": _body(client.indices.get_index_template(name="*")),
-        "indices": _body(
-            client.indices.get(
-                index="*",
-                allow_no_indices=True,
-                expand_wildcards="all",
-                features=["aliases", "settings"],
-                flat_settings=True,
-            )
+        "cluster_health": health,
+        "cluster_settings": client.get("/_cluster/settings", {"flat_settings": "true", "include_defaults": "true"}),
+        "component_templates": client.get("/_component_template/*"),
+        "deprecations": client.get("/_migration/deprecations"),
+        "feature_upgrade_status": client.get("/_migration/system_features"),
+        "ilm_explain": ilm_explain,
+        "ilm_policies": client.get("/_ilm/policy/*"),
+        "index_templates": client.get("/_index_template/*"),
+        "indices": indices,
+        "index_prefix": prefix,
+        "ingest_pipelines": client.get("/_ingest/pipeline/*"),
+        "legacy_templates": client.get("/_template/*"),
+        "nodes": client.get(
+            "/_nodes",
+            {
+                "flat_settings": "true",
+                "filter_path": "nodes.*.name,nodes.*.version,nodes.*.roles,nodes.*.settings,nodes.*.plugins",
+            },
         ),
-        "ingest_pipelines": _body(client.ingest.get_pipeline(id="*")),
-        "legacy_templates": _body(client.indices.get_template(name="*")),
-        "nodes": _body(client.nodes.info(metric=["settings", "plugins"], flat_settings=True)),
-        "remote_clusters": _body(client.cluster.remote_info()),
-        "snapshot_repositories": _body(client.snapshot.get_repository(name="*")),
-        "version": _body(client.info()),
+        "remote_clusters": client.get("/_remote/info"),
+        "snapshot_repositories": client.get("/_snapshot/*"),
+        "version": client.get("/"),
     }
 
 
@@ -81,9 +154,12 @@ def _index_creation_major(index_data: dict[str, Any]) -> int | None:
     return int(version_string) // 1_000_000
 
 
-def evaluate_inventory(inventory: dict[str, Any]) -> dict[str, Any]:
+def evaluate_inventory(  # noqa: C901
+    inventory: dict[str, Any], *, baseline_capture: bool = False
+) -> dict[str, Any]:
     """Return deterministic blockers and warnings for a collected inventory."""
     blockers: list[dict[str, Any]] = []
+    warnings: list[dict[str, Any]] = []
     version = inventory["version"].get("version", {}).get("number")
     if version != SOURCE_STACK_VERSION:
         blockers.append(
@@ -144,45 +220,80 @@ def evaluate_inventory(inventory: dict[str, Any]) -> dict[str, Any]:
             }
         )
 
+    prefix = inventory.get("index_prefix", _index_prefix())
+    sequence_sync_issues = {
+        index: primary_shard_sync_issues(index_data.get("primary_shards"))
+        for index, index_data in inventory["indices"].items()
+        if index.startswith(f"{prefix}-") and not _is_closed(index_data)
+    }
+    sequence_sync_issues = {index: issues for index, issues in sequence_sync_issues.items() if issues}
+    if sequence_sync_issues:
+        finding = {
+            "check": "primary_sequence_sync",
+            "message": (
+                "Howler primary shard statistics are incomplete or unsynced. Quiesce writers, flush, wait for "
+                "global checkpoints to catch up, and rerun the preflight with --baseline-capture."
+            ),
+            "resources": sequence_sync_issues,
+        }
+        (blockers if baseline_capture else warnings).append(finding)
+
+    for index, index_data in sorted(inventory["indices"].items()):
+        if not index.startswith(f"{prefix}-") or not _is_closed(index_data):
+            continue
+        finding = {
+            "check": "closed_howler_index",
+            "index": index,
+            "message": "Closed Howler-prefixed indices are not covered by the open-index statistics snapshot.",
+        }
+        if baseline_capture or _backs_configured_collection(index, index_data, prefix):
+            finding["message"] = (
+                "A closed Howler index backs a configured collection or is being included in the baseline; "
+                "reopen or archive it before cutover."
+            )
+            blockers.append(finding)
+        else:
+            finding["message"] = (
+                "Closed Howler-prefixed index is not a configured collection; review and disposition it."
+            )
+            warnings.append(finding)
+
     return {
         "blockers": blockers,
         "deprecations": deprecations,
         "pre_8_indices": pre_8_indices,
         "ready": not blockers,
         "unknown_index_versions": unknown_index_versions,
+        "warnings": warnings,
     }
 
 
-def build_report(client: Elasticsearch) -> dict[str, Any]:
+def build_report(client: ElasticsearchRestClient, *, baseline_capture: bool = False) -> dict[str, Any]:
     """Build the complete machine-readable upgrade preflight report."""
     inventory = collect_inventory(client)
     return {
-        "checks": evaluate_inventory(inventory),
+        "baseline_capture": baseline_capture,
+        "checks": evaluate_inventory(inventory, baseline_capture=baseline_capture),
+        "index_prefix": inventory["index_prefix"],
         "inventory": inventory,
         "source_stack_version": SOURCE_STACK_VERSION,
     }
 
 
-def _client_from_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> Elasticsearch:
-    api_key = os.environ.get("ELASTIC_API_KEY")
-    username = os.environ.get("ELASTIC_USERNAME")
-    password = os.environ.get("ELASTIC_PASSWORD")
-    if bool(username) != bool(password):
-        parser.error("ELASTIC_USERNAME and ELASTIC_PASSWORD must be set together.")
-    if api_key and username:
-        parser.error("Use either ELASTIC_API_KEY or ELASTIC_USERNAME/ELASTIC_PASSWORD, not both.")
-
-    options: dict[str, Any] = {
-        "request_timeout": args.timeout,
-        "verify_certs": not args.insecure,
-    }
-    if args.ca_certs:
-        options["ca_certs"] = str(args.ca_certs)
-    if api_key:
-        options["api_key"] = api_key
-    elif username and password:
-        options["basic_auth"] = (username, password)
-    return Elasticsearch(args.url, **options)
+def _client_from_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> ElasticsearchRestClient:
+    try:
+        credentials = credentials_from_environment()
+        return ElasticsearchRestClient(
+            args.url,
+            **credentials,
+            ca_certs=args.ca_certs,
+            insecure=args.insecure,
+            timeout=args.timeout,
+            allow_insecure_http_auth=args.allow_insecure_http_auth,
+        )
+    except ValueError as error:
+        parser.error(str(error))
+        raise AssertionError("argparse parser.error must exit")  # pragma: no cover
 
 
 def main() -> int:
@@ -194,8 +305,19 @@ def main() -> int:
         help="Elasticsearch URL. Defaults to ELASTICSEARCH_URL or http://localhost:9200.",
     )
     parser.add_argument("--output", type=Path, help="Write the JSON report to this path instead of stdout.")
-    parser.add_argument("--ca-certs", type=Path, help="Certificate authority bundle for TLS verification.")
-    parser.add_argument("--insecure", action="store_true", help="Disable TLS certificate verification.")
+    parser.add_argument(
+        "--baseline-capture",
+        action="store_true",
+        help="Require synced Howler primary checkpoints before producing a cutover baseline.",
+    )
+    tls = parser.add_mutually_exclusive_group()
+    tls.add_argument("--ca-certs", type=Path, help="Certificate authority bundle for TLS verification.")
+    tls.add_argument("--insecure", action="store_true", help="Disable TLS certificate verification.")
+    parser.add_argument(
+        "--allow-insecure-http-auth",
+        action="store_true",
+        help="Explicitly allow sending credentials over plain HTTP (not recommended).",
+    )
     parser.add_argument("--timeout", type=int, default=60, help="Request timeout in seconds.")
     args = parser.parse_args()
 
@@ -204,16 +326,15 @@ def main() -> int:
 
     client = _client_from_args(args, parser)
     try:
-        report = build_report(client)
-    finally:
-        client.close()
-
+        report = build_report(client, baseline_capture=args.baseline_capture)
+    except ElasticsearchRestError as error:
+        parser.error(str(error))
     rendered = json.dumps(report, indent=2, sort_keys=True) + "\n"
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(rendered, encoding="utf-8")
     else:
-        print(rendered, end="")
+        print(rendered, end="")  # noqa: T201
 
     return 0 if report["checks"]["ready"] else 1
 
