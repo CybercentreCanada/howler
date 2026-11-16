@@ -1,11 +1,17 @@
+import json
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from elasticsearch.exceptions import ConflictError, NotFoundError
+from pydantic import Field
 
+from howler.actions.models import ActionArguments, ActionDescription, ActionSpecification, ActionStep
 from howler.datastore.exceptions import DataStoreException, VersionConflictException
+from howler.datastore.migrations import action_arguments as action_arguments_migration
+from howler.datastore.migrations.action_arguments import ActionArgumentsMigration, _migrate_operations
 from howler.datastore.migrations.action_owner import ActionOwnerMigration
 from howler.datastore.migrations.base import Migration
 from howler.datastore.migrations.runner import _mark_applied, _release_claim, run_migrations
@@ -332,3 +338,291 @@ def test_run_migrations_rejects_invalid_records(record):
 def test_run_migrations_rejects_empty_selection():
     with pytest.raises(DataStoreException, match="At least one"):
         run_migrations(make_datastore(), [])
+
+
+class MigrationArguments(ActionArguments):
+    value: str = Field(min_length=1)
+
+
+class MigrationTransitionArguments(ActionArguments):
+    transition: str
+    escalation: str | None = None
+    status: str | None = None
+
+
+def _migration_specification(operation_id, arguments):
+    return ActionSpecification(
+        id=operation_id,
+        title=operation_id,
+        description=ActionDescription(short=operation_id),
+        roles=["admin"],
+        steps=[ActionStep(args={field_name: [] for field_name in arguments.model_fields})],
+        arguments=arguments,
+    )
+
+
+def _install_migration_specifications(monkeypatch):
+    specifications = {
+        "typed": _migration_specification("typed", MigrationArguments),
+        "transition": _migration_specification("transition", MigrationTransitionArguments),
+        "legacy": ActionSpecification.from_legacy(
+            {
+                "id": "legacy",
+                "title": "legacy",
+                "description": {"short": "legacy"},
+                "roles": ["admin"],
+                "steps": [{"args": {"plugin_value": []}}],
+            }
+        ),
+    }
+    monkeypatch.setattr(
+        action_arguments_migration.actions,
+        "get_specification",
+        lambda operation_id: specifications.get(operation_id),
+    )
+    return specifications
+
+
+def test_action_arguments_migration_strips_typed_extra_and_reserved_keys(monkeypatch):
+    _install_migration_specifications(monkeypatch)
+    operations = [
+        {
+            "operation_id": "typed",
+            "data_json": json.dumps(
+                {"value": "kept", "obsolete": "removed", "query": "spoofed", "auth_token": "spoofed"}
+            ),
+        }
+    ]
+
+    migrated, changed = _migrate_operations(operations, "action-id")
+
+    assert changed
+    assert json.loads(migrated[0]["data_json"]) == {"value": "kept"}
+
+
+@pytest.mark.parametrize(
+    ("transition", "escalation", "expected", "should_change"),
+    [
+        ("promote", None, "alert", True),
+        ("demote", None, "hit", True),
+        ("demote", "alert", "alert", False),
+        ("assess", None, None, False),
+    ],
+)
+def test_action_arguments_migration_backfills_transition_escalations(
+    monkeypatch, transition, escalation, expected, should_change
+):
+    _install_migration_specifications(monkeypatch)
+    data = {"transition": transition}
+    if escalation is not None:
+        data["escalation"] = escalation
+    operations = [{"operation_id": "transition", "data_json": json.dumps(data)}]
+
+    migrated, changed = _migrate_operations(operations, "action-id")
+
+    assert changed is should_change
+    if not should_change:
+        assert migrated is operations or migrated == operations
+        return
+    assert json.loads(migrated[0]["data_json"]) == {"transition": transition, "escalation": expected}
+
+
+@pytest.mark.parametrize("escalation", ["", None])
+def test_action_arguments_migration_backfills_empty_or_none_escalation(monkeypatch, escalation):
+    _install_migration_specifications(monkeypatch)
+    operations = [
+        {
+            "operation_id": "transition",
+            "data_json": json.dumps({"status": "open", "transition": "promote", "escalation": escalation}),
+        }
+    ]
+
+    migrated, changed = _migrate_operations(operations, "action-id")
+
+    assert changed
+    assert json.loads(migrated[0]["data_json"]) == {
+        "status": "open",
+        "transition": "promote",
+        "escalation": "alert",
+    }
+
+
+def test_action_arguments_migration_warns_on_unhashable_transition_without_aborting(monkeypatch, caplog):
+    _install_migration_specifications(monkeypatch)
+    operations = [{"operation_id": "transition", "data_json": '{"transition":["promote"]}'}]
+
+    migrated, changed = _migrate_operations(operations, "action-id")
+
+    assert not changed
+    assert migrated == operations
+    assert "invalid arguments after migration" in caplog.text
+    assert "transition" in caplog.text
+
+
+def test_action_arguments_migration_normalizes_empty_data_json(monkeypatch):
+    _install_migration_specifications(monkeypatch)
+    operations = [{"operation_id": "typed", "data_json": ""}]
+
+    migrated, changed = _migrate_operations(operations, "action-id")
+
+    assert changed
+    assert migrated[0]["data_json"] == "{}"
+
+
+def test_action_arguments_migration_strips_undeclared_and_reserved_keys_from_legacy_specs(monkeypatch):
+    _install_migration_specifications(monkeypatch)
+    operations = [
+        {
+            "operation_id": "legacy",
+            "data_json": json.dumps(
+                {
+                    "plugin_value": "kept",
+                    "undeclared": "removed",
+                    "query": "removed",
+                    "auth_token": "removed",
+                    "operation_id": "spoofed",
+                }
+            ),
+        }
+    ]
+
+    migrated, changed = _migrate_operations(operations, "action-id")
+
+    assert changed
+    assert json.loads(migrated[0]["data_json"]) == {"plugin_value": "kept"}
+
+
+def test_action_arguments_migration_warns_and_preserves_unknown_malformed_and_invalid_operations(monkeypatch, caplog):
+    _install_migration_specifications(monkeypatch)
+    operations = [
+        {"operation_id": "disabled_plugin", "data_json": '{"obsolete": 1}'},
+        {"operation_id": "typed", "data_json": "{"},
+        {"operation_id": "typed", "data_json": "[]"},
+        {"operation_id": "typed", "data_json": json.dumps({"value": ""})},
+    ]
+
+    migrated, changed = _migrate_operations(operations, "action-id")
+
+    assert not changed
+    assert migrated == operations
+    assert "unknown or disabled" in caplog.text
+    assert "malformed data_json" in caplog.text
+    assert "data_json is not an object" in caplog.text
+    assert "invalid arguments after migration" in caplog.text
+
+
+def _make_action_arguments_datastore(source, *, update_side_effect=None):
+    client = SimpleNamespace()
+    client.get = MagicMock(return_value={"_source": deepcopy(source), "_seq_no": 1, "_primary_term": 1})
+    client.update = MagicMock(side_effect=update_side_effect)
+    client.indices = SimpleNamespace(refresh=MagicMock())
+    collection = SimpleNamespace(
+        name="howler-actions",
+        MAX_VERSION_CONFLICT_ATTEMPTS=3,
+        datastore=SimpleNamespace(client=client),
+        scan_with_retry=MagicMock(
+            return_value=iter(
+                [
+                    {
+                        "_id": "action-id",
+                        "_index": "howler-actions_hot",
+                        "_source": deepcopy(source),
+                    }
+                ]
+            )
+        ),
+    )
+
+    def with_retries(func, *args, **kwargs):
+        kwargs.pop("raise_conflicts", None)
+        return func(*args, **kwargs)
+
+    collection.with_retries = MagicMock(side_effect=with_retries)
+    return SimpleNamespace(action=collection), collection, client
+
+
+def test_action_arguments_migration_retries_conflicts_and_is_idempotent(monkeypatch):
+    _install_migration_specifications(monkeypatch)
+    source = {"operations": [{"operation_id": "typed", "data_json": '{"value":"kept","old":1}'}]}
+    datastore, collection, client = _make_action_arguments_datastore(source)
+    update_attempts = 0
+
+    def update_document(*_args, **kwargs):
+        nonlocal update_attempts
+        update_attempts += 1
+        if update_attempts == 1:
+            raise VersionConflictException("write conflict")
+        source["operations"] = kwargs["doc"]["operations"]
+        return {"result": "updated"}
+
+    client.update.side_effect = update_document
+    collection.scan_with_retry.side_effect = lambda **_: iter(
+        [{"_id": "action-id", "_index": "howler-actions_hot", "_source": deepcopy(source)}]
+    )
+
+    assert ActionArgumentsMigration().run(datastore) == 1
+    assert update_attempts == 2
+    client.indices.refresh.assert_called_once_with(index="howler-actions")
+    assert json.loads(source["operations"][0]["data_json"]) == {"value": "kept"}
+
+    client.indices.refresh.reset_mock()
+    assert ActionArgumentsMigration().run(datastore) == 0
+    assert client.update.call_count == 2
+    client.indices.refresh.assert_not_called()
+
+
+def test_action_arguments_migration_raises_after_conflict_retries_are_exhausted(monkeypatch):
+    _install_migration_specifications(monkeypatch)
+    source = {"operations": [{"operation_id": "typed", "data_json": '{"value":"kept","old":1}'}]}
+    datastore, collection, client = _make_action_arguments_datastore(source)
+    client.update.side_effect = VersionConflictException("write conflict")
+
+    with pytest.raises(VersionConflictException, match="write conflict"):
+        ActionArgumentsMigration().run(datastore)
+
+    assert client.update.call_count == collection.MAX_VERSION_CONFLICT_ATTEMPTS
+    client.indices.refresh.assert_not_called()
+
+
+def test_action_arguments_migration_retries_elasticsearch_conflict_error(monkeypatch):
+    _install_migration_specifications(monkeypatch)
+    source = {"operations": [{"operation_id": "typed", "data_json": '{"value":"kept","old":1}'}]}
+    datastore, _, client = _make_action_arguments_datastore(source)
+    client.update.side_effect = [ConflictError("write conflict", None, {}), {"result": "updated"}]
+
+    assert ActionArgumentsMigration().run(datastore) == 1
+    assert client.update.call_count == 2
+
+
+def test_action_arguments_migration_ignores_document_deleted_before_update(monkeypatch):
+    _install_migration_specifications(monkeypatch)
+    source = {"operations": [{"operation_id": "typed", "data_json": '{"value":"kept","old":1}'}]}
+    datastore, _, client = _make_action_arguments_datastore(source)
+    client.update.side_effect = NotFoundError("document deleted", None, {})
+
+    assert ActionArgumentsMigration().run(datastore) == 0
+    client.update.assert_called_once()
+    client.indices.refresh.assert_not_called()
+
+
+def test_action_arguments_migration_restores_lazy_collection_validation():
+    client = SimpleNamespace(indices=SimpleNamespace(refresh=MagicMock()))
+    collection = SimpleNamespace(
+        name="howler-actions",
+        MAX_VERSION_CONFLICT_ATTEMPTS=3,
+        datastore=SimpleNamespace(client=client),
+        scan_with_retry=MagicMock(return_value=iter([])),
+    )
+    store = SimpleNamespace(validate=True)
+
+    class LazyDatastore:
+        ds = store
+
+        @property
+        def action(self):
+            assert self.ds.validate is False
+            return collection
+
+    assert ActionArgumentsMigration().run(LazyDatastore()) == 0
+    assert store.validate is True
+    collection.scan_with_retry.assert_called_once_with(query={"match_all": {}}, index="howler-actions")

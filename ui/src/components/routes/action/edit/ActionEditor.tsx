@@ -29,7 +29,7 @@ import { useCallback, useContext, useEffect, useMemo, useState, type ChangeEvent
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { useLocation, useParams, useSearchParams } from 'react-router';
-import { operationReady, withTransitionEscalationDefault } from 'utils/actionUtils';
+import { operationReady } from 'utils/actionUtils';
 import QueryResultText from '../../../elements/display/QueryResultText';
 import ActionReportDisplay from '../shared/ActionReportDisplay';
 import OperationEntry from '../shared/OperationEntry';
@@ -163,7 +163,7 @@ const ActionEditor: FC = () => {
         setName(existingAction.name ?? '');
         searchParams.set('query', query);
         setSearchParams(new URLSearchParams(searchParams), { replace: true });
-        setUserOperations((existingAction.operations ?? []).map(withTransitionEscalationDefault));
+        setUserOperations(existingAction.operations ?? []);
         setLoading(false);
         void onSearch(query);
       });

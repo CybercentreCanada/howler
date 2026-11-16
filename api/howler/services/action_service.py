@@ -1,6 +1,6 @@
 import json
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from importlib.util import find_spec
 from typing import Any, Literal, Optional, TypedDict, overload
 
@@ -9,7 +9,12 @@ from flask import Response, has_request_context, request
 from pydantic import ValidationError
 
 from howler import actions
-from howler.actions.models import ActionModel, OperationModel, format_validation_error
+from howler.actions.models import (
+    DISPATCHER_ARGUMENTS,
+    ActionModel,
+    format_action_validation_error,
+    format_validation_error,
+)
 from howler.api import bad_request
 from howler.common.exceptions import HowlerValueError
 from howler.common.loader import datastore
@@ -17,7 +22,6 @@ from howler.common.logging import get_logger
 from howler.common.logging.audit import audit
 from howler.config import config
 from howler.odm.models.action import VALID_TRIGGERS, Action
-from howler.odm.models.howler_data import Escalation, HitStatusTransition
 from howler.odm.models.user import User
 from howler.remote.datatypes.queues.named import NamedQueue
 from howler.services import auth_service
@@ -25,11 +29,6 @@ from howler.utils.constants import TESTING
 from howler.utils.str_utils import sanitize_lucene_query
 
 logger = get_logger(__file__)
-
-_DEFAULT_TRANSITION_ESCALATIONS = {
-    HitStatusTransition.PROMOTE.value: Escalation.ALERT.value,
-    HitStatusTransition.DEMOTE.value: Escalation.HIT.value,
-}
 
 
 class TriggeredAction(TypedDict):
@@ -100,6 +99,133 @@ def _request_auth_token() -> str | None:
         return None
 
     return authorization.split(" ", maxsplit=1)[1]
+
+
+def _invalid_arguments_report(query: str, message: str) -> dict[str, str]:
+    return {
+        "query": f"({query})",
+        "outcome": "error",
+        "title": "Invalid Arguments",
+        "message": message,
+    }
+
+
+def _invalid_dispatcher_arguments_report(query: str, arguments: Mapping[str, Any]) -> dict[str, str] | None:
+    """Return an Invalid Arguments report for dispatcher-owned keys in user data."""
+    if reserved := DISPATCHER_ARGUMENTS & set(arguments):
+        message = "; ".join(
+            f"{key}: Extra inputs are not permitted (received {arguments[key]!r})" for key in sorted(reserved)
+        )
+        return _invalid_arguments_report(query, message)
+
+    return None
+
+
+def _parse_operation_data_json(data_json: Any, query: str) -> tuple[dict[str, Any], dict[str, str] | None]:
+    if data_json is None or data_json == "":
+        return {}, None
+
+    if not isinstance(data_json, str):
+        return {}, _invalid_arguments_report(query, "data_json must be a JSON string containing an object.")
+
+    try:
+        parsed_data = json.loads(data_json)
+    except json.JSONDecodeError as error:
+        return {}, _invalid_arguments_report(query, f"data_json must be valid JSON: {error.msg}.")
+
+    if not isinstance(parsed_data, dict):
+        return {}, _invalid_arguments_report(query, "data_json must be a JSON object.")
+
+    return parsed_data, None
+
+
+def _audit_action_operation(
+    query: str,
+    operation_id: str,
+    arguments: Mapping[str, Any],
+    user: User | None,
+    audit_fn: Callable[..., Any],
+    *,
+    include_arguments: bool,
+) -> None:
+    audit_data = {
+        "user": user,
+        "query": query,
+        "operation_id": operation_id,
+    }
+    if include_arguments:
+        audit_data.update(arguments)
+
+    audit(
+        [],
+        audit_data,
+        user["uname"] if user is not None else "unknown",
+        user,
+        audit_fn,
+    )
+
+
+def execute_saved_action(
+    action_id: str,
+    *,
+    query_override: str | None,
+    request_id: str | None,
+    user: User | None,
+    audit_fn: Callable[..., Any],
+) -> dict[str, list[dict[str, Any]]] | None:
+    """Execute a saved action, reporting invalid persisted argument JSON per operation."""
+    action = datastore().action.get(action_id)
+    if not action:
+        return None
+
+    return execute_operations(
+        query_override or action.query,
+        request_id,
+        [{"operation_id": operation.operation_id, "data_json": operation.data_json} for operation in action.operations],
+        user,
+        audit_fn=audit_fn,
+    )
+
+
+def execute_operations(
+    query: str,
+    request_id: str | None,
+    operations: list[Mapping[str, Any]],
+    user: User | None,
+    *,
+    audit_fn: Callable[..., Any],
+) -> dict[str, list[dict[str, Any]]]:
+    """Execute operations and return reports grouped by operation ID."""
+    reports: dict[str, list[dict[str, Any]]] = {}
+    for operation in operations:
+        operation_id = operation["operation_id"]
+        op_data, invalid_report = _parse_operation_data_json(operation.get("data_json"), query)
+        if invalid_report is None:
+            invalid_report = _invalid_dispatcher_arguments_report(query, op_data)
+
+        _audit_action_operation(
+            query,
+            operation_id,
+            op_data,
+            user,
+            audit_fn,
+            include_arguments=invalid_report is None,
+        )
+
+        report = (
+            [invalid_report]
+            if invalid_report is not None
+            else actions.execute(
+                operation_id=operation_id,
+                request_id=request_id,
+                query=query,
+                user=user,
+                **op_data,
+            )
+        )
+        reports.setdefault(operation_id, []).extend(report)
+
+    return reports
 
 
 def get_action_queue(trigger: str) -> NamedQueue[TriggeredAction]:
@@ -220,75 +346,12 @@ def process_action_batch(trigger: str, items: list[TriggeredAction]) -> None:
             logger.exception("Error processing action batch for trigger=%s user=%s", trigger, uname)
 
 
-def _is_unchanged_operation(operation: OperationModel, stored_operation: Mapping[str, Any] | None) -> bool:
-    """Return whether the submitted operation keeps a stored operation's arguments unchanged."""
-    if stored_operation is None or stored_operation.get("operation_id") != operation.operation_id:
-        return False
-
-    stored_data_json = stored_operation.get("data_json")
-    try:
-        stored_data = json.loads(stored_data_json) if stored_data_json else {}
-    except (TypeError, json.JSONDecodeError):
-        return False
-
-    if not isinstance(stored_data, dict):
-        return False
-
-    if stored_data == operation.data:
-        return True
-
-    # The editor adds the server's default escalation when loading legacy transitions. Treat
-    # that normalization as unchanged so obsolete legacy arguments remain compatible on save.
-    transition = stored_data.get("transition")
-    default_escalation = _DEFAULT_TRANSITION_ESCALATIONS.get(transition) if isinstance(transition, str) else None
-    if operation.operation_id == "transition" and default_escalation and not stored_data.get("escalation"):
-        return {**stored_data, "escalation": default_escalation} == operation.data
-
-    return False
-
-
-def validate_action(new_action: Any, existing_action: Mapping[str, Any] | None = None) -> Optional[Response]:  # noqa: C901
+def validate_action(new_action: Any) -> Optional[Response]:
     """Validate a new action"""
-    if not isinstance(new_action, dict):
-        return bad_request(err="Incorrect data structure!")
-
-    if "name" not in new_action:
-        return bad_request(err="You must specify a name.")
-    elif not new_action["name"]:
-        return bad_request(err="Name cannot be empty.")
-
-    if "query" not in new_action:
-        return bad_request(err="You must specify a query.")
-    elif not new_action["query"]:
-        return bad_request(err="Query cannot be empty.")
-
-    operations = new_action.get("operations", None)
-    if operations is None:
-        return bad_request(err="You must specify a list of operations.")
-
-    if not isinstance(operations, list):
-        return bad_request(err="'operations' must be a list of operations.")
-
-    if len(operations) < 1:
-        return bad_request(err="You must specify at least one operation.")
-
-    operation_ids = [o["operation_id"] for o in operations]
-    if len(operation_ids) != len(set(operation_ids)):
-        return bad_request(err="You must have a maximum of one operation of each type in the action.")
-
-    if set(new_action.get("triggers", [])) - set(VALID_TRIGGERS):
-        return bad_request(err="Invalid trigger provided.")
-
     try:
         action = ActionModel.model_validate(new_action)
     except ValidationError as e:
-        return bad_request(err=format_validation_error(e))
-
-    stored_operations = {
-        operation["operation_id"]: operation
-        for operation in (existing_action or {}).get("operations", [])
-        if isinstance(operation, Mapping) and isinstance(operation.get("operation_id"), str)
-    }
+        return bad_request(err=format_action_validation_error(e))
 
     for operation in action.operations:
         specification = actions.get_specification(operation.operation_id)
@@ -298,14 +361,66 @@ def validate_action(new_action: Any, existing_action: Mapping[str, Any] | None =
             )
 
         try:
-            ignore_extra = _is_unchanged_operation(operation, stored_operations.get(operation.operation_id))
-            specification.validate_arguments(operation.data, ignore_extra=ignore_extra)
+            specification.validate_arguments(operation.data)
         except ValidationError as e:
             return bad_request(
                 err=f"Invalid arguments for operation {operation.operation_id}: {format_validation_error(e)}"
             )
 
     return None
+
+
+def _execute_bulk_operation(
+    action: Action,
+    operation: Any,
+    intersected_query: str,
+    user: Optional[User],
+    auth_token: str | None,
+) -> None:
+    parsed_data, invalid_report = _parse_operation_data_json(operation.data_json, intersected_query)
+    if invalid_report is None:
+        invalid_report = _invalid_dispatcher_arguments_report(intersected_query, parsed_data)
+
+    _audit_action_operation(
+        intersected_query,
+        operation.operation_id,
+        parsed_data,
+        user,
+        bulk_execute_on_query,
+        include_arguments=invalid_report is None,
+    )
+
+    if invalid_report:
+        logger.warning(
+            "Invalid Arguments for action %s operation %s: %s",
+            action.action_id,
+            operation.operation_id,
+            invalid_report["message"],
+        )
+        return
+
+    if not user:
+        raise NotImplementedError("Running actions without a user object is not currently supported")
+
+    if auth_token is not None and not _is_builtin_operation(operation.operation_id):
+        logger.debug("Appending auth token to external operation %s", operation.operation_id)
+        parsed_data["auth_token"] = auth_token
+
+    report = actions.execute(
+        operation_id=operation.operation_id,
+        query=intersected_query,
+        user=user,
+        **parsed_data,
+    )
+
+    for entry in report:
+        logger.info(
+            "%s (%s): %s",
+            operation.operation_id,
+            entry["outcome"],
+            entry["message"],
+        )
+        logger.debug("\t%s", entry["query"])
 
 
 def bulk_execute_on_query(
@@ -335,39 +450,4 @@ def bulk_execute_on_query(
             if operation.operation_id == "example_plugin":
                 continue
 
-            parsed_data = json.loads(operation.data_json) if operation.data_json else operation.data
-
-            audit(
-                [],
-                {
-                    "query": intersected_query,
-                    "operation_id": operation.operation_id,
-                    **parsed_data,
-                },
-                user["uname"] if user is not None else "unknown",
-                user,
-                bulk_execute_on_query,
-            )
-
-            if not user:
-                raise NotImplementedError("Running actions without a user object is not currently supported")
-
-            if auth_token is not None and not _is_builtin_operation(operation.operation_id):
-                logger.debug("Appending auth token to external operation %s", operation.operation_id)
-                parsed_data["auth_token"] = auth_token
-
-            report = actions.execute_stored_action(
-                operation_id=operation.operation_id,
-                query=intersected_query,
-                user=user,
-                **parsed_data,
-            )
-
-            for entry in report:
-                logger.info(
-                    "%s (%s): %s",
-                    operation.operation_id,
-                    entry["outcome"],
-                    entry["message"],
-                )
-                logger.debug("\t%s", entry["query"])
+            _execute_bulk_operation(action, operation, intersected_query, user, auth_token)

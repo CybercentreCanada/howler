@@ -10,18 +10,17 @@ from pydantic import (
     Field,
     TypeAdapter,
     ValidationError,
+    create_model,
     field_validator,
     model_validator,
 )
 from pydantic.fields import FieldInfo
 
-from howler.common.logging import get_logger
 from howler.odm.models.action import VALID_TRIGGERS
-
-logger = get_logger(__file__)
 
 # Supplied to every operation by the dispatcher, never by the user
 RESERVED_ARGUMENTS = frozenset({"query", "user", "request_id", "auth_token"})
+DISPATCHER_ARGUMENTS = RESERVED_ARGUMENTS | {"operation_id"}
 MAX_LISTED_VALUES = 20
 
 
@@ -80,6 +79,31 @@ def format_validation_error(error: ValidationError) -> str:
     return "; ".join(messages)
 
 
+def format_action_validation_error(error: ValidationError) -> str:
+    """Preserve legacy action API messages while using model validation."""
+    messages: dict[tuple[tuple[int | str, ...], str], str] = {
+        ((), "model_type"): "Incorrect data structure!",
+        (("name",), "missing"): "You must specify a name.",
+        (("query",), "missing"): "You must specify a query.",
+        (("operations",), "missing"): "You must specify a list of operations.",
+        (("operations",), "list_type"): "'operations' must be a list of operations.",
+        (("operations",), "too_short"): "You must specify at least one operation.",
+        (("triggers",), "value_error"): "Invalid trigger provided.",
+    }
+    for details in error.errors(include_url=False):
+        location = details["loc"]
+        if location in (("name",), ("query",)) and details["type"] != "missing" and not details.get("input"):
+            return f"{str(location[0]).capitalize()} cannot be empty."
+
+        if location == ("operations",) and details.get("input") is None:
+            return "You must specify a list of operations."
+
+        if message := messages.get((location, details["type"])):
+            return message
+
+    return format_validation_error(error)
+
+
 def invalid_arguments_report(query: str, error: ValidationError) -> dict[str, str]:
     """Build the report entry returned when an operation is executed with invalid arguments."""
     return {
@@ -94,12 +118,6 @@ class ActionArguments(BaseModel):
     """Base class for the user-supplied arguments of an action operation."""
 
     model_config = ConfigDict(extra="forbid")
-
-
-class LegacyActionArguments(ActionArguments):
-    """Permissive arguments for plugin operations that still return a dict specification."""
-
-    model_config = ConfigDict(extra="allow")
 
 
 class ActionDescription(BaseModel):
@@ -133,6 +151,46 @@ class ActionStep(BaseModel):
         default=None, description="Queries the UI uses to warn about or block execution."
     )
 
+    @model_validator(mode="after")
+    def _validate_options(self) -> "ActionStep":
+        for name in self.options:
+            if name not in self.args:
+                raise ValueError(f"Options are provided for '{name}', which is not an argument of the same step.")
+
+        return self
+
+    def validate_against(self, adapters: Mapping[str, TypeAdapter[Any]]) -> None:
+        """Validate conditions and offered values against the specification's argument types."""
+        for conditions in self.args.values():
+            for condition in conditions:
+                self._check_condition(condition, adapters)
+
+        for name, options in self.options.items():
+            if isinstance(options, dict):
+                for condition, values in options.items():
+                    self._check_condition(condition, adapters)
+                    self._check_values(name, values, adapters[name])
+            else:
+                self._check_values(name, options, adapters[name])
+
+    @staticmethod
+    def _check_values(name: str, values: Iterable[str], adapter: TypeAdapter[Any]) -> None:
+        for value in values:
+            try:
+                adapter.validate_python(value)
+            except ValidationError as e:
+                raise ValueError(
+                    f"'{value}' is offered for '{name}' but is invalid: {format_validation_error(e)}"
+                ) from e
+
+    @classmethod
+    def _check_condition(cls, condition: str, adapters: Mapping[str, TypeAdapter[Any]]) -> None:
+        name, separator, value = condition.partition(":")
+        if not separator or name not in adapters:
+            raise ValueError(f"Condition '{condition}' must be in the form 'argument:value' for a known argument.")
+
+        cls._check_values(name, [value], adapters[name])
+
 
 def _field_adapter(field: FieldInfo) -> TypeAdapter[Any]:
     annotation = field.annotation
@@ -143,39 +201,6 @@ def _field_adapter(field: FieldInfo) -> TypeAdapter[Any]:
         return TypeAdapter(annotation)
 
     return TypeAdapter(Annotated[(annotation, *field.metadata)])  # type: ignore
-
-
-def _check_values(name: str, values: Iterable[str], adapter: TypeAdapter[Any]) -> None:
-    for value in values:
-        try:
-            adapter.validate_python(value)
-        except ValidationError as e:
-            raise ValueError(f"'{value}' is offered for '{name}' but is invalid: {format_validation_error(e)}") from e
-
-
-def _check_condition(condition: str, adapters: Mapping[str, TypeAdapter[Any]]) -> None:
-    name, separator, value = condition.partition(":")
-    if not separator or name not in adapters:
-        raise ValueError(f"Condition '{condition}' must be in the form 'argument:value' for a known argument.")
-
-    _check_values(name, [value], adapters[name])
-
-
-def _check_step(step: ActionStep, adapters: Mapping[str, TypeAdapter[Any]]) -> None:
-    for conditions in step.args.values():
-        for condition in conditions:
-            _check_condition(condition, adapters)
-
-    for name, options in step.options.items():
-        if name not in step.args:
-            raise ValueError(f"Options are provided for '{name}', which is not an argument of the same step.")
-
-        if isinstance(options, dict):
-            for condition, values in options.items():
-                _check_condition(condition, adapters)
-                _check_values(name, values, adapters[name])
-        else:
-            _check_values(name, options, adapters[name])
 
 
 class ActionSpecification(BaseModel):
@@ -197,7 +222,9 @@ class ActionSpecification(BaseModel):
     roles: list[str] = Field(min_length=1, description="The roles allowed to run the operation.")
     steps: list[ActionStep] = Field(default_factory=list, description="The arguments to ask for, grouped in steps.")
     triggers: list[str] = Field(default_factory=list, description="The events that can trigger the operation.")
-    arguments: type[ActionArguments] = Field(exclude=True, description="The model validating the arguments.")
+    arguments: Optional[type[ActionArguments]] = Field(
+        default=None, exclude=True, description="The model validating the arguments, if the operation accepts any."
+    )
 
     @field_validator("triggers")
     @classmethod
@@ -209,12 +236,9 @@ class ActionSpecification(BaseModel):
 
     @model_validator(mode="after")
     def _validate_arguments_model(self) -> "ActionSpecification":
-        if issubclass(self.arguments, LegacyActionArguments):
-            return self
+        fields = (self.arguments or ActionArguments).model_fields
 
-        fields = self.arguments.model_fields
-
-        if reserved := RESERVED_ARGUMENTS & set(fields):
+        if reserved := DISPATCHER_ARGUMENTS & set(fields):
             raise ValueError(f"The arguments model declares reserved argument(s): {', '.join(sorted(reserved))}.")
 
         step_args = {name for step in self.steps for name in step.args}
@@ -226,29 +250,52 @@ class ActionSpecification(BaseModel):
 
         adapters = {name: _field_adapter(field) for name, field in fields.items()}
         for step in self.steps:
-            _check_step(step, adapters)
+            step.validate_against(adapters)
 
         return self
 
     @classmethod
     def from_legacy(cls, specification: Mapping[str, Any]) -> "ActionSpecification":
-        """Build a specification from the dict format returned before argument validation existed.
+        """Build a specification from the dict format, deriving allowed argument names from its steps.
 
         Args:
             specification (Mapping[str, Any]): The dict specification returned by an operation.
 
         Returns:
-            ActionSpecification: The specification, accepting any arguments.
+            ActionSpecification: The specification, accepting only arguments declared in ``steps``.
         """
-        return cls.model_validate({**specification, "arguments": LegacyActionArguments})
+        field_definitions: dict[str, Any] = {}
+        raw_steps = specification.get("steps")
+        if isinstance(raw_steps, list):
+            for raw_step in raw_steps:
+                if isinstance(raw_step, ActionStep):
+                    step_args: Any = raw_step.args
+                elif isinstance(raw_step, Mapping):
+                    step_args = raw_step.get("args")
+                else:
+                    step_args = None
 
-    def validate_arguments(self, data: Mapping[str, Any], ignore_extra: bool = False) -> ActionArguments:
+                if not isinstance(step_args, Mapping):
+                    continue
+
+                for arg_name in step_args:
+                    if isinstance(arg_name, str) and not arg_name.startswith("_") and arg_name not in field_definitions:
+                        field_definitions[arg_name] = (Any, None)
+
+        spec_id = specification.get("id")
+        model_name = f"{spec_id}_Arguments" if isinstance(spec_id, str) and spec_id else "InferredActionArguments"
+        arguments_model: type[ActionArguments] = create_model(
+            model_name,
+            __base__=ActionArguments,
+            **field_definitions,
+        )
+        return cls.model_validate({**specification, "arguments": arguments_model})
+
+    def validate_arguments(self, data: Mapping[str, Any]) -> ActionArguments:
         """Validate the arguments an operation is executed with.
 
         Args:
-            data (Mapping[str, Any]): The arguments to validate. Reserved arguments are ignored.
-            ignore_extra (bool, optional): Drop unknown arguments with a warning instead of rejecting them. Used for
-                stored actions, which may predate argument validation. Defaults to False.
+            data (Mapping[str, Any]): The arguments to validate.
 
         Raises:
             ValidationError: The arguments are invalid.
@@ -256,14 +303,7 @@ class ActionSpecification(BaseModel):
         Returns:
             ActionArguments: The validated arguments.
         """
-        payload = {key: value for key, value in data.items() if key not in RESERVED_ARGUMENTS}
-
-        if ignore_extra and self.arguments.model_config.get("extra") == "forbid":
-            if unknown := set(payload) - set(self.arguments.model_fields):
-                logger.warning("Ignoring unknown argument(s) %s for operation %s", ", ".join(sorted(unknown)), self.id)
-                payload = {key: value for key, value in payload.items() if key not in unknown}
-
-        return self.arguments.model_validate(payload)
+        return (self.arguments or ActionArguments).model_validate(dict(data))
 
     def to_ui_dict(self) -> dict[str, Any]:
         """Serialize the specification in the format expected by the UI."""

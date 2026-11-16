@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 from pydantic import ValidationError
 
-from howler.actions.models import RESERVED_ARGUMENTS, ActionSpecification, invalid_arguments_report
+from howler.actions.models import ActionSpecification, invalid_arguments_report
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.odm.models.user import User
@@ -54,7 +54,7 @@ def _load_specification(operation: ModuleType) -> ActionSpecification:
     if operation.OPERATION_ID not in _warned_legacy_operations:
         _warned_legacy_operations.add(operation.OPERATION_ID)
         logger.warning(
-            "Operation %s returns a dict specification, so its arguments are not validated. "
+            "Operation %s returns a dict specification, so only its step argument names are validated. "
             "Return an ActionSpecification instead.",
             operation.OPERATION_ID,
         )
@@ -176,45 +176,10 @@ def execute(
     query: str,
     user: User | None,
     request_id: Optional[str] = None,
+    auth_token: Optional[str] = None,
     **kwargs,
 ) -> list[dict[str, Any]]:
     """Execute an operation with strict validation of its arguments."""
-    return _execute(operation_id, query, user, request_id, kwargs, ignore_extra_arguments=False)
-
-
-def execute_stored_action(
-    operation_id: str,
-    query: str,
-    user: User | None,
-    request_id: Optional[str] = None,
-    **kwargs,
-) -> list[dict[str, Any]]:
-    """Execute a saved action, allowing unknown legacy arguments to be ignored."""
-    return _execute(operation_id, query, user, request_id, kwargs, ignore_extra_arguments=True)
-
-
-def _execute(
-    operation_id: str,
-    query: str,
-    user: User | None,
-    request_id: Optional[str],
-    arguments: dict[str, Any],
-    *,
-    ignore_extra_arguments: bool,
-) -> list[dict[str, Any]]:
-    """Execute a specification.
-
-    Args:
-        operation_id (str): The id of the operation to run
-        query (str): The query to run this action on
-        user (dict[str, Any]): The user running this action
-        request_id (str, None): A user-provided ID, can be used to track the progress of their excecution via websockets
-        arguments (dict[str, Any]): User-supplied operation arguments.
-        ignore_extra_arguments (bool): Drop unknown arguments instead of rejecting them. Used only for stored actions.
-
-    Returns:
-        list[dict[str, Any]]: A report on the execution
-    """
     operation = _get_operation(operation_id)
 
     if not operation:
@@ -258,16 +223,16 @@ def _execute(
         ]
 
     try:
-        validated_arguments = specification.validate_arguments(arguments, ignore_extra=ignore_extra_arguments)
+        validated_arguments = specification.validate_arguments(kwargs)
     except ValidationError as e:
         report = invalid_arguments_report(query, e)
         report["query"] = f"({query})"
         return [report]
 
-    operation_kwargs = {key: value for key, value in arguments.items() if key in RESERVED_ARGUMENTS}
-    operation_kwargs.update(validated_arguments.model_extra or {})
     # Unset arguments are left out so the operation's own defaults still apply
-    operation_kwargs.update(validated_arguments.model_dump(exclude_unset=True))
+    operation_kwargs = validated_arguments.model_dump(exclude_unset=True)
+    if auth_token is not None:
+        operation_kwargs["auth_token"] = auth_token
 
     # Skip central limit check if operation handles it locally with transformed query
     if not getattr(operation, "SKIP_CENTRAL_LIMIT", False):

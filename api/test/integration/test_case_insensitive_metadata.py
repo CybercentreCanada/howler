@@ -593,6 +593,7 @@ def test_default_migration_batch_preflights_action_orphan_before_lazy_collection
         # Batch preflight failed before either selected migration acquired a claim or ran.
         assert datastore.migration.get_if_exists("action-owner-id-to-owner", as_obj=False) is None
         assert datastore.migration.get_if_exists("metadata-case-insensitive-search", as_obj=False) is None
+        assert datastore.migration.get_if_exists("action-operation-arguments", as_obj=False) is None
     finally:
         _delete_isolated_prefix_indexes(store, prefix)
         store.close()

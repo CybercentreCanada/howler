@@ -1,6 +1,7 @@
 from typing import Any
 
 import requests
+from howler.actions.models import ActionDescription, ActionSpecification
 from howler.common.exceptions import HowlerRuntimeError
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -137,17 +138,13 @@ def execute(query: str, **kwargs) -> list[dict[str, Any]]:
     return report
 
 
-def specification():
-    "Send to Sentinel action specification"
-    return {
-        "id": OPERATION_ID,
-        "title": "Send hit to Microsoft Sentinel",
-        "priority": 8,
-        "description": {
-            "short": "Send hit to Microsoft Sentinel",
-            "long": execute.__doc__,
-        },
-        "roles": ["automation_basic"],
-        "steps": [{"args": {}, "options": {}, "validation": {}}],
-        "triggers": VALID_TRIGGERS,
-    }
+def specification() -> ActionSpecification:
+    """Specify the Sentinel action's UI metadata and argument validation."""
+    return ActionSpecification(
+        id=OPERATION_ID,
+        title="Send hit to Microsoft Sentinel",
+        priority=8,
+        description=ActionDescription(short="Send hit to Microsoft Sentinel", long=execute.__doc__),
+        roles=["automation_basic"],
+        triggers=VALID_TRIGGERS,
+    )

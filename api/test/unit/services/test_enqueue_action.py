@@ -1,3 +1,4 @@
+import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -5,7 +6,10 @@ import pytest
 from cryptography.exceptions import InvalidTag
 from flask import Flask
 
+from howler.actions.models import DISPATCHER_ARGUMENTS
 from howler.cronjobs import action_queue_worker
+from howler.odm.models.action import Action, Operation
+from howler.odm.randomizer import random_model_obj
 from howler.services import action_service, auth_service
 
 
@@ -349,17 +353,15 @@ class TestBulkExecuteOnQuery:
     """Tests for action-operation authorization token forwarding."""
 
     @patch.object(action_service, "audit")
-    @patch.object(action_service.actions, "execute_stored_action", return_value=[])
+    @patch.object(action_service.actions, "execute", return_value=[])
     @patch.object(action_service, "datastore")
     def test_only_plugin_operations_receive_auth_token(self, mock_datastore, mock_execute, mock_audit):
         """Built-in actions omit auth_token while plugin actions receive it."""
-        built_in_operation = SimpleNamespace(operation_id="add_label", data_json="{}", data={})
-        plugin_operation = SimpleNamespace(operation_id="plugin_action", data_json="{}", data={})
-        action = SimpleNamespace(
-            action_id="action-id",
-            query="howler.id:*",
-            operations=[built_in_operation, plugin_operation],
-        )
+        built_in_operation = Operation({"operation_id": "add_label", "data_json": "{}"})
+        plugin_operation = Operation({"operation_id": "plugin_action", "data_json": "{}"})
+        action = random_model_obj(Action)
+        action.query = "howler.id:*"
+        action.operations = [built_in_operation, plugin_operation]
         storage = mock_datastore.return_value
         storage.action.search.return_value = {"items": [action]}
         storage.hit.search.return_value = {"total": 1}
@@ -376,3 +378,86 @@ class TestBulkExecuteOnQuery:
         built_in_call, plugin_call = mock_execute.call_args_list
         assert "auth_token" not in built_in_call.kwargs
         assert plugin_call.kwargs["auth_token"] == "oauth-access-token"
+
+    @patch.object(action_service, "audit")
+    @patch.object(action_service.actions, "execute", return_value=[])
+    @patch.object(action_service, "datastore")
+    def test_bulk_execution_treats_real_operation_with_none_data_json_as_empty(
+        self, mock_datastore, mock_execute, mock_audit
+    ):
+        operation = Operation({"operation_id": "add_label"})
+        action = random_model_obj(Action)
+        action.query = "howler.id:*"
+        action.operations = [operation]
+        storage = mock_datastore.return_value
+        storage.action.search.return_value = {"items": [action]}
+        storage.hit.search.return_value = {"total": 1}
+        user = MagicMock()
+        user.__getitem__.return_value = "admin"
+
+        action_service.bulk_execute_on_query("howler.id:(id1)", trigger="create", user=user)
+
+        assert operation.data_json is None
+        mock_execute.assert_called_once_with(
+            operation_id="add_label",
+            query="(howler.id:(id1)) AND (howler.id:*)",
+            user=user,
+        )
+
+    @pytest.mark.parametrize("data_json", ["{", "[]", 42])
+    @patch.object(action_service, "audit")
+    @patch.object(action_service.actions, "execute", return_value=[])
+    @patch.object(action_service, "datastore")
+    def test_bulk_execution_reports_invalid_data_json_and_continues(
+        self, mock_datastore, mock_execute, mock_audit, caplog, data_json
+    ):
+        invalid_operation = SimpleNamespace(operation_id="add_label", data_json=data_json)
+        valid_operation = SimpleNamespace(operation_id="remove_label", data_json="{}")
+        action = SimpleNamespace(
+            action_id="action-id",
+            query="howler.id:*",
+            operations=[invalid_operation, valid_operation],
+        )
+        storage = mock_datastore.return_value
+        storage.action.search.return_value = {"items": [action]}
+        storage.hit.search.return_value = {"total": 1}
+        user = MagicMock()
+        user.__getitem__.return_value = "admin"
+
+        action_service.bulk_execute_on_query("howler.id:(id1)", trigger="create", user=user)
+
+        assert "Invalid Arguments" in caplog.text
+        mock_execute.assert_called_once_with(
+            operation_id="remove_label",
+            query="(howler.id:(id1)) AND (howler.id:*)",
+            user=user,
+        )
+
+    @pytest.mark.parametrize("reserved", sorted(DISPATCHER_ARGUMENTS))
+    @patch.object(action_service, "audit")
+    @patch.object(action_service.actions, "execute", return_value=[])
+    @patch.object(action_service, "datastore")
+    def test_bulk_execution_rejects_reserved_keys_in_stored_data_json(
+        self, mock_datastore, mock_execute, mock_audit, caplog, reserved
+    ):
+        operation = SimpleNamespace(
+            operation_id="add_label",
+            data_json=json.dumps({"category": "generic", "label": "stored", reserved: "spoofed"}),
+        )
+        action = SimpleNamespace(action_id="action-id", query="howler.id:*", operations=[operation])
+        storage = mock_datastore.return_value
+        storage.action.search.return_value = {"items": [action]}
+        storage.hit.search.return_value = {"total": 1}
+        user = MagicMock()
+        user.__getitem__.return_value = "admin"
+
+        action_service.bulk_execute_on_query("howler.id:(id1)", trigger="create", user=user)
+
+        mock_execute.assert_not_called()
+        assert "Invalid Arguments" in caplog.text
+        assert reserved in caplog.text
+        audit_record = mock_audit.call_args.args[1]
+        assert audit_record["query"] == "(howler.id:(id1)) AND (howler.id:*)"
+        assert audit_record["operation_id"] == "add_label"
+        assert audit_record["user"] is user
+        assert mock_audit.call_args.args[4] is action_service.bulk_execute_on_query
