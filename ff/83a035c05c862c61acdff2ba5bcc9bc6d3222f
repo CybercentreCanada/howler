@@ -1,0 +1,105 @@
+plugins/sentinel/sentinel/actions/update_defender_xdr_alert.py
+  s_9ba3dc22ca6760::t_e9253851d171ad 17,196-205
+  s_4c00a140ce7006::t_51976a659ec9e1 2
+api/test/unit/services/test_enqueue_action.py
+  s_9ba3dc22ca6760::t_e9253851d171ad 1,9,11-12,356,360-364,381-463
+api/howler/actions/models.py
+  s_1a52ad59598093::t_58135d9f138371 95
+  s_9ba3dc22ca6760::t_b3abf41cac92e0 259,265,267-292
+  s_9ba3dc22ca6760::t_712c12288711d9 13
+  s_1a52ad59598093::t_c4a7760c24b3bf 82-83,85-94,96-106
+  s_1a52ad59598093::t_43e60dc086201e 154-181,185-193,253
+  s_1a52ad59598093::t_295fbe1b03afbd 182-184
+  s_9ba3dc22ca6760::t_e9253851d171ad 23,241,294,298
+  s_4c00a140ce7006::t_998b62846e4a4d 225-227,239,306
+  s_1a52ad59598093::t_3140a604bad26b 84
+  s_9ba3dc22ca6760::t_b5675a403938d7 293
+api/test/unit/endpoints/test_action_endpoint.py
+  s_1a52ad59598093::t_c4a7760c24b3bf 40-80,96-102,104-117
+  s_1a52ad59598093::t_58135d9f138371 81-95,103
+  s_9ba3dc22ca6760::t_e9253851d171ad 2,8,217-220,224,227,234,248,268,271-418
+api/howler/datastore/migrations/action_arguments.py
+  s_9ba3dc22ca6760::t_6ad3bd6f7412f7 12
+  s_9ba3dc22ca6760::t_e1823ede2560f1 111-120
+  s_9ba3dc22ca6760::t_e9253851d171ad 1-11,13-110,121-203
+api/test/integration/test_migrations.py
+  s_9ba3dc22ca6760::t_e9253851d171ad 3,9,11-12,108-142,144-171,180-236
+  s_9ba3dc22ca6760::t_5a8493c44f799b 143
+  s_9ba3dc22ca6760::t_4356fa1a853c1b 172-179
+api/test/unit/test_migrations.py
+  s_9ba3dc22ca6760::t_4f62916c1e845f 374,472,480
+  s_9ba3dc22ca6760::t_e9253851d171ad 1,8-9,11,13-14,341-373,375-471,473-479,481-628
+api/howler/datastore/migrations/runner.py
+  s_9ba3dc22ca6760::t_e9253851d171ad 15,28-32
+api/howler/api/v1/action.py
+  s_9ba3dc22ca6760::t_e9253851d171ad 206,296-303,376-378,380-386,390-400
+api/test/integration/api/test_actions.py
+  s_9ba3dc22ca6760::t_e9253851d171ad 716-717,818-819,844,852-853,855,859,864,875-877,880-881
+api/test/unit/actions/test_init.py
+  s_9ba3dc22ca6760::t_c8da2780716ed7 177-178,185,188,190-194,196-211
+  s_9ba3dc22ca6760::t_e9253851d171ad 7,9-10,99,122,136,147-176,179-184,186-187,195,212-220,303-316
+  s_1a52ad59598093::t_43e60dc086201e 4,8,11,258-302
+  s_4c00a140ce7006::t_998b62846e4a4d 189,221-257
+plugins/sentinel/sentinel/actions/send_to_sentinel.py
+  s_9ba3dc22ca6760::t_e9253851d171ad 141-150
+  s_4c00a140ce7006::t_51976a659ec9e1 4
+api/howler/actions/__init__.py
+  s_9ba3dc22ca6760::t_e603387a713899 233
+  s_9ba3dc22ca6760::t_e9253851d171ad 10,179,226,234-235
+  s_9ba3dc22ca6760::t_0a8d97a5c3f1dd 57
+plugins/sentinel/test/unit/test_actions.py
+  s_4c00a140ce7006::t_51976a659ec9e1 9,72
+  s_9ba3dc22ca6760::t_e9253851d171ad 2,16,55-71,73-148
+  s_9ba3dc22ca6760::t_0d23503c6b3d03 149-150
+api/test/unit/test_case_insensitive_metadata.py
+  s_9ba3dc22ca6760::t_e9253851d171ad 628,635,647-649
+  s_9ba3dc22ca6760::t_8bd44976821d12 650
+ui/src/components/routes/action/edit/ActionEditor.tsx
+  s_9ba3dc22ca6760::t_e9253851d171ad 32,166
+ui/src/utils/actionUtils.test.ts
+  s_9ba3dc22ca6760::t_e9253851d171ad 5
+api/howler/services/action_service.py
+  s_1a52ad59598093::t_d15097ab15f534 113,181-183,185-187,198,204,382
+  s_1a52ad59598093::t_c4a7760c24b3bf 12-17,349,354
+  s_1a52ad59598093::t_abccf49849cb57 184
+  s_9ba3dc22ca6760::t_e9253851d171ad 3,104-112,114-180,188-197,199-203,205-230,364,373-381,383-425,453
+plugins/sentinel/sentinel/actions/update_defender_xdr_incident.py
+  s_9ba3dc22ca6760::t_e9253851d171ad 17,196-205
+  s_4c00a140ce7006::t_51976a659ec9e1 2
+plugins/sentinel/sentinel/actions/azure_emit_hash.py
+  s_9ba3dc22ca6760::t_e9253851d171ad 1,3,6-14,19,29-47,50,54-61,114,155-168,170-172
+api/test/integration/test_case_insensitive_metadata.py
+  s_9ba3dc22ca6760::t_e9253851d171ad 596
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ff83a035c05c862c61acdff2ba5bcc9bc6d3222f",
+  "prompts": {},
+  "sessions": {
+    "s_1a52ad59598093": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "e483b5ab-dacc-4d62-8c8b-e994d6b0a2c0",
+        "model": "unknown"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_4c00a140ce7006": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "f16215c2-8017-48e7-91d2-3b3dcd651e0a",
+        "model": "unknown"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_9ba3dc22ca6760": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1b4db16dffeF6fluU4LoYKY2s",
+        "model": "gemini-4-carbon"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
