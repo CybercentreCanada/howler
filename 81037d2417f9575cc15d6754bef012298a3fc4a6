@@ -1,0 +1,53 @@
+api/howler/api/v1/action.py
+  s_16c68409841d18::t_19d3008f4aa227 373-374,377,379
+api/test/unit/endpoints/test_action_endpoint.py
+  s_16c68409841d18::t_19d3008f4aa227 41,43-46,48-56,61,65,69,73,75-85,88,91-95,97,99-104,107-123,126,128-133,236-242,247,249,251,253-256,260,265-271,273,280,282-284
+api/howler/actions/add_label.py
+  s_16c68409841d18::t_19d3008f4aa227 1,35
+api/test/integration/test_migrations.py
+  s_16c68409841d18::t_19d3008f4aa227 108,111,114,116,119,122,125,138-143,145,148
+api/howler/actions/prioritization.py
+  s_16c68409841d18::t_19d3008f4aa227 38,46
+api/howler/datastore/migrations/action_arguments.py
+  s_16c68409841d18::t_19d3008f4aa227 8,12,71-74,77,79,137,143,150-158,161-163,165
+api/test/unit/services/test_enqueue_action.py
+  s_16c68409841d18::t_19d3008f4aa227 360,378,383-394,398,422-428
+api/test/unit/test_migrations.py
+  s_16c68409841d18::t_19d3008f4aa227 8,367-372,392-406,408,413,420,439-441,444,446-448,455,462-463,477,519,522-524,530-532
+plugins/sentinel/sentinel/actions/update_defender_xdr_incident.py
+  s_16c68409841d18::t_19d3008f4aa227 194-207
+api/test/unit/actions/test_init.py
+  s_16c68409841d18::t_19d3008f4aa227 3,10,74-76,97-105,169-181,183-185,187-189,191-193,208,213-228,241-251,272,284
+api/howler/actions/remove_label.py
+  s_16c68409841d18::t_19d3008f4aa227 1,35
+plugins/sentinel/sentinel/actions/azure_emit_hash.py
+  s_16c68409841d18::t_19d3008f4aa227 2,20,24,77,118-134,136-137
+plugins/sentinel/sentinel/actions/send_to_sentinel.py
+  s_16c68409841d18::t_19d3008f4aa227 140-153
+plugins/sentinel/sentinel/actions/update_defender_xdr_alert.py
+  s_16c68409841d18::t_19d3008f4aa227 194-207
+api/howler/actions/__init__.py
+  s_16c68409841d18::t_19d3008f4aa227 1,5,47,55-59,178,224,226,228
+api/howler/actions/models.py
+  s_16c68409841d18::t_19d3008f4aa227 22,36,42-43,83-94,96-99,101-107,109,112,114,116,119,231-237,250,270,275-281,299-300
+api/test/integration/api/test_actions.py
+  s_16c68409841d18::t_19d3008f4aa227 708,710-711,713,716-717,719,750-751,760,775-776
+api/howler/services/action_service.py
+  s_16c68409841d18::t_19d3008f4aa227 13-14,102-103,108-114,118,123,160-161,297-337,339-340,342-369,371,374,376,388-389
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "81037d2417f9575cc15d6754bef012298a3fc4a6",
+  "prompts": {},
+  "sessions": {
+    "s_16c68409841d18": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1a91d99cffetTXFZJl6akkL4j",
+        "model": "gemini-4-carbon"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+plugins/sentinel/sentinel/actions/azure_emit_hash.py
+  s_66c65543a85827::t_8d9c5dbed45625 1,3,6-14,29-47,50,54-61,114,155-168,170-172
+  s_66c65543a85827::t_4e5d92500bf3e3 19
+plugins/sentinel/sentinel/actions/update_defender_xdr_alert.py
+  s_66c65543a85827::t_8d9c5dbed45625 2,17-21,200-211
+plugins/sentinel/sentinel/actions/send_to_sentinel.py
+  s_66c65543a85827::t_8d9c5dbed45625 4,19-22,145-156
+plugins/sentinel/sentinel/actions/update_defender_xdr_incident.py
+  s_66c65543a85827::t_8d9c5dbed45625 2,17-21,200-211
+plugins/sentinel/test/unit/test_actions.py
+  s_66c65543a85827::t_8d9c5dbed45625 2,9,55-148
+  s_66c65543a85827::t_4e5d92500bf3e3 16
+  s_66c65543a85827::t_adb8381d49d82a 149-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "50a4f14d65c26f4537025060592df41a6e10db9c",
+  "prompts": {},
+  "sessions": {
+    "s_66c65543a85827": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_3e0b9df446b7132f5cd184d92b53a6d3",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
