@@ -625,12 +625,14 @@ def test_registry_and_cli_list_and_select_the_new_migration(monkeypatch, capsys)
     assert [migration.migration_id for migration in MIGRATIONS] == [
         "action-owner-id-to-owner",
         "metadata-case-insensitive-search",
+        "action-operation-arguments",
     ]
 
     assert migration_cli.main(["--list"]) == 0
     assert capsys.readouterr().out.splitlines() == [
         "action-owner-id-to-owner",
         "metadata-case-insensitive-search",
+        "action-operation-arguments",
     ]
 
     datastore = SimpleNamespace(ds=SimpleNamespace(close=MagicMock()))
@@ -641,6 +643,10 @@ def test_registry_and_cli_list_and_select_the_new_migration(monkeypatch, capsys)
     assert migration_cli.main(["--migration-id", "metadata-case-insensitive-search"]) == 0
     runner.assert_called_once_with(datastore, (MIGRATIONS[1],))
     datastore.ds.close.assert_called_once_with()
+
+    runner.reset_mock()
+    assert migration_cli.main(["--migration-id", "action-operation-arguments"]) == 0
+    runner.assert_called_once_with(datastore, (MIGRATIONS[2],))
 
 
 def test_migration_timeout_symbol_matches_datastore_collection_configuration():

@@ -1,7 +1,18 @@
 import inspect
-from typing import Optional, cast
+from typing import Annotated, Optional, cast
+
+from pydantic import model_validator
 
 from howler.actions import check_hit_limit
+from howler.actions.models import (
+    ActionArguments,
+    ActionDescription,
+    ActionSpecification,
+    ActionStep,
+    EmptyToNone,
+    StepValidationRule,
+    one_of,
+)
 from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -10,6 +21,7 @@ from howler.helper.workflow import Workflow, WorkflowException
 from howler.odm.models.action import VALID_TRIGGERS
 from howler.odm.models.howler_data import (
     Assessment,
+    Escalation,
     HitStatusTransition,
     Status,
     Vote,
@@ -25,6 +37,50 @@ MAX_VERSION_CONFLICT_ATTEMPTS = 3
 SKIP_CENTRAL_LIMIT = True  # This operation transforms the query, handles limit check locally
 
 log = get_logger(__file__)
+
+TRANSITION_ESCALATIONS = [Escalation.HIT.value, Escalation.ALERT.value]
+DEFAULT_TRANSITION_ESCALATIONS: dict[str, str] = {
+    HitStatusTransition.PROMOTE.value: Escalation.ALERT.value,
+    HitStatusTransition.DEMOTE.value: Escalation.HIT.value,
+}
+
+# Arguments the workflow actions need for a given transition
+REQUIRED_TRANSITION_ARGUMENTS: dict[str, list[str]] = {
+    HitStatusTransition.ASSESS.value: ["assessment"],
+    HitStatusTransition.ASSIGN_TO_OTHER.value: ["assignee"],
+    HitStatusTransition.VOTE.value: ["vote", "email"],
+}
+
+
+class TransitionArguments(ActionArguments):
+    """Arguments of the transition operation."""
+
+    status: Annotated[str, one_of("status", Status.list)]
+    transition: Annotated[str, one_of("transition", HitStatusTransition.list)]
+    escalation: Annotated[Optional[str], EmptyToNone, one_of("escalation", TRANSITION_ESCALATIONS)] = None
+    assessment: Annotated[Optional[str], EmptyToNone, one_of("assessment", Assessment.list)] = None
+    rationale: Annotated[Optional[str], EmptyToNone] = None
+    assignee: Annotated[Optional[str], EmptyToNone] = None
+    vote: Annotated[Optional[str], EmptyToNone, one_of("vote", Vote.list)] = None
+    email: Annotated[Optional[str], EmptyToNone] = None
+
+    @model_validator(mode="after")
+    def _validate_transition_arguments(self) -> "TransitionArguments":
+        allowed_transitions = sorted(map(str, hit_service.get_transitions(cast(Status, self.status))))
+        if self.transition not in allowed_transitions:
+            raise ValueError(
+                f"The transition '{self.transition}' is not valid for status '{self.status}'."
+                f" Must be one of: {', '.join(allowed_transitions)}."
+            )
+
+        required = REQUIRED_TRANSITION_ARGUMENTS.get(self.transition, [])
+        if missing := [name for name in required if not getattr(self, name)]:
+            raise ValueError(f"The transition {self.transition} requires: {', '.join(missing)}.")
+
+        if self.escalation is None and self.transition in DEFAULT_TRANSITION_ESCALATIONS:
+            self.escalation = DEFAULT_TRANSITION_ESCALATIONS[self.transition]
+
+        return self
 
 
 def _transition_failure_report(hit_id: str, error: Exception) -> dict[str, str]:
@@ -200,34 +256,44 @@ def execute(
     return report
 
 
-def specification():
+def specification() -> ActionSpecification:
     """Specify various properties of the action, such as title, descriptions, permissions and input steps."""
-    return {
-        "id": OPERATION_ID,
-        "title": "Transition",
-        "priority": 9,
-        "i18nKey": "operations.transition",
-        "description": {
-            "short": "Transition a hit",
-            "long": execute.__doc__,
-        },
-        "roles": ["automation_basic", "actionrunner_basic"],
-        "steps": [
-            {
-                "args": {"status": []},
-                "options": {"status": Status.list()},
-                "validation": {"error": {"query": "-howler.status:$status"}},
-            },
-            {
-                "args": {"transition": []},
-                "options": {
-                    "transition": {f"status:{status}": hit_service.get_transitions(status) for status in Status.list()},
+    workflow_args = __parse_workflow_actions(hit_service.get_hit_workflow())
+
+    return ActionSpecification(
+        id=OPERATION_ID,
+        title="Transition",
+        priority=9,
+        i18n_key="operations.transition",
+        description=ActionDescription(short="Transition a hit", long=execute.__doc__),
+        roles=["automation_basic", "actionrunner_basic"],
+        steps=[
+            ActionStep(
+                args={"status": []},
+                options={"status": Status.list()},
+                validation={"error": StepValidationRule(query="-howler.status:$status")},
+            ),
+            ActionStep(
+                args={"transition": []},
+                options={
+                    "transition": {
+                        f"status:{status}": sorted(map(str, hit_service.get_transitions(status)))
+                        for status in Status.list()
+                    },
                 },
-            },
-            {
-                "args": __parse_workflow_actions(hit_service.get_hit_workflow()),
-                "options": {"vote": Vote.list(), "assessment": Assessment.list()},
-            },
+            ),
+            ActionStep(
+                args={
+                    **{name: sorted(conditions) for name, conditions in workflow_args.items()},
+                    "escalation": ["transition:promote", "transition:demote"],
+                },
+                options={
+                    "vote": Vote.list(),
+                    "assessment": Assessment.list(),
+                    "escalation": TRANSITION_ESCALATIONS,
+                },
+            ),
         ],
-        "triggers": [trigger for trigger in VALID_TRIGGERS if trigger != "create"],
-    }
+        triggers=[trigger for trigger in VALID_TRIGGERS if trigger != "create"],
+        arguments=TransitionArguments,
+    )

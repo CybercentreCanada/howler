@@ -506,9 +506,7 @@ def test_execute_transition_multiple(datastore: HowlerDatastore, login_session):
                     "data_json": json.dumps(
                         {
                             "status": "on-hold",
-                            "transition": "assess",
-                            "assignee": "admin",
-                            "assessment": "legitimate",
+                            "transition": "resume",
                         }
                     ),
                 }
@@ -705,6 +703,20 @@ def test_create_action_success(datastore: HowlerDatastore, login_session):
     assert datastore.action.exists(resp["action_id"])
 
 
+def test_create_action_rejects_invalid_operation_arguments(datastore: HowlerDatastore, login_session):
+    session, host = login_session
+    payload = {
+        "name": "Invalid action",
+        "query": "howler.id:*",
+        "operations": [{"operation_id": "promote", "data_json": json.dumps({"escalation": "evidence"})}],
+    }
+
+    with pytest.raises(APIError) as error:
+        get_api_data(session, f"{host}/api/v1/action", method="POST", data=json.dumps(payload))
+
+    assert "must provide an assessment" in str(error.value)
+
+
 def test_update_action_success(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
@@ -731,6 +743,45 @@ def test_update_action_success(datastore: HowlerDatastore, login_session):
     assert resp.get("name", None) is not None
 
     assert resp["name"] == "Test Update action"
+
+
+def test_unmigrated_action_rejects_metadata_update_and_execution(datastore: HowlerDatastore, login_session):
+    """Stored unmigrated actions with obsolete arguments fail metadata-only updates and execution."""
+    session, host = login_session
+    legacy_arguments = {"category": "generic", "label": "legacy", "obsolete": "stored value"}
+    action = Action(
+        {
+            "owner": "admin",
+            "name": "Legacy action",
+            "query": "howler.id:*",
+            "triggers": [],
+            "operations": [{"operation_id": "add_label", "data_json": json.dumps(legacy_arguments)}],
+        }
+    )
+    datastore.action.save(action.action_id, action)
+    datastore.action.commit()
+
+    with pytest.raises(APIError) as error:
+        get_api_data(
+            session,
+            f"{host}/api/v1/action/{action.action_id}",
+            method="PUT",
+            data=json.dumps({"name": "Renamed legacy action"}),
+        )
+
+    assert "obsolete" in str(error.value)
+    assert json.loads(datastore.action.get(action.action_id, as_obj=False)["operations"][0]["data_json"]) == (
+        legacy_arguments
+    )
+
+    resp = get_api_data(
+        session,
+        f"{host}/api/v1/action/{action.action_id}/execute",
+        method="POST",
+        data=json.dumps({"request_id": "legacy-action-test", "query": "howler.id:*"}),
+    )
+    assert resp["add_label"][0]["title"] == "Invalid Arguments"
+    assert "obsolete" in resp["add_label"][0]["message"]
 
 
 def test_update_action_forbidden(datastore: HowlerDatastore, login_session):
