@@ -1,0 +1,31 @@
+mcp/howler_mcp/api.py
+  s_2449509f39ea65::t_7b18ed773cbcdb 113
+mcp/test/test_api.py
+  s_2449509f39ea65::t_7b18ed773cbcdb 20,46,67,85,102,124,153,180,266-280
+mcp/howler_mcp/config.py
+  s_2449509f39ea65::t_7b18ed773cbcdb 56-61
+mcp/README.md
+  s_2449509f39ea65::t_7b18ed773cbcdb 14-20,68,115-118
+mcp/docker-compose.yml
+  s_2449509f39ea65::t_7b18ed773cbcdb 22-25
+mcp/howler_mcp/auth.py
+  s_2449509f39ea65::t_7b18ed773cbcdb 2,4,20-21,197-199,201,203-210,213-276,284
+mcp/test/test_auth.py
+  s_2449509f39ea65::t_7b18ed773cbcdb 1,8,239-358
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5cc2851dc61bcfb79f4bd48ff4975b966460ea3a",
+  "prompts": {},
+  "sessions": {
+    "s_2449509f39ea65": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1439cf9cffeSe3FuUqwLIscUg",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
