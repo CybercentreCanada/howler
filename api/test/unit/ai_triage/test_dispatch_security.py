@@ -1,25 +1,62 @@
-from types import SimpleNamespace
+from types import ModuleType
 from unittest.mock import Mock
 
 import pytest
 from flask import Flask
+from pydantic import ValidationError
 
 from howler import actions
 from howler.actions import ai_triage
+from howler.actions.models import ActionDescription, ActionSpecification
 from howler.config import CLASSIFICATION
 
 from .support import make_user
 
 
+def test_ai_specification_preserves_optional_prompt_for_ui_and_validation():
+    specification = ai_triage.specification()
+    serialized = specification.to_ui_dict()
+    step = serialized["steps"][0]
+
+    assert isinstance(specification, ActionSpecification)
+    assert serialized["requires_auth_token"] is True
+    assert serialized["i18nKey"] == "operations.ai_triage"
+    assert step["args"] == {}
+    assert step["optional_args"] == ["prompt"]
+    assert specification.validate_arguments({}).model_dump(exclude_unset=True) == {}
+    assert specification.validate_arguments({"prompt": "Investigate"}).prompt == "Investigate"
+    assert specification.validate_arguments({"prompt": None}).prompt is None
+    with pytest.raises(ValidationError):
+        specification.validate_arguments({"prompt": 123})
+    with pytest.raises(ValidationError):
+        specification.validate_arguments({"unexpected": "value"})
+
+
+def test_dispatch_rejects_non_string_prompt(monkeypatch):
+    execute = Mock()
+    monkeypatch.setattr(ai_triage, "execute", execute)
+    monkeypatch.setattr(actions, "_get_operation", lambda _operation_id: ai_triage)
+
+    result = actions.execute("ai_triage", "*:*", make_user(), bearer_token="token", prompt=123)
+
+    assert result[0]["title"] == "Invalid Arguments"
+    execute.assert_not_called()
+
+
 @pytest.fixture
 def operation(monkeypatch):
     execute = Mock(return_value=[{"query": "*:*", "outcome": "success", "title": "Queued", "message": "Queued"}])
-    spec = {"roles": ["actionrunner_basic"], "requires_auth_token": True}
-    monkeypatch.setattr(
-        actions,
-        "_get_operation",
-        lambda _operation_id: SimpleNamespace(SKIP_CENTRAL_LIMIT=True, specification=lambda: spec, execute=execute),
+    operation = ModuleType("requires_auth")
+    operation.SKIP_CENTRAL_LIMIT = True
+    operation.specification = lambda: ActionSpecification(
+        id="requires_auth",
+        title="Requires auth",
+        description=ActionDescription(short="Test operation"),
+        roles=["actionrunner_basic"],
+        requires_auth_token=True,
     )
+    operation.execute = execute
+    monkeypatch.setattr(actions, "_get_operation", lambda _operation_id: operation)
     return execute
 
 
@@ -58,12 +95,16 @@ def test_http_dispatch_ignores_credentials_in_operation_data(operation, authoriz
 
 def test_dispatch_only_forwards_bearer_to_operations_that_require_it(monkeypatch):
     execute = Mock(return_value=[])
-    spec = {"roles": ["actionrunner_basic"]}
-    monkeypatch.setattr(
-        actions,
-        "_get_operation",
-        lambda _operation_id: SimpleNamespace(SKIP_CENTRAL_LIMIT=True, specification=lambda: spec, execute=execute),
+    operation = ModuleType("ordinary")
+    operation.SKIP_CENTRAL_LIMIT = True
+    operation.specification = lambda: ActionSpecification(
+        id="ordinary",
+        title="Ordinary",
+        description=ActionDescription(short="Test operation"),
+        roles=["actionrunner_basic"],
     )
+    operation.execute = execute
+    monkeypatch.setattr(actions, "_get_operation", lambda _operation_id: operation)
 
     actions.execute("ordinary", "*:*", make_user(), bearer_token="request-token")
 

@@ -106,7 +106,11 @@ def test_provider_key_does_not_bypass_action_permissions(monkeypatch):
     queue.push.assert_not_called()
 
 
-def test_triggered_action_uses_decrypted_token_without_request_context(monkeypatch):
+@pytest.mark.parametrize(
+    ("data_json", "should_enqueue"),
+    [("{}", True), ('{"auth_token":"persisted-token"}', False)],
+)
+def test_triggered_action_uses_decrypted_token_without_request_context(monkeypatch, data_json, should_enqueue):
     settings = AITriage(enabled=True, endpoint="https://ai.invalid/chat", model="model")
     monkeypatch.setattr(config.core, "ai", settings)
     monkeypatch.setattr(config.system, "encryption_key", "0123456789abcdef0123456789abcdef")
@@ -116,7 +120,7 @@ def test_triggered_action_uses_decrypted_token_without_request_context(monkeypat
     queue = Mock()
     monkeypatch.setattr(ai_service, "get_queue", lambda: queue)
     user = make_user()
-    operation = SimpleNamespace(operation_id="ai_triage", data_json='{"auth_token":"persisted-token"}', data={})
+    operation = SimpleNamespace(operation_id="ai_triage", data_json=data_json, data={})
     action = SimpleNamespace(action_id="action-id", query="*:*", operations=[operation])
     storage = Mock()
     storage.user.get.return_value = user
@@ -128,6 +132,10 @@ def test_triggered_action_uses_decrypted_token_without_request_context(monkeypat
     action_service.process_action_batch(
         "create", [{"hit_ids": ["hit-1"], "uname": user.uname, "auth_token": encrypted_token}]
     )
+
+    if not should_enqueue:
+        queue.push.assert_not_called()
+        return
 
     queue.push.assert_called_once()
     job = queue.push.call_args.args[0]

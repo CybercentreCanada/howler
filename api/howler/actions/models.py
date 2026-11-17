@@ -161,6 +161,9 @@ class ActionStep(BaseModel):
         default_factory=dict,
         description="Argument names, each mapped to the 'argument:value' conditions under which it is shown.",
     )
+    optional_args: Optional[list[str]] = Field(
+        default=None, description="Argument names that are displayed but not required by the UI."
+    )
     options: dict[str, list[str] | dict[str, list[str]]] = Field(
         default_factory=dict,
         description="Allowed values per argument, either as a list or keyed by an 'argument:value' condition.",
@@ -238,6 +241,9 @@ class ActionSpecification(BaseModel):
     )
     description: ActionDescription = Field(description="The descriptions of the operation.")
     roles: list[str] = Field(min_length=1, description="The roles allowed to run the operation.")
+    requires_auth_token: Optional[bool] = Field(
+        default=None, description="Whether the operation receives the caller's bearer token."
+    )
     steps: list[ActionStep] = Field(default_factory=list, description="The arguments to ask for, grouped in steps.")
     triggers: list[str] = Field(default_factory=list, description="The events that can trigger the operation.")
     arguments: Annotated[
@@ -264,7 +270,7 @@ class ActionSpecification(BaseModel):
         if reserved := DISPATCHER_ARGUMENTS & set(fields):
             raise ValueError(f"The arguments model declares reserved argument(s): {', '.join(sorted(reserved))}.")
 
-        step_args = {name for step in self.steps for name in step.args}
+        step_args = {name for step in self.steps for name in (*step.args, *(step.optional_args or []))}
         if missing := step_args - set(fields):
             raise ValueError(f"Step argument(s) missing from the arguments model: {', '.join(sorted(missing))}.")
 

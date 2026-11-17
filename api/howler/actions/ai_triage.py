@@ -3,6 +3,7 @@
 from typing import Any
 
 from howler.actions import ADVANCED_ROLES
+from howler.actions.models import ActionArguments, ActionDescription, ActionSpecification, ActionStep
 from howler.common.logging import get_logger
 from howler.config import CLASSIFICATION, config
 from howler.odm.models.action import VALID_TRIGGERS
@@ -16,6 +17,12 @@ ROLES = ["automation_basic", "automation_advanced", "actionrunner_basic", "actio
 MAX_HITS_BASIC = 10
 MAX_HITS_ADVANCED = 50
 SKIP_CENTRAL_LIMIT = True
+
+
+class AITriageArguments(ActionArguments):
+    """User-supplied arguments for AI triage."""
+
+    prompt: str | None = None
 
 
 def is_available() -> bool:
@@ -76,22 +83,23 @@ def execute(
     return report("success", "AI triage queued", f"AI triage was queued for {count} alert(s).")
 
 
-def specification() -> dict[str, Any]:
+def specification() -> ActionSpecification:
     """Declare AI triage as an ordinary action with one optional argument."""
-    return {
-        "id": OPERATION_ID,
-        "title": "AI Triage",
-        "priority": 90,
-        "i18nKey": f"operations.{OPERATION_ID}",
-        "description": {
-            "short": "Generate a conservative AI triage lead for eligible alerts",
-            "long": (
+    return ActionSpecification(
+        id=OPERATION_ID,
+        title="AI Triage",
+        priority=90,
+        i18n_key=f"operations.{OPERATION_ID}",
+        description=ActionDescription(
+            short="Generate a conservative AI triage lead for eligible alerts",
+            long=(
                 "Queue asynchronous AI triage for unresolved alerts that have no assessment. "
                 "The provider receives only configured filtered alert data."
             ),
-        },
-        "roles": ROLES,
-        "requires_auth_token": True,
-        "steps": [{"args": {"prompt": []}, "optional_args": ["prompt"]}],
-        "triggers": VALID_TRIGGERS,
-    }
+        ),
+        roles=ROLES,
+        requires_auth_token=True,
+        steps=[ActionStep(optional_args=["prompt"])],
+        triggers=VALID_TRIGGERS,
+        arguments=AITriageArguments,
+    )
