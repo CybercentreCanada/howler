@@ -1,5 +1,4 @@
 import ipaddress
-import math
 import re
 import sys
 from datetime import datetime
@@ -28,18 +27,12 @@ def try_parse_number(number: str | int | float | None) -> int | float | None:
     if isinstance(number, (int, float)):
         return number
 
-    lowered = number.lower()
-    if lowered in ("infinity", "+infinity"):
-        return math.inf
-    if lowered == "-infinity":
-        return -math.inf
-
     try:
         # Check if the value is an integer
         return int(number)
     except ValueError:
         try:
-            # Check if the value is a float
+            # Check if the value is a float (including +/-Infinity)
             return float(number)
         except ValueError:
             return None
@@ -61,39 +54,22 @@ def coerce(value: Union[list[Any], Any], fn: Callable[[Any], Any]) -> Any:
     """
     if value is None:
         return None
-
     if isinstance(value, list):
-        result: list = []
-        for _value in value:
-            if (fn_result := fn(_value)) is not None:
-                result.append(fn_result)
-        return result
-    else:
-        return fn(value)
+        return [fn_result for _value in value if (fn_result := fn(_value)) is not None]
+    return fn(value)
 
 
 def normalize_phrase(
-    value: str,
-    type: Union[Literal["phrase"], Literal["word"]],
-    *,
-    case_insensitive: bool = False,
+    value: str, type: Union[Literal["phrase"], Literal["word"]], *, case_insensitive: bool = False
 ) -> list[str]:
     "Normalize a phrase or word for validation"
     target_value = value.lower() if case_insensitive else value
-
     if re.match(r"^[a-zA-Z0-9]+$", target_value):
-        # probably an ID, no normalization
         return [target_value]
 
-    candidates: list[str] = []
-    if type == "word":
-        candidates.append(re.sub(r"[^A-Za-z0-9.,@_:/;()\-]", "", target_value))
-        # For values that contain spaces (e.g. process.command_line), also include a
-        # space-preserved candidate so that wildcard patterns with escaped spaces can match.
-        if " " in target_value:
-            candidates.append(re.sub(r"[^A-Za-z0-9.,@_:/;()\- ]", "", target_value))
-    else:
+    pattern = r"[^A-Za-z0-9.,@_:/;()\-]" if type == "word" else r"[^A-Za-z0-9.,@_:/;()\- ]"
+    candidates = [re.sub(pattern, "", target_value)]
+    if type == "word" and " " in target_value:
         candidates.append(re.sub(r"[^A-Za-z0-9.,@_:/;()\- ]", "", target_value))
-
     candidates.append(target_value)
     return list(dict.fromkeys(candidates))

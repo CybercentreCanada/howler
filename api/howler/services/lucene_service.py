@@ -1,5 +1,4 @@
 import fnmatch
-import math
 import os
 import re
 import struct
@@ -19,7 +18,7 @@ from howler.common.exceptions import InvalidDataException
 from howler.common.loader import datastore
 from howler.config import redis
 from howler.datastore.constants import NORMALIZER_MAPPING
-from howler.odm import Boolean, Float, Text
+from howler.odm import Boolean, Float, Model, Text
 from howler.odm.models.hit import Hit
 from howler.remote.datatypes.hash import Hash
 from howler.utils.constants import TESTING
@@ -30,21 +29,27 @@ logger = get_logger(__file__)
 
 TRANSPORT_TIMEOUT = int(os.environ.get("HWL_DATASTORE_TRANSPORT_TIMEOUT", "10"))
 
-HIT_FIELDS = Hit.flat_fields()
 CASE_INSENSITIVE_FIELD_TYPES = (
     *(field_cls for field_cls, normalizer in NORMALIZER_MAPPING.items() if normalizer == "lowercase_normalizer"),
     Boolean,
     Text,
 )
+_HIT_FIELDS_CACHE: tuple[tuple[Any, ...], dict[str, Any]] | None = None
+
+
+def _get_hit_field(field_name: str) -> Any:
+    "Resolve an ODM field from the initialized Hit model, refreshing when namespaces change."
+    global _HIT_FIELDS_CACHE
+    hit_model = m if isinstance(m := datastore().ds.get_models().get("hit"), type) and issubclass(m, Model) else Hit
+    cache_key = (hit_model, *hit_model.fields().items())
+    if _HIT_FIELDS_CACHE is None or _HIT_FIELDS_CACHE[0] != cache_key:
+        _HIT_FIELDS_CACHE = (cache_key, hit_model.flat_fields())
+    return _HIT_FIELDS_CACHE[1].get(field_name)
 
 
 def is_case_insensitive_field(field_name: str) -> bool:
     "Check whether an Elasticsearch Hit field performs case-insensitive matching."
-    field = HIT_FIELDS.get(field_name)
-    if field is not None:
-        return isinstance(field, CASE_INSENSITIVE_FIELD_TYPES)
-
-    return field_name == "__text__" or field_name.endswith(("_t", "_ts", "_b", "_bs"))
+    return field_name == "__text__" or isinstance(_get_hit_field(field_name), CASE_INSENSITIVE_FIELD_TYPES)
 
 
 class LuceneProcessor(TreeVisitor):
@@ -100,21 +105,14 @@ class LuceneProcessor(TreeVisitor):
 
     @staticmethod
     def __to_float32(val: int | float) -> float:
-        "Round finite numbers to 32-bit IEEE 754 float precision to match Elasticsearch 'float' fields."
-        fval = float(val)
-        if not math.isfinite(fval):
-            return fval
-        try:
-            return struct.unpack("f", struct.pack("f", fval))[0]
-        except OverflowError:
-            return fval
+        "Round numbers to 32-bit IEEE 754 float precision to match Elasticsearch 'float' fields."
+        return struct.unpack("f", struct.pack("f", float(val)))[0]
 
     @staticmethod
     def __extract_range_bound(bound: Any) -> str:
         "Extract a string bound from a luqum Range endpoint, preserving negative signs parsed as Prohibit."
         if isinstance(bound, Prohibit):
             return f"-{LuceneProcessor.__extract_range_bound(bound.children[0])}"
-
         return bound.value
 
     @staticmethod
@@ -167,17 +165,15 @@ class LuceneProcessor(TreeVisitor):
 
     def visit_range(self, node: Range, context: dict[str, Any]):
         "Handle range queries"
-        raw_value = context["hit"].get(context["field"])
-        if raw_value is None:
+        if (raw_value := context["hit"].get(context["field"])) is None:
             yield False
             return
 
-        is_float32 = isinstance(HIT_FIELDS.get(context["field"]), Float)
         low, value, high = self.__parse_range(
             self.__extract_range_bound(node.low),
             raw_value,
             self.__extract_range_bound(node.high),
-            is_float32=is_float32,
+            is_float32=isinstance(_get_hit_field(context["field"]), Float),
         )
 
         if isinstance(value, list):
@@ -201,11 +197,8 @@ class LuceneProcessor(TreeVisitor):
     @staticmethod
     def __sanitize_value(value: str, *, expand_booleans: bool = False) -> str:
         "Sanitize the value we are validating against"
-        sanitized_value = value
-        if expand_booleans:
-            # True/False are shorthanded by elastic - convert back to True/False
-            sanitized_value = re.sub(r"^F$", r"False", sanitized_value)
-            sanitized_value = re.sub(r"^T$", r"True", sanitized_value)
+        # True/False are shorthanded by elastic - convert back to True/False for boolean fields
+        sanitized_value = re.sub(r"^T$", r"True", re.sub(r"^F$", r"False", value)) if expand_booleans else value
 
         # For phrases, remove the encapsulating quotations
         sanitized_value = re.sub(r'"(.+)"', r"\1", sanitized_value)
@@ -222,19 +215,10 @@ class LuceneProcessor(TreeVisitor):
 
     @staticmethod
     def __build_candidates(
-        value: Any,
-        type: Union[Literal["phrase"], Literal["word"]],
-        *,
-        case_insensitive: bool = False,
+        value: Any, type: Union[Literal["phrase"], Literal["word"]], *, case_insensitive: bool = False
     ) -> list[str]:
-        candidates: list[str] = []
-        if isinstance(value, list):
-            for entry in value:
-                candidates += normalize_phrase(str(entry), type, case_insensitive=case_insensitive)
-        else:
-            candidates = normalize_phrase(str(value), type, case_insensitive=case_insensitive)
-
-        return candidates
+        entries = value if isinstance(value, list) else [value]
+        return [c for entry in entries for c in normalize_phrase(str(entry), type, case_insensitive=case_insensitive)]
 
     def __handle_word_or_phrase(self, node: Union[Phrase, Word], context: dict[str, Any]):
         if "field" not in context:
@@ -242,30 +226,15 @@ class LuceneProcessor(TreeVisitor):
             yield any(value == sanitized_value for value in context["hit"].values())
         elif context["field"] == "_exists_":
             yield context["hit"].get(node.value) is not None
+        elif (raw_value := context["hit"].get(field_name := context["field"])) is None:
+            yield False
         else:
-            field_name = context["field"]
-            raw_value = context["hit"].get(field_name)
-            if raw_value is None:
-                yield False
-                return
-
-            is_bool = (
-                isinstance(HIT_FIELDS.get(field_name), Boolean)
-                or isinstance(raw_value, bool)
-                or (isinstance(raw_value, list) and any(isinstance(entry, bool) for entry in raw_value))
-            )
+            entries = raw_value if isinstance(raw_value, list) else [raw_value]
+            is_bool = isinstance(_get_hit_field(field_name), Boolean) or any(isinstance(e, bool) for e in entries)
             sanitized_value = self.__sanitize_value(node.value, expand_booleans=is_bool)
-
-            case_insensitive = is_case_insensitive_field(field_name)
-            if case_insensitive:
+            if case_insensitive := is_case_insensitive_field(field_name):
                 sanitized_value = sanitized_value.lower()
-
-            candidates = self.__build_candidates(
-                raw_value,
-                context["term_type"],
-                case_insensitive=case_insensitive,
-            )
-
+            candidates = self.__build_candidates(raw_value, context["term_type"], case_insensitive=case_insensitive)
             yield any(fnmatch.fnmatchcase(candidate, sanitized_value) for candidate in candidates)
 
     def visit_word(self, node: Phrase, context: dict[str, Any]):
