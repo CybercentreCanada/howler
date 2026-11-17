@@ -1,0 +1,24 @@
+api/howler/services/ai_service.py
+  s_4d517d309c2fd0::t_e9eab8db763a88 75
+api/test/unit/ai_triage/test_service.py
+  s_4d517d309c2fd0::t_e9eab8db763a88 46-58
+  s_4d517d309c2fd0::t_a343f49ec09554 59-62
+api/howler/odm/models/config.py
+  s_4d517d309c2fd0::t_e9eab8db763a88 7,634-637,641-642,648-649,651,653,655,657-659,661
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f644d7c1bf8b04ed67deae8821376448b2048c8c",
+  "prompts": {},
+  "sessions": {
+    "s_4d517d309c2fd0": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "7e386a2b-1419-40f8-bbb4-62d74b02e9ee",
+        "model": "unknown"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
