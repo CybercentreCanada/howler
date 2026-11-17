@@ -13,6 +13,7 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.odm.models.user import User
 from howler.plugins import get_plugins
+from howler.services import auth_service
 
 logger = get_logger(__file__)
 
@@ -228,7 +229,7 @@ def execute(
     # Unset arguments are left out so the operation's own defaults still apply
     operation_kwargs = validated_arguments.model_dump(exclude_unset=True)
     if getattr(specification, "requires_auth_token", False):
-        operation_kwargs["auth_token"] = bearer_token
+        operation_kwargs["auth_token"] = bearer_token or auth_service.get_token()
     elif auth_token is not None:
         operation_kwargs["auth_token"] = auth_token
 

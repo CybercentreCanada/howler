@@ -4,7 +4,7 @@ from importlib.util import find_spec
 from typing import Any, Literal, Optional, TypedDict, overload
 
 from cryptography.exceptions import InvalidTag
-from flask import Response, has_request_context, request
+from flask import Response
 from pydantic import ValidationError
 
 from howler import actions
@@ -87,22 +87,6 @@ def _is_builtin_operation(operation_id: str) -> bool:
     return find_spec(f"howler.actions.{operation_id}") is not None
 
 
-def _request_auth_token() -> str | None:
-    """Return only the credential from a well-formed Bearer authorization header.
-
-    Basic user/password and API-key credentials are not action-provider
-    credentials and therefore must not be forwarded or persisted.
-    """
-    if not has_request_context():
-        return None
-
-    parts = request.headers.get("Authorization", "").split()
-    if len(parts) != 2 or parts[0].lower() != "bearer":
-        return None
-
-    return parts[1] or None
-
-
 def _parse_and_audit_operation(
     data_json: Any,
     query: str,
@@ -172,7 +156,6 @@ def execute_operations(
                 request_id=request_id,
                 query=query,
                 user=user,
-                **({"bearer_token": token} if (token := _request_auth_token()) else {}),
                 **op_data,
             )
         )
@@ -221,7 +204,7 @@ def enqueue_action_execution(hit_ids: str | list[str], trigger: str = "create", 
     if trigger not in VALID_TRIGGERS:
         raise HowlerValueError(f"Invalid trigger {trigger!r}. Must be one of {VALID_TRIGGERS}")
 
-    auth_token = _request_auth_token()
+    auth_token = auth_service.get_token()
 
     if not config.system.action_queue.enabled:
         logger.debug(

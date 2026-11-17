@@ -7,7 +7,7 @@ from typing import Optional, Union
 
 import jwt
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from flask import request
+from flask import has_request_context, request
 from opentelemetry import trace
 
 import howler.services.jwt_service as jwt_service
@@ -255,6 +255,22 @@ def validate_token(username: str, token: str) -> Optional[list[str]]:
         raise AuthenticationException("Invalid token")
 
     return None
+
+
+def get_token() -> str | None:
+    """Return only the credential from a well-formed Bearer authorization header.
+
+    Basic user/password and API-key credentials are not action-provider
+    credentials and therefore must not be forwarded or persisted.
+    """
+    if not has_request_context():
+        return None
+
+    parts = request.headers.get("Authorization", "").split()
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        return None
+
+    return parts[1] or None
 
 
 @tracer.start_as_current_span("bearer_auth")
