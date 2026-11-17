@@ -1,0 +1,89 @@
+api/test/unit/services/test_dossier_group_service.py
+  s_8eb80e62c4b01c::t_ad740e950173be 1,3-4,169-191
+api/test/unit/endpoints/test_analytic_endpoint.py
+  s_8eb80e62c4b01c::t_204059047c1c21 1,4-13,15,22,24,27-28,30-37,39-56,58-73
+  s_8eb80e62c4b01c::t_94eb80a7b74fc1 14,16-21,38,57
+api/test/unit/test_config.py
+  s_8eb80e62c4b01c::t_dece271bf6773a 5,8,80-126
+api/test/unit/test_dict_utils.py
+  s_8eb80e62c4b01c::t_ad740e950173be 1-3,31-51
+api/test/unit/services/test_lucene_service.py
+  s_8eb80e62c4b01c::t_25e70103f0e14f 11,39,55,66,74,99
+api/test/unit/services/test_enqueue_action.py
+  s_8eb80e62c4b01c::t_ad740e950173be 9-10,185-186,381-408
+api/test/integration/test_datastore_odm.py
+  s_8eb80e62c4b01c::t_008291983b3ed6 14
+  s_8eb80e62c4b01c::t_8edf063b63030a 13,517-519,521-534,536-552,566-593,595,597-605,607-621,623-625,627-635,637-640
+  s_4ceea7de8c4fe2::t_b862d2b855aae5 553-564
+  s_8eb80e62c4b01c::t_5ae69612a7bc1d 520,535,565,594,596,606,622,626,636
+api/test/unit/endpoints/test_auth_endpoint.py
+  s_8eb80e62c4b01c::t_dfb2f1f5a014c6 1,195-219
+api/test/unit/services/test_correlation_service.py
+  s_8eb80e62c4b01c::t_ad740e950173be 980-982,985-990,997-1002
+  s_8eb80e62c4b01c::t_1291f01f4e3809 983-984,991-996
+api/test/unit/services/test_overview_service.py
+  s_8eb80e62c4b01c::t_204059047c1c21 5,8-9,11,13-14,16-17
+api/test/unit/services/test_view_cleanup.py
+  s_8eb80e62c4b01c::t_204059047c1c21 4-5,8-10,12-14,16-18,20-21,23-24,27-28,33-34,38-40,42-43,47,52,57-59
+api/test/unit/services/test_template_service.py
+  s_8eb80e62c4b01c::t_204059047c1c21 5,8-11,13-14,16-19
+api/test/integration/test_datastore.py
+  s_8eb80e62c4b01c::t_cfd42ffdf20932 7,13,16-17
+  s_8eb80e62c4b01c::t_6f46a6ff2c637d 1193-1545
+api/test/unit/services/test_search_service_user_fields.py
+  s_8eb80e62c4b01c::t_1291f01f4e3809 565-567
+  s_8eb80e62c4b01c::t_ad740e950173be 111,560-564,568-581
+api/test/unit/test_access_control.py
+  s_8eb80e62c4b01c::t_a744cf8b12e8f7 24,520-572
+api/test/unit/services/test_case_service.py
+  s_8eb80e62c4b01c::t_a30b13cf295f1a 257
+  s_8eb80e62c4b01c::t_5b3e051218a400 169-170
+  s_8eb80e62c4b01c::t_ad80062db24025 175,187,217,240,258,268-269
+api/test/unit/services/test_hit_service.py
+  s_8eb80e62c4b01c::t_204059047c1c21 6-10,12,16-17,20-29,31-69,72,96
+api/test/unit/endpoints/test_hit_endpoint.py
+  s_8eb80e62c4b01c::t_e5f478eabc6351 7,51,79,95-104
+api/test/unit/services/test_analytic_service.py
+  s_8eb80e62c4b01c::t_204059047c1c21 9,25,28
+api/test/unit/test_ilm_collection.py
+  s_8eb80e62c4b01c::t_c6cf401b9363f8 1841-2152
+  s_4ceea7de8c4fe2::t_f9986553f6e819 2153-2177
+  s_8eb80e62c4b01c::t_69c3ca8bb7681e 248,597
+  s_8eb80e62c4b01c::t_1291f01f4e3809 15
+  s_8eb80e62c4b01c::t_3624f4a96de063 19,73-79
+  s_23cd07e9f28821::t_1d9fbce5f83502 80-81
+api/test/unit/services/test_bundle_compat_service.py
+  s_8eb80e62c4b01c::t_ad740e950173be 3-5,30-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d3321eb2ed6d0b987d1ccc23fe987b2c918fcba4",
+  "prompts": {},
+  "sessions": {
+    "s_23cd07e9f28821": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1a863e47ffeQ75cJiNM3xUN86",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_4ceea7de8c4fe2": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_7fc5e2c83c255f9faad704dab2ca3449",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_8eb80e62c4b01c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_bf12ba1967cdb3005aa034e283ee63d9",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

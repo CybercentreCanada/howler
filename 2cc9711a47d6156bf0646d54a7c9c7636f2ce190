@@ -1,0 +1,25 @@
+api/howler/models/clue.py
+  s_23cd07e9f28821::t_d75bea1508f440 36-38
+documentation/docs/installation/elasticsearch_9_cutover.md
+  s_23cd07e9f28821::t_3f686c661484f1 64
+api/howler/models/schema.py
+  s_23cd07e9f28821::t_b04a7ca681dea1 1,4,6,9-10
+  s_23cd07e9f28821::t_66a39a45cbd16d 5,7
+  s_23cd07e9f28821::t_ded9e20f8b9065 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2cc9711a47d6156bf0646d54a7c9c7636f2ce190",
+  "prompts": {},
+  "sessions": {
+    "s_23cd07e9f28821": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1a863e47ffeQ75cJiNM3xUN86",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

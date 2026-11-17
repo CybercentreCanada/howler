@@ -1,0 +1,32 @@
+plugins/evidence/test/unit/models/test_evidence.py
+  s_23cd07e9f28821::t_188a8895569199 23,31-51,54-55,57-68
+  s_3ebc6efa4406d9::t_b71c0b87c0420e 26-27,29-30,56
+plugins/sentinel/test/unit/models/test_sentinel.py
+  s_3ebc6efa4406d9::t_174c6a70d1674f 52-101
+  s_3ebc6efa4406d9::t_b28b4c4b29710a 4-5,8,25-28,30-31,34,37
+  s_23cd07e9f28821::t_dc72ca56cde3a1 32-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3a57c19491dc777550bd7a320a5b172857b9b9b0",
+  "prompts": {},
+  "sessions": {
+    "s_23cd07e9f28821": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1a863e47ffeQ75cJiNM3xUN86",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_3ebc6efa4406d9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_cb4a9ff8292b2c2f8fbfd7bd09525a69",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

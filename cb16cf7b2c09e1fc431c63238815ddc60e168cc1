@@ -1,0 +1,86 @@
+api/test/unit/models/test_fields.py
+  s_0702617529b6ed::t_6421f0a7c12275 19,210-217
+  s_e461c30f8f1c65::t_b77dc0d320374f 184,187
+  s_0702617529b6ed::t_45b15aa6f789fe 164-166,188,226-227
+  s_0702617529b6ed::t_2f1d9fc0de9d2c 78-79,89-91,94
+  s_0702617529b6ed::t_dd04e94d769d13 200-209,218-219,284-288
+  s_e461c30f8f1c65::t_845160cdda14a9 326-328,355-357
+  s_0702617529b6ed::t_f7e08aa835b24d 190
+  s_e461c30f8f1c65::t_ac277980e5783b 22
+  s_e461c30f8f1c65::t_acf4f1641d7beb 474
+  s_e461c30f8f1c65::t_7057b80a7f6ead 1,5-8,10,12,15-17,42,46,49,64,69,98-107,115,117-147,150-156,160,162-163,167-183,185-186,189,191,194-199,220-222,224-225,228,233-237,246-247,266-283,289-297,301-302,310-320,329,339-342,358-473,475-477,480-481,525-526,528
+  s_e461c30f8f1c65::t_834ca1832d9247 223,229-232,238-245,248-251,264-265,343-345,351-354
+  s_e461c30f8f1c65::t_9d769844ca07cb 29,53,72-77,80-88,92-93,95-97
+  s_0702617529b6ed::t_32fd520cf99714 298-300,303-309,321-325,330-338,346-350
+  s_e461c30f8f1c65::t_f7829e52148845 108-111,252-263
+  s_23cd07e9f28821::t_954e5b6d40303a 70-71
+api/test/unit/models/test_related.py
+  s_e461c30f8f1c65::t_cb225461d9becd 1,14-69,73-113
+  s_e461c30f8f1c65::t_32b2c8ca241d56 70-72
+api/test/unit/models/test_extensions.py
+  s_e461c30f8f1c65::t_afdf7b9c96b31d 157
+api/test/unit/models/test_base.py
+  s_e461c30f8f1c65::t_759026341e4e03 510-527
+  s_e461c30f8f1c65::t_3e8ef3a4ca3b26 189-190
+  s_e461c30f8f1c65::t_983151b02f40c9 96,468-471
+  s_e461c30f8f1c65::t_2407abf0fe6e7f 13
+  s_e461c30f8f1c65::t_8af9ce9f15f3a5 97-112
+  s_e461c30f8f1c65::t_667364b6be3fb1 21,24,40,323,387-467,472-478,486-509,528-540
+  s_e461c30f8f1c65::t_ec30a245ea3874 153-157,294-295,479-485
+api/test/unit/models/test_documents.py
+  s_e461c30f8f1c65::t_1e1375dc8ac486 1-53,58-78,82-162
+  s_e461c30f8f1c65::t_73a31ff134b4ab 54-57
+  s_e461c30f8f1c65::t_6c1c316e77fb3e 79-81
+api/test/unit/models/test_clue.py
+  s_e461c30f8f1c65::t_b977e5522853ee 52-59
+  s_e461c30f8f1c65::t_132694f4985225 105-106
+  s_e461c30f8f1c65::t_94b2051871b7af 1,8-26,28-33,35-51,60-97,99-100,102-104,107-117
+api/test/unit/models/test_validation_errors.py
+  s_e461c30f8f1c65::t_2dc7c78d7c2006 12,192-231
+api/test/unit/models/test_hit_event.py
+  s_e461c30f8f1c65::t_2a4b6a02b8ed9c 110-117
+  s_e461c30f8f1c65::t_df60da20b85ddd 1,9-10,14,17,20-22,24-26,29-31,33-35,38-39,41-64,67-70,72-73,76-109,118-123
+api/test/unit/models/test_schema.py
+  s_e461c30f8f1c65::t_a2e75d3ed3f122 1,15,86-87,90,98,105-107,109-110,113-114,120-121,127-131,135-136,138-139,143-161,194-237,241-251,253-255
+  s_0702617529b6ed::t_ac76120cd4a827 30-85,162-193
+  s_e461c30f8f1c65::t_6c1c316e77fb3e 238-240
+api/test/unit/models/test_case.py
+  s_e461c30f8f1c65::t_2cd39cf408c125 76-79,134-135
+  s_e461c30f8f1c65::t_5bf115e54a0a68 1,5-6,10-75,80-82,91-133,136-158,172-174,176-183,185-188,190-192,195-196,198-201,203-205,208-209,211-227,229-231,233-237,239-241,243-259,261-266,268-279,281-284,286-294,296-308,310-311,313-320,322-331,334-336,338
+  s_e461c30f8f1c65::t_6c1c316e77fb3e 83-90
+  s_e461c30f8f1c65::t_341db51bbc15a8 159-171
+api/test/unit/models/test_sample_data.py
+  s_e461c30f8f1c65::t_e68241858a8ac8 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "cb16cf7b2c09e1fc431c63238815ddc60e168cc1",
+  "prompts": {},
+  "sessions": {
+    "s_0702617529b6ed": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2e7807df86dfe7d7e18eaa5aa63ecf75",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_23cd07e9f28821": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1a863e47ffeQ75cJiNM3xUN86",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_e461c30f8f1c65": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_64f583657b07b16ece7c3abe2fb28642",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
