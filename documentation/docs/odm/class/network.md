@@ -10,5 +10,3 @@
 | direction | Keyword | The direction of network traffic relative to the host it was collected on. (values: "OUTBOUND", "INBOUND", "LISTENING", "UNKNOWN") | :material-minus-box-outline: Optional | `None` |
 | protocol | Keyword | Application layer protocol in the OSI Model | :material-minus-box-outline: Optional | `None` |
 | transport | LowerKeyword | Transport layer protocol of the network traffic. (values: "udp", "udp_listener", "tcp", "tcp_listener", "unknown") | :material-minus-box-outline: Optional | `None` |
-
-

@@ -3,16 +3,16 @@
 import importlib
 import uuid
 from types import SimpleNamespace
-from typing import cast
 from unittest.mock import MagicMock, patch
 
 import elasticsearch
 import pytest
 from flask import Flask, Response
 
-from howler.odm import Model
-from howler.odm.models.user import User
-from howler.odm.randomizer import random_model_obj
+from howler.models.fields import HowlerFieldMetadata
+from howler.models.registry import FieldDefinition, model_registry
+from howler.models.user import User
+from howler.sample_data.randomizer import random_model_obj
 
 
 @pytest.fixture(scope="module")
@@ -34,11 +34,24 @@ def isolate_quota_trackers():
 
 
 def _build_user(user_type: list[str] | None = None) -> User:
-    user_data: User = random_model_obj(cast(Model, User))
+    user_data: User = random_model_obj(User)
     user_data.type = user_type or ["admin", "user"]
     user_data.uname = f"test_{uuid.uuid4().hex[:12]}"
     user_data.api_quota = 1000
     return user_data
+
+
+def _stored_field(name: str) -> FieldDefinition:
+    return FieldDefinition(
+        name=name,
+        path=name,
+        annotation=str,
+        metadata=HowlerFieldMetadata(kind="Keyword", index=True, store=True),
+        required=False,
+        default=None,
+        default_factory=None,
+        description=None,
+    )
 
 
 def _mock_auth(mock_auth_service, user, priv=None):
@@ -182,7 +195,7 @@ class TestSearch:
 
         collection = MagicMock()
         collection.model_class = None
-        collection.stored_fields = {"name": SimpleNamespace(store=True)}
+        collection.stored_fields = {"name": _stored_field("name")}
         mock_get_collection.return_value = lambda: collection
         mock_search.return_value = {
             "total": 1,
@@ -224,10 +237,12 @@ class TestSearch:
 
         hit_collection = MagicMock()
         hit_collection.model_class = None
-        hit_collection.stored_fields = {"action.operations.operation_id": SimpleNamespace(store=True)}
+        hit_collection.stored_fields = {
+            "action.operations.operation_id": _stored_field("action.operations.operation_id")
+        }
         user_collection = MagicMock()
         user_collection.model_class = None
-        user_collection.stored_fields = {"uname": SimpleNamespace(store=True)}
+        user_collection.stored_fields = {"uname": _stored_field("uname")}
         collections = {"hit": hit_collection, "user": user_collection}
         mock_get_collection.side_effect = lambda index, _user: lambda: collections[index]
         mock_search.return_value = {
@@ -282,12 +297,12 @@ class TestSearch:
         hit_collection = MagicMock()
         hit_collection.model_class = None
         hit_collection.stored_fields = {
-            "uname": SimpleNamespace(store=True),
-            "hit_only": SimpleNamespace(store=True),
+            "uname": _stored_field("uname"),
+            "hit_only": _stored_field("hit_only"),
         }
         user_collection = MagicMock()
         user_collection.model_class = None
-        user_collection.stored_fields = {"uname": SimpleNamespace(store=True)}
+        user_collection.stored_fields = {"uname": _stored_field("uname")}
         collections = {"hit": hit_collection, "user": user_collection}
         mock_get_collection.side_effect = lambda index, _user: lambda: collections[index]
         mock_search.return_value = {
@@ -333,7 +348,11 @@ class TestSearch:
         mock_quota_tracker.begin.return_value = True
         mock_get_collection.return_value = lambda: SimpleNamespace(
             model_class=User,
-            stored_fields={name: field for name, field in User.flat_fields().items() if field.store},
+            stored_fields={
+                name: field
+                for name, field in model_registry.flat_fields(User).items()
+                if field.metadata is not None and field.metadata.store
+            },
         )
 
         with request_context.test_request_context(
@@ -670,7 +689,7 @@ class TestCount:
 class TestExplain:
     """Tests for the explain endpoint."""
 
-    @patch("howler.api.v2.search.datastore")
+    @patch("howler.services.lucene_service.datastore")
     @patch("howler.api.v2.search.get_collection")
     @patch("howler.security.login.auth_service")
     def test_explain_success(self, mock_auth_service, mock_get_collection, mock_ds, request_context: Flask):
@@ -689,22 +708,22 @@ class TestExplain:
             "explanations": [{"valid": True, "explanation": "MatchAll", "index": "howler-hit"}],
         }
         mock_ds.return_value.hit.datastore.client = MagicMock()
+        mock_ds.return_value.hit.datastore.client.indices = mock_indices
 
         with request_context.test_request_context(
             method="POST",
             json={"query": "howler.id:*"},
             headers={"Authorization": "Bearer ."},
         ):
-            with patch("howler.api.v2.search.IndicesClient", return_value=mock_indices):
-                from howler.api.v2.search import explain_query
+            from howler.api.v2.search import explain_query
 
-                result: Response = explain_query(index="hit", user=user)
+            result: Response = explain_query(index="hit", user=user)
 
-                assert result.status_code == 200
-                body = result.get_json()
-                assert body["api_response"]["valid"] is True
-                assert "_shards" not in body["api_response"]
-                assert "index" not in body["api_response"]["explanations"][0]
+            assert result.status_code == 200
+            body = result.get_json()
+            assert body["api_response"]["valid"] is True
+            assert "_shards" not in body["api_response"]
+            assert "index" not in body["api_response"]["explanations"][0]
 
     @patch("howler.api.v2.search.get_collection")
     @patch("howler.security.login.auth_service")
@@ -875,7 +894,7 @@ class TestFacet:
 def _scroll_collection(*stored_fields: str) -> MagicMock:
     collection = MagicMock()
     collection.model_class = None
-    collection.stored_fields = {field: SimpleNamespace(store=True) for field in stored_fields}
+    collection.stored_fields = {field: _stored_field(field) for field in stored_fields}
     return collection
 
 

@@ -10,23 +10,22 @@ import typing
 import warnings
 from collections.abc import Mapping as ABCMapping
 from copy import deepcopy
-from datetime import datetime
 from os import environ
 from random import random
-from typing import Any, Callable, Dict, Generic, Literal, Optional, TypeVar, Union, cast, overload
+from typing import Any, Callable, Generic, Literal, Optional, TypeVar, Union, cast, overload
 
 import elasticsearch
 from datemath import dm
 from datemath.helpers import DateMathException
 from elastic_transport import ApiResponseMeta
+from elasticsearch import dsl
 from opentelemetry import trace
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from howler import odm
 from howler.common.exceptions import HowlerRuntimeError, HowlerValueError, NonRecoverableError
 from howler.common.loader import DATASTORE_INDEX_PREFIX
 from howler.common.logging.format import HWL_DATE_FORMAT, HWL_LOG_FORMAT
 from howler.datastore.bulk import ElasticBulkPlan
-from howler.datastore.constants import BACK_MAPPING, TYPE_MAPPING
 from howler.datastore.exceptions import (
     DataStoreException,
     HowlerScanError,
@@ -35,28 +34,21 @@ from howler.datastore.exceptions import (
     SearchRetryException,
     VersionConflictException,
 )
-from howler.datastore.support.build import build_mapping
-from howler.datastore.support.schemas import (
-    default_dynamic_strings,
-    default_dynamic_templates,
-    default_index,
-    default_mapping,
-)
+from howler.datastore.support.elastic import error_message, error_status, response_body, total_hits_value
 from howler.datastore.types import AggSearchResult, SearchResult
 from howler.datastore.utils import expand_field_patterns
-from howler.odm.base import (
-    IP,
-    ClassificationObject,
-    Enum,
-    Integer,
-    Keyword,
-    List,
-    Mapping,
-    Model,
-    ValidatedKeyword,
-    _Field,
+from howler.models import (
+    construct_partial,
+    flat_to_nested,
+    partial_primitives,
+    schema,
+    strip_unknown_fields,
+    validate_field_value,
 )
-from howler.odm.constants import BANNED_FIELDS
+from howler.models.fields import FIELD_SANITIZER as MODEL_FIELD_SANITIZER
+from howler.models.fields import NOT_INDEXED_SANITIZER as MODEL_NOT_INDEXED_SANITIZER
+from howler.models.registry import BANNED_FIELDS as MODEL_BANNED_FIELDS
+from howler.models.registry import field_metadata, model_registry
 from howler.utils.compat import Self
 from howler.utils.dict_utils import prune, recursive_update
 
@@ -76,7 +68,7 @@ logger.addHandler(console)
 
 tracer = trace.get_tracer(__name__)
 
-ModelType = TypeVar("ModelType", bound=Model)
+ModelType = TypeVar("ModelType")
 _R = TypeVar("_R")
 
 
@@ -87,32 +79,51 @@ write_unblock_settings = {"index.blocks.write": None}
 # type used for version values. Any string will do as long as it never matches
 # a real version string.
 CREATE_TOKEN = "create"  # noqa: S105
+ACCESS_FIELDS = (
+    "__access_lvl__",
+    "__access_req__",
+    "__access_grp1__",
+    "__access_grp2__",
+)
 
 
-def _strip_lists(model, data):
+class _SourceDocument(dict[str, Any]):
+    """Internal source mapping carrying Elasticsearch hit metadata."""
+
+    def __init__(self, data: dict[str, Any], metadata: dict[str, Any]):
+        super().__init__(data)
+        self.metadata = metadata
+
+
+def _response_metadata(result: dict[str, Any], *, doc_id: str | None = None) -> dict[str, Any]:
+    return {
+        name: value
+        for name, value in {
+            "id": doc_id if doc_id is not None else result.get("_id"),
+            "index": result.get("_index"),
+            "primary_term": result.get("_primary_term"),
+            "seq_no": result.get("_seq_no"),
+            "version": result.get("_version"),
+            "score": result.get("_score"),
+        }.items()
+        if value is not None
+    }
+
+
+def _strip_lists(model: type, data: dict[str, Any]) -> dict[str, Any]:
     """Elasticsearch returns everything as lists, regardless of whether
     we want the field to be multi-valued or not. This method uses the model's
     knowledge of what should or should not have multiple values to fix the data.
     """
-    fields = model.fields()
-    out = {}
-    for key, value in odm.flat_to_nested(data).items():
-        doc_type = fields.get(key, fields.get("", model))
-        # TODO: While we strip lists we don't want to know that the field is optional but we want to know what
-        #       type of optional field that is. The following two lines of code change the doc_type to the
-        #       child_type of the field. (Should model.fields() actually do that for us instead?)
-        if isinstance(doc_type, odm.Optional):
-            doc_type = doc_type.child_type
-
-        if isinstance(doc_type, odm.List):
-            out[key] = value
-        elif isinstance(doc_type, odm.Compound) or isinstance(doc_type, odm.Mapping):
-            out[key] = _strip_lists(doc_type.child_type, value)
-        elif isinstance(value, list):
-            out[key] = value[0]
+    fields = model_registry.flat_fields(model)
+    normalized: dict[str, Any] = {}
+    for key, value in data.items():
+        definition = fields.get(key)
+        if isinstance(value, list) and not (definition is not None and definition.multivalued):
+            normalized[key] = value[0] if value else None
         else:
-            out[key] = value
-    return out
+            normalized[key] = value
+    return flat_to_nested(normalized)
 
 
 def sort_str(sort_dicts):
@@ -156,6 +167,32 @@ def parse_sort(sort, ret_list=True):
             return [{parts[0]: parts[1]}]
         return {parts[0]: parts[1]}
     raise SearchException("Unknown sort parameter " + sort)
+
+
+def _complete_eql_response(response: Any) -> dict[str, Any]:
+    """Normalize an EQL response and reject running/partial result sets."""
+    result = response_body(response)
+    shards = result.get("_shards")
+    failed_shards = (
+        bool(shards.get("failed", 0))
+        or bool(shards.get("failures"))
+        or (
+            bool(shards.get("total"))
+            and int(shards.get("successful", 0) or 0) + int(shards.get("skipped", 0) or 0)
+            < int(shards.get("total", 0) or 0)
+        )
+        if isinstance(shards, typing.Mapping)
+        else False
+    )
+    if (
+        result.get("is_running")
+        or result.get("is_partial")
+        or result.get("timed_out")
+        or result.get("shard_failures")
+        or failed_shards
+    ):
+        raise SearchException("Elasticsearch returned an incomplete EQL result.")
+    return result
 
 
 class ESCollection(Generic[ModelType]):
@@ -229,7 +266,13 @@ class ESCollection(Generic[ModelType]):
     CUSTOM_AGG_PREFIX: str = "_custom_agg__"
 
     def __init__(
-        self: Self, datastore: ESStore, name, model_class=None, validate=True, max_attempts=10, ilm_config=None
+        self: Self,
+        datastore: ESStore,
+        name,
+        model_class=None,
+        validate=True,
+        max_attempts=10,
+        ilm_config=None,
     ):
         self.replicas = int(
             environ.get(
@@ -245,6 +288,8 @@ class ESCollection(Generic[ModelType]):
         self.ilm_config = ilm_config
         self.index_name = f"{self.name}_hot"
         self.model_class = model_class
+        if model_class is not None and not (isinstance(model_class, type) and issubclass(model_class, BaseModel)):
+            raise TypeError("Collection models must be Pydantic models")
         self.validate = validate
         self.max_attempts = max_attempts
 
@@ -257,9 +302,9 @@ class ESCollection(Generic[ModelType]):
 
         self.stored_fields = {}
         if model_class:
-            for name, field in model_class.flat_fields().items():
-                if field.store:
-                    self.stored_fields[name] = field
+            for name, definition in model_registry.flat_fields(model_class).items():
+                if definition.metadata is not None and definition.metadata.store:
+                    self.stored_fields[name] = definition
 
     @property
     def index_list_full(self):
@@ -277,11 +322,15 @@ class ESCollection(Generic[ModelType]):
     def index_list(self):
         """Return the active physical write index for this collection.
 
-        Historical ILM rollover indexes are intentionally excluded. Bulk plans use this
-        list for default write, update, and delete targets, and widening it would fan those
-        operations out across historical indexes.
+        Historical ILM rollover indexes are intentionally excluded. ILM-aware bulk plans
+        use the logical write alias plus explicit document-location resolution instead.
         """
         return [self.index_name]
+
+    def _ilm_index_generation(self, index: str) -> int | None:
+        """Return the canonical rollover generation for a physical ILM index."""
+        match = re.fullmatch(rf"{re.escape(self.name)}-(\d{{6}})", index)
+        return int(match.group(1)) if match else None
 
     def _get_ilm_index_names(self) -> list[str]:
         """Return physical ILM rollover indexes, excluding temporary maintenance indexes."""
@@ -289,12 +338,15 @@ class ESCollection(Generic[ModelType]):
             indices = self.datastore.client.indices.get(
                 index=f"{self.name}-0*",
                 ignore_unavailable=True,
+                filter_path="*.aliases",
             )
         except elasticsearch.exceptions.NotFoundError:
             return []
 
-        index_pattern = re.compile(rf"^{re.escape(self.name)}-\d{{6}}$")
-        return sorted(index for index in indices if index_pattern.fullmatch(index))
+        return sorted(
+            (index for index in indices if self._ilm_index_generation(index) is not None),
+            key=lambda index: cast(int, self._ilm_index_generation(index)),
+        )
 
     def _refresh_ilm_index_name(self):
         """Set ``index_name`` to the latest existing ILM index, when one exists."""
@@ -438,20 +490,20 @@ class ESCollection(Generic[ModelType]):
                 retries += 1
 
             except elasticsearch.exceptions.TransportError as e:
-                err_code, msg, cause = e.args
-                if err_code == 503 or err_code == "503":
+                err_code = error_status(e)
+                if err_code == 503:
                     logger.warning("Looks like index %s is not ready yet, retrying...", self.name)
                     time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
                     self.datastore.connection_reset()
                     retries += 1
-                elif err_code == 429 or err_code == "429":
+                elif err_code == 429:
                     logger.warning(
                         f"Elasticsearch is too busy to perform the requested task on index {self.name}, retrying..."
                     )
                     time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
                     self.datastore.connection_reset()
                     retries += 1
-                elif err_code == 403 or err_code == "403":
+                elif err_code == 403:
                     logger.warning(
                         "Elasticsearch cluster is preventing writing operations on index %s, retrying...",
                         self.name,
@@ -611,9 +663,11 @@ class ESCollection(Generic[ModelType]):
             try:
                 res = self.datastore.client.cluster.health(index=index, timeout="5s", wait_for_status=min_status)
                 status_ok = not res["timed_out"]
+                if not status_ok:
+                    # Elasticsearch 8+ reports health timeouts as HTTP 200 with timed_out=true.
+                    logger.warning("Waiting for index %s to get to status %s...", index, min_status)
             except elasticsearch.exceptions.TransportError as e:
-                err_code, _, _ = e.args
-                if err_code == 408 or err_code == "408":
+                if error_status(e) == 408:
                     logger.warning("Waiting for index %s to get to status %s...", index, min_status)
                 else:
                     raise
@@ -662,15 +716,15 @@ class ESCollection(Generic[ModelType]):
         responses = []
         for operation_batch in operations.get_plan_batches():
             response = self.with_retries(self.datastore.client.bulk, operations=operation_batch, refresh=refresh)
-            responses.append(response)
+            responses.append(response_body(response))
 
         has_errors = False
-        for response in responses:
-            if not response["errors"]:
+        for body in responses:
+            if not body["errors"]:
                 continue
 
             has_errors = True
-            for item in response.get("items", []):
+            for item in body.get("items", []):
                 for action, result in item.items():
                     error = result.get("error")
                     if error:
@@ -691,6 +745,14 @@ class ESCollection(Generic[ModelType]):
 
         :return: The BulkPlan object
         """
+        if self.ilm_config:
+            return ElasticBulkPlan(
+                [self.name],
+                self.model_class,
+                write_index=self.name,
+                document_locations=self._locate_ilm_documents,
+                valid_indexes=self._get_ilm_index_names,
+            )
         return ElasticBulkPlan(self.index_list, self.model_class)
 
     @tracer.start_as_current_span(f"{__name__}.commit")
@@ -1185,89 +1247,254 @@ class ESCollection(Generic[ModelType]):
         :return: list of instances of the model class
         """
 
-        def add_to_output(data_output, data_id):
+        requested_keys = list(key_list)
+        missing_keys = list(requested_keys)
+        resolved: dict[str, Any] = {}
+
+        def add_to_output(data_output, data_id, row=None):
             if "__non_doc_raw__" in data_output:
-                if as_dictionary:
-                    out[data_id] = data_output["__non_doc_raw__"]
-                else:
-                    out.append(data_output["__non_doc_raw__"])  # type: ignore
+                resolved[data_id] = data_output["__non_doc_raw__"]
             else:
-                data_output.pop("id", None)
-                if as_dictionary:
-                    out[data_id] = self.normalize(data_output, as_obj=as_obj)
-                else:
-                    out.append(self.normalize(data_output, as_obj=as_obj))  # type: ignore
+                metadata = _response_metadata(row or {}, doc_id=data_id)
+                source = deepcopy(data_output)
+                source.pop("id", None)
+                resolved[data_id] = self.normalize(source, as_obj=as_obj, metadata=metadata, read=True)
+
+        if missing_keys:
+            if self.ilm_config:
+                locations = self._locate_ilm_documents(missing_keys)
+                grouped_ids: dict[str, list[str]] = {}
+                for data_id in missing_keys:
+                    if locations.get(data_id):
+                        grouped_ids.setdefault(locations[data_id][0], []).append(data_id)
+            else:
+                grouped_ids = {self.name: missing_keys}
+
+            found_keys: set[str] = set()
+            for index, data_ids in grouped_ids.items():
+                data = response_body(self.with_retries(self.datastore.client.mget, ids=data_ids, index=index))
+                for row in data.get("docs", []):
+                    if "found" in row and not row["found"]:
+                        continue
+
+                    data_id = row["_id"]
+                    if data_id in found_keys:
+                        logger.error("MGet returned multiple documents for id: %s", data_id)
+                        continue
+
+                    found_keys.add(data_id)
+                    if data_id in missing_keys:
+                        missing_keys.remove(data_id)
+                    add_to_output(row["_source"], data_id, row)
 
         out: Union[dict[str, Any], list[Any]]
         if as_dictionary:
-            out = {}
+            out = {data_id: resolved[data_id] for data_id in requested_keys if data_id in resolved}
         else:
-            out = []
+            out = [resolved[data_id] for data_id in requested_keys if data_id in resolved]
 
-        if key_list:
-            data = self.with_retries(self.datastore.client.mget, ids=key_list, index=self.name)
-
-            for row in data.get("docs", []):
-                if "found" in row and not row["found"]:
-                    continue
-
-                try:
-                    key_list.remove(row["_id"])
-                    add_to_output(row["_source"], row["_id"])
-                except ValueError:
-                    logger.exception("MGet returned multiple documents for id: %s", row["_id"])
-
-        if key_list and error_on_missing:
-            raise MultiKeyError(key_list, out)
+        if missing_keys and error_on_missing:
+            raise MultiKeyError(missing_keys, out)
 
         return out
 
-    @overload
-    def normalize(self: Self, data) -> ModelType | None: ...  # codeql[py/ineffectual-statement]
+    def _locate_ilm_documents(self: Self, keys: list[str]) -> dict[str, list[str]]:
+        """Locate logical document IDs across every physical index behind an ILM alias."""
+        if not keys:
+            return {}
 
-    @overload
-    def normalize(self: Self, data, as_obj: Literal[True]) -> ModelType | None: ...  # codeql[py/ineffectual-statement]
+        result = response_body(
+            self.with_retries(
+                self.datastore.client.search,
+                index=self.name,
+                query=dsl.Q("ids", values=list(keys)).to_dict(),
+                size=10000,
+                _source=False,
+                sort=[{"_index": "desc"}],
+                track_total_hits=True,
+            )
+        )
+        hits = result.get("hits", {})
+        rows = hits.get("hits", [])
+        if total_hits_value(hits.get("total", 0)) > len(rows):
+            raise SearchException(f"Unable to locate every requested document across ILM indices for {self.name}.")
+
+        locations: dict[str, list[str]] = {}
+        for row in rows:
+            data_id = row.get("_id")
+            index = row.get("_index")
+            if isinstance(data_id, str) and isinstance(index, str) and self._ilm_index_generation(index) is not None:
+                locations.setdefault(data_id, []).append(index)
+
+        for data_id, indexes in locations.items():
+            locations[data_id] = sorted(
+                set(indexes),
+                key=lambda index: cast(int, self._ilm_index_generation(index)),
+                reverse=True,
+            )
+            if len(locations[data_id]) > 1:
+                logger.warning(
+                    "Found duplicate document id %s across ILM indices for %s; using newest generation %s.",
+                    data_id,
+                    self.name,
+                    locations[data_id][0],
+                )
+        return locations
 
     @overload
     def normalize(
-        self: Self, data, as_obj: Literal[False]
-    ) -> dict[str, Any] | None: ...  # codeql[py/ineffectual-statement]
+        self: Self,
+        data,
+        *,
+        partial: bool = False,
+        doc_id: str | None = None,
+        index: str | None = None,
+        score: float | None = None,
+        metadata: dict[str, Any] | None = None,
+        read: bool = False,
+    ) -> ModelType | None: ...
 
-    def normalize(self: Self, data, as_obj=True):
+    @overload
+    def normalize(
+        self: Self,
+        data,
+        as_obj: Literal[True],
+        *,
+        partial: bool = False,
+        doc_id: str | None = None,
+        index: str | None = None,
+        score: float | None = None,
+        metadata: dict[str, Any] | None = None,
+        read: bool = False,
+    ) -> ModelType | None: ...
+
+    @overload
+    def normalize(
+        self: Self,
+        data,
+        as_obj: Literal[False],
+        *,
+        partial: bool = False,
+        doc_id: str | None = None,
+        index: str | None = None,
+        score: float | None = None,
+        metadata: dict[str, Any] | None = None,
+        read: bool = False,
+    ) -> dict[str, Any] | None: ...
+
+    def normalize(
+        self: Self,
+        data,
+        as_obj=True,
+        *,
+        partial: bool = False,
+        doc_id: str | None = None,
+        index: str | None = None,
+        score: float | None = None,
+        metadata: dict[str, Any] | None = None,
+        read: bool = False,
+    ):
         """Normalize the data using the model class
 
         :param as_obj: Return an object instead of a dictionary
         :param data: data to normalize
         :return: instance of the model class
         """
-        if as_obj and data is not None and self.model_class and not isinstance(data, self.model_class):
-            return self.model_class(data)
+        if data is None or self.model_class is None:
+            return data
 
-        if isinstance(data, dict):
-            data = {k: v for k, v in data.items() if k not in BANNED_FIELDS}
+        source_metadata = data.metadata if isinstance(data, _SourceDocument) else {}
+        if isinstance(data, self.model_class):
+            source_metadata = {
+                **data.meta.model_dump(exclude_none=True),
+                **source_metadata,
+            }
+        resolved_metadata = {
+            **source_metadata,
+            **(metadata or {}),
+            **{
+                key: value
+                for key, value in {
+                    "id": doc_id,
+                    "index": index,
+                    "score": score,
+                }.items()
+                if value is not None
+            },
+        }
 
-        return data
+        if isinstance(data, self.model_class):
+            if not as_obj:
+                return data.as_primitives()
+            if partial:
+                model = data
+            else:
+                raw_data = data.model_dump(by_alias=True)
+                model_input = {
+                    key: value
+                    for key, value in raw_data.items()
+                    if key not in MODEL_BANNED_FIELDS and key not in {"id", "__index"}
+                }
+                model = self.model_class.validate_howler({"meta": resolved_metadata, **model_input})
+        else:
+            if isinstance(data, BaseModel):
+                raw_data = data.model_dump(by_alias=True)
+            elif isinstance(data, dict):
+                raw_data = deepcopy(data)
+            else:
+                raw_data = data
+
+            if not isinstance(raw_data, dict):
+                return raw_data
+
+            if not as_obj:
+                raw_data.pop("id", None)
+                return {key: value for key, value in raw_data.items() if key not in MODEL_BANNED_FIELDS}
+
+            model_input = {
+                key: value
+                for key, value in raw_data.items()
+                if key not in MODEL_BANNED_FIELDS and key not in {"id", "__index"}
+            }
+            if read:
+                model_input = strip_unknown_fields(self.model_class, model_input)
+            model = (
+                construct_partial(
+                    self.model_class,
+                    model_input,
+                    meta=resolved_metadata,
+                    ignore_unknown=read,
+                )
+                if partial
+                else self.model_class.validate_howler({"meta": resolved_metadata, **model_input})
+            )
+
+        for name, value in resolved_metadata.items():
+            setattr(model.meta, name, value)
+        return model
 
     def _search_exists(self: Self, key, access_control: str | None = None) -> bool:
         """Check document existence with an alias-safe search query."""
-        query: dict[str, typing.Any] = {"ids": {"values": [key]}}
+        query: dict[str, typing.Any] = dsl.Q("ids", values=[key]).to_dict()
         if access_control:
             query = {
                 "bool": {
                     "must": query,
-                    "filter": [{"query_string": {"query": access_control}}],
+                    "filter": [dsl.Q("query_string", query=access_control).to_dict()],
                 }
             }
 
-        result = self.with_retries(
-            self.datastore.client.search,
-            index=self.name,
-            query=query,
-            size=0,
-            track_total_hits=True,
+        result = response_body(
+            self.with_retries(
+                self.datastore.client.search,
+                index=self.name,
+                query=query,
+                size=0,
+                track_total_hits=True,
+            )
         )
         total = result["hits"]["total"]
-        return total["value"] > 0 if isinstance(total, dict) else total > 0
+        return total_hits_value(total) > 0
 
     def exists(self: Self, key, access_control: str | None = None) -> bool:
         """Check if a document exists in the datastore.
@@ -1320,11 +1547,12 @@ class ESCollection(Generic[ModelType]):
         atomically (version=CREATE_TOKEN)".
         """
 
-        def normalize_output(data_output):
+        def normalize_output(data_output, result):
             if "__non_doc_raw__" in data_output:
                 return data_output["__non_doc_raw__"]
-            data_output.pop("id", None)
-            return data_output
+            output = deepcopy(data_output)
+            output.pop("id", None)
+            return _SourceDocument(output, _response_metadata(result, doc_id=key))
 
         if retries is None:
             retries = self.RETRY_NONE
@@ -1333,19 +1561,18 @@ class ESCollection(Generic[ModelType]):
         while not done:
             try:
                 if self.ilm_config:
-                    result = self.with_retries(
-                        self.datastore.client.search,
-                        index=self.name,
-                        query={"ids": {"values": [key]}},
-                        size=1,
-                        seq_no_primary_term=True,
+                    locations = self._locate_ilm_documents([key]).get(key, [])
+                    if not locations:
+                        self._raise_document_not_found(key, {"hits": {"hits": []}})
+                    doc = response_body(
+                        self.with_retries(
+                            self.datastore.client.get,
+                            index=locations[0],
+                            id=key,
+                        )
                     )
-                    hits = result["hits"]["hits"]
-                    if not hits:
-                        self._raise_document_not_found(key, result)
-                    doc = hits[0]
                 else:
-                    doc = self.with_retries(self.datastore.client.get, index=self.name, id=key)
+                    doc = response_body(self.with_retries(self.datastore.client.get, index=self.name, id=key))
 
                 if version:
                     if self.ilm_config:
@@ -1353,10 +1580,10 @@ class ESCollection(Generic[ModelType]):
                     else:
                         version_token = f"{doc['_seq_no']}---{doc['_primary_term']}"
                     return (
-                        normalize_output(doc["_source"]),
+                        normalize_output(doc["_source"], doc),
                         version_token,
                     )
-                return normalize_output(doc["_source"])
+                return normalize_output(doc["_source"], doc)
             except elasticsearch.exceptions.NotFoundError:
                 pass
 
@@ -1430,8 +1657,8 @@ class ESCollection(Generic[ModelType]):
         data = self._get(key, self.RETRY_NORMAL, version=version)
         if version:
             data, version = data
-            return self.normalize(data, as_obj=as_obj), version
-        return self.normalize(data, as_obj=as_obj)
+            return self.normalize(data, as_obj=as_obj, doc_id=key, read=True), version
+        return self.normalize(data, as_obj=as_obj, doc_id=key, read=True)
 
     @overload
     def get_if_exists(
@@ -1479,9 +1706,9 @@ class ESCollection(Generic[ModelType]):
         data = self._get(key, self.RETRY_NONE, version=version)
         if version:
             data, version = data
-            return self.normalize(data, as_obj=as_obj), version
+            return self.normalize(data, as_obj=as_obj, doc_id=key, read=True), version
 
-        return self.normalize(data, as_obj=as_obj)
+        return self.normalize(data, as_obj=as_obj, doc_id=key, read=True)
 
     def require(
         self: Self, key, as_obj=True, version=False
@@ -1502,8 +1729,8 @@ class ESCollection(Generic[ModelType]):
         data = self._get(key, self.RETRY_INFINITY, version=version)
         if version:
             data, version = data
-            return self.normalize(data, as_obj=as_obj), version
-        return self.normalize(data, as_obj=as_obj)
+            return self.normalize(data, as_obj=as_obj, doc_id=key, read=True), version
+        return self.normalize(data, as_obj=as_obj, doc_id=key, read=True)
 
     def save(self: Self, key, data, version=None, refresh: Literal["true", "false", "wait_for"] | None = None):
         """Save to document to the datastore using the key as its document id.
@@ -1523,7 +1750,7 @@ class ESCollection(Generic[ModelType]):
 
         data = self.normalize(data)
 
-        if self.model_class and data:
+        if self.model_class and data is not None:
             saved_data = data.as_primitives(hidden_fields=True)
         else:
             if not isinstance(data, dict):
@@ -1578,23 +1805,37 @@ class ESCollection(Generic[ModelType]):
         :param version: version token returned by ``get_if_exists(..., version=True)`` for an atomic delete
         :return: True is delete successful
         """
-        index = self.name
-        kwargs = {"id": key, "index": index, "refresh": refresh}
         if version:
             if version == CREATE_TOKEN:
                 raise DataStoreException("Cannot delete a document using the create version token.")
             index, seq_no, primary_term = self.get_version_write_target(version)
-            kwargs.update({"index": index, "if_seq_no": seq_no, "if_primary_term": primary_term})
+            try:
+                info = response_body(
+                    self.with_retries(
+                        self.datastore.client.delete,
+                        raise_conflicts=True,
+                        id=key,
+                        index=index,
+                        refresh=refresh,
+                        if_seq_no=seq_no,
+                        if_primary_term=primary_term,
+                    )
+                )
+                return info["result"] == "deleted"
+            except elasticsearch.NotFoundError:
+                return False
 
-        try:
-            info = self.with_retries(
-                self.datastore.client.delete,
-                raise_conflicts=bool(version),
-                **kwargs,
-            )
-            return info["result"] == "deleted"
-        except elasticsearch.NotFoundError:
-            return False
+        indexes = self._locate_ilm_documents([key]).get(key, []) if self.ilm_config else [self.name]
+        deleted = False
+        for index in indexes:
+            try:
+                info = response_body(
+                    self.with_retries(self.datastore.client.delete, id=key, index=index, refresh=refresh)
+                )
+                deleted = info["result"] == "deleted" or deleted
+            except elasticsearch.NotFoundError:
+                continue
+        return deleted
 
     def delete_by_query(
         self: Self,
@@ -1646,48 +1887,49 @@ class ESCollection(Generic[ModelType]):
         op_params = {}
         val_id = 0
         for op, doc_key, value in operations:
+            source_path = "ctx._source" + "".join(f"[{json.dumps(component)}]" for component in doc_key.split("."))
             if op == self.UPDATE_SET:
-                op_sources.append(f"ctx._source.{doc_key} = params.value{val_id}")
+                op_sources.append(f"{source_path} = params.value{val_id}")
                 op_params[f"value{val_id}"] = value
             elif op == self.UPDATE_DELETE:
-                op_sources.append(f"ctx._source.{doc_key}.remove(params.value{val_id})")
+                op_sources.append(f"{source_path}.remove(params.value{val_id})")
                 op_params[f"value{val_id}"] = value
             elif op == self.UPDATE_APPEND:
-                op_sources.append(f"ctx._source.{doc_key}.add(params.value{val_id})")
+                op_sources.append(f"{source_path}.add(params.value{val_id})")
                 op_params[f"value{val_id}"] = value
             elif op == self.UPDATE_APPEND_IF_MISSING:
                 script = (
-                    f"if (ctx._source.{doc_key}.indexOf(params.value{val_id}) == -1) "
-                    f"{{ctx._source.{doc_key}.add(params.value{val_id})}}"
+                    f"if ({source_path}.indexOf(params.value{val_id}) == -1) "
+                    f"{{{source_path}.add(params.value{val_id})}}"
                 )
                 op_sources.append(script)
                 op_params[f"value{val_id}"] = value
             elif op == self.UPDATE_REMOVE:
                 script = (
-                    f"if (ctx._source.{doc_key}.indexOf(params.value{val_id}) != -1) "
-                    f"{{ctx._source.{doc_key}.remove(ctx._source.{doc_key}.indexOf(params.value{val_id}))}}"
+                    f"if ({source_path}.indexOf(params.value{val_id}) != -1) "
+                    f"{{{source_path}.remove({source_path}.indexOf(params.value{val_id}))}}"
                 )
                 op_sources.append(script)
                 op_params[f"value{val_id}"] = value
             elif op == self.UPDATE_INC:
-                op_sources.append(f"ctx._source.{doc_key} += params.value{val_id}")
+                op_sources.append(f"{source_path} += params.value{val_id}")
                 op_params[f"value{val_id}"] = value
             elif op == self.UPDATE_DEC:
-                op_sources.append(f"ctx._source.{doc_key} -= params.value{val_id}")
+                op_sources.append(f"{source_path} -= params.value{val_id}")
                 op_params[f"value{val_id}"] = value
             elif op == self.UPDATE_MAX:
                 script = (
-                    f"if (ctx._source.{doc_key} == null || "
-                    f"ctx._source.{doc_key}.compareTo(params.value{val_id}) < 0) "
-                    f"{{ctx._source.{doc_key} = params.value{val_id}}}"
+                    f"if ({source_path} == null || "
+                    f"{source_path}.compareTo(params.value{val_id}) < 0) "
+                    f"{{{source_path} = params.value{val_id}}}"
                 )
                 op_sources.append(script)
                 op_params[f"value{val_id}"] = value
             elif op == self.UPDATE_MIN:
                 script = (
-                    f"if (ctx._source.{doc_key} == null || "
-                    f"ctx._source.{doc_key}.compareTo(params.value{val_id}) > 0) "
-                    f"{{ctx._source.{doc_key} = params.value{val_id}}}"
+                    f"if ({source_path} == null || "
+                    f"{source_path}.compareTo(params.value{val_id}) > 0) "
+                    f"{{{source_path} = params.value{val_id}}}"
                 )
                 op_sources.append(script)
                 op_params[f"value{val_id}"] = value
@@ -1705,70 +1947,65 @@ class ESCollection(Generic[ModelType]):
     def _validate_operations(self: Self, operations: "list[OdmUpdateOperation]"):
         """Validate the different operations received for a partial update
 
-        TODO: When the field is of type Mapping, the validation/check only works for depth 1. A full recursive
-              solution is needed to support multi-depth cases.
-
         :param operations: list of operation tuples
         :raises: DatastoreException if operation not valid
         """
-        if self.model_class:
-            fields = self.model_class.flat_fields(show_compound=True)
-            if "classification" in fields:
-                fields.update(
-                    {
-                        "__access_lvl__": Integer(),
-                        "__access_req__": List(Keyword()),
-                        "__access_grp1__": List(Keyword()),
-                        "__access_grp2__": List(Keyword()),
-                    }
+        for _, doc_key, _ in operations:
+            if doc_key in ACCESS_FIELDS:
+                raise DataStoreException(
+                    f"Hidden access field {doc_key} is derived from classification and cannot be updated directly."
                 )
-        else:
-            fields = None
 
         ret_ops = []
         for op, doc_key, value in operations:
+            classification_parts: dict[str, Any] = {}
             if op not in self.UPDATE_OPERATIONS:
                 raise DataStoreException(f"Not a valid Update Operation: {op}")
 
-            if fields is not None:
-                prev_key = None
-                if doc_key not in fields:
-                    if "." in doc_key:
-                        prev_key = doc_key[: doc_key.rindex(".")]
-                        if prev_key in fields and not isinstance(fields[prev_key], Mapping):
-                            raise DataStoreException(f"Invalid field for model: {prev_key}")
+            if self.model_class and op == self.UPDATE_DELETE:
+                definition = model_registry.flat_fields(self.model_class, show_compound=True).get(doc_key)
+                if definition is None or definition.metadata is None or definition.metadata.kind != "Mapping":
+                    raise DataStoreException(f"Invalid field for DELETE operation: {doc_key}")
+                try:
+                    value = TypeAdapter(str).validate_python(value)
+                except (TypeError, ValueError, ValidationError) as error:
+                    raise DataStoreException(f"Invalid value for field {doc_key}: {value}") from error
+                sanitizer = (
+                    MODEL_NOT_INDEXED_SANITIZER
+                    if definition.metadata.index is False and definition.metadata.store is False
+                    else MODEL_FIELD_SANITIZER
+                )
+                if not sanitizer.fullmatch(value):
+                    raise DataStoreException(f"Invalid value for field {doc_key}: {value}")
+            elif self.model_class:
+                try:
+                    if op == self.UPDATE_SET and doc_key == "classification":
+                        classification_parts = partial_primitives(self.model_class, {"classification": value})
+                        value = classification_parts.pop("classification")
                     else:
-                        raise DataStoreException(f"Invalid field for model: {doc_key}")
-
-                if prev_key:
-                    field = fields[prev_key].child_type
-                else:
-                    field = fields[doc_key]
-
-                if op in [
-                    self.UPDATE_APPEND,
-                    self.UPDATE_APPEND_IF_MISSING,
-                    self.UPDATE_REMOVE,
-                ]:
-                    try:
-                        value = field.check(value)
-                    except (ValueError, TypeError, AttributeError):
-                        raise DataStoreException(f"Invalid value for field {doc_key}: {value}")
-
-                elif op in [self.UPDATE_SET, self.UPDATE_DEC, self.UPDATE_INC]:
-                    try:
-                        value = field.check(value)
-                    except (ValueError, TypeError):
-                        raise DataStoreException(f"Invalid value for field {doc_key}: {value}")
-
-                if isinstance(value, Model):
-                    value = value.as_primitives()
-                elif isinstance(value, datetime):
-                    value = value.isoformat()
-                elif isinstance(value, ClassificationObject):
-                    value = str(value)
+                        value = validate_field_value(
+                            self.model_class,
+                            doc_key,
+                            value,
+                            list_item=op
+                            in {
+                                self.UPDATE_APPEND,
+                                self.UPDATE_APPEND_IF_MISSING,
+                                self.UPDATE_REMOVE,
+                            },
+                        )
+                except (AttributeError, TypeError, ValueError, ValidationError) as error:
+                    if str(error).startswith("Invalid field for model:"):
+                        raise DataStoreException(str(error)) from error
+                    raise DataStoreException(f"Invalid value for field {doc_key}: {value}") from error
 
             ret_ops.append((op, doc_key, value))
+            if self.model_class and op == self.UPDATE_SET and doc_key == "classification":
+                ret_ops.extend(
+                    (self.UPDATE_SET, name, classification_parts[name])
+                    for name in ACCESS_FIELDS
+                    if name in classification_parts
+                )
 
         return ret_ops
 
@@ -1794,19 +2031,23 @@ class ESCollection(Generic[ModelType]):
         if version is None and self.ilm_config:
             _, version = self.get_if_exists(key, as_obj=False, version=True)
 
+        if version == CREATE_TOKEN:
+            return False
         if version:
             index, seq_no, primary_term = self.get_version_write_target(version)
 
         try:
-            res = self.with_retries(
-                self.datastore.client.update,
-                index=index,
-                id=key,
-                script=script,
-                if_seq_no=seq_no,
-                if_primary_term=primary_term,
-                raise_conflicts=bool(seq_no and primary_term),
-                refresh=refresh,
+            res = response_body(
+                self.with_retries(
+                    self.datastore.client.update,
+                    index=index,
+                    id=key,
+                    script=script,
+                    if_seq_no=seq_no,
+                    if_primary_term=primary_term,
+                    raise_conflicts=bool(seq_no and primary_term),
+                    refresh=refresh,
+                )
             )
             return (
                 res["result"] == "updated",
@@ -1904,16 +2145,13 @@ class ESCollection(Generic[ModelType]):
 
     def _format_output(self: Self, result, fields=None, as_obj=True):
         # Getting search document data
-        extra_fields = result.get("fields", {})
-        source_data = result.pop("_source", None)
-
-        if source_data is not None:
-            for f in BANNED_FIELDS:
-                source_data.pop(f, None)
+        extra_fields = deepcopy(result.get("fields", {}))
+        source_data = deepcopy(result.get("_source"))
 
         item_id = result["_id"]
 
         if self.model_class:
+            requested_fields = fields
             if not fields:
                 fields = list(self.stored_fields.keys())
                 fields.append("id")
@@ -1921,19 +2159,25 @@ class ESCollection(Generic[ModelType]):
                 fields = fields.split(",")
 
             extra_fields = _strip_lists(self.model_class, extra_fields)
-            if as_obj:
-                if "_index" in fields and "_index" in result:
-                    extra_fields["_index"] = result["_index"]
-                if "*" in fields:
-                    fields = None
+            source_data = source_data or {}
+            source_data = recursive_update(source_data, extra_fields, allow_recursion=False)
+            source_data = {
+                key: value for key, value in source_data.items() if key not in MODEL_BANNED_FIELDS and key != "id"
+            }
 
-                return self.model_class(source_data, mask=fields, docid=item_id, extra_fields=extra_fields)
-            else:
-                source_data = recursive_update(source_data, extra_fields, allow_recursion=False)
-                if "id" in fields:
-                    source_data["id"] = item_id
-                if "_index" in fields and "_index" in result:
-                    source_data["_index"] = result["_index"]
+            if as_obj:
+                return self.normalize(
+                    source_data,
+                    as_obj=True,
+                    partial=requested_fields is None or "*" not in fields,
+                    metadata=_response_metadata(result, doc_id=item_id),
+                    read=True,
+                )
+
+            if "id" in fields:
+                source_data["id"] = item_id
+            if "_index" in fields and "_index" in result:
+                source_data["_index"] = result["_index"]
 
         if isinstance(fields, str):
             fields = fields.split(",")
@@ -1947,7 +2191,12 @@ class ESCollection(Generic[ModelType]):
         if fields is None or "*" in fields:
             return source_data
 
-        return prune(source_data, fields, self.stored_fields, mapping_class=Mapping)
+        mapping_paths = {
+            path
+            for path, definition in self.stored_fields.items()
+            if definition.metadata is not None and definition.metadata.kind == "Mapping"
+        }
+        return prune(source_data, fields, mapping_paths)
 
     def _search(self: Self, args=None, deep_paging_id=None, track_total_hits=None):
         if args is None:
@@ -1969,19 +2218,27 @@ class ESCollection(Generic[ModelType]):
 
             parsed_values[key] = value
 
-        # This is our minimal query, the following sections will fill it out
-        # with whatever extra options the search has been given.
-        query_body: dict[str, Any] = {
-            "query": {
-                "bool": {
-                    "must": {"query_string": {"query": parsed_values["query"]}},
-                    "filter": [{"query_string": {"query": ff}} for ff in parsed_values["filters"]],
-                }
-            },
-            "from_": parsed_values["start"],
-            "size": parsed_values["rows"],
-            "sort": parse_sort(parsed_values["sort"]),
-            "_source": parsed_values["field_list"] or list(self.stored_fields.keys()),
+        # Use the public Search/Q builders for request components that preserve the existing
+        # wire shape exactly. Bool ``must`` is assembled explicitly because DSL normalizes a
+        # single clause into a list, which would change golden request payloads.
+        search_request = (
+            dsl.Search()
+            .source(parsed_values["field_list"] or list(self.stored_fields.keys()))
+            .sort(*(parse_sort(parsed_values["sort"]) or []))
+            .extra(from_=parsed_values["start"], size=parsed_values["rows"])
+        )
+        query_body = search_request.to_dict()
+        query_body["from_"] = query_body.pop("from")
+        must_query = dsl.Q("query_string", query=parsed_values["query"]).to_dict()
+        if parsed_values["df"]:
+            must_query["query_string"]["default_field"] = parsed_values["df"]
+        query_body["query"] = {
+            "bool": {
+                "must": must_query,
+                "filter": [
+                    dsl.Q("query_string", query=filter_query).to_dict() for filter_query in parsed_values["filters"]
+                ],
+            }
         }
 
         if parsed_values["script_fields"]:
@@ -1989,9 +2246,6 @@ class ESCollection(Generic[ModelType]):
             for f_name, f_script in parsed_values["script_fields"]:
                 fields[f_name] = {"script": {"lang": "painless", "source": f_script}}
             query_body["script_fields"] = fields
-
-        if parsed_values["df"]:
-            query_body["query"]["bool"]["must"]["query_string"]["default_field"] = parsed_values["df"]
 
         # Time limit for the query
         if parsed_values["timeout"]:
@@ -2004,17 +2258,21 @@ class ESCollection(Generic[ModelType]):
                 interval_type = "fixed_interval"
             else:
                 interval_type = "interval"
-            query_body["aggregations"]["histogram"] = {
-                parsed_values["histogram_type"]: {
-                    "field": parsed_values["histogram_field"],
-                    interval_type: parsed_values["histogram_gap"],
-                    "min_doc_count": parsed_values["histogram_mincount"],
-                    "extended_bounds": {
-                        "min": parsed_values["histogram_start"],
-                        "max": parsed_values["histogram_end"],
+            query_body["aggregations"]["histogram"] = dsl.A(
+                cast(str, parsed_values["histogram_type"]),
+                **cast(
+                    dict[str, Any],
+                    {
+                        "field": parsed_values["histogram_field"],
+                        interval_type: parsed_values["histogram_gap"],
+                        "min_doc_count": parsed_values["histogram_mincount"],
+                        "extended_bounds": {
+                            "min": parsed_values["histogram_start"],
+                            "max": parsed_values["histogram_end"],
+                        },
                     },
-                }
-            }
+                ),
+            ).to_dict()
 
         # Add a facet aggregation
         if parsed_values["facet_active"]:
@@ -2032,7 +2290,7 @@ class ESCollection(Generic[ModelType]):
                         "min_doc_count": parsed_values["facet_mincount"],
                         "size": parsed_values["rows"],
                     }
-                query_body["aggregations"][field] = {"terms": facet_body}
+                query_body["aggregations"][field] = dsl.A("terms", **facet_body).to_dict()
 
         # Add a facet aggregation
         if parsed_values["stats_active"]:
@@ -2044,7 +2302,9 @@ class ESCollection(Generic[ModelType]):
                 else:
                     stats_body = {"field": field}
 
-                query_body["aggregations"][f"{field}_stats"] = {"stats": stats_body}
+                query_body["aggregations"][f"{field}_stats"] = dsl.A(
+                    "stats", **cast(dict[str, Any], stats_body)
+                ).to_dict()
 
         # Add a group aggregation
         if parsed_values["group_active"]:
@@ -2076,7 +2336,7 @@ class ESCollection(Generic[ModelType]):
                         f"buckets of the cluster ({max_buckets}). Skipping aggregation."
                     )
                     continue
-                query_body["aggregations"][f"{self.CUSTOM_AGG_PREFIX}{agg_name}"] = agg_args
+                query_body["aggregations"][f"{self.CUSTOM_AGG_PREFIX}{agg_name}"] = dsl.A(agg_args).to_dict()
 
         try:
             if deep_paging_id is not None and not deep_paging_id == "*":
@@ -2103,12 +2363,7 @@ class ESCollection(Generic[ModelType]):
             raise SearchRetryException("collection: %s, query: %s, error: %s" % (self.name, query_body, str(error)))
 
         except (elasticsearch.TransportError, elasticsearch.RequestError) as e:
-            try:
-                err_msg = e.info["error"]["root_cause"][0]["reason"]  # type: ignore
-            except (ValueError, KeyError, IndexError):
-                err_msg = str(e)
-
-            raise SearchException(err_msg)
+            raise SearchException(error_message(e)) from e
 
         except Exception as error:
             raise SearchException("collection: %s, query: %s, error: %s" % (self.name, query_body, str(error)))
@@ -2299,7 +2554,7 @@ class ESCollection(Generic[ModelType]):
         ret_data = {
             "offset": int(offset),
             "rows": int(rows),
-            "total": int(result["hits"]["total"]["value"]),
+            "total": total_hits_value(result["hits"]["total"]),
             "items": [self._format_output(doc, field_list, as_obj=as_obj) for doc in result["hits"]["hits"]],
         }
 
@@ -2464,7 +2719,7 @@ class ESCollection(Generic[ModelType]):
         fields = [{"field": f} for f in fl.split(",")]
 
         try:
-            result = self.with_retries(
+            response = self.with_retries(
                 self.datastore.client.eql.search,
                 index=self.name,
                 timestamp_field="timestamp",
@@ -2473,11 +2728,14 @@ class ESCollection(Generic[ModelType]):
                 filter=parsed_filters,
                 size=rows,
                 wait_for_completion_timeout=(f"{timeout}ms" if timeout is not None else None),
+                allow_partial_search_results=True,
+                allow_partial_sequence_results=False,
             )
+            result = _complete_eql_response(response)
 
             ret_data: dict[str, Any] = {
                 "rows": int(rows),
-                "total": int(result["hits"]["total"]["value"]),
+                "total": total_hits_value(result["hits"]["total"]),
                 "items": [
                     self._format_output(doc, fl.split(","), as_obj=as_obj) for doc in result["hits"].get("events", [])
                 ],
@@ -2489,13 +2747,10 @@ class ESCollection(Generic[ModelType]):
 
             return ret_data
 
+        except SearchException:
+            raise
         except (elasticsearch.TransportError, elasticsearch.RequestError) as e:
-            try:
-                err_msg = e.info["error"]["root_cause"][0]["reason"]  # type: ignore
-            except (ValueError, KeyError, IndexError):
-                err_msg = str(e)
-
-            raise SearchException(err_msg)
+            raise SearchException(error_message(e)) from e
         except Exception as error:
             raise SearchException(f"collection: {self.name}, error: {str(error)}")
 
@@ -2510,9 +2765,9 @@ class ESCollection(Generic[ModelType]):
                 continue
 
             try:
-                yield item._id
+                yield cast(Any, item).meta.id
             except AttributeError:
-                value = item["id"]
+                value = cast(Any, item)["id"]
                 if isinstance(value, list):
                     for v in value:
                         yield v
@@ -2584,11 +2839,15 @@ class ESCollection(Generic[ModelType]):
         elif isinstance(filters, str):
             filters = [filters]
 
+        filter_queries = [{"query_string": {"query": ff}} for ff in filters]
+        if access_control:
+            filter_queries.append({"query_string": {"query": access_control}})
+
         query_body: dict[str, Any] = {
             "query": {
                 "bool": {
                     "must": {"query_string": {"query": query}},
-                    "filter": [{"query_string": {"query": ff}} for ff in filters],
+                    "filter": filter_queries,
                 }
             }
         }
@@ -2800,11 +3059,11 @@ class ESCollection(Generic[ModelType]):
         return {
             "offset": offset,
             "rows": rows,
-            "total": int(result["hits"]["total"]["value"]),
+            "total": total_hits_value(result["hits"]["total"]),
             "items": [
                 {
                     "value": collapsed["fields"][group_field][0],
-                    "total": int(collapsed["inner_hits"]["group"]["hits"]["total"]["value"]),
+                    "total": total_hits_value(collapsed["inner_hits"]["group"]["hits"]["total"]),
                     "items": [
                         self._format_output(row, field_list, as_obj=as_obj)
                         for row in collapsed["inner_hits"]["group"]["hits"]["hits"]
@@ -2815,76 +3074,106 @@ class ESCollection(Generic[ModelType]):
         }
 
     @staticmethod
-    def _get_odm_type(ds_type):
-        try:
-            return BACK_MAPPING[ds_type].__name__.lower()
-        except KeyError:
-            return ds_type.lower()
+    def _get_odm_type(ds_type: str) -> str:
+        return {"nested": "flattenedobject", "text_fuzzy": "keyword"}.get(ds_type, ds_type.lower())
 
-    def fields(self: Self, skip_mapping_children=False):
+    @staticmethod
+    def _flatten_mapping_properties(props: dict[str, Any]) -> dict[str, Any]:
+        """Flatten a raw ES mapping ``properties`` tree into dotted leaf entries.
+
+        Compound object sub-schemas (with their own ``properties``) are recursively inlined
+        under dotted paths; a materialized dynamic-key entry (e.g. a live ``labels.some_key``
+        created by a document) is indistinguishable from - and handled identically to - a
+        statically declared compound field, matching the legacy behavior exactly.
         """
-        This function should return all the fields in the index with their types
-        """
+        out: dict[str, Any] = {}
+        for name, value in props.items():
+            if "properties" in value:
+                for child, cprops in ESCollection._flatten_mapping_properties(value["properties"]).items():
+                    out[name + "." + child] = cprops
+            elif "type" in value:
+                out[name] = value
+            else:
+                raise HowlerValueError("Unknown field data " + str(props))
+        return out
 
-        def flatten_fields(props):
-            out = {}
-            for name, value in props.items():
-                if "properties" in value:
-                    for child, cprops in flatten_fields(value["properties"]).items():
-                        out[name + "." + child] = cprops
-                elif "type" in value:
-                    out[name] = value
-                else:
-                    raise HowlerValueError("Unknown field data " + str(props))
-            return out
+    def fields(self: Self, skip_mapping_children=False):  # noqa: C901
+        """Return all live index fields, enriched with model metadata when available."""
+        model_fields = model_registry.flat_fields(self.model_class) if self.model_class else {}
 
-        data = self.with_retries(self.datastore.client.indices.get, index=self.name)
-        index_name = list(data.keys())[0]
-        properties = flatten_fields(data[index_name]["mappings"].get("properties", {}))
+        if not self.model_class:
+            data = self.with_retries(self.datastore.client.indices.get, index=self.name)
+            index_name = list(data.keys())[0]
+            properties = self._flatten_mapping_properties(data[index_name]["mappings"].get("properties", {}))
 
-        if self.model_class:
-            model_fields = self.model_class.flat_fields()
-        else:
-            model_fields = {}
+            collection_data = {}
+            for p_name, p_val in properties.items():
+                if p_name.startswith("_") or "//" in p_name:
+                    continue
+                if not self.FIELD_SANITIZER.match(p_name):
+                    continue
+                f_type = self._describe_type(p_val, None)
+                collection_data[p_name] = {
+                    "default": self.DEFAULT_SEARCH_FIELD in p_val.get("copy_to", []),
+                    "indexed": self._describe_indexed(p_val, None),
+                    "list": False,
+                    "stored": False,
+                    "deprecated": False,
+                    "type": f_type,
+                    "description": "",
+                    "regex": None,
+                    "values": None,
+                    "deprecated_description": "",
+                }
 
-        collection_data = {}
+            collection_data.pop("id", None)
+            return collection_data
 
-        for p_name, p_val in properties.items():
+        flattened_by_index, all_paths = self._live_mapping_properties()
+        caps_fields = self._live_field_capabilities()
+        collection_data: dict[str, Any] = {}
+
+        for p_name in sorted(all_paths):
             if p_name.startswith("_") or "//" in p_name:
                 continue
             if not self.FIELD_SANITIZER.match(p_name):
                 continue
-            field_model = model_fields.get(p_name, None)
+
+            p_val = self._reconciled_property(p_name, flattened_by_index)
+            type_caps = self._reconciled_capability(p_name, caps_fields)
+            field_model = model_fields.get(p_name)
 
             if "." in p_name:
                 parent_p_name = re.sub(r"^(.+)\..+?$", r"\1", p_name)
-                if parent_p_name in model_fields and isinstance(model_fields.get(parent_p_name), Mapping):
+                parent_definition = model_fields.get(parent_p_name)
+                parent_is_mapping = (
+                    parent_definition is not None
+                    and parent_definition.metadata is not None
+                    and parent_definition.metadata.kind in schema.DYNAMIC_KEY_KINDS
+                )
+                if parent_is_mapping:
                     if parent_p_name not in collection_data:
-                        field_model = model_fields.get(parent_p_name, None)
-                        f_type = self._get_odm_type(p_val.get("analyzer", None) or p_val["type"])
+                        field_model = parent_definition
+                        f_type = self._describe_type(p_val, type_caps)
+                        child_metadata = self._mapping_child_metadata(field_model)
+                        child_options = dict(child_metadata.options) if child_metadata else {}
 
                         collection_data[parent_p_name] = {
                             "default": self.DEFAULT_SEARCH_FIELD in p_val.get("copy_to", []),
-                            "indexed": p_val.get("index", p_val.get("enabled", True)),
+                            "indexed": self._describe_indexed(p_val, type_caps),
                             "list": field_model.multivalued if field_model else False,
-                            "stored": field_model.store if field_model else False,
+                            "stored": bool(field_model.metadata.store)
+                            if field_model and field_model.metadata
+                            else False,
                             "type": f_type,
                             "description": (field_model.description if field_model else ""),
-                            "regex": (
-                                field_model.child_type.validation_regex.pattern
-                                if field_model
-                                and (
-                                    issubclass(type(field_model.child_type), ValidatedKeyword)
-                                    or issubclass(type(field_model.child_type), IP)
-                                )
-                                else None
+                            "regex": child_options.get("validation_regex"),
+                            "values": (list(child_options["values"]) if "values" in child_options else None),
+                            "deprecated_description": (
+                                field_model.metadata.deprecated_description
+                                if field_model and field_model.metadata
+                                else ""
                             ),
-                            "values": (
-                                list(field_model.child_type.values)
-                                if field_model and issubclass(type(field_model.child_type), Enum)
-                                else None
-                            ),
-                            "deprecated_description": (field_model.deprecated_description if field_model else ""),
                         }
 
                         if skip_mapping_children:
@@ -2892,28 +3181,89 @@ class ESCollection(Generic[ModelType]):
                     else:
                         continue
 
-            f_type = self._get_odm_type(p_val.get("analyzer", None) or p_val["type"])
+            f_type = self._describe_type(p_val, type_caps)
+            options = dict(field_model.metadata.options) if field_model and field_model.metadata else {}
             collection_data[p_name] = {
                 "default": self.DEFAULT_SEARCH_FIELD in p_val.get("copy_to", []),
-                "indexed": p_val.get("index", p_val.get("enabled", True)),
+                "indexed": self._describe_indexed(p_val, type_caps),
                 "list": field_model.multivalued if field_model else False,
-                "stored": field_model.store if field_model else False,
-                "deprecated": field_model.deprecated if field_model else False,
+                "stored": bool(field_model.metadata.store) if field_model and field_model.metadata else False,
+                "deprecated": bool(field_model.metadata.deprecated) if field_model and field_model.metadata else False,
                 "type": f_type,
                 "description": field_model.description if field_model else "",
-                "regex": (
-                    field_model.validation_regex.pattern
-                    if field_model
-                    and (issubclass(type(field_model), ValidatedKeyword) or issubclass(type(field_model), IP))
-                    else None
+                "regex": options.get("validation_regex"),
+                "values": list(options["values"]) if "values" in options else None,
+                "deprecated_description": (
+                    field_model.metadata.deprecated_description if field_model and field_model.metadata else ""
                 ),
-                "values": list(field_model.values) if field_model and issubclass(type(field_model), Enum) else None,
-                "deprecated_description": (field_model.deprecated_description if field_model else ""),
             }
 
         collection_data.pop("id", None)
-
         return collection_data
+
+    def _live_mapping_properties(self) -> tuple[dict[str, dict[str, Any]], set[str]]:
+        """Return per-index flattened mapping properties and the union of all dotted paths."""
+        data = response_body(self.with_retries(self.datastore.client.indices.get_mapping, index=self.name))
+        return self._mapping_properties(data)
+
+    def _mapping_properties(self, data: dict[str, Any]) -> tuple[dict[str, dict[str, Any]], set[str]]:
+        """Flatten mapping properties from an already-fetched mapping response."""
+        flattened_by_index: dict[str, dict[str, Any]] = {}
+        all_paths: set[str] = set()
+        for index_name, index_data in data.items():
+            flattened = self._flatten_mapping_properties(index_data.get("mappings", {}).get("properties", {}))
+            flattened_by_index[index_name] = flattened
+            all_paths.update(flattened.keys())
+        return flattened_by_index, all_paths
+
+    def _reconciled_property(self, p_name: str, flattened_by_index: dict[str, dict[str, Any]]) -> dict[str, Any]:
+        """Return a field's mapping body, raising if it conflicts across backing indices."""
+        bodies = [flattened[p_name] for flattened in flattened_by_index.values() if p_name in flattened]
+        if not bodies:
+            return {}
+        distinct = {json.dumps(body, sort_keys=True, default=str) for body in bodies}
+        if len(distinct) > 1:
+            raise HowlerRuntimeError(
+                f"Field {p_name} has conflicting mappings across indices for collection {self.name}: {sorted(distinct)}"
+            )
+        return bodies[0]
+
+    def _live_field_capabilities(self) -> dict[str, dict[str, Any]]:
+        """Return the ``fields`` section of a live ``field_caps`` call across this collection."""
+        response = self.with_retries(self.datastore.client.field_caps, index=self.name, fields="*")
+        body = response_body(response)
+        return dict(body.get("fields", {}))
+
+    def _reconciled_capability(self, p_name: str, caps_fields: dict[str, dict[str, Any]]) -> Optional[dict[str, Any]]:
+        """Return a field's single capability body, raising if it is ambiguous/conflicting."""
+        caps = caps_fields.get(p_name)
+        if not caps:
+            return None
+        if len(caps) > 1:
+            raise HowlerRuntimeError(
+                f"Field {p_name} has conflicting types across indices for collection {self.name}: {sorted(caps)}"
+            )
+        return next(iter(caps.values()))
+
+    @staticmethod
+    def _describe_type(p_val: dict[str, Any], type_caps: Optional[dict[str, Any]]) -> str:
+        source = p_val.get("analyzer") or p_val.get("type")
+        if source is None and type_caps is not None:
+            source = type_caps.get("type")
+        return ESCollection._get_odm_type(source or "keyword")
+
+    @staticmethod
+    def _describe_indexed(p_val: dict[str, Any], type_caps: Optional[dict[str, Any]]) -> bool:
+        if type_caps is not None and "searchable" in type_caps:
+            return bool(type_caps["searchable"])
+        return p_val.get("index", p_val.get("enabled", True))
+
+    @staticmethod
+    def _mapping_child_metadata(field_definition):
+        """Return the Howler field metadata for a Mapping/FlattenedObject field's value type."""
+        if field_definition is None:
+            return None
+        return field_metadata(schema.mapping_value_annotation(field_definition))
 
     def _ilm_policy_exists(self):
         try:
@@ -2986,138 +3336,181 @@ class ESCollection(Generic[ModelType]):
     def _create_index_template(self: Self, ilm_config):
         """Create or update a composable index template for ILM-managed rollover.
 
-        The template matches '{name}-*' and includes the full ODM mappings
+        The template matches '{name}-*' and includes the full registered mappings
         so that rollover indices inherit the correct schema.
 
         :param ilm_config: The global ILMConfig (unused directly but kept for symmetry).
         """
-        settings = self._get_index_settings()
-        settings["index"]["lifecycle.name"] = f"{self.name}_policy"
-        settings["index"]["lifecycle.rollover_alias"] = self.name
-
-        mappings = self._get_index_mappings()
+        template = schema.ilm_template_body(
+            self.model_class,
+            shards=self.shards,
+            replicas=self.replicas,
+            policy_name=f"{self.name}_policy",
+            rollover_alias=self.name,
+        )
 
         self.with_retries(
             self.datastore.client.indices.put_index_template,
             name=f"{self.name}_template",
             index_patterns=[f"{self.name}-*"],
-            template={
-                "settings": settings,
-                "mappings": mappings,
-            },
+            template=template,
         )
         logger.info("Index template %s_template created/updated", self.name)
 
     def _get_index_settings(self) -> dict:
-        default_stub: dict = deepcopy(default_index)
-        settings: dict = default_stub.pop("settings", {})
-
-        if "index" not in settings:
-            settings["index"] = {}
-        settings["index"]["number_of_shards"] = self.shards
-        settings["index"]["number_of_replicas"] = self.replicas
-
-        if "mapping" not in settings["index"]:
-            settings["index"]["mapping"] = {}
-
-        if "total_fields" not in settings["index"]["mapping"]:
-            settings["index"]["mapping"]["total_fields"] = {}
-
-        limit = len(self.model_class.flat_fields()) + 500 if self.model_class else 1500
-        if limit < 1500:
-            limit = 1500
-        elif limit > 1500:
-            logger.warning("ODM field size is larger than 1500 - set to %s", limit)
-        settings["index"]["mapping"]["total_fields"]["limit"] = limit
-
-        return settings
+        return schema.index_settings(self.model_class, shards=self.shards, replicas=self.replicas)
 
     def _get_index_mappings(self) -> dict:
-        mappings: dict = deepcopy(default_mapping)
-        if self.model_class:
-            mappings["properties"], mappings["dynamic_templates"] = build_mapping(self.model_class.fields().values())
-            mappings["dynamic_templates"].insert(0, default_dynamic_strings)
-        else:
-            mappings["dynamic_templates"] = deepcopy(default_dynamic_templates)
+        return schema.document_mapping(self.model_class)
 
-        if not mappings["dynamic_templates"]:
-            # Setting dynamic to strict prevents any documents with fields not in the properties to be added
-            mappings["dynamic"] = "strict"
+    def _check_fields(self: Self):
+        if not self.validate or self.model_class is None:
+            return
 
-        mappings["properties"]["id"] = {
-            "store": True,
-            "doc_values": True,
-            "type": "keyword",
+        expected_mapping = schema.document_mapping(self.model_class)
+        mapping_data = response_body(self.with_retries(self.datastore.client.indices.get_mapping, index=self.name))
+        flattened_by_index, live_paths = self._mapping_properties(mapping_data)
+        capabilities = self._live_field_capabilities()
+        self._check_dynamic_templates(
+            expected_mapping["dynamic_templates"] or [], self._live_dynamic_templates(mapping_data)
+        )
+
+        expected_properties = expected_mapping["properties"]
+        for path, expected in expected_properties.items():
+            if path not in live_paths:
+                continue
+            live = self._reconciled_property(path, flattened_by_index)
+            capability = self._reconciled_capability(path, capabilities)
+            self._check_schema_field(path, expected, live, capability)
+
+        missing_static = {path: props for path, props in expected_properties.items() if path not in live_paths}
+        if not missing_static:
+            return
+
+        try:
+            self._add_fields(missing_static)
+        except elasticsearch.BadRequestError as err:
+            reason = error_message(err)
+            if not reason.startswith("Limit of total fields"):
+                raise
+
+            current_count = int(re.sub(r".+\[(\d+)].+", r"\1", reason))
+            logger.warning("Current field cap %s is too low, increasing to %s", current_count, current_count + 500)
+            self.with_retries(
+                self.datastore.client.indices.put_settings,
+                index=self.index_list_full,
+                settings={"index.mapping.total_fields.limit": current_count + 500},
+            )
+            self._add_fields(missing_static)
+
+    def _live_dynamic_templates(self, data: dict[str, Any] | None = None) -> dict[str, list[dict[str, Any]]]:
+        """Return each backing index's dynamic templates in Elasticsearch precedence order."""
+        if data is None:
+            data = response_body(self.with_retries(self.datastore.client.indices.get_mapping, index=self.name))
+        return {
+            index_name: list(index_data.get("mappings", {}).get("dynamic_templates", []))
+            for index_name, index_data in data.items()
         }
 
-        mappings["properties"]["__text__"] = {
-            "store": False,
-            "type": "text",
-        }
+    def _check_dynamic_templates(
+        self,
+        expected_templates: list[dict[str, Any]] | None = None,
+        live_templates_by_index: dict[str, list[dict[str, Any]]] | None = None,
+    ) -> None:
+        """Refuse missing/changed templates while tolerating harmless obsolete live templates.
 
-        return mappings
+        Adding or changing a dynamic template after documents already exist can silently change
+        how *future* dynamic keys are typed without touching already-indexed data, so any expected
+        template that is missing from a backing index or has changed is refused explicitly rather
+        than "fixed" automatically. Extra templates left by a disabled plugin do not alter fields
+        generated by the active schema and are retained with a warning.
+        """
+        if expected_templates is None:
+            expected_templates = schema.document_mapping(self.model_class)["dynamic_templates"]
+        expected_templates = expected_templates or []
+        expected_order = [next(iter(template)) for template in expected_templates]
+        expected_by_key = {next(iter(template)): template[next(iter(template))] for template in expected_templates}
 
-    def __get_possible_fields(self: Self, field):
-        field_types = [field.__name__.lower()]
-        if field.__bases__[0] != _Field:
-            field_types.extend(self.__get_possible_fields(field.__bases__[0]))
+        unsafe: set[str] = set()
+        extra: set[str] = set()
+        reordered_indices: list[str] = []
+        if live_templates_by_index is None:
+            live_templates_by_index = self._live_dynamic_templates()
+        if not live_templates_by_index:
+            unsafe.update(expected_by_key)
 
-        if field_type := TYPE_MAPPING.get(field.__name__, None):
-            field_types.append(field_type)
+        for index_name, templates in live_templates_by_index.items():
+            live_order = [next(iter(template)) for template in templates]
+            live_by_key = {next(iter(template)): template[next(iter(template))] for template in templates}
+            unsafe.update(
+                key
+                for key, expected in expected_by_key.items()
+                if key not in live_by_key or live_by_key[key] != expected
+            )
+            if [key for key in live_order if key in expected_by_key] != expected_order:
+                reordered_indices.append(index_name)
+            extra.update(live_by_key.keys() - expected_by_key.keys())
 
-        return field_types
+        if unsafe or reordered_indices:
+            details = sorted(unsafe)
+            if reordered_indices:
+                details.append(f"order differs on {sorted(reordered_indices)}")
+            raise HowlerValueError(
+                f"Refusing to add or change dynamic mapping templates automatically for collection "
+                f"{self.name}: {details}. Dynamic template changes require an explicit "
+                "index/template migration."
+            )
 
-    def _check_fields(self: Self, model=None):
-        if not self.validate:
-            return
+        if extra:
+            logger.warning(
+                "Collection %s retains dynamic templates not used by the active schema: %s",
+                self.name,
+                sorted(extra),
+            )
 
-        if model is None:
-            if self.model_class:
-                return self._check_fields(self.model_class)
+    @staticmethod
+    def _normalized_mapping_value(name: str, body: dict[str, Any], field_type: str) -> Any:
+        if name == "index":
+            return body.get("index", body.get("enabled", True))
+        if name == "doc_values":
+            return body.get("doc_values", field_type not in {"object", "nested", "text"})
+        if name == "copy_to":
+            copy_to = body.get("copy_to", ())
+            return (copy_to,) if isinstance(copy_to, str) else tuple(copy_to)
+        if name == "enabled":
+            return body.get("enabled", True)
+        return body.get(name)
 
-            return
+    def _check_schema_field(
+        self,
+        path: str,
+        expected: dict[str, Any],
+        live: dict[str, Any],
+        capability: Optional[dict[str, Any]],
+    ) -> None:
+        """Raise when an existing live field is incompatible with the generated schema."""
+        expected_type = cast(str, expected.get("type"))
+        live_type = cast(str, capability.get("type") if capability is not None else live.get("type"))
+        if expected_type != live_type:
+            raise HowlerRuntimeError(
+                f"Field {path} didn't have the expected store type. [{live_type} != {expected_type}]"
+            )
 
-        if self.model_class is None:
-            return
+        expected_indexed = self._normalized_mapping_value("index", expected, expected_type)
+        live_indexed = (
+            bool(capability["searchable"])
+            if capability is not None and "searchable" in capability
+            else self._normalized_mapping_value("index", live, live_type)
+        )
+        if expected_indexed != live_indexed:
+            raise HowlerRuntimeError(f"Field {path} has incompatible indexing. [{live_indexed} != {expected_indexed}]")
 
-        fields = self.fields()
-        model = self.model_class.flat_fields(skip_mappings=True)
-
-        missing = set(model.keys()) - set(fields.keys())
-        if missing:
-            # TODO: Bump mapping limit
-            try:
-                self._add_fields({key: model[key] for key in missing})
-            except elasticsearch.BadRequestError as err:
-                handled = False
-                if err.body and isinstance(err.body, dict) and "error" in err.body and "reason" in err.body["error"]:
-                    reason: str = err.body["error"]["reason"]
-                    if reason.startswith("Limit of total fields"):
-                        current_count = int(re.sub(r".+\[(\d+)].+", r"\1", reason))
-                        logger.warning(
-                            "Current field cap %s is too low, increasing to %s", current_count, current_count + 500
-                        )
-                        self.with_retries(
-                            self.datastore.client.indices.put_settings,
-                            settings={"index.mapping.total_fields.limit": current_count + 500},
-                        )
-                        self._add_fields({key: model[key] for key in missing})
-                        handled = True
-                if not handled:
-                    raise
-
-        matching = set(fields.keys()) & set(model.keys())
-        for field_name in matching:
-            if fields[field_name]["indexed"] != model[field_name].index and model[field_name].index:
-                raise HowlerRuntimeError(f"Field {field_name} should be indexed but is not.")
-
-            possible_field_types = self.__get_possible_fields(model[field_name].__class__)
-
-            if fields[field_name]["type"] not in possible_field_types:
+        for option in ("analyzer", "normalizer", "format", "ignore_above", "copy_to", "enabled", "doc_values"):
+            expected_value = self._normalized_mapping_value(option, expected, expected_type)
+            live_value = self._normalized_mapping_value(option, live, live_type)
+            if expected_value != live_value:
                 raise HowlerRuntimeError(
-                    f"Field {field_name} didn't have the expected store "
-                    f"type. [{fields[field_name]['type']} != "
-                    f"{model[field_name].__class__.__name__.lower()}]"
+                    f"Field {path} has incompatible {option}. [{live_value!r} != {expected_value!r}]"
                 )
 
     def _ensure_collection(self):
@@ -3148,6 +3541,10 @@ class ESCollection(Generic[ModelType]):
                 if "resource_already_exists_exception" not in str(e):
                     raise
                 logger.warning("Tried to create an index template that already exists: %s", self.name.upper())
+
+            # Index creation can acknowledge before its primary shard starts on a loaded cluster. Schema
+            # verification uses field_caps, which fails on RECOVERING shards, so wait for allocation first.
+            self._wait_for_status(self.index_name)
         elif not self.with_retries(
             self.datastore.client.indices.exists, index=self.index_name
         ) and not self.with_retries(self.datastore.client.indices.exists_alias, name=self.name):
@@ -3179,13 +3576,14 @@ class ESCollection(Generic[ModelType]):
            - If a legacy _hot index exists, migrate it to {name}-000001.
            - Otherwise, create {name}-000001 from scratch.
         """
-        from howler.odm.models.config import config as _config
+        from howler.config_models import config as _config
 
         ilm_global = _config.datastore.ilm
 
-        # Idempotent: create/update ILM policy and index template
+        # The policy must exist before lifecycle settings are applied. The template is updated
+        # only after existing mappings pass reconciliation, so a refused schema change cannot
+        # leave future rollover indices on a partially-applied contract.
         self._create_ilm_policy(ilm_global)
-        self._create_index_template(ilm_global)
 
         ilm_initial_index = f"{self.name}-000001"
 
@@ -3352,37 +3750,20 @@ class ESCollection(Generic[ModelType]):
                     raise
                 logger.warning("ILM index already exists: %s", ilm_initial_index)
 
+            # See _ensure_collection: field_caps in _check_fields needs started shards.
+            self._wait_for_status(ilm_initial_index)
+
             # Update index_name to point to the ILM initial index
             self.index_name = ilm_initial_index
 
         self._check_fields()
+        self._create_index_template(ilm_global)
 
-    def _add_fields(self: Self, missing_fields: Dict):
-        no_fix = []
-        properties = {}
-        for name, field in missing_fields.items():
-            # Figure out the path of the field in the document, if the name is set in the field, it
-            # is going to be duplicated in the path from missing_fields, so drop it
-            prefix = name.split(".")
-            if field.name:
-                prefix = prefix[:-1]
-
-            # Build the fields and templates for this new mapping
-            sub_properties, sub_templates = build_mapping([field], prefix=prefix, allow_refuse_implicit=False)
-            properties.update(sub_properties)
-            if sub_templates:
-                no_fix.append(name)
-
-        # If we have collected any fields that we can't just blindly add, as they might conflict
-        # with existing things, (we might have the refuse_all_implicit_mappings rule in place)
-        # simply raise an exception
-        if no_fix:
-            raise HowlerValueError(
-                f"Can't update database mapping for {self.name}, couldn't safely amend mapping for {no_fix}"
-            )
-
-        # If we got this far, the missing fields have been described in properties, upload them to the
-        # server, and we should be able to move on.
+    def _add_fields(self, missing_fields: dict[str, Any]) -> None:
+        """Add safe explicit schema properties to every backing index and its templates."""
+        properties = {path: deepcopy(body) for path, body in missing_fields.items()}
+        # Upload the new properties to every physical index backing this collection, update the
+        # legacy top-level template if one exists, and refresh the ILM composable template.
         for index in self.index_list_full:
             self.with_retries(self.datastore.client.indices.put_mapping, index=index, properties=properties)
 
@@ -3397,7 +3778,7 @@ class ESCollection(Generic[ModelType]):
         # When ILM is enabled, also update the composable index template so
         # future rollover indices inherit the new field mappings.
         if self.ilm_config:
-            from howler.odm.models.config import config as _config
+            from howler.config_models import config as _config
 
             self._create_index_template(_config.datastore.ilm)
 

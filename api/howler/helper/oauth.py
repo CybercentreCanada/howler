@@ -12,8 +12,8 @@ from howler.common.logging import get_logger
 from howler.common.random_user import random_user
 from howler.config import CLASSIFICATION as CLASSIFICATION_ENGINE
 from howler.config import config
+from howler.config_models import OAuthProvider
 from howler.helper.azure import azure_obo
-from howler.odm.models.config import OAuthProvider
 from howler.services import jwt_service
 
 VALID_CHARS = [str(x) for x in range(10)] + [chr(x + 65) for x in range(26)] + [chr(x + 97) for x in range(26)] + ["-"]

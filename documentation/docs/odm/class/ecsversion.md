@@ -8,5 +8,3 @@
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
 | version | Keyword | Additional information about the certificate status. | :material-checkbox-marked-outline: Yes | `8.3.0` |
-
-

@@ -10,7 +10,7 @@ import time
 import pytest
 
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.random_data import wipe_events, wipe_hits
+from howler.sample_data.random_data import wipe_events, wipe_hits
 from test.conftest import APIError, get_api_data
 
 

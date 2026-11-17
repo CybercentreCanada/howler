@@ -19,8 +19,7 @@ omit = [
     "howler/patched.py",
     "howler/external/*",
     "howler/helper/ws.py",
-    "howler/odm/models/*",
-    "howler/odm/random_data.py",
+    "howler/sample_data/random_data.py",
 ]
 
 branch = true
@@ -52,11 +51,13 @@ disable_error_code = "no-redef"
 exclude = "test"
 
 [[tool.mypy.overrides]]
-module = "howler.odm.models.*"
-disable_error_code = "assignment"
+module = ["howler.models", "howler.models.*"]
+# Field-builder functions (e.g. `keyword()`, `compound(Model)`) return `Annotated[...]` types and
+# are used directly as field annotations, which mypy cannot statically verify.
+disable_error_code = ["valid-type", "var-annotated", "metaclass"]
 
 [[tool.mypy.overrides]]
-module = ["howler.odm.base", "test", "test.*"]
+module = ["test", "test.*"]
 ignore_errors = true
 
 [[tool.mypy.overrides]]
@@ -64,7 +65,7 @@ module = "howler.security.login"
 disable_error_code = "attr-defined"
 
 [[tool.mypy.overrides]]
-module = "howler.odm.helper"
+module = "howler.sample_data.helper"
 disable_error_code = "union-attr"
 
 [[tool.mypy.overrides]]
@@ -101,9 +102,9 @@ root = "build_scripts"
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = ["."]
-reportArgumentType = "none"
-reportAssignmentType = "none"
-root = "howler/odm/models"
+reportGeneralTypeIssues = "none"
+reportInvalidTypeForm = "none"
+root = "howler/models"
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = ["."]
@@ -116,22 +117,12 @@ root = "howler/datastore"
 extraPaths = ["."]
 reportOptionalMemberAccess = "information"
 reportPossiblyUnboundVariable = "information"
-root = "howler/odm/helper.py"
+root = "howler/sample_data/helper.py"
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = ["."]
 reportPossiblyUnboundVariable = "information"
-root = "howler/odm/random_data.py"
-
-[[tool.pyright.executionEnvironments]]
-extraPaths = ["."]
-reportArgumentType = "information"
-reportAttributeAccessIssue = "information"
-reportIncompatibleMethodOverride = "information"
-reportOperatorIssue = "information"
-reportOptionalMemberAccess = "information"
-reportPossiblyUnboundVariable = "information"
-root = "howler/odm/base.py"
+root = "howler/sample_data/random_data.py"
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = ["."]
@@ -229,19 +220,16 @@ suppress-none-returning = true
 "test/utils/*" = ["T20"]
 "build_scripts/*" = ["D", "ANN", "S", "N818", "T20", "TRY"]
 "howler/app.py" = ["E402"]
-"howler/odm/random*.py" = ["C901", "S105", "S311", "E402"]
+"howler/sample_data/random*.py" = ["C901", "S105", "S311", "E402"]
 "howler/security/login.py" = ["TRY301"]
 "howler/external/*.py" = ["T20"]
-"howler/odm/helper.py" = ["S311"]
+"howler/sample_data/helper.py" = ["S311"]
 "howler/common/classification.py" = ["D", "ANN", "C901", "TRY"]
 "howler/common/iprange.py" = ["D", "ANN", "C901"]
 "howler/common/random_user.py" = ["S311"]
 "howler/helper/ws.py" = ["C901", "D101", "D102"]
-"howler/odm/base.py" = ["D", "ANN", "C901"]
-"howler/odm/models/*" = ["D", "ANN", "C901"]
 "howler/datastore/*" = ["D", "ANN", "C901"]
 "howler/remote/datatypes/*" = ["D", "ANN", "C901"]
-"howler/odm/models/enums/__init__.py" = ["F401"]
 
 ###################
 # Poetry settings #
@@ -276,12 +264,6 @@ keywords = [
     "cyber",
     "cccs",
 ]
-include = [
-    { path = "howler/odm/charter.txt", format = [
-        "sdist",
-        "wheel",
-    ] },
-]
 packages = [{ include = "howler" }]
 documentation = "https://cybercentrecanada.github.io/howler/developer/backend/"
 homepage = "https://cybercentrecanada.github.io/howler/"
@@ -293,7 +275,7 @@ gunicorn = "23.0.0"
 apscheduler = "3.11.3"
 authlib = "^1.6.0"
 chardet = "5.2.0"
-elasticsearch = "8.19.3"
+elasticsearch = "9.5.0"
 flask = "3.1.3"
 gevent = "^25.9.1"
 flask-caching = "2.4.1"

@@ -13,12 +13,10 @@ from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import DataStoreException
-from howler.datastore.howler_store import INDEXES
 from howler.datastore.operations import OdmHelper, OdmUpdateOperation
 from howler.helper.search import has_access_control
-from howler.odm.models.event import Event
-from howler.odm.models.hit import Hit
-from howler.odm.models.user import User
+from howler.models.hit import Hit
+from howler.models.user import User
 from howler.security.login import api_login
 from howler.security.utils import is_classification_accessible, validate_bulk_operation_targets
 from howler.services import correlation_service, event_service, hit_service
@@ -29,8 +27,6 @@ MAX_COMMENT_LEN = 5000
 SUB_API = "ingest"
 ingest_api = make_subapi_blueprint(SUB_API, api_version=2)
 ingest_api._doc = "Manage the different records across indexes"  # type: ignore
-
-FIELDS = Hit.flat_fields()
 
 logger = get_logger(__file__)
 
@@ -82,7 +78,7 @@ def create(index: str, user: User, *, refresh: Literal["true", "false", "wait_fo
     warnings = []
     for i, record in enumerate(records):
         try:
-            odm: Hit | Event
+            odm: Any
             if index == "event":
                 odm, _warnings = event_service.convert_event(
                     record, unique=True, user=user, ignore_extra_values=ignore_extra_values
@@ -151,7 +147,7 @@ def delete(
     if ids is None:
         return bad_request(err="No hit ids were sent.")
 
-    if "admin" not in user["type"]:
+    if "admin" not in user.type:
         return forbidden(err="Cannot delete hit, only administrators are permitted to delete.")
 
     index_list = indexes.split(",")
@@ -299,19 +295,23 @@ def overwrite(
         # Generic 404 so classified records are indistinguishable from nonexistent ones
         return not_found(err="Record %s does not exist" % id)
 
+    # The datastore may include the backing index as a synthetic root-level field.
+    # It is not part of the stored document and must not be merged into the model.
+    record = {key: value for key, value in record.items() if key != "__index"}
+
     new_fields = request.json
     if not isinstance(new_fields, dict):
         return bad_request(err="The JSON payload must be a subset of a valid record.")
 
     try:
-        odm = INDEXES[index]
+        model = ds[index].model_class
 
         # TODO: This is inefficient. We can use elastic's `update` command to just directly patch the document
         new_record = cast(
             dict[str, Any],
             merge(
-                flatten(record, odm=odm),
-                flatten(new_fields, odm=odm),
+                flatten(record, odm=model),
+                flatten(new_fields, odm=model),
                 strategy=Strategy.REPLACE
                 if bool(request.args.get("replace", False, type=lambda v: v.lower() == "true"))
                 else Strategy.ADDITIVE,
@@ -323,7 +323,7 @@ def overwrite(
 
         ds[index].save(
             id,
-            odm(new_record) if odm else new_record,
+            model.validate_howler(new_record) if model else new_record,
             version=server_version,
             refresh=refresh,
         )

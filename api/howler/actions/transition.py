@@ -1,5 +1,5 @@
 import inspect
-from typing import Optional, cast
+from typing import Optional
 
 from howler.actions import check_hit_limit
 from howler.common.exceptions import InvalidDataException, NotFoundException
@@ -7,14 +7,14 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import VersionConflictException
 from howler.helper.workflow import Workflow, WorkflowException
-from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.howler_data import (
+from howler.models.action import VALID_TRIGGERS
+from howler.models.howler_data import (
     Assessment,
     HitStatusTransition,
     Status,
     Vote,
 )
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.services import comms_service, hit_service
 from howler.utils.list_utils import flatten_list
 
@@ -111,7 +111,8 @@ def execute(
     if limit_error:
         return [limit_error]
 
-    is_advanced = "automation_advanced" in user.type or "actionrunner_advanced" in user.type or "admin" in user.type
+    roles = user.type
+    is_advanced = "automation_advanced" in roles or "actionrunner_advanced" in roles or "admin" in roles
     rows = MAX_HITS_ADVANCED if is_advanced else MAX_HITS_BASIC
     hits = datastore().hit.search(effective_query, rows=rows, fl="howler.id")
 
@@ -157,7 +158,7 @@ def execute(
         try:
             _transition_hit_with_retry(
                 hit_id,
-                cast(HitStatusTransition, HitStatusTransition[transition]),
+                HitStatusTransition(transition),
                 user,
                 **kwargs,
             )
@@ -221,7 +222,7 @@ def specification():
             {
                 "args": {"transition": []},
                 "options": {
-                    "transition": {f"status:{status}": hit_service.get_transitions(status) for status in Status.list()},
+                    "transition": {f"status:{status}": hit_service.get_transitions(status) for status in Status},
                 },
             },
             {

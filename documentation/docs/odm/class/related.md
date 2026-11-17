@@ -12,8 +12,6 @@
 | ip | List [IP] | All of the IPs seen on your event. | :material-checkbox-marked-outline: Yes | `[]` |
 | user | List [Keyword] | All the user names or other user identifiers seen on the event. | :material-checkbox-marked-outline: Yes | `[]` |
 | ids | List [Keyword] | Any identifier that doesn't fit in other related fields like a GUID. | :material-checkbox-marked-outline: Yes | `[]` |
-| id | Keyword | The id related to the event. | :material-minus-box-outline: Optional | `None` |
+| id | Keyword | The id related to the event. | :material-minus-box-outline: Optional :material-alert-box-outline: Deprecated - related.ids should be used instead of related.id. | `None` |
 | uri | List [URI] | All of the URIs related to the event. | :material-minus-box-outline: Optional | `None` |
 | signature | List [Keyword] | All the signatures/rules that were triggered by the event. | :material-minus-box-outline: Optional | `None` |
-
-

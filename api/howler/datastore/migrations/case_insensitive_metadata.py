@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from elasticsearch.exceptions import NotFoundError
 
 from howler.common.loader import DATASTORE_INDEX_PREFIX
+from howler.config import config
 from howler.datastore.collection import TRANSPORT_TIMEOUT
 from howler.datastore.exceptions import DataStoreException
 from howler.datastore.migrations.base import Migration
@@ -74,9 +75,7 @@ class CaseInsensitiveMetadataMigration(Migration):
                 datastore.ds.validate = original_validation
 
             if collection.ilm_config:
-                from howler.odm.models.config import config as _config
-
-                collection._create_index_template(_config.datastore.ilm)
+                collection._create_index_template(config.datastore.ilm)
 
             reindex_result = collection.reindex(allow_failures=False, request_timeout=TRANSPORT_TIMEOUT)
             if reindex_result is not True:

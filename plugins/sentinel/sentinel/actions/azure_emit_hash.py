@@ -4,8 +4,12 @@ from typing import Any, Optional
 import requests
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
-from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.hit import Hit
+from howler.datastore.howler_store import finalize_models
+from howler.models import model_extensions
+from howler.models.action import VALID_TRIGGERS
+from howler.models.hit import Hit
+from howler.models.registry import model_registry
+from howler.plugins import get_plugins
 from pydash import get
 
 from sentinel.utils.hit_types import is_derived_evidence
@@ -117,6 +121,9 @@ def execute(
 
 def specification():
     "Specify various properties of the action, such as title, descriptions, permissions and input steps."
+    hit_model = (
+        model_extensions.finalize(Hit) if model_extensions.is_finalized(Hit) else finalize_models(get_plugins())["hit"]
+    )
     return {
         "id": OPERATION_ID,
         "title": "Emit sha256 hash to Sentinel",
@@ -129,7 +136,9 @@ def specification():
         "steps": [
             {
                 "args": {"url": [], "field": []},
-                "options": {"field": [field for field in Hit.flat_fields().keys() if field.endswith("sha256")]},
+                "options": {
+                    "field": [field for field in model_registry.flat_fields(hit_model) if field.endswith("sha256")]
+                },
                 "validation": {"warn": {"query": "-_exists_:$field"}},
             }
         ],

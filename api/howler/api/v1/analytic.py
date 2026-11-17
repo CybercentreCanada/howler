@@ -18,8 +18,8 @@ from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import DataStoreException
 from howler.datastore.operations import OdmHelper
-from howler.odm.models.analytic import Analytic, Comment, Notebook, TriageOptions
-from howler.odm.models.user import User
+from howler.models.analytic import Analytic, Comment, Notebook, TriageOptions
+from howler.models.user import User
 from howler.security.login import api_login
 from howler.services import analytic_service, user_service
 
@@ -124,9 +124,8 @@ def update_analytic(id: str, user: User, **kwargs):
         else:
             existing_triage_data = {}
 
-        existing_analytic.triage_settings = TriageOptions(
-            {**existing_triage_data, **new_data.get("triage_settings", {})}
-        )
+        triage_data = {**existing_triage_data, **new_data.get("triage_settings", {})}
+        existing_analytic.triage_settings = TriageOptions.validate_howler(triage_data)
 
         storage.analytic.save(existing_analytic.analytic_id, existing_analytic, refresh=refresh)
 
@@ -175,15 +174,12 @@ def add_comment(id: str, user: dict[str, Any], **kwargs):
     analytic = analytic_service.get_analytic(id, as_odm=True)
 
     try:
-        analytic.comment.append(
-            Comment(
-                {
-                    "user": user["uname"],
-                    "value": comment_data,
-                    "detection": comment.get("detection", None),
-                }
-            )
-        )
+        comment_value = {
+            "user": user["uname"],
+            "value": comment_data,
+            "detection": comment.get("detection", None),
+        }
+        analytic.comment.append(Comment.validate_howler(comment_value))
 
         datastore().analytic.save(analytic.analytic_id, analytic)
     except DataStoreException as e:
@@ -231,7 +227,7 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
 
     analytic = analytic_service.get_analytic(id, as_odm=True)
 
-    comment: Optional[Comment] = next((c for c in analytic.comment if c.id == comment_id), None)
+    comment = next((c for c in analytic.comment if c.id == comment_id), None)
 
     if not comment:
         return not_found(err=f"Comment {comment_id} does not exist")
@@ -239,8 +235,8 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
     if comment.user != user["uname"]:
         return forbidden(err="Cannot edit comment that wasn't made by you.")
 
-    comment["value"] = comment_data
-    comment["modified"] = "NOW"
+    comment.value = comment_data
+    comment.modified = "NOW"
 
     analytic.comment = [c if c.id != comment.id else comment for c in analytic.comment]
 
@@ -365,7 +361,7 @@ def delete_comments(id: str, user: User, **kwargs):
     new_comments = []
     for comment in analytic.comment:
         if comment.id in comment_ids:
-            if ("admin" not in user["type"]) and comment.user != user["uname"]:
+            if ("admin" not in user.type) and comment.user != user.uname:
                 return forbidden(err="You cannot delete the comment of someone else.")
 
             continue
@@ -493,7 +489,7 @@ def remove_as_favourite(id: str, user: User | None, **kwargs):
         return forbidden(err="User was not found.")
 
     try:
-        user.favourite_analytics = list(filter(lambda f: f != id, user.favourite_analytics))
+        user.favourite_analytics = [f for f in user.favourite_analytics if f != id]
 
         storage.user.save(user.uname, user)
 
@@ -546,16 +542,13 @@ def add_notebook(id: str, user: dict[str, Any], **kwargs):
     analytic = analytic_service.get_analytic(id, as_odm=True)
 
     try:
-        analytic.notebooks.append(
-            Notebook(
-                {
-                    "user": user["uname"],
-                    "name": name,
-                    "value": link,
-                    "detection": detection if detection else None,
-                }
-            )
-        )
+        notebook_value = {
+            "user": user["uname"],
+            "name": name,
+            "value": link,
+            "detection": detection if detection else None,
+        }
+        analytic.notebooks.append(Notebook.validate_howler(notebook_value))
 
         datastore().analytic.save(analytic.analytic_id, analytic)
     except DataStoreException as e:
@@ -598,7 +591,7 @@ def delete_notebook(id: str, user: User, **kwargs):
     new_notebooks = []
     for notebook in analytic.notebooks:
         if notebook.id in notebook_ids:
-            if ("admin" not in user["type"]) and notebook.user != user["uname"]:
+            if ("admin" not in user.type) and notebook.user != user.uname:
                 return forbidden(err="You cannot delete the notebook of someone else.")
 
             continue

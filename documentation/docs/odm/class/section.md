@@ -16,5 +16,3 @@
 | type | Keyword | ELF Section List type. | :material-minus-box-outline: Optional | `None` |
 | virtual_address | Integer | ELF Section List virtual address. | :material-minus-box-outline: Optional | `None` |
 | virtual_size | Integer | ELF Section List virtual size. | :material-minus-box-outline: Optional | `None` |
-
-

@@ -12,5 +12,3 @@
 | zone | Keyword | The GCP zone of the instance. | :material-minus-box-outline: Optional | `None` |
 | service_account_id | Keyword | Unique identifier for a GCP service account. | :material-minus-box-outline: Optional | `None` |
 | resource_id | Keyword | Unique GCP resource identifier. | :material-minus-box-outline: Optional | `None` |
-
-

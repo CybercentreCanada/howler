@@ -6,6 +6,8 @@ from cryptography.exceptions import InvalidTag
 from flask import Flask
 
 from howler.cronjobs import action_queue_worker
+from howler.models.action import Action
+from howler.models.user import User
 from howler.services import action_service, auth_service
 
 
@@ -180,8 +182,8 @@ class TestProcessActionBatch:
 
     @patch.object(action_service, "datastore")
     @patch.object(action_service, "bulk_execute_on_query")
-    def test_process_batch_fetches_odm_user(self, mock_bulk, mock_datastore):
-        """The batch processor should fetch an ODM user from the queued username."""
+    def test_process_batch_fetches_user_model(self, mock_bulk, mock_datastore):
+        """The batch processor fetches the queued user's record before execution."""
         user = MagicMock()
         mock_datastore.return_value.user.get.return_value = user
 
@@ -376,3 +378,31 @@ class TestBulkExecuteOnQuery:
         built_in_call, plugin_call = mock_execute.call_args_list
         assert "auth_token" not in built_in_call.kwargs
         assert plugin_call.kwargs["auth_token"] == "oauth-access-token"
+
+    @patch.object(action_service, "audit")
+    @patch.object(action_service.actions, "execute", return_value=[])
+    @patch.object(action_service, "datastore")
+    def test_execution_decodes_operation_arguments(self, mock_datastore, mock_execute, _mock_audit):
+        action = Action.validate_howler(
+            {
+                "action_id": "action-1",
+                "owner": "user-1",
+                "name": "Label hits",
+                "query": "howler.status:open",
+                "triggers": ["create"],
+                "operations": [{"operation_id": "add_label", "data_json": '{"label": "triage"}'}],
+            }
+        )
+        user = User.validate_howler({"uname": "user-1", "name": "User", "password": "hash"})
+        storage = mock_datastore.return_value
+        storage.action.search.return_value = {"items": [action]}
+        storage.hit.search.return_value = {"total": 1}
+
+        action_service.bulk_execute_on_query("howler.id:hit-1", user=user)
+
+        mock_execute.assert_called_once_with(
+            operation_id="add_label",
+            query="(howler.id:hit-1) AND (howler.status:open)",
+            user=user,
+            label="triage",
+        )

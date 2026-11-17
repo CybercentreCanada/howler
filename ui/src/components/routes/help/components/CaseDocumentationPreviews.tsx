@@ -68,7 +68,7 @@ const EXAMPLE_EVENT: Event = {
   __index: 'event',
   timestamp: '2025-01-01T12:00:00Z',
   message: 'Manual evidence from VPN investigation',
-  howler: { id: 'event-vpn-001', hash: 'example-hash', analytic: 'VPN Monitor' },
+  howler: { id: 'event-vpn-001', hash: 'example-hash' },
   event: { kind: 'event' }
 };
 

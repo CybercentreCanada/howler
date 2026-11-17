@@ -1,34 +1,47 @@
+import argparse
 import importlib
 import inspect
 import textwrap
 from pathlib import Path
 from types import NoneType
-from typing import get_args, get_origin
+from typing import Annotated, get_args, get_origin
 
 import yaml
 from pydantic import BaseModel
+from pydantic.fields import FieldInfo
 from pydantic_settings import SettingsConfigDict
 
-import howler.odm.base as base
-from howler import odm
-from howler.odm.models.config import Config
+from howler.config_models import Config
+from howler.models.assemblyline import ALRecord, AssemblyLine, Mitre
+from howler.models.aws import Organization as AWSOrganization
+from howler.models.ecs.elf import Header as ELFHeader
+from howler.models.ecs.event import ECSEvent
+from howler.models.ecs.process import ParentProcess
+from howler.models.header import Header
+from howler.models.lead import Lead
+from howler.models.localized_label import LocalizedLabel
+from howler.models.log import Log
+from howler.models.record import ECSVersion
+from howler.models.registry import FieldDefinition, field_metadata, model_annotation, model_registry, unwrap_annotation
 
 root_dir = Path(__file__).parent.parent.parent
-odm_path = root_dir / "api/howler/odm/models"
+model_path = root_dir / "api/howler/models"
 
 MODELS_TO_EXPORT = [
-    "howler.odm.models.hit",
-    "howler.odm.models.aws",
-    "howler.odm.models.azure",
-    "howler.odm.models.cbs",
-    "howler.odm.models.gcp",
-    "howler.odm.models.howler_data",
-    *list(
+    "howler.models.hit",
+    "howler.models.aws",
+    "howler.models.azure",
+    "howler.models.cbs",
+    "howler.models.gcp",
+    "howler.models.howler_data",
+    *sorted(
         str(_file.relative_to(root_dir / "api")).replace(".py", "").replace("/", ".")
-        for _file in (odm_path / "ecs").rglob("*.py")
+        for _file in (model_path / "ecs").rglob("*.py")
         if _file.stem != "__init__"
     ),
 ]
+EXTRA_MODELS = (ALRecord, AssemblyLine, Header, Lead, LocalizedLabel, Log, Mitre, ParentProcess)
+PUBLISHED_NAMES: dict[type[BaseModel], str] = {ECSEvent: "Event"}
 
 
 intro_data = """
@@ -47,15 +60,37 @@ intro_data = """
     |:---|:----------|
 """  # noqa: E501
 
-for class_name, _class in inspect.getmembers(
-    base,
-    lambda _member: inspect.isclass(_member) and issubclass(_member, base._Field),
+for class_name, description in sorted(
+    {
+        "Any": "A field that can hold any value whatsoever but which is stored as a",
+        "Boolean": "A field storing a boolean value.",
+        "CaseInsensitiveKeyword": (
+            "A field storing a string with a technical interpretation, but is case-insensitive when searching."
+        ),
+        "Classification": "A field storing access control classification.",
+        "ClassificationString": "A field storing the classification as a string only.",
+        "Date": "A field storing a datetime value.",
+        "EmptyableKeyword": "A keyword which allow to differentiate between empty and None values.",
+        "Enum": "A field storing a short string that has predefined list of possible values.",
+        "FlattenedListObject": "A field storing a flattened object",
+        "FlattenedObject": "A field storing a flattened object",
+        "Float": "A field storing a floating point value.",
+        "IndexText": "A special field with special processing rules to simplify searching.",
+        "Integer": "A field storing an integer value.",
+        "Json": "A field storing serializeable structure with their JSON encoded representations.",
+        "Keyword": "A field storing a short string with a technical interpretation.",
+        "List": "A field storing a sequence of typed elements.",
+        "Long": "A field storing a long value. Equivalent to Integer in python, but sets the ES datatype to long.",
+        "LowerKeyword": "A field storing a short lowercase string with a technical interpretation.",
+        "Mapping": "A field storing a sequence of typed elements.",
+        "Optional": "A wrapper field to allow simple types (int, float, bool) to take None values.",
+        "Text": "A field storing human readable text data.",
+        "UUID": "A field storing an auto-generated unique ID if None is provided",
+        "UpperKeyword": "A field storing a short uppercase string with a technical interpretation.",
+        "ValidatedKeyword": "Keyword field which the values are validated by a regular expression",
+    }.items()
 ):
-    if not _class.__doc__:
-        continue
-
-    newline = "\n"
-    intro_data += f"    | `{class_name}` | {_class.__doc__.strip().split(newline)[0]} |\n"
+    intro_data += f"    | `{class_name}` | {description} |\n"
 
 intro_data += """
     ## Field States
@@ -71,7 +106,112 @@ intro_data += """
     __Note__: Fields that are ":material-alert-box-outline: Deprecated" that are still shown in the docs will still work as expected but you're encouraged to update your configuration as soon as possible to avoid future deployment issues.
     """  # noqa: E501
 
-(root_dir / "documentation/docs/odm/getting_started.md").write_text(textwrap.dedent(intro_data).strip() + "\n")
+
+def write_generated(path: Path, content: str, check: bool) -> None:
+    """Write a generated document, or fail if the committed copy is stale."""
+    if check:
+        if not path.exists() or path.read_text() != content:
+            raise SystemExit(f"Generated documentation is stale: {path}")
+    else:
+        path.write_text(content)
+
+
+def _published_name(model: type[BaseModel]) -> str:
+    return PUBLISHED_NAMES.get(model, model.__name__)
+
+
+def _field_type(definition: FieldDefinition) -> str:
+    """Format the field using the public ODM documentation vocabulary."""
+    child_model = model_annotation(definition.annotation)
+    if child_model is not None:
+        name = _published_name(child_model)
+        link = f"[{name}](/howler/odm/class/{name.lower()})"
+        return f"List [{link}]" if definition.metadata and definition.metadata.kind == "List" else link
+    annotation = unwrap_annotation(definition.annotation)
+    if get_origin(annotation) is list:
+        child = get_args(annotation)[0]
+        nested = field_metadata(child)
+        return f"List [{nested.kind if nested else 'Any'}]"
+    if get_origin(annotation) is dict and definition.metadata and definition.metadata.kind == "Mapping":
+        child = get_args(annotation)[1]
+        nested = field_metadata(child)
+        return f"Mapping [{nested.kind if nested else 'Any'}]"
+    return definition.metadata.kind if definition.metadata else "Any"
+
+
+def _has_optional_wrapper(annotation: object) -> bool:
+    """Return whether the annotation contains the nullable wrapper emitted by ``optional()``."""
+    args = get_args(annotation)
+    if NoneType not in args:
+        return False
+    for branch in args:
+        if branch is NoneType or get_origin(branch) is not Annotated:
+            continue
+        _, *metadata = get_args(branch)
+        if any(isinstance(item, FieldInfo) and item.annotation is None for item in metadata):
+            return True
+    return False
+
+
+def _classes_to_export() -> list[type[BaseModel]]:
+    """Resolve all published model pages before generating any files."""
+    classes: dict[str, type[BaseModel]] = {}
+    for module_name in MODELS_TO_EXPORT:
+        module = importlib.import_module(module_name)
+        for _export, obj in inspect.getmembers(
+            module,
+            lambda member: inspect.isclass(member) and issubclass(member, BaseModel),
+        ):
+            if obj.__module__ != module.__name__:
+                continue
+            if obj is ELFHeader:
+                # The public ``header`` page is Howler's outline header, not the ECS ELF header.
+                continue
+            if obj is AWSOrganization:
+                # The published ``organization`` page is the ECS organization field set.
+                continue
+            name = _published_name(obj).lower()
+            if name == "file" and module_name == "howler.models.ecs.email":
+                continue  # The published File page is the ECS file, not the email attachment model.
+            classes.setdefault(name, obj)
+    for obj in (*EXTRA_MODELS, ECSVersion):
+        classes.setdefault(_published_name(obj).lower(), obj)
+    return [classes[name] for name in sorted(classes)]
+
+
+def render_model(model: type[BaseModel]) -> str:
+    """Render an existing published field table from the Pydantic field registry."""
+    content = (
+        '??? success "Auto-Generated Documentation"\n'
+        "    This set of documentation is automatically generated from source, and will help ensure any change to "
+        "functionality will always be documented and available on release.\n\n"
+        f"# {_published_name(model)}\n\n> {model_registry.metadata(model).description}\n\n"
+        "| Field | Type | Description | Required | Default |\n| :--- | :--- | :--- | :--- | :--- |\n"
+    )
+    definitions = model_registry.fields(model)
+    for name, definition in definitions.items():
+        metadata = definition.metadata
+        kind = _field_type(definition)
+        description = definition.description or "None"
+        if metadata and metadata.reference:
+            description += f'<br><a href="{metadata.reference}">Reference Link</a><br>'
+        if metadata and metadata.kind == "Enum":
+            values = dict(metadata.options).get("values", ())
+            rendered_values = ", ".join('"{}"'.format(v) if v else str(v) for v in sorted(values))
+            description += f"<br>Values:<br>`{rendered_values}`"
+        optional = _has_optional_wrapper(definition.annotation) or (
+            not definition.required and definition.default is None and definition.default_factory is None
+        )
+        required = ":material-minus-box-outline: Optional" if optional else ":material-checkbox-marked-outline: Yes"
+        if metadata and metadata.deprecated:
+            required += f" :material-alert-box-outline: Deprecated - {metadata.deprecated_description}"
+        default = f"`{definition.default}`"
+        child_model = model_annotation(definition.annotation)
+        if child_model and isinstance(definition.default, dict):
+            child_name = _published_name(child_model)
+            default = f"See [{child_name}](/howler/odm/class/{child_name.lower()}) for more details."
+        content += f"| {name} | {kind} | {description} | {required} | {default} |\n"
+    return content
 
 
 def get_type_name(annotation):
@@ -109,10 +249,11 @@ def build_docs_for_model(model: type[BaseModel], parent_key: str | None = None):
 
         # Check if the actual type is a BaseModel subclass
         if annotation and inspect.isclass(annotation) and issubclass(annotation, BaseModel):
+            annotation_description = (annotation.__doc__ or "None").replace("\n", " ")
             doc_string = doc_string + (
                 "    "
                 f"| `{key}` | [`{annotation.__name__}`](#{annotation.__name__.lower()}) | "
-                f"{(annotation.__doc__ or 'None').replace('\n', ' ')} | "
+                f"{annotation_description} | "
                 f":material-checkbox-marked-outline: Yes | See [{annotation.__name__}]"
                 f"(#{annotation.__name__.lower()}) for details. |\n"
             )
@@ -149,8 +290,6 @@ preamble = """??? success "Auto-Generated Documentation"
     will always be documented and available on release.
 """
 
-(root_dir / "documentation/docs/installation/configuration.md").write_text(preamble + build_docs_for_model(Config))
-
 config_locations = [
     root_dir / "api" / "build_scripts" / "mappings.yml",
     root_dir / "api" / "test" / "unit" / "config.yml",
@@ -167,8 +306,11 @@ class DocsConfig(Config):
     )
 
 
-(root_dir / "documentation/docs/installation/default_configuration.md").write_text(
-    f"""
+def generate_configuration_docs() -> None:
+    """Render configuration pages using the existing settings schema."""
+    (root_dir / "documentation/docs/installation/configuration.md").write_text(preamble + build_docs_for_model(Config))
+    (root_dir / "documentation/docs/installation/default_configuration.md").write_text(
+        f"""
 # Default Configuration
 
 ??? success "Auto-Generated Documentation"
@@ -182,17 +324,35 @@ installation. For more information, see [Configuration](/howler/installation/con
 {yaml.safe_dump(DocsConfig().model_dump(mode="json")).strip()}
 ```
 """  # noqa: E501
-)
+    )
 
-processed_classes = []
 
-for module_name in MODELS_TO_EXPORT:
-    module = importlib.import_module(module_name)
+def generate_model_docs(*, check: bool = False) -> None:
+    """Regenerate published model tables in stable module and class order."""
+    write_generated(
+        root_dir / "documentation/docs/odm/getting_started.md", textwrap.dedent(intro_data).strip() + "\n", check
+    )
+    classes = _classes_to_export()
+    processed_classes = {_published_name(obj).lower() for obj in classes}
+    for obj in classes:
+        name = _published_name(obj).lower()
+        write_generated(root_dir / f"documentation/docs/odm/class/{name}.md", render_model(obj), check)
+    if check:
+        # A historical page with no corresponding model in either implementation remains
+        # available for old documentation links, but is not generated from the registry.
+        published = {path.stem for path in (root_dir / "documentation/docs/odm/class").glob("*.md")}
+        published.discard("previousprocess")
+        if published != processed_classes:
+            raise SystemExit(
+                f"Generated class set differs: missing={sorted(processed_classes - published)}, "
+                f"stale={sorted(published - processed_classes)}"
+            )
 
-    for export, obj in inspect.getmembers(
-        module,
-        lambda _member: inspect.isclass(_member) and issubclass(_member, odm.Model),
-    ):
-        if export not in processed_classes:
-            (root_dir / f"documentation/docs/odm/class/{export.lower()}.md").write_text(obj.markdown())
-            processed_classes.append(export)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Generate Pydantic model documentation")
+    parser.add_argument("--check", action="store_true", help="Fail when generated documentation is stale")
+    check = parser.parse_args().check
+    generate_model_docs(check=check)
+    if not check:
+        generate_configuration_docs()

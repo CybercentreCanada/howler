@@ -1,0 +1,1062 @@
+import os
+import sys
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+from howler.models.clue import Clue
+from howler.plugins import get_plugins
+from howler.utils.constants import TESTING
+
+load_dotenv()
+
+# We append the plugin directory for howler to the python part
+PLUGIN_PATH = Path(os.environ.get("HWL_PLUGIN_DIRECTORY", "/etc/howler/plugins"))
+sys.path.insert(0, str(PLUGIN_PATH))
+sys.path.append(str(PLUGIN_PATH / f".venv/lib/python3.{sys.version_info.minor}/site-packages"))
+
+import importlib
+import json
+import random
+import textwrap
+from datetime import datetime
+from random import choice, randint, sample
+from typing import Any, Callable, cast
+
+import yaml
+
+from howler.common import loader
+from howler.common.logging import get_logger
+from howler.config import config
+from howler.datastore.howler_store import HowlerDatastore
+from howler.datastore.operations import OdmHelper
+from howler.helper.hit import assess_hit
+from howler.helper.oauth import VALID_CHARS
+from howler.models.action import Action
+from howler.models.analytic import Analytic, Comment, Notebook, TriageOptions
+from howler.models.dossier import Dossier
+from howler.models.ecs.event import EVENT_CATEGORIES
+from howler.models.hit import Hit
+from howler.models.howler_data import Assessment, Escalation, Scrutiny, Status
+from howler.models.overview import Overview
+from howler.models.pivot import Pivot
+from howler.models.registry import model_registry
+from howler.models.template import Template
+from howler.models.user import User
+from howler.models.view import View
+from howler.sample_data.helper import (
+    generate_useful_case,
+    generate_useful_dossier,
+    generate_useful_event,
+    generate_useful_hit,
+)
+from howler.sample_data.randomizer import get_random_string, get_random_word, random_model_obj
+from howler.security.utils import get_password_hash
+from howler.services import analytic_service, user_service
+
+classification = loader.get_classification()
+
+logger = get_logger(__file__)
+
+hit_helper = OdmHelper(Hit)
+
+
+def run_modifications(odm: str, data: Any, log: bool = False):
+    "Running modifications"
+    new_keys: list[str] = []
+    for plugin in get_plugins():  # pragma: no cover
+        if generate := plugin.modules.odm.generation.get(odm, None):
+            _new_keys, data = generate(data)
+            new_keys += _new_keys
+
+    if len(new_keys) > 0 and log:
+        logger.debug("%s new top-level fields configured for %s", len(new_keys), odm)
+
+    return data
+
+
+def _get_ownership_data(users: list[User], owner: str) -> dict[str, Any]:
+    """Generate random ownership permissions for an object."""
+    available_users = [user.uname for user in users if user.uname != owner]
+    admins = sample(available_users, k=randint(0, min(1, len(available_users))))
+    available_members = [user for user in available_users if user not in admins]
+
+    return {
+        "owner": owner,
+        "admins": admins,
+        "members": sample(available_members, k=randint(0, min(2, len(available_members)))),
+    }
+
+
+def _registered_hit_model(ds: HowlerDatastore) -> type[Hit]:
+    """Return the registered Hit model, failing clearly for a schema-less collection."""
+    model = ds.hit.model_class
+    if model is None or not isinstance(model, type) or not issubclass(model, Hit):
+        raise RuntimeError("The hit collection must be registered with a Hit model to generate sample data")
+    return model
+
+
+def _keyword_fields(fields: dict[str, Any]) -> list[str]:
+    return [key for key, field in fields.items() if field.metadata and field.metadata.kind == "Keyword"]
+
+
+def create_users(ds):
+    """Create  number of user accounts"""
+    admin_pass = os.getenv("DEV_ADMIN_PASS", "admin") or "admin"
+    user_pass = os.getenv("DEV_USER_PASS", "user") or "user"
+    shawnh_pass = "shawn-h"
+    goose_pass = "goose"
+    huey_pass = "huey"
+
+    admin_hash = get_password_hash(admin_pass)
+
+    admin_view = View.model_validate(
+        {
+            "title": "view.assigned_to_me",
+            "query": "howler.assignment:admin",
+            "type": "readonly",
+            "owner": "admin",
+        }
+    )
+
+    admin_view = run_modifications("view", admin_view)
+
+    user_data = User.model_validate(
+        {
+            "apikeys": {
+                "devkey": {"acl": ["R", "W", "E"], "password": admin_hash},
+                "readonly": {"acl": ["R"], "password": admin_hash},
+                "readonly1": {"acl": ["R"], "password": admin_hash},
+                "impersonate": {"acl": ["R", "I"], "password": admin_hash},
+                "readonly2": {"acl": ["R"], "password": admin_hash},
+                "readonly3": {"acl": ["R"], "password": admin_hash},
+                "write1": {"acl": ["W"], "password": admin_hash},
+                "write2": {"acl": ["W"], "password": admin_hash},
+                "both": {"acl": ["R", "W"], "password": admin_hash},
+                "read_extended": {"acl": ["R", "E"], "password": admin_hash},
+                "write_extended": {"acl": ["W", "E"], "password": admin_hash},
+                "expired": {
+                    "acl": ["R", "W", "E"],
+                    "password": admin_hash,
+                    "expiry_date": "2023-05-30T05:12:28.566Z",
+                },
+                "not_expired": {
+                    "acl": ["R", "W", "E"],
+                    "password": admin_hash,
+                    "expiry_date": datetime.now().replace(year=3000).isoformat(),
+                },
+            },
+            "classification": classification.RESTRICTED,
+            "name": "Michael Scott",
+            "email": "admin@howler.cyber.gc.ca",
+            "password": admin_hash,
+            "uname": "admin",
+            "type": [
+                "admin",
+                "user",
+                "automation_basic",
+                "automation_advanced",
+                "actionrunner_basic",
+                "actionrunner_advanced",
+            ],
+            "groups": [
+                "group1",
+                "group2",
+            ],
+            "favourite_views": [admin_view.view_id],
+        }
+    )
+
+    user_data = run_modifications("view", user_data, True)
+
+    ds.user.save("admin", user_data)
+    ds.user_avatar.save(
+        "admin",
+        "https://static.wikia.nocookie.net/theoffice/images/b/be/Character_-_MichaelScott.PNG",
+    )
+    ds.view.save(admin_view.view_id, admin_view)
+
+    if not TESTING:
+        logger.info("\t%s:%s", user_data.uname, admin_pass)
+
+    user_hash = get_password_hash(user_pass)
+
+    user_view = View.model_validate(
+        {
+            "title": "view.assigned_to_me",
+            "query": "howler.assignment:user",
+            "type": "readonly",
+            "owner": "user",
+        }
+    )
+
+    user_data = User.model_validate(
+        {
+            "name": "Dwight Schrute",
+            "email": "user@howler.cyber.gc.ca",
+            "classification": classification.RESTRICTED,
+            "apikeys": {
+                "devkey": {"acl": ["R", "W", "E"], "password": user_hash},
+                "impersonate_admin": {
+                    "acl": ["R", "W", "I"],
+                    "agents": ["admin", "goose"],
+                    "password": user_hash,
+                },
+                "impersonate_potato": {
+                    "acl": ["R", "W", "I"],
+                    "agents": ["potato"],
+                    "password": user_hash,
+                },
+            },
+            "password": user_hash,
+            "uname": "user",
+            "favourite_views": [user_view.view_id],
+            "type": ["user", "automation_basic"],
+        }
+    )
+
+    c12n = user_service.get_dynamic_classification(user_data.as_primitives())
+    if c12n:
+        user_data.classification = c12n
+
+    user_view = run_modifications("view", user_view)
+    user_data = run_modifications("user", user_data)
+
+    ds.user.save("user", user_data)
+    ds.user_avatar.save(
+        "user",
+        "https://static.wikia.nocookie.net/theoffice/images/c/c5/Dwight_.jpg",
+    )
+    ds.view.save(user_view.view_id, user_view)
+
+    if not TESTING:
+        logger.info("\t%s:%s", user_data.uname, user_pass)
+
+    huey_hash = get_password_hash(huey_pass)
+
+    huey_view = View.model_validate(
+        {
+            "title": "view.assigned_to_me",
+            "query": "howler.assignment:huey",
+            "type": "readonly",
+            "owner": "huey",
+        }
+    )
+
+    huey_data = User.model_validate(
+        {
+            "name": "Huey Guy",
+            "email": "huey@howler.cyber.gc.ca",
+            "apikeys": {
+                "devkey": {"acl": ["R", "W", "E"], "password": huey_hash},
+                "impersonate_admin": {
+                    "acl": ["R", "W", "I"],
+                    "agents": ["admin", "goose"],
+                    "password": huey_hash,
+                },
+                "impersonate_potato": {
+                    "acl": ["R", "W", "I"],
+                    "agents": ["potato"],
+                    "password": huey_hash,
+                },
+            },
+            "classification": classification.UNRESTRICTED,
+            "password": huey_hash,
+            "uname": "huey",
+            "favourite_views": [huey_view.view_id],
+            "type": ["user", "automation_basic"],
+        }
+    )
+
+    huey_view = run_modifications("view", huey_view)
+    huey_data = run_modifications("user", huey_data)
+
+    ds.user.save("huey", huey_data)
+    ds.user_avatar.save(
+        "huey",
+        "https://static.wikia.nocookie.net/theoffice/images/c/c5/Dwight_.jpg",
+    )
+    ds.view.save(huey_view.view_id, huey_view)
+
+    if not TESTING:
+        logger.info("\t%s:%s", huey_data.uname, huey_pass)
+
+    shawnh_view = View.model_validate(
+        {
+            "title": "view.assigned_to_me",
+            "query": "howler.assignment:shawnh",
+            "type": "readonly",
+            "owner": "shawn-h",
+        }
+    )
+    shawn_data = User.model_validate(
+        {
+            "name": "Shawn Hannigans",
+            "email": "shawn.hannigans@howler.com",
+            "apikeys": {},
+            "type": ["admin", "user"],
+            "groups": ["group1", "group2"],
+            "classification": classification.UNRESTRICTED,
+            "password": get_password_hash(shawnh_pass),
+            "uname": "shawn-h",
+            "favourite_views": [shawnh_view.view_id],
+        }
+    )
+
+    shawnh_view = run_modifications("view", shawnh_view)
+    shawn_data = run_modifications("user", shawn_data)
+
+    ds.user.save("shawn-h", shawn_data)
+    ds.view.save(shawnh_view.view_id, shawnh_view)
+
+    if not TESTING:
+        logger.info("\t%s:%s", shawn_data.uname, shawnh_pass)
+
+    goose_view = View.model_validate(
+        {
+            "title": "view.assigned_to_me",
+            "query": "howler.assignment:goose",
+            "type": "readonly",
+            "owner": "goose",
+        }
+    )
+    goose_data = User.model_validate(
+        {
+            "name": "Mister Goose",
+            "email": "goose@howler.cyber.gc.ca",
+            "apikeys": {},
+            "type": ["admin", "user"],
+            "groups": ["group1", "group2"],
+            "classification": classification.RESTRICTED,
+            "password": get_password_hash(goose_pass),
+            "uname": "goose",
+            "favourite_views": [goose_view.view_id],
+        }
+    )
+
+    goose_view = run_modifications("view", goose_view)
+    goose_data = run_modifications("user", goose_data)
+
+    ds.user.save("goose", goose_data)
+    ds.view.save(goose_view.view_id, goose_view)
+
+    if not TESTING:
+        logger.info("\t%s:%s", goose_data.uname, goose_pass)
+
+    ds.user.commit()
+    ds.user_avatar.commit()
+    ds.view.commit()
+
+
+def wipe_users(ds):
+    """Wipe the users index"""
+    ds.user.wipe()
+    ds.user_avatar.wipe()
+    ds.user.commit()
+    ds.user_avatar.commit()
+
+
+def create_templates(ds: HowlerDatastore):
+    """Create some random templates"""
+    hit_model = _registered_hit_model(ds)
+    for i in range(2):
+        keys = sample(list(model_registry.flat_fields(hit_model)), 5)
+
+        for detection in ["Detection 1", "Detection 2"]:
+            template = Template.model_validate(
+                {
+                    "analytic": choice(["Password Checker", "Bad Guy Finder", "SecretAnalytic"]),
+                    "detection": detection,
+                    "type": "global",
+                    "keys": keys,
+                }
+            )
+
+            template = run_modifications("template", template, i == 0)
+
+            ds.template.save(
+                template.template_id,
+                template,
+            )
+
+    for analytic in ["Password Checker", "Bad Guy Finder"]:
+        template = Template.model_validate(
+            {
+                "analytic": analytic,
+                "type": "global",
+                "keys": ["howler.id", "howler.hash"],
+            }
+        )
+
+        template = run_modifications("template", template)
+
+        ds.template.save(
+            template.template_id,
+            template,
+        )
+
+        template = Template.model_validate(
+            {
+                "analytic": analytic,
+                "owner": "admin",
+                "type": "personal",
+                "keys": ["howler.id", "howler.hash", "howler.analytic", "agent.id"],
+            }
+        )
+
+        template = run_modifications("template", template)
+
+        ds.template.save(
+            template.template_id,
+            template,
+        )
+
+        template = Template.model_validate(
+            {
+                "analytic": analytic,
+                "owner": "goose",
+                "type": "personal",
+                "keys": ["agent.id", "agent.type", "container.id"],
+            }
+        )
+
+        ds.template.save(
+            template.template_id,
+            template,
+        )
+
+    ds.template.commit()
+
+
+def wipe_templates(ds):
+    """Wipe the templates index"""
+    ds.template.wipe()
+
+
+def create_overviews(ds: HowlerDatastore):
+    """Create some random overviews"""
+    hit_model = _registered_hit_model(ds)
+    for i in range(2):
+        keys = sample(list(model_registry.flat_fields(hit_model)), 5)
+
+        for detection in ["Detection 1", "Detection 2"]:
+            content = "\n\n".join(f"{{{key}}}" for key in keys)
+            overview = Overview.model_validate(
+                {
+                    "analytic": choice(["Password Checker", "Bad Guy Finder", "SecretAnalytic"]),
+                    "owner": "admin",
+                    "detection": detection,
+                    "content": f"# Hello, World!\n\n{content}",
+                }
+            )
+
+            overview = run_modifications("overview", overview, i == 0)
+
+            ds.overview.save(
+                overview.overview_id,
+                overview,
+            )
+
+    for analytic in ["Password Checker", "Bad Guy Finder"]:
+        overview = Overview.model_validate(
+            {
+                "analytic": analytic,
+                "owner": "admin",
+                "content": textwrap.dedent("""
+                    # {{howler.analytic}} Alert
+                    {{#if (equals howler.status "open")}}
+                    ![](https://img.shields.io/badge/open-blue)
+                    {{/if}}
+                    {{#if (equals howler.status "in-progress")}}
+                    ![](https://img.shields.io/badge/in%20progress-yellow)
+                    {{/if}}
+                    {{#if (and (equals howler.status "resolved") (equals howler.escalation "miss"))}}
+                    ![](https://img.shields.io/badge/safe-green)
+                    {{/if}}
+                    {{#if (and (equals howler.status "resolved") (equals howler.escalation "evidence"))}}
+                    ![](https://img.shields.io/badge/malicious-red)
+                    {{/if}}
+
+                    `{{fetch "/api/v1/configs" "api_response.c12nDef.UNRESTRICTED"}}`
+
+                    {{#if (and (equals howler.status "resolved") (equals howler.escalation "evidence"))}}
+                    {{howler.rationale}}
+                    {{/if}}
+
+                    ## Summary
+
+                    > {{howler.outline.summary}}
+
+                    {{#if howler.assignment}}
+                    <div style="display: grid; align-items: center; grid-template-columns: auto auto; width: fit-content; border: 1px solid grey; padding: 0.25rem; border-radius: 5px; margin-bottom: 1rem">
+                    {{img src=(fetch (join "/api/v1/user/avatar/" howler.assignment ) "api_response") style="width: 32px; border-radius: 100px"}} {{howler.assignment}}
+                    </div>
+                    {{/if}}
+                    """),  # noqa: E501
+            }
+        )
+
+        overview = run_modifications("overview", overview)
+
+        ds.overview.save(
+            overview.overview_id,
+            overview,
+        )
+
+    ds.overview.commit()
+
+
+def wipe_overviews(ds):
+    """Wipe the overviews index"""
+    ds.overview.wipe()
+
+
+def create_views(ds: HowlerDatastore):
+    """Create some random views"""
+    users = ds.user.search("*:*", as_obj=True)["items"]
+    hit_model = _registered_hit_model(ds)
+
+    view = View.model_validate(
+        {
+            "title": "CMT Hits",
+            "query": "howler.analytic:cmt.*",
+            "type": "global",
+            **_get_ownership_data(users, "admin"),
+        }
+    )
+
+    view = run_modifications("view", view)
+
+    ds.view.save(
+        view.view_id,
+        view,
+    )
+
+    key_list = _keyword_fields(model_registry.flat_fields(hit_model))
+    for _ in range(10):
+        query = f"{choice(key_list)}:*{choice(VALID_CHARS)}* OR {choice(key_list)}:*{choice(VALID_CHARS)}*"
+        owner = choice([user.uname for user in users])
+        view = View.model_validate(
+            {
+                "title": get_random_word(),
+                "query": query,
+                "type": "global",
+                **_get_ownership_data(users, owner),
+            }
+        )
+
+        view = run_modifications("view", view)
+
+        ds.view.save(
+            view.view_id,
+            view,
+        )
+
+    ds.view.commit()
+
+
+def wipe_views(ds):
+    """Wipe the views index"""
+    ds.view.wipe()
+
+
+def create_events(ds: HowlerDatastore, event_count: int = 200):
+    """Create random events in the datastore.
+
+    Args:
+        ds (HowlerDatastore): The datastore instance to save events to.
+        event_count (int, optional): Number of events to create. Defaults to 200.
+    """
+    lookups = loader.get_lookups()
+    users = ds.user.search("*:*")["items"]
+    for event_index in range(event_count):
+        event = generate_useful_event(lookups, [user.uname for user in users], prune=False)
+        ds.event.save(event.howler.id, event)
+
+        if event_index % 25 == 0 and "pytest" not in sys.modules:
+            logger.info("\tCreated %s/%s", event_index, event_count)
+
+    logger.info(
+        "%s total events in datastore",
+        ds.event.search(query="howler.id:*", track_total_hits=True, rows=0)["total"],
+    )
+
+
+def create_hits(ds: HowlerDatastore, hit_count: int = 200):
+    """Create some random records"""
+    hit_model = _registered_hit_model(ds)
+    lookups = loader.get_lookups()
+    users = ds.user.search("*:*")["items"]
+    event_ids = [obs["howler"]["id"] for obs in ds.event.search("howler.id:*", rows=200, as_obj=False)["items"]]
+    created_hit_ids: list[str] = []
+    hit_idx = 0
+    for hit_idx in range(hit_count):
+        hit = generate_useful_hit(
+            lookups,
+            [user.uname for user in users],
+            prune_hit=False,
+            hit_ids=created_hit_ids,
+            event_ids=event_ids,
+            model=hit_model,
+        )
+
+        # Ensure the first 20 hits have unrestricted classification for test access
+        if hit_idx < 20:
+            hit.classification = classification.UNRESTRICTED
+
+        if hit_idx + 1 == hit_count:
+            hit.howler.analytic = "SecretAnalytic"
+            hit.howler.detection = None
+
+        if config.core.clue.enabled and "clue" in type(hit).model_fields:
+            hit["clue"] = Clue.model_validate(
+                {
+                    "types": [
+                        {"field": "destination.user.group.id", "type": "domain"},
+                        {"field": "dns.response_code", "type": "url"},
+                        {"field": "file.name", "type": "url"},
+                        {"field": "faas.name", "type": "domain"},
+                    ]
+                }
+            )
+
+        ds.hit.save(hit.howler.id, hit, refresh="wait_for")
+        created_hit_ids.append(hit.howler.id)
+        analytic_service.save_from_hits(hit, random.choice(users))
+        ds.analytic.commit()
+
+        if choice([True, False, False, False]):
+            user = choice(users)
+            ds.hit.update(
+                hit.howler.id,
+                [
+                    *assess_hit(
+                        assessment=choice(Assessment.list()),
+                        rationale=get_random_string(),
+                        hit=hit,
+                    ),
+                    hit_helper.update(
+                        "howler.assignment",
+                        user.get("uname", user.get("username", None)),
+                    ),
+                    hit_helper.update("howler.status", Status.RESOLVED),
+                ],
+            )
+
+        ds.hit.commit()
+
+        if hit_idx % 25 == 0 and not TESTING:
+            logger.info("\tCreated %s/%s", hit_idx, hit_count)
+
+    if not TESTING:
+        logger.info("\tCreated %s/%s", hit_idx + 1, hit_count)
+
+    logger.info(
+        "%s total hits in datastore", ds.hit.search(query="howler.id:*", track_total_hits=True, rows=0)["total"]
+    )
+
+
+def wipe_hits(ds):
+    """Wipe the hits index"""
+    ds.hit.wipe()
+
+
+def wipe_events(ds):
+    """Wipe the events index"""
+    ds.event.wipe()
+
+
+def create_cases(ds: HowlerDatastore, num_cases: int = 5):
+    """Create random cases using references to random alerts and events."""
+    generated_case_ids: list[str] = []
+
+    for _ in range(num_cases):
+        case = generate_useful_case(ds, generated_case_ids)
+
+        case = run_modifications("case", case)
+
+        ds.case.save(case.case_id, case)
+        generated_case_ids.append(case.case_id)
+
+        case_hit_ids = list({item.value for item in case.items if item.type == "hit"})
+        case_event_ids = list({item.value for item in case.items if item.type == "event"})
+
+        for hit_id in case_hit_ids:
+            ds.hit.update(hit_id, [hit_helper.list_add("howler.related", case.case_id)])
+
+        for event_id in case_event_ids:
+            ds.event.update(event_id, [hit_helper.list_add("howler.related", case.case_id)])
+
+    ds.case.commit()
+
+
+def wipe_cases(ds):
+    """Wipe the cases index"""
+    ds.case.wipe()
+
+
+def random_escalations() -> list[str]:
+    """Return a list of random escalations"""
+    return random.sample(Escalation.list(), k=random.randint(1, len(Escalation.list())))
+
+
+def random_scrutinies() -> list[str]:
+    """Return a list of random scrutinies"""
+    return random.sample(Scrutiny.list(), k=random.randint(1, len(Scrutiny.list())))
+
+
+def random_event_categories():
+    """Return a list of random event categories"""
+    return random.choice(EVENT_CATEGORIES)
+
+
+def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
+    """Create some random analytics"""
+    hit_model = _registered_hit_model(ds)
+    users = [user.uname for user in ds.user.search("*:*")["items"]]
+
+    for analytic in ds.analytic.search("*:*", fl="*")["items"]:
+        for detection in analytic.detections:
+            analytic.comment.append(
+                Comment.model_validate(
+                    {
+                        "value": f"Placeholder Comment - {detection}",
+                        "user": random.choice(users),
+                        "detection": detection,
+                    }
+                )
+            )
+
+        analytic.comment.append(
+            Comment.model_validate(
+                {
+                    "value": "Placeholder Comment - Analytic",
+                    "user": random.choice(users),
+                }
+            )
+        )
+
+        if config.core.notebook.enabled:
+            analytic.notebooks.append(
+                Notebook.model_validate(
+                    {
+                        "value": "Link to super notebook",
+                        "name": "Super notebook",
+                        "user": random.choice(users),
+                    }
+                )
+            )
+
+        analytic = run_modifications("analytic", analytic)
+
+        ds.analytic.save(analytic.analytic_id, analytic)
+
+    key_list = _keyword_fields(model_registry.flat_fields(hit_model))
+    assessments = Assessment.list()
+    for _ in range(num_analytics):
+        a: Analytic = random_model_obj(Analytic)
+        a.name = " ".join([get_random_word().capitalize() for _ in range(random.randint(1, 3))])
+        a.detections = list(set(a.detections))
+        a.owner = random.choice(users)
+        a.contributors = list(set(random.sample(users, k=random.randint(1, 3))))
+        a.rule = None
+        a.rule_crontab = None
+        a.rule_type = None
+
+        cast(TriageOptions, a.triage_settings).valid_assessments = list(
+            set(random.sample(assessments, counts=([3] * len(assessments)), k=random.randint(1, len(assessments) * 3)))
+        )
+
+        a = run_modifications("analytic", a)
+
+        ds.analytic.save(a.analytic_id, a)
+
+    for rule_type in ["lucene", "eql", "sigma"]:
+        a: Analytic = random_model_obj(Analytic)
+        a.rule_type = rule_type
+        a.name = " ".join([get_random_word().capitalize() for _ in range(random.randint(1, 3))])
+        a.detections = ["Rule"]
+        a.owner = random.choice(users)
+        a.contributors = list(set(random.sample(users, k=random.randint(1, 3))))
+        a.rule_crontab = (
+            f"{','.join([str(k) for k in sorted(random.sample(list(range(60)), k=random.randint(2, 5)))])} * * * *"
+        )
+
+        cast(TriageOptions, a.triage_settings).valid_assessments = list(
+            set(random.sample(assessments, counts=([3] * len(assessments)), k=random.randint(1, len(assessments) * 3)))
+        )
+
+        if a.rule_type == "lucene":
+            a.rule = (
+                f"{choice(key_list)}:*{choice(VALID_CHARS)}*\n#example "
+                f"comment\nOR\n{choice(key_list)}:*{choice(VALID_CHARS)}*"
+            )
+        elif a.rule_type == "eql":
+            category1 = random_event_categories()
+            category2 = random_event_categories()
+
+            a.rule = textwrap.dedent(
+                f"""
+            sequence
+                [ {category1} where howler.escalation in ({", ".join([f'"{item}"' for item in random_escalations()])}) ]
+                [ {category2} where howler.scrutiny in ({", ".join([f'"{item}"' for item in random_scrutinies()])}) ]
+            """
+            ).strip()
+        elif a.rule_type == "sigma":
+            files = []
+
+            sigma_dir = Path(__file__).parent / "sigma"
+            if sigma_dir.exists():
+                files = list(sigma_dir.glob("*.yml"))
+
+            if len(files) > 0:
+                file_name = random.choice(files)
+                file_data = file_name.read_text("utf-8")
+                data = yaml.safe_load(file_data)
+                a.name = data["title"]
+                a.description = data["description"]
+                a.rule = file_data
+            else:
+                logger.warning(
+                    "For better test data using sigma rules, execute howler/external/generate_sigma_rules.py."
+                )
+
+        a = run_modifications("analytic", a)
+
+        ds.analytic.save(a.analytic_id, a)
+
+    ds.analytic.commit()
+    ds.hit.commit()
+
+
+def wipe_analytics(ds):
+    """Wipe the analytics index"""
+    ds.analytic.wipe()
+
+
+def create_actions(ds: HowlerDatastore, num_actions: int = 30):
+    """Create random actions"""
+    hit_model = _registered_hit_model(ds)
+    key_list = _keyword_fields(model_registry.flat_fields(hit_model))
+    users = ds.user.search("*:*")["items"]
+
+    module_path = Path(__file__).parents[1] / "actions"
+    available_operations = {
+        operation.OPERATION_ID: operation
+        for operation in (
+            importlib.import_module(f"howler.actions.{module.stem}")
+            for module in module_path.iterdir()
+            if module.suffix == ".py" and module.name != "__init__.py"
+        )
+    }
+
+    operation_options = list(available_operations.keys())
+    if "transition" in operation_options:
+        operation_options.remove("transition")
+
+    for _ in range(num_actions):
+        operations: list[dict[str, str]] = []
+        operation_ids = sample(operation_options, k=randint(1, len(operation_options)))
+        for operation_id in operation_ids:
+            action_data = {}
+
+            for step in available_operations[operation_id].specification()["steps"]:
+                for key in step["args"].keys():
+                    potential_values = step.get("options", {}).get(key, None)
+                    if potential_values:
+                        if isinstance(potential_values, dict):
+                            try:
+                                action_data[key] = choice(potential_values[choice(list(potential_values.keys()))])
+                            except IndexError:
+                                continue
+                        else:
+                            action_data[key] = choice(potential_values)
+                    else:
+                        action_data[key] = get_random_word()
+
+            if operation_id == "prioritization":
+                action_data["value"] = float(random.randint(0, 10000)) / 10
+
+            operations.append({"operation_id": operation_id, "data_json": json.dumps((action_data))})
+
+        owner = choice([user.uname for user in users])
+        action = Action.model_validate(
+            {
+                "name": get_random_word(),
+                "query": f"{choice(key_list)}:*{choice(VALID_CHARS)}* OR {choice(key_list)}:*{choice(VALID_CHARS)}*",
+                "operations": operations,
+                **_get_ownership_data(users, owner),
+            }
+        )
+
+        action = run_modifications("action", action)
+
+        ds.action.save(action.action_id, action)
+
+    ds.action.commit()
+
+
+def wipe_actions(ds: HowlerDatastore):
+    """Wipe the actions index"""
+    ds.action.wipe()
+
+
+def create_dossiers(ds: HowlerDatastore, num_dossiers: int = 5):
+    "Create random dossiers"
+    users = ds.user.search("*:*")["items"]
+    grouped_paths = ("network", "network/dns", "network/http")
+    for index in range(num_dossiers):
+        dossier = generate_useful_dossier(users)
+        ownership_data = _get_ownership_data(users, dossier.owner)
+        dossier.admins = ownership_data["admins"]
+        dossier.members = ownership_data["members"]
+        if index == 0:
+            dossier.type = "personal"
+        elif index == 1:
+            dossier.type = "global"
+
+        # Keep one dossier's random pivot data intact, while ensuring the mock data
+        # always includes shared and nested groups for the grouped-pivot UI.
+        if index > 0:
+            grouped_path = grouped_paths[(index - 1) % len(grouped_paths)]
+            for pivot in dossier.pivots:
+                pivot.group = grouped_path
+
+        ds.dossier.save(dossier.dossier_id, dossier)
+
+    password_checker_dossier = Dossier.model_validate(
+        {
+            "title": "Password Checker Pivot Folders",
+            "query": 'howler.analytic:"Password Checker"',
+            "type": "global",
+            **_get_ownership_data(users, "admin"),
+            "leads": [],
+        }
+    )
+    pivot_groups = [
+        None,
+        "credentials",
+        "credentials/hash",
+        "credentials/metadata",
+        "validation",
+        "validation/length",
+        "validation/complexity",
+        "validation/reuse",
+        "exposure",
+        "exposure/breach",
+        "exposure/darkweb",
+        "exposure/thirdparty",
+        "recommendations",
+        "recommendations/rotation",
+        "recommendations/monitoring",
+    ]
+    for index, pivot_group in enumerate(pivot_groups, start=1):
+        password_checker_dossier.pivots.append(
+            Pivot.model_validate(
+                {
+                    "label": {"en": f"Password Check {index}", "fr": f"Verification mot de passe {index}"},
+                    "description": choice(
+                        [
+                            "Check whether these credentials appear in known data breaches.",
+                            "Review password strength and complexity for this alert.",
+                            "Investigate password reuse across related accounts.",
+                            "Review credential rotation and monitoring recommendations.",
+                        ]
+                    ),
+                    "value": "https://password-checker.example.test/{{pivot_value}}",
+                    "format": "link",
+                    "group": pivot_group,
+                    "mappings": [{"key": "pivot_value", "field": "howler.id"}],
+                }
+            )
+        )
+
+    ds.dossier.save(password_checker_dossier.dossier_id, password_checker_dossier)
+    ds.dossier.commit()
+
+
+def wipe_dossiers(ds: HowlerDatastore):
+    """Wipe the dossiers index"""
+    ds.dossier.wipe()
+
+
+def setup_hits(ds):
+    "Set up hits index"
+    os.environ["ELASTIC_HIT_SHARDS"] = "1"
+    os.environ["ELASTIC_HIT_REPLICAS"] = "1"
+    ds.hit.fix_shards()
+    ds.hit.fix_replicas()
+
+
+def setup_events(ds):
+    "Set up events index"
+    os.environ["ELASTIC_HIT_SHARDS"] = "1"
+    os.environ["ELASTIC_HIT_REPLICAS"] = "1"
+    ds.event.fix_shards()
+    ds.event.fix_replicas()
+
+
+def setup_users(ds):
+    "Set up users index"
+    os.environ["ELASTIC_USER_REPLICAS"] = "1"
+    os.environ["ELASTIC_USER_AVATAR_REPLICAS"] = "1"
+    ds.user.fix_replicas()
+    ds.user_avatar.fix_replicas()
+
+
+INDEXES: dict[str, tuple[Callable, list[Callable]]] = {
+    "users": (wipe_users, [create_users]),
+    "templates": (wipe_templates, [create_templates]),
+    "overviews": (wipe_overviews, [create_overviews]),
+    "views": (wipe_views, [create_views]),
+    "events": (wipe_events, [create_events]),
+    "hits": (wipe_hits, [create_hits]),
+    "cases": (wipe_cases, [create_cases]),
+    "analytics": (wipe_analytics, [create_analytics]),
+    "actions": (wipe_actions, [create_actions]),
+    "dossiers": (wipe_dossiers, [create_dossiers]),
+}
+
+if __name__ == "__main__":
+    # TODO: Implement a solid command line interface for running this
+
+    args = [*sys.argv]
+
+    # Remove the file path
+    args.pop(0)
+
+    if "all" in args or len(args) < 1:
+        logger.info("Adding test data to all indexes.")
+        args = list(INDEXES.keys())
+    else:
+        logger.info("Adding test data to indexes: (%s).", ", ".join(args))
+
+    ds = loader.datastore(archive_access=False)
+
+    if "--no-wipe" not in args:
+        logger.info("Wiping existing data.")
+
+        for index, operations in INDEXES.items():
+            if index in args:
+                # Wipe function
+                operations[0](ds)
+
+    logger.info("Running setup steps.")
+    if "hits" in args:
+        setup_hits(ds)
+
+    if "events" in args:
+        setup_events(ds)
+
+    if "users" in args:
+        setup_users(ds)
+
+    for index, operations in INDEXES.items():
+        if index in args:
+            logger.info("Creating %s...", index)
+
+            # Create functions
+            for create_fn in operations[1]:
+                create_fn(ds)
+
+    logger.info("Done.")

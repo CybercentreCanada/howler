@@ -1,21 +1,17 @@
-import re
 from collections.abc import Callable
-from copy import deepcopy
 from typing import Any
 
 from elasticsearch import BadRequestError
-from elasticsearch._sync.client.indices import IndicesClient
 from flask import request
 
 from howler.api import bad_request, forbidden, internal_error, make_subapi_blueprint, ok, service_unavailable
 from howler.api.search_utils import InvalidScrollTokenException
-from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.logging.audit import audit
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException, SearchRetryException, SensitiveUserFieldsException
 from howler.helper.search import get_collection, has_access_control
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.security.login import api_login
 from howler.services import hit_service, lucene_service, search_service
 from howler.utils.net_utils import generate_params
@@ -29,7 +25,7 @@ logger = get_logger(__file__)
 
 def _audit_request(user: User, func: Callable[..., Any], **fields):
     """Emit an audit event with search-specific request details."""
-    audit([], fields, user["uname"], user, func)
+    audit([], fields, user.uname, user, func)
 
 
 @generate_swagger_docs()
@@ -219,23 +215,8 @@ def explain_query(index, **kwargs):
 
     _audit_request(user, explain_query, index=index, query=query)
 
-    # This regex checks for lucene phrases (i.e. the "Example Analytic" part of howler.analytic:"Example Analytic")
-    # And then escapes them.
-    # https://regex101.com/r/8u5F6a/1
-    escaped_lucene = re.sub(r'((:\()?(".+?")(\)?))', lucene_service.replace_lucene_phrase, query)
-
     try:
-        indices_client = IndicesClient(datastore().hit.datastore.client)
-
-        result = deepcopy(
-            indices_client.validate_query(q=escaped_lucene, explain=True, index=collection().index_name).body
-        )
-
-        del result["_shards"]
-
-        for explanation in result["explanations"]:
-            del explanation["index"]
-
+        result = lucene_service.explain_query(query, collection().index_name)
         return ok(result)
     except Exception as e:  # pragma: no cover
         logger.exception(f"Exception on query {query}")

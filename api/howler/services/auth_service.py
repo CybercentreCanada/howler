@@ -21,7 +21,7 @@ from howler.common.exceptions import (
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.config import config, redis
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.remote.datatypes import retry_call
 from howler.remote.datatypes.queues.named import NamedQueue
 from howler.remote.datatypes.set import ExpiringSet
@@ -320,7 +320,7 @@ def validate_apikey(  # noqa: C901
         tuple[Optional[User], Optional[list[str]]]: The user odm object and privileges, if validated
     """
     if config.auth.allow_apikeys and apikey:
-        user_data: User = datastore().user.get_if_exists(username)
+        user_data = datastore().user.get_if_exists(username)
         if user_data:
             try:
                 # Get the name and secret data of the api key we are validating
@@ -339,7 +339,7 @@ def validate_apikey(  # noqa: C901
                 # a) someone is trying to impersonate as this user, and the apikey can be used for that, AND the
                 #    impersonator is on the list of people allowed to use it
                 # b) The user is not being impersonated, and the api key isn't specifically meant for impersonation
-                if impersonator and ("I" not in key.acl or impersonator["uname"] not in key.agents):
+                if impersonator and ("I" not in key.acl or impersonator.uname not in key.agents):
                     raise AccessDeniedException("Not a valid impersonation api key")
                 elif not impersonator and "I" in key.acl:
                     raise AccessDeniedException(

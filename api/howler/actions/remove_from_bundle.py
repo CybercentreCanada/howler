@@ -5,8 +5,8 @@ from typing import Optional
 from howler.actions import check_hit_limit
 from howler.common.exceptions import NotFoundException
 from howler.common.loader import datastore
-from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.user import User
+from howler.models.action import VALID_TRIGGERS
+from howler.models.user import User
 from howler.services import bundle_compat_service, case_service
 from howler.utils.str_utils import sanitize_lucene_query
 

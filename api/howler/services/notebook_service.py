@@ -7,7 +7,7 @@ from flask import request
 from howler.common.exceptions import AuthenticationException, HowlerRuntimeError, HowlerValueError
 from howler.common.logging import get_logger
 from howler.config import cache, config
-from howler.odm.models.analytic import Analytic
+from howler.models.analytic import Analytic
 from howler.plugins import get_plugins
 
 logger = get_logger(__file__)
