@@ -1,0 +1,39 @@
+api/howler/services/lucene_service.py
+  s_890d618743a227::t_b4f9ce6d038d46 2,5,21-23,33,39-44,46-47
+  s_890d618743a227::t_64f55b52d1cc41 34-38,45
+  s_890d618743a227::t_e11aa298a2e97a 102-121,123-126,128,133-134,139-143,152-153,170-181,202,204-208,224-229,233,235,241,246-269
+  s_b23410104fb27d::t_3e8bf7ed70aeee 48
+api/test/integration/service/test_lucene_service.py
+  s_890d618743a227::t_0e02af749e0067 114,181-216
+api/test/unit/utils/test_lucene_utils.py
+  s_890d618743a227::t_f88ebb0f081d26 1-96,98-112
+  s_890d618743a227::t_a490c0120a2198 97
+api/test/integration/service/test_queries.txt
+  s_890d618743a227::t_53f1b7e3746545 64-70
+api/howler/utils/lucene.py
+  s_890d618743a227::t_8936e08e43abb4 23,25-27,31-32,34-35,57,62-64,68,75-80,82-84,86,90,93-94,96,98-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b8d884d68ed56b4cb2604c9d894615a557f78226",
+  "prompts": {},
+  "sessions": {
+    "s_890d618743a227": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e16869a8fffe6jrBRcZGXxhXXf",
+        "model": "gemini-4-carbon"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_b23410104fb27d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e166c7019ffe2R1toPV0kb0kEJ",
+        "model": "gemini-4-carbon"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
