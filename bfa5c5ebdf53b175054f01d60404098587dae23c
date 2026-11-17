@@ -1,0 +1,14 @@
+api/howler/services/lucene_service.py
+  h_f221159cc9f457 229-230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "bfa5c5ebdf53b175054f01d60404098587dae23c",
+  "prompts": {},
+  "humans": {
+    "h_f221159cc9f457": {
+      "author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

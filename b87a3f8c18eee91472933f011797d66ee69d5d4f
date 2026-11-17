@@ -1,0 +1,51 @@
+.github/workflows/client-workflow.yml
+  s_703976a49408eb::t_7dcac1acfbfd18 188
+.github/workflows/api-workflow.yml
+  s_703976a49408eb::t_7dcac1acfbfd18 193
+api/test/unit/ai_triage/test_transport.py
+  s_703976a49408eb::t_2336764160b0ae 2,12-17,20-24,38-40,44-49,51-52,54-56,62,70-72,74-88,91-93,96-98,100,102-139,145-171,173-179
+  s_703976a49408eb::t_c90ae15c1cc830 27-34,36,73,172
+  s_703976a49408eb::t_1a90db5290b64d 140-144
+api/howler/services/ai_transport.py
+  s_703976a49408eb::t_bd48305beff0a0 5,12,40-41,45,55,105-106
+  s_703976a49408eb::t_53276cc7d6fcf5 9,48,52-54,98,103,108,137
+  s_703976a49408eb::t_6ee9ab4778e27b 102,104
+  s_703976a49408eb::t_23b14d1fcfa6a2 7-8,10-11,28-29,31-32,35-39,42,44,46-47,57-60,63-68,79-95,100-101,109-133,135
+  s_703976a49408eb::t_5b0ceabc10818a 56
+  s_703976a49408eb::t_89216cae415985 99
+documentation/docs/installation/ai_triage.md
+  s_703976a49408eb::t_2336764160b0ae 41,60-62
+api/test/unit/ai_triage/test_transport_deadline.py
+  s_703976a49408eb::t_95d12f9e268c5b 16,18,35,37-38,50-51,54,58,60,68
+  s_703976a49408eb::t_c90ae15c1cc830 7,24-29,39-49,52-53,55-56,59,66-67,69-71,74,79,82-123
+  s_703976a49408eb::t_f850b20b10de53 23
+api/test/unit/ai_triage/conftest.py
+  s_703976a49408eb::t_c90ae15c1cc830 28
+  s_703976a49408eb::t_60e2c043983464 4,10,13-16,19
+api/poetry.lock
+  s_0dc49ce0d8c088::t_2e27c771ee30c7 1,2646,3430
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b87a3f8c18eee91472933f011797d66ee69d5d4f",
+  "prompts": {},
+  "sessions": {
+    "s_0dc49ce0d8c088": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_c2df36283cc5341a6ce6c7ccd5ab9f0f",
+        "model": "unknown"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_703976a49408eb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1616f357ffehcJHYSrBZ5VdWn",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
