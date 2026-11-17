@@ -1,0 +1,43 @@
+api/howler/external/elasticsearch_cutover_verify.py
+  s_50ded30ca60a10::t_313628279c8bb7 39-40,46-48
+api/test/unit/test_elasticsearch_cutover_verify.py
+  s_50ded30ca60a10::t_313628279c8bb7 1066,1089
+api/howler/datastore/bulk.py
+  s_50ded30ca60a10::t_43d3fc820c03d8 170-173,187-188,354,359
+api/test/integration/plugins/test_config_validation.py
+  s_50ded30ca60a10::t_313628279c8bb7 54,61
+api/howler/datastore/collection.py
+  s_50ded30ca60a10::t_43d3fc820c03d8 3368-3374,3385,3388
+api/howler/plugins/config.py
+  s_50ded30ca60a10::t_313628279c8bb7 20,103-105
+api/howler/services/case_service.py
+  s_50ded30ca60a10::t_43d3fc820c03d8 1382
+api/howler/datastore/howler_store.py
+  s_50ded30ca60a10::t_313628279c8bb7 44-78,83,92,94
+api/test/unit/models/test_base.py
+  s_50ded30ca60a10::t_5d944937e5d86e 11,233-236,238-244
+  s_50ded30ca60a10::t_6c690f243d1a34 237
+  s_50ded30ca60a10::t_678ee5d217471b 245-246
+api/howler/api/v1/hit.py
+  s_50ded30ca60a10::t_43d3fc820c03d8 621,690
+api/build_scripts/generate_classes.py
+  s_50ded30ca60a10::t_43d3fc820c03d8 32,187,261
+api/howler/models/base.py
+  s_50ded30ca60a10::t_43d3fc820c03d8 550-553
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6752672bc9de41796b66240d7a245842df42b32c",
+  "prompts": {},
+  "sessions": {
+    "s_50ded30ca60a10": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e16884d2affed8jDxN4NCyamOM",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
