@@ -13,7 +13,6 @@ handled by the models themselves.
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import dataclass
 from typing import Annotated, Any, get_args, get_origin
 
 from pydantic import BaseModel
@@ -81,19 +80,6 @@ ID_PROPERTY_MAPPING: dict[str, Any] = {"store": True, "doc_values": True, "type"
 TEXT_PROPERTY_MAPPING: dict[str, Any] = {"store": False, "type": "text"}
 
 
-@dataclass(frozen=True)
-class IndexContract:
-    """A complete generated index contract for one collection."""
-
-    settings: dict[str, Any]
-    mappings: dict[str, Any]
-
-
-def analysis_settings() -> dict[str, Any]:
-    """Return the shared analyzer/normalizer/filter settings block."""
-    return deepcopy(default_index["settings"])
-
-
 def flat_field_count(model_type: type[BaseModel] | None) -> int:
     """Return the number of flat (dotted-path) fields for a schema model."""
     if model_type is None:
@@ -113,7 +99,7 @@ def total_fields_limit(model_type: type[BaseModel] | None) -> int:
 
 def index_settings(model_type: type[BaseModel] | None, *, shards: int, replicas: int) -> dict[str, Any]:
     """Build the ``settings`` block: shared analysis settings, shards/replicas, field limit."""
-    settings = analysis_settings()
+    settings: dict[str, Any] = deepcopy(default_index["settings"])
     settings.setdefault("index", {})
     settings["index"]["number_of_shards"] = shards
     settings["index"]["number_of_replicas"] = replicas
@@ -135,7 +121,7 @@ def _is_any_kind(annotation: Any) -> bool:
 
 
 def _document_properties_tree(model_type: type[BaseModel]) -> dict[str, Any]:
-    return deepcopy(model_registry.mapping(model_type)).get("properties", {})
+    return model_registry.mapping(model_type).get("properties", {})
 
 
 def build_properties(model_type: type[BaseModel]) -> tuple[dict[str, Any], dict[str, FieldDefinition]]:  # noqa: C901
@@ -162,7 +148,7 @@ def build_properties(model_type: type[BaseModel]) -> tuple[dict[str, Any], dict[
                 # Compound object (or list of compound): always inlined as dotted leaves.
                 walk(node["properties"], path)
                 continue
-            raw_properties[path] = deepcopy(node)
+            raw_properties[path] = node
 
     walk(tree, "")
 
@@ -181,11 +167,6 @@ def build_properties(model_type: type[BaseModel]) -> tuple[dict[str, Any], dict[
                 dynamic_sources[path] = definition
             continue
 
-        if path in raw_properties:
-            properties[path] = raw_properties[path]
-
-    # Classification access fields are generated mapping properties, not declared model fields.
-    for path in ("__access_lvl__", "__access_req__", "__access_grp1__", "__access_grp2__"):
         if path in raw_properties:
             properties[path] = raw_properties[path]
 
@@ -319,21 +300,10 @@ def document_mapping(model_type: type[BaseModel] | None) -> dict[str, Any]:
     else:
         mappings["dynamic_templates"] = deepcopy(default_dynamic_templates)
 
-    if not mappings["dynamic_templates"]:
-        mappings["dynamic"] = "strict"
-
     mappings["properties"]["id"] = dict(ID_PROPERTY_MAPPING)
     mappings["properties"]["__text__"] = dict(TEXT_PROPERTY_MAPPING)
 
     return mappings
-
-
-def build_index_contract(model_type: type[BaseModel] | None, *, shards: int, replicas: int) -> IndexContract:
-    """Build the complete settings + mappings contract for one collection."""
-    return IndexContract(
-        settings=index_settings(model_type, shards=shards, replicas=replicas),
-        mappings=document_mapping(model_type),
-    )
 
 
 def ilm_template_body(
@@ -345,8 +315,7 @@ def ilm_template_body(
     rollover_alias: str,
 ) -> dict[str, Any]:
     """Build the composable index template body (settings + mappings + ILM lifecycle settings)."""
-    contract = build_index_contract(model_type, shards=shards, replicas=replicas)
-    settings = deepcopy(contract.settings)
+    settings = index_settings(model_type, shards=shards, replicas=replicas)
     settings["index"]["lifecycle.name"] = policy_name
     settings["index"]["lifecycle.rollover_alias"] = rollover_alias
-    return {"settings": settings, "mappings": contract.mappings}
+    return {"settings": settings, "mappings": document_mapping(model_type)}

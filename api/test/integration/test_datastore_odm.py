@@ -532,7 +532,7 @@ def _random_schema_collection_name() -> str:
 @pytest.fixture()
 def schema_collection(es_store, request):
     name = _random_schema_collection_name()
-    es_store.register(name, model_class=None, schema_model=LiveReconcileDoc)
+    es_store.register(name, model_class=LiveReconcileDoc)
     collection = getattr(es_store, name)
 
     def cleanup():
@@ -603,7 +603,7 @@ def test_reconciliation_adds_missing_safe_fields_to_a_live_index(es_store):
     )
 
     try:
-        es_store.register(name, model_class=None, schema_model=LiveReconcileDoc)
+        es_store.register(name, model_class=LiveReconcileDoc)
         collection = getattr(es_store, name)
         fields_map = collection.fields()
 
@@ -633,7 +633,7 @@ def test_reconciliation_refuses_a_missing_dynamic_template(es_store):
     )
 
     try:
-        es_store.register(name, model_class=None, schema_model=LiveReconcileDoc)
+        es_store.register(name, model_class=LiveReconcileDoc)
         with pytest.raises(HowlerValueError, match="Refusing to add or change dynamic mapping templates"):
             getattr(es_store, name)
     finally:

@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional, Union, cast
+from typing import Any, Callable, Optional, Union
 
 from howler.common.loader import datastore
 from howler.datastore.collection import ESCollection
@@ -48,7 +48,7 @@ def get_collection(index: str, user: Union[User, dict[str, Any]]) -> Optional[Ca
     Returns:
         ESCollection: The corresponding ESCollection
     """
-    roles = user["type"] if isinstance(user, dict) else cast(Any, user).type
+    roles = user["type"]
     return INDEX_MAP.get(index, ADMIN_INDEX_MAP.get(index, None) if "admin" in roles else None)
 
 
@@ -62,7 +62,7 @@ def get_default_sort(index: str, user: Union[User, dict[str, Any]]) -> Optional[
     Returns:
         str: The default sort for the index
     """
-    roles = user["type"] if isinstance(user, dict) else cast(Any, user).type
+    roles = user["type"]
     return INDEX_ORDER_MAP.get(
         index,
         ADMIN_INDEX_ORDER_MAP.get(index, None) if "admin" in roles else None,

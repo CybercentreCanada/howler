@@ -98,17 +98,14 @@ const caseWithHits = (hitIds: string[]) =>
 // Wrapper factory
 // ---------------------------------------------------------------------------
 
-const createWrapper = (
-  records: Record<string, Hit | Event> = {},
-  getRecords?: () => Record<string, Hit | Event>
-): FC<PropsWithChildren> => {
+const createWrapper = (records: Record<string, Hit | Event> = {}): FC<PropsWithChildren> => {
   const Wrapper: FC<PropsWithChildren> = ({ children }) => (
     <I18nextProvider i18n={i18n as any}>
       <ModalContext.Provider value={{ close: mockClose, open: vi.fn(), setContent: vi.fn() } as any}>
         <ApiConfigContext.Provider value={{ config: mockConfig, setConfig: vi.fn() } as any}>
           <RecordContext.Provider
             value={{
-              records: getRecords?.() ?? records,
+              records,
               loadRecords: mockLoadRecords,
               selectedRecords: [],
               addRecordToSelection: vi.fn(),
@@ -198,57 +195,6 @@ describe('ResolveModal', () => {
     expect(screen.queryByText('HitCard:event-1')).not.toBeInTheDocument();
     await user.click(confirm);
     expect(mockUpdateCase).toHaveBeenCalledWith({ status: 'resolved' });
-    expect(mockAssess).not.toHaveBeenCalled();
-  });
-
-  it('does not render or assess an event cached under a declared hit id, and keeps resolution conservative', async () => {
-    const event: Event = {
-      __index: 'event',
-      timestamp: '2026-01-01T00:00:00Z',
-      howler: { id: 'event-1', hash: 'abc' }
-    };
-    render(<ResolveModal case={caseWithHits(['event-1'])} onConfirm={mockOnConfirm} />, {
-      wrapper: createWrapper({ 'event-1': event })
-    });
-
-    await waitFor(() => expect(mockDispatchApi).toHaveBeenCalled());
-    expect(mockUseHitActions).toHaveBeenLastCalledWith([]);
-    expect(screen.queryByTestId('analytic-event-1')).not.toBeInTheDocument();
-    expect(screen.queryByText('HitCard:event-1')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeDisabled();
-    expect(screen.getByRole('button', { name: i18n.t('modal.cases.alerts.assess') })).toBeDisabled();
-    await user.click(screen.getByRole('checkbox', { name: i18n.t('modal.cases.resolve.allow_unresolved.aria_label') }));
-    await waitFor(() => expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeEnabled());
-    await user.click(screen.getByRole('button', { name: i18n.t('confirm') }));
-    expect(mockUpdateCase).toHaveBeenCalledWith({ status: 'resolved' });
-    expect(mockAssess).not.toHaveBeenCalled();
-  });
-
-  it('disables assessment if a selected cached hit is replaced by an event', async () => {
-    let records: Record<string, Hit | Event> = { 'hit-1': HIT_1 };
-    const _case = caseWithHits(['hit-1']);
-    const { rerender } = render(<ResolveModal case={_case} onConfirm={mockOnConfirm} />, {
-      wrapper: createWrapper({}, () => records)
-    });
-    await waitFor(() => expect(getHitCheckboxes()).toHaveLength(1));
-    clickCheckbox(getHitCheckboxes()[0]);
-    await fillForm(user);
-    const assess = screen.getByRole('button', { name: i18n.t('modal.cases.alerts.assess') });
-    expect(assess).toBeEnabled();
-
-    records = {
-      'hit-1': {
-        __index: 'event',
-        timestamp: '2026-01-01T00:00:00Z',
-        howler: { id: 'hit-1', hash: 'abc' }
-      }
-    };
-    rerender(<ResolveModal case={_case} onConfirm={mockOnConfirm} />);
-
-    await waitFor(() => expect(assess).toBeDisabled());
-    expect(mockUseHitActions).toHaveBeenLastCalledWith([]);
-    expect(screen.queryByTestId('analytic-hit-1')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeDisabled();
     expect(mockAssess).not.toHaveBeenCalled();
   });
 

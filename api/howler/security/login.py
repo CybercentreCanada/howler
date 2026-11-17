@@ -1,5 +1,5 @@
 import functools
-from typing import Any, Optional, cast
+from typing import Optional
 
 import requests
 from flask import request
@@ -163,8 +163,8 @@ class api_login(object):  # noqa: D101, N801
                     # Success!
                     logger.warning(
                         "%s is impersonating %s",
-                        cast(Any, user).uname,
-                        cast(Any, impersonated_user).uname,
+                        user.uname,
+                        impersonated_user.uname,
                     )
                     impersonator = user
                     user, priv = impersonated_user, impersonated_priv
@@ -174,9 +174,9 @@ class api_login(object):  # noqa: D101, N801
                     raise AccessDeniedException("You do not have access to this API.")
 
                 # Make sure the user has the correct type for this endpoint
-                if not set(self.required_type) & set(cast(Any, user).type):
+                if not set(self.required_type) & set(user.type):
                     logger.warning(
-                        f"{cast(Any, user).uname} is missing one of the types: {', '.join(self.required_type)}. "
+                        f"{user.uname} is missing one of the types: {', '.join(self.required_type)}. "
                         "Cannot access {request.path}"
                     )
                     raise AccessDeniedException(
@@ -185,17 +185,17 @@ class api_login(object):  # noqa: D101, N801
 
                 ip = request.headers.get("X-Forwarded-For", request.remote_addr)
                 if not TESTING:
-                    logger.info("Logged in as %s from %s for path %s", cast(Any, user).uname, ip, request.path)
+                    logger.info("Logged in as %s from %s for path %s", user.uname, ip, request.path)
 
                 # If auditing is enabled, write this successful access to the audit logs
                 if self.audit:
                     audit(
                         args,
                         kwargs,
-                        cast(Any, user).uname,
+                        user.uname,
                         user,
                         func,
-                        impersonator=cast(Any, impersonator).uname if impersonator else None,
+                        impersonator=impersonator.uname if impersonator else None,
                     )
             except InvalidDataException as e:
                 FAILED_ATTEMPTS.labels("400").inc()
@@ -217,21 +217,19 @@ class api_login(object):  # noqa: D101, N801
                 logger.debug("Bypassing quota limits for clue enrichment")
             elif self.enforce_quota:
                 # Check current user quota
-                flsk_session["quota_user"] = cast(Any, user).uname
+                flsk_session["quota_user"] = user.uname
                 flsk_session["quota_set"] = True
 
-                quota = cast(Any, user).api_quota
-                if not QUOTA_TRACKER.begin(cast(Any, user).uname, quota):
+                quota = user.api_quota
+                if not QUOTA_TRACKER.begin(user.uname, quota):
                     if config.ui.enforce_quota:
-                        logger.warning(
-                            "%s was prevented from using the api due to exceeded quota.", cast(Any, user).uname
-                        )
+                        logger.warning("%s was prevented from using the api due to exceeded quota.", user.uname)
                         FAILED_ATTEMPTS.labels("429").inc()
                         return too_many_requests(err=f"You've exceeded your maximum quota of {quota}")
                     else:
-                        logger.debug("Quota of %s exceeded for user %s.", quota, cast(Any, user).uname)
+                        logger.debug("Quota of %s exceeded for user %s.", quota, user.uname)
             else:
-                logger.debug("Quota not enforced for %s", cast(Any, user).uname)
+                logger.debug("Quota not enforced for %s", user.uname)
 
             # Save user data in kwargs for future reference in the wrapped method
             kwargs["user"] = user

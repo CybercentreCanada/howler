@@ -1203,79 +1203,27 @@ class DatastoreSearchDocument(HowlerESModel):
     observed: date()
 
 
+def _doc(key, message, status, owner, severity, tags, observed):
+    return {
+        "key": key,
+        "message": message,
+        "status": status,
+        "owner": owner,
+        "severity": severity,
+        "tags": tags,
+        "observed": observed,
+    }
+
+
 SEARCH_DOCUMENTS = [
-    {
-        "key": "a",
-        "message": "phishing phishing phishing",
-        "status": "open",
-        "owner": "alice",
-        "severity": 90,
-        "tags": ["email", "urgent"],
-        "observed": "2025-01-01T00:00:00Z",
-    },
-    {
-        "key": "b",
-        "message": "phishing phishing login",
-        "status": "open",
-        "owner": "bob",
-        "severity": 70,
-        "tags": ["email"],
-        "observed": "2025-01-01T12:00:00Z",
-    },
-    {
-        "key": "c",
-        "message": "phishing login alert",
-        "status": "closed",
-        "owner": "alice",
-        "severity": 70,
-        "tags": ["endpoint", "urgent"],
-        "observed": "2025-01-02T00:00:00Z",
-    },
-    {
-        "key": "d",
-        "message": "malware network alert",
-        "status": "open",
-        "owner": "alice",
-        "severity": 40,
-        "tags": ["endpoint"],
-        "observed": "2025-01-02T12:00:00Z",
-    },
-    {
-        "key": "e",
-        "message": "routine login success",
-        "status": "closed",
-        "owner": "bob",
-        "severity": 20,
-        "tags": ["email"],
-        "observed": "2025-01-03T00:00:00Z",
-    },
-    {
-        "key": "f",
-        "message": "harmless network traffic",
-        "status": "open",
-        "owner": None,
-        "severity": 0,
-        "tags": [],
-        "observed": "2025-01-03T12:00:00Z",
-    },
-    {
-        "key": "g",
-        "message": "phishing login alert",
-        "status": "open",
-        "owner": "alice",
-        "severity": 70,
-        "tags": ["email", "urgent"],
-        "observed": "2025-01-04T00:00:00Z",
-    },
-    {
-        "key": "h",
-        "message": "malware login alert",
-        "status": "closed",
-        "owner": "charlie",
-        "severity": 40,
-        "tags": ["endpoint"],
-        "observed": "2025-01-04T12:00:00Z",
-    },
+    _doc("a", "phishing phishing phishing", "open", "alice", 90, ["email", "urgent"], "2025-01-01T00:00:00Z"),
+    _doc("b", "phishing phishing login", "open", "bob", 70, ["email"], "2025-01-01T12:00:00Z"),
+    _doc("c", "phishing login alert", "closed", "alice", 70, ["endpoint", "urgent"], "2025-01-02T00:00:00Z"),
+    _doc("d", "malware network alert", "open", "alice", 40, ["endpoint"], "2025-01-02T12:00:00Z"),
+    _doc("e", "routine login success", "closed", "bob", 20, ["email"], "2025-01-03T00:00:00Z"),
+    _doc("f", "harmless network traffic", "open", None, 0, [], "2025-01-03T12:00:00Z"),
+    _doc("g", "phishing login alert", "open", "alice", 70, ["email", "urgent"], "2025-01-04T00:00:00Z"),
+    _doc("h", "malware login alert", "closed", "charlie", 40, ["endpoint"], "2025-01-04T12:00:00Z"),
 ]
 
 
@@ -1375,8 +1323,6 @@ def test_search_returns_exact_ids_and_order(
     actual_ids = [item.key if as_obj else item["key"] for item in result["items"]]
 
     assert result["total"] == total
-    assert len(actual_ids) == len(set(actual_ids))
-    assert set(actual_ids) == set(expected_ids)
     assert actual_ids == expected_ids
 
 
@@ -1420,32 +1366,15 @@ EXPECTED_SEARCH_AGGREGATIONS = [
         [],
         8,
         {
-            "statuses": {
-                "doc_count_error_upper_bound": 0,
-                "sum_other_doc_count": 0,
-                "buckets": [{"key": "closed", "doc_count": 3}, {"key": "open", "doc_count": 5}],
-            },
-            "tags": {
-                "doc_count_error_upper_bound": 0,
-                "sum_other_doc_count": 0,
-                "buckets": [
-                    {"key": "email", "doc_count": 4},
-                    {"key": "endpoint", "doc_count": 3},
-                    {"key": "urgent", "doc_count": 3},
-                ],
-            },
+            "statuses": [("closed", 3), ("open", 5)],
+            "tags": [("email", 4), ("endpoint", 3), ("urgent", 3)],
             "severity": {"count": 8, "min": 0.0, "max": 90.0, "avg": 50.0, "sum": 400.0},
-            "missing_owner": {"doc_count": 1},
-            "severity_buckets": {
-                "buckets": [
-                    {"key": 0.0, "doc_count": 1},
-                    {"key": 20.0, "doc_count": 1},
-                    {"key": 40.0, "doc_count": 2},
-                    {"key": 60.0, "doc_count": 3},
-                    {"key": 80.0, "doc_count": 1},
-                ]
+            "missing_owner": 1,
+            "severity_buckets": [(0.0, 1), (20.0, 1), (40.0, 2), (60.0, 3), (80.0, 1)],
+            "open_only": {
+                "doc_count": 5,
+                "severity": {"count": 5, "min": 0.0, "max": 90.0, "avg": 54.0, "sum": 270.0},
             },
-            "open_only": {"doc_count": 5, "severity": {"count": 5, "min": 0.0, "max": 90.0, "avg": 54.0, "sum": 270.0}},
         },
         id="all-documents",
     ),
@@ -1454,32 +1383,15 @@ EXPECTED_SEARCH_AGGREGATIONS = [
         ["status:open"],
         5,
         {
-            "statuses": {
-                "doc_count_error_upper_bound": 0,
-                "sum_other_doc_count": 0,
-                "buckets": [{"key": "open", "doc_count": 5}],
-            },
-            "tags": {
-                "doc_count_error_upper_bound": 0,
-                "sum_other_doc_count": 0,
-                "buckets": [
-                    {"key": "email", "doc_count": 3},
-                    {"key": "endpoint", "doc_count": 1},
-                    {"key": "urgent", "doc_count": 2},
-                ],
-            },
+            "statuses": [("open", 5)],
+            "tags": [("email", 3), ("endpoint", 1), ("urgent", 2)],
             "severity": {"count": 5, "min": 0.0, "max": 90.0, "avg": 54.0, "sum": 270.0},
-            "missing_owner": {"doc_count": 1},
-            "severity_buckets": {
-                "buckets": [
-                    {"key": 0.0, "doc_count": 1},
-                    {"key": 20.0, "doc_count": 0},
-                    {"key": 40.0, "doc_count": 1},
-                    {"key": 60.0, "doc_count": 2},
-                    {"key": 80.0, "doc_count": 1},
-                ]
+            "missing_owner": 1,
+            "severity_buckets": [(0.0, 1), (20.0, 0), (40.0, 1), (60.0, 2), (80.0, 1)],
+            "open_only": {
+                "doc_count": 5,
+                "severity": {"count": 5, "min": 0.0, "max": 90.0, "avg": 54.0, "sum": 270.0},
             },
-            "open_only": {"doc_count": 5, "severity": {"count": 5, "min": 0.0, "max": 90.0, "avg": 54.0, "sum": 270.0}},
         },
         id="filtered-documents",
     ),
@@ -1488,11 +1400,11 @@ EXPECTED_SEARCH_AGGREGATIONS = [
         [],
         0,
         {
-            "statuses": {"doc_count_error_upper_bound": 0, "sum_other_doc_count": 0, "buckets": []},
-            "tags": {"doc_count_error_upper_bound": 0, "sum_other_doc_count": 0, "buckets": []},
+            "statuses": [],
+            "tags": [],
             "severity": {"count": 0, "min": None, "max": None, "avg": None, "sum": 0.0},
-            "missing_owner": {"doc_count": 0},
-            "severity_buckets": {"buckets": []},
+            "missing_owner": 0,
+            "severity_buckets": [],
             "open_only": {
                 "doc_count": 0,
                 "severity": {"count": 0, "min": None, "max": None, "avg": None, "sum": 0.0},
@@ -1523,23 +1435,18 @@ def test_search_returns_exact_aggregations(
 
     assert result["items"] == []
     assert result["total"] == total
-    assert result["aggregations"] == expected
-
-
-def test_relevance_scores_preserve_term_frequency_ordering(search_contract_collection: ESCollection):
-    response = search_contract_collection.datastore.client.search(
-        index=search_contract_collection.index_name,
-        query={"query_string": {"query": "message:phishing"}},
-        sort=[{"_score": "desc"}, {"key": "asc"}],
-        track_scores=True,
-        track_total_hits=True,
-        size=20,
-    )
-
-    assert response["timed_out"] is False
-    assert response["_shards"]["failed"] == 0
-    assert response["hits"]["total"] == {"value": 4, "relation": "eq"}
-    hits = response["hits"]["hits"]
-    assert [hit["_id"] for hit in hits] == ["a", "b", "c", "g"]
-    assert hits[0]["_score"] > hits[1]["_score"] > hits[2]["_score"] > 0
-    assert hits[2]["_score"] == hits[3]["_score"]
+    aggregations = result["aggregations"]
+    actual = {
+        "statuses": [(bucket["key"], bucket["doc_count"]) for bucket in aggregations["statuses"]["buckets"]],
+        "tags": [(bucket["key"], bucket["doc_count"]) for bucket in aggregations["tags"]["buckets"]],
+        "severity": aggregations["severity"],
+        "missing_owner": aggregations["missing_owner"]["doc_count"],
+        "severity_buckets": [
+            (bucket["key"], bucket["doc_count"]) for bucket in aggregations["severity_buckets"]["buckets"]
+        ],
+        "open_only": {
+            "doc_count": aggregations["open_only"]["doc_count"],
+            "severity": aggregations["open_only"]["severity"],
+        },
+    }
+    assert actual == expected

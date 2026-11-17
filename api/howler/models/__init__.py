@@ -10,7 +10,6 @@ from howler.models.base import (
     strip_unknown_fields,
     validate_field_value,
 )
-from howler.models.construction import construct_safe
 from howler.models.extensions import ModelExtension, ModelExtensionRegistry, model_extensions
 from howler.models.fields import (
     ClassificationValue,
@@ -74,7 +73,6 @@ __all__ = [
     "classification_string",
     "compound",
     "construct_partial",
-    "construct_safe",
     "date",
     "domain",
     "email",

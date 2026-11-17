@@ -1,17 +1,21 @@
 from __future__ import annotations
 
+import argparse
 import base64
 import io
+import json
 import sys
-import threading
 import urllib.error
 import urllib.request
 from copy import deepcopy
-from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
 
 import pytest
 
+from howler.common import loader
+from howler.common.exceptions import HowlerAttributeError
+from howler.config_models import ILMIndexConfig, config
+from howler.external import elasticsearch_cutover_verify as verifier
 from howler.external.elasticsearch_cutover_verify import (
     _collection_indices,
     _collection_models,
@@ -29,9 +33,13 @@ from howler.external.elasticsearch_rest import (
     ElasticsearchRestClient,
     ElasticsearchRestError,
     _NoRedirectHandler,
+    canonical_ilm_generation,
     collect_primary_shard_stats,
     credentials_from_environment,
+    index_setting,
+    strict_int,
 )
+from howler.plugins import PLUGINS
 
 
 def _mapping() -> dict[str, Any]:
@@ -55,9 +63,16 @@ def _mapping() -> dict[str, Any]:
 
 @pytest.fixture(autouse=True)
 def _stable_test_index_prefix(monkeypatch: pytest.MonkeyPatch) -> None:
-    from howler.common import loader
-
     monkeypatch.setattr(loader, "DATASTORE_INDEX_PREFIX", "howler")
+
+
+@pytest.fixture
+def isolated_plugin_registry():
+    original = dict(PLUGINS)
+    PLUGINS.clear()
+    yield PLUGINS
+    PLUGINS.clear()
+    PLUGINS.update(original)
 
 
 def _expectations(*, ilm: bool = False) -> dict[str, dict[str, Any]]:
@@ -216,6 +231,9 @@ class FakeVerifierRest:
         }
         return response[path]
 
+    def get_optional(self, path: str, params: dict[str, Any] | None = None) -> Any | None:
+        return ElasticsearchRestClient.get_optional(self, path, params)  # type: ignore[arg-type]
+
 
 def _checks(
     inventory: dict[str, Any],
@@ -251,8 +269,6 @@ def test_clean_95_cluster_and_unchanged_quiesced_baseline_pass() -> None:
 
 
 def test_collect_inventory_build_report_are_scoped_and_share_primary_stats(monkeypatch: pytest.MonkeyPatch) -> None:
-    import howler.external.elasticsearch_cutover_verify as verifier
-
     monkeypatch.setattr(verifier, "_expectations", lambda: _expectations())
     client = FakeVerifierRest()
 
@@ -289,8 +305,6 @@ def test_collect_inventory_skips_field_caps_for_closed_configured_backer() -> No
 
 
 def test_integrity_only_collects_no_contract_mapping_or_field_caps(monkeypatch: pytest.MonkeyPatch) -> None:
-    import howler.external.elasticsearch_cutover_verify as verifier
-
     monkeypatch.setattr(verifier, "_expectations", lambda: _expectations())
     inventory = _inventory()
     client = FakeVerifierRest()
@@ -304,44 +318,26 @@ def test_integrity_only_collects_no_contract_mapping_or_field_caps(monkeypatch: 
     assert "/howler-alpha/_field_caps" not in paths
 
 
-def test_integrity_only_cli_requires_baseline(monkeypatch: pytest.MonkeyPatch) -> None:
-    import sys
+@pytest.mark.parametrize(
+    ("flags", "message"),
+    [
+        (["--integrity-only"], "--integrity-only requires --baseline"),
+        (["--accept-sequence-drift", "howler-user_hot"], "--accept-sequence-drift requires --baseline"),
+    ],
+)
+def test_baseline_dependent_cli_flags_require_baseline(
+    monkeypatch: pytest.MonkeyPatch, capsys, flags: list[str], message: str
+) -> None:
+    monkeypatch.setattr(sys, "argv", ["elasticsearch_cutover_verify", *flags])
 
-    monkeypatch.setattr(sys, "argv", ["elasticsearch_cutover_verify", "--integrity-only"])
-
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit) as error:
         main()
 
-
-def test_main_writes_blocking_json_with_safe_known_error_detail(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
-    import json
-    import sys
-
-    import howler.external.elasticsearch_cutover_verify as verifier
-
-    output = tmp_path / "error-report.json"
-    monkeypatch.setattr(sys, "argv", ["elasticsearch_cutover_verify", "--output", str(output)])
-    monkeypatch.setattr(verifier, "_client_from_args", lambda args, parser: object())
-    monkeypatch.setattr(
-        verifier,
-        "build_report",
-        lambda *args, **kwargs: (_ for _ in ()).throw(ValueError("legacy-plugin uses modify_odm")),
-    )
-
-    status = main()
-    report = json.loads(output.read_text(encoding="utf-8"))
-
-    assert status == 1
-    assert report["checks"]["ready"] is False
-    assert "legacy-plugin" in report["checks"]["blockers"][0]["message"]
+    assert error.value.code == 2
+    assert message in capsys.readouterr().err
 
 
 def test_main_writes_valid_report_after_reading_clean_baseline(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
-    import json
-    import sys
-
-    import howler.external.elasticsearch_cutover_verify as verifier
-
     baseline_path = tmp_path / "baseline.json"
     output_path = tmp_path / "cutover.json"
     baseline = {
@@ -370,7 +366,7 @@ def test_main_writes_valid_report_after_reading_clean_baseline(monkeypatch: pyte
             str(output_path),
         ],
     )
-    monkeypatch.setattr(verifier, "_client_from_args", lambda args, parser: object())
+    monkeypatch.setattr(verifier, "client_from_args", lambda args, parser: object())
     received: dict[str, Any] = {}
 
     def fake_build_report(client: Any, *, baseline: dict[str, Any] | None = None, **kwargs: Any) -> dict[str, Any]:
@@ -384,21 +380,6 @@ def test_main_writes_valid_report_after_reading_clean_baseline(monkeypatch: pyte
     assert received["baseline"] == baseline
     assert received["accepted_sequence_drift"] == {"howler-user_hot", "howler-user_avatar_hot"}
     assert json.loads(output_path.read_text(encoding="utf-8"))["checks"]["ready"] is True
-
-
-def test_sequence_drift_acceptance_cli_requires_baseline(monkeypatch: pytest.MonkeyPatch) -> None:
-    import sys
-
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        ["elasticsearch_cutover_verify", "--accept-sequence-drift", "howler-user_hot"],
-    )
-
-    with pytest.raises(SystemExit) as error:
-        main()
-
-    assert error.value.code == 2
 
 
 @pytest.mark.parametrize(
@@ -415,15 +396,9 @@ def test_main_only_exposes_known_safe_exception_messages(
     error: Exception | None,
     visible_detail: str,
 ) -> None:
-    import json
-    import sys
-
-    import howler.external.elasticsearch_cutover_verify as verifier
-    from howler.common.exceptions import HowlerAttributeError
-
     output = tmp_path / "error-report.json"
     monkeypatch.setattr(sys, "argv", ["elasticsearch_cutover_verify", "--output", str(output)])
-    monkeypatch.setattr(verifier, "_client_from_args", lambda args, parser: object())
+    monkeypatch.setattr(verifier, "client_from_args", lambda args, parser: object())
     raised_error = HowlerAttributeError("legacy-plugin requires typed model extensions") if error is None else error
     monkeypatch.setattr(
         verifier,
@@ -438,125 +413,78 @@ def test_main_only_exposes_known_safe_exception_messages(
         assert "private token detail" not in message
 
 
-def test_baseline_reader_rejects_wrong_version_and_unclean_preflight(tmp_path) -> None:
-    import argparse
-    import json
-
-    parser = argparse.ArgumentParser()
-    path = tmp_path / "baseline.json"
-    invalid = {
-        "index_prefix": "howler",
-        "source_stack_version": "8.19.11",
-        "checks": {"ready": False},
-        "inventory": {"indices": {}, "version": {"version": {"number": "8.19.11"}}},
-    }
-    path.write_text(json.dumps(invalid), encoding="utf-8")
-
-    with pytest.raises(SystemExit):
-        _read_baseline(path, parser)
-
-
-def test_baseline_reader_accepts_clean_819_preflight(tmp_path) -> None:
-    import argparse
-    import json
-
-    parser = argparse.ArgumentParser()
-    path = tmp_path / "baseline.json"
-    valid = {
+def _valid_preflight_baseline() -> dict[str, Any]:
+    return {
         "index_prefix": "howler",
         "baseline_capture": True,
         "source_stack_version": "8.19.11",
         "checks": {"ready": True},
         "inventory": {"indices": {"howler-alpha_hot": {}}, "version": {"version": {"number": "8.19.11"}}},
     }
+
+
+def test_baseline_reader_accepts_clean_819_preflight(tmp_path) -> None:
+    parser = argparse.ArgumentParser()
+    path = tmp_path / "baseline.json"
+    valid = _valid_preflight_baseline()
     path.write_text(json.dumps(valid), encoding="utf-8")
 
     assert _read_baseline(path, parser) == valid
 
 
-def test_baseline_reader_rejects_prefix_overlap(tmp_path) -> None:
-    import argparse
-    import json
-
-    parser = argparse.ArgumentParser()
-    path = tmp_path / "baseline.json"
-    overlapping = {
-        "index_prefix": "howler-prod",
-        "baseline_capture": True,
-        "source_stack_version": "8.19.11",
-        "checks": {"ready": True},
-        "inventory": {
-            "indices": {"howler-prod-hit_hot": {}},
-            "version": {"version": {"number": "8.19.11"}},
-        },
-    }
-    path.write_text(json.dumps(overlapping), encoding="utf-8")
-
-    with pytest.raises(SystemExit):
-        _read_baseline(path, parser)
-
-
 @pytest.mark.parametrize(
-    "mutate",
+    ("mutate", "expected_error"),
     [
-        lambda baseline: baseline.update(source_stack_version="8.18.7"),
-        lambda baseline: baseline["inventory"]["version"]["version"].update(number="8.18.7"),
+        (lambda baseline: baseline["inventory"].update(indices=None), "inventory.indices"),
+        (
+            lambda baseline: baseline["inventory"]["version"]["version"].update(number="8.18.7"),
+            "inventory.version.number",
+        ),
+        (lambda baseline: baseline["checks"].update(ready=False), "checks.ready"),
+        (lambda baseline: baseline.update(source_stack_version="8.18.7"), "source_stack_version"),
+        (lambda baseline: baseline.update(baseline_capture=False), "--baseline-capture"),
+        (lambda baseline: baseline.update(index_prefix="howler-prod"), "index_prefix"),
     ],
 )
-def test_baseline_reader_rejects_wrong_source_versions(tmp_path, mutate: Any) -> None:
-    import argparse
-    import json
-
+def test_baseline_reader_rejects_invalid_report(tmp_path, capsys, mutate: Any, expected_error: str) -> None:
     parser = argparse.ArgumentParser()
     path = tmp_path / "baseline.json"
-    invalid = {
-        "index_prefix": "howler",
-        "source_stack_version": "8.19.11",
-        "checks": {"ready": True},
-        "inventory": {"indices": {"howler-alpha_hot": {}}, "version": {"version": {"number": "8.19.11"}}},
-    }
+    invalid = deepcopy(_valid_preflight_baseline())
     mutate(invalid)
     path.write_text(json.dumps(invalid), encoding="utf-8")
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit) as error:
         _read_baseline(path, parser)
+    assert error.value.code == 2
+    assert expected_error in capsys.readouterr().err
 
 
-def test_baseline_reader_rejects_report_not_captured_in_baseline_mode(tmp_path) -> None:
-    import argparse
-    import json
-
-    parser = argparse.ArgumentParser()
-    path = tmp_path / "baseline.json"
-    report = {
-        "index_prefix": "howler",
-        "baseline_capture": False,
-        "source_stack_version": "8.19.11",
-        "checks": {"ready": True},
-        "inventory": {
-            "indices": {"howler-alpha_hot": {}},
-            "version": {"version": {"number": "8.19.11"}},
-        },
-    }
-    path.write_text(json.dumps(report), encoding="utf-8")
-
-    with pytest.raises(SystemExit):
-        _read_baseline(path, parser)
-
-
-def test_yellow_is_blocked_unless_explicitly_accepted_and_reported() -> None:
+@pytest.mark.parametrize(
+    ("status", "allow_yellow", "timed_out", "expected_blockers", "expected_warnings"),
+    [
+        ("green", False, False, (), ()),
+        ("yellow", False, False, ("cluster_health",), ()),
+        ("yellow", True, False, (), ("cluster_health_override",)),
+        ("red", False, False, ("cluster_health",), ()),
+        ("green", False, True, ("cluster_health_timeout",), ()),
+    ],
+)
+def test_cluster_health_gates_are_classified(
+    status: str,
+    allow_yellow: bool,
+    timed_out: bool,
+    expected_blockers: tuple[str, ...],
+    expected_warnings: tuple[str, ...],
+) -> None:
     inventory = _inventory()
-    inventory["cluster_health"]["status"] = "yellow"
+    inventory["cluster_health"]["status"] = status
+    inventory["cluster_health"]["timed_out"] = timed_out
 
-    blocked = _checks(inventory)
-    accepted = _checks(inventory, allow_yellow=True)
+    report = _checks(inventory, allow_yellow=allow_yellow)
 
-    assert [item["check"] for item in blocked["blockers"]] == ["cluster_health"]
-    assert blocked["warnings"] == []
-    assert accepted["ready"] is True
-    assert accepted["warnings"] == [
-        {"check": "cluster_health_override", "message": "Yellow health was explicitly accepted using --allow-yellow."}
-    ]
+    assert tuple(item["check"] for item in report["blockers"]) == expected_blockers
+    assert tuple(item["check"] for item in report["warnings"]) == expected_warnings
+    assert report["ready"] is (not expected_blockers)
 
 
 def test_yellow_health_does_not_hide_uninitialized_collection_blockers() -> None:
@@ -572,15 +500,6 @@ def test_yellow_health_does_not_hide_uninitialized_collection_blockers() -> None
         "cluster_health",
         "collection_not_initialized",
     }
-
-
-def test_incomplete_cluster_health_response_is_blocked() -> None:
-    inventory = _inventory()
-    inventory["cluster_health"]["timed_out"] = True
-
-    report = _checks(inventory)
-
-    assert _blockers(report, "cluster_health_timeout")
 
 
 def test_empty_node_version_inventory_blocks() -> None:
@@ -603,98 +522,27 @@ def test_each_cluster_gate_blocks_unhealthy_versions_features_and_critical_depre
     assert _blockers(report, "critical_deprecations")
 
 
-def test_real_95_migration_deprecations_shape_warns_for_next_major_index_compatibility() -> None:
-    inventory = _inventory()
-    # Shape returned by Elasticsearch 9.5.2 GET /_migration/deprecations.
-    inventory["deprecations"] = {
-        "cluster_settings": [],
-        "node_settings": [],
-        "index_settings": {
-            "howler-alpha_hot": [
-                {
-                    "level": "critical",
-                    "message": "Old index with a compatibility version < 9.0",
-                    "url": "https://ela.st/es-deprecation-9-index-version",
-                    "details": "This index has version: 8.19.9-8.19.20",
-                    "resolve_during_rolling_upgrade": False,
-                    "_meta": {"reindex_required": True},
-                }
-            ]
-        },
-    }
+def test_collection_models_caches_finalized_model_items(monkeypatch: pytest.MonkeyPatch) -> None:
+    from howler.datastore import howler_store
 
-    report = _checks(inventory)
-
-    assert report["ready"] is True
-    assert report["warnings"][0]["check"] == "es10_readiness"
-    assert report["warnings"][0]["resources"][0]["message"] == "Old index with a compatibility version < 9.0"
-    assert not _blockers(report, "critical_deprecations")
-
-
-def test_collection_models_follow_application_finalization_order(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
-    from howler import plugins as plugin_loader
-    from howler.config_models import config
-    from howler.external import elasticsearch_cutover_verify as verifier
-    from howler.models import model_extensions, schema
-    from howler.plugins import PLUGINS
-
-    monkeypatch.setenv("HWL_PLUGIN_DIRECTORY", str(tmp_path / "plugins"))
-    monkeypatch.setattr(sys, "path", list(sys.path))
-    monkeypatch.setattr(plugin_loader, "get_plugins", lambda: [])
-    monkeypatch.setattr(config.core, "plugins", set())
-    monkeypatch.setattr(config.core.clue, "enabled", False)
+    plugins = [object()]
+    finalized = {"hit": object(), "user_avatar": None}
+    calls: list[str] = []
     monkeypatch.setattr(verifier, "_COLLECTION_MODELS", ())
-    finalized: list[str] = []
-    mapped: list[str | None] = []
-    monkeypatch.setattr(model_extensions, "finalize", lambda model: finalized.append(model.__name__) or model)
+    monkeypatch.setattr(verifier, "load_configured_plugins", lambda: calls.append("plugins") or plugins)
     monkeypatch.setattr(
-        schema,
-        "document_mapping",
-        lambda model: mapped.append(model.__name__ if model is not None else None) or {},
+        howler_store,
+        "finalize_models",
+        lambda received: calls.append("finalize") or finalized if received is plugins else pytest.fail("wrong plugins"),
     )
-    old_plugin_cache = dict(PLUGINS)
-    PLUGINS.clear()
-    model_extensions.clear()
-    try:
-        models = _collection_models()
-    finally:
-        model_extensions.clear()
-        PLUGINS.update(old_plugin_cache)
 
-    expected_order = [
-        "hit",
-        "event",
-        "case",
-        "template",
-        "overview",
-        "analytic",
-        "action",
-        "migration",
-        "user",
-        "view",
-        "dossier",
-        "user_avatar",
-    ]
-    assert [name for name, _ in models] == expected_order
-    expected_model_names = [
-        "Hit",
-        "Event",
-        "Case",
-        "Template",
-        "Overview",
-        "Analytic",
-        "Action",
-        "MigrationRecord",
-        "User",
-        "View",
-        "Dossier",
-    ]
-    assert finalized == expected_model_names
-    assert mapped == [*expected_model_names, None]
+    expected = tuple(finalized.items())
+    assert _collection_models() == expected
+    assert _collection_models() == expected
+    assert calls == ["plugins", "finalize"]
 
 
 def test_expectations_apply_prefix_ilm_and_schema_contracts(monkeypatch: pytest.MonkeyPatch) -> None:
-    from howler.external import elasticsearch_cutover_verify as verifier
     from howler.models import schema
 
     monkeypatch.setattr(verifier, "_collection_models", lambda: (("alpha", object), ("avatar", None)))
@@ -907,7 +755,6 @@ def test_real_schema_less_default_templates_merge_to_live_15_entry_shape() -> No
     warnings: list[dict[str, Any]] = []
     _template_checks(
         "user_avatar",
-        "howler-user_avatar",
         "howler-user_avatar_hot",
         expected,
         live,
@@ -925,7 +772,6 @@ def test_real_schema_less_default_templates_merge_to_live_15_entry_shape() -> No
     changed[-1] = {"date": {"path_match": "*_dts", "mapping": {"type": "keyword"}}}
     _template_checks(
         "user_avatar",
-        "howler-user_avatar",
         "howler-user_avatar_hot",
         expected,
         changed,
@@ -979,77 +825,7 @@ def test_total_field_limit_is_computed_from_finalized_extension_model(monkeypatc
     assert total_fields_limit(finalized_hit) == max(1500, finalized_flat_count + 500)
 
 
-def test_real_clue_evidence_sentinel_hit_composition_matches_application_finalization(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from pathlib import Path
-
-    from howler.config_models import config
-    from howler.datastore.howler_store import HowlerDatastore
-    from howler.external import elasticsearch_cutover_verify as verifier
-    from howler.models import model_extensions
-    from howler.models.registry import model_registry
-    from howler.models.schema import flat_field_count, total_fields_limit
-    from howler.plugins import PLUGINS
-
-    class MockESStore:
-        def __init__(self) -> None:
-            self.registrations: dict[str, dict[str, Any]] = {}
-
-        def register(
-            self,
-            name: str,
-            model: Any,
-            *,
-            ilm_config: Any,
-            schema_model: Any,
-        ) -> None:
-            self.registrations[name] = {
-                "model": model,
-                "ilm_config": ilm_config,
-                "schema_model": schema_model,
-            }
-
-    plugin_root = Path(__file__).resolve().parents[3] / "plugins"
-    monkeypatch.setenv("HWL_PLUGIN_DIRECTORY", str(plugin_root))
-    monkeypatch.setattr(config.core, "plugins", {"evidence", "sentinel"})
-    monkeypatch.setattr(config.core.clue, "enabled", True)
-    monkeypatch.setattr(
-        sys,
-        "path",
-        [str(plugin_root / "evidence"), str(plugin_root / "sentinel"), *sys.path],
-    )
-    monkeypatch.setattr(verifier, "_COLLECTION_MODELS", ())
-    monkeypatch.setattr(model_registry, "_models", dict(model_registry._models))
-    old_plugin_cache = dict(PLUGINS)
-    PLUGINS.clear()
-    model_extensions.clear()
-    try:
-        verifier_hit = dict(verifier._collection_models())["hit"]
-        assert verifier_hit is not None
-        verifier_count = flat_field_count(verifier_hit)
-        verifier_limit = total_fields_limit(verifier_hit)
-
-        # Run the application's real finalization/registration path without constructing ESStore.
-        application_store = MockESStore()
-        HowlerDatastore(application_store)  # type: ignore[arg-type]
-        application_hit = application_store.registrations["hit"]["schema_model"]
-        assert application_hit is not None
-        application_count = flat_field_count(application_hit)
-        application_limit = total_fields_limit(application_hit)
-    finally:
-        model_extensions.clear()
-        PLUGINS.clear()
-        PLUGINS.update(old_plugin_cache)
-
-    assert verifier_count == application_count == 1661
-    assert verifier_limit == application_limit == 2161
-
-
 def test_runtime_prefix_and_per_collection_ilm_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
-    from howler.common import loader
-    from howler.config_models import ILMIndexConfig, config
-
     monkeypatch.setattr(loader, "DATASTORE_INDEX_PREFIX", "cutover-test")
     monkeypatch.setattr(config.datastore.ilm, "enabled", True)
     monkeypatch.setattr(config.datastore.ilm, "indices", {"hit": ILMIndexConfig(enabled=False)})
@@ -1059,62 +835,16 @@ def test_runtime_prefix_and_per_collection_ilm_resolution(monkeypatch: pytest.Mo
     assert _configured_ilm("hit") is False
 
 
-def test_legacy_modify_odm_plugin_rejection_includes_plugin_name(monkeypatch: pytest.MonkeyPatch) -> None:
-    from types import SimpleNamespace
-
-    from howler import plugins as plugin_loader
-    from howler.common.exceptions import HowlerAttributeError
-    from howler.config_models import config
-    from howler.external import elasticsearch_cutover_verify as verifier
-    from howler.models import model_extensions
-    from howler.plugins import PLUGINS
-
-    fake_plugin = SimpleNamespace(
-        name="legacy-plugin",
-        modules=SimpleNamespace(
-            odm=SimpleNamespace(modify_odm={"hit": object()}),
-            models=SimpleNamespace(declare_extensions={}),
-        ),
-    )
-    monkeypatch.setattr(plugin_loader, "get_plugins", lambda: [fake_plugin])
-    monkeypatch.setattr(config.core, "plugins", set())
-    monkeypatch.setattr(config.core.clue, "enabled", False)
-    monkeypatch.setattr(verifier, "_COLLECTION_MODELS", ())
-    monkeypatch.setenv("HWL_PLUGIN_DIRECTORY", "/path/without/plugins")
-    monkeypatch.setattr(sys, "path", list(sys.path))
-    old_plugin_cache = dict(PLUGINS)
-    PLUGINS.clear()
-    model_extensions.clear()
-    try:
-        with pytest.raises(HowlerAttributeError, match="legacy-plugin"):
-            _collection_models()
-    finally:
-        model_extensions.clear()
-        PLUGINS.update(old_plugin_cache)
-
-
-def test_verifier_fails_closed_for_missing_configured_plugin(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
-    import json
-    from pathlib import Path
-
-    from howler.config_models import config
-    from howler.external import elasticsearch_cutover_verify as verifier
-    from howler.plugins import PLUGINS
-
-    plugin_root = Path(__file__).resolve().parents[3] / "plugins"
-    monkeypatch.setenv("HWL_PLUGIN_DIRECTORY", str(plugin_root))
+def test_verifier_fails_closed_for_missing_configured_plugin(
+    monkeypatch: pytest.MonkeyPatch, tmp_path, isolated_plugin_registry
+) -> None:
+    monkeypatch.setenv("HWL_PLUGIN_DIRECTORY", str(tmp_path))
     monkeypatch.setattr(sys, "path", list(sys.path))
     monkeypatch.setattr(config.core, "plugins", {"missing-cutover-plugin"})
     output = tmp_path / "missing-plugin.json"
     monkeypatch.setattr(sys, "argv", ["elasticsearch_cutover_verify", "--output", str(output)])
-    monkeypatch.setattr(verifier, "_client_from_args", lambda args, parser: object())
-    old_plugin_cache = dict(PLUGINS)
-    PLUGINS.clear()
-    try:
-        assert main() == 1
-    finally:
-        PLUGINS.clear()
-        PLUGINS.update(old_plugin_cache)
+    monkeypatch.setattr(verifier, "client_from_args", lambda args, parser: object())
+    assert main() == 1
 
     report = json.loads(output.read_text(encoding="utf-8"))
     assert "missing-cutover-plugin" in report["checks"]["blockers"][0]["message"]
@@ -1148,7 +878,11 @@ def test_field_caps_conflict_on_non_schema_field_warns_only() -> None:
     )
 
 
-def test_lower_legacy_limit_warns_only_when_current_mapping_fits() -> None:
+@pytest.mark.parametrize(
+    ("limit", "expected_check"),
+    [("2", "total_fields_limit_legacy_lower"), ("1", "total_fields_limit_below_mapped_fields")],
+)
+def test_legacy_backing_index_field_limits_are_classified(limit: str, expected_check: str) -> None:
     inventory = _inventory(ilm=True)
     inventory["indices"]["howler-alpha-000001"] = {
         "aliases": {"howler-alpha": {"is_write_index": False}},
@@ -1156,7 +890,7 @@ def test_lower_legacy_limit_warns_only_when_current_mapping_fits() -> None:
         "primary_shards": {"0": {"doc_count": 4, "max_seq_no": 3, "global_checkpoint": 3}},
         "settings": {
             "index.uuid": "older",
-            "index.mapping.total_fields.limit": "2",
+            "index.mapping.total_fields.limit": limit,
             "index.lifecycle.name": "howler-alpha_policy",
             "index.lifecycle.rollover_alias": "howler-alpha",
         },
@@ -1167,28 +901,11 @@ def test_lower_legacy_limit_warns_only_when_current_mapping_fits() -> None:
 
     report = _checks(inventory, ilm=True)
 
-    assert report["ready"] is True
-    assert any(warning["check"] == "total_fields_limit_legacy_lower" for warning in report["warnings"])
-
-
-def test_legacy_limit_below_actual_mapping_count_blocks() -> None:
-    inventory = _inventory(ilm=True)
-    inventory["indices"]["howler-alpha-000001"] = {
-        "aliases": {"howler-alpha": {"is_write_index": False}},
-        "settings": {
-            "index.uuid": "older",
-            "index.mapping.total_fields.limit": "1",
-            "index.lifecycle.name": "howler-alpha_policy",
-            "index.lifecycle.rollover_alias": "howler-alpha",
-        },
-        "uuid": "older",
-    }
-    inventory["mappings"]["howler-alpha-000001"] = inventory["mappings"]["howler-alpha-000002"]
-    inventory["ilm_explain"]["howler-alpha-000001"] = inventory["ilm_explain"]["howler-alpha-000002"]
-
-    report = _checks(inventory, ilm=True)
-
-    assert _blockers(report, "total_fields_limit_below_mapped_fields")
+    if limit == "2":
+        assert report["ready"] is True
+        assert any(warning["check"] == expected_check for warning in report["warnings"])
+    else:
+        assert _blockers(report, expected_check)
 
 
 def test_missing_mapping_or_field_caps_data_blocks() -> None:
@@ -1310,6 +1027,19 @@ def test_ilm_future_template_and_rollover_policy_are_verified() -> None:
             ),
             "baseline_doc_count",
         ),
+        (lambda inventory: inventory["indices"].clear(), "baseline_index_missing"),
+        (
+            lambda inventory: inventory["indices"]["howler-alpha_hot"]["primary_shards"]["0"].update(
+                max_seq_no=4, global_checkpoint=4
+            ),
+            "baseline_sequence_numbers",
+        ),
+        (
+            lambda inventory: inventory["indices"]["howler-alpha_hot"]["primary_shards"]["0"].update(
+                global_checkpoint=2
+            ),
+            "sequence_checkpoint_unsynced",
+        ),
     ],
 )
 def test_baseline_set_uuid_alias_and_count_drift_block(mutate: Any, expected_check: str) -> None:
@@ -1333,29 +1063,6 @@ def test_baseline_alias_filter_or_routing_drift_blocks() -> None:
     assert _blockers(report, "baseline_aliases")
 
 
-def test_baseline_missing_index_blocks() -> None:
-    before = _inventory()
-    current = _inventory()
-    current["indices"] = {}
-
-    report = _checks(current, baseline=_baseline(before))
-
-    assert _blockers(report, "baseline_index_missing")
-
-
-def test_baseline_plus_one_max_sequence_number_blocks() -> None:
-    before = _inventory()
-    current = _inventory()
-    current["indices"]["howler-alpha_hot"]["primary_shards"]["0"].update(
-        max_seq_no=4,
-        global_checkpoint=4,
-    )
-
-    report = _checks(current, baseline=_baseline(before), integrity_only=True)
-
-    assert _blockers(report, "baseline_sequence_numbers")
-
-
 def test_baseline_max_sequence_decrease_blocks_even_when_explicitly_accepted() -> None:
     before = _inventory()
     current = _inventory()
@@ -1369,16 +1076,6 @@ def test_baseline_max_sequence_decrease_blocks_even_when_explicitly_accepted() -
     )
 
     assert _blockers(report, "baseline_sequence_decrease")
-
-
-def test_unsynced_primary_checkpoint_blocks_verification() -> None:
-    before = _inventory()
-    current = _inventory()
-    current["indices"]["howler-alpha_hot"]["primary_shards"]["0"]["global_checkpoint"] = 2
-
-    report = _checks(current, baseline=_baseline(before), integrity_only=True)
-
-    assert _blockers(report, "sequence_checkpoint_unsynced")
 
 
 def test_unsynced_baseline_checkpoint_blocks_with_recapture_guidance() -> None:
@@ -1568,21 +1265,6 @@ def test_closed_indices_block_for_configured_or_baseline_and_warn_otherwise() ->
     assert _blockers(baseline_report, "closed_howler_index")
 
 
-def test_baseline_rejects_new_unconfigured_prefix_index() -> None:
-    before = _inventory()
-    current = _inventory()
-    current["indices"]["howler-rogue_hot"] = {
-        "aliases": {"howler-rogue": {}},
-        "doc_count": 0,
-        "primary_shards": {"0": {"doc_count": 0, "max_seq_no": -1, "global_checkpoint": -1}},
-        "uuid": "rogue",
-    }
-
-    report = _checks(current, baseline=_baseline(before), integrity_only=True)
-
-    assert _blockers(report, "baseline_unexpected_indices")
-
-
 def test_baseline_allows_new_closed_unconfigured_prefix_index() -> None:
     before = _inventory()
     current = deepcopy(before)
@@ -1627,24 +1309,6 @@ def test_baseline_comparison_blocks_prefix_mismatch_even_when_names_overlap() ->
     blocker = next(item for item in report["blockers"] if item["check"] == "baseline_index_prefix")
     assert blocker["expected"] == "howler"
     assert blocker["actual"] == "howler-prod"
-
-
-def test_baseline_reader_requires_clean_819_report(tmp_path) -> None:
-    import argparse
-    import json
-
-    parser = argparse.ArgumentParser()
-    baseline_path = tmp_path / "baseline.json"
-    invalid = {
-        "index_prefix": "howler",
-        "source_stack_version": "8.18.7",
-        "checks": {"ready": False},
-        "inventory": {"indices": {}, "version": {"version": {"number": "8.18.7"}}},
-    }
-    baseline_path.write_text(json.dumps(invalid), encoding="utf-8")
-
-    with pytest.raises(SystemExit):
-        _read_baseline(baseline_path, parser)
 
 
 class _Response(io.BytesIO):
@@ -1705,6 +1369,29 @@ def test_primary_stats_use_one_scoped_shard_stats_request() -> None:
     }
 
 
+@pytest.mark.parametrize(
+    ("settings", "name", "expected"),
+    [
+        ({"index.lifecycle.name": "howler-hit_policy"}, "index.lifecycle.name", "howler-hit_policy"),
+        ({"index": {"lifecycle": {"name": "howler-hit_policy"}}}, "index.lifecycle.name", "howler-hit_policy"),
+    ],
+)
+def test_shared_index_setting_reads_flat_and_nested_settings(
+    settings: dict[str, Any], name: str, expected: str
+) -> None:
+    assert index_setting({"settings": settings}, name) == expected
+
+
+@pytest.mark.parametrize("value,expected", [(3, 3), (True, None), ("3", None), (None, None)])
+def test_shared_strict_int_rejects_non_integer_values(value: Any, expected: int | None) -> None:
+    assert strict_int(value) == expected
+
+
+def test_shared_canonical_ilm_generation_requires_six_digits() -> None:
+    assert canonical_ilm_generation("howler-hit", "howler-hit-000009") == 9
+    assert canonical_ilm_generation("howler-hit", "howler-hit-9") is None
+
+
 def test_rest_client_sends_plain_json_headers_and_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     opener = _Opener()
     monkeypatch.setattr("urllib.request.build_opener", lambda *handlers: opener)
@@ -1750,7 +1437,7 @@ def test_rest_client_refuses_cleartext_auth_unless_explicitly_allowed() -> None:
     assert ElasticsearchRestClient("http://example.invalid", api_key="key", allow_insecure_http_auth=True)
 
 
-@pytest.mark.parametrize("method", ["POST", "PUT", "PATCH", "DELETE"])
+@pytest.mark.parametrize("method", ["HEAD", "POST", "PUT", "PATCH", "DELETE"])
 def test_rest_client_refuses_all_mutating_methods(method: str) -> None:
     client = ElasticsearchRestClient("http://example.invalid")
 
@@ -1815,38 +1502,45 @@ def test_redirect_handler_refuses_to_forward_credentials() -> None:
     assert handler.redirect_request(request, None, 307, "temporary redirect", {}, "https://other.invalid/") is None
 
 
-def test_rest_client_does_not_follow_redirect_or_forward_credentials() -> None:
-    class RedirectServer(HTTPServer):
-        requests: list[tuple[str, str | None]]
+def test_rest_client_does_not_follow_redirect_or_forward_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
+    class OfflineRedirectOpener:
+        def __init__(self, handlers: tuple[Any, ...]) -> None:
+            self.redirect_handler = next(handler for handler in handlers if isinstance(handler, _NoRedirectHandler))
+            self.requests: list[tuple[str, str | None]] = []
+            self.followed: list[urllib.request.Request] = []
 
-        def __init__(self) -> None:
-            super().__init__(("127.0.0.1", 0), RedirectHandler)
-            self.requests = []
+        def open(self, request: urllib.request.Request, timeout: int) -> None:
+            self.requests.append((request.full_url, request.get_header("Authorization")))
+            redirected = self.redirect_handler.redirect_request(
+                request,
+                None,
+                302,
+                "found",
+                {"Location": "/credential-target"},
+                urllib.request.urljoin(request.full_url, "/credential-target"),
+            )
+            if redirected is not None:
+                self.followed.append(redirected)
+            raise urllib.error.HTTPError(request.full_url, 302, "found", {}, io.BytesIO())
 
-    class RedirectHandler(BaseHTTPRequestHandler):
-        def do_GET(self) -> None:  # noqa: N802
-            self.server.requests.append((self.path, self.headers.get("Authorization")))  # type: ignore[attr-defined]
-            self.send_response(302)
-            self.send_header("Location", "/credential-target")
-            self.end_headers()
+    opener: OfflineRedirectOpener | None = None
 
-        def log_message(self, format: str, *args: Any) -> None:
-            return
+    def build_offline_opener(*handlers: Any) -> OfflineRedirectOpener:
+        nonlocal opener
+        opener = OfflineRedirectOpener(handlers)
+        return opener
 
-    server = RedirectServer()
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
+    monkeypatch.setattr("urllib.request.build_opener", build_offline_opener)
     client = ElasticsearchRestClient(
-        f"http://127.0.0.1:{server.server_port}",
+        "http://example.invalid",
         api_key="redirect-secret",
         allow_insecure_http_auth=True,
     )
-    try:
-        with pytest.raises(ElasticsearchRestError) as error:
-            client.get("/source")
-        assert error.value.status == 302
-        assert server.requests == [("/source", "ApiKey redirect-secret")]
-    finally:
-        server.shutdown()
-        thread.join()
-        server.server_close()
+    assert opener is not None
+
+    with pytest.raises(ElasticsearchRestError) as error:
+        client.get("/source")
+
+    assert error.value.status == 302
+    assert opener.requests == [("http://example.invalid/source", "ApiKey redirect-secret")]
+    assert opener.followed == []

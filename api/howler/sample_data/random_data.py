@@ -96,6 +96,10 @@ def _registered_hit_model(ds: HowlerDatastore) -> type[Hit]:
     return model
 
 
+def _keyword_fields(fields: dict[str, Any]) -> list[str]:
+    return [key for key, field in fields.items() if field.metadata and field.metadata.kind == "Keyword"]
+
+
 def create_users(ds):
     """Create  number of user accounts"""
     admin_pass = os.getenv("DEV_ADMIN_PASS", "admin") or "admin"
@@ -528,8 +532,7 @@ def create_views(ds: HowlerDatastore):
         view,
     )
 
-    fields = model_registry.flat_fields(hit_model)
-    key_list = [key for key, field in fields.items() if field.metadata and field.metadata.kind == "Keyword"]
+    key_list = _keyword_fields(model_registry.flat_fields(hit_model))
     for _ in range(10):
         query = f"{choice(key_list)}:*{choice(VALID_CHARS)}* OR {choice(key_list)}:*{choice(VALID_CHARS)}*"
         owner = choice([user.uname for user in users])
@@ -619,7 +622,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
 
         ds.hit.save(hit.howler.id, hit, refresh="wait_for")
         created_hit_ids.append(hit.howler.id)
-        analytic_service.save_from_hits(cast(Any, ds.hit.get(hit.howler.id)), cast(Any, random.choice(users)))
+        analytic_service.save_from_hits(hit, random.choice(users))
         ds.analytic.commit()
 
         if choice([True, False, False, False]):
@@ -630,7 +633,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
                     *assess_hit(
                         assessment=choice(Assessment.list()),
                         rationale=get_random_string(),
-                        hit=cast(Any, hit),
+                        hit=hit,
                     ),
                     hit_helper.update(
                         "howler.assignment",
@@ -748,11 +751,10 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
 
         ds.analytic.save(analytic.analytic_id, analytic)
 
-    fields = model_registry.flat_fields(hit_model)
-    key_list = [key for key, field in fields.items() if field.metadata and field.metadata.kind == "Keyword"]
+    key_list = _keyword_fields(model_registry.flat_fields(hit_model))
     assessments = Assessment.list()
     for _ in range(num_analytics):
-        a: Analytic = random_model_obj(cast(Any, Analytic))
+        a: Analytic = random_model_obj(Analytic)
         a.name = " ".join([get_random_word().capitalize() for _ in range(random.randint(1, 3))])
         a.detections = list(set(a.detections))
         a.owner = random.choice(users)
@@ -770,7 +772,7 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
         ds.analytic.save(a.analytic_id, a)
 
     for rule_type in ["lucene", "eql", "sigma"]:
-        a: Analytic = random_model_obj(cast(Any, Analytic))
+        a: Analytic = random_model_obj(Analytic)
         a.rule_type = rule_type
         a.name = " ".join([get_random_word().capitalize() for _ in range(random.randint(1, 3))])
         a.detections = ["Rule"]
@@ -835,8 +837,7 @@ def wipe_analytics(ds):
 def create_actions(ds: HowlerDatastore, num_actions: int = 30):
     """Create random actions"""
     hit_model = _registered_hit_model(ds)
-    fields = model_registry.flat_fields(hit_model)
-    key_list = [key for key, field in fields.items() if field.metadata and field.metadata.kind == "Keyword"]
+    key_list = _keyword_fields(model_registry.flat_fields(hit_model))
     users = ds.user.search("*:*")["items"]
 
     module_path = Path(__file__).parents[1] / "actions"

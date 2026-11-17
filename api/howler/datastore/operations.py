@@ -1,7 +1,5 @@
 from typing import Any, Iterator, Optional
 
-from pydantic import BaseModel
-
 from howler.common.exceptions import HowlerTypeError, HowlerValueError
 from howler.datastore.collection import ESCollection
 from howler.models.registry import model_registry
@@ -10,10 +8,7 @@ from howler.models.registry import model_registry
 class OdmHelper:
     def __init__(self, obj: Optional[type] = None) -> None:
         self.model_name = obj.__name__ if obj else None
-        if obj and issubclass(obj, BaseModel):
-            self.fields = model_registry.flat_fields(obj)
-        else:
-            self.fields = {}
+        self.fields = model_registry.flat_fields(obj) if obj else {}
         self.valid_fields = list(self.fields) if obj else None
 
     def list_add(

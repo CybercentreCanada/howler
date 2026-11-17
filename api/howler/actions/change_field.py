@@ -1,10 +1,11 @@
 from howler.common.loader import datastore
+from howler.datastore.howler_store import finalize_models
 from howler.datastore.operations import OdmHelper
+from howler.models import model_extensions
 from howler.models.action import VALID_TRIGGERS
 from howler.models.hit import Hit
 from howler.models.registry import model_registry
-
-hit_helper = OdmHelper(Hit)
+from howler.plugins import get_plugins
 
 OPERATION_ID = "change_field"
 
@@ -17,7 +18,9 @@ def execute(query: str, field: str, value: str, **kwargs):
         field (str): The field to update.
         value (str): The value to set it to. Must be a string.
     """
-    if field not in model_registry.flat_fields(Hit):
+    ds = datastore()
+    hit_model = ds.hit.model_class or Hit
+    if field not in model_registry.flat_fields(hit_model):
         return [
             {
                 "query": query,
@@ -30,9 +33,9 @@ def execute(query: str, field: str, value: str, **kwargs):
     report = []
 
     try:
-        datastore().hit.update_by_query(
+        ds.hit.update_by_query(
             query,
-            [hit_helper.update(field, value)],
+            [OdmHelper(hit_model).update(field, value)],
         )
 
         report.append(
@@ -58,6 +61,9 @@ def execute(query: str, field: str, value: str, **kwargs):
 
 def specification():
     """Specify various properties of the action, such as title, descriptions, permissions and input steps."""
+    hit_model = (
+        model_extensions.finalize(Hit) if model_extensions.is_finalized(Hit) else finalize_models(get_plugins())["hit"]
+    )
     return {
         "id": OPERATION_ID,
         "title": "Change Field",
@@ -70,7 +76,7 @@ def specification():
         "steps": [
             {
                 "args": {"field": [], "value": []},
-                "options": {"field": list(model_registry.flat_fields(Hit))},
+                "options": {"field": list(model_registry.flat_fields(hit_model))},
             }
         ],
         "triggers": VALID_TRIGGERS,

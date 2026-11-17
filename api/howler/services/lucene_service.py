@@ -5,7 +5,7 @@ import sys
 from collections.abc import Mapping
 from datetime import datetime, timedelta
 from hashlib import sha256
-from typing import Any, Literal, Union, cast
+from typing import Any, Literal, Union
 
 import elasticsearch
 from luqum.parser import parser
@@ -84,7 +84,7 @@ class LuceneProcessor(TreeVisitor):
     def __parse_range(low: str, value: Union[list[str], str], high: str) -> Any:
         "Generate the low, value and high components of a range check, ensuring correct types"
         if datetime_result := coerce(value, try_parse_date):
-            low_datetime_result = cast(Any, datetime.fromtimestamp(int(low) / 1000, tz=datetime_result.tzinfo))
+            low_datetime_result = datetime.fromtimestamp(int(low) / 1000, tz=datetime_result.tzinfo)
 
             high_datetime_result = datetime.fromtimestamp(int(high) / 1000, tz=datetime_result.tzinfo)
             high_datetime_result += timedelta(milliseconds=1)
@@ -266,13 +266,27 @@ def prepare_lucene_query(lucene: str, *, protect_wildcards: bool = True) -> str:
     return escaped_lucene
 
 
-def _matching_parenthesis(value: str, opening: int) -> int | None:
-    """Find the closing parenthesis for an unescaped opening parenthesis."""
-    depth = 0
+def explain_query(query: str, index_name: str) -> dict[str, Any]:
+    """Ask Elasticsearch to validate and explain a Lucene query for one index."""
+    escaped_lucene = prepare_lucene_query(query, protect_wildcards=False)
+    result = response_body(
+        datastore().hit.datastore.client.indices.validate_query(
+            q=escaped_lucene,
+            explain=True,
+            index=index_name,
+        )
+    )
+    result.pop("_shards", None)
+    for explanation in result.get("explanations", []):
+        explanation.pop("index", None)
+    return result
+
+
+def _unescaped_unquoted_characters(value: str, start: int = 0):
+    """Yield characters outside quotes, skipping Lucene escapes."""
     quoted = False
     escaped = False
-
-    for position in range(opening, len(value)):
+    for position in range(start, len(value)):
         character = value[position]
         if escaped:
             escaped = False
@@ -283,8 +297,14 @@ def _matching_parenthesis(value: str, opening: int) -> int | None:
         if character == '"':
             quoted = not quoted
             continue
-        if quoted:
-            continue
+        if not quoted:
+            yield position, character
+
+
+def _matching_parenthesis(value: str, opening: int) -> int | None:
+    """Find the closing parenthesis for an unescaped opening parenthesis."""
+    depth = 0
+    for position, character in _unescaped_unquoted_characters(value, opening):
         if character == "(":
             depth += 1
         elif character == ")":
@@ -299,21 +319,7 @@ def _top_level_comma_position(value: str) -> int | None:
     """Find the first comma that is not nested in query syntax."""
     depths = {"(": 0, "[": 0, "{": 0}
     closing = {")": "(", "]": "[", "}": "{"}
-    quoted = False
-    escaped = False
-
-    for position, character in enumerate(value):
-        if escaped:
-            escaped = False
-            continue
-        if character == "\\":
-            escaped = True
-            continue
-        if character == '"':
-            quoted = not quoted
-            continue
-        if quoted:
-            continue
+    for position, character in _unescaped_unquoted_characters(value):
         if character in depths:
             depths[character] += 1
         elif character in closing:
@@ -353,6 +359,20 @@ def _rewrite_query_wrapper(value: str, wrapper: str, argument_name: str | None =
     return value
 
 
+_QUERY_WRAPPERS = (
+    ("IndexOrDocValuesQuery", "indexQuery", ""),
+    ("ConstantScore", None, ""),
+    ("ConstantScoreQuery", None, ""),
+    ("BoostQuery", None, ""),
+    ("FieldExistsQuery", "field", "_exists_:"),
+    ("DocValuesFieldExistsQuery", "field", "_exists_:"),
+)
+_EXISTS_QUERY_PATTERNS = (
+    (re.compile(r"FieldExistsQuery\s*\[\s*field=([^\]]+)\]"), r"_exists_:\1"),
+    (re.compile(r"DocValuesFieldExistsQuery\s*\[\s*field=([^\]]+)\]"), r"_exists_:\1"),
+)
+
+
 def normalize_lucene_explanation(explanation: str) -> str:
     """Convert Elasticsearch/Lucene explain text to the stable query syntax we parse.
 
@@ -365,17 +385,13 @@ def normalize_lucene_explanation(explanation: str) -> str:
 
     for _ in range(8):
         previous = normalized
-        normalized = _rewrite_query_wrapper(normalized, "IndexOrDocValuesQuery", "indexQuery")
-        normalized = _rewrite_query_wrapper(normalized, "ConstantScore")
-        normalized = _rewrite_query_wrapper(normalized, "ConstantScoreQuery")
-        normalized = _rewrite_query_wrapper(normalized, "BoostQuery")
-        normalized = _rewrite_query_wrapper(normalized, "FieldExistsQuery", "field", "_exists_:")
-        normalized = _rewrite_query_wrapper(normalized, "DocValuesFieldExistsQuery", "field", "_exists_:")
+        for wrapper, argument_name, prefix in _QUERY_WRAPPERS:
+            normalized = _rewrite_query_wrapper(normalized, wrapper, argument_name, prefix)
         if normalized == previous:
             break
 
-    normalized = re.sub(r"FieldExistsQuery\s*\[\s*field=([^\]]+)\]", r"_exists_:\1", normalized)
-    normalized = re.sub(r"DocValuesFieldExistsQuery\s*\[\s*field=([^\]]+)\]", r"_exists_:\1", normalized)
+    for pattern, replacement in _EXISTS_QUERY_PATTERNS:
+        normalized = pattern.sub(replacement, normalized)
     normalized = re.sub(r"\bConstantScore(?:Query)?\b", "", normalized)
     normalized = LUCENE_HASH_PATTERN.sub(try_reinsert_lucene_phrase, normalized)
     return normalized.replace("@colon", ":")

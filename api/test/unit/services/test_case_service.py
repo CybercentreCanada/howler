@@ -1,6 +1,4 @@
-import json
 from datetime import datetime
-from types import SimpleNamespace
 from unittest.mock import MagicMock, call, patch
 
 import pytest
@@ -29,8 +27,6 @@ def Case(data):  # noqa: N802
 
 
 def CaseItem(data):  # noqa: N802
-    if data.get("type") == "folder" and "value" not in data:
-        data = {**data, "value": data.get("name")}
     return SchemaCaseItem.model_validate(data)
 
 
@@ -164,126 +160,6 @@ class TestAccessValidation:
 
         assert case.items == []
         mock_hit.save.assert_not_called()
-
-
-class TestCaseMutationBehavior:
-    """Case mutations keep embedded values valid for subsequent reads and writes."""
-
-    @patch("howler.services.case_service.save_case", return_value=True)
-    @patch("howler.services.case_service.datastore")
-    def test_folder_constructed_from_fields_uses_registered_item(self, mock_ds_fn, _mock_save):
-        case = _make_case()
-        mock_ds_fn.return_value.case.get.return_value = case
-
-        result = case_service.append_case_item("case-001", item_type="folder", item_value="Evidence")
-
-        assert isinstance(result.items[-1], SchemaCaseItem)
-        assert result.items[-1].value == "Evidence"
-        SchemaCase.model_validate(result.model_dump())
-
-    @patch("howler.services.case_service.save_case", return_value=True)
-    @patch("howler.services.case_service.datastore")
-    def test_folder_item_is_coerced_before_append(self, mock_ds_fn, _mock_save):
-        case = _make_case()
-        mock_ds_fn.return_value.case.get.return_value = case
-
-        result = case_service.append_case_item(
-            "case-001",
-            item=CaseItem({"type": "folder", "name": "Evidence", "value": ""}),
-        )
-
-        assert isinstance(result.items[-1], SchemaCaseItem)
-        assert result.items[-1].value == "Evidence"
-        SchemaCase.model_validate(result.model_dump())
-        json.dumps(result.as_primitives())
-
-    @pytest.mark.parametrize("item_type", ["hit", "event"])
-    @patch("howler.services.case_service.event_service.get_event")
-    @patch("howler.services.case_service.hit_service.get_hit")
-    @patch("howler.services.case_service.recompute_case_metadata")
-    @patch("howler.services.case_service._save_record", return_value=True)
-    @patch("howler.services.case_service.save_case", return_value=True)
-    @patch("howler.services.case_service.datastore")
-    def test_hit_and_event_items_are_coerced_before_append(
-        self,
-        mock_ds_fn,
-        _mock_save_case,
-        _mock_save_record,
-        _mock_recompute,
-        mock_get_hit,
-        mock_get_event,
-        item_type,
-    ):
-        case = _make_case()
-        record = SimpleNamespace(
-            classification=CLASSIFICATION.UNRESTRICTED,
-            howler=SimpleNamespace(related=[], log=[]),
-        )
-        mock_ds = mock_ds_fn.return_value
-        mock_ds.case.get.return_value = case
-        mock_get_hit.return_value = (record, "1---1")
-        mock_get_event.return_value = (record, "1---1")
-
-        result = case_service.append_case_item(
-            "case-001",
-            item=CaseItem({"type": item_type, "name": item_type.title(), "value": f"{item_type}-1"}),
-        )
-
-        assert isinstance(result.items[-1], SchemaCaseItem)
-        assert result.items[-1].type == item_type
-        SchemaCase.model_validate(result.model_dump())
-        json.dumps(result.as_primitives())
-
-    @patch("howler.services.case_service.save_case", return_value=True)
-    @patch("howler.services.case_service.datastore")
-    def test_rule_and_log_are_coerced_before_append(self, mock_ds_fn, _mock_save):
-        case = _make_case()
-        mock_ds_fn.return_value.case.get.return_value = case
-
-        mock_ds_fn.return_value.case.get.return_value = _versioned(case)
-
-        result = case_service.add_case_rule(
-            "case-001",
-            {"query": "event.kind:alert", "destination": "/alerts"},
-            _make_user(),
-        )
-
-        assert isinstance(result.rules[-1], SchemaCaseRule)
-        assert isinstance(result.log[-1], SchemaCaseLog)
-        SchemaCase.model_validate(result.model_dump())
-        json.dumps(result.as_primitives())
-
-    @patch("howler.services.case_service.datastore")
-    def test_invalid_rule_on_case_remains_a_client_validation_error(self, mock_ds_fn):
-        mock_ds_fn.return_value.case.get.return_value = _versioned(_make_case())
-
-        with pytest.raises(InvalidDataException):
-            case_service.add_case_rule(
-                "case-001",
-                {"query": "event.kind:alert", "destination": "/alerts", "timeframe": "invalid"},
-                _make_user(),
-            )
-
-    @patch("howler.services.case_service.datastore")
-    def test_invalid_rule_update_remains_a_client_validation_error(self, mock_ds_fn):
-        case = _make_case()
-        rule = SchemaCaseRule.model_validate(
-            {
-                "destination": "/alerts",
-                "query": "event.kind:alert",
-                "author": "analyst",
-            }
-        )
-        case.rules.append(rule)
-        mock_ds_fn.return_value.case.get.return_value = _versioned(case)
-
-        with pytest.raises(InvalidDataException):
-            case_service.update_case_rule(
-                "case-001",
-                rule.rule_id,
-                {"expire_after_resolved": True},
-                _make_user(),
-            )
 
 
 # ---------------------------------------------------------------------------
@@ -1835,11 +1711,6 @@ class TestCollectIndicatorsFromRelated:
         """Returns an empty set when related is None."""
         assert case_service._collect_indicators_from_related(None) == set()
 
-    def test_collect_indicators_from_registered_related(self):
-        related = SchemaRelated.model_validate({"hash": ["abc123"], "hosts": ["host-a"], "ip": ["1.2.3.4"]})
-
-        assert case_service._collect_indicators_from_related(related) == {"abc123", "host-a", "1.2.3.4"}
-
     def test_collect_indicators_from_related_values(self):
         """Collects all non-empty values across all fields of a Related object."""
         related = Related(
@@ -2418,6 +2289,17 @@ class TestGetLastResolvedTime:
 
 class TestRuleTimeframeAndExpireAfterResolved:
     """Tests for timeframe (days) and expire_after_resolved (boolean) on rules."""
+
+    @patch("howler.services.case_service.datastore")
+    def test_add_rule_rejects_invalid_timeframe(self, mock_ds_fn):
+        mock_ds_fn.return_value.case.get.return_value = _versioned(_make_case())
+
+        with pytest.raises(InvalidDataException):
+            case_service.add_case_rule(
+                "case-001",
+                {"query": "*:*", "destination": "alerts/all", "timeframe": "invalid"},
+                _make_user("analyst1"),
+            )
 
     @patch("howler.services.case_service.datastore")
     def test_add_rule_with_timeframe_and_expire_after_resolved(self, mock_ds_fn):

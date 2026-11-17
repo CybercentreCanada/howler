@@ -215,44 +215,34 @@ def _make_account_user() -> dict:
     ).as_primitives()
 
 
-def test_save_user_account_accepts_get_user_roundtrip():
+@pytest.mark.parametrize(
+    ("payload_changes", "expected_name"),
+    [
+        (
+            {"roles": ["user"], "username": "alice", "has_password": True, "name": "Alice Updated"},
+            "Alice Updated",
+        ),
+        ({"roles": ["user", "admin"], "username": "alice"}, "Alice"),
+    ],
+)
+def test_save_user_account_normalizes_get_aliases_without_role_escalation(payload_changes, expected_name):
     current = _make_account_user()
     storage = MagicMock()
     storage.user.get_if_exists.return_value = current
     storage.user.save.return_value = True
 
-    # GET /user/<username> presents these fields as aliases/metadata, then the SDK sends
-    # the response back with a changed editable field.
-    payload = {**current, "roles": current["type"], "username": current["uname"], "has_password": True}
-    payload["name"] = "Alice Updated"
+    payload = {**current, **payload_changes}
 
     with patch.object(user_service, "datastore", return_value=storage):
         saved = user_service.save_user_account("alice", payload, {"uname": "alice", "type": ["user"]})
 
     assert saved is True
     saved_user = storage.user.save.call_args.args[1]
-    assert saved_user["name"] == "Alice Updated"
+    assert saved_user["name"] == expected_name
+    assert saved_user["type"] == ["user"]
     assert saved_user["uname"] == "alice"
     assert "roles" not in saved_user
     assert "username" not in saved_user
-    assert saved_user["api_quota"] == current["api_quota"]
-    assert saved_user["apikeys"] == current["apikeys"]
-
-
-def test_save_user_account_does_not_allow_roles_alias_to_escalate_type():
-    current = _make_account_user()
-    storage = MagicMock()
-    storage.user.get_if_exists.return_value = current
-    storage.user.save.return_value = True
-
-    payload = {**current, "roles": ["user", "admin"], "username": "alice"}
-
-    with patch.object(user_service, "datastore", return_value=storage):
-        saved = user_service.save_user_account("alice", payload, {"uname": "alice", "type": ["user"]})
-
-    assert saved is True
-    saved_user = storage.user.save.call_args.args[1]
-    assert saved_user["type"] == ["user"]
     assert saved_user["api_quota"] == current["api_quota"]
     assert saved_user["apikeys"] == current["apikeys"]
 

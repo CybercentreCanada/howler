@@ -1,13 +1,11 @@
 from collections.abc import Callable
-from copy import deepcopy
-from typing import Any, cast
+from typing import Any
 
 from elasticsearch import BadRequestError
 from flask import request
 
 from howler.api import bad_request, forbidden, internal_error, make_subapi_blueprint, ok, service_unavailable
 from howler.api.search_utils import InvalidScrollTokenException
-from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.logging.audit import audit
 from howler.common.swagger import generate_swagger_docs
@@ -27,7 +25,7 @@ logger = get_logger(__file__)
 
 def _audit_request(user: User, func: Callable[..., Any], **fields):
     """Emit an audit event with search-specific request details."""
-    audit([], fields, cast(Any, user).uname, user, func)
+    audit([], fields, user.uname, user, func)
 
 
 @generate_swagger_docs()
@@ -217,25 +215,8 @@ def explain_query(index, **kwargs):
 
     _audit_request(user, explain_query, index=index, query=query)
 
-    # Protect Lucene phrases before asking Elasticsearch to explain the query.
-    escaped_lucene = lucene_service.prepare_lucene_query(query, protect_wildcards=False)
-
     try:
-        result = deepcopy(
-            lucene_service.response_body(
-                datastore().hit.datastore.client.indices.validate_query(
-                    q=escaped_lucene,
-                    explain=True,
-                    index=collection().index_name,
-                )
-            )
-        )
-
-        result.pop("_shards", None)
-
-        for explanation in result["explanations"]:
-            explanation.pop("index", None)
-
+        result = lucene_service.explain_query(query, collection().index_name)
         return ok(result)
     except Exception as e:  # pragma: no cover
         logger.exception(f"Exception on query {query}")

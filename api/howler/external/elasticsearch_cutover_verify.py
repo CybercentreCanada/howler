@@ -21,28 +21,39 @@ from pydantic import BaseModel, ValidationError
 
 from howler.common.exceptions import HowlerAttributeError, HowlerRuntimeError
 from howler.external.elasticsearch_rest import (
+    NO_MIGRATION_NEEDED,
+    SOURCE_STACK_VERSION,
     ElasticsearchRestClient,
     ElasticsearchRestError,
-    collect_primary_shard_stats,
-    credentials_from_environment,
+    add_connection_arguments,
+    canonical_ilm_generation,
+    client_from_args,
+    collect_index_inventory,
+    index_setting,
+    is_closed_index,
     load_configured_plugins,
     primary_shard_sync_issues,
+    strict_int,
+    walk_deprecations,
+    write_json_report,
 )
 
 TARGET_VERSION = "9.5.2"
-NO_MIGRATION_NEEDED = "NO_MIGRATION_NEEDED"
 DEFAULT_TOTAL_FIELDS_LIMIT = 1000
-_ILM_COLLECTIONS = frozenset({"hit", "event", "case"})
 _COLLECTION_MODELS: tuple[tuple[str, type[BaseModel] | None], ...] = ()
+
+
+def _issue(target: list[dict[str, Any]], check: str, message: str, **fields: Any) -> None:
+    target.append({"check": check, "message": message, **fields})
 
 
 def _collection_models() -> tuple[tuple[str, type[BaseModel] | None], ...]:
     """Use application schema finalization without constructing a datastore or reconciling Elasticsearch."""
     global _COLLECTION_MODELS
-    plugins = load_configured_plugins()
     if _COLLECTION_MODELS:
         return _COLLECTION_MODELS
 
+    plugins = load_configured_plugins()
     from howler.datastore.howler_store import finalize_models
 
     _COLLECTION_MODELS = tuple(finalize_models(plugins).items())
@@ -59,10 +70,11 @@ def _prefix() -> str:
 def _configured_ilm(collection: str) -> bool:
     """Resolve ILM using the same global/per-collection defaults as Howler startup."""
     from howler.config_models import ILMIndexConfig, config
+    from howler.datastore.howler_store import ILM_ENABLED_INDEXES
 
     index_config = config.datastore.ilm.indices.get(collection)
     if index_config is None:
-        index_config = ILMIndexConfig(enabled=collection in _ILM_COLLECTIONS)
+        index_config = ILMIndexConfig(enabled=collection in ILM_ENABLED_INDEXES)
     return bool(config.datastore.ilm.enabled and index_config.enabled)
 
 
@@ -103,28 +115,6 @@ def _collection_shards_replicas(collection: str) -> tuple[int, int]:
     return shards, replicas
 
 
-def _index_settings(data: dict[str, Any]) -> dict[str, Any]:
-    settings = data.get("settings", {})
-    if isinstance(settings.get("index"), dict):
-        return settings["index"]
-    return settings
-
-
-def _setting(data: dict[str, Any], flat_name: str, nested: tuple[str, ...]) -> Any:
-    settings = data.get("settings", {})
-    if flat_name in settings:
-        return settings[flat_name]
-    value: Any = settings
-    for position, part in enumerate(nested):
-        if not isinstance(value, dict):
-            return None
-        remaining = ".".join(nested[position:])
-        if remaining in value:
-            return value[remaining]
-        value = value.get(part)
-    return value
-
-
 def _collection_indices(alias: str, ilm: bool, indices: dict[str, Any]) -> tuple[list[str], list[str]]:
     """Return configured-layout backing indices and all indices attached to the alias."""
     attached = sorted(name for name, data in indices.items() if alias in data.get("aliases", {}))
@@ -136,10 +126,6 @@ def _collection_indices(alias: str, ilm: bool, indices: dict[str, Any]) -> tuple
         expected_layout = [hot] if hot in indices else []
     backers = sorted(set(expected_layout) | set(attached))
     return backers, attached
-
-
-def _is_closed(index_data: dict[str, Any]) -> bool:
-    return str(index_data.get("status", "")).lower() in {"close", "closed"}
 
 
 def _configured_backing_index_names(expectations: dict[str, dict[str, Any]], indices: dict[str, Any]) -> set[str]:
@@ -199,10 +185,7 @@ def _mapping_defaults(field_type: str | None) -> dict[str, Any]:
         defaults["doc_values"] = False
     else:
         defaults["doc_values"] = True
-    if field_type in {"object", "nested"}:
-        defaults["index"] = True
-    else:
-        defaults["index"] = True
+    defaults["index"] = True
     if field_type == "text":
         defaults.update({"norms": True, "index_options": "positions", "fielddata": False})
     elif field_type == "keyword":
@@ -233,6 +216,18 @@ def _mapping_matches(expected: dict[str, Any], actual: dict[str, Any]) -> bool:
     return _normalized_mapping(expected) == _normalized_mapping(actual)
 
 
+def _mapping_differences(
+    expected_mapping: dict[str, Any], actual_mapping: dict[str, Any]
+) -> list[tuple[str, dict[str, Any], dict[str, Any] | None]]:
+    expected_properties = _flatten_properties(expected_mapping.get("properties", {}))
+    actual_properties = _flatten_properties(actual_mapping.get("properties", {}))
+    return [
+        (field, expected, actual_properties.get(field))
+        for field, expected in expected_properties.items()
+        if actual_properties.get(field) is None or not _mapping_matches(expected, actual_properties[field])
+    ]
+
+
 def _template_key(template: Any) -> str | None:
     if isinstance(template, dict) and len(template) == 1:
         return next(iter(template))
@@ -257,7 +252,6 @@ def _merge_dynamic_templates(templates: list[dict[str, Any]]) -> list[dict[str, 
 
 def _template_checks(
     collection: str,
-    alias: str,
     index: str,
     expected: list[dict[str, Any]],
     actual: list[dict[str, Any]],
@@ -266,9 +260,12 @@ def _template_checks(
     *,
     schema_less: bool = False,
 ) -> None:
-    source_expected = expected
-    raw_names = [_template_key(template) for template in source_expected]
-    duplicate_names = sorted({name for name in raw_names if name is not None and raw_names.count(name) > 1})
+    definitions: dict[str, list[Any]] = {}
+    for template in expected:
+        name = _template_key(template)
+        if name is not None:
+            definitions.setdefault(name, []).append(template[name])
+    duplicate_names = sorted(name for name, values in definitions.items() if len(values) > 1)
     expected = _merge_dynamic_templates(expected)
     actual = _merge_dynamic_templates(actual)
     expected_names = [_template_key(template) for template in expected]
@@ -276,13 +273,12 @@ def _template_checks(
     expected_name_set = {name for name in expected_names if name is not None}
     invalid_templates = [name for name in (*expected_names, *actual_names) if name is None]
     expected_active_order = [name for name in expected_names if name is not None]
-    actual_active = [template for template in actual if _template_key(template) in expected_name_set]
     actual_active_order = [name for name in actual_names if name in expected_name_set]
-    expected_by_name = {
-        _template_key(template): template for template in expected if _template_key(template) is not None
-    }
+    expected_by_name = {name: template for template in expected if (name := _template_key(template)) is not None}
     actual_by_name = {
-        _template_key(template): template for template in actual_active if _template_key(template) is not None
+        name: template
+        for template in actual
+        if (name := _template_key(template)) is not None and name in expected_name_set
     }
     missing = sorted(name for name in expected_name_set if name not in actual_by_name)
     changed = sorted(
@@ -303,55 +299,44 @@ def _template_checks(
     if duplicate_names:
         shadowed = {
             name: {
-                "shadowed": [template[name] for template in source_expected if _template_key(template) == name][:-1],
-                "effective": [template[name] for template in source_expected if _template_key(template) == name][-1],
+                "shadowed": definitions[name][:-1],
+                "effective": definitions[name][-1],
             }
             for name in duplicate_names
         }
-        warnings.append(
-            {
-                "check": "shadowed_dynamic_template_name",
-                "collection": collection,
-                "index": index,
-                "message": (
-                    "The source contract declares duplicate dynamic-template names; Elasticsearch keeps the last "
-                    "definition at the first position."
-                ),
-                "names": duplicate_names,
-                "shadowed_definitions": shadowed,
-            }
+        _issue(
+            warnings,
+            "shadowed_dynamic_template_name",
+            "The source contract declares duplicate dynamic-template names; Elasticsearch keeps the last "
+            "definition at the first position.",
+            collection=collection,
+            index=index,
+            names=duplicate_names,
+            shadowed_definitions=shadowed,
         )
     extra = sorted(name for name in actual_names if name is not None and name not in expected_name_set)
     if extra:
-        warnings.append(
-            {
-                "check": "obsolete_dynamic_templates",
-                "collection": collection,
-                "index": index,
-                "message": "Extra dynamic templates are retained; verify they belong to disabled extensions.",
-                "templates": extra,
-            }
+        _issue(
+            warnings,
+            "obsolete_dynamic_templates",
+            "Extra dynamic templates are retained; verify they belong to disabled extensions.",
+            collection=collection,
+            index=index,
+            templates=extra,
         )
 
 
-def _critical_deprecations(value: Any, path: tuple[str, ...] = ()) -> list[dict[str, Any]]:
-    found: list[dict[str, Any]] = []
-    if isinstance(value, dict):
-        if value.get("level") == "critical":
-            found.append(
-                {
-                    "path": ".".join(path),
-                    "message": str(value.get("message", "Critical deprecation")),
-                    "details": value.get("details"),
-                    "_meta": value.get("_meta", value.get("meta")),
-                }
-            )
-        for key, child in value.items():
-            found.extend(_critical_deprecations(child, (*path, str(key))))
-    elif isinstance(value, list):
-        for index, child in enumerate(value):
-            found.extend(_critical_deprecations(child, (*path, str(index))))
-    return found
+def _critical_deprecations(value: Any) -> list[dict[str, Any]]:
+    return [
+        {
+            "path": ".".join(path),
+            "message": str(issue.get("message", "Critical deprecation")),
+            "details": issue.get("details"),
+            "_meta": issue.get("_meta", issue.get("meta")),
+        }
+        for path, issue in walk_deprecations(value)
+        if issue.get("level") == "critical"
+    ]
 
 
 def _contains_reindex_required(value: Any) -> bool:
@@ -387,11 +372,6 @@ def _alias_contract(data: dict[str, Any]) -> dict[str, Any]:
     return {name: deepcopy(alias_data) for name, alias_data in sorted(aliases.items())}
 
 
-def _canonical_generation(alias: str, index: str) -> int | None:
-    match = re.fullmatch(rf"{re.escape(alias)}-(\d{{6}})", index)
-    return int(match.group(1)) if match else None
-
-
 def _empty_unwritten_index(data: dict[str, Any]) -> bool:
     shards = data.get("primary_shards")
     return (
@@ -402,27 +382,19 @@ def _empty_unwritten_index(data: dict[str, Any]) -> bool:
     )
 
 
-def _shard_sequence_contract(data: dict[str, Any]) -> dict[str, tuple[int, int, int]] | None:
+def _shard_sequence_contract(data: dict[str, Any]) -> dict[str, tuple[int, int]] | None:
     shards = data.get("primary_shards")
     if not isinstance(shards, dict) or not shards:
         return None
-    result: dict[str, tuple[int, int, int]] = {}
+    result: dict[str, tuple[int, int]] = {}
     for shard_id, shard in shards.items():
         if not isinstance(shard, dict):
             return None
-        doc_count = shard.get("doc_count")
-        max_seq_no = shard.get("max_seq_no")
-        global_checkpoint = shard.get("global_checkpoint")
-        if (
-            isinstance(doc_count, bool)
-            or not isinstance(doc_count, int)
-            or isinstance(max_seq_no, bool)
-            or not isinstance(max_seq_no, int)
-            or isinstance(global_checkpoint, bool)
-            or not isinstance(global_checkpoint, int)
-        ):
+        doc_count = strict_int(shard.get("doc_count"))
+        max_seq_no = strict_int(shard.get("max_seq_no"))
+        if doc_count is None or max_seq_no is None:
             return None
-        result[str(shard_id)] = (doc_count, max_seq_no, global_checkpoint)
+        result[str(shard_id)] = (doc_count, max_seq_no)
     return result
 
 
@@ -438,37 +410,33 @@ def _check_ilm_template_and_policy(  # noqa: C901
     expected_template = expectation["ilm_template"]
     live_template = inventory.get("ilm_templates", {}).get(collection)
     if not isinstance(live_template, dict):
-        blockers.append(
-            {
-                "check": "ilm_template_missing",
-                "collection": collection,
-                "template": template_name,
-                "message": "The configured ILM composable index template is missing.",
-            }
+        _issue(
+            blockers,
+            "ilm_template_missing",
+            "The configured ILM composable index template is missing.",
+            collection=collection,
+            template=template_name,
         )
     else:
         actual_patterns = live_template.get("index_patterns", [])
         if actual_patterns != [f"{alias}-*"]:
-            blockers.append(
-                {
-                    "check": "ilm_template_patterns",
-                    "collection": collection,
-                    "expected": [f"{alias}-*"],
-                    "actual": actual_patterns,
-                    "message": "ILM template index_patterns do not match the configured collection.",
-                }
+            _issue(
+                blockers,
+                "ilm_template_patterns",
+                "ILM template index_patterns do not match the configured collection.",
+                collection=collection,
+                expected=[f"{alias}-*"],
+                actual=actual_patterns,
             )
         actual_template = live_template.get("template", {})
         actual_settings = {"settings": actual_template.get("settings", {})}
-        expected_settings = expected_template.get("settings", {})
         expected_policy = f"{alias}_policy"
-        for setting_name, nested in (
-            ("index.lifecycle.name", ("index", "lifecycle", "name")),
-            ("index.lifecycle.rollover_alias", ("index", "lifecycle", "rollover_alias")),
-            ("index.mapping.total_fields.limit", ("index", "mapping", "total_fields", "limit")),
+        for setting_name in (
+            "index.lifecycle.name",
+            "index.lifecycle.rollover_alias",
+            "index.mapping.total_fields.limit",
         ):
-            expected_value = _setting({"settings": expected_settings}, setting_name, nested)
-            actual_value = _setting(actual_settings, setting_name, nested)
+            actual_value = index_setting(actual_settings, setting_name)
             wanted = expected_policy if setting_name == "index.lifecycle.name" else alias
             if setting_name == "index.mapping.total_fields.limit":
                 wanted = expectation["total_fields_limit"]
@@ -476,46 +444,38 @@ def _check_ilm_template_and_policy(  # noqa: C901
                     actual_value = int(actual_value)
                 except (TypeError, ValueError):
                     actual_value = None
-            if actual_value != wanted or expected_value != wanted:
-                blockers.append(
-                    {
-                        "check": "ilm_template_setting",
-                        "collection": collection,
-                        "setting": setting_name,
-                        "expected": wanted,
-                        "actual": actual_value,
-                        "message": "ILM template settings do not match the finalized Howler contract.",
-                    }
+            if actual_value != wanted:
+                _issue(
+                    blockers,
+                    "ilm_template_setting",
+                    "ILM template settings do not match the finalized Howler contract.",
+                    collection=collection,
+                    setting=setting_name,
+                    expected=wanted,
+                    actual=actual_value,
                 )
 
         actual_mapping = actual_template.get("mappings", {})
         expected_mapping = expected_template.get("mappings", {})
         if actual_mapping.get("dynamic", True) != expected_mapping.get("dynamic", True):
-            blockers.append(
-                {
-                    "check": "ilm_template_mapping",
-                    "collection": collection,
-                    "message": "ILM template mapping-level dynamic behavior differs from the schema.",
-                }
+            _issue(
+                blockers,
+                "ilm_template_mapping",
+                "ILM template mapping-level dynamic behavior differs from the schema.",
+                collection=collection,
             )
-        expected_properties = _flatten_properties(expected_mapping.get("properties", {}))
-        actual_properties = _flatten_properties(actual_mapping.get("properties", {}))
-        for field, expected_definition in expected_properties.items():
-            actual_definition = actual_properties.get(field)
-            if actual_definition is None or not _mapping_matches(expected_definition, actual_definition):
-                blockers.append(
-                    {
-                        "check": "ilm_template_property",
-                        "collection": collection,
-                        "property": field,
-                        "message": "ILM template does not contain the expected property definition.",
-                        "expected": expected_definition,
-                        "actual": actual_definition,
-                    }
-                )
+        for field, expected_definition, actual_definition in _mapping_differences(expected_mapping, actual_mapping):
+            _issue(
+                blockers,
+                "ilm_template_property",
+                "ILM template does not contain the expected property definition.",
+                collection=collection,
+                property=field,
+                expected=expected_definition,
+                actual=actual_definition,
+            )
         _template_checks(
             collection,
-            alias,
             template_name,
             expected_mapping.get("dynamic_templates", []),
             actual_mapping.get("dynamic_templates", []),
@@ -529,13 +489,12 @@ def _check_ilm_template_and_policy(  # noqa: C901
     hot_actions = phases.get("hot", {}).get("actions", {}) if isinstance(phases, dict) else {}
     rollover = hot_actions.get("rollover") if isinstance(hot_actions, dict) else None
     if not isinstance(rollover, dict):
-        blockers.append(
-            {
-                "check": "ilm_policy_rollover",
-                "collection": collection,
-                "policy": f"{alias}_policy",
-                "message": "ILM policy is missing or has no hot-phase rollover action.",
-            }
+        _issue(
+            blockers,
+            "ilm_policy_rollover",
+            "ILM policy is missing or has no hot-phase rollover action.",
+            collection=collection,
+            policy=f"{alias}_policy",
         )
 
 
@@ -553,8 +512,8 @@ def _allowed_alias_flip(before: dict[str, Any], after: dict[str, Any], alias: st
 
 
 def _sequence_drift(
-    before: dict[str, tuple[int, int, int]],
-    after: dict[str, tuple[int, int, int]],
+    before: dict[str, tuple[int, int]],
+    after: dict[str, tuple[int, int]],
 ) -> dict[str, dict[str, dict[str, int]]] | None:
     """Return per-shard document/sequence drift, or None when shard layouts differ."""
     if before.keys() != after.keys():
@@ -562,14 +521,75 @@ def _sequence_drift(
 
     changes: dict[str, dict[str, dict[str, int]]] = {}
     for shard_id in sorted(before):
-        before_count, before_max_seq_no, before_checkpoint = before[shard_id]
-        after_count, after_max_seq_no, _ = after[shard_id]
+        before_count, before_max_seq_no = before[shard_id]
+        after_count, after_max_seq_no = after[shard_id]
         if before_count != after_count or before_max_seq_no != after_max_seq_no:
             changes[shard_id] = {
                 "baseline": {"doc_count": before_count, "max_seq_no": before_max_seq_no},
                 "current": {"doc_count": after_count, "max_seq_no": after_max_seq_no},
             }
     return changes
+
+
+def _post_baseline_index_contract(
+    collection: str,
+    alias: str,
+    kind: str,
+    index: str,
+    candidates: list[str],
+    attached: list[str],
+    indices: dict[str, Any],
+    blockers: list[dict[str, Any]],
+) -> bool:
+    """Validate the common empty, single-alias, single-write-index post-baseline contract."""
+    is_new_collection = kind == "new_collection"
+
+    def check_empty() -> bool:
+        if all(_empty_unwritten_index(indices[name]) for name in candidates):
+            return True
+        fields = {"indices": candidates} if is_new_collection else {"index": index}
+        _issue(
+            blockers,
+            f"baseline_{kind}_nonempty",
+            "A collection initialized after the baseline must still be empty and unwritten."
+            if is_new_collection
+            else "A rollover index created after the baseline must be empty and unwritten.",
+            collection=collection,
+            **fields,
+        )
+        return False
+
+    if not is_new_collection and not check_empty():
+        return False
+
+    aliases = _alias_contract(indices[index])
+    if set(aliases) != {alias}:
+        _issue(
+            blockers,
+            f"baseline_{kind}_aliases",
+            "A newly initialized index may carry only its configured Howler alias."
+            if is_new_collection
+            else "A rollover generation may carry only its configured Howler alias.",
+            collection=collection,
+            index=index,
+            aliases=aliases,
+        )
+        return False
+
+    write_indices = _effective_write_indices(alias, attached, indices)
+    if write_indices != [index]:
+        _issue(
+            blockers,
+            f"baseline_{kind}_write_index",
+            "Newly initialized collection must have one configured write index."
+            if is_new_collection
+            else "The new rollover generation must be the only write index.",
+            collection=collection,
+            expected=index if is_new_collection else [index],
+            actual=write_indices,
+        )
+        return False
+    return check_empty() if is_new_collection else True
 
 
 def _compare_baseline(  # noqa: C901
@@ -584,34 +604,31 @@ def _compare_baseline(  # noqa: C901
     accepted_sequence_drift = accepted_sequence_drift or set()
     baseline_prefix = baseline.get("index_prefix")
     if baseline_prefix != prefix:
-        blockers.append(
-            {
-                "check": "baseline_index_prefix",
-                "expected": prefix,
-                "actual": baseline_prefix,
-                "message": "Baseline index_prefix must exactly match the deployed datastore prefix.",
-            }
+        _issue(
+            blockers,
+            "baseline_index_prefix",
+            "Baseline index_prefix must exactly match the deployed datastore prefix.",
+            expected=prefix,
+            actual=baseline_prefix,
         )
         return
 
     old_indices = _baseline_indices(baseline, prefix)
     new_indices = _baseline_indices({"inventory": current}, prefix)
     if not old_indices:
-        blockers.append(
-            {
-                "check": "baseline_no_prefix_indices",
-                "message": f"Baseline contains no Howler indices using configured prefix {prefix!r}.",
-            }
+        _issue(
+            blockers,
+            "baseline_no_prefix_indices",
+            f"Baseline contains no Howler indices using configured prefix {prefix!r}.",
         )
     old_names, new_names = set(old_indices), set(new_indices)
     missing_names = old_names - new_names
     if missing_names:
-        blockers.append(
-            {
-                "check": "baseline_index_missing",
-                "message": "Every baseline Howler index must remain present; a missing index may indicate data loss.",
-                "indices": sorted(missing_names),
-            }
+        _issue(
+            blockers,
+            "baseline_index_missing",
+            "Every baseline Howler index must remain present; a missing index may indicate data loss.",
+            indices=sorted(missing_names),
         )
 
     permitted_new: set[str] = set()
@@ -626,10 +643,8 @@ def _compare_baseline(  # noqa: C901
 
         if not old_collection_present and current_new:
             if ilm:
-                canonical = [name for name in current_new if _canonical_generation(alias, name) is not None]
-                expected_write = (
-                    max(canonical, key=lambda name: _canonical_generation(alias, name) or -1) if canonical else None
-                )
+                canonical = [name for name in current_new if canonical_ilm_generation(alias, name) is not None]
+                expected_write = canonical[0] if len(canonical) == 1 else None
                 valid_layout = len(canonical) == 1 and len(current_new) == len(canonical) == len(current_backers)
             else:
                 hot = f"{alias}_hot"
@@ -637,172 +652,112 @@ def _compare_baseline(  # noqa: C901
                 expected_write = hot if len(current_backers) == 1 and current_backers[0] == hot else None
                 valid_layout = current_new == [hot] and current_backers == [hot]
             if not valid_layout or expected_write is None or current_attached != [expected_write]:
-                blockers.append(
-                    {
-                        "check": "baseline_new_collection_layout",
-                        "collection": collection,
-                        "indices": current_new,
-                        "message": (
-                            "A collection initialized after the baseline must have exactly its configured empty "
-                            "layout and alias."
-                        ),
-                    }
+                _issue(
+                    blockers,
+                    "baseline_new_collection_layout",
+                    "A collection initialized after the baseline must have exactly its configured empty "
+                    "layout and alias.",
+                    collection=collection,
+                    indices=current_new,
                 )
                 continue
-            alias_contract = _alias_contract(new_indices[expected_write])
-            if set(alias_contract) != {alias}:
-                blockers.append(
-                    {
-                        "check": "baseline_new_collection_aliases",
-                        "collection": collection,
-                        "index": expected_write,
-                        "aliases": alias_contract,
-                        "message": "A newly initialized index may carry only its configured Howler alias.",
-                    }
-                )
-                continue
-            write_indices = _effective_write_indices(alias, current_attached, new_indices)
-            if write_indices != [expected_write]:
-                blockers.append(
-                    {
-                        "check": "baseline_new_collection_write_index",
-                        "collection": collection,
-                        "expected": expected_write,
-                        "actual": write_indices,
-                        "message": "Newly initialized collection must have one configured write index.",
-                    }
-                )
-                continue
-            if not all(_empty_unwritten_index(new_indices[name]) for name in current_new):
-                blockers.append(
-                    {
-                        "check": "baseline_new_collection_nonempty",
-                        "collection": collection,
-                        "indices": current_new,
-                        "message": "A collection initialized after the baseline must still be empty and unwritten.",
-                    }
-                )
+            if not _post_baseline_index_contract(
+                collection,
+                alias,
+                "new_collection",
+                expected_write,
+                current_new,
+                current_attached,
+                new_indices,
+                blockers,
+            ):
                 continue
             permitted_new.update(current_new)
-            warnings.append(
-                {
-                    "check": "baseline_new_empty_collection",
-                    "collection": collection,
-                    "indices": current_new,
-                    "message": "A configured collection absent from the baseline was initialized empty after it.",
-                }
+            _issue(
+                warnings,
+                "baseline_new_empty_collection",
+                "A configured collection absent from the baseline was initialized empty after it.",
+                collection=collection,
+                indices=current_new,
             )
             continue
 
         if ilm and old_collection_present:
-            new_generations = [name for name in current_new if _canonical_generation(alias, name) is not None]
+            new_generations = [name for name in current_new if canonical_ilm_generation(alias, name) is not None]
             baseline_write_indices = _effective_write_indices(alias, old_attached, old_indices)
             baseline_generation = (
-                _canonical_generation(alias, baseline_write_indices[0]) if len(baseline_write_indices) == 1 else None
+                canonical_ilm_generation(alias, baseline_write_indices[0]) if len(baseline_write_indices) == 1 else None
             )
             if new_generations:
-                new_generation_number = _canonical_generation(alias, new_generations[0])
+                new_generation_number = canonical_ilm_generation(alias, new_generations[0])
                 if (
                     len(new_generations) != 1
                     or baseline_generation is None
                     or new_generation_number is None
                     or new_generation_number <= baseline_generation
                 ):
-                    blockers.append(
-                        {
-                            "check": "baseline_rollover_generation",
-                            "collection": collection,
-                            "indices": new_generations,
-                            "message": (
-                                "At most one new canonical ILM generation above the baseline write index is allowed."
-                            ),
-                        }
+                    _issue(
+                        blockers,
+                        "baseline_rollover_generation",
+                        "At most one new canonical ILM generation above the baseline write index is allowed.",
+                        collection=collection,
+                        indices=new_generations,
                     )
                     continue
                 new_generation = new_generations[0]
-                if not _empty_unwritten_index(new_indices[new_generation]):
-                    blockers.append(
-                        {
-                            "check": "baseline_rollover_nonempty",
-                            "collection": collection,
-                            "index": new_generation,
-                            "message": "A rollover index created after the baseline must be empty and unwritten.",
-                        }
-                    )
-                    continue
-                if set(_alias_contract(new_indices[new_generation])) != {alias}:
-                    blockers.append(
-                        {
-                            "check": "baseline_rollover_aliases",
-                            "collection": collection,
-                            "index": new_generation,
-                            "aliases": _alias_contract(new_indices[new_generation]),
-                            "message": "A rollover generation may carry only its configured Howler alias.",
-                        }
-                    )
-                    continue
-                current_write_indices = _effective_write_indices(alias, current_attached, new_indices)
-                if current_write_indices != [new_generation]:
-                    blockers.append(
-                        {
-                            "check": "baseline_rollover_write_index",
-                            "collection": collection,
-                            "expected": [new_generation],
-                            "actual": current_write_indices,
-                            "message": "The new rollover generation must be the only write index.",
-                        }
-                    )
+                if not _post_baseline_index_contract(
+                    collection,
+                    alias,
+                    "rollover",
+                    new_generation,
+                    [new_generation],
+                    current_attached,
+                    new_indices,
+                    blockers,
+                ):
                     continue
                 permitted_new.add(new_generation)
                 rollover_old_writes[baseline_write_indices[0]] = alias
-                warnings.append(
-                    {
-                        "check": "baseline_ilm_rollover",
-                        "collection": collection,
-                        "index": new_generation,
-                        "message": "One empty ILM generation rolled over during the quiesced baseline window.",
-                    }
+                _issue(
+                    warnings,
+                    "baseline_ilm_rollover",
+                    "One empty ILM generation rolled over during the quiesced baseline window.",
+                    collection=collection,
+                    index=new_generation,
                 )
 
     unexplained_new = new_names - old_names - permitted_new
-    unexplained_new -= {name for name, data in new_indices.items() if _is_closed(data)}
+    unexplained_new -= {name for name, data in new_indices.items() if is_closed_index(data)}
     if unexplained_new:
-        blockers.append(
-            {
-                "check": "baseline_unexpected_indices",
-                "message": (
-                    "New Howler-prefixed indices are not an allowed empty initialization or single-generation rollover."
-                ),
-                "indices": sorted(unexplained_new),
-            }
+        _issue(
+            blockers,
+            "baseline_unexpected_indices",
+            "New Howler-prefixed indices are not an allowed empty initialization or single-generation rollover.",
+            indices=sorted(unexplained_new),
         )
 
     common_names = old_names & new_names
     unknown_acceptances = accepted_sequence_drift - common_names
     for index in sorted(unknown_acceptances):
-        warnings.append(
-            {
-                "check": "unknown_sequence_drift_acceptance",
-                "index": index,
-                "message": "No baseline/current index pair matched this acceptance; no drift was accepted.",
-            }
+        _issue(
+            warnings,
+            "unknown_sequence_drift_acceptance",
+            "No baseline/current index pair matched this acceptance; no drift was accepted.",
+            index=index,
         )
 
     for name in sorted(common_names):
         before, after = old_indices[name], new_indices[name]
         if before.get("uuid") is None or after.get("uuid") is None:
-            blockers.append(
-                {"check": "baseline_uuid", "index": name, "message": "Baseline or current index UUID is missing."}
-            )
+            _issue(blockers, "baseline_uuid", "Baseline or current index UUID is missing.", index=name)
         elif before["uuid"] != after["uuid"]:
-            blockers.append(
-                {
-                    "check": "baseline_uuid",
-                    "index": name,
-                    "message": "Index UUID changed; this may indicate reindexing or index replacement.",
-                    "baseline": before["uuid"],
-                    "current": after["uuid"],
-                }
+            _issue(
+                blockers,
+                "baseline_uuid",
+                "Index UUID changed; this may indicate reindexing or index replacement.",
+                index=name,
+                baseline=before["uuid"],
+                current=after["uuid"],
             )
         aliases_match = (
             _allowed_alias_flip(before, after, rollover_old_writes[name])
@@ -810,18 +765,17 @@ def _compare_baseline(  # noqa: C901
             else _alias_contract(before) == _alias_contract(after)
         )
         if not aliases_match:
-            blockers.append(
-                {
-                    "check": "baseline_aliases",
-                    "index": name,
-                    "message": "Alias membership or is_write_index changed after the baseline.",
-                    "baseline": _alias_contract(before),
-                    "current": _alias_contract(after),
-                }
+            _issue(
+                blockers,
+                "baseline_aliases",
+                "Alias membership or is_write_index changed after the baseline.",
+                index=name,
+                baseline=_alias_contract(before),
+                current=_alias_contract(after),
             )
-        if _is_closed(before) or _is_closed(after):
+        if is_closed_index(before) or is_closed_index(after):
             continue
-        accepted = name in accepted_sequence_drift and name in common_names
+        accepted = name in accepted_sequence_drift
         before_count, after_count = before.get("doc_count"), after.get("doc_count")
         if (
             isinstance(before_count, bool)
@@ -829,59 +783,47 @@ def _compare_baseline(  # noqa: C901
             or isinstance(after_count, bool)
             or not isinstance(after_count, int)
         ):
-            blockers.append(
-                {
-                    "check": "baseline_doc_count",
-                    "index": name,
-                    "message": "Baseline or current primary document count is missing.",
-                }
-            )
+            _issue(blockers, "baseline_doc_count", "Baseline or current primary document count is missing.", index=name)
         elif before_count != after_count and not accepted:
-            blockers.append(
-                {
-                    "check": "baseline_doc_count",
-                    "index": name,
-                    "baseline": before_count,
-                    "current": after_count,
-                    "message": "Primary document count changed after the quiesced baseline.",
-                }
+            _issue(
+                blockers,
+                "baseline_doc_count",
+                "Primary document count changed after the quiesced baseline.",
+                index=name,
+                baseline=before_count,
+                current=after_count,
             )
         before_shards = _shard_sequence_contract(before)
         after_shards = _shard_sequence_contract(after)
         if before_shards is None or after_shards is None:
-            blockers.append(
-                {
-                    "check": "baseline_sequence_numbers",
-                    "index": name,
-                    "message": "Baseline or current primary-shard stats are incomplete.",
-                }
+            _issue(
+                blockers,
+                "baseline_sequence_numbers",
+                "Baseline or current primary-shard stats are incomplete.",
+                index=name,
             )
         else:
             baseline_sync = primary_shard_sync_issues(before.get("primary_shards"))
             if baseline_sync:
-                blockers.append(
-                    {
-                        "check": "sequence_checkpoint_unsynced",
-                        "index": name,
-                        "message": (
-                            "Baseline primary sequence stats are incomplete or unsynced; after quiescing writes, "
-                            "flush, wait for the global checkpoint to catch up, and capture a new baseline."
-                        ),
-                        "baseline_issues": baseline_sync,
-                    }
+                _issue(
+                    blockers,
+                    "sequence_checkpoint_unsynced",
+                    "Baseline primary sequence stats are incomplete or unsynced; after quiescing writes, "
+                    "flush, wait for the global checkpoint to catch up, and capture a new baseline.",
+                    index=name,
+                    baseline_issues=baseline_sync,
                 )
                 continue
 
             drift = _sequence_drift(before_shards, after_shards)
             if drift is None:
-                blockers.append(
-                    {
-                        "check": "baseline_sequence_numbers",
-                        "index": name,
-                        "message": "Primary shard layout changed after the quiesced baseline.",
-                        "baseline": before_shards,
-                        "current": after_shards,
-                    }
+                _issue(
+                    blockers,
+                    "baseline_sequence_numbers",
+                    "Primary shard layout changed after the quiesced baseline.",
+                    index=name,
+                    baseline=before_shards,
+                    current=after_shards,
                 )
                 continue
 
@@ -889,36 +831,29 @@ def _compare_baseline(  # noqa: C901
                 shard_id for shard_id in before_shards if after_shards[shard_id][1] < before_shards[shard_id][1]
             )
             if decreases:
-                blockers.append(
-                    {
-                        "check": "baseline_sequence_decrease",
-                        "index": name,
-                        "shards": decreases,
-                        "message": (
-                            "Primary max_seq_no decreased after the baseline; this may indicate rolled-back writes."
-                        ),
-                    }
+                _issue(
+                    blockers,
+                    "baseline_sequence_decrease",
+                    "Primary max_seq_no decreased after the baseline; this may indicate rolled-back writes.",
+                    index=name,
+                    shards=decreases,
                 )
             elif drift and accepted:
-                warnings.append(
-                    {
-                        "check": "baseline_sequence_drift_accepted",
-                        "index": name,
-                        "shards": drift,
-                        "message": (
-                            "The cutover lead explicitly accepted primary document-count/max_seq_no drift for this "
-                            "index; record the decision in the change record."
-                        ),
-                    }
+                _issue(
+                    warnings,
+                    "baseline_sequence_drift_accepted",
+                    "The cutover lead explicitly accepted primary document-count/max_seq_no drift for this "
+                    "index; record the decision in the change record.",
+                    index=name,
+                    shards=drift,
                 )
             elif drift:
-                blockers.append(
-                    {
-                        "check": "baseline_sequence_numbers",
-                        "index": name,
-                        "message": "Per-shard document counts or max_seq_no changed after the quiesced baseline.",
-                        "shards": drift,
-                    }
+                _issue(
+                    blockers,
+                    "baseline_sequence_numbers",
+                    "Per-shard document counts or max_seq_no changed after the quiesced baseline.",
+                    index=name,
+                    shards=drift,
                 )
 
 
@@ -940,106 +875,79 @@ def evaluate_inventory(  # noqa: C901
     if health == "green":
         pass
     elif health == "yellow" and allow_yellow:
-        warnings.append(
-            {
-                "check": "cluster_health_override",
-                "message": "Yellow health was explicitly accepted using --allow-yellow.",
-            }
-        )
+        _issue(warnings, "cluster_health_override", "Yellow health was explicitly accepted using --allow-yellow.")
     elif health == "yellow":
-        blockers.append(
-            {
-                "check": "cluster_health",
-                "message": "Cluster health is yellow; rerun with --allow-yellow only after operator review.",
-            }
+        _issue(
+            blockers,
+            "cluster_health",
+            "Cluster health is yellow; rerun with --allow-yellow only after operator review.",
         )
     else:
-        blockers.append(
-            {
-                "check": "cluster_health",
-                "message": (
-                    "Cluster health must be green"
-                    f"{' or explicitly allowed yellow' if allow_yellow else ''}; found {health or 'unknown'}."
-                ),
-            }
+        _issue(
+            blockers,
+            "cluster_health",
+            "Cluster health must be green"
+            f"{' or explicitly allowed yellow' if allow_yellow else ''}; found {health or 'unknown'}.",
         )
     if health_data.get("timed_out") is True:
-        blockers.append(
-            {
-                "check": "cluster_health_timeout",
-                "message": "Cluster health request timed out; its result is incomplete.",
-            }
-        )
+        _issue(blockers, "cluster_health_timeout", "Cluster health request timed out; its result is incomplete.")
 
     root_version = inventory.get("version", {}).get("version", {}).get("number")
     node_data = inventory.get("nodes", {}).get("nodes", {})
     node_versions = {node.get("name", node_id): node.get("version") for node_id, node in node_data.items()}
     if not node_versions:
-        blockers.append({"check": "node_versions", "message": "No Elasticsearch nodes or node versions were returned."})
+        _issue(blockers, "node_versions", "No Elasticsearch nodes or node versions were returned.")
     for node, version in sorted(node_versions.items()):
         if version != TARGET_VERSION:
-            blockers.append(
-                {
-                    "check": "node_version",
-                    "node": node,
-                    "message": f"Every node must report {TARGET_VERSION}; found {version or 'unknown'}.",
-                }
+            _issue(
+                blockers,
+                "node_version",
+                f"Every node must report {TARGET_VERSION}; found {version or 'unknown'}.",
+                node=node,
             )
     if root_version != TARGET_VERSION:
-        blockers.append(
-            {
-                "check": "cluster_version",
-                "message": f"Cluster info must report {TARGET_VERSION}; found {root_version or 'unknown'}.",
-            }
+        _issue(
+            blockers,
+            "cluster_version",
+            f"Cluster info must report {TARGET_VERSION}; found {root_version or 'unknown'}.",
         )
 
     feature_status = inventory.get("feature_upgrade_status", {}).get("migration_status")
     if feature_status in {"IN_PROGRESS", "ERROR"}:
-        blockers.append(
-            {
-                "check": "system_features",
-                "message": (
-                    f"System feature migration is {feature_status}; resolve or stop the migration before cutover."
-                ),
-            }
+        _issue(
+            blockers,
+            "system_features",
+            f"System feature migration is {feature_status}; resolve or stop the migration before cutover.",
         )
     elif feature_status == "MIGRATION_NEEDED":
-        warnings.append(
-            {
-                "check": "es10_readiness_system_features",
-                "message": (
-                    "System-feature migration is Elasticsearch 10 preparation; schedule and rehearse it separately."
-                ),
-            }
+        _issue(
+            warnings,
+            "es10_readiness_system_features",
+            "System-feature migration is Elasticsearch 10 preparation; schedule and rehearse it separately.",
         )
     elif feature_status != NO_MIGRATION_NEEDED:
-        warnings.append(
-            {
-                "check": "es10_readiness_system_features",
-                "message": (
-                    f"Unrecognized system-feature status {feature_status or 'missing'}; "
-                    "confirm future-major readiness separately."
-                ),
-            }
+        _issue(
+            warnings,
+            "es10_readiness_system_features",
+            f"Unrecognized system-feature status {feature_status or 'missing'}; "
+            "confirm future-major readiness separately.",
         )
     critical = _critical_deprecations(inventory.get("deprecations", {}))
     es10_readiness = [issue for issue in critical if _is_es10_readiness(issue)]
     cutover_critical = [issue for issue in critical if not _is_es10_readiness(issue)]
     if es10_readiness:
-        warnings.append(
-            {
-                "check": "es10_readiness",
-                "message": "These next-major reindex/readiness deprecations are expected after an 8.x-to-9.x upgrade.",
-                "resources": es10_readiness,
-            }
+        _issue(
+            warnings,
+            "es10_readiness",
+            "These next-major reindex/readiness deprecations are expected after an 8.x-to-9.x upgrade.",
+            resources=es10_readiness,
         )
     if cutover_critical:
-        blockers.append(
-            {
-                "check": "critical_deprecations",
-                "message": f"Resolve {len(cutover_critical)} critical deprecation(s) that affect 9.x operation.",
-                "resources": cutover_critical,
-            }
+        _issue(
+            blockers,
+            "critical_deprecations",
+            f"Resolve {len(cutover_critical)} critical deprecation(s) that affect 9.x operation.",
+            resources=cutover_critical,
         )
 
     indices = inventory.get("indices", {})
@@ -1048,45 +956,41 @@ def evaluate_inventory(  # noqa: C901
     baseline_indices = _baseline_indices(baseline, current_prefix) if baseline is not None else {}
     configured_backers = _configured_backing_index_names(expectations, indices)
     configured_backers.update(_configured_backing_index_names(expectations, baseline_indices))
-    closed_current = {name for name, data in indices.items() if _is_closed(data)}
-    closed_baseline = {name for name, data in baseline_indices.items() if _is_closed(data)}
+    closed_current = {name for name, data in indices.items() if is_closed_index(data)}
+    closed_baseline = {name for name, data in baseline_indices.items() if is_closed_index(data)}
     for index in sorted(closed_current | closed_baseline):
-        finding = {
-            "check": "closed_howler_index",
-            "index": index,
-            "message": "Closed Howler-prefixed indices are not covered by open-index statistics.",
-        }
         if index in configured_backers or index in baseline_indices:
-            finding["message"] = (
-                "A closed index backs a configured collection or is present in the baseline; reopen or archive it "
-                "before cutover."
+            _issue(
+                blockers,
+                "closed_howler_index",
+                "A closed index backs a configured collection or is present in the baseline; reopen or archive "
+                "it before cutover.",
+                index=index,
             )
-            blockers.append(finding)
         else:
-            finding["message"] = (
-                "Closed Howler-prefixed index is not configured and is absent from the baseline; review it."
+            _issue(
+                warnings,
+                "closed_howler_index",
+                "Closed Howler-prefixed index is not configured and is absent from the baseline; review it.",
+                index=index,
             )
-            warnings.append(finding)
 
     for index, data in sorted(indices.items()):
-        if not index.startswith(f"{current_prefix}-") or _is_closed(data):
+        if not index.startswith(f"{current_prefix}-") or is_closed_index(data):
             continue
         sync_issues = primary_shard_sync_issues(data.get("primary_shards"))
         if sync_issues:
-            blockers.append(
-                {
-                    "check": "sequence_checkpoint_unsynced",
-                    "index": index,
-                    "message": (
-                        "Primary sequence stats are incomplete or unsynced; wait for cluster health to be green, "
-                        "then rerun the verifier."
-                    ),
-                    "shards": sync_issues,
-                }
+            _issue(
+                blockers,
+                "sequence_checkpoint_unsynced",
+                "Primary sequence stats are incomplete or unsynced; wait for cluster health to be green, "
+                "then rerun the verifier.",
+                index=index,
+                shards=sync_issues,
             )
     if integrity_only:
         if baseline is None:
-            blockers.append({"check": "baseline_required", "message": "--integrity-only requires --baseline."})
+            _issue(blockers, "baseline_required", "--integrity-only requires --baseline.")
         else:
             _compare_baseline(
                 inventory,
@@ -1113,102 +1017,90 @@ def evaluate_inventory(  # noqa: C901
         baseline_present = bool(baseline_backers or baseline_attached)
         if not backers and not attached:
             if baseline_present:
-                blockers.append(
-                    {
-                        "check": "collection_missing_after_baseline",
-                        "collection": collection,
-                        "alias": alias,
-                        "message": "A configured collection present at baseline is now missing.",
-                    }
+                _issue(
+                    blockers,
+                    "collection_missing_after_baseline",
+                    "A configured collection present at baseline is now missing.",
+                    collection=collection,
+                    alias=alias,
                 )
             else:
-                blockers.append(
-                    {
-                        "check": "collection_not_initialized",
-                        "collection": collection,
-                        "alias": alias,
-                        "message": (
-                            "Collection is not initialized; run the separate collection initializer before full "
-                            "verification."
-                        ),
-                    }
+                _issue(
+                    blockers,
+                    "collection_not_initialized",
+                    "Collection is not initialized; run the separate collection initializer before full verification.",
+                    collection=collection,
+                    alias=alias,
                 )
             continue
         if ilm:
             _check_ilm_template_and_policy(collection, expectation, inventory, blockers, warnings)
         if not attached:
-            blockers.append(
-                {
-                    "check": "alias_missing",
-                    "collection": collection,
-                    "alias": alias,
-                    "message": "Collection alias has no backing indices.",
-                }
+            _issue(
+                blockers,
+                "alias_missing",
+                "Collection alias has no backing indices.",
+                collection=collection,
+                alias=alias,
             )
         write_indices = _effective_write_indices(alias, attached, indices)
         if len(write_indices) != 1:
-            blockers.append(
-                {
-                    "check": "alias_write_index",
-                    "collection": collection,
-                    "alias": alias,
-                    "message": f"Alias must resolve to exactly one write index; found {len(write_indices)}.",
-                    "attached_indices": attached,
-                    "write_indices": write_indices,
-                }
+            _issue(
+                blockers,
+                "alias_write_index",
+                f"Alias must resolve to exactly one write index; found {len(write_indices)}.",
+                collection=collection,
+                alias=alias,
+                attached_indices=attached,
+                write_indices=write_indices,
             )
         if ilm:
             canonical_generation = re.compile(rf"^{re.escape(alias)}-(\d{{6}})$")
             canonical_backers = [name for name in backers if canonical_generation.fullmatch(name)]
             if not canonical_backers:
-                blockers.append(
-                    {
-                        "check": "ilm_backing_indices",
-                        "collection": collection,
-                        "alias": alias,
-                        "message": "ILM collection has no canonical six-digit backing index.",
-                    }
+                _issue(
+                    blockers,
+                    "ilm_backing_indices",
+                    "ILM collection has no canonical six-digit backing index.",
+                    collection=collection,
+                    alias=alias,
                 )
             expected_write = (
                 max(canonical_backers, key=lambda name: int(name.rsplit("-", 1)[-1])) if canonical_backers else None
             )
             if expected_write is not None and write_indices != [expected_write]:
-                blockers.append(
-                    {
-                        "check": "ilm_write_index",
-                        "collection": collection,
-                        "alias": alias,
-                        "message": "ILM alias write index must be the latest canonical six-digit backing index.",
-                        "expected": expected_write,
-                        "actual": write_indices,
-                    }
+                _issue(
+                    blockers,
+                    "ilm_write_index",
+                    "ILM alias write index must be the latest canonical six-digit backing index.",
+                    collection=collection,
+                    alias=alias,
+                    expected=expected_write,
+                    actual=write_indices,
                 )
         else:
             hot = f"{alias}_hot"
             if hot not in indices:
-                blockers.append(
-                    {
-                        "check": "legacy_hot_index",
-                        "collection": collection,
-                        "index": hot,
-                        "message": "Configured legacy _hot index is missing.",
-                    }
+                _issue(
+                    blockers,
+                    "legacy_hot_index",
+                    "Configured legacy _hot index is missing.",
+                    collection=collection,
+                    index=hot,
                 )
             if attached != [hot] or write_indices != [hot]:
-                blockers.append(
-                    {
-                        "check": "legacy_write_index",
-                        "collection": collection,
-                        "alias": alias,
-                        "message": "The legacy alias must write to its _hot index.",
-                        "expected": [hot],
-                        "actual": write_indices,
-                    }
+                _issue(
+                    blockers,
+                    "legacy_write_index",
+                    "The legacy alias must write to its _hot index.",
+                    collection=collection,
+                    alias=alias,
+                    expected=[hot],
+                    actual=write_indices,
                 )
 
         schema_less = expectation["model"] is None
         expected_mapping = expectation["mapping"]
-        expected_properties = _flatten_properties(expected_mapping.get("properties", {}))
         expected_templates = expected_mapping.get("dynamic_templates", [])
         policy_name = f"{alias}_policy"
         for index in backers:
@@ -1223,9 +1115,7 @@ def evaluate_inventory(  # noqa: C901
                 (warnings if schema_less else blockers).append(finding)
                 continue
             live_mapping = mappings[index].get("mappings", mappings[index])
-            live_properties = _flatten_properties(live_mapping.get("properties", {}))
-            for path, expected_definition in expected_properties.items():
-                actual_definition = live_properties.get(path)
+            for path, expected_definition, actual_definition in _mapping_differences(expected_mapping, live_mapping):
                 if actual_definition is None:
                     finding = {
                         "check": "schema_less_mapping_property_missing" if schema_less else "mapping_property_missing",
@@ -1250,7 +1140,6 @@ def evaluate_inventory(  # noqa: C901
                     (warnings if schema_less else blockers).append(finding)
             _template_checks(
                 collection,
-                alias,
                 index,
                 expected_templates,
                 live_mapping.get("dynamic_templates", []),
@@ -1258,11 +1147,7 @@ def evaluate_inventory(  # noqa: C901
                 warnings,
                 schema_less=schema_less,
             )
-            limit = _setting(
-                index_data,
-                "index.mapping.total_fields.limit",
-                ("index", "mapping", "total_fields", "limit"),
-            )
+            limit = index_setting(index_data, "index.mapping.total_fields.limit")
             expected_limit = expectation["total_fields_limit"]
             try:
                 actual_limit = int(limit) if limit is not None else DEFAULT_TOTAL_FIELDS_LIMIT
@@ -1271,101 +1156,89 @@ def evaluate_inventory(  # noqa: C901
             actual_mapping_fields = _mapped_field_count(live_mapping)
             is_write_index = index in write_indices
             if is_write_index and actual_limit < expected_limit:
-                blockers.append(
-                    {
-                        "check": "total_fields_limit",
-                        "collection": collection,
-                        "index": index,
-                        "expected_minimum": expected_limit,
-                        "actual": limit,
-                        "message": f"Mapping field limit must be at least {expected_limit}.",
-                    }
+                _issue(
+                    blockers,
+                    "total_fields_limit",
+                    f"Mapping field limit must be at least {expected_limit}.",
+                    collection=collection,
+                    index=index,
+                    expected_minimum=expected_limit,
+                    actual=limit,
                 )
 
             elif actual_limit < actual_mapping_fields:
-                blockers.append(
-                    {
-                        "check": "total_fields_limit_below_mapped_fields",
-                        "collection": collection,
-                        "index": index,
-                        "actual_limit": actual_limit,
-                        "mapped_fields": actual_mapping_fields,
-                        "message": "Index field limit is below its actual mapped field count.",
-                    }
+                _issue(
+                    blockers,
+                    "total_fields_limit_below_mapped_fields",
+                    "Index field limit is below its actual mapped field count.",
+                    collection=collection,
+                    index=index,
+                    actual_limit=actual_limit,
+                    mapped_fields=actual_mapping_fields,
                 )
             elif actual_limit < expected_limit:
-                warnings.append(
-                    {
-                        "check": "total_fields_limit_legacy_lower",
-                        "collection": collection,
-                        "index": index,
-                        "actual_limit": actual_limit,
-                        "expected_minimum": expected_limit,
-                        "mapped_fields": actual_mapping_fields,
-                        "message": (
-                            "Existing backing index has a lower-than-current schema limit but can hold its current "
-                            "mapping."
-                        ),
-                    }
+                _issue(
+                    warnings,
+                    "total_fields_limit_legacy_lower",
+                    "Existing backing index has a lower-than-current schema limit but can hold its current mapping.",
+                    collection=collection,
+                    index=index,
+                    actual_limit=actual_limit,
+                    expected_minimum=expected_limit,
+                    mapped_fields=actual_mapping_fields,
                 )
 
             if ilm:
-                lifecycle_name = _setting(index_data, "index.lifecycle.name", ("index", "lifecycle", "name"))
-                rollover_alias = _setting(
-                    index_data, "index.lifecycle.rollover_alias", ("index", "lifecycle", "rollover_alias")
-                )
+                lifecycle_name = index_setting(index_data, "index.lifecycle.name")
+                rollover_alias = index_setting(index_data, "index.lifecycle.rollover_alias")
                 if lifecycle_name != policy_name or rollover_alias != alias:
-                    blockers.append(
-                        {
-                            "check": "ilm_settings",
-                            "collection": collection,
-                            "index": index,
-                            "expected_policy": policy_name,
-                            "actual_policy": lifecycle_name,
-                            "expected_rollover_alias": alias,
-                            "actual_rollover_alias": rollover_alias,
-                            "message": "Backing index lifecycle policy or rollover alias settings are incorrect.",
-                        }
+                    _issue(
+                        blockers,
+                        "ilm_settings",
+                        "Backing index lifecycle policy or rollover alias settings are incorrect.",
+                        collection=collection,
+                        index=index,
+                        expected_policy=policy_name,
+                        actual_policy=lifecycle_name,
+                        expected_rollover_alias=alias,
+                        actual_rollover_alias=rollover_alias,
                     )
                 explain = inventory.get("ilm_explain", {}).get(index, {})
                 if explain.get("managed") is not True:
-                    blockers.append(
-                        {
-                            "check": "ilm_managed",
-                            "collection": collection,
-                            "index": index,
-                            "message": "ILM-backed collection index is not managed by ILM.",
-                        }
+                    _issue(
+                        blockers,
+                        "ilm_managed",
+                        "ILM-backed collection index is not managed by ILM.",
+                        collection=collection,
+                        index=index,
                     )
                 if explain.get("policy") != policy_name:
-                    blockers.append(
-                        {
-                            "check": "ilm_policy",
-                            "collection": collection,
-                            "index": index,
-                            "expected": policy_name,
-                            "actual": explain.get("policy"),
-                            "message": "ILM explain reports an unexpected or missing policy.",
-                        }
+                    _issue(
+                        blockers,
+                        "ilm_policy",
+                        "ILM explain reports an unexpected or missing policy.",
+                        collection=collection,
+                        index=index,
+                        expected=policy_name,
+                        actual=explain.get("policy"),
                     )
                 step_info = explain.get("step_info")
                 has_step_error = isinstance(step_info, dict) and bool(step_info.get("type") or step_info.get("reason"))
                 if str(explain.get("step", "")).upper() == "ERROR" or has_step_error:
-                    blockers.append(
-                        {
-                            "check": "ilm_step",
-                            "collection": collection,
-                            "index": index,
-                            "step": explain.get("step"),
-                            "step_info": explain.get("step_info"),
-                            "message": "ILM explain reports an ERROR step or step information.",
-                        }
+                    _issue(
+                        blockers,
+                        "ilm_step",
+                        "ILM explain reports an ERROR step or step information.",
+                        collection=collection,
+                        index=index,
+                        step=explain.get("step"),
+                        step_info=explain.get("step_info"),
                     )
 
         caps_result = inventory.get("field_caps", {}).get(collection, {})
         has_caps = isinstance(caps_result, dict) and isinstance(caps_result.get("fields"), dict)
         caps = caps_result["fields"] if has_caps else {}
-        schema_paths = set(expected_properties)
+        schema_paths = set(_flatten_properties(expected_mapping.get("properties", {})))
         for field, types in sorted(caps.items()):
             if len(types) > 1:
                 finding = {
@@ -1376,14 +1249,13 @@ def evaluate_inventory(  # noqa: C901
                     "message": "field_caps reports more than one field type across backing indices.",
                 }
                 (blockers if field in schema_paths else warnings).append(finding)
-        has_closed_backer = any(_is_closed(indices.get(index, {})) for index in backers)
+        has_closed_backer = any(is_closed_index(indices.get(index, {})) for index in backers)
         if backers and not has_caps and not has_closed_backer:
-            blockers.append(
-                {
-                    "check": "field_caps_missing",
-                    "collection": collection,
-                    "message": "No field_caps result was collected for this collection.",
-                }
+            _issue(
+                blockers,
+                "field_caps_missing",
+                "No field_caps result was collected for this collection.",
+                collection=collection,
             )
 
     if baseline is not None:
@@ -1397,11 +1269,10 @@ def evaluate_inventory(  # noqa: C901
             accepted_sequence_drift,
         )
     elif accepted_sequence_drift:
-        blockers.append(
-            {
-                "check": "sequence_drift_acceptance_requires_baseline",
-                "message": "--accept-sequence-drift requires a validated --baseline report.",
-            }
+        _issue(
+            blockers,
+            "sequence_drift_acceptance_requires_baseline",
+            "--accept-sequence-drift requires a validated --baseline report.",
         )
 
     return {
@@ -1422,31 +1293,8 @@ def collect_inventory(  # noqa: C901
     """Read configured Howler indices and cluster gates using GET requests only."""
     prefix = _prefix()
     index_pattern = f"/{quote(prefix, safe='-_.')}-*"
-    indices = client.get(
-        index_pattern,
-        {
-            "features": "aliases,settings",
-            "flat_settings": "true",
-            "expand_wildcards": "all",
-            "allow_no_indices": "true",
-        },
-    )
-    catalog_rows = client.get(
-        f"/_cat/indices/{quote(prefix, safe='-_.')}-*",
-        {"format": "json", "h": "index,health,status", "expand_wildcards": "all"},
-    )
-    catalog = {row.get("index"): row for row in catalog_rows if row.get("index")}
-    stats = collect_primary_shard_stats(client, prefix)
+    indices = collect_index_inventory(client, prefix, scoped=True)
     health = client.get("/_cluster/health")
-    for name, data in indices.items():
-        settings = _index_settings(data)
-        row = catalog.get(name, {})
-        shard_stats = stats.get(name, {})
-        data["uuid"] = settings.get("index.uuid") or settings.get("uuid") or data.get("uuid")
-        data["doc_count"] = shard_stats.get("doc_count")
-        data["primary_shards"] = shard_stats.get("primary_shards", {})
-        data["health"] = row.get("health")
-        data["status"] = row.get("status")
 
     mappings = (
         client.get(
@@ -1464,22 +1312,18 @@ def collect_inventory(  # noqa: C901
         alias = expectation["alias"]
         backers, attached = _collection_indices(alias, expectation["ilm"], indices)
         if expectation["ilm"] and backers:
-            try:
-                explain = client.get(
-                    f"/{quote(alias, safe='-_.')}-*/_ilm/explain",
-                    {"only_managed": "false"},
-                )
+            explain = client.get_optional(
+                f"/{quote(alias, safe='-_.')}-*/_ilm/explain",
+                {"only_managed": "false"},
+            )
+            if explain is not None:
                 ilm_explain.update(explain.get("indices", explain))
-            except ElasticsearchRestError as error:
-                if error.status != 404:
-                    raise
-        if attached and not any(_is_closed(indices.get(name, {})) for name in attached):
-            field_caps[collection] = client.get(f"/{quote(alias, safe='-_.')}/_field_caps", {"fields": "*"})
-        if expectation["ilm"] and backers:
             template_name = f"{alias}_template"
             policy_name = f"{alias}_policy"
-            try:
-                response = client.get(f"/_index_template/{quote(template_name, safe='-_.')}")
+            response = client.get_optional(f"/_index_template/{quote(template_name, safe='-_.')}")
+            if response is None:
+                ilm_templates[collection] = None
+            else:
                 template_list = response.get("index_templates", [])
                 ilm_templates[collection] = next(
                     (
@@ -1489,17 +1333,10 @@ def collect_inventory(  # noqa: C901
                     ),
                     None,
                 )
-            except ElasticsearchRestError as error:
-                if error.status != 404:
-                    raise
-                ilm_templates[collection] = None
-            try:
-                response = client.get(f"/_ilm/policy/{quote(policy_name, safe='-_.')}")
-                ilm_policies[collection] = response.get(policy_name, {}).get("policy")
-            except ElasticsearchRestError as error:
-                if error.status != 404:
-                    raise
-                ilm_policies[collection] = None
+            response = client.get_optional(f"/_ilm/policy/{quote(policy_name, safe='-_.')}")
+            ilm_policies[collection] = response.get(policy_name, {}).get("policy") if response is not None else None
+        if attached and not any(is_closed_index(indices.get(name, {})) for name in attached):
+            field_caps[collection] = client.get(f"/{quote(alias, safe='-_.')}/_field_caps", {"fields": "*"})
 
     return {
         "cluster_health": health,
@@ -1552,21 +1389,6 @@ def build_report(
     }
 
 
-def _client_from_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> ElasticsearchRestClient:
-    try:
-        return ElasticsearchRestClient(
-            args.url,
-            **credentials_from_environment(),
-            ca_certs=args.ca_certs,
-            insecure=args.insecure,
-            timeout=args.timeout,
-            allow_insecure_http_auth=args.allow_insecure_http_auth,
-        )
-    except ValueError as error:
-        parser.error(str(error))
-        raise AssertionError("argparse parser.error must exit")  # pragma: no cover
-
-
 def _read_baseline(  # noqa: C901
     path: Path | None, parser: argparse.ArgumentParser
 ) -> dict[str, Any] | None:
@@ -1576,7 +1398,6 @@ def _read_baseline(  # noqa: C901
         value = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
         parser.error(f"Cannot read baseline JSON: {error}")
-        raise AssertionError("argparse parser.error must exit")  # pragma: no cover
     if not isinstance(value, dict):
         parser.error("Baseline must be a preflight report containing inventory.indices.")
     inventory = value.get("inventory")
@@ -1586,14 +1407,14 @@ def _read_baseline(  # noqa: C901
     version_data = inventory.get("version")
     if not isinstance(version_data, dict) or not isinstance(checks, dict):
         parser.error("Baseline must include inventory.version and checks.ready.")
-    if value.get("source_stack_version") != "8.19.11":
-        parser.error("Baseline source_stack_version must be exactly 8.19.11.")
+    if value.get("source_stack_version") != SOURCE_STACK_VERSION:
+        parser.error(f"Baseline source_stack_version must be exactly {SOURCE_STACK_VERSION}.")
     if value.get("baseline_capture") is not True:
         parser.error("Baseline must be produced by preflight with --baseline-capture.")
     cluster_version = version_data.get("version")
     baseline_version = cluster_version.get("number") if isinstance(cluster_version, dict) else None
-    if baseline_version != "8.19.11":
-        parser.error("Baseline inventory.version.number must be exactly 8.19.11.")
+    if baseline_version != SOURCE_STACK_VERSION:
+        parser.error(f"Baseline inventory.version.number must be exactly {SOURCE_STACK_VERSION}.")
     if checks.get("ready") is not True:
         parser.error("Baseline preflight checks.ready must be true.")
     if value.get("index_prefix") != _prefix():
@@ -1607,12 +1428,7 @@ def _read_baseline(  # noqa: C901
 def main() -> int:
     """Run the read-only post-cutover verification."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--url",
-        default=os.environ.get("ELASTICSEARCH_URL", "http://localhost:9200"),
-        help="Elasticsearch URL. Defaults to ELASTICSEARCH_URL or http://localhost:9200.",
-    )
-    parser.add_argument("--output", type=Path, help="Write the JSON report to this path instead of stdout.")
+    add_connection_arguments(parser)
     parser.add_argument("--baseline", type=Path, help="Quiesced Elasticsearch 8.19 preflight report JSON.")
     parser.add_argument("--allow-yellow", action="store_true", help="Explicitly accept yellow cluster health.")
     parser.add_argument(
@@ -1630,24 +1446,13 @@ def main() -> int:
             "Decreases are never accepted. Record the decision in the change record."
         ),
     )
-    parser.add_argument(
-        "--allow-insecure-http-auth",
-        action="store_true",
-        help="Explicitly allow sending credentials over plain HTTP (not recommended).",
-    )
-    tls = parser.add_mutually_exclusive_group()
-    tls.add_argument("--ca-certs", type=Path, help="Certificate authority bundle for TLS verification.")
-    tls.add_argument("--insecure", action="store_true", help="Disable TLS certificate verification.")
-    parser.add_argument("--timeout", type=int, default=60, help="Request timeout in seconds.")
     args = parser.parse_args()
-    if args.timeout <= 0:
-        parser.error("--timeout must be a positive number of seconds.")
     if args.integrity_only and args.baseline is None:
         parser.error("--integrity-only requires --baseline.")
     if args.accept_sequence_drift and args.baseline is None:
         parser.error("--accept-sequence-drift requires --baseline.")
     baseline = _read_baseline(args.baseline, parser)
-    client = _client_from_args(args, parser)
+    client = client_from_args(args, parser)
     report: dict[str, Any]
     try:
         report = build_report(
@@ -1657,26 +1462,19 @@ def main() -> int:
             integrity_only=args.integrity_only,
             accepted_sequence_drift=set(args.accept_sequence_drift),
         )
-    except ElasticsearchRestError as error:
-        report = {
-            "checks": {
-                "allow_yellow": args.allow_yellow,
-                "blockers": [{"check": "collection_or_connection", "message": str(error)}],
-                "ready": False,
-                "warnings": [],
-            },
-            "target_version": TARGET_VERSION,
-        }
     except Exception as error:  # noqa: BLE001 - a failed schema/config check must produce a blocking JSON report
-        safe_detail = None
-        if isinstance(error, (HowlerAttributeError, HowlerRuntimeError)) or (
-            isinstance(error, ValueError) and not isinstance(error, ValidationError)
-        ):
-            safe_detail = str(error)
-        message = safe_detail or (
-            "Unable to load deployed Howler configuration/schema or complete verification "
-            f"({type(error).__name__}); details were omitted to avoid exposing configuration values."
-        )
+        if isinstance(error, ElasticsearchRestError):
+            message = str(error)
+        else:
+            safe_detail = None
+            if isinstance(error, (HowlerAttributeError, HowlerRuntimeError)) or (
+                isinstance(error, ValueError) and not isinstance(error, ValidationError)
+            ):
+                safe_detail = str(error)
+            message = safe_detail or (
+                "Unable to load deployed Howler configuration/schema or complete verification "
+                f"({type(error).__name__}); details were omitted to avoid exposing configuration values."
+            )
         report = {
             "checks": {
                 "allow_yellow": args.allow_yellow,
@@ -1691,12 +1489,7 @@ def main() -> int:
             },
             "target_version": TARGET_VERSION,
         }
-    rendered = json.dumps(report, indent=2, sort_keys=True) + "\n"
-    if args.output:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(rendered, encoding="utf-8")
-    else:
-        print(rendered, end="")  # noqa: T201
+    write_json_report(report, args.output)
     return 0 if report["checks"]["ready"] else 1
 
 

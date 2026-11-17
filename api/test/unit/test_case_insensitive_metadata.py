@@ -663,7 +663,6 @@ def _make_lazy_store(validate: bool):
         "template": Template,
         "overview": Overview,
     }
-    store._schema_models = dict(store._models)
     unrelated_collection = object()
     store._collections = {"unrelated": unrelated_collection}
     store._ilm_configs = {"view": object()}
@@ -687,7 +686,7 @@ def test_migration_acquires_registered_lazy_collections_without_validation_and_r
     expected_models = dict(zip(COLLECTION_NAMES, (View, Action, Dossier, Template, Overview), strict=True))
     ilm_config = store._ilm_configs["view"]
 
-    def make_collection(datastore_arg, name, model_class=None, validate=True, ilm_config=None, schema_model=None):
+    def make_collection(datastore_arg, name, model_class=None, validate=True, ilm_config=None):
         assert datastore_arg is store
         assert store.validate is False
 
@@ -703,7 +702,7 @@ def test_migration_acquires_registered_lazy_collections_without_validation_and_r
             _create_index_template=MagicMock(),
             _index_doc_count=MagicMock(return_value=1),
         )
-        collections[name] = (collection, model_class, validate, ilm_config, schema_model)
+        collections[name] = (collection, model_class, validate, ilm_config)
         return collection
 
     monkeypatch.setattr("howler.datastore.store.ESCollection", make_collection)
@@ -719,10 +718,8 @@ def test_migration_acquires_registered_lazy_collections_without_validation_and_r
         model_class,
         collection_validate,
         collection_ilm_config,
-        schema_model,
     ) in collections.items():
         assert model_class is expected_models[collection_name]
-        assert schema_model is expected_models[collection_name]
         assert collection_validate is False
         assert collection_ilm_config is (ilm_config if collection_name == "view" else None)
         collection.reindex.assert_called_once_with(allow_failures=False, request_timeout=TRANSPORT_TIMEOUT)
@@ -738,7 +735,7 @@ def test_migration_restores_validation_after_lazy_collection_failures(monkeypatc
     datastore, store, unrelated_collection, _ = _make_lazy_store(initial_validate)
     made_collections = {}
 
-    def make_collection(datastore_arg, name, model_class=None, validate=True, ilm_config=None, schema_model=None):
+    def make_collection(datastore_arg, name, model_class=None, validate=True, ilm_config=None):
         assert datastore_arg is store
         if failure_phase == "acquisition" and name == "view":
             raise RuntimeError("collection acquisition failed")

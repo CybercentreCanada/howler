@@ -6,7 +6,7 @@ import copy
 import types
 from collections.abc import Mapping
 from datetime import datetime, timezone
-from typing import Annotated, Any, Literal, TypeVar, Union, cast, get_args, get_origin
+from typing import Annotated, Any, ClassVar, Literal, TypeVar, Union, cast, get_args, get_origin
 
 from elasticsearch import dsl
 from elasticsearch.dsl.pydantic import BaseESModel, BaseESModelMetaclass
@@ -15,16 +15,17 @@ from typing_extensions import Self
 
 from howler.common.exceptions import HowlerValueError
 from howler.models.fields import (
+    DATEFORMAT,
     FIELD_SANITIZER,
     NOT_INDEXED_SANITIZER,
     ClassificationValue,
+    _is_mapped_field_metadata,
     _make_annotated,
     ip_to_primitive,
 )
 from howler.models.registry import annotation_metadata, field_metadata, model_annotation, unwrap_annotation
 
 ModelType = TypeVar("ModelType", bound=BaseModel)
-DATEFORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 IPFormat = Literal["str", "int", "encoded_bytes"]
 TimestampFormat = Literal["iso", "posix"]
 ADAPTER_CONFIG = ConfigDict(arbitrary_types_allowed=True)
@@ -59,11 +60,7 @@ def _list_item_annotation(annotation: Any) -> Any | None:
 
 
 def _mapped_field_metadata(annotation: Any) -> dict[str, Any] | None:
-    mapped_fields = [
-        item
-        for item in annotation_metadata(annotation)
-        if isinstance(item, dict) and set(item) >= {"_field", "_es_name", "exclude"}
-    ]
+    mapped_fields = [item for item in annotation_metadata(annotation) if _is_mapped_field_metadata(item)]
     if not mapped_fields:
         return None
 
@@ -77,17 +74,12 @@ def _mapped_field_metadata(annotation: Any) -> dict[str, Any] | None:
     return resolved
 
 
-def _compound_model(annotation: Any) -> tuple[type[BaseModel], bool] | None:
-    unwrapped = unwrap_annotation(annotation)
-    is_list = get_origin(unwrapped) is list
-    if is_list:
-        unwrapped = unwrap_annotation(get_args(unwrapped)[0])
-    if isinstance(unwrapped, type) and issubclass(unwrapped, BaseModel):
-        return unwrapped, is_list
-    return None
-
-
-def _dsl_annotation(metacls: Any, annotation: Any) -> Any:
+def _dsl_annotation(
+    metacls: Any,
+    annotation: Any,
+    compound_model: type[BaseModel] | None = None,
+    inner_doc: type | None = None,
+) -> Any:
     origin = get_origin(annotation)
     if origin is Annotated:
         annotation = get_args(annotation)[0]
@@ -97,22 +89,24 @@ def _dsl_annotation(metacls: Any, annotation: Any) -> Any:
         members = get_args(annotation)
         concrete = [item for item in members if item is not type(None)]
         if len(concrete) == 1 and len(members) == 2:
-            return _dsl_annotation(metacls, concrete[0]) | None
+            return _dsl_annotation(metacls, concrete[0], compound_model, inner_doc) | None
 
     if origin is list:
-        return types.GenericAlias(list, (_dsl_annotation(metacls, get_args(annotation)[0]),))
+        return types.GenericAlias(list, (_dsl_annotation(metacls, get_args(annotation)[0], compound_model, inner_doc),))
 
     if origin is dict:
         key_type, value_type = get_args(annotation)
         return types.GenericAlias(
             dict,
             (
-                _dsl_annotation(metacls, key_type),
-                _dsl_annotation(metacls, value_type),
+                _dsl_annotation(metacls, key_type, compound_model, inner_doc),
+                _dsl_annotation(metacls, value_type, compound_model, inner_doc),
             ),
         )
 
     if isinstance(annotation, type) and issubclass(annotation, BaseModel):
+        if annotation is compound_model and inner_doc is not None:
+            return inner_doc
         return metacls.make_dsl_class(metacls, dsl.InnerDoc, annotation)
     return annotation
 
@@ -155,14 +149,16 @@ class HowlerESModelMetaclass(BaseESModelMetaclass):
         """Return DSL-safe annotations while preserving explicit field mappings."""
         output: dict[str, Any] = {}
         for name, annotation in annotations.items():
-            sanitized = _dsl_annotation(metacls, annotation)
             mapped_field = _mapped_field_metadata(annotation)
-            compound = _compound_model(annotation)
-            if compound is not None and not (mapped_field is not None and mapped_field.get("exclude")):
-                model_type, is_list = compound
-                inner_doc = metacls.make_dsl_class(metacls, dsl.InnerDoc, model_type)
+            compound_model = model_annotation(annotation)
+            is_excluded = mapped_field is not None and mapped_field.get("exclude")
+            if compound_model is not None and not is_excluded:
+                inner_doc = metacls.make_dsl_class(metacls, dsl.InnerDoc, compound_model)
+                sanitized = _dsl_annotation(metacls, annotation, compound_model, inner_doc)
                 mapped_field = copy.deepcopy(mapped_field) if mapped_field is not None else dsl.mapped_field()
-                mapped_field["_field"] = dsl.Object(inner_doc, multi=is_list)
+                mapped_field["_field"] = dsl.Object(inner_doc, multi=_list_item_annotation(annotation) is not None)
+            else:
+                sanitized = _dsl_annotation(metacls, annotation)
             output[name] = _make_annotated(sanitized, mapped_field) if mapped_field is not None else sanitized
         return output
 
@@ -217,30 +213,9 @@ class HowlerModelValidationError(HowlerValueError):
         super().__init__(message, cause=error)
 
 
-def _alias_paths(alias: Any) -> list[tuple[Any, ...]]:
-    """Return the location spellings accepted for a Pydantic field alias."""
-    if isinstance(alias, str):
-        return [(alias,)]
-
-    choices = getattr(alias, "choices", None)
-    if choices is not None:
-        return [path for choice in choices for path in _alias_paths(choice)]
-
-    path = getattr(alias, "path", None)
-    if isinstance(path, (tuple, list)) and path:
-        return [tuple(path)]
-
-    return []
-
-
-def _field_location_aliases(python_name: str, info: Any) -> list[tuple[Any, ...]]:
-    """Return the accepted validation and Python names for a model field."""
-    aliases: list[tuple[Any, ...]] = [(python_name,)]
-    for alias in (info.alias, info.validation_alias, info.serialization_alias):
-        for path in _alias_paths(alias):
-            if path not in aliases:
-                aliases.append(path)
-    return aliases
+def _serialized_field_name(python_name: str, info: Any) -> str:
+    """Return the stable serialized name for a declared Pydantic field."""
+    return info.serialization_alias or info.alias or python_name.rstrip("_")
 
 
 def _public_error_location(
@@ -260,22 +235,12 @@ def _public_error_location(
         arguments = get_args(unwrapped)
 
         if isinstance(unwrapped, type) and issubclass(unwrapped, BaseModel) and isinstance(token, str):
-            matching_field: tuple[str, Any, int] | None = None
-            for python_name, info in unwrapped.model_fields.items():
-                for alias_path in _field_location_aliases(python_name, info):
-                    path_end = position + len(alias_path)
-                    if tuple(location[position:path_end]) == alias_path:
-                        matching_field = (python_name, info, len(alias_path))
-                        break
-                if matching_field is not None:
-                    break
-
-            if matching_field is not None:
-                python_name, info, consumed = matching_field
-                serialized_name = info.serialization_alias or info.alias or python_name.rstrip("_")
-                components.append(str(serialized_name))
+            field_entry = _field_input_map(unwrapped).get(token)
+            if field_entry is not None:
+                python_name, info = field_entry
+                components.append(_serialized_field_name(python_name, info))
                 current = info.annotation
-                position += consumed
+                position += 1
                 continue
 
         if origin is list and isinstance(token, int) and arguments:
@@ -354,6 +319,7 @@ class HowlerModelMixin:
         validate_default=True,
         validate_by_name=True,
     )
+    _include_index: ClassVar[bool] = False
 
     @model_validator(mode="before")
     @classmethod
@@ -405,7 +371,7 @@ class HowlerModelMixin:
             value = getattr(self, python_name)
             if value is None and strip_null:
                 continue
-            name = info.serialization_alias or info.alias or python_name.rstrip("_")
+            name = _serialized_field_name(python_name, info)
             output[name] = _primitive(
                 value,
                 info.annotation,
@@ -416,6 +382,8 @@ class HowlerModelMixin:
             )
             if hidden_fields and isinstance(value, ClassificationValue):
                 output.update(value.get_access_control_parts())
+        if type(self)._include_index:
+            output["__index"] = type(self).__name__.lower()
         return output
 
     def __getitem__(self, name: str) -> Any:
@@ -533,8 +501,7 @@ def construct_partial(
     don't receive defaults and aren't required.
     """
     fields = _field_input_map(model_type)
-    normalized = cast(Any, model_type)._normalize_flat_input(copy.deepcopy(data))
-    nested = normalized if isinstance(normalized, dict) else flat_to_nested(copy.deepcopy(data))
+    nested = cast(dict[str, Any], cast(Any, model_type)._normalize_flat_input(data))
     for field in SYNTHETIC_SOURCE_FIELDS:
         if field not in fields:
             nested.pop(field, None)
@@ -561,8 +528,7 @@ def construct_partial(
 
 def strip_unknown_fields(model_type: type[BaseModel], data: dict[str, Any]) -> dict[str, Any]:
     """Drop undeclared stored fields while preserving typed compounds and mappings."""
-    normalized = cast(Any, model_type)._normalize_flat_input(copy.deepcopy(data))
-    nested = normalized if isinstance(normalized, dict) else flat_to_nested(copy.deepcopy(data))
+    nested = cast(dict[str, Any], cast(Any, model_type)._normalize_flat_input(data))
     fields = _field_input_map(model_type)
     output: dict[str, Any] = {}
 
@@ -571,7 +537,7 @@ def strip_unknown_fields(model_type: type[BaseModel], data: dict[str, Any]) -> d
         if entry is None:
             continue
         python_name, info = entry
-        serialized_name = info.serialization_alias or info.alias or python_name.rstrip("_")
+        serialized_name = _serialized_field_name(python_name, info)
         full_annotation = _make_annotated(info.annotation, *info.metadata) if info.metadata else info.annotation
         metadata = field_metadata(info.annotation, info.metadata)
         unwrapped = unwrap_annotation(full_annotation)
@@ -663,8 +629,6 @@ def validate_field_value(
     """Validate one registered dotted field and return its stored primitive value."""
     if isinstance(value, BaseModel):
         value = value.model_dump(by_alias=True)
-    elif hasattr(value, "as_primitives"):
-        value = value.as_primitives()
 
     full_annotation = _field_annotation_for_path(model_type, path)
 

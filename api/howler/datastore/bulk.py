@@ -129,6 +129,31 @@ class ElasticBulkPlan(object):
         self.operations.append((header,) if body is None else (header, body))
         self._pending_routes[position] = _PendingRoute(action=action, doc_id=doc_id, mode=mode)
 
+    def _add_routed_operation(
+        self,
+        action: str,
+        doc_id: str,
+        body: str | None = None,
+        *,
+        index: str | None = None,
+        doc: Any = None,
+        mode: str = "newest",
+        pending_mode: str | None = None,
+    ) -> None:
+        """Append an operation using the collection's explicit or resolved index route."""
+        if index:
+            targets = [self._validate_explicit_index(index)]
+        else:
+            existing = self._known_existing_indices(doc)
+            if existing is None:
+                self._queue_pending_operation(action, doc_id, body, mode=pending_mode or mode)
+                return
+            targets = existing if mode == "all" else [existing[0] if existing else self.write_index]
+
+        for target in targets:
+            header = json.dumps({action: {"_index": target, "_id": doc_id}})
+            self.operations.append((header,) if body is None else (header, body))
+
     def _resolve_pending_routes(self) -> None:
         if not self._pending_routes:
             return
@@ -222,17 +247,7 @@ class ElasticBulkPlan(object):
             index: Explicit index to target. When omitted, queues one delete
                 operation for each configured index.
         """
-        if index:
-            self.operations.append(
-                (json.dumps({"delete": {"_index": self._validate_explicit_index(index), "_id": doc_id}}),)
-            )
-        else:
-            existing = self._known_existing_indices()
-            if existing is None:
-                self._queue_pending_operation("delete", doc_id, None, mode="all")
-                return
-            for cur_index in existing:
-                self.operations.append((json.dumps({"delete": {"_index": cur_index, "_id": doc_id}}),))
+        self._add_routed_operation("delete", doc_id, index=index, mode="all")
 
     def add_insert_operation(self, doc_id: str, doc, index=None):
         """Queue a create-only document insert operation.
@@ -285,21 +300,7 @@ class ElasticBulkPlan(object):
         saved_doc["id"] = doc_id
         body = json.dumps(saved_doc)
 
-        if not index:
-            existing = self._known_existing_indices(doc)
-            if existing is None:
-                self._queue_pending_operation("index", doc_id, body, mode="newest")
-                return
-            target = existing[0] if existing else self.write_index
-        else:
-            target = self._validate_explicit_index(index)
-
-        self.operations.append(
-            (
-                json.dumps({"index": {"_index": target, "_id": doc_id}}),
-                body,
-            )
-        )
+        self._add_routed_operation("index", doc_id, body, index=index, doc=doc)
 
     def add_upsert_operation(self, doc_id, doc, index=None):
         """Queue an update operation that creates the document when absent.
@@ -317,21 +318,7 @@ class ElasticBulkPlan(object):
         saved_doc["id"] = doc_id
         body = json.dumps({"doc": saved_doc, "doc_as_upsert": True})
 
-        if not index:
-            existing = self._known_existing_indices(doc)
-            if existing is None:
-                self._queue_pending_operation("update", doc_id, body, mode="newest")
-                return
-            target = existing[0] if existing else self.write_index
-        else:
-            target = self._validate_explicit_index(index)
-
-        self.operations.append(
-            (
-                json.dumps({"update": {"_index": target, "_id": doc_id}}),
-                body,
-            )
-        )
+        self._add_routed_operation("update", doc_id, body, index=index, doc=doc)
 
     def add_update_operation(self, doc_id, doc, index=None, fields: Optional[List[str]] = None):
         """Queue a partial-merge Elasticsearch ``update`` operation.
@@ -365,30 +352,15 @@ class ElasticBulkPlan(object):
         else:
             saved_doc = self._serialize_partial(doc)
 
-        if index:
-            self.operations.append(
-                (
-                    json.dumps({"update": {"_index": self._validate_explicit_index(index), "_id": doc_id}}),
-                    json.dumps({"doc": saved_doc}),
-                )
-            )
-        else:
-            existing = self._known_existing_indices(doc)
-            if existing is None:
-                self._queue_pending_operation(
-                    "update",
-                    doc_id,
-                    json.dumps({"doc": saved_doc}),
-                    mode="newest",
-                )
-                return
-            for cur_index in existing:
-                self.operations.append(
-                    (
-                        json.dumps({"update": {"_index": cur_index, "_id": doc_id}}),
-                        json.dumps({"doc": saved_doc}),
-                    )
-                )
+        self._add_routed_operation(
+            "update",
+            doc_id,
+            json.dumps({"doc": saved_doc}),
+            index=index,
+            doc=doc,
+            mode="all",
+            pending_mode="newest",
+        )
 
     def get_plan_data(self):
         """Render all queued operations as an Elasticsearch bulk request.

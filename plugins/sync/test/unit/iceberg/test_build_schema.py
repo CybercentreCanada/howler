@@ -1,5 +1,7 @@
 """Spark schema compatibility against annotated Howler Pydantic fields."""
 
+from types import SimpleNamespace
+
 import pytest
 from howler.common.exceptions import HowlerValueError
 from howler.models import (
@@ -29,6 +31,7 @@ from pyspark.sql.types import (
 )
 
 from sync.iceberg.build import build_schema
+from sync.services import sync_service
 
 
 @register_model(embedded=True)
@@ -55,6 +58,7 @@ class Containers(HowlerEmbeddedModel):
     compound_field: compound(Nested)
     list_field: list_field(integer(description="internal description"))
     mapping_field: mapping(text(), description="parent level description")
+    optional_items: list_field(optional(integer(description="optional item description")))
 
 
 @register_model(embedded=True)
@@ -81,6 +85,11 @@ class AnyField(HowlerEmbeddedModel):
     raw: object
 
 
+@register_model()
+class ExtendedHit(Hit):
+    plugin_field: optional(keyword())
+
+
 def test_basic_types_and_instance():
     for model in (Simple, Simple.model_construct()):
         schema = build_schema(model)
@@ -105,6 +114,7 @@ def test_nested_types_and_descriptions():
     assert schema["top_level_field"].metadata == {"description": "top level description"}
     assert schema["list_field"].metadata == {"description": "internal description"}
     assert schema["mapping_field"].metadata == {"description": "parent level description"}
+    assert schema["optional_items"].metadata == {"description": "optional item description"}
 
 
 def test_optional_fields_and_elements():
@@ -136,3 +146,13 @@ def test_hit_schema_contains_timestamp_and_ip_binary():
     assert isinstance(schema["related"].dataType, StructType)
     assert isinstance(schema["related"].dataType["ip"].dataType, ArrayType)
     assert schema["related"].dataType["ip"].dataType.elementType.typeName() == "binary"
+
+
+@pytest.mark.parametrize("model", [ExtendedHit, None])
+def test_hit_service_schema_uses_datastore_model(monkeypatch, model):
+    monkeypatch.setattr(sync_service, "datastore", lambda: SimpleNamespace(hit=SimpleNamespace(model_class=model)))
+
+    schema = sync_service.get_model_struct_schema(Hit)
+
+    assert schema == build_schema(model or Hit)
+    assert ("plugin_field" in schema.fieldNames()) is (model is ExtendedHit)

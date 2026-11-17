@@ -3,39 +3,30 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import re
-from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
 from howler.external.elasticsearch_rest import (
     HOWLER_COLLECTION_NAMES,
+    NO_MIGRATION_NEEDED,
+    SOURCE_STACK_VERSION,
     ElasticsearchRestClient,
     ElasticsearchRestError,
-    collect_primary_shard_stats,
-    credentials_from_environment,
+    add_connection_arguments,
+    client_from_args,
+    collect_index_inventory,
+    is_closed_index,
     primary_shard_sync_issues,
+    walk_deprecations,
+    write_json_report,
 )
-
-SOURCE_STACK_VERSION = "8.19.11"
-NO_MIGRATION_NEEDED = "NO_MIGRATION_NEEDED"
 
 
 def _index_prefix() -> str:
     """Return the same index prefix selected by the Howler runtime."""
     return os.environ.get("HWL_DATASTORE_INDEX_PREFIX", os.environ.get("APP_NAME", "howler"))
-
-
-def _mapping_settings(index_data: dict[str, Any]) -> dict[str, Any]:
-    settings = index_data.get("settings", {})
-    nested = settings.get("index", {})
-    return {**nested, **settings} if isinstance(nested, dict) else settings
-
-
-def _is_closed(index_data: dict[str, Any]) -> bool:
-    return str(index_data.get("status", "")).lower() in {"close", "closed"}
 
 
 def _backs_configured_collection(index: str, index_data: dict[str, Any], prefix: str) -> bool:
@@ -52,46 +43,19 @@ def _backs_configured_collection(index: str, index_data: dict[str, Any], prefix:
 def collect_inventory(client: ElasticsearchRestClient) -> dict[str, Any]:
     """Collect upgrade state using plain, read-only REST requests."""
     prefix = _index_prefix()
-    indices = client.get(
-        "/*",
-        {
-            "features": "aliases,settings",
-            "flat_settings": "true",
-            "expand_wildcards": "all",
-            "allow_no_indices": "true",
-        },
-    )
-    catalog_rows = client.get(
-        "/_cat/indices",
-        {
-            "format": "json",
-            "h": "index,health,status,docs.count",
-            "expand_wildcards": "all",
-        },
-    )
-    stats = collect_primary_shard_stats(client, prefix)
-    catalog = {row.get("index"): row for row in catalog_rows if row.get("index")}
+    indices = collect_index_inventory(client, prefix, scoped=False)
     health = client.get("/_cluster/health", {"level": "indices"})
     index_health = health.get("indices", {})
     for name, index_data in indices.items():
-        row = catalog.get(name, {})
-        index_stats = stats.get(name, {})
-        settings = _mapping_settings(index_data)
-        index_data["uuid"] = settings.get("index.uuid") or settings.get("uuid") or index_data.get("uuid")
-        index_data["doc_count"] = index_stats.get("doc_count")
-        index_data["primary_shards"] = index_stats.get("primary_shards", {})
-        index_data["health"] = index_health.get(name, {}).get("status", row.get("health"))
-        index_data["status"] = row.get("status")
+        index_data["health"] = index_health.get(name, {}).get("status", index_data.get("health"))
 
-    try:
-        ilm_explain = client.get(
+    ilm_explain = (
+        client.get_optional(
             f"/{quote(prefix, safe='-_.')}-*/_ilm/explain",
             {"only_managed": "false"},
         )
-    except ElasticsearchRestError as error:
-        if error.status != 404:
-            raise
-        ilm_explain = {}
+        or {}
+    )
 
     return {
         "cluster_health": health,
@@ -120,23 +84,16 @@ def collect_inventory(client: ElasticsearchRestClient) -> dict[str, Any]:
 
 
 def _deprecation_issues(value: Any, path: tuple[str, ...] = ()) -> list[dict[str, Any]]:
-    issues = []
-    if isinstance(value, dict):
-        if isinstance(value.get("level"), str) and isinstance(value.get("message"), str):
-            issues.append(
-                {
-                    "level": value["level"],
-                    "message": value["message"],
-                    "path": ".".join(path),
-                    "url": value.get("url"),
-                }
-            )
-        for key, child in value.items():
-            issues.extend(_deprecation_issues(child, (*path, str(key))))
-    elif isinstance(value, list):
-        for index, child in enumerate(value):
-            issues.extend(_deprecation_issues(child, (*path, str(index))))
-    return issues
+    return [
+        {
+            "level": issue["level"],
+            "message": issue["message"],
+            "path": ".".join(issue_path),
+            "url": issue.get("url"),
+        }
+        for issue_path, issue in walk_deprecations(value, path)
+        if isinstance(issue.get("message"), str)
+    ]
 
 
 def _index_creation_major(index_data: dict[str, Any]) -> int | None:
@@ -224,7 +181,7 @@ def evaluate_inventory(  # noqa: C901
     sequence_sync_issues = {
         index: primary_shard_sync_issues(index_data.get("primary_shards"))
         for index, index_data in inventory["indices"].items()
-        if index.startswith(f"{prefix}-") and not _is_closed(index_data)
+        if index.startswith(f"{prefix}-") and not is_closed_index(index_data)
     }
     sequence_sync_issues = {index: issues for index, issues in sequence_sync_issues.items() if issues}
     if sequence_sync_issues:
@@ -239,24 +196,29 @@ def evaluate_inventory(  # noqa: C901
         (blockers if baseline_capture else warnings).append(finding)
 
     for index, index_data in sorted(inventory["indices"].items()):
-        if not index.startswith(f"{prefix}-") or not _is_closed(index_data):
+        if not index.startswith(f"{prefix}-") or not is_closed_index(index_data):
             continue
-        finding = {
-            "check": "closed_howler_index",
-            "index": index,
-            "message": "Closed Howler-prefixed indices are not covered by the open-index statistics snapshot.",
-        }
         if baseline_capture or _backs_configured_collection(index, index_data, prefix):
-            finding["message"] = (
-                "A closed Howler index backs a configured collection or is being included in the baseline; "
-                "reopen or archive it before cutover."
+            blockers.append(
+                {
+                    "check": "closed_howler_index",
+                    "index": index,
+                    "message": (
+                        "A closed Howler index backs a configured collection or is being included in the baseline; "
+                        "reopen or archive it before cutover."
+                    ),
+                }
             )
-            blockers.append(finding)
         else:
-            finding["message"] = (
-                "Closed Howler-prefixed index is not a configured collection; review and disposition it."
+            warnings.append(
+                {
+                    "check": "closed_howler_index",
+                    "index": index,
+                    "message": (
+                        "Closed Howler-prefixed index is not a configured collection; review and disposition it."
+                    ),
+                }
             )
-            warnings.append(finding)
 
     return {
         "blockers": blockers,
@@ -280,61 +242,23 @@ def build_report(client: ElasticsearchRestClient, *, baseline_capture: bool = Fa
     }
 
 
-def _client_from_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> ElasticsearchRestClient:
-    try:
-        credentials = credentials_from_environment()
-        return ElasticsearchRestClient(
-            args.url,
-            **credentials,
-            ca_certs=args.ca_certs,
-            insecure=args.insecure,
-            timeout=args.timeout,
-            allow_insecure_http_auth=args.allow_insecure_http_auth,
-        )
-    except ValueError as error:
-        parser.error(str(error))
-        raise AssertionError("argparse parser.error must exit")  # pragma: no cover
-
-
 def main() -> int:
     """Run the Elasticsearch 9 upgrade preflight."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--url",
-        default=os.environ.get("ELASTICSEARCH_URL", "http://localhost:9200"),
-        help="Elasticsearch URL. Defaults to ELASTICSEARCH_URL or http://localhost:9200.",
-    )
-    parser.add_argument("--output", type=Path, help="Write the JSON report to this path instead of stdout.")
+    add_connection_arguments(parser)
     parser.add_argument(
         "--baseline-capture",
         action="store_true",
         help="Require synced Howler primary checkpoints before producing a cutover baseline.",
     )
-    tls = parser.add_mutually_exclusive_group()
-    tls.add_argument("--ca-certs", type=Path, help="Certificate authority bundle for TLS verification.")
-    tls.add_argument("--insecure", action="store_true", help="Disable TLS certificate verification.")
-    parser.add_argument(
-        "--allow-insecure-http-auth",
-        action="store_true",
-        help="Explicitly allow sending credentials over plain HTTP (not recommended).",
-    )
-    parser.add_argument("--timeout", type=int, default=60, help="Request timeout in seconds.")
     args = parser.parse_args()
 
-    if args.timeout <= 0:
-        parser.error("--timeout must be a positive number of seconds.")
-
-    client = _client_from_args(args, parser)
+    client = client_from_args(args, parser)
     try:
         report = build_report(client, baseline_capture=args.baseline_capture)
     except ElasticsearchRestError as error:
         parser.error(str(error))
-    rendered = json.dumps(report, indent=2, sort_keys=True) + "\n"
-    if args.output:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(rendered, encoding="utf-8")
-    else:
-        print(rendered, end="")  # noqa: T201
+    write_json_report(report, args.output)
 
     return 0 if report["checks"]["ready"] else 1
 

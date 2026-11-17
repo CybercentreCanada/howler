@@ -19,11 +19,6 @@ def to_pascal_case(snake_str):
     return "".join(component.title() for component in components)
 
 
-def to_camel_case(snake_str):
-    components = snake_str.split("_")
-    return components[0] + "".join(component.title() for component in components[1:])
-
-
 # Currently set to info. If you're curious for output on the tree structure of the generated classes, set this to
 # log.DEBUG instead.
 # log.basicConfig(level=log.DEBUG)
@@ -98,7 +93,6 @@ for _index in ("hit", "event"):
     for _path, _name in {
         "cloud.account": "CloudAccount",
         "source.original": "SourceOriginal",
-        "http.response": "HttpResponse",
         "threat.enrichments": "ThreatEnrichment",
         "threat.indicator": "ThreatIndicator",
     }.items():
@@ -110,6 +104,7 @@ CLASS_NAMES.update(
         "event.email.attachments.file": "AttachmentsFile",
         "event.email.parent": "EmailParent",
         "event.observer.ingress": "ObserverIngress",
+        "event.http.response": "HttpResponse",
         "hit.http.response": "Response",
     }
 )
@@ -263,7 +258,7 @@ def generate_structure(config):
 
     structure = {}
     for index, index_data in sorted(config["indexes"].items()):
-        model = datastore().get_collection(index).schema_model
+        model = datastore().get_collection(index).model_class
         structure[index] = generate_model_structure(model, index_data)
         if index in {"hit", "event", "case"}:
             structure[index]["__index"] = {"__ts_field_type": f"'{index}'", "__required": True}
@@ -294,7 +289,6 @@ def dedupe_objects(names, structure, existing_classes):
                 "Template",
                 "Overview",
                 "View",
-                "UserUser",
             }
         ):
             candidate = to_pascal_case("_".join(names[-2:]))
@@ -413,12 +407,11 @@ def generate_api_config_types(config_req):  # noqa: C901
 
         # First we write the reused type
         file.write("import type { ClassificationDefinition } from 'utils/classificationParser';\n\n")
-        file.write(BASE_TS_TEMPLATE.format(imports="", name="APIIndex", members=index_fields) + "\n")
+        file.write(BASE_TS_TEMPLATE.format(name="APIIndex", members=index_fields) + "\n")
 
         # Then we write the overarching dict containing a key for each index
         file.write(
             BASE_TS_TEMPLATE.format(
-                imports="",
                 name="APIIndexes",
                 members="\n".join(
                     TS_MEMBER_TEMPLATE_NOTNULL.format(key, "{ [index: string]: APIIndex }") for key in sorted(indexes)
@@ -512,111 +505,107 @@ def generate_api_config_types(config_req):  # noqa: C901
             # unexpected way in the future.
             log.warning("Missing logic for key %s: %s", lookup_name, lookup_data)
 
-        file.write(BASE_TS_TEMPLATE.format(imports="", name="APILookups", members="\n".join(lookup_members)).strip())
+        file.write(BASE_TS_TEMPLATE.format(name="APILookups", members="\n".join(lookup_members)).strip())
 
         # The last two are hilariously complex objects, so instead of doing it in a logical way, we just
         # #CHEESEIT instead. We use a bunch of regexes to convert a JSON version of the entry into a TS type.
-        step = 3
-        for key in ["configuration"]:
-            log.info("Step 4.%s: Handling '%s' key", step, key)
-            step += 1
+        log.info("Step 4.3: Handling 'configuration' key")
+        # Setting up the basic interface format
+        configuration = config_req.pop("configuration")
+        configuration.pop("mapping")
+        # Follow the stable public layout, independent of Flask's JSON key ordering.
+        orders = {
+            "": ["auth", "system", "ui", "features", "clue"],
+            "auth": [
+                "allow_apikeys",
+                "allow_extended_apikeys",
+                "max_apikey_duration_amount",
+                "max_apikey_duration_unit",
+                "oauth_providers",
+                "internal",
+            ],
+            "system": ["type", "version", "branch", "commit", "retention"],
+            "system.retention": ["enabled", "limit_unit", "limit_amount"],
+            "features": ["clue", "notebook"],
+        }
 
-            # Setting up the basic interface format
-            configuration = config_req.pop(key)
-            configuration.pop("mapping")
-            # Follow the stable public layout, independent of Flask's JSON key ordering.
-            orders = {
-                "": ["auth", "system", "ui", "features", "clue"],
-                "auth": [
-                    "allow_apikeys",
-                    "allow_extended_apikeys",
-                    "max_apikey_duration_amount",
-                    "max_apikey_duration_unit",
-                    "oauth_providers",
-                    "internal",
-                ],
-                "system": ["type", "version", "branch", "commit", "retention"],
-                "system.retention": ["enabled", "limit_unit", "limit_amount"],
-                "features": ["clue", "notebook"],
+        def ordered(data, prefix=""):
+            if not isinstance(data, dict):
+                return data
+            order = orders.get(prefix, [])
+            return {
+                k: ordered(v, f"{prefix}.{k}" if prefix else k)
+                for k, v in sorted(
+                    data.items(),
+                    key=lambda item: (order.index(item[0]) if item[0] in order else len(order), item[0]),
+                )
             }
 
-            def ordered(data, prefix=""):
-                if not isinstance(data, dict):
-                    return data
-                order = orders.get(prefix, [])
-                return {
-                    k: ordered(v, f"{prefix}.{k}" if prefix else k)
-                    for k, v in sorted(
-                        data.items(),
-                        key=lambda item: (order.index(item[0]) if item[0] in order else len(order), item[0]),
-                    )
-                }
+        config_type = "export interface APIConfiguration extends APIMappings " + json.dumps(
+            ordered(configuration), indent=2
+        )
 
-            config_type = "export interface APIConfiguration extends APIMappings " + json.dumps(
-                ordered(configuration), indent=2
-            )
+        # |    "key":| -> |    key:|
+        config_type = re.sub(r'^( +)"(\w+)":', r"\1\2:", config_type, flags=re.MULTILINE)
 
-            # |    "key":| -> |    key:|
-            config_type = re.sub(r'^( +)"(\w+)":', r"\1\2:", config_type, flags=re.MULTILINE)
+        # true or false -> boolean;
+        config_type = re.sub(r"(true|false),?", "boolean;", config_type, flags=re.MULTILINE)
 
-            # true or false -> boolean;
-            config_type = re.sub(r"(true|false),?", "boolean;", config_type, flags=re.MULTILINE)
+        # array of strings -> string[];
+        config_type = re.sub(r'\[(\s+".+",?\s+)+],?', "string[];", config_type, flags=re.MULTILINE)
 
-            # array of strings -> string[];
-            config_type = re.sub(r'\[(\s+".+",?\s+)+],?', "string[];", config_type, flags=re.MULTILINE)
+        # |    key: "value"| -> |    key: string;|
+        config_type = re.sub(r': ".+?",?', ": string;", config_type)
+        config_type = re.sub(r": \d+,?", ": number;", config_type)
 
-            # |    key: "value"| -> |    key: string;|
-            config_type = re.sub(r': ".+?",?', ": string;", config_type)
-            config_type = re.sub(r": \d+,?", ": number;", config_type)
+        # In order to handle cases where there's a list of complex objects, we make the assumption that all children
+        # have the same keys. We then do two things:
+        # 1. We remove every entry in the array except the last one
+        # 2. We convert the entry from a formatted dict into a single line of key: type entries. Example:
+        #
+        # | [{              |
+        # |   key: string;  |
+        # |   key2: string; | -> | { key: string; key2: string; key3: string }[] |
+        # |   key3: string; |
+        # | }]              |
+        def fix_whitespace(match_obj):
+            lines = match_obj.group(2).split("\n")
+            return f"{{{' '.join(line.strip() for line in lines)}}}[]"
 
-            # In order to handle cases where there's a list of complex objects, we make the assumption that all children
-            # have the same keys. We then do two things:
-            # 1. We remove every entry in the array except the last one
-            # 2. We convert the entry from a formatted dict into a single line of key: type entries. Example:
-            #
-            # | [{              |
-            # |   key: string;  |
-            # |   key2: string; | -> | { key: string; key2: string; key3: string }[] |
-            # |   key3: string; |
-            # | }]              |
-            def fix_whitespace(match_obj):
-                lines = match_obj.group(2).split("\n")
-                return f"{{{' '.join(line.strip() for line in lines)}}}[]"
+        config_type = re.sub(r"\[\s+({([\s\S]+?)},?\s+)+]", fix_whitespace, config_type)
 
-            config_type = re.sub(r"\[\s+({([\s\S]+?)},?\s+)+]", fix_whitespace, config_type)
+        # We can hardcode a few types here:
+        config_type = re.sub(
+            r"max_apikey_duration_amount: null.+",
+            r"max_apikey_duration_amount?: number;",
+            config_type,
+        )
+        config_type = re.sub(
+            r"max_apikey_duration_unit: null.+",
+            r"max_apikey_duration_unit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months' | 'years';",
+            config_type,
+        )
 
-            # We can hardcode a few types here:
-            config_type = re.sub(
-                r"max_apikey_duration_amount: null.+",
-                r"max_apikey_duration_amount?: number;",
-                config_type,
-            )
-            config_type = re.sub(
-                r"max_apikey_duration_unit: null.+",
-                r"max_apikey_duration_unit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months' | 'years';",
-                config_type,
-            )
+        config_type = re.sub(
+            r"apps: \[\],?",
+            "apps: { alt: string; name: string; img_d: string; img_l: string; route: "
+            "string; classification: string }[];",
+            config_type,
+        )
+        config_type = re.sub(r"status_checks: \[\],?", "status_checks: string[];", config_type)
+        config_type = re.sub(r"(    notebook: boolean;)", r"\1\n    [feature: string]: boolean;", config_type)
 
-            config_type = re.sub(
-                r"apps: \[\],?",
-                "apps: { alt: string; name: string; img_d: string; img_l: string; route: "
-                "string; classification: string }[];",
-                config_type,
-            )
-            config_type = re.sub(r"status_checks: \[\],?", "status_checks: string[];", config_type)
-            config_type = re.sub(r"(    notebook: boolean;)", r"\1\n    [feature: string]: boolean;", config_type)
+        # Finally, we convert any null values into unknown types.
+        config_type = re.sub(r"(.+): null.+", r"\1?: unknown;", config_type)
 
-            # Finally, we convert any null values into unknown types.
-            config_type = re.sub(r"(.+): null.+", r"\1?: unknown;", config_type)
+        # We clean up a few remaining awkward bits
+        config_type = config_type.replace('"', "'")
+        config_type = config_type.replace("},", "};")
+        config_type = config_type.replace("}\n", "};\n")
+        config_type = config_type.replace("[],", "[];")
 
-            # We clean up a few remaining awkward bits
-            config_type = config_type.replace('"', "'")
-            config_type = config_type.replace("},", "};")
-            config_type = config_type.replace("}\n", "};\n")
-            config_type = config_type.replace("[],", "[];")
-
-            # All done!
-            file.write("\n\n" + config_type)
+        # All done!
+        file.write("\n\n" + config_type)
 
         # Deployment markings are data, not property names in a static type. The
         # UI already uses this generic definition; retain the old export name.

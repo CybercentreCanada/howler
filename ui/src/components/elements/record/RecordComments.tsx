@@ -102,6 +102,9 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
           setAnalyticComments(sortByTimestamp(analytic?.comment ?? []));
         }
       });
+    } else {
+      setAnalyticId(undefined);
+      setAnalyticComments([]);
     }
     return () => {
       active = false;

@@ -70,31 +70,21 @@ class ModelExtensionRegistry:
         """Return whether a target has already been finalized."""
         return target in self._finalized
 
-    def finalize(
-        self,
-        target: type[BaseModel],
-        *,
-        description: str | None = None,
-        id_field: str | None = None,
-        index: bool | None = None,
-        store: bool | None = None,
-    ) -> type[BaseModel]:
+    def finalize(self, target: type[BaseModel]) -> type[BaseModel]:
         """Finalize one derived model combining the target with all declared extensions.
 
         Deterministic: extensions are applied in ``(plugin, field name)`` sorted order
         regardless of declaration order, so field order never depends on plugin load order.
         Idempotent: repeated calls for the same target return the same cached derived model
-        instead of finalizing again. When metadata keyword arguments are omitted, the target's
-        own registered metadata is reused so the mapping/id semantics do not change purely
-        because of an extension.
+        instead of finalizing again. The target's own registered metadata is reused so the
+        mapping/id semantics do not change purely because of an extension.
         """
         if target in self._finalized:
             return self._finalized[target]
 
         extensions = sorted(self._pending.get(target, {}).values(), key=lambda item: (item.plugin, item.name))
-        no_overrides = description is None and id_field is None and index is None and store is None
-        if not extensions and no_overrides:
-            # Nothing to add and no explicit metadata override requested: return the target
+        if not extensions:
+            # Nothing to add: return the target
             # completely unmodified, without re-registering it. Re-registering unconditionally
             # here would resubmit the target's own *auto-derived* id_field (always a non-None
             # string) to ``model_registry.register``, which only validates an id_field against
@@ -105,26 +95,16 @@ class ModelExtensionRegistry:
             self._finalized[target] = target
             return target
 
-        if not extensions:
-            derived = target
-        else:
-            namespace = {
-                "__annotations__": {extension.name: extension.annotation for extension in extensions},
-                "__module__": target.__module__,
-                "__qualname__": target.__qualname__,
-            }
-            # Ordinary Python subclassing through the target's own metaclass. Not descriptor
-            # mutation: this creates a brand-new class, it never modifies `target` itself.
-            derived = type(target)(target.__name__, (target,), namespace)  # type: ignore[misc]
+        namespace = {
+            "__annotations__": {extension.name: extension.annotation for extension in extensions},
+            "__module__": target.__module__,
+            "__qualname__": target.__qualname__,
+        }
+        # Ordinary Python subclassing through the target's own metaclass. Not descriptor
+        # mutation: this creates a brand-new class, it never modifies `target` itself.
+        derived = type(target)(target.__name__, (target,), namespace)  # type: ignore[misc]
 
-        model_registry.register_derived(
-            derived,
-            target,
-            description=description,
-            id_field=id_field,
-            index=index,
-            store=store,
-        )
+        model_registry.register_derived(derived, target)
         self._finalized[target] = derived
         return derived
 

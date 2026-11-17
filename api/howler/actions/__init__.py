@@ -3,7 +3,7 @@ import os
 import re
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -113,7 +113,7 @@ def check_hit_limit(
     Returns:
         Error dict if limit exceeded, None otherwise.
     """
-    is_advanced = bool(ADVANCED_ROLES & set(cast(Any, user).type))
+    is_advanced = bool(ADVANCED_ROLES & set(user.type))
     limit = max_hits_advanced if is_advanced else max_hits_basic
 
     if limit is not None:
@@ -178,7 +178,7 @@ def execute(
             }
         ]
 
-    user_roles = set(cast(Any, user).type)
+    user_roles = set(user.type)
     is_admin = "admin" in user_roles
     required_roles = set(operation.specification()["roles"])
     has_roles = required_roles & user_roles

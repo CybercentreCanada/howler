@@ -40,7 +40,7 @@ def get_matching_templates(
 
     analytic_names: set[str] = set()
     for hit in hits:
-        analytic = hit["howler"]["analytic"] if isinstance(hit, dict) else cast(Any, hit).howler.analytic
+        analytic = hit["howler"]["analytic"]
         analytic_names.add(f'"{sanitize_lucene_query(analytic)}"')
 
     if len(analytic_names) < 1:

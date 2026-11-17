@@ -35,16 +35,12 @@ def initialize_collections(storage: Any, collection_names: tuple[str, ...]) -> l
     """Touch only ``datastore.<collection>`` attributes to trigger normal initialization."""
     initialized: list[str] = []
     for collection_name in collection_names:
-        _touch_collection(storage, collection_name)
+        try:
+            getattr(storage, collection_name)
+        except Exception as error:  # noqa: BLE001 - add the collection context before reporting the failure
+            raise CollectionInitializationError(collection_name, error) from error
         initialized.append(collection_name)
     return initialized
-
-
-def _touch_collection(storage: Any, collection_name: str) -> None:
-    try:
-        getattr(storage, collection_name)
-    except Exception as error:  # noqa: BLE001 - add the collection context before reporting the failure
-        raise CollectionInitializationError(collection_name, error) from error
 
 
 def _safe_error_detail(error: Exception) -> str:
@@ -72,12 +68,7 @@ def main(argv: list[str] | None = None) -> int:
 
         storage = datastore()
         if storage is None:
-            error = HowlerRuntimeError("The datastore factory returned no storage object.")
-            print(
-                f"ERROR: collection initialization failed ({_safe_error_detail(error)}).",
-                file=sys.stderr,
-            )  # noqa: T201
-            return 1
+            raise HowlerRuntimeError("The datastore factory returned no storage object.")  # noqa: TRY301 - handled below
         initialized = initialize_collections(storage, _registered_collection_names())
         for name in initialized:
             print(f"Initialized collection {name}.")  # noqa: T201

@@ -37,10 +37,9 @@ def declare_hit_extension() -> None:
     (or not declaring) this extension before ``Hit`` is finalized is what makes Clue support
     toggle-able.
     """
-    if "clue" not in model_extensions.pending(Hit) and not model_extensions.is_finalized(Hit):
-        model_extensions.declare(
-            Hit,
-            "clue",
-            optional(compound(Clue), description="Clue-specific overrides for this alert"),
-            plugin=PLUGIN_NAME,
-        )
+    model_extensions.declare(
+        Hit,
+        "clue",
+        optional(compound(Clue), description="Clue-specific overrides for this alert"),
+        plugin=PLUGIN_NAME,
+    )

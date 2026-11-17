@@ -81,7 +81,7 @@ class HowlerFieldMetadata:
 
 
 class ClassificationValue:
-    """Normalized classification value with the legacy comparison helpers."""
+    """Normalized classification value with its originating classification engine."""
 
     def __init__(self, engine: ClassificationEngine, value: TypingAny, is_user_classification: bool = False):
         self.engine = engine
@@ -93,59 +93,11 @@ class ClassificationValue:
         """Return the hidden Elasticsearch access-control fields."""
         return self.engine.get_access_control_parts(self.value, user_classification=self.is_user_classification)
 
-    def min(self, other: ClassificationValue) -> ClassificationValue:
-        """Return the least restrictive union of two classifications."""
-        return ClassificationValue(
-            self.engine,
-            self.engine.min_classification(self.value, other.value),
-            self.is_user_classification,
-        )
-
-    def max(self, other: ClassificationValue) -> ClassificationValue:
-        """Return the most restrictive intersection of two classifications."""
-        return ClassificationValue(
-            self.engine,
-            self.engine.max_classification(self.value, other.value),
-            self.is_user_classification,
-        )
-
-    def intersect(self, other: ClassificationValue) -> ClassificationValue:
-        """Return the user-classification intersection."""
-        return ClassificationValue(
-            self.engine,
-            self.engine.intersect_user_classification(self.value, other.value),
-            self.is_user_classification,
-        )
-
-    def long(self) -> str:
-        """Return the normalized long classification."""
-        return self.engine.normalize_classification(self.value, skip_auto_select=self.is_user_classification)
-
-    def small(self) -> str:
-        """Return the normalized short classification."""
-        return self.engine.normalize_classification(
-            self.value,
-            long_format=False,
-            skip_auto_select=self.is_user_classification,
-        )
-
     def __str__(self) -> str:
         return self.value
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, ClassificationValue) and self.value == other.value
-
-    def __le__(self, other: ClassificationValue) -> bool:
-        return self.engine.is_accessible(other.value, self.value)
-
-    def __lt__(self, other: ClassificationValue) -> bool:
-        return self.engine.is_accessible(other.value, self.value)
-
-    def __ge__(self, other: ClassificationValue) -> bool:
-        return self.engine.is_accessible(self.value, other.value)
-
-    def __gt__(self, other: ClassificationValue) -> bool:
-        return not self.engine.is_accessible(other.value, self.value)
 
 
 def _copy_to(value: str | Iterable[str] | None) -> tuple[str, ...]:
@@ -173,6 +125,38 @@ def _mapping_options(
     return options
 
 
+def _dsl_field(
+    field_type: Callable[..., dsl.Field],
+    annotation: TypingAny,
+    kind: str,
+    *,
+    doc_values: bool = True,
+    mapping_options: dict[str, TypingAny] | None = None,
+    **kwargs: TypingAny,
+) -> TypingAny:
+    copy_to = _copy_to(kwargs.get("copyto"))
+    es_field = field_type(
+        **_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=doc_values, extra=mapping_options)
+    )
+    return _annotated(annotation, kind, es_field, copy_to=copy_to, **kwargs)
+
+
+def _dsl_keyword(
+    annotation: TypingAny,
+    kind: str,
+    *,
+    mapping_options: dict[str, TypingAny] | None = None,
+    **kwargs: TypingAny,
+) -> TypingAny:
+    return _dsl_field(
+        dsl.Keyword,
+        annotation,
+        kind,
+        mapping_options={"ignore_above": 8191, **(mapping_options or {})},
+        **kwargs,
+    )
+
+
 def _annotated(
     annotation: TypingAny,
     kind: str,
@@ -194,8 +178,9 @@ def _annotated(
     sync: bool = True,
     options: dict[str, TypingAny] | None = None,
     constraints: dict[str, TypingAny] | None = None,
+    copy_to: tuple[str, ...] | None = None,
 ) -> TypingAny:
-    copy_to = _copy_to(copyto)
+    copy_to = _copy_to(copyto) if copy_to is None else copy_to
     metadata: list[TypingAny] = []
     if validator is not None:
         effective_validator = validator
@@ -239,6 +224,8 @@ def _annotated(
 
 
 def _make_annotated(annotation: TypingAny, *metadata: TypingAny) -> TypingAny:
+    if not metadata:
+        return annotation
     return Annotated[(annotation, *metadata)]
 
 
@@ -502,15 +489,9 @@ def _mapping_validator(pattern: re.Pattern[str]) -> Callable[[TypingAny], Typing
 def keyword(**kwargs: TypingAny) -> TypingAny:
     """Create a non-empty string stored as an Elasticsearch keyword."""
     coerce = kwargs.pop("coerce", True)
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Keyword(
-        ignore_above=8191,
-        **_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True),
-    )
-    return _annotated(
+    return _dsl_keyword(
         str,
         "Keyword",
-        mapping,
         validator=_keyword_validator(coerce=coerce),
         default_when=_empty_or_none,
         **kwargs,
@@ -519,15 +500,9 @@ def keyword(**kwargs: TypingAny) -> TypingAny:
 
 def emptyable_keyword(**kwargs: TypingAny) -> TypingAny:
     """Create a keyword that distinguishes empty strings from null."""
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Keyword(
-        ignore_above=8191,
-        **_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True),
-    )
-    return _annotated(
+    return _dsl_keyword(
         str | None,
         "EmptyableKeyword",
-        mapping,
         validator=_emptyable_keyword_validator,
         default_when=lambda value: value is None,
         **kwargs,
@@ -540,12 +515,7 @@ def upper_keyword(**kwargs: TypingAny) -> TypingAny:
     def validate(value: TypingAny) -> str:
         return _keyword_validator()(value).upper()
 
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Keyword(
-        ignore_above=8191,
-        **_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True),
-    )
-    return _annotated(str, "UpperKeyword", mapping, validator=validate, default_when=_empty_or_none, **kwargs)
+    return _dsl_keyword(str, "UpperKeyword", validator=validate, default_when=_empty_or_none, **kwargs)
 
 
 def lower_keyword(**kwargs: TypingAny) -> TypingAny:
@@ -554,26 +524,15 @@ def lower_keyword(**kwargs: TypingAny) -> TypingAny:
     def validate(value: TypingAny) -> str:
         return _keyword_validator()(value).lower()
 
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Keyword(
-        ignore_above=8191,
-        **_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True),
-    )
-    return _annotated(str, "LowerKeyword", mapping, validator=validate, default_when=_empty_or_none, **kwargs)
+    return _dsl_keyword(str, "LowerKeyword", validator=validate, default_when=_empty_or_none, **kwargs)
 
 
 def case_insensitive_keyword(**kwargs: TypingAny) -> TypingAny:
     """Create a keyword using the lowercase Elasticsearch normalizer."""
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Keyword(
-        ignore_above=8191,
-        normalizer="lowercase_normalizer",
-        **_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True),
-    )
-    return _annotated(
+    return _dsl_keyword(
         str,
         "CaseInsensitiveKeyword",
-        mapping,
+        mapping_options={"normalizer": "lowercase_normalizer"},
         validator=_keyword_validator(),
         default_when=_empty_or_none,
         **kwargs,
@@ -594,31 +553,15 @@ def any_field(**kwargs: TypingAny) -> TypingAny:
 
 def validated_keyword(pattern: str | re.Pattern[str], **kwargs: TypingAny) -> TypingAny:
     """Create a keyword validated by a regular expression."""
-    regex = re.compile(pattern)
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Keyword(
-        ignore_above=8191,
-        **_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True),
-    )
-    return _annotated(
-        str,
-        "ValidatedKeyword",
-        mapping,
-        validator=_validated_keyword_validator(regex),
-        default_when=_falsy,
-        options={"validation_regex": regex.pattern},
-        **kwargs,
-    )
+    return _special_validated("ValidatedKeyword", re.compile(pattern).pattern, **kwargs)
 
 
 def ip(**kwargs: TypingAny) -> TypingAny:
     """Create an IP-address field."""
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Ip(**_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True))
-    return _annotated(
+    return _dsl_field(
+        dsl.Ip,
         str | None,
         "IP",
-        mapping,
         validator=_ip_validator,
         options={"validation_regex": IP_ONLY_REGEX.pattern},
         **kwargs,
@@ -627,15 +570,9 @@ def ip(**kwargs: TypingAny) -> TypingAny:
 
 def domain(*, strict: bool = True, **kwargs: TypingAny) -> TypingAny:
     """Create a normalized domain or hostname field."""
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Keyword(
-        ignore_above=8191,
-        **_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True),
-    )
-    return _annotated(
+    return _dsl_keyword(
         str | None,
         "Domain",
-        mapping,
         validator=_domain_validator(strict),
         options={"strict": strict},
         **kwargs,
@@ -644,22 +581,12 @@ def domain(*, strict: bool = True, **kwargs: TypingAny) -> TypingAny:
 
 def email(**kwargs: TypingAny) -> TypingAny:
     """Create a normalized email-address field."""
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Keyword(
-        ignore_above=8191,
-        **_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True),
-    )
-    return _annotated(str | None, "Email", mapping, validator=_email_validator, **kwargs)
+    return _dsl_keyword(str | None, "Email", validator=_email_validator, **kwargs)
 
 
 def uri(**kwargs: TypingAny) -> TypingAny:
     """Create a normalized URI field."""
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Keyword(
-        ignore_above=8191,
-        **_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True),
-    )
-    return _annotated(str | None, "URI", mapping, validator=_uri_validator, **kwargs)
+    return _dsl_keyword(str | None, "URI", validator=_uri_validator, **kwargs)
 
 
 def uri_path(**kwargs: TypingAny) -> TypingAny:
@@ -679,15 +606,12 @@ def phone_number(**kwargs: TypingAny) -> TypingAny:
 
 def ssdeep_hash(**kwargs: TypingAny) -> TypingAny:
     """Create an ssdeep fuzzy-hash field."""
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Text(
-        analyzer="text_fuzzy",
-        **_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=False),
-    )
-    return _annotated(
+    return _dsl_field(
+        dsl.Text,
         str,
         "SSDeepHash",
-        mapping,
+        doc_values=False,
+        mapping_options={"analyzer": "text_fuzzy"},
         validator=_validated_keyword_validator(SSDEEP_REGEX),
         default_when=_falsy,
         options={"validation_regex": SSDEEP_REGEX},
@@ -732,15 +656,13 @@ def _special_validated(
     normalizer: str | None = None,
     **kwargs: TypingAny,
 ) -> TypingAny:
-    copy_to = _copy_to(kwargs.get("copyto"))
-    extra: dict[str, TypingAny] = {"ignore_above": 8191}
+    mapping_options: dict[str, TypingAny] = {}
     if normalizer is not None:
-        extra["normalizer"] = normalizer
-    mapping = dsl.Keyword(**_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True, extra=extra))
-    return _annotated(
+        mapping_options["normalizer"] = normalizer
+    return _dsl_keyword(
         str,
         kind,
-        mapping,
+        mapping_options=mapping_options,
         validator=_validated_keyword_validator(pattern),
         default_when=_falsy,
         options={"validation_regex": pattern},
@@ -751,15 +673,9 @@ def _special_validated(
 def enum(values: Iterable[TypingAny] | type[PyEnum], **kwargs: TypingAny) -> TypingAny:
     """Create a keyword restricted to an explicit set of values."""
     validator, allowed = _enum_validator(values)
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Keyword(
-        ignore_above=8191,
-        **_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True),
-    )
-    return _annotated(
+    return _dsl_keyword(
         str,
         "Enum",
-        mapping,
         validator=validator,
         default_when=_falsy,
         options={"values": allowed},
@@ -773,55 +689,43 @@ def uuid(**kwargs: TypingAny) -> TypingAny:
     def validate(value: TypingAny) -> str:
         return str(get_random_id() if value is None else value)
 
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Keyword(
-        ignore_above=8191,
-        **_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True),
-    )
     kwargs.setdefault("default_factory", get_random_id)
-    return _annotated(str, "UUID", mapping, validator=validate, **kwargs)
+    return _dsl_keyword(str, "UUID", validator=validate, **kwargs)
 
 
 def text(**kwargs: TypingAny) -> TypingAny:
     """Create non-empty analyzed text."""
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Text(**_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=False))
-    return _annotated(str, "Text", mapping, validator=_text_validator, default_when=_falsy, **kwargs)
+    return _dsl_field(dsl.Text, str, "Text", doc_values=False, validator=_text_validator, default_when=_falsy, **kwargs)
 
 
 def index_text(**kwargs: TypingAny) -> TypingAny:
     """Create analyzed text without non-empty validation."""
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Text(**_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=False))
-    return _annotated(str, "IndexText", mapping, validator=str, **kwargs)
+    return _dsl_field(dsl.Text, str, "IndexText", doc_values=False, validator=str, **kwargs)
 
 
 def integer(*, min: int | None = None, max: int | None = None, **kwargs: TypingAny) -> TypingAny:
     """Create a bounded 32-bit Elasticsearch integer."""
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Integer(**_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True))
-    constraints = {key: value for key, value in {"ge": min, "le": max}.items() if value is not None}
-    return _annotated(
-        int,
-        "Integer",
-        mapping,
-        validator=_integer_validator,
-        default_when=_empty_or_none,
-        constraints=constraints,
-        options={"min": min, "max": max},
-        **kwargs,
-    )
+    return _bounded_integer(dsl.Integer, "Integer", min=min, max=max, **kwargs)
 
 
 def long(*, min: int | None = None, max: int | None = None, **kwargs: TypingAny) -> TypingAny:
     """Create a bounded 64-bit Elasticsearch integer."""
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Long(**_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True))
+    return _bounded_integer(dsl.Long, "Long", min=min, max=max, **kwargs)
+
+
+def _bounded_integer(
+    field_type: Callable[..., dsl.Field],
+    kind: str,
+    *,
+    min: int | None,
+    max: int | None,
+    **kwargs: TypingAny,
+) -> TypingAny:
     constraints = {key: value for key, value in {"ge": min, "le": max}.items() if value is not None}
-    return _annotated(
+    return _dsl_field(
+        field_type,
         int,
-        "Long",
-        mapping,
+        kind,
         validator=_integer_validator,
         default_when=_empty_or_none,
         constraints=constraints,
@@ -832,36 +736,29 @@ def long(*, min: int | None = None, max: int | None = None, **kwargs: TypingAny)
 
 def float_field(**kwargs: TypingAny) -> TypingAny:
     """Create a floating-point field."""
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Float(**_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True))
-    return _annotated(float, "Float", mapping, validator=_float_validator, default_when=_falsy, **kwargs)
+    return _dsl_field(dsl.Float, float, "Float", validator=_float_validator, default_when=_falsy, **kwargs)
 
 
 def boolean(**kwargs: TypingAny) -> TypingAny:
     """Create a boolean field using legacy truthiness coercion."""
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Boolean(**_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True))
-    return _annotated(bool, "Boolean", mapping, validator=_boolean_validator, **kwargs)
+    return _dsl_field(dsl.Boolean, bool, "Boolean", validator=_boolean_validator, **kwargs)
 
 
 def date(**kwargs: TypingAny) -> TypingAny:
     """Create a UTC-aware Elasticsearch date field."""
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Date(
-        format="date_optional_time||epoch_millis",
-        **_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True),
+    return _dsl_field(
+        dsl.Date,
+        datetime | None,
+        "Date",
+        mapping_options={"format": "date_optional_time||epoch_millis"},
+        validator=_date_validator,
+        **kwargs,
     )
-    return _annotated(datetime | None, "Date", mapping, validator=_date_validator, **kwargs)
 
 
 def json_field(**kwargs: TypingAny) -> TypingAny:
     """Create a JSON-encoded keyword field."""
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Keyword(
-        ignore_above=8191,
-        **_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True),
-    )
-    return _annotated(str, "Json", mapping, validator=_json_validator, **kwargs)
+    return _dsl_keyword(str, "Json", validator=_json_validator, **kwargs)
 
 
 def classification(
@@ -876,12 +773,10 @@ def classification(
     def validate(value: TypingAny) -> ClassificationValue:
         return ClassificationValue(engine, value, is_user_classification)
 
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Keyword(**_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True))
-    return _annotated(
+    return _dsl_field(
+        dsl.Keyword,
         ClassificationValue,
         "Classification",
-        mapping,
         validator=validate,
         options={"is_user_classification": is_user_classification},
         **kwargs,
@@ -899,12 +794,10 @@ def classification_string(*, yml_config: str | None = None, **kwargs: TypingAny)
             raise ValueError(f"Invalid classification: {value}")
         return str(value)
 
-    copy_to = _copy_to(kwargs.get("copyto"))
-    mapping = dsl.Keyword(**_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=True))
-    return _annotated(
+    return _dsl_field(
+        dsl.Keyword,
         str,
         "ClassificationString",
-        mapping,
         validator=validate,
         default_when=_falsy,
         **kwargs,

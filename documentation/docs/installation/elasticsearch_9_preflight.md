@@ -5,17 +5,16 @@ Elasticsearch 9. Run this preflight against a production-like cluster and each
 production cluster before scheduling the coordinated cutover.
 
 The coordinated cutover targets Elasticsearch and Kibana `9.5.2` with
-`elasticsearch-py` `9.5.0`. The API supports Python `3.10`–`3.13` (the API
-workflow tests those four versions; its quality job uses Python 3.12) and
-declares Pydantic v2 directly. The server patch includes Lucene `10.5.1`, which
-fixes the query correctness issue documented for Elasticsearch 9.5.1.
+`elasticsearch-py` `9.5.0` and Pydantic v2. The server patch includes Lucene
+`10.5.1`, which fixes the query correctness issue documented for Elasticsearch
+9.5.1.
 
 ## Collect the automated report
 
 The tool uses raw REST with plain `application/json` headers. This is required
 because the pinned 9.x Python client negotiates REST compatibility version 9,
-which Elasticsearch 8.19 rejects. Requests are limited in code to `GET` and
-`HEAD`; no credentials are written to the report or logs.
+which Elasticsearch 8.19 rejects. Requests are limited in code to `GET`; no
+credentials are written to the report or logs.
 
 Use an API key:
 
@@ -57,8 +56,8 @@ The command exits non-zero when the cluster:
 - has pending system feature migrations;
 - has a closed Howler index that backs a configured collection;
 - in `--baseline-capture` mode, contains any closed Howler-prefixed index;
-- in `--baseline-capture` mode, has incomplete primary-shard statistics or a Howler global checkpoint behind
-  `max_seq_no`; or
+- in `--baseline-capture` mode, has incomplete primary-shard statistics or a Howler global checkpoint that does not
+  equal `max_seq_no`; or
 - contains an index created before Elasticsearch 8.0.
 
 The report also inventories each index's UUID, health, open/closed status,
@@ -72,10 +71,9 @@ repositories; remote clusters; and all informational or warning-level
 deprecations. Use only a report with `baseline_capture: true` as the pre-upgrade
 comparison baseline after quiescing all writes.
 
-For every Howler primary shard, a baseline must be synchronized:
-`global_checkpoint == max_seq_no`. If this gate fails in baseline-capture mode,
-keep writers quiesced, flush, wait for the checkpoint to catch up, and rerun
-preflight. Do not use an unsynced report as the cutover baseline.
+If baseline-capture reports incomplete or unsynchronized statistics, keep writers
+quiesced, flush the Howler indices, wait for primary checkpoints to catch up, and
+rerun. Do not use an unsynchronized report as the cutover baseline.
 
 ## Complete the operational review
 

@@ -23,10 +23,7 @@ from howler.models import (
     text,
     uuid,
 )
-from howler.models.base import HowlerModelMixin
 from howler.models.constants import CaseEscalation, HowlerStrEnum, Status
-
-RULE_INDEX_TYPES = {"hit", "event"}
 
 
 class RuleIndexTypes(HowlerStrEnum):
@@ -184,6 +181,8 @@ class CaseEnrichment(HowlerEmbeddedModel):
 class Case(HowlerESModel):
     """Case model with items, enrichments, rules, and tasks."""
 
+    _include_index = True
+
     case_id: uuid(description="A unique identifier for this case.")
     classification: classification(
         is_user_classification=False,
@@ -226,14 +225,3 @@ class Case(HowlerESModel):
         default=[],
         description="A list of changes to the case with timestamps and attribution.",
     )
-
-    def as_primitives(self, **kwargs: Any) -> dict[str, Any]:
-        """Add the ``__index`` field expected by legacy consumers.
-
-        Uses an explicit base-class call instead of ``super()`` because the DSL/Pydantic
-        metaclass rebuilds ``HowlerESModel`` subclasses, which breaks the zero-arg ``super()``
-        ``__class__`` cell.
-        """
-        result = HowlerModelMixin.as_primitives(self, **kwargs)
-        result["__index"] = type(self).__name__.lower()
-        return result

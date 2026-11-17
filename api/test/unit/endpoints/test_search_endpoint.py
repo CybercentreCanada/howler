@@ -689,7 +689,7 @@ class TestCount:
 class TestExplain:
     """Tests for the explain endpoint."""
 
-    @patch("howler.api.v2.search.datastore")
+    @patch("howler.services.lucene_service.datastore")
     @patch("howler.api.v2.search.get_collection")
     @patch("howler.security.login.auth_service")
     def test_explain_success(self, mock_auth_service, mock_get_collection, mock_ds, request_context: Flask):

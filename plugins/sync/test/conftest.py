@@ -58,9 +58,9 @@ def hits_with_timestamps(datastore_connection, current_time):
 
     hits = []
     for _ in range(20):
-        data = random_data.generate_useful_hit(lookups, users).as_primitives()
-        data.pop("__index", None)
-        hits.append(datastore_connection.hit.model_class.validate_howler(data))
+        hits.append(
+            random_data.generate_useful_hit(lookups, users, prune_hit=False, model=datastore_connection.hit.model_class)
+        )
 
     for i, hit in enumerate(hits):
         # Set the timestamp of the hit to a specific number of days ago, cycling through 0 to 3 days ago

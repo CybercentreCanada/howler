@@ -6,11 +6,18 @@ This guide explains how to create custom plugins for Howler with additional rout
 
 Plugins extending a registered collection must declare fields through
 `modules.models.declare_extensions` and define embedded values with `HowlerEmbeddedModel` and
-the `howler.models` field builders. Legacy `modules.odm.modify_odm` hooks are no longer executed.
-Howler rejects a legacy-only extension at startup.
-Update plugin action, ingest, and sync imports from `howler.odm.models` to `howler.models`
-before deploying the Elasticsearch 9 application cutover. The stored fields and API output
-remain compatible; plugin Python model imports and extension hooks require this migration.
+the `howler.models` field builders. The legacy `modules.odm.modify_odm` hook is no longer
+executed, and Howler rejects a legacy-only extension at startup. Declare each namespace before
+datastore startup finalizes the model; post-startup `add_namespace` mutation is unsupported.
+
+Update plugin action, ingest, and sync imports from `howler.odm.models` to `howler.models`, and
+import configuration models from `howler.config_models`. Construct documents with keyword
+arguments or `model_validate(data)`, save them through the registered datastore collection, and
+use the field registry instead of legacy `fields()` calls. The stored fields and HTTP contracts
+remain compatible. Sample-data extensions use `odm.generation`, which receives a finalized
+Pydantic model and returns `(additional_field_names, model)`; run the CLI with
+`python -m howler.sample_data.random_data` and the same collection arguments.
+Use `howler.sample_data.randomizer` for generated values.
 
 ## Plugin Structure
 
@@ -98,23 +105,6 @@ modules:
     declare_extensions:
       hit: true                      # Declare fields on the finalized Hit model
 ```
-
-For the Pydantic/Elasticsearch DSL cutover, `modules.models.declare_extensions` is mandatory
-for every extended collection. The legacy `modify_odm` hook alone cannot add fields to a
-registered collection; Howler refuses to start with a legacy-only extension. Declare each
-namespace before datastore startup finalizes the model. The existing `odm.generation` manifest
-key remains the sample-data hook: it receives a finalized Pydantic model and returns
-`(additional_field_names, model)`. Use `howler.sample_data.randomizer` for generated values.
-
-### Cutover release notes
-
-- Import document models from `howler.models` and configuration models from `howler.config_models`.
-- Construct documents with keyword arguments or `model_validate(data)`; save them through the
-  registered datastore collection. Use the field registry instead of legacy `fields()` calls.
-- Declare extensions before finalization; post-startup `add_namespace` mutation is unsupported.
-- Sample-data CLI: `python -m howler.sample_data.random_data` (same collection arguments).
-- Stored-document and HTTP contracts are preserved. Exact TypeScript/Markdown output parity
-  is deferred; the Pydantic Markdown freshness check remains enabled.
 
 ## Plugin Module Types
 
@@ -302,13 +292,12 @@ from howler.models.hit import Hit
 from your_plugin.models.custom_model import CustomModel
 
 def declare_hit_extension() -> None:
-    if "your_namespace" not in model_extensions.pending(Hit) and not model_extensions.is_finalized(Hit):
-        model_extensions.declare(
-            Hit,
-            "your_namespace",
-            optional(compound(CustomModel), description="Your custom metadata"),
-            plugin="your_plugin_name",
-        )
+    model_extensions.declare(
+        Hit,
+        "your_namespace",
+        optional(compound(CustomModel), description="Your custom metadata"),
+        plugin="your_plugin_name",
+    )
 ```
 
 Register it in `modules.models.declare_extensions.hit`. Declare a field only once per startup;
@@ -504,9 +493,6 @@ The `evidence` plugin demonstrates a typed extension on the Hit model:
 # evidence/manifest.yml
 name: evidence
 modules:
-  odm:
-    modify_odm:
-      hit: true
   models:
     declare_extensions:
       hit: true
@@ -526,8 +512,6 @@ The `sentinel` plugin demonstrates a full-featured plugin with:
 name: sentinel
 modules:
   odm:
-    modify_odm:
-      hit: true
     generation:
       hit: true
   models:

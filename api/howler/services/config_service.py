@@ -1,6 +1,6 @@
 from datetime import datetime
 from math import ceil
-from typing import Any, Optional, cast
+from typing import Optional
 
 from flask import request
 from opentelemetry import trace
@@ -91,7 +91,7 @@ def get_configuration(user: User | None, **kwargs):
             "howler.scrutiny": Scrutiny.list(),
             "howler.escalation": Escalation.list(),
             "howler.assessment": Assessment.list(),
-            "transitions": {status.value: hit_service.get_transitions(cast(Any, status)) for status in Status},
+            "transitions": {status.value: hit_service.get_transitions(status) for status in Status},
             **lookups,
         },
         "configuration": {
@@ -130,5 +130,5 @@ def get_configuration(user: User | None, **kwargs):
             "clue": {"status_checks": config.core.clue.status_checks},
         },
         "c12nDef": classification_definition,
-        "indexes": list_all_fields("admin" in cast(Any, user).type if user is not None else False),
+        "indexes": list_all_fields("admin" in user.type if user is not None else False),
     }

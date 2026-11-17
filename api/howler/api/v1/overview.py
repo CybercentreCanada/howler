@@ -1,5 +1,3 @@
-from typing import Any, cast
-
 from flask import request
 
 from howler.api import (
@@ -96,7 +94,7 @@ def create_overview(**kwargs):
     storage = datastore()
 
     try:
-        overview = cast(Any, Overview).validate_howler(overview_data)
+        overview = Overview.validate_howler(overview_data)
 
         overview.owner = kwargs["user"]["uname"]
 
@@ -145,9 +143,11 @@ def delete_overview(id: str, user: User, **kwargs):
     if not storage.overview.exists(id):
         return not_found(err="This overview does not exist")
 
-    existing_overview = cast(Any, storage.overview.get_if_exists(id))
+    existing_overview = storage.overview.get_if_exists(id)
+    if not existing_overview:
+        return not_found(err="This overview does not exist")
 
-    if existing_overview.owner != cast(Any, user).uname and "admin" not in cast(Any, user).type:
+    if existing_overview.owner != user.uname and "admin" not in user.type:
         return forbidden(err="You cannot delete an overview that is not owned by you.")
 
     result = storage.overview.delete(id, refresh=refresh)
@@ -194,7 +194,9 @@ def update_overview_content(id: str, user: User, **kwargs):
 
     content = data["content"]
 
-    existing_overview = cast(Any, storage.overview.get_if_exists(id))
+    existing_overview = storage.overview.get_if_exists(id)
+    if not existing_overview:
+        return not_found(err="This overview does not exist")
 
     existing_overview.content = content
 

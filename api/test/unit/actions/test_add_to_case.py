@@ -16,9 +16,8 @@ def _make_case(data: dict) -> Case:
 
 
 def _make_hit(lookups, users) -> Hit:
-    source = generate_useful_hit(lookups, users, prune_hit=False).as_primitives()
-    source.pop("__index", None)
-    return datastore().hit.model_class.validate_howler(source)
+    hit_model = datastore().hit.model_class
+    return generate_useful_hit(lookups, users, prune_hit=False, model=hit_model)
 
 
 @pytest.fixture(scope="module", autouse=True)

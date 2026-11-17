@@ -11,7 +11,7 @@ load_dotenv(Path(__file__).parent / ".env.test")
 # Prefer the checked-out API and plugins over installed copies in /etc/howler/plugins.
 plugin_root = Path(__file__).resolve().parents[2]
 api_path = plugin_root.parent / "api"
-for source in (api_path, plugin_root / "evidence", plugin_root / "sentinel"):
+for source in (api_path, plugin_root / "sentinel"):
     sys.path.insert(0, str(source))
 
 # Importing the application inserts HWL_PLUGIN_DIRECTORY at the front of sys.path. Point it

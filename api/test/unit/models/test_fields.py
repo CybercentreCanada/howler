@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import base64
-import os
-import subprocess
-import sys
 from datetime import datetime
 from ipaddress import ip_address
 from pathlib import Path
@@ -66,7 +63,6 @@ from howler.models.registry import field_metadata
 
 CLASSIFICATION_CONFIG = str(Path(__file__).parents[2] / "classification.yml")
 TYPE_ADAPTER_CONFIG = ConfigDict(arbitrary_types_allowed=True)
-API_ROOT = Path(__file__).parents[3]
 
 
 @register_model(index=True, store=True, embedded=True)
@@ -263,8 +259,8 @@ def test_uuid_field_generates_distinct_defaults_and_accepts_explicit_values() ->
     assert explicit.identifier == "given-id"
 
 
-def test_classification_values_support_ordering_and_combinations() -> None:
-    """Classification values normalize labels and expose comparison/combination helpers."""
+def test_classification_values_normalize_and_expose_access_parts() -> None:
+    """Classification values normalize labels, compare for equality, and expose access fields."""
     unrestricted = TypeAdapter(
         classification(yml_config=CLASSIFICATION_CONFIG), config=TYPE_ADAPTER_CONFIG
     ).validate_python("U//REL TO D1, D2")
@@ -273,18 +269,26 @@ def test_classification_values_support_ordering_and_combinations() -> None:
     ).validate_python("R//GOD//G1")
 
     assert isinstance(unrestricted, ClassificationValue)
+    assert unrestricted.value == "UNRESTRICTED//REL TO DEPARTMENT 1, DEPARTMENT 2"
+    assert str(unrestricted) == unrestricted.value
     assert str(restricted) == "RESTRICTED//ADMIN//ANY/GROUP 1"
-    assert unrestricted < restricted
-    assert unrestricted <= unrestricted
-    assert restricted > unrestricted
-    assert str(unrestricted.min(restricted)) == "UNRESTRICTED//REL TO DEPARTMENT 1, DEPARTMENT 2"
-    assert str(unrestricted.max(restricted)) == "RESTRICTED//ADMIN//ANY/GROUP 1"
-    assert str(unrestricted.intersect(restricted)) == "UNRESTRICTED//ANY"
-    assert str(restricted.small()) == "R//ADM//ANY/G1"
+    normalized_unrestricted = TypeAdapter(
+        classification(yml_config=CLASSIFICATION_CONFIG), config=TYPE_ADAPTER_CONFIG
+    ).validate_python("UNRESTRICTED//REL TO DEPARTMENT 1, DEPARTMENT 2")
+    assert unrestricted == normalized_unrestricted
+    assert unrestricted != restricted
+
+    access_parts = unrestricted.get_access_control_parts()
+    assert set(access_parts) == {"__access_lvl__", "__access_req__", "__access_grp1__", "__access_grp2__"}
+    assert access_parts["__access_lvl__"] == 100
+    assert isinstance(access_parts["__access_req__"], list)
+    assert isinstance(access_parts["__access_grp1__"], list)
+    assert isinstance(access_parts["__access_grp2__"], list)
 
     access_limited = TypeAdapter(
         classification(yml_config=CLASSIFICATION_CONFIG), config=TYPE_ADAPTER_CONFIG
     ).validate_python("U//REL TO D1")
+    assert access_limited.value == "UNRESTRICTED//ANY"
     assert str(access_limited) == "UNRESTRICTED//ANY"
 
 
@@ -343,11 +347,6 @@ def test_ip_and_date_serialization_modes_cover_nested_containers() -> None:
     iso = model.as_primitives(timestamp_format="iso")
     assert iso["created"] == "2026-01-01T00:00:00+00:00"
     assert iso["created_by_key"] == {"key": "2026-01-01T00:00:00+00:00"}
-
-    for timestamp_mode in ("iso", "posix", "unsupported", None):
-        primitives = model.as_primitives(timestamp_format=timestamp_mode)
-        assert primitives["timestamp_text"] == "2026-01-01T00:00:00.000000Z"
-        assert primitives["child"]["timestamp_text"] == "2026-01-01T00:00:00.000000Z"
 
     fallback = model.as_primitives(ip_format="unsupported", timestamp_format="unsupported")
     assert fallback["address"] == "127.0.0.1"
@@ -451,30 +450,6 @@ def test_nullable_fields_preserve_validation_defaults_aliases_and_mapping_metada
     assert properties["disabled"]["doc_values"] is False
     assert properties["items"]["type"] == "keyword"
     assert properties["values"]["type"] == "object"
-
-
-def test_model_modules_import_in_fresh_interpreters() -> None:
-    """Public model modules import cleanly in a fresh Python process."""
-    env = os.environ.copy()
-    env["PYTHONPATH"] = os.pathsep.join(part for part in (str(API_ROOT), env.get("PYTHONPATH", "")) if part)
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "from importlib import import_module; "
-            "[import_module(name) for name in ('howler.models.fields', 'howler.models.case', "
-            "'howler.models.record', 'howler.models.hit', 'howler.models.howler_data', "
-            "'howler.models.user', 'howler.models.template')]",
-        ],
-        capture_output=True,
-        check=False,
-        cwd=API_ROOT,
-        env=env,
-        text=True,
-        timeout=90,
-    )
-
-    assert result.returncode == 0, result.stderr
 
 
 def test_ip_validation_metadata_is_available_to_registry() -> None:

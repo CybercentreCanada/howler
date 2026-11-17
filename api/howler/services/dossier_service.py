@@ -108,7 +108,7 @@ def get_dossier(
     Raises:
         NotFoundException: If the dossier doesn't exist
     """
-    return cast(Any, datastore().dossier.get_if_exists(key=id, as_obj=as_odm, version=version))
+    return datastore().dossier.get_if_exists(key=id, as_obj=as_odm, version=version)
 
 
 def create_dossier(  # noqa: C901
@@ -159,7 +159,7 @@ def create_dossier(  # noqa: C901
         if "owner" not in dossier_data:
             dossier_data["owner"] = username
 
-        dossier = cast(Any, Dossier).validate_howler(dossier_data)
+        dossier = Dossier.validate_howler(dossier_data)
 
         # Ensure the owner is set to the current user.
         dossier.owner = username
@@ -215,8 +215,7 @@ def update_dossier(  # noqa: C901
 
     # Retrieve the existing dossier for access control checks
     existing_dossier, server_version = get_dossier(dossier_id, as_odm=True, version=True)
-    existing_dossier = cast(Any, existing_dossier)
-    requesting_user = cast(Any, user)
+    requesting_user = user
 
     # Enforce access control for dossiers
     # Only the owner or admin users can modify personal dossiers
@@ -235,9 +234,7 @@ def update_dossier(  # noqa: C901
             storage.hit.search(dossier_data["query"])
 
         # Merge the new data with existing dossier data
-        new_data = cast(Any, Dossier).validate_howler(
-            cast(dict, merge({}, existing_dossier.as_primitives(), dossier_data))
-        )
+        new_data = Dossier.validate_howler(cast(dict, merge({}, existing_dossier.as_primitives(), dossier_data)))
 
         storage.dossier.save(dossier_id, new_data, version=server_version, refresh=refresh)
 

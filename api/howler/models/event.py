@@ -11,14 +11,13 @@ from howler.models import (
     howler_hash,
     keyword,
     list_field,
-    mapping,
     optional,
     register_model,
-    text,
     uuid,
 )
 from howler.models.constants import HowlerStrEnum
 from howler.models.header import Header as _Header
+from howler.models.howler_data import Comment
 from howler.models.log import Log as _Log
 from howler.models.record import Record
 
@@ -29,21 +28,6 @@ class Escalation(HowlerStrEnum):
     HIT = "hit"
     ALERT = "alert"
     EVIDENCE = "evidence"
-
-
-@register_model(index=True, store=True, description="Comment definition.", embedded=True)
-class Comment(HowlerEmbeddedModel):
-    """Comment definition."""
-
-    id: uuid(description="A unique ID for the comment.")
-    timestamp: date(default="NOW", description="Timestamp at which the comment took place.")
-    modified: date(default="NOW", description="Timestamp at which the comment was last edited.")
-    value: text(description="The comment itself.")
-    user: keyword(description="User ID who created the comment.")
-    reactions: mapping(keyword(), default={}, description="A list of reactions to the comment.")
-
-
-DEFAULT_LABELS = {"assignments": [], "generic": []}
 
 
 @register_model(

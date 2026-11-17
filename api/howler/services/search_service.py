@@ -453,8 +453,8 @@ def facet(
 
     parsed_filters = _parse_filters(filters)
 
-    if user and cast(Any, user).access_control and has_access_control(index_list):
-        parsed_filters.append(cast(Any, user).access_control)
+    if user and user.access_control and has_access_control(index_list):
+        parsed_filters.append(user.access_control)
 
     effective_query = query or "id:*"
 

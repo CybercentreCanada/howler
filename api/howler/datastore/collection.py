@@ -41,10 +41,10 @@ from howler.models import (
     construct_partial,
     flat_to_nested,
     partial_primitives,
+    schema,
     strip_unknown_fields,
     validate_field_value,
 )
-from howler.models import schema as new_schema
 from howler.models.fields import FIELD_SANITIZER as MODEL_FIELD_SANITIZER
 from howler.models.fields import NOT_INDEXED_SANITIZER as MODEL_NOT_INDEXED_SANITIZER
 from howler.models.registry import BANNED_FIELDS as MODEL_BANNED_FIELDS
@@ -273,7 +273,6 @@ class ESCollection(Generic[ModelType]):
         validate=True,
         max_attempts=10,
         ilm_config=None,
-        schema_model=None,
     ):
         self.replicas = int(
             environ.get(
@@ -291,8 +290,6 @@ class ESCollection(Generic[ModelType]):
         self.model_class = model_class
         if model_class is not None and not (isinstance(model_class, type) and issubclass(model_class, BaseModel)):
             raise TypeError("Collection models must be Pydantic models")
-        # Ad-hoc model-backed collections use the same schema path as registered collections.
-        self.schema_model = schema_model if schema_model is not None else model_class
         self.validate = validate
         self.max_attempts = max_attempts
 
@@ -1407,7 +1404,7 @@ class ESCollection(Generic[ModelType]):
             return data
 
         source_metadata = data.metadata if isinstance(data, _SourceDocument) else {}
-        if isinstance(data, self.model_class) and hasattr(data, "meta"):
+        if isinstance(data, self.model_class):
             source_metadata = {
                 **data.meta.model_dump(exclude_none=True),
                 **source_metadata,
@@ -1432,7 +1429,7 @@ class ESCollection(Generic[ModelType]):
             if partial:
                 model = data
             else:
-                raw_data = data.as_primitives(hidden_fields=True)
+                raw_data = data.model_dump(by_alias=True)
                 model_input = {
                     key: value
                     for key, value in raw_data.items()
@@ -1442,8 +1439,6 @@ class ESCollection(Generic[ModelType]):
         else:
             if isinstance(data, BaseModel):
                 raw_data = data.model_dump(by_alias=True)
-            elif hasattr(data, "as_primitives"):
-                raw_data = data.as_primitives()
             elif isinstance(data, dict):
                 raw_data = deepcopy(data)
             else:
@@ -3102,120 +3097,40 @@ class ESCollection(Generic[ModelType]):
                 raise HowlerValueError("Unknown field data " + str(props))
         return out
 
-    def fields(self: Self, skip_mapping_children=False):
-        """
-        This function should return all the fields in the index with their types
-        """
-        if self.schema_model is not None:
-            return self._fields_from_schema(skip_mapping_children)
+    def fields(self: Self, skip_mapping_children=False):  # noqa: C901
+        """Return all live index fields, enriched with model metadata when available."""
+        model_fields = model_registry.flat_fields(self.model_class) if self.model_class else {}
 
-        data = self.with_retries(self.datastore.client.indices.get, index=self.name)
-        index_name = list(data.keys())[0]
-        properties = self._flatten_mapping_properties(data[index_name]["mappings"].get("properties", {}))
+        if not self.model_class:
+            data = self.with_retries(self.datastore.client.indices.get, index=self.name)
+            index_name = list(data.keys())[0]
+            properties = self._flatten_mapping_properties(data[index_name]["mappings"].get("properties", {}))
 
-        collection_data = {}
+            collection_data = {}
+            for p_name, p_val in properties.items():
+                if p_name.startswith("_") or "//" in p_name:
+                    continue
+                if not self.FIELD_SANITIZER.match(p_name):
+                    continue
+                f_type = self._describe_type(p_val, None)
+                collection_data[p_name] = {
+                    "default": self.DEFAULT_SEARCH_FIELD in p_val.get("copy_to", []),
+                    "indexed": self._describe_indexed(p_val, None),
+                    "list": False,
+                    "stored": False,
+                    "deprecated": False,
+                    "type": f_type,
+                    "description": "",
+                    "regex": None,
+                    "values": None,
+                    "deprecated_description": "",
+                }
 
-        for p_name, p_val in properties.items():
-            if p_name.startswith("_") or "//" in p_name:
-                continue
-            if not self.FIELD_SANITIZER.match(p_name):
-                continue
-            f_type = self._describe_type(p_val, None)
-            collection_data[p_name] = {
-                "default": self.DEFAULT_SEARCH_FIELD in p_val.get("copy_to", []),
-                "indexed": self._describe_indexed(p_val, None),
-                "list": False,
-                "stored": False,
-                "deprecated": False,
-                "type": f_type,
-                "description": "",
-                "regex": None,
-                "values": None,
-                "deprecated_description": "",
-            }
+            collection_data.pop("id", None)
+            return collection_data
 
-        collection_data.pop("id", None)
-
-        return collection_data
-
-    def _live_mapping_properties(self) -> tuple[dict[str, dict[str, Any]], set[str]]:
-        """Return per-index flattened mapping properties and the union of all dotted paths."""
-        data = self.with_retries(self.datastore.client.indices.get_mapping, index=self.name)
-        flattened_by_index: dict[str, dict[str, Any]] = {}
-        all_paths: set[str] = set()
-        for index_name, index_data in data.items():
-            flattened = self._flatten_mapping_properties(index_data.get("mappings", {}).get("properties", {}))
-            flattened_by_index[index_name] = flattened
-            all_paths.update(flattened.keys())
-        return flattened_by_index, all_paths
-
-    def _reconciled_property(self, p_name: str, flattened_by_index: dict[str, dict[str, Any]]) -> dict[str, Any]:
-        """Return a field's mapping body, raising if it conflicts across backing indices."""
-        bodies = [flattened[p_name] for flattened in flattened_by_index.values() if p_name in flattened]
-        if not bodies:
-            return {}
-        distinct = {json.dumps(body, sort_keys=True, default=str) for body in bodies}
-        if len(distinct) > 1:
-            raise HowlerRuntimeError(
-                f"Field {p_name} has conflicting mappings across indices for collection {self.name}: {sorted(distinct)}"
-            )
-        return bodies[0]
-
-    def _live_field_capabilities(self) -> dict[str, dict[str, Any]]:
-        """Return the ``fields`` section of a live ``field_caps`` call across this collection."""
-        response = self.with_retries(self.datastore.client.field_caps, index=self.name, fields="*")
-        body = getattr(response, "body", response)
-        return dict(body.get("fields", {}))
-
-    def _reconciled_capability(self, p_name: str, caps_fields: dict[str, dict[str, Any]]) -> Optional[dict[str, Any]]:
-        """Return a field's single capability body, raising if it is ambiguous/conflicting."""
-        caps = caps_fields.get(p_name)
-        if not caps:
-            return None
-        if len(caps) > 1:
-            raise HowlerRuntimeError(
-                f"Field {p_name} has conflicting types across indices for collection {self.name}: {sorted(caps)}"
-            )
-        return next(iter(caps.values()))
-
-    @staticmethod
-    def _describe_type(p_val: dict[str, Any], type_caps: Optional[dict[str, Any]]) -> str:
-        source = p_val.get("analyzer") or p_val.get("type")
-        if source is None and type_caps is not None:
-            source = type_caps.get("type")
-        return ESCollection._get_odm_type(source or "keyword")
-
-    @staticmethod
-    def _describe_indexed(p_val: dict[str, Any], type_caps: Optional[dict[str, Any]]) -> bool:
-        if type_caps is not None and "searchable" in type_caps:
-            return bool(type_caps["searchable"])
-        return p_val.get("index", p_val.get("enabled", True))
-
-    @staticmethod
-    def _mapping_child_metadata(field_definition):
-        """Return the Howler field metadata for a Mapping/FlattenedObject field's value type."""
-        if field_definition is None:
-            return None
-        return field_metadata(new_schema.mapping_value_annotation(field_definition))
-
-    def _fields_from_schema(self, skip_mapping_children=False):  # noqa: C901
-        """``fields()`` computed from live ``field_caps``/mapping introspection + the new schema.
-
-        Uses Elasticsearch ``field_caps`` (type/searchable/aggregatable across every backing
-        alias/rollover index) as the primary signal, supplemented by a live mapping GET for
-        details ``field_caps`` does not expose (``analyzer``, ``copy_to``, ``enabled``), and
-        ``model_registry`` for description/list(multivalued)/stored/deprecated/regex/values.
-        Multi-index/multi-type conflicts are raised explicitly rather than silently resolved by
-        picking an arbitrary index. Preserves the exact legacy return shape and the legacy
-        Mapping-child de-duplication quirk (only the first live dynamic key of a given ``Mapping``
-        field gets its own entry, in addition to the parent-summary entry).
-        """
-        if self.schema_model is None:
-            raise HowlerValueError("Schema introspection requires a model")
-        model_fields = model_registry.flat_fields(self.schema_model)
         flattened_by_index, all_paths = self._live_mapping_properties()
         caps_fields = self._live_field_capabilities()
-
         collection_data: dict[str, Any] = {}
 
         for p_name in sorted(all_paths):
@@ -3234,7 +3149,7 @@ class ESCollection(Generic[ModelType]):
                 parent_is_mapping = (
                     parent_definition is not None
                     and parent_definition.metadata is not None
-                    and parent_definition.metadata.kind in new_schema.DYNAMIC_KEY_KINDS
+                    and parent_definition.metadata.kind in schema.DYNAMIC_KEY_KINDS
                 )
                 if parent_is_mapping:
                     if parent_p_name not in collection_data:
@@ -3273,9 +3188,7 @@ class ESCollection(Generic[ModelType]):
                 "indexed": self._describe_indexed(p_val, type_caps),
                 "list": field_model.multivalued if field_model else False,
                 "stored": bool(field_model.metadata.store) if field_model and field_model.metadata else False,
-                "deprecated": (
-                    bool(field_model.metadata.deprecated) if field_model and field_model.metadata else False
-                ),
+                "deprecated": bool(field_model.metadata.deprecated) if field_model and field_model.metadata else False,
                 "type": f_type,
                 "description": field_model.description if field_model else "",
                 "regex": options.get("validation_regex"),
@@ -3286,8 +3199,71 @@ class ESCollection(Generic[ModelType]):
             }
 
         collection_data.pop("id", None)
-
         return collection_data
+
+    def _live_mapping_properties(self) -> tuple[dict[str, dict[str, Any]], set[str]]:
+        """Return per-index flattened mapping properties and the union of all dotted paths."""
+        data = response_body(self.with_retries(self.datastore.client.indices.get_mapping, index=self.name))
+        return self._mapping_properties(data)
+
+    def _mapping_properties(self, data: dict[str, Any]) -> tuple[dict[str, dict[str, Any]], set[str]]:
+        """Flatten mapping properties from an already-fetched mapping response."""
+        flattened_by_index: dict[str, dict[str, Any]] = {}
+        all_paths: set[str] = set()
+        for index_name, index_data in data.items():
+            flattened = self._flatten_mapping_properties(index_data.get("mappings", {}).get("properties", {}))
+            flattened_by_index[index_name] = flattened
+            all_paths.update(flattened.keys())
+        return flattened_by_index, all_paths
+
+    def _reconciled_property(self, p_name: str, flattened_by_index: dict[str, dict[str, Any]]) -> dict[str, Any]:
+        """Return a field's mapping body, raising if it conflicts across backing indices."""
+        bodies = [flattened[p_name] for flattened in flattened_by_index.values() if p_name in flattened]
+        if not bodies:
+            return {}
+        distinct = {json.dumps(body, sort_keys=True, default=str) for body in bodies}
+        if len(distinct) > 1:
+            raise HowlerRuntimeError(
+                f"Field {p_name} has conflicting mappings across indices for collection {self.name}: {sorted(distinct)}"
+            )
+        return bodies[0]
+
+    def _live_field_capabilities(self) -> dict[str, dict[str, Any]]:
+        """Return the ``fields`` section of a live ``field_caps`` call across this collection."""
+        response = self.with_retries(self.datastore.client.field_caps, index=self.name, fields="*")
+        body = response_body(response)
+        return dict(body.get("fields", {}))
+
+    def _reconciled_capability(self, p_name: str, caps_fields: dict[str, dict[str, Any]]) -> Optional[dict[str, Any]]:
+        """Return a field's single capability body, raising if it is ambiguous/conflicting."""
+        caps = caps_fields.get(p_name)
+        if not caps:
+            return None
+        if len(caps) > 1:
+            raise HowlerRuntimeError(
+                f"Field {p_name} has conflicting types across indices for collection {self.name}: {sorted(caps)}"
+            )
+        return next(iter(caps.values()))
+
+    @staticmethod
+    def _describe_type(p_val: dict[str, Any], type_caps: Optional[dict[str, Any]]) -> str:
+        source = p_val.get("analyzer") or p_val.get("type")
+        if source is None and type_caps is not None:
+            source = type_caps.get("type")
+        return ESCollection._get_odm_type(source or "keyword")
+
+    @staticmethod
+    def _describe_indexed(p_val: dict[str, Any], type_caps: Optional[dict[str, Any]]) -> bool:
+        if type_caps is not None and "searchable" in type_caps:
+            return bool(type_caps["searchable"])
+        return p_val.get("index", p_val.get("enabled", True))
+
+    @staticmethod
+    def _mapping_child_metadata(field_definition):
+        """Return the Howler field metadata for a Mapping/FlattenedObject field's value type."""
+        if field_definition is None:
+            return None
+        return field_metadata(schema.mapping_value_annotation(field_definition))
 
     def _ilm_policy_exists(self):
         try:
@@ -3365,8 +3341,8 @@ class ESCollection(Generic[ModelType]):
 
         :param ilm_config: The global ILMConfig (unused directly but kept for symmetry).
         """
-        template = new_schema.ilm_template_body(
-            self.schema_model,
+        template = schema.ilm_template_body(
+            self.model_class,
             shards=self.shards,
             replicas=self.replicas,
             policy_name=f"{self.name}_policy",
@@ -3382,37 +3358,42 @@ class ESCollection(Generic[ModelType]):
         logger.info("Index template %s_template created/updated", self.name)
 
     def _get_index_settings(self) -> dict:
-        return new_schema.index_settings(self.schema_model, shards=self.shards, replicas=self.replicas)
+        return schema.index_settings(self.model_class, shards=self.shards, replicas=self.replicas)
 
     def _get_index_mappings(self) -> dict:
-        return new_schema.document_mapping(self.schema_model)
+        return schema.document_mapping(self.model_class)
 
     def _check_fields(self: Self):
-        if not self.validate:
+        if not self.validate or self.model_class is None:
             return
 
-        if self.schema_model is not None:
-            return self._check_fields_from_schema()
+        expected_mapping = schema.document_mapping(self.model_class)
+        mapping_data = response_body(self.with_retries(self.datastore.client.indices.get_mapping, index=self.name))
+        flattened_by_index, live_paths = self._mapping_properties(mapping_data)
+        capabilities = self._live_field_capabilities()
+        self._check_dynamic_templates(
+            expected_mapping["dynamic_templates"] or [], self._live_dynamic_templates(mapping_data)
+        )
 
-    def _add_fields_with_limit_retry(
-        self,
-        missing_fields: dict[str, Any],
-        add_fields: Callable[[dict[str, Any]], None],
-    ) -> None:
-        """Add fields, expanding only this collection's physical-index limit when required."""
+        expected_properties = expected_mapping["properties"]
+        for path, expected in expected_properties.items():
+            if path not in live_paths:
+                continue
+            live = self._reconciled_property(path, flattened_by_index)
+            capability = self._reconciled_capability(path, capabilities)
+            self._check_schema_field(path, expected, live, capability)
+
+        missing_static = {path: props for path, props in expected_properties.items() if path not in live_paths}
+        if not missing_static:
+            return
+
         try:
-            add_fields(missing_fields)
+            self._add_fields(missing_static)
         except elasticsearch.BadRequestError as err:
-            if not (
-                err.body
-                and isinstance(err.body, dict)
-                and "error" in err.body
-                and "reason" in err.body["error"]
-                and str(err.body["error"]["reason"]).startswith("Limit of total fields")
-            ):
+            reason = error_message(err)
+            if not reason.startswith("Limit of total fields"):
                 raise
 
-            reason = str(err.body["error"]["reason"])
             current_count = int(re.sub(r".+\[(\d+)].+", r"\1", reason))
             logger.warning("Current field cap %s is too low, increasing to %s", current_count, current_count + 500)
             self.with_retries(
@@ -3420,17 +3401,22 @@ class ESCollection(Generic[ModelType]):
                 index=self.index_list_full,
                 settings={"index.mapping.total_fields.limit": current_count + 500},
             )
-            add_fields(missing_fields)
+            self._add_fields(missing_static)
 
-    def _live_dynamic_templates(self) -> dict[str, list[dict[str, Any]]]:
+    def _live_dynamic_templates(self, data: dict[str, Any] | None = None) -> dict[str, list[dict[str, Any]]]:
         """Return each backing index's dynamic templates in Elasticsearch precedence order."""
-        data = self.with_retries(self.datastore.client.indices.get_mapping, index=self.name)
+        if data is None:
+            data = response_body(self.with_retries(self.datastore.client.indices.get_mapping, index=self.name))
         return {
             index_name: list(index_data.get("mappings", {}).get("dynamic_templates", []))
             for index_name, index_data in data.items()
         }
 
-    def _check_dynamic_templates(self) -> None:
+    def _check_dynamic_templates(
+        self,
+        expected_templates: list[dict[str, Any]] | None = None,
+        live_templates_by_index: dict[str, list[dict[str, Any]]] | None = None,
+    ) -> None:
         """Refuse missing/changed templates while tolerating harmless obsolete live templates.
 
         Adding or changing a dynamic template after documents already exist can silently change
@@ -3439,14 +3425,17 @@ class ESCollection(Generic[ModelType]):
         than "fixed" automatically. Extra templates left by a disabled plugin do not alter fields
         generated by the active schema and are retained with a warning.
         """
-        expected_templates = new_schema.document_mapping(self.schema_model)["dynamic_templates"]
+        if expected_templates is None:
+            expected_templates = schema.document_mapping(self.model_class)["dynamic_templates"]
+        expected_templates = expected_templates or []
         expected_order = [next(iter(template)) for template in expected_templates]
         expected_by_key = {next(iter(template)): template[next(iter(template))] for template in expected_templates}
 
         unsafe: set[str] = set()
         extra: set[str] = set()
         reordered_indices: list[str] = []
-        live_templates_by_index = self._live_dynamic_templates()
+        if live_templates_by_index is None:
+            live_templates_by_index = self._live_dynamic_templates()
         if not live_templates_by_index:
             unsafe.update(expected_by_key)
 
@@ -3523,33 +3512,6 @@ class ESCollection(Generic[ModelType]):
                 raise HowlerRuntimeError(
                     f"Field {path} has incompatible {option}. [{live_value!r} != {expected_value!r}]"
                 )
-
-    def _check_fields_from_schema(self) -> None:
-        """``_check_fields`` computed from the finalized new schema model.
-
-        Compares the schema's expected flat/explicit properties (and the model's expected
-        dynamic templates) to the live index via :meth:`fields`/:meth:`_live_dynamic_templates`.
-        Missing *safe* explicit fields (plain leaf properties, never a new/changed dynamic
-        template) are added across every physical index; anything that would require a new or
-        changed dynamic template is refused. Total-field-limit expansion on the existing
-        Elasticsearch error path is preserved unchanged.
-        """
-        self._check_dynamic_templates()
-
-        expected_properties = new_schema.document_mapping(self.schema_model)["properties"]
-        flattened_by_index, live_paths = self._live_mapping_properties()
-        capabilities = self._live_field_capabilities()
-
-        for path, expected in expected_properties.items():
-            if path not in live_paths:
-                continue
-            live = self._reconciled_property(path, flattened_by_index)
-            capability = self._reconciled_capability(path, capabilities)
-            self._check_schema_field(path, expected, live, capability)
-
-        missing_static = {path: props for path, props in expected_properties.items() if path not in live_paths}
-        if missing_static:
-            self._add_fields_with_limit_retry(missing_static, self._add_schema_fields)
 
     def _ensure_collection(self):
         """This function should test if the collection that you are trying to access does indeed exist
@@ -3797,16 +3759,9 @@ class ESCollection(Generic[ModelType]):
         self._check_fields()
         self._create_index_template(ilm_global)
 
-    def _add_schema_fields(self, missing_fields: dict[str, Any]) -> None:
-        """Add already-built, safe explicit schema properties (never dynamic-template-governed).
-
-        ``missing_fields`` values are complete ES property bodies produced by
-        ``howler.models.schema.build_properties``, so no further
-        mapping/template construction is needed before uploading them.
-        """
-        self._put_mapping_properties({path: deepcopy(body) for path, body in missing_fields.items()})
-
-    def _put_mapping_properties(self, properties: dict[str, Any]) -> None:
+    def _add_fields(self, missing_fields: dict[str, Any]) -> None:
+        """Add safe explicit schema properties to every backing index and its templates."""
+        properties = {path: deepcopy(body) for path, body in missing_fields.items()}
         # Upload the new properties to every physical index backing this collection, update the
         # legacy top-level template if one exists, and refresh the ILM composable template.
         for index in self.index_list_full:

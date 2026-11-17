@@ -164,33 +164,21 @@ class ModelRegistry:
         )
         return model_type
 
-    def register_derived(
-        self,
-        model_type: type[BaseModel],
-        base_type: type[BaseModel],
-        *,
-        description: str | None = None,
-        id_field: str | None = None,
-        index: bool | None = None,
-        store: bool | None = None,
-    ) -> type[BaseModel]:
+    def register_derived(self, model_type: type[BaseModel], base_type: type[BaseModel]) -> type[BaseModel]:
         """Register a derived model while preserving inherited resolved metadata.
 
-        An omitted ``id_field`` inherits the base model's already-resolved identifier without
-        re-validating it as an explicit field declaration. Explicit overrides still go through
-        the normal validation in :meth:`register`.
+        The base model's already-resolved identifier is inherited without re-validating it as
+        an explicit field declaration.
         """
         base_metadata = self.metadata(base_type)
         self.register(
             model_type,
-            description=description if description is not None else base_metadata.description,
-            id_field=id_field,
-            index=index if index is not None else base_metadata.index,
-            store=store if store is not None else base_metadata.store,
+            description=base_metadata.description,
+            index=base_metadata.index,
+            store=base_metadata.store,
             embedded=base_metadata.embedded,
         )
-        if id_field is None:
-            self._models[model_type] = replace(self._models[model_type], id_field=base_metadata.id_field)
+        self._models[model_type] = replace(self._models[model_type], id_field=base_metadata.id_field)
         return model_type
 
     def metadata(self, model_type: type[BaseModel]) -> ModelMetadata:

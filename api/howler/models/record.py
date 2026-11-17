@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from howler.config import CLASSIFICATION
 from howler.models import (
     HowlerEmbeddedModel,
@@ -21,7 +19,6 @@ from howler.models import (
 from howler.models.assemblyline import AssemblyLine
 from howler.models.aws import AWS
 from howler.models.azure import Azure
-from howler.models.base import HowlerModelMixin
 from howler.models.cbs import CBS
 from howler.models.ecs.agent import Agent
 from howler.models.ecs.client import Client
@@ -65,6 +62,8 @@ class ECSVersion(HowlerEmbeddedModel):
 
 class Record(HowlerESModel):
     """Base ECS fields shared by Hit and Event. Never registered/finalized directly."""
+
+    _include_index = True
 
     # Base Fields
     timestamp: date(default="NOW", description="Date/time when the event originated.", reference=ECS_REFERENCE)
@@ -255,14 +254,3 @@ class Record(HowlerESModel):
         description="The vulnerability fields describe information about a vulnerability that is relevant to an event.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-vulnerability.html",
     )
-
-    def as_primitives(self, **kwargs: Any) -> dict[str, Any]:
-        """Add the ``__index`` field expected by legacy consumers.
-
-        Uses an explicit base-class call instead of ``super()`` because the DSL/Pydantic
-        metaclass rebuilds ``HowlerESModel`` subclasses, which breaks the zero-arg ``super()``
-        ``__class__`` cell.
-        """
-        result = HowlerModelMixin.as_primitives(self, **kwargs)
-        result["__index"] = type(self).__name__.lower()
-        return result

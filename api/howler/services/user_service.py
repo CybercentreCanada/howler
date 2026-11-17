@@ -1,4 +1,4 @@
-from typing import Any, Literal, Optional, cast, overload
+from typing import Any, Literal, Optional, overload
 
 from authlib.integrations.flask_client import OAuth
 from flask import current_app, request
@@ -58,7 +58,7 @@ def get_user(
     user: User | None = None,
 ):
     """Return a user as a model or dictionary."""
-    return cast(Any, datastore().user.get_if_exists(key=id, as_obj=as_odm, version=version))
+    return datastore().user.get_if_exists(key=id, as_obj=as_odm, version=version)
 
 
 def convert_user(user: User) -> dict[str, Any]:
@@ -70,7 +70,7 @@ def convert_user(user: User) -> dict[str, Any]:
     Returns:
         dict: The parsed user data object
     """
-    model_user = cast(Any, user)
+    model_user = user
     user_data = {
         k: v
         for k, v in model_user.as_primitives().items()
@@ -93,7 +93,7 @@ def convert_user(user: User) -> dict[str, Any]:
 
     user_data["apikeys"] = [
         (key, value.acl, value.as_primitives(strip_null=False)["expiry_date"])
-        for key, value in cast(Any, datastore().user.get_if_exists(model_user.uname)).apikeys.items()
+        for key, value in datastore().user.get_if_exists(model_user.uname).apikeys.items()
     ]
 
     user_data["avatar"] = datastore().user_avatar.get_if_exists(model_user.uname)
@@ -241,7 +241,7 @@ def parse_user_data(  # noqa: C901
 
                 view_query = f"owner:{current_user['uname']} AND title:view.assigned_to_me AND type:readonly"
                 if len(storage.view.search(view_query)["items"]) == 0:
-                    new_assigned_view = cast(Any, View).validate_howler(
+                    new_assigned_view = View.validate_howler(
                         {
                             "title": "view.assigned_to_me",
                             "query": f"howler.assignment:{current_user['uname']}",
@@ -264,7 +264,7 @@ def parse_user_data(  # noqa: C901
     else:
         raise AccessDeniedException("This user is not allowed access to the system")
 
-    return cast(Any, User).validate_howler(
+    return User.validate_howler(
         {
             key: value
             for key, value in current_user.items()
@@ -343,7 +343,7 @@ def save_user_account(
     data.pop("roles", None)
     data.pop("username", None)
 
-    data = cast(Any, User).validate_howler(data).as_primitives()
+    data = User.validate_howler(data).as_primitives()
 
     if username != data["uname"]:
         raise AccessDeniedException("You are not allowed to change the username.")

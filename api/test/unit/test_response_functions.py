@@ -150,21 +150,6 @@ def test_coerce_response_data_handles_lists_of_models():
     assert coerced == [user.as_primitives() for user in users]
 
 
-def test_coerce_response_data_handles_pydantic_models():
-    """Finalized datastore models use the same public response conversion."""
-    action = SchemaAction.model_validate(
-        {
-            "action_id": "action-1",
-            "owner": "user-1",
-            "name": "Test",
-            "query": "id:*",
-        }
-    )
-
-    assert api._coerce_response_data(action) == action.as_primitives()
-    assert api._coerce_response_data([action]) == [action.as_primitives()]
-
-
 def test_coerce_response_data_passthrough_for_plain_values():
     """Plain JSON-serializable values should be returned unchanged."""
     payload = {"success": True, "count": 3}

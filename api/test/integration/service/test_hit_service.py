@@ -11,7 +11,6 @@ from howler.helper.hit import HitStatusTransition
 from howler.helper.workflow import Workflow
 from howler.models import construct_partial
 from howler.models.hit import Hit
-from howler.models.hit import Hit as SchemaHit
 from howler.models.registry import model_registry
 from howler.models.user import User
 from howler.sample_data.randomizer import random_model_obj
@@ -227,7 +226,7 @@ def test_convert_hit_warnings(mock_exists):
     assert "related.id is deprecated." in warnings
     assert "related.id" in [
         name
-        for name, definition in model_registry.flat_fields(SchemaHit).items()
+        for name, definition in model_registry.flat_fields(Hit).items()
         if definition.metadata and definition.metadata.deprecated
     ]
 
@@ -295,7 +294,7 @@ def test_update_hit_modifies_status(datastore_connection):
 
 
 def test_update_hit_fetches_version_when_missing():
-    hit = construct_partial(SchemaHit, {"howler": {"id": "test-hit"}})
+    hit = construct_partial(Hit, {"howler": {"id": "test-hit"}})
     version = "hit-index---1---1"
     storage = MagicMock()
     storage.hit.get.side_effect = [(hit, version), (hit, version)]
@@ -312,7 +311,7 @@ def test_update_hit_fetches_version_when_missing():
 
 
 def test_update_hit_preserves_provided_version():
-    hit = construct_partial(SchemaHit, {"howler": {"id": "test-hit"}})
+    hit = construct_partial(Hit, {"howler": {"id": "test-hit"}})
     version = "hit-index---2---3"
     storage = MagicMock()
     storage.hit.get.return_value = (hit, version)

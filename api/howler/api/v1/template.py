@@ -1,5 +1,3 @@
-from typing import Any, cast
-
 from flask import request
 
 from howler.api import (
@@ -100,7 +98,7 @@ def create_template(**kwargs):
     storage = datastore()
 
     try:
-        template = cast(Any, Template).validate_howler(template_data)
+        template = Template.validate_howler(template_data)
 
         if template.type == "personal":
             template.owner = kwargs["user"]["uname"]
@@ -155,12 +153,14 @@ def delete_template(id: str, user: User, **kwargs):
     if not storage.template.exists(id):
         return not_found(err="This template does not exist")
 
-    existing_template = cast(Any, storage.template.get_if_exists(id))
+    existing_template = storage.template.get_if_exists(id)
+    if not existing_template:
+        return not_found(err="This template does not exist")
 
-    if existing_template.type == "personal" and existing_template.owner != cast(Any, user).uname:
+    if existing_template.type == "personal" and existing_template.owner != user.uname:
         return forbidden(err="You cannot delete a personal template that is not owned by you.")
 
-    if existing_template.type == "global" and "admin" not in cast(Any, user).type:
+    if existing_template.type == "global" and "admin" not in user.type:
         return forbidden(err="You cannot delete a global template unless you are an administrator.")
 
     result = storage.template.delete(id, refresh=refresh)
@@ -206,9 +206,11 @@ def update_template_fields(id: str, user: User, **kwargs):
     if not isinstance(new_fields, list) or not all(isinstance(f, str) for f in new_fields):
         return bad_request(err="List of new fields must be a list of strings.")
 
-    existing_template = cast(Any, storage.template.get_if_exists(id))
+    existing_template = storage.template.get_if_exists(id)
+    if not existing_template:
+        return not_found(err="This template does not exist")
 
-    if existing_template.type == "personal" and existing_template.owner != cast(Any, user).uname:
+    if existing_template.type == "personal" and existing_template.owner != user.uname:
         return forbidden(err="You cannot update a personal template that is not owned by you.")
 
     existing_template.keys = new_fields

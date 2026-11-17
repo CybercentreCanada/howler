@@ -95,9 +95,9 @@ def create(index: str, user: User, *, refresh: Literal["true", "false", "wait_fo
             return bad_request(err=f"Ingestion failure on record at index {i}: {e}")
 
     if index == "event":
-        event_service.create_events(odms, cast(Any, user).uname, overwrite=False, refresh=refresh)
+        event_service.create_events(odms, user.uname, overwrite=False, refresh=refresh)
     else:
-        hit_service.create_hits(odms, cast(Any, user).uname, overwrite=False, refresh=refresh)
+        hit_service.create_hits(odms, user.uname, overwrite=False, refresh=refresh)
 
     # Enqueue newly created hit IDs for the correlation worker.
     ids = [odm.howler.id for odm in odms]
@@ -147,7 +147,7 @@ def delete(
     if ids is None:
         return bad_request(err="No hit ids were sent.")
 
-    if "admin" not in cast(Any, user).type:
+    if "admin" not in user.type:
         return forbidden(err="Cannot delete hit, only administrators are permitted to delete.")
 
     index_list = indexes.split(",")

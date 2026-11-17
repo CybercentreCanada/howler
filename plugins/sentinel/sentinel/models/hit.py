@@ -14,15 +14,10 @@ PLUGIN_NAME = "sentinel"
 
 
 def declare_hit_extension() -> None:
-    """Declare the ``sentinel`` field extension for the ``Hit`` model.
-
-    Safe to call multiple times from within this plugin; only the first successful
-    declaration is kept.
-    """
-    if "sentinel" not in model_extensions.pending(Hit) and not model_extensions.is_finalized(Hit):
-        model_extensions.declare(
-            Hit,
-            "sentinel",
-            optional(compound(Sentinel), description="Sentinel metadata associated with this alert"),
-            plugin=PLUGIN_NAME,
-        )
+    """Declare the ``sentinel`` field once, before the ``Hit`` model is finalized."""
+    model_extensions.declare(
+        Hit,
+        "sentinel",
+        optional(compound(Sentinel), description="Sentinel metadata associated with this alert"),
+        plugin=PLUGIN_NAME,
+    )

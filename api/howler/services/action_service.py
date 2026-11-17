@@ -205,7 +205,7 @@ def process_action_batch(trigger: str, items: list[TriggeredAction]) -> None:
             auth_token = None
 
         try:
-            user = cast(Any, datastore().user.get(uname))
+            user = datastore().user.get(uname)
             bulk_execute_on_query(query, trigger=trigger, user=user, auth_token=auth_token)
         except Exception:
             logger.exception("Error processing action batch for trigger=%s user=%s", trigger, uname)
@@ -260,7 +260,6 @@ def bulk_execute_on_query(
     )
 
     for action in on_trigger_actions:
-        action = cast(Any, action)
         intersected_query = f"({query}) AND ({action.query})"
 
         if datastore().hit.search(intersected_query, rows=0)["total"] < 1:
@@ -283,7 +282,7 @@ def bulk_execute_on_query(
                     "operation_id": operation.operation_id,
                     **parsed_data,
                 },
-                cast(Any, user).uname if user is not None else "unknown",
+                user.uname if user is not None else "unknown",
                 user,
                 bulk_execute_on_query,
             )
@@ -298,7 +297,7 @@ def bulk_execute_on_query(
             report = actions.execute(
                 operation_id=operation.operation_id,
                 query=intersected_query,
-                user=cast(Any, user),
+                user=user,
                 **parsed_data,
             )
 

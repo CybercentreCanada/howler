@@ -38,6 +38,8 @@ def get_upserted_hits(
 
 def get_model_struct_schema(model: type[BaseModel]) -> StructType:
     """Get the schema for a Pydantic model structure."""
+    if model is Hit:
+        model = datastore().hit.model_class or Hit
     schema = build_schema(model)
     return schema
 

@@ -4,8 +4,7 @@ from howler.common.exceptions import HowlerAttributeError
 from howler.config import config
 from howler.config_models import ILMIndexConfig
 from howler.datastore.collection import ESCollection, logger
-from howler.models import model_extensions
-from howler.models import schema as new_schema
+from howler.models import model_extensions, schema
 from howler.models.action import Action
 from howler.models.analytic import Analytic
 from howler.models.case import Case
@@ -71,7 +70,7 @@ def finalize_models(plugins: list[Any]) -> dict[str, Any]:
     finalized_schema_models: dict[str, Any] = {}
     for _index, _schema in INDEXES.items():
         finalized = model_extensions.finalize(_schema) if _schema is not None else None
-        new_schema.document_mapping(finalized)
+        schema.document_mapping(finalized)
         finalized_schema_models[_index] = finalized
     return finalized_schema_models
 
@@ -91,7 +90,6 @@ class HowlerDatastore(object):
                 _index,
                 _schema,
                 ilm_config=ilm_index_config,
-                schema_model=_schema,
             )
 
     def __enter__(self):
@@ -116,15 +114,15 @@ class HowlerDatastore(object):
         self.ds.archive_access = False
 
     @property
-    def hit(self) -> ESCollection[Any]:
+    def hit(self) -> ESCollection[Hit]:
         return self.ds.hit
 
     @property
-    def event(self) -> ESCollection[Any]:
+    def event(self) -> ESCollection[Event]:
         return self.ds.event
 
     @property
-    def case(self) -> ESCollection[Any]:
+    def case(self) -> ESCollection[Case]:
         return self.ds.case
 
     @property
@@ -152,7 +150,7 @@ class HowlerDatastore(object):
         return self.ds.migration
 
     @property
-    def user(self) -> ESCollection[Any]:
+    def user(self) -> ESCollection[User]:
         return self.ds.user
 
     @property

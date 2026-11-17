@@ -44,10 +44,8 @@ and configured Howler extensions. It must:
 2. Run the automated preflight, Kibana Upgrade Assistant, `GET
     /_migration/deprecations`, system feature status, ILM review, and deployment
     configuration review described below. Resolve every 9.x operational
-    blocker. Record `MIGRATION_NEEDED` system-feature status and
-    `reindex_required` next-major compatibility notices as Elasticsearch 10
-    readiness work; schedule and rehearse that work separately, not during this
-    8.19-to-9.5.2 cutover.
+    blocker. Track any Elasticsearch 10 readiness work separately; do not run it
+    during this 8.19-to-9.5.2 cutover.
 3. Upgrade nodes using the documented rolling order and health gates, then
     upgrade Kibana only after Elasticsearch is fully healthy on 9.x. Shut down
     all Kibana instances before upgrading; this is not a rolling upgrade.
@@ -188,20 +186,12 @@ Complete these checks against the target production cluster while it is still on
     Gate 4; do not skip migrations or treat their expected mapping/UUID changes
     as ordinary verifier failures.
 
-4. Run the read-only Howler preflight with an account limited to the necessary
-    monitoring/read privileges. For example:
-
-    ```bash
-    cd api
-    export ELASTICSEARCH_URL="https://elasticsearch.example:9200"
-    export ELASTIC_API_KEY="<restricted-api-key>" # Or ELASTIC_USERNAME/PASSWORD.
-    poetry run python -m howler.external.elasticsearch_preflight \
-      --ca-certs /path/to/approved-ca.pem \
-      --output /approved/private/path/es-preflight-8.19.json
-    ```
-
-    It sends only GET/HEAD requests with plain `application/json` headers. The
-    report includes cluster/index inventory, UUIDs, counts, aliases and write
+4. Run the read-only Howler preflight Job specified above with an account
+    limited to the necessary monitoring/read privileges. See the
+    [preflight guide](elasticsearch_9_preflight.md) for CLI options, report
+    fields, and the complete operational review. It sends only GET requests with
+    plain `application/json` headers. The report includes cluster/index
+    inventory, UUIDs, counts, aliases and write
     flags, and ILM explain state for Howler-prefixed indices. A non-zero exit is
     **NO-GO**; retain the complete report and resolve every blocker.
 
@@ -244,10 +234,9 @@ organization's ingress/API gateway policy and explicit writer shutdowns.
 1. Announce the write freeze. At ingress, deny mutating API methods and use a
     reviewed route allowlist; do not assume that blocking `POST` alone makes
     Howler read-only. UI search may use `POST` and will therefore be unavailable
-    while that method is blocked. Some authentication/login GET routes can create
-    or update user records (for example OAuth auto-sync): block those routes or
-    disable that behavior for the window. In particular, block OAuth logins at
-    ingress during the freeze unless user auto-sync has been disabled. Confirm no
+    while that method is blocked. Some authentication/login GET routes, including
+    OAuth auto-sync, can create or update user records: block those routes at
+    ingress unless auto-sync has been disabled. Confirm no
     remaining allowed GET route performs writes. Stop or pause client/SDK
     ingestion, partner feeds, and every external producer.
 2. Pause the Evidence, Sentinel, and Sync plugin writers; scheduled imports;
@@ -283,10 +272,9 @@ organization's ingress/API gateway policy and explicit writer shutdowns.
 
     Confirm its `baseline_capture` field is `true`, its source is `8.19.11`, and
     `checks.ready` is `true`; retain it at the restricted location recorded in
-    the change plan. Baseline-capture mode requires every Howler primary shard's
-    `global_checkpoint` to equal `max_seq_no`. If it reports incomplete or
-    unsynced statistics, keep writers quiesced, flush, wait for checkpoints to
-    catch up, and rerun with `--baseline-capture` before accepting the baseline.
+    the change plan. Follow the [preflight guide](elasticsearch_9_preflight.md)
+    for the checkpoint synchronization gate and the required recapture procedure
+    if statistics are incomplete or unsynced.
 
 6. Immediately before the first Elasticsearch node is upgraded, take a fresh
     full snapshot in the approved repository. Include the required cluster
@@ -294,17 +282,12 @@ organization's ingress/API gateway policy and explicit writer shutdowns.
     verify snapshot `state` is `SUCCESS` and that its listed indices include all
     expected Howler and required system indices. Record repository, snapshot name,
     start/end time, and verification output. The active source cluster is the
-    only cluster allowed to write to that repository. A rehearsal/restore cluster
-    mounts its repository read-only; if the rehearsal must create its own
-    snapshot, use a separate rehearsal-owned repository with one writer. When a
-    restored/rehearsal cluster registers the approved source repository, retain
-    its source settings and set `settings.readonly: true`.
+    only cluster allowed to write to that repository. Use a separate
+    rehearsal-owned repository if the rehearsal must create its own snapshot.
 
-7. Only the active source cluster may write to this repository. Any rehearsal,
-    restored, or rebuild cluster mounting the same repository must register it
-    with `settings.readonly: true` (alongside the repository type's normal
-    settings); never register the same repository writable from two
-    clusters. Verify the repository is readable by the planned **8.19.11
+7. Any rehearsal, restored, or rebuild cluster mounting the same repository
+    must register it with `settings.readonly: true` (alongside the repository
+    type's normal settings). Verify the repository is readable by the planned **8.19.11
     rebuild**. Do not begin unless the snapshot and restore path are both
     verified. Snapshots created after an Elasticsearch upgrade on 9.x cannot be
     restored to an 8.19 cluster; they are not a rollback substitute.
@@ -465,45 +448,33 @@ Assistant completion message; the Upgrade Assistant review was performed on
 
 4. Run the full verifier from a one-off Job/pod using the production 9.x API
     image/config/plugin/Redis setup documented above. For the preferred
-    pre-migration baseline path, pass the quiesced preflight report:
-
-    ```text
-    python -m howler.external.elasticsearch_cutover_verify \
-      --baseline /reports/es-baseline-8.19.json \
-      --output /reports/es-cutover-9.5.2.json
-    ```
-
-    Omit `--baseline` only in the migration fallback, after migrations and
-    initialization have completed and their records/evidence are retained. The
-    local developer alternative is `poetry run python -m
-    howler.external.elasticsearch_cutover_verify` from `api/`; production Jobs
-    must not depend on Poetry or a source checkout.
+    pre-migration baseline path, use the verifier Job spec above with the
+    quiesced preflight report. Omit `--baseline` only in the migration fallback,
+    after migrations and initialization have completed and their records/evidence
+    are retained.
 
     The verifier issues only GET requests. It checks exact node versions,
     cluster health (green by default; yellow is accepted only with the explicit
     `--allow-yellow` flag and is reported), active system-feature migration
-    (`IN_PROGRESS`/`ERROR`), and 9.x operational critical deprecations. Expected
-    Elasticsearch 10 readiness items (`MIGRATION_NEEDED`, old-index/data-stream
-    `reindex_required`) are warnings, not cutover blockers; track them for a
-    separate rehearsed Elasticsearch 10 upgrade. Compare the report's
-    `expected_collections` (collection names, aliases, ILM choices, and field
+    (`IN_PROGRESS`/`ERROR`), and 9.x operational critical deprecations. Track
+    Elasticsearch 10 readiness warnings separately as described in Gate 3a.
+    Compare the report's `expected_collections` (collection names, aliases, ILM
+    choices, and field
     limits) with the approved rehearsal report; an unexpected difference is
     **NO-GO** until explained and rehearsed. Baseline comparison tolerates one
     empty, unwritten ILM generation rollover and empty post-baseline
     initialization of configured collections. It blocks missing/replaced
     baseline indices, UUID or alias metadata changes, and per-shard document
-    count or `max_seq_no` changes. Both the baseline and current `global_checkpoint`
-    must equal their own `max_seq_no`; if not, keep the cluster quiesced, wait for
-    health to become green, and rerun. There is no implicit sequence-number
-    tolerance. A cutover lead may explicitly accept drift on a named physical
-    index with repeatable `--accept-sequence-drift <index>` flags, for example
+    count or `max_seq_no` changes. Baseline and current primary checkpoints must
+    be synchronized; if not, keep the cluster quiesced and follow the preflight
+    guide's checkpoint recovery procedure before rerunning. There is no implicit
+    sequence-number tolerance. A cutover lead may explicitly accept drift on a
+    named physical index with repeatable `--accept-sequence-drift <index>` flags, for example
     `<prefix>-user_hot` or `<prefix>-user_avatar_hot`. Acceptance is a warning,
     includes per-shard baseline/current counts and sequence numbers, never accepts
     a `max_seq_no` decrease, and does not waive UUID, alias, or synchronization
     checks. Recording the decision and rationale in the change record is
-    mandatory. Prefer preventing the writes instead: block OAuth logins at
-    ingress during the freeze or disable login auto-sync, which can write `user`
-    and `user_avatar` documents.
+    mandatory. Prevent OAuth auto-sync writes as described in Gate 2, step 1.
 
     It loads the deployed configuration and finalized models without
     constructing a datastore or reconciling Elasticsearch. It checks each
@@ -640,13 +611,8 @@ support restoring a newer-version snapshot into an earlier cluster. Rollback is
 always a rebuild of the old version plus restoration of the verified
 pre-upgrade snapshot.
 
-## Release and follow-up
+## Follow-up
 
-Use conventional commits so Release Please generates package release notes. Do
-not hand-edit `docs/RELEASES.md` or package `CHANGELOG.md` files. Explicitly call
-out the plugin-facing breaking change: a plugin that only uses legacy
-`modify_odm` extensions will fail startup with the Pydantic-backed release;
-ship a typed `modules.models.declare_extensions` implementation and compatible
-plugin release. Archive the approved baseline/verifier/snapshot evidence in the
-restricted change record, and close the change only after the observation
-window and owner sign-offs.
+Archive the approved baseline, verifier, and snapshot evidence in the restricted
+change record, and close the change only after the observation window and owner
+sign-offs.

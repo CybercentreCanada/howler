@@ -29,32 +29,14 @@ from howler.sample_data.randomizer import (
     random_model_obj,
 )
 from howler.security.utils import get_password_hash
+from howler.services import case_service
 from howler.utils.constants import TESTING
 from howler.utils.uid import get_random_id
 
 APPS = get_apps_list()
-ESCALATIONS = Escalation.list()
 EXAMPLE_ANALYTICS = ["Password Checker", "Bad Guy Finder", "Exploit Patcher"]
 
 logger = get_logger(__file__)
-
-
-def _parent_from_path(case: Case, path: str) -> CaseItem | None:
-    """Build sample-data folders without calling the typed Case service."""
-    parent_id = None
-    parent = None
-    for name in path.strip("/").split("/"):
-        if not name:
-            continue
-        parent = next(
-            (item for item in case.items if item.type == "folder" and item.name == name and item.parent == parent_id),
-            None,
-        )
-        if parent is None:
-            parent = CaseItem.model_validate({"type": "folder", "name": name, "parent": parent_id})
-            case.items.append(parent)
-        parent_id = parent.id
-    return parent
 
 
 def generate_useful_hit(  # noqa: C901
@@ -757,7 +739,7 @@ def generate_useful_case(ds: HowlerDatastore, generated_case_ids: list[str] = []
     )
 
     for hit in selected_hits:
-        parent = _parent_from_path(case, "alerts")
+        parent = case_service.get_parent_from_path(case, "alerts", create_if_missing=True)
 
         case.items.append(
             CaseItem.model_validate(
@@ -771,7 +753,7 @@ def generate_useful_case(ds: HowlerDatastore, generated_case_ids: list[str] = []
         )
 
     for event in selected_events:
-        parent = _parent_from_path(case, "events")
+        parent = case_service.get_parent_from_path(case, "events", create_if_missing=True)
 
         case.items.append(
             CaseItem.model_validate(
@@ -787,7 +769,9 @@ def generate_useful_case(ds: HowlerDatastore, generated_case_ids: list[str] = []
     # Add a few additional deeply nested paths for existing hits/events
     nested_hit_candidates = sample(selected_hits, k=min(len(selected_hits), randint(1, 3))) if selected_hits else []
     for hit in nested_hit_candidates:
-        parent = _parent_from_path(case, f"alerts/{get_random_word()}/{get_random_word()}")
+        parent = case_service.get_parent_from_path(
+            case, f"alerts/{get_random_word()}/{get_random_word()}", create_if_missing=True
+        )
 
         case.items.append(
             CaseItem.model_validate(
@@ -809,7 +793,9 @@ def generate_useful_case(ds: HowlerDatastore, generated_case_ids: list[str] = []
         else []
     )
     for event in nested_event_candidates:
-        parent = _parent_from_path(case, f"alerts/{get_random_word()}/{get_random_word()}")
+        parent = case_service.get_parent_from_path(
+            case, f"alerts/{get_random_word()}/{get_random_word()}", create_if_missing=True
+        )
 
         case.items.append(
             CaseItem.model_validate(
@@ -844,7 +830,7 @@ def generate_useful_case(ds: HowlerDatastore, generated_case_ids: list[str] = []
 
     selected_reference_names = sample(reference_name_pool, k=randint(1, 3))
     for reference_name in selected_reference_names:
-        parent = _parent_from_path(case, "references")
+        parent = case_service.get_parent_from_path(case, "references", create_if_missing=True)
         case.items.append(
             CaseItem.model_validate(
                 {
@@ -858,7 +844,7 @@ def generate_useful_case(ds: HowlerDatastore, generated_case_ids: list[str] = []
 
     markdown_item_count = randint(2, 4)
     for index in range(markdown_item_count):
-        markdown_parent = _parent_from_path(
+        markdown_parent = case_service.get_parent_from_path(
             case,
             choice(
                 [
@@ -868,6 +854,7 @@ def generate_useful_case(ds: HowlerDatastore, generated_case_ids: list[str] = []
                     f"analysis/{get_random_word()}",
                 ]
             ),
+            create_if_missing=True,
         )
         markdown_value = choice(markdown_template_pool).format(
             hypothesis=choice(

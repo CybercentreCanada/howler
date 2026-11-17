@@ -14,16 +14,10 @@ PLUGIN_NAME = "evidence"
 
 
 def declare_hit_extension() -> None:
-    """Declare the ``evidence`` field extension for the ``Hit`` model.
-
-    Safe to call multiple times; the underlying registry rejects a second declaration of the
-    same field name only when it comes from a *different* plugin, so accidental double-import
-    within the same plugin does not raise, but only the first successful declaration wins.
-    """
-    if "evidence" not in model_extensions.pending(Hit) and not model_extensions.is_finalized(Hit):
-        model_extensions.declare(
-            Hit,
-            "evidence",
-            list_field(compound(Evidence), default=[], description="A list of additional ECS objects."),
-            plugin=PLUGIN_NAME,
-        )
+    """Declare the ``evidence`` field once, before the ``Hit`` model is finalized."""
+    model_extensions.declare(
+        Hit,
+        "evidence",
+        list_field(compound(Evidence), default=[], description="A list of additional ECS objects."),
+        plugin=PLUGIN_NAME,
+    )

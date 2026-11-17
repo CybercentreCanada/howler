@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import cast
 
 from flask import request
 from mergedeep.mergedeep import merge
@@ -43,8 +43,7 @@ def get_views(user: User, **kwargs):
     try:
         return ok(
             datastore().view.search(
-                f"type:global OR owner:({cast(Any, user).uname} OR none) OR admins:{cast(Any, user).uname} "
-                f"OR members:{cast(Any, user).uname}",
+                f"type:global OR owner:({user.uname} OR none) OR admins:{user.uname} OR members:{user.uname}",
                 as_obj=False,
                 rows=1000,
                 sort="title asc",
@@ -103,7 +102,7 @@ def create_view(user: User, **kwargs):
 
         view_data["owner"] = user.uname
 
-        view = cast(Any, View).validate_howler(view_data)
+        view = View.validate_howler(view_data)
 
         if view.type == "personal":
             current_user = storage.user.get_if_exists(user.uname)
@@ -146,7 +145,7 @@ def delete_view(view_id: str, user: User, **kwargs):
 
     storage = datastore()
 
-    existing_view = cast(Any, storage.view.get_if_exists(view_id))
+    existing_view = storage.view.get_if_exists(view_id)
     if not existing_view:
         return not_found(err="This view does not exist")
 
@@ -200,7 +199,7 @@ def update_view(view_id: str, user: User, **kwargs):  # noqa: C901
     if set(new_data) & {"owner", "admins", "members"}:
         return bad_request(err="You cannot change permissions using this endpoint.")
 
-    existing_view = cast(Any, storage.view.get_if_exists(view_id))
+    existing_view = storage.view.get_if_exists(view_id)
     if not existing_view:
         return not_found(err="This view does not exist")
 
@@ -219,7 +218,7 @@ def update_view(view_id: str, user: User, **kwargs):  # noqa: C901
     except HowlerException as e:
         return bad_request(err=str(e))
 
-    new_view = cast(Any, View).validate_howler(cast(dict, merge({}, existing_view.as_primitives(), new_data)))
+    new_view = View.validate_howler(cast(dict, merge({}, existing_view.as_primitives(), new_data)))
     storage.view.save(new_view.view_id, new_view, refresh=refresh)
 
     return ok(new_view.as_primitives())
@@ -247,7 +246,7 @@ def set_as_favourite(view_id: str, **kwargs):
     """
     storage = datastore()
 
-    existing_view = cast(Any, storage.view.get_if_exists(view_id))
+    existing_view = storage.view.get_if_exists(view_id)
     if not existing_view:
         return not_found(err="This view does not exist")
 

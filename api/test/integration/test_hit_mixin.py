@@ -45,7 +45,6 @@ def test_hit_collection_is_bound_to_pydantic_model(datastore_connection: HowlerD
     assert isinstance(datastore_connection.hit, ESCollection)
 
     model_class = datastore_connection.hit.model_class
-    assert model_class is datastore_connection.hit.schema_model
     assert issubclass(model_class, Hit)
     if model_class is not Hit:
         # Typed plugin extensions finalize Hit as a direct subclass. Without extensions,

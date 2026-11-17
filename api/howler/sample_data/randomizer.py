@@ -104,10 +104,10 @@ def random_data_for_field(annotation: Any, name: str = "", minimal: bool = False
     if kind == "UUID":
         return get_random_id()
     if name in {"sha384", "sha512"}:
-        return "".join(random.choices("0123456789abcdef", k={"sha384": 96, "sha512": 128}[name]))
+        return get_random_hash({"sha384": 96, "sha512": 128}[name])
     if kind in {"MD5", "SHA1", "SHA256", "HowlerHash"}:
         length = {"MD5": 32, "SHA1": 40}.get(kind, 64)
-        return "".join(random.choices("0123456789abcdef", k=length))
+        return get_random_hash(length)
     if kind == "IP":
         return get_random_ip()
     if kind == "MAC":

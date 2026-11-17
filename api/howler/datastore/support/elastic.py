@@ -36,20 +36,6 @@ def error_status(error: BaseException) -> int | None:
     return None
 
 
-def error_type(error: BaseException) -> str | None:
-    """Return Elasticsearch's structured error type identifier."""
-    error_data = error_body(error).get("error")
-    if not isinstance(error_data, Mapping):
-        return str(error_data) if error_data else None
-    root_causes = error_data.get("root_cause")
-    if isinstance(root_causes, list) and root_causes and isinstance(root_causes[0], Mapping):
-        root_type = root_causes[0].get("type")
-        if root_type:
-            return str(root_type)
-    value = error_data.get("type")
-    return str(value) if value else None
-
-
 def error_message(error: BaseException) -> str:
     """Return the most useful public Elasticsearch error message available."""
     body = error_body(error)

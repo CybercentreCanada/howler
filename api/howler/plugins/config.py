@@ -14,6 +14,14 @@ console.setFormatter(logging.Formatter(HWL_LOG_FORMAT, HWL_DATE_FORMAT))
 logger.addHandler(console)
 
 
+def _expand_module_map(values: dict[str, Any], namespace: str, function: str) -> dict[str, str]:
+    return {
+        name: f"{namespace}.{name}:{function.format(name=name)}" if value is True else value
+        for name, value in values.items()
+        if value is not False
+    }
+
+
 class ODMModules(BaseModel):
     "A set of fields for adding additional fields to Howler's ODM."
 
@@ -86,17 +94,9 @@ class BasePluginConfig(BaseSettings):
             data["modules"]["operations"] = new_operations
 
         if "token_functions" in data["modules"] and isinstance(data["modules"]["token_functions"], dict):
-            new_token_functions_dict: dict[str, str] = {}
-
-            for application, value in data["modules"]["token_functions"].items():
-                if value is True:
-                    new_token_functions_dict[application] = f"{plugin_name}.token.{application}:get_token"
-                elif value is False:
-                    continue
-                else:
-                    new_token_functions_dict[application] = value
-
-            data["modules"]["token_functions"] = new_token_functions_dict
+            data["modules"]["token_functions"] = _expand_module_map(
+                data["modules"]["token_functions"], f"{plugin_name}.token", "get_token"
+            )
 
         if "odm" in data["modules"] and isinstance(data["modules"]["odm"], dict):
             if "modify_odm" in data["modules"]["odm"] and isinstance(data["modules"]["odm"]["modify_odm"], dict):
@@ -105,32 +105,18 @@ class BasePluginConfig(BaseSettings):
                 }
 
             if "generation" in data["modules"]["odm"] and isinstance(data["modules"]["odm"]["generation"], dict):
-                new_generation_dict: dict[str, str] = {}
-                for odm_name, value in data["modules"]["odm"]["generation"].items():
-                    if value is True:
-                        new_generation_dict[odm_name] = f"{plugin_name}.odm.{odm_name}:generate"
-                    elif value is False:
-                        continue
-                    else:
-                        new_generation_dict[odm_name] = value
-
-                data["modules"]["odm"]["generation"] = new_generation_dict
+                data["modules"]["odm"]["generation"] = _expand_module_map(
+                    data["modules"]["odm"]["generation"], f"{plugin_name}.odm", "generate"
+                )
 
         if "models" in data["modules"] and isinstance(data["modules"]["models"], dict):
             models_data = data["modules"]["models"]
             if "declare_extensions" in models_data and isinstance(models_data["declare_extensions"], dict):
-                new_declare_extensions_dict: dict[str, str] = {}
-                for target_name, value in models_data["declare_extensions"].items():
-                    if value is True:
-                        new_declare_extensions_dict[target_name] = (
-                            f"{plugin_name}.models.{target_name}:declare_{target_name}_extension"
-                        )
-                    elif value is False:
-                        continue
-                    else:
-                        new_declare_extensions_dict[target_name] = value
-
-                models_data["declare_extensions"] = new_declare_extensions_dict
+                models_data["declare_extensions"] = _expand_module_map(
+                    models_data["declare_extensions"],
+                    f"{plugin_name}.models",
+                    "declare_{name}_extension",
+                )
 
         return data
 

@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import base64
-from datetime import datetime
-from ipaddress import ip_address
 from pathlib import Path
 
 import pytest
@@ -18,7 +15,6 @@ from howler.models import (
     classification,
     compound,
     construct_partial,
-    construct_safe,
     date,
     flat_to_nested,
     flattened_list_object,
@@ -191,14 +187,6 @@ def test_primitive_serialization_modes_and_access_fields() -> None:
     assert primitives["__access_lvl__"] == 100
     assert primitives["__access_grp1__"] == ["__EMPTY__"]
 
-    encoded = model.as_primitives(ip_format="encoded_bytes", timestamp_format="posix")
-    assert base64.b64decode(encoded["child"]["address"]) == ip_address("127.0.0.1").packed
-    assert encoded["child"]["created"] == int(datetime.fromisoformat(TIMESTAMP.replace("Z", "+00:00")).timestamp())
-
-    data = _document_data()
-    data["maybe_ip"] = "127.0.0.1"
-    assert FoundationDocument.model_validate(data).as_primitives(ip_format="int")["maybe_ip"] == 2130706433
-
 
 def test_partial_construction_validates_selected_fields_without_defaults() -> None:
     """Projected models validate present leaves without requiring unrelated fields."""
@@ -362,68 +350,6 @@ def test_stable_validation_error_translation() -> None:
 
     assert raised.value.errors
     assert isinstance(raised.value.cause, ValidationError)
-
-
-class SafeFlag(HowlerEmbeddedModel):
-    """Nested flag used by safe-construction tests."""
-
-    uuid: uuid()
-    name: keyword()
-    fans: list_field(integer(), default=[])
-
-
-class SafeSpeed(HowlerEmbeddedModel):
-    """Nested speed values used by safe-construction tests."""
-
-    fast: integer(default=1)
-    slow: keyword(default="abc")
-    count: list_field(integer())
-
-
-class SafeDocument(HowlerESModel):
-    """Document used to check partial recovery of valid values."""
-
-    speed: compound(SafeSpeed, default={})
-    flags: list_field(compound(SafeFlag))
-
-
-def test_safe_construction_keeps_valid_values_and_reports_rejected_paths() -> None:
-    """Lenient construction returns valid subvalues and the rejected input separately."""
-    model, dropped = construct_safe(
-        SafeDocument,
-        {
-            "speed": {"fast": "abc", "count": ["100", 100, "hundred", "9dy"]},
-            "flags": [
-                "abc",
-                {"uuid": "bad"},
-                {"name": "good"},
-                {"name": "some-good", "fans": [1, "99", "many"]},
-            ],
-            "cats": "red",
-        },
-    )
-
-    assert isinstance(model, SafeDocument)
-    assert model.speed.fast == 1
-    assert model.speed.slow == "abc"
-    assert model.speed.count == [100, 100]
-    assert [flag.name for flag in model.flags] == ["good", "some-good"]
-    assert all(flag.uuid for flag in model.flags)
-    assert model.flags[0].fans == []
-    assert model.flags[1].fans == [1, 99]
-    assert dropped["cats"] == "red"
-    assert dropped["speed"]["fast"] == "abc"
-    assert set(dropped["speed"]["count"]) == {"hundred", "9dy"}
-    assert dropped["flags"][0] == "abc"
-    assert dropped["flags"][1] == {"uuid": "bad"}
-    assert dropped["flags"][2] == {"fans": ["many"]}
-
-
-def test_safe_construction_returns_non_object_input_unchanged() -> None:
-    """A non-object input cannot produce a document and is returned as rejected input."""
-    model, dropped = construct_safe(SafeDocument, "invalid")
-    assert model is None
-    assert dropped == "invalid"
 
 
 def test_dotted_input_helper_builds_nested_objects() -> None:

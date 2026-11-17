@@ -1,16 +1,20 @@
 from __future__ import annotations
 
+import json
+import sys
+from pathlib import Path
 from typing import Any
 
 import pytest
 
+from howler.external import elasticsearch_preflight as preflight
 from howler.external.elasticsearch_preflight import (
     NO_MIGRATION_NEEDED,
     SOURCE_STACK_VERSION,
     build_report,
     evaluate_inventory,
 )
-from howler.external.elasticsearch_rest import ElasticsearchRestError
+from howler.external.elasticsearch_rest import ElasticsearchRestClient, ElasticsearchRestError
 
 
 @pytest.fixture(autouse=True)
@@ -96,6 +100,9 @@ class FakeRestClient:
         }
         return responses[path]
 
+    def get_optional(self, path: str, params: dict[str, Any] | None = None) -> Any | None:
+        return ElasticsearchRestClient.get_optional(self, path, params)  # type: ignore[arg-type]
+
 
 def test_evaluate_inventory_accepts_clean_8_19_cluster() -> None:
     checks = evaluate_inventory(_inventory())
@@ -158,16 +165,19 @@ def test_evaluate_inventory_blocks_unknown_index_creation_version() -> None:
     ]
 
 
-def test_preflight_blocks_unsynced_primary_checkpoint_with_rerun_guidance() -> None:
+@pytest.mark.parametrize("baseline_capture", [False, True])
+def test_preflight_unsynced_checkpoint_is_warning_or_blocker(baseline_capture: bool) -> None:
     inventory = _inventory()
     inventory["indices"]["howler-hit_hot"]["primary_shards"]["0"]["global_checkpoint"] = 6
 
-    checks = evaluate_inventory(inventory, baseline_capture=True)
+    checks = evaluate_inventory(inventory, baseline_capture=baseline_capture)
 
-    blocker = next(item for item in checks["blockers"] if item["check"] == "primary_sequence_sync")
-    assert "flush" in blocker["message"]
-    assert "rerun the preflight" in blocker["message"]
-    assert blocker["resources"]["howler-hit_hot"] == [
+    findings = checks["blockers"] if baseline_capture else checks["warnings"]
+    finding = next(item for item in findings if item["check"] == "primary_sequence_sync")
+    assert checks["ready"] is (not baseline_capture)
+    assert "flush" in finding["message"]
+    assert "rerun the preflight" in finding["message"]
+    assert finding["resources"]["howler-hit_hot"] == [
         {
             "shard": "0",
             "reason": "unsynced",
@@ -175,19 +185,6 @@ def test_preflight_blocks_unsynced_primary_checkpoint_with_rerun_guidance() -> N
             "global_checkpoint": 6,
         }
     ]
-
-
-def test_preflight_checkpoint_sync_is_warning_live_and_blocker_for_baseline_capture() -> None:
-    inventory = _inventory()
-    inventory["indices"]["howler-hit_hot"]["primary_shards"]["0"]["global_checkpoint"] = 6
-
-    live_checks = evaluate_inventory(inventory)
-    capture_checks = evaluate_inventory(inventory, baseline_capture=True)
-
-    assert live_checks["ready"] is True
-    assert any(warning["check"] == "primary_sequence_sync" for warning in live_checks["warnings"])
-    assert capture_checks["ready"] is False
-    assert any(blocker["check"] == "primary_sequence_sync" for blocker in capture_checks["blockers"])
 
 
 def test_closed_howler_indices_are_classified_for_preflight_and_baseline_capture() -> None:
@@ -239,76 +236,90 @@ def test_build_report_uses_plain_get_inventory_and_adds_baseline_fields() -> Non
     assert all(path.startswith("/") for path, _ in client.calls)
 
 
-def test_preflight_only_tolerates_status_404_for_optional_ilm_explain() -> None:
-    class NoIlmRestClient(FakeRestClient):
-        def get(self, path: str, params: dict[str, Any] | None = None) -> Any:
-            if path == "/howler-*/_ilm/explain":
-                raise ElasticsearchRestError("not found", status=404)
-            return super().get(path, params)
-
-    report = build_report(NoIlmRestClient())  # type: ignore[arg-type]
-
-    assert report["inventory"]["ilm_explain"] == {}
-    assert report["checks"]["ready"] is True
-
-
-def test_preflight_propagates_non_404_ilm_explain_errors() -> None:
+@pytest.mark.parametrize("status", [404, 403])
+def test_preflight_optional_ilm_explain_only_tolerates_404(status: int) -> None:
     class FailedIlmRestClient(FakeRestClient):
         def get(self, path: str, params: dict[str, Any] | None = None) -> Any:
             if path == "/howler-*/_ilm/explain":
-                raise ElasticsearchRestError("forbidden", status=403)
+                raise ElasticsearchRestError("not found", status=status)
             return super().get(path, params)
 
-    with pytest.raises(ElasticsearchRestError) as error:
-        build_report(FailedIlmRestClient())  # type: ignore[arg-type]
-    assert error.value.status == 403
+    if status == 404:
+        report = build_report(FailedIlmRestClient())  # type: ignore[arg-type]
+        assert report["inventory"]["ilm_explain"] == {}
+        assert report["checks"]["ready"] is True
+    else:
+        with pytest.raises(ElasticsearchRestError) as error:
+            build_report(FailedIlmRestClient())  # type: ignore[arg-type]
+        assert error.value.status == status
 
 
-def test_preflight_main_writes_report_and_returns_ready_status(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
-    import json
-    import sys
-
-    import howler.external.elasticsearch_preflight as preflight
-
+@pytest.mark.parametrize("baseline_capture", [False, True])
+def test_preflight_main_writes_report(monkeypatch: pytest.MonkeyPatch, tmp_path, baseline_capture: bool) -> None:
     output = tmp_path / "preflight.json"
-    monkeypatch.setattr(sys, "argv", ["elasticsearch_preflight", "--output", str(output)])
-    monkeypatch.setattr(preflight, "_client_from_args", lambda args, parser: FakeRestClient())
+    flags = ["--baseline-capture"] if baseline_capture else []
+    monkeypatch.setattr(sys, "argv", ["elasticsearch_preflight", *flags, "--output", str(output)])
+    monkeypatch.setattr(preflight, "client_from_args", lambda args, parser: FakeRestClient())
 
     assert preflight.main() == 0
     report = json.loads(output.read_text(encoding="utf-8"))
     assert report["checks"]["ready"] is True
-    assert report["source_stack_version"] == "8.19.11"
-    assert report["baseline_capture"] is False
+    assert report["source_stack_version"] == SOURCE_STACK_VERSION
+    assert report["baseline_capture"] is baseline_capture
 
 
-def test_preflight_main_records_baseline_capture_mode(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
-    import json
-    import sys
-
-    import howler.external.elasticsearch_preflight as preflight
-
-    output = tmp_path / "baseline.json"
+@pytest.mark.parametrize(
+    ("tls_flags", "expected_ca", "expected_insecure"),
+    [
+        (["--ca-certs", "/tmp/approved-ca.pem"], Path("/tmp/approved-ca.pem"), False),
+        (["--insecure"], None, True),
+    ],
+)
+def test_preflight_main_accepts_shared_connection_flags(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+    tls_flags: list[str],
+    expected_ca: Path | None,
+    expected_insecure: bool,
+) -> None:
+    output = tmp_path / "preflight.json"
     monkeypatch.setattr(
         sys,
         "argv",
-        ["elasticsearch_preflight", "--baseline-capture", "--output", str(output)],
+        [
+            "elasticsearch_preflight",
+            "--url",
+            "https://example.invalid",
+            *tls_flags,
+            "--allow-insecure-http-auth",
+            "--timeout",
+            "17",
+            "--output",
+            str(output),
+        ],
     )
-    monkeypatch.setattr(preflight, "_client_from_args", lambda args, parser: FakeRestClient())
+    received: dict[str, Any] = {}
+
+    def fake_client_from_args(args: Any, parser: Any) -> FakeRestClient:
+        received.update(vars(args))
+        return FakeRestClient()
+
+    monkeypatch.setattr(preflight, "client_from_args", fake_client_from_args)
 
     assert preflight.main() == 0
-    report = json.loads(output.read_text(encoding="utf-8"))
-    assert report["baseline_capture"] is True
+    assert received["url"] == "https://example.invalid"
+    assert received["ca_certs"] == expected_ca
+    assert received["insecure"] is expected_insecure
+    assert received["allow_insecure_http_auth"] is True
+    assert received["timeout"] == 17
+    assert received["output"] == output
 
 
 def test_preflight_main_reports_rest_failure_without_hiding_http_status(
     monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:
-    import sys
-
-    import howler.external.elasticsearch_preflight as preflight
-
     monkeypatch.setattr(sys, "argv", ["elasticsearch_preflight"])
-    monkeypatch.setattr(preflight, "_client_from_args", lambda args, parser: object())
+    monkeypatch.setattr(preflight, "client_from_args", lambda args, parser: object())
     monkeypatch.setattr(
         preflight,
         "build_report",

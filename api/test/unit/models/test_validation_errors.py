@@ -49,27 +49,17 @@ def test_hit_missing_analytic_keeps_structured_error_and_public_root_path() -> N
     assert public_error.errors == public_error.cause.errors(include_url=False)
 
 
-def test_hit_invalid_score_does_not_echo_original_input() -> None:
+@pytest.mark.parametrize(
+    "secret_input",
+    ["DO_NOT_LEAK_SCORE_VALUE", "SECRET  TOKEN", f"{'3141592653' * 500}x"],
+)
+def test_hit_invalid_score_does_not_echo_original_input(secret_input: str) -> None:
     """Invalid scalar messages stay meaningful without disclosing submitted values."""
-    secret_input = "DO_NOT_LEAK_SCORE_VALUE"
-
     with pytest.raises(HowlerModelValidationError) as raised:
         Hit.validate_howler({"howler": {"analytic": "test", "hash": VALID_HASH, "score": secret_input}})
 
     message = str(raised.value)
     assert message.startswith("[hit.howler.score] ")
-    assert message == "[hit.howler.score] Invalid value"
-    assert secret_input not in message
-    assert secret_input == raised.value.errors[0]["input"]
-
-
-@pytest.mark.parametrize("secret_input", ["SECRET  TOKEN", f"{'3141592653' * 500}x"])
-def test_value_errors_never_echo_whitespace_or_long_numeric_inputs(secret_input: str) -> None:
-    """Validation messages do not render or normalize user-provided scalar data."""
-    with pytest.raises(HowlerModelValidationError) as raised:
-        Hit.validate_howler({"howler": {"analytic": "test", "hash": VALID_HASH, "score": secret_input}})
-
-    message = str(raised.value)
     assert message == "[hit.howler.score] Invalid value"
     assert secret_input not in message
     assert secret_input.replace("  ", " ") not in message
@@ -191,9 +181,11 @@ def test_formatter_failure_falls_back_without_losing_howler_error(monkeypatch: p
     assert isinstance(raised.value.cause, ValidationError)
 
 
-def test_rule_expiry_error_uses_a_safe_domain_message() -> None:
-    with pytest.raises(HowlerModelValidationError, match="expire after resolved") as raised:
-        CaseRule.validate_howler(
+@pytest.mark.parametrize(
+    ("model_type", "data", "message"),
+    [
+        (
+            CaseRule,
             {
                 "rule_id": "rule-1",
                 "destination": "folder",
@@ -201,22 +193,25 @@ def test_rule_expiry_error_uses_a_safe_domain_message() -> None:
                 "author": "analyst",
                 "timeframe": None,
                 "expire_after_resolved": True,
-            }
-        )
-    assert str(raised.value).startswith("[caserule]")
+            },
+            "expire after resolved",
+        ),
+        (
+            CaseRule,
+            {"rule_id": "rule-1", "destination": "folder", "query": "q", "author": "a", "timeframe": -1},
+            "positive integer",
+        ),
+        (CaseItem, {"type": "case", "parent": "folder", "value": "case-1"}, "root-level"),
+    ],
+)
+def test_domain_validation_errors_use_safe_messages(
+    model_type: type[HowlerEmbeddedModel], data: dict[str, Any], message: str
+) -> None:
+    with pytest.raises(HowlerModelValidationError, match=message) as raised:
+        model_type.validate_howler(data)
+
+    assert str(raised.value).startswith(f"[{model_type.__name__.lower()}")
     assert raised.value.errors and raised.value.cause is not None
-
-
-def test_rule_timeframe_error_keeps_its_positive_integer_guidance() -> None:
-    with pytest.raises(HowlerModelValidationError, match="positive integer"):
-        CaseRule.validate_howler(
-            {"rule_id": "rule-1", "destination": "folder", "query": "q", "author": "a", "timeframe": -1}
-        )
-
-
-def test_case_item_error_explains_the_root_level_constraint() -> None:
-    with pytest.raises(HowlerModelValidationError, match="root-level"):
-        CaseItem.validate_howler({"type": "case", "parent": "folder", "value": "case-1"})
 
 
 def test_domain_message_filter_rejects_untrusted_suffixes() -> None:

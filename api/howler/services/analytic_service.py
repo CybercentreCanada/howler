@@ -60,7 +60,7 @@ def get_analytic(
     version=False,
 ):
     """Return an analytic as a model or dictionary."""
-    return cast(Any, datastore().analytic.get_if_exists(key=id, as_obj=as_odm, version=version))
+    return datastore().analytic.get_if_exists(key=id, as_obj=as_odm, version=version)
 
 
 def update_analytic(
@@ -90,7 +90,7 @@ def get_matching_analytics(hits: Union[list[Hit], list[dict[str, Any]]]) -> list
 
     analytic_names: set[str] = set()
     for hit in hits:
-        name = hit["howler"]["analytic"] if isinstance(hit, dict) else cast(Any, hit).howler.analytic
+        name = hit["howler"]["analytic"]
         analytic_names.add(f'"{sanitize_lucene_query(name)}"')
 
     try:
@@ -123,7 +123,6 @@ def save_from_hits(
     # group by analytics for bulk update
     hits_by_analytic: dict[str, list[Hit]] = {}
     for hit in hits:
-        hit = cast(Any, hit)
         hits_by_analytic.setdefault(hit.howler.analytic, []).append(hit)
 
     analytics = []
@@ -149,19 +148,17 @@ def _get_analytic_updates_from_hit_group(analytic_name: str, hit_group: list[Hit
         list[Analytic], storage.analytic.search(f'name:"{sanitize_lucene_query(analytic_name)}"')["items"]
     )
     if len(existing_analytics) > 0:
-        analytic = cast(Any, existing_analytics[0])
+        analytic = existing_analytics[0]
 
         if not analytic.owner:
             save = True
-            analytic.owner = cast(Any, user).uname
+            analytic.owner = user.uname
 
-        if cast(Any, user).uname not in analytic.contributors:
-            analytic.contributors.append(cast(Any, user).uname)
+        if user.uname not in analytic.contributors:
+            analytic.contributors.append(user.uname)
             save = True
 
-        hit_bundle_detections = [
-            cast(Any, hit).howler.detection for hit in hit_group if cast(Any, hit).howler.detection
-        ]
+        hit_bundle_detections = [hit.howler.detection for hit in hit_group if hit.howler.detection]
 
         if hit_bundle_detections:
             detection_filter_list = [d.lower() for d in hit_bundle_detections]
@@ -177,16 +174,16 @@ def _get_analytic_updates_from_hit_group(analytic_name: str, hit_group: list[Hit
         if len(existing_analytics) > 1:
             logger.warning("Duplicate analytics detected! Removing duplicates...")
             for duplicate in existing_analytics[1:]:
-                storage.analytic.delete(cast(Any, duplicate).analytic_id)
+                storage.analytic.delete(duplicate.analytic_id)
 
     else:
         save = True
-        analytic = cast(Any, Analytic).validate_howler(
+        analytic = Analytic.validate_howler(
             {
                 "name": analytic_name,
-                "owner": cast(Any, user).uname,
-                "contributors": [cast(Any, user).uname],
-                "detections": [cast(Any, hit).howler.detection for hit in hit_group if cast(Any, hit).howler.detection],
+                "owner": user.uname,
+                "contributors": [user.uname],
+                "detections": [hit.howler.detection for hit in hit_group if hit.howler.detection],
                 "description": "Placeholder Description - Défaut Description",
                 "triage_settings": {
                     "valid_assessments": Assessment.list(),

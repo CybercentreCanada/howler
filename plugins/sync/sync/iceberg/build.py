@@ -7,6 +7,7 @@ from howler.common.exceptions import HowlerValueError
 from howler.common.logging import get_logger
 from howler.models.registry import (
     FieldDefinition,
+    annotation_metadata,
     field_metadata,
     model_annotation,
     model_registry,
@@ -82,7 +83,7 @@ def build_schema(model: type[BaseModel] | BaseModel, allow_any_as_string: bool =
             annotation = unwrap_annotation(field.annotation)
             if get_origin(annotation) in (list, dict):
                 child = get_args(annotation)[-1]
-                for item in getattr(child, "__metadata__", ()):
+                for item in annotation_metadata(child):
                     if getattr(item, "description", None):
                         description = item.description
                         break

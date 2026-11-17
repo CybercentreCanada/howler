@@ -1,4 +1,4 @@
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 from flask import request
 
@@ -71,7 +71,6 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
         Use POST /api/v1/hit/ directly with pre-mapped hit data instead.
     """
     data = request.json
-    user = cast(Any, user)
     refresh = kwargs.get("refresh", None)
     if not isinstance(data, dict):
         return bad_request(err="Invalid data format")
@@ -91,7 +90,7 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
         "Use POST /api/v1/hit/ directly with pre-mapped hit data instead."
     ]
     # Validate field_map targets
-    hit_fields = model_registry.flat_fields(cast(Any, datastore().hit.model_class))
+    hit_fields = model_registry.flat_fields(datastore().hit.model_class or Hit)
     _bundle_compat_fields = {"howler.is_bundle", "howler.hits", "howler.bundle_size", "howler.bundles"}
     for targets in field_map.values():
         for target in targets:
@@ -160,7 +159,6 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
             obj.pop("howler.bundles", None)
 
             odm, warns = hit_service.convert_hit(obj, unique=True, user=user, ignore_extra_values=ignore_extra_values)
-            odm = cast(Any, odm)
 
             if is_bundle:
                 if bundle_id is not None:
@@ -213,10 +211,8 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
         if bundle_odm is not None:
             child_odms = [odm for odm in odms if odm.howler.id != bundle_id]
 
-            hit_service.create_hits(
-                child_odms, user=cast(Any, user).uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh
-            )
-            analytic_service.save_from_hits(cast(Any, odms), cast(Any, user), refresh=refresh)
+            hit_service.create_hits(child_odms, user=user.uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
+            analytic_service.save_from_hits(odms, user, refresh=refresh)
 
             child_ids = [odm.howler.id for odm in child_odms]
             bundle_data = bundle_odm.as_primitives()
@@ -230,13 +226,11 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
                     entry["_case_id"] = result.get("_case_id")
         else:
             # The bundle hit may have been dropped by de-duplication; ingest remaining hits directly.
-            hit_service.create_hits(
-                odms, user=cast(Any, user).uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh
-            )
-            analytic_service.save_from_hits(cast(Any, odms), cast(Any, user), refresh=refresh)
+            hit_service.create_hits(odms, user=user.uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
+            analytic_service.save_from_hits(odms, user, refresh=refresh)
     else:
-        hit_service.create_hits(odms, user=cast(Any, user).uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
-        analytic_service.save_from_hits(cast(Any, odms), cast(Any, user), refresh=refresh)
+        hit_service.create_hits(odms, user=user.uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
+        analytic_service.save_from_hits(odms, user, refresh=refresh)
 
     ids = [entry["id"] for entry in out]
     action_service.enqueue_action_execution(ids, trigger="create", user=user)

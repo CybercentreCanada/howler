@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import argparse
 import base64
 import json
 import os
+import re
 import ssl
 import sys
 import urllib.error
@@ -12,8 +14,6 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
-
-from dotenv import load_dotenv
 
 HOWLER_COLLECTION_NAMES = (
     "hit",
@@ -29,6 +29,15 @@ HOWLER_COLLECTION_NAMES = (
     "dossier",
     "user_avatar",
 )
+SOURCE_STACK_VERSION = "8.19.11"
+NO_MIGRATION_NEEDED = "NO_MIGRATION_NEEDED"
+
+
+def _validate_credentials(api_key: str | None, username: str | None, password: str | None) -> None:
+    if api_key and (username or password):
+        raise ValueError("Use either ELASTIC_API_KEY or ELASTIC_USERNAME/ELASTIC_PASSWORD, not both.")
+    if bool(username) != bool(password):
+        raise ValueError("ELASTIC_USERNAME and ELASTIC_PASSWORD must be set together.")
 
 
 class ElasticsearchRestError(RuntimeError):
@@ -56,9 +65,9 @@ class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
 
 
 class ElasticsearchRestClient:
-    """A minimal JSON REST client that can issue GET and HEAD requests only."""
+    """A minimal JSON REST client that can issue GET requests only."""
 
-    READ_METHODS = frozenset({"GET", "HEAD"})
+    READ_METHODS = frozenset({"GET"})
 
     def __init__(  # noqa: C901
         self,
@@ -81,10 +90,7 @@ class ElasticsearchRestClient:
             raise ValueError("Elasticsearch URL must not include a query string or fragment.")
         if timeout <= 0:
             raise ValueError("Request timeout must be a positive number of seconds.")
-        if api_key and (username or password):
-            raise ValueError("Use either ELASTIC_API_KEY or ELASTIC_USERNAME/ELASTIC_PASSWORD, not both.")
-        if bool(username) != bool(password):
-            raise ValueError("ELASTIC_USERNAME and ELASTIC_PASSWORD must be set together.")
+        _validate_credentials(api_key, username, password)
         if parsed.scheme == "http" and (api_key or username) and not allow_insecure_http_auth:
             raise ValueError("Refusing to send Elasticsearch credentials over HTTP; use HTTPS or explicitly allow it.")
 
@@ -152,7 +158,7 @@ class ElasticsearchRestClient:
                 f"Elasticsearch {verb} {path} failed: {safe_reason}", reason=safe_reason
             ) from None
 
-        if verb == "HEAD" or not body:
+        if not body:
             return None
         try:
             return json.loads(body)
@@ -184,9 +190,14 @@ class ElasticsearchRestClient:
         """Issue a GET request."""
         return self.request("GET", path, params=params)
 
-    def head(self, path: str, params: dict[str, Any] | None = None) -> None:
-        """Issue a HEAD request."""
-        self.request("HEAD", path, params=params)
+    def get_optional(self, path: str, params: dict[str, Any] | None = None) -> Any | None:
+        """Issue a GET request, returning ``None`` when the resource is absent."""
+        try:
+            return self.get(path, params)
+        except ElasticsearchRestError as error:
+            if error.status != 404:
+                raise
+            return None
 
 
 def credentials_from_environment() -> dict[str, str]:
@@ -194,10 +205,7 @@ def credentials_from_environment() -> dict[str, str]:
     api_key = os.environ.get("ELASTIC_API_KEY")
     username = os.environ.get("ELASTIC_USERNAME")
     password = os.environ.get("ELASTIC_PASSWORD")
-    if api_key and (username or password):
-        raise ValueError("Use either ELASTIC_API_KEY or ELASTIC_USERNAME/ELASTIC_PASSWORD, not both.")
-    if bool(username) != bool(password):
-        raise ValueError("ELASTIC_USERNAME and ELASTIC_PASSWORD must be set together.")
+    _validate_credentials(api_key, username, password)
     if api_key:
         return {"api_key": api_key}
     if username and password:
@@ -207,6 +215,8 @@ def credentials_from_environment() -> dict[str, str]:
 
 def setup_howler_plugin_paths() -> Path:
     """Mirror the plugin path setup in ``howler.app`` without adding package subdirectories."""
+    from dotenv import load_dotenv
+
     load_dotenv()
     plugin_path = Path(os.environ.get("HWL_PLUGIN_DIRECTORY", "/etc/howler/plugins"))
     sys.path.insert(0, str(plugin_path))
@@ -250,10 +260,7 @@ def primary_shard_sync_issues(primary_shards: Any) -> list[dict[str, Any]]:
         doc_count = shard.get("doc_count")
         max_seq_no = shard.get("max_seq_no")
         global_checkpoint = shard.get("global_checkpoint")
-        if any(
-            isinstance(value, bool) or not isinstance(value, int)
-            for value in (doc_count, max_seq_no, global_checkpoint)
-        ):
+        if any(strict_int(value) is None for value in (doc_count, max_seq_no, global_checkpoint)):
             issues.append({"shard": str(shard_id), "reason": "incomplete"})
         elif global_checkpoint != max_seq_no:
             issues.append(
@@ -304,6 +311,135 @@ def collect_primary_shard_stats(client: ElasticsearchRestClient, index_prefix: s
             "primary_shards": primary_shards,
         }
     return result
+
+
+def collect_index_inventory(client: ElasticsearchRestClient, prefix: str, *, scoped: bool) -> dict[str, Any]:
+    """Read index settings, aliases, cat metadata, and primary-shard statistics."""
+    encoded_prefix = urllib.parse.quote(prefix, safe="-_.")
+    index_pattern = f"/{encoded_prefix}-*" if scoped else "/*"
+    indices = client.get(
+        index_pattern,
+        {
+            "features": "aliases,settings",
+            "flat_settings": "true",
+            "expand_wildcards": "all",
+            "allow_no_indices": "true",
+        },
+    )
+    catalog_path = f"/_cat/indices/{encoded_prefix}-*" if scoped else "/_cat/indices"
+    catalog_rows = client.get(
+        catalog_path,
+        {
+            "format": "json",
+            "h": "index,health,status" if scoped else "index,health,status,docs.count",
+            "expand_wildcards": "all",
+        },
+    )
+    catalog = {row.get("index"): row for row in catalog_rows if row.get("index")}
+    stats = collect_primary_shard_stats(client, prefix)
+    for name, data in indices.items():
+        settings = index_setting(data, "index.uuid") or index_setting(data, "uuid")
+        row = catalog.get(name, {})
+        shard_stats = stats.get(name, {})
+        data["uuid"] = settings or data.get("uuid")
+        data["doc_count"] = shard_stats.get("doc_count")
+        data["primary_shards"] = shard_stats.get("primary_shards", {})
+        data["health"] = row.get("health")
+        data["status"] = row.get("status")
+    return indices
+
+
+def add_connection_arguments(parser: argparse.ArgumentParser) -> None:
+    """Register the common read-only Elasticsearch connection and report flags."""
+    parser.add_argument(
+        "--url",
+        default=os.environ.get("ELASTICSEARCH_URL", "http://localhost:9200"),
+        help="Elasticsearch URL. Defaults to ELASTICSEARCH_URL or http://localhost:9200.",
+    )
+    parser.add_argument("--output", type=Path, help="Write the JSON report to this path instead of stdout.")
+    tls = parser.add_mutually_exclusive_group()
+    tls.add_argument("--ca-certs", type=Path, help="Certificate authority bundle for TLS verification.")
+    tls.add_argument("--insecure", action="store_true", help="Disable TLS certificate verification.")
+    parser.add_argument(
+        "--allow-insecure-http-auth",
+        action="store_true",
+        help="Explicitly allow sending credentials over plain HTTP (not recommended).",
+    )
+    parser.add_argument("--timeout", type=int, default=60, help="Request timeout in seconds.")
+
+
+def client_from_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> ElasticsearchRestClient:
+    """Build the REST client from common CLI options and environment credentials."""
+    try:
+        return ElasticsearchRestClient(
+            args.url,
+            **credentials_from_environment(),
+            ca_certs=args.ca_certs,
+            insecure=args.insecure,
+            timeout=args.timeout,
+            allow_insecure_http_auth=args.allow_insecure_http_auth,
+        )
+    except ValueError as error:
+        parser.error(str(error))
+
+
+def write_json_report(report: dict[str, Any], output: Path | None) -> None:
+    """Write a deterministic JSON report to a file or stdout."""
+    rendered = json.dumps(report, indent=2, sort_keys=True) + "\n"
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(rendered, encoding="utf-8")
+    else:
+        print(rendered, end="")  # noqa: T201
+
+
+def is_closed_index(index_data: dict[str, Any]) -> bool:
+    """Return whether an Elasticsearch index is closed."""
+    return str(index_data.get("status", "")).lower() in {"close", "closed"}
+
+
+def index_setting(data: dict[str, Any], flat_name: str) -> Any:
+    """Read an index setting represented in flat or nested Elasticsearch JSON."""
+    settings = data.get("settings", {})
+    if not isinstance(settings, dict):
+        return None
+    if flat_name in settings:
+        return settings[flat_name]
+    value: Any = settings
+    nested = flat_name.split(".")
+    for position, part in enumerate(nested):
+        if not isinstance(value, dict):
+            return None
+        remaining = ".".join(nested[position:])
+        if remaining in value:
+            return value[remaining]
+        value = value.get(part)
+    return value
+
+
+def canonical_ilm_generation(alias: str, index: str) -> int | None:
+    """Return the six-digit generation for a canonical ILM backing index."""
+    match = re.fullmatch(rf"{re.escape(alias)}-(\d{{6}})", index)
+    return int(match.group(1)) if match else None
+
+
+def strict_int(value: Any) -> int | None:
+    """Return an integer only for a non-boolean integer value."""
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def walk_deprecations(value: Any, path: tuple[str, ...] = ()) -> list[tuple[tuple[str, ...], dict[str, Any]]]:
+    """Return deprecation objects and their paths from Elasticsearch's nested response."""
+    found: list[tuple[tuple[str, ...], dict[str, Any]]] = []
+    if isinstance(value, dict):
+        if isinstance(value.get("level"), str):
+            found.append((path, value))
+        for key, child in value.items():
+            found.extend(walk_deprecations(child, (*path, str(key))))
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            found.extend(walk_deprecations(child, (*path, str(index))))
+    return found
 
 
 def _nonnegative_or_minus_one(value: Any) -> int | None:

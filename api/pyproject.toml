@@ -102,12 +102,6 @@ root = "build_scripts"
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = ["."]
-reportArgumentType = "none"
-reportAssignmentType = "none"
-root = "howler/odm/models"
-
-[[tool.pyright.executionEnvironments]]
-extraPaths = ["."]
 reportGeneralTypeIssues = "none"
 reportInvalidTypeForm = "none"
 root = "howler/models"
@@ -129,16 +123,6 @@ root = "howler/sample_data/helper.py"
 extraPaths = ["."]
 reportPossiblyUnboundVariable = "information"
 root = "howler/sample_data/random_data.py"
-
-[[tool.pyright.executionEnvironments]]
-extraPaths = ["."]
-reportArgumentType = "information"
-reportAttributeAccessIssue = "information"
-reportIncompatibleMethodOverride = "information"
-reportOperatorIssue = "information"
-reportOptionalMemberAccess = "information"
-reportPossiblyUnboundVariable = "information"
-root = "howler/odm/base.py"
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = ["."]

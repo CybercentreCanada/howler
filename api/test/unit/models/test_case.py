@@ -39,27 +39,15 @@ class TestCaseLog:
         assert log.new_value == "crisis"
         assert log.previous_value == "low"
         assert log.key == "escalation"
+        primitives = log.as_primitives()
+        assert primitives["user"] == "bob"
+        assert primitives["new_value"] == "crisis"
+        assert primitives["previous_value"] == "low"
+        assert primitives["key"] == "escalation"
 
         for incomplete in ({"timestamp": "NOW", "user": "analyst"}, {"timestamp": "NOW", "new_value": "crisis"}):
             with pytest.raises(ValidationError):
                 CaseLog.model_validate(incomplete)
-
-    def test_log_primitives_keep_supplied_change_details(self) -> None:
-        log = CaseLog.model_validate(
-            {
-                "timestamp": "NOW",
-                "key": "escalation",
-                "previous_value": "low",
-                "new_value": "crisis",
-                "user": "alice",
-            }
-        )
-        primitives = log.as_primitives()
-
-        assert primitives["user"] == "alice"
-        assert primitives["new_value"] == "crisis"
-        assert primitives["previous_value"] == "low"
-        assert primitives["key"] == "escalation"
 
 
 class TestCaseItem:
@@ -79,7 +67,7 @@ class TestCaseItem:
         assert "parent" not in primitives
 
     def test_item_accepts_supported_types_and_rejects_unknown_types(self) -> None:
-        for item_type in CaseItemTypes:
+        for item_type in tuple(CaseItemTypes):
             data = (
                 {"type": item_type.value, "name": "Folder"}
                 if item_type is CaseItemTypes.FOLDER

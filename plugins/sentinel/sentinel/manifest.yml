@@ -1,5 +1,8 @@
 name: sentinel
 modules:
+  odm:
+    generation:
+      hit: true
   models:
     declare_extensions:
       hit: true

@@ -16,14 +16,13 @@ from howler.common.exceptions import HowlerRuntimeError, HowlerValueError
 from howler.config_models import ILMConfig, ILMIndexConfig
 from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import DataStoreException, SearchException
-from howler.models import HowlerESModel, HowlerModelValidationError, keyword, mapping, register_model
-from howler.models import schema as new_schema
-from howler.models.action import Action as SchemaAction
-from howler.models.analytic import Analytic as SchemaAnalytic
-from howler.models.case import Case as SchemaCase
-from howler.models.event import Event as SchemaEvent
-from howler.models.hit import Hit as SchemaHit
-from howler.models.user import User as SchemaUser
+from howler.models import HowlerESModel, HowlerModelValidationError, keyword, mapping, register_model, schema
+from howler.models.action import Action
+from howler.models.analytic import Analytic
+from howler.models.case import Case
+from howler.models.event import Event
+from howler.models.hit import Hit
+from howler.models.user import User
 
 
 @pytest.fixture(autouse=True)
@@ -57,7 +56,7 @@ def ilm_global():
     )
 
 
-def _make_collection(mock_datastore, ilm_config=None, schema_model=None, model_class=None):
+def _make_collection(mock_datastore, ilm_config=None, model_class=None):
     """Helper to create an ESCollection with the given ILM config."""
     mock_datastore._models = {"testcol": None}
     col = ESCollection(
@@ -65,7 +64,6 @@ def _make_collection(mock_datastore, ilm_config=None, schema_model=None, model_c
         "testcol",
         model_class=model_class,
         ilm_config=ilm_config,
-        schema_model=schema_model,
     )
     return col
 
@@ -249,7 +247,7 @@ class TestModelPersistence:
     """Focused registered-model persistence and projection behavior."""
 
     def test_normalize_full_document_strips_stored_helpers_and_sets_metadata(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=SchemaAction, model_class=SchemaAction)
+        col = _make_collection(mock_datastore, model_class=Action)
 
         action = col.normalize(
             {
@@ -261,13 +259,13 @@ class TestModelPersistence:
             index="howler-action_hot",
         )
 
-        assert isinstance(action, SchemaAction)
+        assert isinstance(action, Action)
         assert action.meta.id == "document-id"
         assert action.meta.index == "howler-action_hot"
         assert action.as_primitives() == _action_data()
 
     def test_projected_search_object_validates_only_selected_fields(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=SchemaAction, model_class=SchemaAction)
+        col = _make_collection(mock_datastore, model_class=Action)
 
         action = col._format_output(
             {
@@ -287,7 +285,7 @@ class TestModelPersistence:
         assert action.as_primitives() == {"name": "Projected"}
 
     def test_save_validates_full_model_and_preserves_stored_request(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=SchemaAction, model_class=SchemaAction)
+        col = _make_collection(mock_datastore, model_class=Action)
 
         assert col.save("document-id", _action_data(), refresh="wait_for") is True
 
@@ -304,8 +302,8 @@ class TestModelPersistence:
             col.save("document-id", {**_action_data(), "unknown": True})
 
     def test_save_accepts_native_model_instance(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=SchemaAction, model_class=SchemaAction)
-        action = SchemaAction.model_validate(_action_data())
+        col = _make_collection(mock_datastore, model_class=Action)
+        action = Action.model_validate(_action_data())
 
         assert col.save("document-id", action) is True
         assert json.loads(mock_datastore.client.index.call_args.kwargs["document"]) == {
@@ -314,7 +312,7 @@ class TestModelPersistence:
         }
 
     def test_projected_model_cannot_be_saved_as_full_replacement(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=SchemaAction, model_class=SchemaAction)
+        col = _make_collection(mock_datastore, model_class=Action)
         projected = col._format_output(
             {
                 "_id": "document-id",
@@ -331,7 +329,7 @@ class TestModelPersistence:
         mock_datastore.client.index.assert_not_called()
 
     def test_multiget_does_not_mutate_keys_and_returns_models(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=SchemaAction, model_class=SchemaAction)
+        col = _make_collection(mock_datastore, model_class=Action)
         keys = ["document-id"]
         mock_datastore.client.mget.return_value = {
             "docs": [
@@ -347,11 +345,11 @@ class TestModelPersistence:
         result = col.multiget(keys)
 
         assert keys == ["document-id"]
-        assert isinstance(result["document-id"], SchemaAction)
+        assert isinstance(result["document-id"], Action)
         assert result["document-id"].meta.id == "document-id"
 
     def test_get_preserves_elasticsearch_metadata(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=SchemaAction, model_class=SchemaAction)
+        col = _make_collection(mock_datastore, model_class=Action)
         mock_datastore.client.get.return_value = {
             "_id": "document-id",
             "_index": "howler-action_hot",
@@ -375,13 +373,13 @@ class TestModelPersistence:
         assert "removed_plugin_field" not in action.__dict__
 
     def test_update_validation_uses_registry_fields_and_stored_primitives(self, mock_datastore):
-        action_col = _make_collection(mock_datastore, schema_model=SchemaAction, model_class=SchemaAction)
+        action_col = _make_collection(mock_datastore, model_class=Action)
         assert action_col._validate_operations([("SET", "name", 123)]) == [("SET", "name", "123")]
         assert action_col._validate_operations([("APPEND", "triggers", "create")]) == [("APPEND", "triggers", "create")]
         with pytest.raises(DataStoreException, match="Invalid field"):
             action_col._validate_operations([("SET", "missing", "value")])
 
-        event_col = _make_collection(mock_datastore, schema_model=SchemaEvent, model_class=SchemaEvent)
+        event_col = _make_collection(mock_datastore, model_class=Event)
         operations = event_col._validate_operations(
             [
                 ("SET", "timestamp", "2024-01-02T03:04:05.000000Z"),
@@ -399,7 +397,7 @@ class TestModelPersistence:
             ("SET", "__access_grp2__", ["__EMPTY__"]),
         ]
 
-        hit_col = _make_collection(mock_datastore, schema_model=SchemaHit, model_class=SchemaHit)
+        hit_col = _make_collection(mock_datastore, model_class=Hit)
         assert hit_col._validate_operations(
             [
                 (
@@ -425,7 +423,7 @@ class TestModelPersistence:
         ]
 
     def test_delete_update_validates_mapping_path_and_generates_safe_script(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=SchemaAnalytic, model_class=SchemaAnalytic)
+        col = _make_collection(mock_datastore, model_class=Analytic)
 
         operations = col._validate_operations([("DELETE", "comment.reactions", "user-1")])
         assert operations == [("DELETE", "comment.reactions", "user-1")]
@@ -447,7 +445,7 @@ class TestModelPersistence:
         ["__access_lvl__", "__access_req__", "__access_grp1__", "__access_grp2__"],
     )
     def test_hidden_access_fields_cannot_be_updated_directly(self, mock_datastore, field):
-        col = _make_collection(mock_datastore, schema_model=SchemaEvent, model_class=SchemaEvent)
+        col = _make_collection(mock_datastore, model_class=Event)
 
         with pytest.raises(DataStoreException, match="derived from classification"):
             col._validate_operations(
@@ -458,7 +456,7 @@ class TestModelPersistence:
             )
 
     def test_classification_set_updates_hidden_fields_for_both_atomic_paths(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=SchemaEvent, model_class=SchemaEvent)
+        col = _make_collection(mock_datastore, model_class=Event)
         mock_datastore.client.update.return_value = {
             "result": "updated",
             "_index": col.index_name,
@@ -485,7 +483,7 @@ class TestEQLSearch:
     """Elasticsearch 9 complete and partial EQL responses."""
 
     def test_complete_response_preserves_public_shape_and_partial_settings(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=SchemaAction, model_class=SchemaAction)
+        col = _make_collection(mock_datastore, model_class=Action)
         mock_datastore.client.eql.search.return_value = SimpleNamespace(
             body={
                 "is_running": False,
@@ -517,7 +515,7 @@ class TestEQLSearch:
         assert call["allow_partial_sequence_results"] is False
 
     def test_partial_response_is_not_presented_as_complete(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=SchemaAction, model_class=SchemaAction)
+        col = _make_collection(mock_datastore, model_class=Action)
         mock_datastore.client.eql.search.return_value = {
             "is_running": False,
             "is_partial": True,
@@ -537,7 +535,7 @@ class TestEQLSearch:
         ],
     )
     def test_incomplete_shard_or_timeout_response_is_rejected(self, mock_datastore, incomplete_fields):
-        col = _make_collection(mock_datastore, schema_model=SchemaAction, model_class=SchemaAction)
+        col = _make_collection(mock_datastore, model_class=Action)
         mock_datastore.client.eql.search.return_value = {
             "is_running": False,
             "is_partial": False,
@@ -553,7 +551,7 @@ class TestSearchConstruction:
     """Public DSL builders must retain existing emitted request semantics."""
 
     def test_collection_search_request_shape_is_stable(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=SchemaAction, model_class=SchemaAction)
+        col = _make_collection(mock_datastore, model_class=Action)
         mock_datastore.client.search.return_value = {"hits": {"total": {"value": 0, "relation": "eq"}, "hits": []}}
 
         result = col._search(
@@ -595,7 +593,7 @@ class TestSearchConstruction:
         }
 
     def test_dictionary_projection_preserves_list_item_shape(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=SchemaCase, model_class=SchemaCase)
+        col = _make_collection(mock_datastore, model_class=Case)
 
         result = col._format_output(
             {
@@ -627,7 +625,7 @@ class TestSearchConstruction:
         }
 
     def test_implicit_stored_field_object_projection_is_partial(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=SchemaUser, model_class=SchemaUser)
+        col = _make_collection(mock_datastore, model_class=User)
 
         user = col._format_output(
             {
@@ -646,7 +644,7 @@ class TestSearchConstruction:
         assert "password" not in user.__dict__
 
     def test_nested_declared_ids_survive_partial_object_projection(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=SchemaHit, model_class=SchemaHit)
+        col = _make_collection(mock_datastore, model_class=Hit)
 
         hit = col._format_output(
             {
@@ -751,8 +749,7 @@ class TestILMAliasDocumentOperations:
         col = _make_collection(
             mock_datastore,
             ilm_config=ILMIndexConfig(warm="30d"),
-            schema_model=SchemaAction,
-            model_class=SchemaAction,
+            model_class=Action,
         )
         old_index = f"{col.name}-000001"
         new_index = f"{col.name}-000002"
@@ -807,8 +804,7 @@ class TestILMAliasDocumentOperations:
         col = _make_collection(
             mock_datastore,
             ilm_config=ILMIndexConfig(warm="30d"),
-            schema_model=SchemaAction,
-            model_class=SchemaAction,
+            model_class=Action,
         )
         old_index = f"{col.name}-000001"
         new_index = f"{col.name}-000002"
@@ -865,7 +861,8 @@ class TestILMAliasDocumentOperations:
             {"result": "deleted"},
         ]
 
-        assert col.delete("document-id", refresh="wait_for") is True
+        result = col.delete("document-id", refresh="wait_for")
+        assert result is True
 
         assert mock_datastore.client.delete.call_args_list == [
             call(id="document-id", index=new_index, refresh="wait_for"),
@@ -876,7 +873,8 @@ class TestILMAliasDocumentOperations:
         col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
         mock_datastore.client.search.return_value = {"hits": {"total": {"value": 0, "relation": "eq"}, "hits": []}}
 
-        assert col.delete("missing") is False
+        result = col.delete("missing")
+        assert result is False
         mock_datastore.client.delete.assert_not_called()
 
 
@@ -1003,8 +1001,7 @@ class TestILMVersionedOperations:
         col = _make_collection(
             mock_datastore,
             ilm_config=ILMIndexConfig(warm="30d"),
-            schema_model=SchemaAction,
-            model_class=SchemaAction,
+            model_class=Action,
         )
         mock_datastore.client.search.return_value = {"hits": {"hits": []}}
 
@@ -1050,8 +1047,7 @@ class TestILMBulkRouting:
         col = _make_collection(
             mock_datastore,
             ilm_config=ILMIndexConfig(warm="30d"),
-            schema_model=SchemaAction,
-            model_class=SchemaAction,
+            model_class=Action,
         )
         col.index_name = f"{col.name}-000001"
 
@@ -1068,8 +1064,7 @@ class TestILMBulkRouting:
         col = _make_collection(
             mock_datastore,
             ilm_config=ILMIndexConfig(warm="30d"),
-            schema_model=SchemaAction,
-            model_class=SchemaAction,
+            model_class=Action,
         )
         old_index = f"{col.name}-000001"
         col.index_name = f"{col.name}-000002"
@@ -1090,8 +1085,7 @@ class TestILMBulkRouting:
         col = _make_collection(
             mock_datastore,
             ilm_config=ILMIndexConfig(warm="30d"),
-            schema_model=SchemaAction,
-            model_class=SchemaAction,
+            model_class=Action,
         )
         old_index = f"{col.name}-000001"
         mock_datastore.client.indices.get.return_value = {
@@ -1099,7 +1093,7 @@ class TestILMBulkRouting:
             f"{col.name}-000002": {},
             f"{col.name}-000003__reindex": {},
         }
-        action = SchemaAction.model_validate({"meta": {"index": old_index}, **_action_data()})
+        action = Action.model_validate({"meta": {"index": old_index}, **_action_data()})
 
         plan = col.get_bulk_plan()
         plan.add_index_operation("action-1", action)
@@ -1118,8 +1112,7 @@ class TestILMBulkRouting:
         col = _make_collection(
             mock_datastore,
             ilm_config=ILMIndexConfig(warm="30d"),
-            schema_model=SchemaAction,
-            model_class=SchemaAction,
+            model_class=Action,
         )
         old_index = f"{col.name}-000001"
         mock_datastore.client.indices.get.return_value = {old_index: {}}
@@ -1129,7 +1122,7 @@ class TestILMBulkRouting:
                 "hits": [{"_id": "action-1", "_index": old_index}],
             }
         }
-        action = SchemaAction.model_validate({"meta": {"index": "unrelated-secret-index"}, **_action_data()})
+        action = Action.model_validate({"meta": {"index": "unrelated-secret-index"}, **_action_data()})
 
         plan = col.get_bulk_plan()
         plan.add_index_operation("action-1", action)
@@ -1142,8 +1135,7 @@ class TestILMBulkRouting:
         col = _make_collection(
             mock_datastore,
             ilm_config=ILMIndexConfig(warm="30d"),
-            schema_model=SchemaAction,
-            model_class=SchemaAction,
+            model_class=Action,
         )
         mock_datastore.client.search.return_value = {"hits": {"total": {"value": 0, "relation": "eq"}, "hits": []}}
 
@@ -1157,8 +1149,7 @@ class TestILMBulkRouting:
         col = _make_collection(
             mock_datastore,
             ilm_config=ILMIndexConfig(warm="30d"),
-            schema_model=SchemaAction,
-            model_class=SchemaAction,
+            model_class=Action,
         )
         old_index = f"{col.name}-000001"
         new_index = f"{col.name}-000002"
@@ -1193,8 +1184,7 @@ class TestILMBulkRouting:
         col = _make_collection(
             mock_datastore,
             ilm_config=ILMIndexConfig(warm="30d"),
-            schema_model=SchemaAction,
-            model_class=SchemaAction,
+            model_class=Action,
         )
         mock_datastore.client.search.return_value = {"hits": {"total": {"value": 0, "relation": "eq"}, "hits": []}}
 
@@ -1212,8 +1202,7 @@ class TestILMBulkRouting:
         col = _make_collection(
             mock_datastore,
             ilm_config=ILMIndexConfig(warm="30d"),
-            schema_model=SchemaAction,
-            model_class=SchemaAction,
+            model_class=Action,
         )
         mock_datastore.client.indices.get.return_value = {f"{col.name}-000001": {}}
 
@@ -1400,13 +1389,13 @@ class TestCreateIndexTemplate:
     def test_schema_template_uses_canonical_builder(self, mock_datastore, ilm_global):
         """The production ILM path uploads the schema builder's tested payload."""
         ilm_index = ILMIndexConfig(warm="30d")
-        col = _make_collection(mock_datastore, ilm_config=ilm_index, schema_model=SchemaAction)
+        col = _make_collection(mock_datastore, ilm_config=ilm_index, model_class=Action)
 
         col._create_index_template(ilm_global)
 
         template = mock_datastore.client.indices.put_index_template.call_args.kwargs["template"]
-        assert template == new_schema.ilm_template_body(
-            SchemaAction,
+        assert template == schema.ilm_template_body(
+            Action,
             shards=col.shards,
             replicas=col.replicas,
             policy_name=f"{col.name}_policy",
@@ -1817,7 +1806,7 @@ class TestAddFieldsILMTemplateSync:
                 ESCollection, "index_list_full", new_callable=lambda: property(lambda self: [self.index_name])
             ),
         ):
-            col._add_schema_fields({"new_field": {"type": "keyword"}})
+            col._add_fields({"new_field": {"type": "keyword"}})
 
             # Should have updated the template
             mock_template.assert_called_once()
@@ -1835,7 +1824,7 @@ class TestAddFieldsILMTemplateSync:
             # Ensure no legacy template exists
             mock_datastore.client.indices.exists_template.return_value = False
 
-            col._add_schema_fields({"new_field": {"type": "keyword"}})
+            col._add_fields({"new_field": {"type": "keyword"}})
 
             mock_datastore.client.indices.put_index_template.assert_not_called()
 
@@ -1844,8 +1833,36 @@ KEYWORD_MAPPING = {"type": "keyword", "ignore_above": 8191}
 
 
 class TestCollectionFieldDiscovery:
+    def test_schema_less_collection_keeps_legacy_field_shape(self, mock_datastore):
+        col = _make_collection(mock_datastore)
+        mock_datastore.client.indices.get.return_value = {
+            "howler-testcol_hot": {
+                "mappings": {
+                    "properties": {
+                        "avatar": {"type": "keyword", "copy_to": ["__text__"], "index": False},
+                        "id": {"type": "keyword"},
+                    }
+                }
+            }
+        }
+
+        assert col.fields() == {
+            "avatar": {
+                "default": True,
+                "indexed": False,
+                "list": False,
+                "stored": False,
+                "deprecated": False,
+                "type": "keyword",
+                "description": "",
+                "regex": None,
+                "values": None,
+                "deprecated_description": "",
+            }
+        }
+
     def test_fields_describe_registered_model_fields(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
         mock_datastore.client.indices.get_mapping.return_value = {
             "testcol_hot": {
                 "mappings": {
@@ -1876,7 +1893,7 @@ class TestCollectionFieldDiscovery:
         assert fields["name"]["description"] == "A plain, statically typed field."
 
     def test_fields_summarize_dynamic_mapping_children(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
         mock_datastore.client.indices.get_mapping.return_value = {
             "testcol_hot": {
                 "mappings": {
@@ -1903,7 +1920,7 @@ class TestCollectionFieldDiscovery:
         assert "tags.first_key" in fields
 
     def test_fields_can_skip_mapping_children(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
         mock_datastore.client.indices.get_mapping.return_value = {
             "testcol_hot": {
                 "mappings": {
@@ -1923,7 +1940,7 @@ class TestCollectionFieldDiscovery:
         assert "tags.first_key" not in fields
 
     def test_fields_reject_conflicting_mappings(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
         mock_datastore.client.indices.get_mapping.return_value = {
             "testcol-000001": {"mappings": {"properties": {"key": KEYWORD_MAPPING}}},
             "testcol-000002": {"mappings": {"properties": {"key": {"type": "text", "index": True}}}},
@@ -1934,7 +1951,7 @@ class TestCollectionFieldDiscovery:
             col.fields()
 
     def test_fields_reject_multiple_field_types(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
         mock_datastore.client.indices.get_mapping.return_value = {
             "testcol_hot": {"mappings": {"properties": {"key": KEYWORD_MAPPING}}},
         }
@@ -1953,9 +1970,9 @@ class TestCollectionFieldDiscovery:
 
 class TestFieldReconciliation:
     def test_adds_missing_safe_field_to_every_backing_index(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
         col._index_list = ["testcol-000001", "testcol-000002"]
-        expected_templates = new_schema.document_mapping(ReconcileDoc)["dynamic_templates"]
+        expected_templates = schema.document_mapping(ReconcileDoc)["dynamic_templates"]
         mock_datastore.client.indices.get_mapping.return_value = {
             "testcol_hot": {
                 "mappings": {
@@ -1977,7 +1994,7 @@ class TestFieldReconciliation:
         assert all("key" in call.kwargs["properties"] for call in put_mapping_calls)
 
     def test_refuses_a_missing_dynamic_template(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
         col._index_list = ["testcol_hot"]
         mock_datastore.client.indices.get_mapping.return_value = {
             "testcol_hot": {
@@ -2000,31 +2017,9 @@ class TestFieldReconciliation:
         mock_datastore.client.indices.put_mapping.assert_not_called()
         mock_datastore.client.indices.put_settings.assert_not_called()
 
-    def test_accepts_a_matching_dynamic_template(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
-        col._index_list = ["testcol_hot"]
-        expected_templates = new_schema.document_mapping(ReconcileDoc)["dynamic_templates"]
-        mock_datastore.client.indices.get_mapping.return_value = {
-            "testcol_hot": {
-                "mappings": {
-                    "properties": {"key": KEYWORD_MAPPING, "name": KEYWORD_MAPPING},
-                    "dynamic_templates": expected_templates,
-                }
-            }
-        }
-        mock_datastore.client.field_caps.return_value = {
-            "fields": {
-                "key": {"keyword": {"type": "keyword", "searchable": True}},
-                "name": {"keyword": {"type": "keyword", "searchable": True}},
-            }
-        }
-        mock_datastore.client.indices.exists_template.return_value = False
-
-        col._check_fields()
-
     def test_warns_about_unused_dynamic_templates(self, mock_datastore, caplog):
-        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
-        expected_templates = new_schema.document_mapping(ReconcileDoc)["dynamic_templates"]
+        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
+        expected_templates = schema.document_mapping(ReconcileDoc)["dynamic_templates"]
         unused_template = {
             "disabled_plugin.*_tpl": {
                 "path_match": "disabled_plugin.*",
@@ -2041,8 +2036,8 @@ class TestFieldReconciliation:
         assert "retains dynamic templates not used by the active schema" in caplog.text
 
     def test_requires_active_templates_on_every_backing_index(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
-        expected_templates = new_schema.document_mapping(ReconcileDoc)["dynamic_templates"]
+        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
+        expected_templates = schema.document_mapping(ReconcileDoc)["dynamic_templates"]
         mock_datastore.client.indices.get_mapping.return_value = {
             "testcol-000001": {"mappings": {"dynamic_templates": expected_templates}},
             "testcol-000002": {
@@ -2058,8 +2053,8 @@ class TestFieldReconciliation:
             col._check_dynamic_templates()
 
     def test_preserves_active_dynamic_template_order(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
-        expected_templates = new_schema.document_mapping(ReconcileDoc)["dynamic_templates"]
+        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
+        expected_templates = schema.document_mapping(ReconcileDoc)["dynamic_templates"]
         mock_datastore.client.indices.get_mapping.return_value = {
             "testcol_hot": {"mappings": {"dynamic_templates": list(reversed(expected_templates))}}
         }
@@ -2068,9 +2063,9 @@ class TestFieldReconciliation:
             col._check_dynamic_templates()
 
     def test_retries_after_expanding_the_field_limit(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
+        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
         mock_datastore.client.indices.get.return_value = {}
-        expected_templates = new_schema.document_mapping(ReconcileDoc)["dynamic_templates"]
+        expected_templates = schema.document_mapping(ReconcileDoc)["dynamic_templates"]
         mock_datastore.client.indices.get_mapping.return_value = {
             "testcol_hot": {
                 "mappings": {"properties": {"name": KEYWORD_MAPPING}, "dynamic_templates": expected_templates}
@@ -2109,8 +2104,8 @@ class TestFieldReconciliation:
         ],
     )
     def test_refuses_incompatible_existing_fields(self, mock_datastore, live_mapping, capability, message):
-        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
-        expected_templates = new_schema.document_mapping(ReconcileDoc)["dynamic_templates"]
+        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
+        expected_templates = schema.document_mapping(ReconcileDoc)["dynamic_templates"]
         mock_datastore.client.indices.get_mapping.return_value = {
             "testcol_hot": {
                 "mappings": {
@@ -2132,8 +2127,8 @@ class TestFieldReconciliation:
             col._check_fields()
 
     def test_refuses_conflicting_active_templates_across_indices(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
-        expected_templates = new_schema.document_mapping(ReconcileDoc)["dynamic_templates"]
+        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
+        expected_templates = schema.document_mapping(ReconcileDoc)["dynamic_templates"]
         mock_datastore.client.indices.get_mapping.return_value = {
             "testcol-000001": {"mappings": {"dynamic_templates": expected_templates}},
             "testcol-000002": {
@@ -2150,28 +2145,3 @@ class TestFieldReconciliation:
 
         with pytest.raises(HowlerValueError, match="tags\\.\\*_tpl"):
             col._check_dynamic_templates()
-
-
-class TestCollectionSchemaSettings:
-    def test_index_settings_use_registered_schema(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
-
-        assert col._get_index_settings() == new_schema.index_settings(
-            ReconcileDoc,
-            shards=col.shards,
-            replicas=col.replicas,
-        )
-
-    def test_index_mappings_use_registered_schema(self, mock_datastore):
-        col = _make_collection(mock_datastore, schema_model=ReconcileDoc)
-
-        assert col._get_index_mappings() == new_schema.document_mapping(ReconcileDoc)
-
-    def test_schema_less_collection_uses_shared_defaults(self, mock_datastore):
-        col = _make_collection(mock_datastore)
-
-        mappings = col._get_index_mappings()
-        settings = col._get_index_settings()
-
-        assert mappings["dynamic_templates"] == new_schema.default_dynamic_templates
-        assert settings["index"]["mapping"]["total_fields"]["limit"] == 1500

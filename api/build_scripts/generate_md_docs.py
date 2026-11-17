@@ -130,10 +130,6 @@ def _field_type(definition: FieldDefinition) -> str:
     annotation = unwrap_annotation(definition.annotation)
     if get_origin(annotation) is list:
         child = get_args(annotation)[0]
-        nested_model = model_annotation(child)
-        if nested_model is not None:
-            name = _published_name(nested_model)
-            return f"List [[{name}](/howler/odm/class/{name.lower()})]"
         nested = field_metadata(child)
         return f"List [{nested.kind if nested else 'Any'}]"
     if get_origin(annotation) is dict and definition.metadata and definition.metadata.kind == "Mapping":
@@ -358,3 +354,5 @@ if __name__ == "__main__":
     parser.add_argument("--check", action="store_true", help="Fail when generated documentation is stale")
     check = parser.parse_args().check
     generate_model_docs(check=check)
+    if not check:
+        generate_configuration_docs()

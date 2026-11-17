@@ -58,8 +58,6 @@ def save_case(
 ) -> bool:
     """Persist a case, defaulting to a ``wait_for`` refresh like the legacy model ``save`` helper."""
     refresh = refresh or "wait_for"
-    if version is None:
-        return datastore().case.save(case.case_id, case, refresh=refresh)
     return datastore().case.save(case.case_id, case, refresh=refresh, version=version)
 
 

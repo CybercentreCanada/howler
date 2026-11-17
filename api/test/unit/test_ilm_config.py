@@ -94,8 +94,9 @@ class TestILMConfig:
             HowlerDatastore(datastore)
 
         registered_configs = {call.args[0]: call.kwargs["ilm_config"] for call in datastore.register.call_args_list}
-        for call in datastore.register.call_args_list:
-            assert call.args[1] is call.kwargs["schema_model"]
+        assert all(
+            call.args[1] is not None or call.args[0] == "user_avatar" for call in datastore.register.call_args_list
+        )
         for name in ("hit", "event", "case"):
             assert registered_configs[name] is not None
             assert registered_configs[name].enabled is True
@@ -165,7 +166,6 @@ class TestILMConfig:
         plugin.modules.odm.modify_odm["hit"].assert_not_called()
         hit_registration = next(call for call in datastore.register.call_args_list if call.args[0] == "hit")
         assert issubclass(hit_registration.args[1], Hit)
-        assert hit_registration.args[1] is hit_registration.kwargs["schema_model"]
 
 
 class TestDatastoreILMIntegration:

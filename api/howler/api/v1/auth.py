@@ -1,6 +1,6 @@
 import typing
 from datetime import datetime, timedelta
-from typing import Any, Optional, cast
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 from authlib.integrations.base_client import OAuthError
@@ -74,7 +74,7 @@ def add_apikey(**kwargs):  # noqa: C901
     """
     user = kwargs["user"]
     storage = datastore()
-    user_data = cast(Any, storage.user.get_if_exists(user["uname"]))
+    user_data = storage.user.get_if_exists(user["uname"])
     apikey_data = request.json
     if not isinstance(apikey_data, dict):
         return bad_request(err="Invalid data format")
@@ -140,7 +140,7 @@ def add_apikey(**kwargs):  # noqa: C901
         if expiry:
             new_key["expiry_date"] = expiry.isoformat()
 
-        cast(Any, user_data).apikeys[key_name] = cast(Any, ApiKey).validate_howler(new_key)
+        user_data.apikeys[key_name] = ApiKey.validate_howler(new_key)
     except HowlerException as e:
         return bad_request(err=e.message)
 
@@ -319,7 +319,7 @@ def login(**_):  # noqa: C901
                 token_data, oauth_provider, skip_setup=False, access_token=access_token
             )
 
-            logged_in_uname = cast(Any, cur_user).uname
+            logged_in_uname = cur_user.uname
 
             priv = ["R", "W", "E"]
 
@@ -339,7 +339,7 @@ def login(**_):  # noqa: C901
             if not user_data:
                 raise AuthenticationException("User does not exist, or authentication was invalid")  # noqa: TRY301
 
-            logged_in_uname = cast(Any, user_data).uname
+            logged_in_uname = user_data.uname
 
         else:
             raise AuthenticationException("Not enough information to proceed with authentication")  # noqa: TRY301

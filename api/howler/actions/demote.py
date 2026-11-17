@@ -1,4 +1,4 @@
-from typing import Any, Optional, cast
+from typing import Optional
 
 import howler.helper.hit as hit_helper
 from howler.common.loader import datastore
@@ -97,7 +97,7 @@ def execute(
                     *hit_helper.assess_hit(assessment, rationale),
                     odm_helper.update(
                         "howler.assignment",
-                        cast(Any, user).uname if user else "automation",
+                        user.uname if user else "automation",
                     ),
                     odm_helper.update("howler.status", Status.RESOLVED),
                 ],

@@ -5,7 +5,7 @@ from typing import Any, Literal, Optional, cast, overload
 from opentelemetry import trace
 from prometheus_client import Counter
 
-from howler.common.exceptions import HowlerTypeError, HowlerValueError, ResourceExists
+from howler.common.exceptions import HowlerValueError, ResourceExists
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
 from howler.datastore.collection import CREATE_TOKEN
@@ -162,10 +162,7 @@ def convert_event(  # noqa: C901
     if unused_keys and not ignore_extra_values:
         raise HowlerValueError(f"Event was created with invalid parameters: {', '.join(unused_keys)}")
 
-    try:
-        odm = cast(Any, Event).validate_howler(strip_unknown_fields(Event, data) if ignore_extra_values else data)
-    except TypeError as e:
-        raise HowlerTypeError(str(e), cause=e) from e
+    odm = Event.validate_howler(strip_unknown_fields(Event, data) if ignore_extra_values else data)
 
     odm_flatten = model_registry.flat_fields(Event, show_compound=True)
     deprecated_keys = {
@@ -182,7 +179,7 @@ def convert_event(  # noqa: C901
         if not odm.event.created:
             odm.event.created = "NOW"
     else:
-        odm.event = cast(Any, ECSEvent).validate_howler({"created": "NOW", "id": odm.howler.id})
+        odm.event = ECSEvent.validate_howler({"created": "NOW", "id": odm.howler.id})
 
     if user and not is_classification_accessible(user, odm.classification):
         raise HowlerValueError(f"User {user.uname} cannot create hits at classification {odm.classification}")
@@ -228,9 +225,7 @@ def create_event(
         raise ResourceExists(f"Event {id} already exists in datastore")
 
     if user:
-        cast(Any, event).howler.log = [
-            cast(Any, Log).validate_howler({"timestamp": "NOW", "explanation": "Created event", "user": user})
-        ]
+        event.howler.log = [Log.validate_howler({"timestamp": "NOW", "explanation": "Created event", "user": user})]
 
     CREATED_EVENTS.inc()
     return datastore().event.save(id, event, refresh=refresh)
@@ -249,14 +244,11 @@ def create_events(
     bulk_plan = storage.event.get_bulk_plan()
 
     for event in events:
-        event = cast(Any, event)
         if not overwrite and storage.event.exists(event.howler.id):
             raise ResourceExists("Event %s already exists in datastore" % event.howler.id)
 
         if user:
-            event.howler.log = [
-                cast(Any, Log).validate_howler({"timestamp": "NOW", "explanation": "Created event", "user": user})
-            ]
+            event.howler.log = [Log.validate_howler({"timestamp": "NOW", "explanation": "Created event", "user": user})]
 
         CREATED_EVENTS.inc()
         if overwrite:

@@ -98,9 +98,6 @@ class AssessmentEscalationMap(HowlerStrEnum):
     SECURITY = Escalation.MISS.value
     TRIVIAL = Escalation.EVIDENCE.value
 
-    def __int__(self) -> int:
-        return int(self.value)
-
 
 @register_model(index=True, store=True, description="Howler Link definition.", embedded=True)
 class Link(HowlerEmbeddedModel):

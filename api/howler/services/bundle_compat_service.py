@@ -38,13 +38,13 @@ def find_case_for_bundle(bundle_hit_id: str) -> Case | None:
     The lookup relies on the ``howler.related`` back-reference that
     ``case_service.append_case_item`` automatically sets on the hit.
     """
-    hit = cast(Any, hit_service.get_hit(bundle_hit_id, as_odm=True))
+    hit = hit_service.get_hit(bundle_hit_id, as_odm=True)
     if hit is None:
         return None
 
     ds = datastore()
     for related_id in hit.howler.related:
-        case = cast(Any, ds.case.get(related_id))
+        case = ds.case.get(related_id)
         if case is not None:
             # Confirm the bundle hit is present and at root level (no parent)
             if any(item.value == bundle_hit_id and item.parent is None for item in case.items):
@@ -91,9 +91,8 @@ def create_bundle(
             )
 
     odm, warnings = hit_service.convert_hit(bundle_hit_data, unique=True, ignore_extra_values=True)
-    odm = cast(Any, odm)
-    hit_service.create_hit(odm.howler.id, odm, user=cast(Any, user).uname, refresh=refresh)
-    analytic_service.save_from_hits(cast(Any, odm), cast(Any, user), refresh)
+    hit_service.create_hit(odm.howler.id, odm, user=user.uname, refresh=refresh)
+    analytic_service.save_from_hits(odm, user, refresh)
 
     analytic = odm.howler.analytic or "Unknown"
     detection = odm.howler.detection or "Alert"
@@ -107,7 +106,7 @@ def create_bundle(
                 "summary": f"Auto-created case for bundle {odm.howler.id}",
                 "classification": odm.classification,
             },
-            user=cast(Any, user),
+            user=user,
         ),
     )
 
@@ -157,11 +156,11 @@ def add_to_bundle(
     a case is created on the fly — matching develop's convert-to-bundle
     behaviour.
     """
-    root_hit = cast(Any, hit_service.get_hit(bundle_id, as_odm=True))
+    root_hit = hit_service.get_hit(bundle_id, as_odm=True)
     if root_hit is None:
         raise NotFoundException(f"Bundle hit {bundle_id} does not exist")
 
-    case = cast(Any, find_case_for_bundle(bundle_id))
+    case = find_case_for_bundle(bundle_id)
 
     # develop: PUT on a plain hit converts it into a bundle by creating a case
     if case is None:
@@ -213,16 +212,16 @@ def remove_from_bundle(
     If *hit_ids* is ``["*"]``, all child hits (everything except the root) are
     removed.
     """
-    root_hit = cast(Any, hit_service.get_hit(bundle_id, as_odm=True))
+    root_hit = hit_service.get_hit(bundle_id, as_odm=True)
     if root_hit is None:
         raise NotFoundException(f"Bundle hit {bundle_id} does not exist")
 
-    _case = cast(Any, find_case_for_bundle(bundle_id))
+    _case = find_case_for_bundle(bundle_id)
     if _case is None:
         # Hit exists but is not a bundle — match develop's "must be a bundle" error
         raise InvalidDataException("The specified hit must be a bundle.")
 
-    case = cast(Any, datastore().case.get(_case.case_id))
+    case = datastore().case.get(_case.case_id)
     if case is None:
         raise NotFoundException(f"Case {_case.case_id} not found")
 
@@ -244,9 +243,9 @@ def remove_from_bundle(
             # force=True is required when removing all children via wildcard because the "hits/" folder
             # item is included in the removal set and may still have children at removal time.
             use_force = hit_ids == ["*"]
-            case_service.remove_case_items(cast(Any, _case), item_ids_to_remove, force=use_force, refresh=refresh)
+            case_service.remove_case_items(_case, item_ids_to_remove, force=use_force, refresh=refresh)
 
-    updated_case = cast(Any, datastore().case.get(_case.case_id))
+    updated_case = datastore().case.get(_case.case_id)
     if updated_case is None:  # pragma: no cover
         raise NotFoundException(f"Case {_case.case_id} not found")
 
@@ -265,8 +264,8 @@ def synthesize_bundle_response(
     ``is_bundle``, ``hits``, and ``bundle_size`` fields injected into
     ``howler``.
     """
-    case_model = cast(Any, case)
-    hit_model = cast(Any, root_hit)
+    case_model = case
+    hit_model = root_hit
     child_ids = [
         item.value for item in case_model.items if item.type == CaseItemTypes.HIT and item.value != hit_model.howler.id
     ]

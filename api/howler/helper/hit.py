@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union, cast
+from typing import Any, Optional, Union
 
 from howler.common.exceptions import InvalidDataException
 from howler.common.logging import get_logger
@@ -62,12 +62,12 @@ def assess_hit(
 
     logger.debug(
         "Updating assessment of %s to %s",
-        cast(Any, hit)["howler"]["id"] if hit else "unknown",
+        hit["howler"]["id"] if hit else "unknown",
         assessment,
     )
     logger.debug(
         "Updating escalation of %s to %s",
-        cast(Any, hit)["howler"]["id"] if hit else "unknown",
+        hit["howler"]["id"] if hit else "unknown",
         escalation,
     )
 
@@ -97,7 +97,7 @@ def unassign_hit(
     Returns:
         list[OdmUpdateOperation]: A list of the operations necessary to update the hit
     """
-    if user and hit["howler"]["assignment"] == cast(Any, user).get("uname", cast(Any, user).get("username", None)):
+    if user and hit["howler"]["assignment"] == user.uname:
         return [odm_helper.update("howler.assignment", "unassigned")]
 
     raise InvalidDataException("Cannot release hit that isn't assigned to you.")
@@ -137,7 +137,7 @@ def assign_hit(
     return [
         odm_helper.update(
             "howler.assignment",
-            assignee or cast(Any, user).get("uname", cast(Any, user).get("username", None)) if user else None,
+            assignee or user.uname if user else None,
         )
     ]
 
