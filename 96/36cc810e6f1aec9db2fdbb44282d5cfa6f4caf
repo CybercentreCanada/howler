@@ -1,0 +1,30 @@
+ui/src/components/elements/display/Markdown.tsx
+  s_4dd04ff9e0f017::t_259bf36f984173 98
+ui/src/components/routes/action/shared/OperationStep.test.tsx
+  s_4dd04ff9e0f017::t_28b2b5c843df9a 127-128
+  s_4dd04ff9e0f017::t_259bf36f984173 29,68-75,90,96-100,108,110,117-122,129-136
+ui/src/utils/actionUtils.ts
+  s_4dd04ff9e0f017::t_259bf36f984173 80-81
+ui/src/components/routes/action/shared/OperationStep.tsx
+  s_4dd04ff9e0f017::t_259bf36f984173 52,70-71,75-78,152,165
+ui/src/components/elements/display/Markdown.test.tsx
+  s_4dd04ff9e0f017::t_259bf36f984173 5,10
+ui/src/components/routes/hits/view/LeadRenderer.test.tsx
+  s_4dd04ff9e0f017::t_259bf36f984173 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9636cc810e6f1aec9db2fdbb44282d5cfa6f4caf",
+  "prompts": {},
+  "sessions": {
+    "s_4dd04ff9e0f017": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_d0b80468cbc28289407994a569b74151",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
