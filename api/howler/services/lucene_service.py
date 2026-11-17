@@ -226,6 +226,8 @@ class LuceneProcessor(TreeVisitor):
             yield any(value == sanitized_value for value in context["hit"].values())
         elif context["field"] == "_exists_":
             yield context["hit"].get(node.value) is not None
+        elif context["field"] == "*" and node.value == "*":
+            yield True
         elif (raw_value := context["hit"].get(field_name := context["field"])) is None:
             yield False
         else:
