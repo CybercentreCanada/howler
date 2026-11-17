@@ -175,7 +175,7 @@ class ActionStep(BaseModel):
     @model_validator(mode="after")
     def _validate_options(self) -> "ActionStep":
         for name in self.options:
-            if name not in self.args:
+            if name not in self.args and name not in (self.optional_args or []):
                 raise ValueError(f"Options are provided for '{name}', which is not an argument of the same step.")
 
         return self

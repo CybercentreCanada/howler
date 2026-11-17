@@ -304,6 +304,40 @@ def test_action_step_validates_against_specification_arguments(conditions, optio
         assert result.to_ui_dict()["steps"][1] == step
 
 
+@pytest.mark.parametrize(
+    ("options", "error"),
+    [
+        (["chosen"], None),
+        ({"mode:enabled": ["chosen"]}, None),
+        (["invalid"], "'invalid' is offered for 'choice' but is invalid"),
+        ({"mode:enabled": ["invalid"]}, "'invalid' is offered for 'choice' but is invalid"),
+        ({"unknown:enabled": ["chosen"]}, "must be in the form"),
+    ],
+)
+def test_optional_argument_options_validate_against_the_specification(options, error):
+    class StepArguments(ActionArguments):
+        mode: Literal["enabled", "disabled"]
+        choice: Literal["chosen", "other"] | None = None
+
+    step = {"args": {"mode": []}, "optional_args": ["choice"], "options": {"choice": options}}
+    specification = {
+        "id": "optional-options",
+        "title": "Optional options",
+        "description": {"short": "Validate options for an optional argument"},
+        "roles": ["admin"],
+        "arguments": StepArguments,
+        "steps": [step],
+    }
+
+    if error is not None:
+        with pytest.raises(ValidationError, match=error):
+            ActionSpecification.model_validate(specification)
+    else:
+        result = ActionSpecification.model_validate(specification)
+        assert result.to_ui_dict()["steps"][0] == step
+        assert result.validate_arguments({"mode": "enabled"}).choice is None
+
+
 @patch("howler.actions.datastore")
 def test_execute_basic_user_hit_limit_exceeded(mock_ds):
     """Test that basic users are blocked when exceeding hit limits."""

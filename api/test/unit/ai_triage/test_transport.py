@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 import requests
+from pydantic import ValidationError
 from urllib3.exceptions import ReadTimeoutError
 
 from howler.odm.models.config import AITriage
@@ -158,18 +159,18 @@ def test_streaming_read_timeout_is_reported_as_timeout(provider):
 
 
 @pytest.mark.parametrize(
-    "payload,reason",
+    "payload",
     [
-        ([], "invalid response"),
-        ({}, "no text"),
-        ({"choices": [None]}, "no text"),
-        ({"choices": [{"message": {"content": " "}}]}, "no text"),
+        [],
+        {},
+        {"choices": [None]},
+        {"choices": [{"message": {"content": " "}}]},
     ],
 )
-def test_invalid_provider_responses_are_rejected(provider, payload, reason):
+def test_invalid_provider_responses_are_rejected(provider, payload):
     session, _factory = provider
     session.reply = response(payload)
-    with pytest.raises(transport.AITransportError, match=reason):
+    with pytest.raises(transport.AITransportError, match="invalid format"):
         generate()
     session.__exit__.assert_called_once()
 
@@ -225,6 +226,14 @@ def test_alert_json_content_counts_towards_input_limit(provider):
 
 def test_missing_endpoint_never_contacts_provider(provider):
     _session, factory = provider
+    config = AITriage(enabled=False, endpoint=None, model="qa-model")
     with pytest.raises(transport.AITransportError, match="not configured"):
-        generate(endpoint=None)
+        transport.generate(config, "qa-access-token", "prompt", {})
+    factory.assert_not_called()
+
+
+def test_enabled_config_requires_endpoint(provider):
+    _session, factory = provider
+    with pytest.raises(ValidationError, match="AI triage endpoint is required when enabled"):
+        AITriage(enabled=True, endpoint=None, model="qa-model")
     factory.assert_not_called()
