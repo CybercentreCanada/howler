@@ -1,0 +1,39 @@
+api/howler/actions/__init__.py
+  s_4b19743edcd234::t_4dc0c5844ae7a3 103,120
+api/test/unit/ai_triage/test_worker.py
+  s_4b19743edcd234::t_7ff15470806e36 4-5,7,16-18,20,27,34,51-58,67-75,84,94
+  s_4b19743edcd234::t_ec82bb927eafa5 46
+  s_4b19743edcd234::t_8b65d17784ab35 38
+api/test/unit/ai_triage/test_service.py
+  s_4b19743edcd234::t_30aa9db7ecb287 208-209,211-212,214,217,222-223,226-229
+  s_4b19743edcd234::t_251242e1c1bde8 129,132-133,135,138-139,144-145,148-153,158-162,245,255,275,309-312
+  s_4b19743edcd234::t_8696cb1e5a8e11 283-308
+  s_4b19743edcd234::t_a2aad98df929c8 167,199,282
+  s_4b19743edcd234::t_5180a2122ccef7 130-131
+  s_4b19743edcd234::t_ec91b5fcee94d1 182-195
+api/test/unit/ai_triage/test_dispatch_security.py
+  s_4b19743edcd234::t_6a2a5bbb530554 56,59,73
+api/howler/services/ai_service.py
+  s_4b19743edcd234::t_4dc0c5844ae7a3 54,60,64,67,84,89,133-143
+api/howler/actions/ai_triage.py
+  s_4b19743edcd234::t_4dc0c5844ae7a3 5
+api/howler/cronjobs/ai_triage_worker.py
+  s_4b19743edcd234::t_4dc0c5844ae7a3 12
+  s_4b19743edcd234::t_ec82bb927eafa5 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3cd835b16fd40c595acef917f9ec2aeefc248ab8",
+  "prompts": {},
+  "sessions": {
+    "s_4b19743edcd234": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_7a82180f0ae382ac9a65695331c581c3",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
