@@ -21,9 +21,9 @@ class TestEnqueueActionExecution:
         app = Flask(__name__)
 
         with app.test_request_context(headers={"Authorization": "malformed-token"}):
-            assert action_service._request_auth_token() is None
+            assert auth_service.get_token() is None
         with app.test_request_context(headers={"Authorization": "Basic dXNlcjpwYXNz"}):
-            assert action_service._request_auth_token() is None
+            assert auth_service.get_token() is None
 
     @patch.object(action_service, "get_action_queue")
     @patch("howler.services.action_service.config")

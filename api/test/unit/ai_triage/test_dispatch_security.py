@@ -2,9 +2,11 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from flask import Flask
 
 from howler import actions
 from howler.actions import ai_triage
+from howler.config import CLASSIFICATION
 
 from .support import make_user
 
@@ -36,6 +38,24 @@ def test_dispatch_overrides_persisted_auth_token_with_request_bearer(operation):
     assert "bearer_token" not in operation.call_args.kwargs
 
 
+def test_background_dispatch_does_not_use_persisted_auth_token(operation):
+    actions.execute("requires_auth", "*:*", make_user(), auth_token="persisted-token")
+
+    assert operation.call_args.kwargs["auth_token"] is None
+
+
+@pytest.mark.parametrize(
+    ("authorization", "expected"),
+    [("Bearer request-token", "request-token"), ("Basic dXNlcjpwYXNz", None), (None, None)],
+)
+def test_http_dispatch_ignores_credentials_in_operation_data(operation, authorization, expected):
+    headers = {"Authorization": authorization} if authorization else {}
+    with Flask(__name__).test_request_context(headers=headers):
+        actions.execute("requires_auth", "*:*", make_user(), bearer_token="spoofed-token", auth_token="persisted-token")
+
+    assert operation.call_args.kwargs["auth_token"] == expected
+
+
 def test_dispatch_only_forwards_bearer_to_operations_that_require_it(monkeypatch):
     execute = Mock(return_value=[])
     spec = {"roles": ["actionrunner_basic"]}
@@ -55,6 +75,7 @@ def test_missing_bearer_returns_the_ai_operation_error_report(monkeypatch):
     execute = Mock(wraps=ai_triage.execute)
     enqueue = Mock()
     monkeypatch.setattr(ai_triage, "is_available", lambda: True)
+    monkeypatch.setattr(CLASSIFICATION, "enforce", False)
     monkeypatch.setattr(ai_triage, "execute", execute)
     monkeypatch.setattr("howler.services.ai_service.enqueue_alerts", enqueue)
     monkeypatch.setattr(actions, "_get_operation", lambda _operation_id: ai_triage)

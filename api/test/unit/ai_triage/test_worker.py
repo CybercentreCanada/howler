@@ -48,6 +48,20 @@ def test_worker_processes_one_alert_and_saves(monkeypatch):
     save.assert_called_once_with("hit-1", user, "generated opinion")
 
 
+def test_worker_processes_job_without_queued_token(monkeypatch):
+    generate, save, _get_user, _get_hit, user = setup_worker(monkeypatch)
+    decrypt = Mock()
+    monkeypatch.setattr(auth_service, "decrypt_token", decrypt)
+    job = make_job()
+    job["bearer_token"] = None
+
+    ai_triage_worker._process(job)
+
+    decrypt.assert_not_called()
+    assert generate.call_args.args[1] is None
+    save.assert_called_once_with("hit-1", user, "generated opinion")
+
+
 @pytest.mark.parametrize("state", ["missing", "inactive", "revoked"], ids=["missing", "inactive", "revoked-role"])
 def test_worker_discards_missing_inactive_or_revoked_initiator(monkeypatch, state):
     generate, save, get_user, get_hit, _user = setup_worker(monkeypatch)

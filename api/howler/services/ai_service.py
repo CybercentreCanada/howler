@@ -42,7 +42,7 @@ class AIAlertJob(TypedDict):
 
     hit_id: str
     uname: str
-    bearer_token: str
+    bearer_token: str | None
     prompt: str | None
 
 
@@ -70,9 +70,9 @@ def is_available() -> bool:
     """Check whether local AI triage prerequisites are configured.
 
     Returns:
-        Whether the provider configuration is valid and token encryption is available.
+        Whether the provider configuration is valid and any required token encryption is available.
     """
-    return config.core.ai.enabled and config.system.encryption_key is not None
+    return config.core.ai.enabled and (bool(config.core.ai.api_key) or config.system.encryption_key is not None)
 
 
 def _eligible_hit(hit: Hit) -> bool:
@@ -114,27 +114,30 @@ def _eligible_targets(query: str, user: User, max_hits: int) -> list[str] | None
 
 
 def enqueue_alerts(
-    query: str, user: User, bearer_token: str, prompt: str | None = None, *, max_hits: int
+    query: str, user: User, bearer_token: str | None, prompt: str | None = None, *, max_hits: int
 ) -> int | None:
     """Select eligible hits and enqueue one minimal job per alert.
 
     Args:
         query: Search query used to select hits.
         user: User initiating triage and constraining hit access.
-        bearer_token: Token encrypted into each queued job.
+        bearer_token: Token encrypted into each queued job if no provider API key is configured.
         prompt: Optional additional analyst context.
         max_hits: Maximum number of matching hits to enqueue.
 
     Returns:
         Number of jobs queued, or ``None`` if the hit limit was exceeded.
     """
+    if not config.core.ai.api_key and not bearer_token:
+        raise AITransportError("AI triage requires a Bearer authorization token")
+
     targets = _eligible_targets(query, user, max_hits)
     if targets is None:
         return None
     if not targets:
         return 0
 
-    encrypted_token = cast(str, auth_service.encrypt_token(bearer_token))
+    encrypted_token = None if config.core.ai.api_key else cast(str, auth_service.encrypt_token(bearer_token))
     safe_prompt = prompt.strip() if isinstance(prompt, str) and prompt.strip() else None
     jobs: list[AIAlertJob] = [
         {
@@ -206,12 +209,20 @@ def _check_status(response: requests.Response, *args: Any, **kwargs: Any) -> req
     return response
 
 
-def generate(config: AITriage, token: str, system_prompt: str, alert_data: dict[str, Any]) -> str:
+def _provider_credential(config: AITriage, token: str | None) -> str:
+    """Select the configured API key or the initiating request's bearer token."""
+    credential = config.api_key or token
+    if not credential:
+        raise AITransportError("AI triage requires a provider credential")
+    return credential
+
+
+def generate(config: AITriage, token: str | None, system_prompt: str, alert_data: dict[str, Any]) -> str:
     """Generate a response from the configured AI provider.
 
     Args:
         config: Provider endpoint, model, headers, and timeout settings.
-        token: Bearer token sent to the provider.
+        token: Fallback bearer token sent when no provider API key is configured.
         system_prompt: Instructions sent as the system message.
         alert_data: Filtered alert data sent as the user message.
 
@@ -224,6 +235,8 @@ def generate(config: AITriage, token: str, system_prompt: str, alert_data: dict[
     """
     if not config.endpoint:
         raise AITransportError("AI triage is not configured")
+
+    credential = _provider_credential(config, token)
 
     alert_content = json.dumps(alert_data, ensure_ascii=False, separators=(",", ":"))
     if len(system_prompt.encode("utf-8")) + len(alert_content.encode("utf-8")) > MAX_INPUT_BYTES:
@@ -246,7 +259,7 @@ def generate(config: AITriage, token: str, system_prompt: str, alert_data: dict[
                 json=body,
                 headers={
                     **config.headers,
-                    "Authorization": f"Bearer {token}",
+                    "Authorization": f"Bearer {credential}",
                     "Content-Type": "application/json",
                     "Accept": "application/json",
                 },

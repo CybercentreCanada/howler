@@ -4,7 +4,7 @@ from typing import Any
 
 from howler.actions import ADVANCED_ROLES
 from howler.common.logging import get_logger
-from howler.config import CLASSIFICATION
+from howler.config import CLASSIFICATION, config
 from howler.odm.models.action import VALID_TRIGGERS
 from howler.odm.models.user import User
 from howler.services import ai_service
@@ -16,6 +16,11 @@ ROLES = ["automation_basic", "automation_advanced", "actionrunner_basic", "actio
 MAX_HITS_BASIC = 10
 MAX_HITS_ADVANCED = 50
 SKIP_CENTRAL_LIMIT = True
+
+
+def is_available() -> bool:
+    """Return whether the AI triage operation is configured locally."""
+    return ai_service.is_available()
 
 
 def execute(
@@ -31,7 +36,7 @@ def execute(
         return [{"query": query, "outcome": outcome, "title": title, "message": message}]
 
     try:
-        if not ai_service.is_available():
+        if not is_available():
             return report(
                 "error", "AI triage unavailable", "AI triage is not enabled or is missing valid local configuration."
             )
@@ -46,7 +51,7 @@ def execute(
                 "AI Triage cannot run without a provided user with valid access control.",
             )
 
-        if not auth_token:
+        if not config.core.ai.api_key and not auth_token:
             return report("error", "Authentication required", "AI triage requires a Bearer authorization token.")
 
         max_hits = MAX_HITS_ADVANCED if ADVANCED_ROLES & set(user.type) else MAX_HITS_BASIC

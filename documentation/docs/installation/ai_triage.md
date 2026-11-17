@@ -3,16 +3,18 @@
 AI Triage is an optional action that queues conservative analyses for eligible
 alerts. A background worker sends filtered alert data to an OpenAI-compatible
 chat-completions endpoint and saves the result as a managed dossier lead. The
-feature is available only when `core.ai.enabled`, the local configuration, and
-`system.encryption_key` are valid. Availability checks never contact the
-provider.
+feature is available when `core.ai.enabled` and the local configuration are
+valid, and either a provider API key or `system.encryption_key` is configured.
+Availability checks never contact the provider.
 
 ## Configuration
 
 Configure the integration in `/etc/howler/conf/config.yml` or with nested
-`HWL_CORE__AI__...` environment variables. `system.encryption_key` must be a
-shared 32-byte key so queued Bearer tokens can be encrypted at rest. The endpoint
-must use HTTPS; HTTP is accepted only for `localhost`, `127.0.0.1`, or `::1`.
+`HWL_CORE__AI__...` environment variables. Without a provider API key,
+`system.encryption_key` must be a shared 32-byte key so queued Bearer tokens can
+be encrypted at rest. Other Howler features may also require this encryption key.
+The endpoint must use HTTPS; HTTP is accepted only for `localhost`, `127.0.0.1`,
+or `::1`.
 
 ```yaml
 core:
@@ -20,8 +22,7 @@ core:
     enabled: true
     endpoint: https://ai.example.invalid/v1/chat/completions
     model: triage-model
-    headers:
-      api-key: injected-secret-value
+    api_key: injected-secret-value
     system_prompt: >-
       Analyze this alert conservatively. Return markdown with Summary,
       Recommended assessment, Reasoning, Confidence and limitations, and Next
@@ -35,23 +36,29 @@ core:
       - howler.log
 ```
 
-`headers` are private server configuration; inject secret values from a secret
-manager. Howler rejects headers that could replace authorization or core HTTP
-fields. The initiating request's Bearer token is forwarded to the configured
-endpoint; Basic and API-key credentials are not. Provider calls do not follow redirects
-or inherit credentials from `.netrc` or proxy environment variables. Use only a
-trusted endpoint and verify its TLS certificate.
+Inject `api_key` and any sensitive additional `headers` from a secret manager;
+they are private server configuration. When `api_key` is set, Howler sends it as
+`Authorization: Bearer <api_key>` and does not forward the initiating request's
+credentials. This also allows users authenticated with Basic or Howler API-key
+credentials to run the action. Without `api_key`, the initiating request must
+provide a Bearer token, which is forwarded to the provider. Howler rejects
+additional headers that could replace authorization or core HTTP fields.
+Provider calls do not follow redirects or inherit credentials from `.netrc` or
+proxy environment variables. Use only a trusted endpoint and verify its TLS
+certificate. All worker processes must have the same provider configuration;
+removing the API key before a key-backed job is processed causes it to fail.
 
 ## Selection and processing
 
 Only unresolved alerts without an assessment are eligible. The request is
 rejected if it exceeds the fixed limit: 10 alerts for basic roles, or 50 for
 advanced/admin roles. Each queue item contains an alert ID, initiating username,
-encrypted Bearer token, and optional prompt—not an alert or user snapshot. Before
-processing, the worker reloads the user and alert, discarding jobs if the account
-is inactive, its action role was revoked, or the alert is no longer accessible
-and eligible. The provider receives only the hit fields left after
-`excluded_input_fields` are removed.
+optional prompt, and, only when no provider API key is configured, an encrypted
+Bearer token—not an alert or user snapshot. Provider API keys are never stored in
+the AI queue. Before processing, the worker reloads the user and alert,
+discarding jobs if the account is inactive, its action role was revoked, or the
+alert is no longer accessible and eligible. The provider receives only the hit
+fields left after `excluded_input_fields` are removed.
 
 The consumer runs only when `HWL_USE_JOB_SYSTEM` is enabled. If it is disabled,
 the action can still queue jobs in Redis, but they remain there unprocessed until

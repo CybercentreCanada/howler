@@ -81,6 +81,28 @@ def test_success_preserves_request_security_and_cleans_up(provider, monkeypatch)
     reply.__exit__.assert_called_once()
 
 
+@pytest.mark.parametrize("token", [None, "incoming-token"])
+def test_provider_api_key_takes_precedence_over_incoming_token(provider, token):
+    session, _factory = provider
+    session.reply = response({"choices": [{"message": {"content": "opinion"}}]})
+    config = AITriage(enabled=True, endpoint="https://ai.invalid/chat", model="model", api_key="provider-secret")
+
+    assert transport.generate(config, token, "prompt", {}) == "opinion"
+
+    assert session.post.call_args.kwargs["headers"]["Authorization"] == "Bearer provider-secret"
+    assert "incoming-token" not in repr(session.post.call_args)
+
+
+def test_missing_provider_credential_never_contacts_provider(provider):
+    _session, factory = provider
+    config = AITriage(enabled=True, endpoint="https://ai.invalid/chat", model="model")
+
+    with pytest.raises(transport.AITransportError, match="provider credential"):
+        transport.generate(config, None, "prompt", {})
+
+    factory.assert_not_called()
+
+
 def test_connect_timeout_is_bounded_by_configured_timeout(provider):
     session, _factory = provider
     session.reply = response({"choices": [{"message": {"content": "opinion"}}]})

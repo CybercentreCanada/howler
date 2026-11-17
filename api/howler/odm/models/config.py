@@ -606,14 +606,15 @@ AI_RESERVED_HEADERS = frozenset(
 class AITriage(BaseModel):
     """Server-side configuration for the optional AI triage operation.
 
-    Provider credentials belong in ``headers`` (or an external secret store
-    interpolated into that field), never in action data. The incoming Howler
-    bearer token is forwarded separately by the action dispatcher.
+    Provider credentials belong in server configuration, never in action data.
+    When no API key is configured, the incoming Howler bearer token is forwarded
+    separately by the action dispatcher.
     """
 
     enabled: bool = Field(default=False, description="Expose the AI triage action when locally configured")
     endpoint: str | None = Field(default=None, description="HTTPS endpoint for the configured AI service")
     model: str | None = Field(default=None, description="OpenAI-compatible model name")
+    api_key: str | None = Field(default=None, repr=False, description="Private provider API key")
     headers: dict[str, str] = Field(default_factory=dict, description="Private additional provider headers")
     system_prompt: str = Field(
         default=(

@@ -1,7 +1,7 @@
 """Concurrent consumers for per-alert AI triage jobs."""
 
 import threading
-from typing import Any, cast
+from typing import Any
 
 from apscheduler.schedulers.base import BaseScheduler
 
@@ -29,7 +29,7 @@ def _process(job: Any) -> None:
             logger.info("Discarding AI triage job because its initiator is no longer authorized")
             return
 
-        token = auth_service.decrypt_token(encrypted_token)
+        token = auth_service.decrypt_token(encrypted_token) if encrypted_token is not None else None
         hit, _version = hit_service.get_hit(hit_id, as_odm=True, version=True, user=user)
         if hit is None or not ai_service._eligible_hit(hit):
             logger.info("Discarding AI triage job because its alert is no longer eligible or accessible")
@@ -37,7 +37,7 @@ def _process(job: Any) -> None:
 
         result = ai_service.generate(
             config.core.ai,
-            cast(str, token),
+            token,
             ai_service.build_system_prompt(prompt),
             ai_service.provider_input(hit),
         )

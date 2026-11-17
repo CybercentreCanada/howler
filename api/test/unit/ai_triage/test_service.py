@@ -20,6 +20,7 @@ def settings(monkeypatch):
     ai = AITriage(enabled=True, endpoint="https://ai.invalid/chat", model="qa-model")
     monkeypatch.setattr(config.core, "ai", ai)
     monkeypatch.setattr(config.system, "encryption_key", "0123456789abcdef0123456789abcdef")
+    monkeypatch.setattr(CLASSIFICATION, "enforce", False)
     return ai
 
 
@@ -73,6 +74,16 @@ def test_missing_encryption_key_disables_feature(settings, monkeypatch):
     assert not service.is_available()
 
 
+def test_provider_api_key_allows_triage_without_token_encryption(settings, monkeypatch):
+    settings.api_key = "provider-secret"
+    monkeypatch.setattr(config.system, "encryption_key", None)
+    assert service.is_available()
+    assert ai_triage.is_available()
+    spec = next(item for item in actions.specifications() if item["id"] == "ai_triage")
+    assert "provider-secret" not in json.dumps(spec)
+    assert "provider-secret" not in repr(settings)
+
+
 def test_action_allows_user_without_access_control_when_classification_is_disabled(settings, monkeypatch):
     monkeypatch.setattr(CLASSIFICATION, "enforce", False)
     enqueue = Mock(return_value=1)
@@ -96,7 +107,7 @@ def test_action_requires_access_control_when_classification_is_enabled(settings,
     result = ai_triage.execute("event.kind:alert", user, auth_token="qa-token")
 
     assert result[0]["outcome"] == "error"
-    assert result[0]["title"] == "No user specified"
+    assert result[0]["title"] == "Invalid Access Control"
     enqueue.assert_not_called()
 
 
@@ -212,6 +223,33 @@ def test_enqueue_creates_minimal_jobs_and_normalizes_prompt(settings, monkeypatc
     )
     assert "event" not in repr(queue.push.call_args)
     assert "trusted-token" not in repr(queue.push.call_args)
+
+
+@pytest.mark.parametrize("bearer_token", [None, "incoming-token"])
+def test_enqueue_with_provider_api_key_stores_no_credentials(settings, monkeypatch, bearer_token):
+    settings.api_key = "provider-secret"
+    queue = Mock()
+    encrypt = Mock()
+    monkeypatch.setattr(service, "_eligible_targets", lambda *_args: ["hit-1"])
+    monkeypatch.setattr(service, "get_queue", lambda: queue)
+    monkeypatch.setattr(service.auth_service, "encrypt_token", encrypt)
+
+    assert service.enqueue_alerts("*:*", make_user(), bearer_token, max_hits=10) == 1
+
+    queue.push.assert_called_once_with({"hit_id": "hit-1", "uname": "analyst", "bearer_token": None, "prompt": None})
+    encrypt.assert_not_called()
+    assert "provider-secret" not in repr(queue.push.call_args)
+    assert "incoming-token" not in repr(queue.push.call_args)
+
+
+def test_enqueue_without_provider_credential_rejects_job(settings, monkeypatch):
+    queue = Mock()
+    monkeypatch.setattr(service, "get_queue", lambda: queue)
+
+    with pytest.raises(service.AITransportError, match="requires a Bearer"):
+        service.enqueue_alerts("*:*", make_user(), None, max_hits=10)
+
+    queue.push.assert_not_called()
 
 
 @pytest.mark.parametrize(("targets", "expected"), [([], 0), (None, None)], ids=["empty", "overflow"])
