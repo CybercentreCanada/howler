@@ -6,6 +6,7 @@ from pydantic import ValidationError
 
 from howler import actions
 from howler.actions import ai_triage
+from howler.config import CLASSIFICATION
 from howler.datastore.exceptions import VersionConflictException
 from howler.odm.models.config import AITriage, config
 from howler.services import ai_service as service
@@ -63,6 +64,33 @@ def test_config_concurrency_has_no_artificial_upper_limit():
 def test_missing_encryption_key_disables_feature(settings, monkeypatch):
     monkeypatch.setattr(config.system, "encryption_key", None)
     assert not service.is_available()
+
+
+def test_action_allows_user_without_access_control_when_classification_is_disabled(settings, monkeypatch):
+    monkeypatch.setattr(CLASSIFICATION, "enforce", False)
+    enqueue = Mock(return_value=1)
+    monkeypatch.setattr(service, "enqueue_alerts", enqueue)
+    user = make_user()
+    user.access_control = None
+
+    result = ai_triage.execute("event.kind:alert", user, auth_token="qa-token")
+
+    assert result[0]["outcome"] == "success"
+    enqueue.assert_called_once()
+
+
+def test_action_requires_access_control_when_classification_is_enabled(settings, monkeypatch):
+    monkeypatch.setattr(CLASSIFICATION, "enforce", True)
+    enqueue = Mock()
+    monkeypatch.setattr(service, "enqueue_alerts", enqueue)
+    user = make_user()
+    user.access_control = None
+
+    result = ai_triage.execute("event.kind:alert", user, auth_token="qa-token")
+
+    assert result[0]["outcome"] == "error"
+    assert result[0]["title"] == "No user specified"
+    enqueue.assert_not_called()
 
 
 def test_provider_input_excludes_analyst_content_and_prompt_is_additive(settings):
