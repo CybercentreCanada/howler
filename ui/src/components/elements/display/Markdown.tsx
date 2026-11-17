@@ -95,15 +95,7 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
       urlTransform={transformUrl}
       components={{
         code({ node, className, children, ...props }) {
-          if (untrusted) {
-            return (
-              <code className={className} {...props}>
-                {children}
-              </code>
-            );
-          }
-
-          if (!node) {
+          if (untrusted || !node) {
             return (
               <code className={className} {...props}>
                 {children}

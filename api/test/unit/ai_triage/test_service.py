@@ -1,5 +1,4 @@
 import json
-from types import SimpleNamespace
 from unittest.mock import Mock, call
 
 import pytest
@@ -127,93 +126,45 @@ def test_filter_input_field_recurses_nested_lists_without_consuming_path(setting
     }
 
 
-def test_action_checks_limit_on_eligibility_filtered_query(settings, monkeypatch):
+@pytest.mark.parametrize(
+    ("roles", "max_hits"),
+    [(["user", "actionrunner_basic"], 10), (["user", "actionrunner_advanced"], 50), (["admin"], 50)],
+)
+def test_action_selects_role_limit_without_http_call(settings, monkeypatch, roles, max_hits):
     user = make_user()
-    user.access_control = "howler.classification:TLP:U"
-    check_limit = Mock(return_value=None)
+    user.type = roles
     enqueue = Mock(return_value=2)
-    monkeypatch.setattr(ai_triage, "check_hit_limit", check_limit)
     monkeypatch.setattr(service, "enqueue_alerts", enqueue)
+    generate = Mock()
+    monkeypatch.setattr("howler.services.ai_transport.generate", generate)
 
     result = ai_triage.execute("event.kind:alert", user, auth_token="qa-token", prompt="Be concise")
 
     assert result[0]["outcome"] == "success"
-    check_limit.assert_called_once_with(
-        "(event.kind:alert) AND NOT howler.status:resolved AND NOT howler.assessment:*",
-        user,
-        ai_triage.MAX_HITS_BASIC,
-        ai_triage.MAX_HITS_ADVANCED,
-        access_control=user.access_control,
-    )
-    enqueue.assert_called_once_with("event.kind:alert", user, "qa-token", prompt="Be concise", max_hits=10)
+    enqueue.assert_called_once_with("event.kind:alert", user, "qa-token", prompt="Be concise", max_hits=max_hits)
+    generate.assert_not_called()
 
 
-def test_advanced_role_uses_advanced_selection_limit(settings, monkeypatch):
-    user = make_user()
-    user.type = ["user", "actionrunner_advanced"]
-    enqueue = Mock(return_value=1)
-    monkeypatch.setattr(ai_triage, "check_hit_limit", Mock(return_value=None))
+@pytest.mark.parametrize(
+    ("count", "outcome", "title"),
+    [(0, "skipped", "No matching alerts"), (None, "error", "Hit limit exceeded")],
+)
+def test_action_reports_empty_or_overflow_selection(settings, monkeypatch, count, outcome, title):
+    enqueue = Mock(return_value=count)
     monkeypatch.setattr(service, "enqueue_alerts", enqueue)
-
-    ai_triage.execute("*:*", user, auth_token="qa-token")
-
-    enqueue.assert_called_once_with("*:*", user, "qa-token", prompt=None, max_hits=50)
-
-
-def test_action_returns_hit_limit_error_without_enqueue(settings, monkeypatch):
-    error = {"query": "filtered", "outcome": "error", "title": "Hit limit exceeded", "message": "Too many"}
-    enqueue = Mock()
-    monkeypatch.setattr(ai_triage, "check_hit_limit", Mock(return_value=error))
-    monkeypatch.setattr(service, "enqueue_alerts", enqueue)
-
-    assert ai_triage.execute("*:*", make_user(), auth_token="qa-token") == [error]
-    enqueue.assert_not_called()
-
-
-def test_action_reports_no_eligible_alerts_as_skipped(settings, monkeypatch):
-    monkeypatch.setattr(ai_triage, "check_hit_limit", Mock(return_value=None))
-    monkeypatch.setattr(service, "enqueue_alerts", Mock(return_value=0))
 
     result = ai_triage.execute("*:*", make_user(), auth_token="qa-token")
 
-    assert result == [
-        {
-            "query": "*:*",
-            "outcome": "skipped",
-            "title": "No matching alerts",
-            "message": "No unresolved, unassessed alerts matched the query.",
-        }
-    ]
-
-
-def test_action_reports_selection_limit_race_separately(settings, monkeypatch):
-    monkeypatch.setattr(ai_triage, "check_hit_limit", Mock(return_value=None))
-    monkeypatch.setattr(service, "enqueue_alerts", Mock(return_value=None))
-
-    result = ai_triage.execute("*:*", make_user(), auth_token="qa-token")
-
-    assert result[0]["outcome"] == "error"
-    assert result[0]["title"] == "Hit limit exceeded"
-    assert "narrow the query" in result[0]["message"]
-    assert "durably queued" not in result[0]["message"]
-
-
-def test_missing_action_token_returns_safe_error(settings, monkeypatch):
-    enqueue = Mock()
-    monkeypatch.setattr(service, "enqueue_alerts", enqueue)
-
-    result = ai_triage.execute("*:*", make_user())
-
-    assert result[0]["outcome"] == "error"
-    assert "Bearer" in result[0]["message"]
-    enqueue.assert_not_called()
+    assert result[0]["outcome"] == outcome
+    assert result[0]["title"] == title
+    enqueue.assert_called_once()
+    if count is None:
+        assert "narrow the query" in result[0]["message"]
 
 
 def test_enqueue_creates_minimal_jobs_and_normalizes_prompt(settings, monkeypatch):
-    first = SimpleNamespace(howler=SimpleNamespace(id="hit-1"))
-    second = SimpleNamespace(howler=SimpleNamespace(id="hit-2"))
     queue = Mock()
-    monkeypatch.setattr(service, "_eligible_targets", Mock(return_value=[first, second]))
+    monkeypatch.setattr(service, "_eligible_targets", Mock(return_value=["hit-1", "hit-2"]))
     monkeypatch.setattr(service, "get_queue", lambda: queue)
     monkeypatch.setattr(service.auth_service, "encrypt_token", lambda _token: "ciphertext")
 
@@ -228,11 +179,24 @@ def test_enqueue_creates_minimal_jobs_and_normalizes_prompt(settings, monkeypatc
     assert "trusted-token" not in repr(queue.push.call_args)
 
 
+@pytest.mark.parametrize(("targets", "expected"), [([], 0), (None, None)], ids=["empty", "overflow"])
+def test_enqueue_does_not_push_empty_or_overflow_selection(settings, monkeypatch, targets, expected):
+    queue = Mock()
+    encrypt = Mock(return_value="ciphertext")
+    monkeypatch.setattr(service, "_eligible_targets", lambda *_args: targets)
+    monkeypatch.setattr(service, "get_queue", lambda: queue)
+    monkeypatch.setattr(service.auth_service, "encrypt_token", encrypt)
+
+    assert service.enqueue_alerts("*:*", make_user(), "token", max_hits=10) == expected
+
+    queue.push.assert_not_called()
+    encrypt.assert_not_called()
+
+
 @pytest.mark.parametrize("prompt", [None, "  ", 42])
 def test_enqueue_ignores_blank_or_non_string_prompt(settings, monkeypatch, prompt):
     queue = Mock()
-    target = SimpleNamespace(howler=SimpleNamespace(id="hit-1"))
-    monkeypatch.setattr(service, "_eligible_targets", lambda *_args: [target])
+    monkeypatch.setattr(service, "_eligible_targets", lambda *_args: ["hit-1"])
     monkeypatch.setattr(service, "get_queue", lambda: queue)
     monkeypatch.setattr(service.auth_service, "encrypt_token", lambda _token: "ciphertext")
 
@@ -241,29 +205,34 @@ def test_enqueue_ignores_blank_or_non_string_prompt(settings, monkeypatch, promp
     assert queue.push.call_args.args[0]["prompt"] is None
 
 
-def test_enqueue_uses_access_control_and_eligibility_filter(settings, monkeypatch):
+@pytest.mark.parametrize(("max_hits", "count"), [(10, 10), (10, 11), (50, 50), (50, 51)])
+def test_selection_fetches_only_ids_and_rejects_overflow_at_bounded_limit(settings, monkeypatch, max_hits, count):
     user = make_user()
-    hit = make_hit()
+    user.access_control = "howler.classification:TLP:U"
+    hits = [make_hit(id=f"hit-{index}") for index in range(count)]
     storage = Mock()
-    storage.hit.search.return_value = {"items": [hit], "total": 1}
+    storage.hit.search.return_value = {"items": hits}
     monkeypatch.setattr(service, "datastore", lambda: storage)
 
-    assert service._eligible_targets("event.kind:alert", user, max_hits=10) == [hit]
+    targets = service._eligible_targets("event.kind:alert", user, max_hits=max_hits)
 
     storage.hit.search.assert_called_once_with(
         "(event.kind:alert) AND NOT howler.status:resolved AND NOT howler.assessment:*",
         as_obj=True,
-        rows=11,
+        rows=max_hits + 1,
+        fl="howler.id",
         access_control=user.access_control,
-        track_total_hits=True,
     )
+    if count > max_hits:
+        assert targets is None
+    else:
+        assert targets == [f"hit-{index}" for index in range(count)]
 
 
 def test_enqueue_failure_returns_safe_error_without_provider_fallback(settings, monkeypatch, caplog):
     enqueue = Mock(side_effect=RuntimeError("redis-password-secret"))
     generate = Mock()
     monkeypatch.setattr(service, "enqueue_alerts", enqueue)
-    monkeypatch.setattr(ai_triage, "check_hit_limit", Mock(return_value=None))
     monkeypatch.setattr("howler.services.ai_transport.generate", generate)
 
     result = ai_triage.execute("*:*", make_user(), auth_token="qa-token")
@@ -273,7 +242,7 @@ def test_enqueue_failure_returns_safe_error_without_provider_fallback(settings, 
     generate.assert_not_called()
 
 
-def test_save_replaces_only_managed_lead_and_retries_version_conflicts(settings, monkeypatch):
+def test_save_replaces_only_managed_lead_and_preserves_concurrent_edit(settings, monkeypatch):
     first_hit = make_hit(
         dossier=[
             make_lead("Analyst's note"),
@@ -283,7 +252,7 @@ def test_save_replaces_only_managed_lead_and_retries_version_conflicts(settings,
     )
     second_hit = make_hit(
         dossier=[
-            make_lead("Analyst's note"),
+            make_lead("Concurrent analyst edit"),
             make_lead("old generated note", service.LEAD_OWNER),
             make_lead("Another integration note", "another.plugin"),
         ]
@@ -293,8 +262,6 @@ def test_save_replaces_only_managed_lead_and_retries_version_conflicts(settings,
     save_hit = Mock(side_effect=[VersionConflictException("race"), (second_hit, "version-3")])
     monkeypatch.setattr(service.hit_service, "get_hit", get_hit)
     monkeypatch.setattr(service.hit_service, "save_hit", save_hit)
-    monkeypatch.setattr(service, "load_current_user", Mock(side_effect=AssertionError("should not reload user")))
-
     assert service.save_ai_lead("hit-1", user, "new generated note")
 
     assert get_hit.call_args_list == [
@@ -305,14 +272,42 @@ def test_save_replaces_only_managed_lead_and_retries_version_conflicts(settings,
     assert save_hit.call_args_list[1].kwargs["version"] == "version-2"
     saved = save_hit.call_args.args[0]
     assert [lead.content for lead in saved.howler.dossier] == [
-        "Analyst's note",
+        "Concurrent analyst edit",
         "Another integration note",
         "new generated note",
     ]
     assert json.loads(saved.howler.dossier[-1].metadata) == {"owner": service.LEAD_OWNER}
 
 
-def test_lead_owner_handles_invalid_metadata(settings):
-    lead = make_lead("bad metadata")
-    lead["metadata"] = "not-json"
+@pytest.mark.parametrize(("status", "assessment"), [("resolved", None), ("open", "legitimate")])
+def test_save_skips_alert_that_became_ineligible(settings, monkeypatch, status, assessment):
+    hit = make_hit(status=status, assessment=assessment)
+    get_hit = Mock(return_value=(hit, "version"))
+    save_hit = Mock()
+    monkeypatch.setattr(service.hit_service, "get_hit", get_hit)
+    monkeypatch.setattr(service.hit_service, "save_hit", save_hit)
+
+    assert not service.save_ai_lead("hit-1", make_user(), "generated note")
+
+    get_hit.assert_called_once()
+    save_hit.assert_not_called()
+
+
+def test_save_stops_after_cas_retries_are_exhausted(settings, monkeypatch):
+    hit = make_hit()
+    get_hit = Mock(return_value=(hit, "version"))
+    save_hit = Mock(side_effect=[VersionConflictException("race") for _ in range(service.CAS_RETRIES)])
+    monkeypatch.setattr(service.hit_service, "get_hit", get_hit)
+    monkeypatch.setattr(service.hit_service, "save_hit", save_hit)
+
+    assert not service.save_ai_lead("hit-1", make_user(), "generated note")
+
+    assert get_hit.call_count == service.CAS_RETRIES
+    assert save_hit.call_count == service.CAS_RETRIES
+
+
+@pytest.mark.parametrize("metadata", ["not-json", "[]", "null", "42"])
+def test_lead_owner_handles_malformed_or_non_object_metadata(settings, metadata):
+    lead = make_hit(dossier=[make_lead("bad metadata")]).howler.dossier[0]
+    lead.metadata = metadata
     assert service._lead_owner(lead) is None

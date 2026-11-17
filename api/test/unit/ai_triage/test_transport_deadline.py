@@ -2,9 +2,9 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import cast
-from unittest.mock import Mock
 
 import pytest
+from gevent import sleep
 
 from howler.odm.models.config import AITriage
 from howler.services import ai_transport as transport
@@ -13,92 +13,111 @@ from howler.services import ai_transport as transport
 class SlowStreamServer(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self):
+    def __init__(self, phase):
         super().__init__(("127.0.0.1", 0), SlowStreamHandler)
+        self.phase = phase
         self.started = threading.Event()
         self.stop_stream = threading.Event()
         self.completed = threading.Event()
         self.sent_chunks = 0
-        self.body_bytes = 0
+
+    def finish_request(self, request, client_address):
+        if self.phase == "tls":
+            self.started.set()
+            self.stop_stream.wait(5)
+        else:
+            super().finish_request(request, client_address)
 
 
 class SlowStreamHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         server = cast(SlowStreamServer, self.server)
+        self.rfile.read(int(self.headers.get("Content-Length", 0)))
         server.started.set()
-        server.body_bytes = 1_000_000
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(server.body_bytes))
-        self.end_headers()
+        if server.phase == "headers":
+            self.wfile.write(b"HTTP/1.1 200 OK\r\nX-Trickle: ")
+            chunk, count = b"x", 100
+        else:
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", "1000000")
+            self.end_headers()
+            chunk, count = b"x" * 64, 1000000 // 64
+        self.wfile.flush()
 
-        for _ in range(server.body_bytes // 64):
-            if server.stop_stream.wait(0.05):
-                return
-            try:
-                self.wfile.write(b"x" * 64)
+        try:
+            for _ in range(count):
+                if server.stop_stream.wait(0.05):
+                    return
+                self.wfile.write(chunk)
                 self.wfile.flush()
-            except OSError:
-                return
-            server.sent_chunks += 1
-        server.completed.set()
+                server.sent_chunks += 1
+            if server.phase == "headers":
+                self.wfile.write(b"\r\nContent-Length: 2\r\n\r\n{}")
+                self.wfile.flush()
+            server.completed.set()
+        except OSError:
+            return
 
     def log_message(self, format: str, *_args: object) -> None:
         return
 
 
-def test_slow_stream_is_aborted_at_absolute_deadline(allow_local_http):
-    server = SlowStreamServer()
-    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
-    server_thread.start()
-    endpoint = f"http://127.0.0.1:{server.server_port}/slow-stream"
+@pytest.fixture
+def slow_server(allow_local_http, phase):
+    server = SlowStreamServer(phase)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    endpoint = f"{'https' if phase == 'tls' else 'http'}://127.0.0.1:{server.server_port}/slow-stream"
     allow_local_http(endpoint)
-
-    deadline = time.monotonic() + 1.0
-    started_at = time.monotonic()
     try:
-        with pytest.raises(transport.AITransportError, match="Provider exceeded its timeout") as error:
-            transport.generate(
-                AITriage(
-                    enabled=True,
-                    endpoint=endpoint,
-                    model="qa-model",
-                    headers={},
-                ),
-                "local-test-token",
-                "Conservative system prompt",
-                {"event": "alert"},
-                deadline=deadline,
-            )
-
-        elapsed = time.monotonic() - started_at
-        assert "local-test-token" not in str(error.value)
-        assert server.started.is_set()
-        assert server.sent_chunks >= 3
-        assert server.sent_chunks * 64 < 8192
-        assert not server.completed.is_set()
-        # A non-aborting read waits for 8192 bytes (about 6.4 seconds at this
-        # cadence), while the deadline watchdog should wake it well before 3s.
-        assert 0.8 <= elapsed < 3.0
+        yield server, endpoint
     finally:
         server.stop_stream.set()
         server.shutdown()
         server.server_close()
-        server_thread.join(timeout=1)
+        thread.join(timeout=1)
 
 
-def test_watchdog_ignores_already_released_response_race(monkeypatch):
-    response = Mock()
-    response.raw.shutdown.side_effect = RuntimeError("response was already released")
-    deadline_reached = threading.Event()
-    thread_errors = []
-    monkeypatch.setattr(threading, "excepthook", thread_errors.append)
+@pytest.mark.parametrize("phase", ["body", "headers"])
+def test_slow_response_is_aborted_at_absolute_deadline(slow_server, phase):
+    server, endpoint = slow_server
+    started_at = time.monotonic()
+    with pytest.raises(transport.AITransportError, match="Provider exceeded its timeout") as error:
+        transport.generate(
+            AITriage(enabled=True, endpoint=endpoint, model="qa-model"),
+            "local-test-token",
+            "safe prompt",
+            {},
+            deadline=started_at + 1,
+        )
 
-    cancelled, watchdog = transport._start_deadline_watchdog(response, time.monotonic() - 1, deadline_reached)
-    watchdog.join(timeout=1)
-    cancelled.set()
+    assert "local-test-token" not in str(error.value)
+    assert server.started.is_set()
+    assert 3 <= server.sent_chunks < 8192 // 64
+    assert not server.completed.is_set()
+    # Idle timeouts cannot stop these reads: headers take 5s, one body read 6.4s.
+    assert 0.8 <= time.monotonic() - started_at < 3
 
-    assert not watchdog.is_alive()
-    assert deadline_reached.is_set()
-    assert thread_errors == []
-    response.raw.shutdown.assert_called_once_with()
+
+@pytest.mark.parametrize("phase", ["dns", "tls"])
+def test_connection_setup_is_included_in_absolute_deadline(slow_server, monkeypatch, phase):
+    server, endpoint = slow_server
+    resolve = transport.socket.getaddrinfo
+
+    def slow_lookup(*args, **kwargs):
+        sleep(0.8 if phase == "tls" else 5)
+        return resolve(*args, **kwargs)
+
+    monkeypatch.setattr(transport.socket, "getaddrinfo", slow_lookup)
+    started_at = time.monotonic()
+    with pytest.raises(transport.AITransportError, match="Provider exceeded its timeout"):
+        transport.generate(
+            AITriage(enabled=True, endpoint=endpoint, model="qa-model"),
+            "local-test-token",
+            "safe prompt",
+            {},
+            deadline=started_at + 1,
+        )
+    assert 0.8 <= time.monotonic() - started_at < 1.4
+    assert server.started.is_set() == (phase == "tls")

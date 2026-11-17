@@ -1,8 +1,10 @@
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import pytest
+
 from howler.cronjobs import ai_triage_worker
-from howler.services import ai_service, ai_transport, auth_service, hit_service
+from howler.services import ai_service, ai_transport, auth_service, hit_service, user_service
 
 from .support import make_hit, make_user
 
@@ -11,29 +13,29 @@ def make_job(hit_id="hit-1"):
     return {"hit_id": hit_id, "uname": "analyst", "bearer_token": "encrypted-token", "prompt": "Be concise"}
 
 
-def setup_worker(monkeypatch, *, hit=None, user=None):
-    user = user or make_user()
-    hit = hit or make_hit()
+def setup_worker(monkeypatch):
+    user = make_user()
+    hit = make_hit()
     save = Mock(return_value=True)
-    load_user = Mock(return_value=user)
+    get_user = Mock(return_value=user)
     get_hit = Mock(return_value=(hit, "source-version"))
     generate = Mock(return_value="generated opinion")
     monkeypatch.setattr(
         ai_triage_worker, "config", SimpleNamespace(core=SimpleNamespace(ai=SimpleNamespace(timeout_seconds=30)))
     )
     monkeypatch.setattr(ai_triage_worker.time, "monotonic", lambda: 10)
-    monkeypatch.setattr(ai_service, "load_current_user", load_user)
+    monkeypatch.setattr(user_service, "get_user", get_user)
     monkeypatch.setattr(ai_service, "build_system_prompt", Mock(return_value="safe system prompt"))
     monkeypatch.setattr(ai_service, "provider_input", Mock(return_value={"event": "alert"}))
     monkeypatch.setattr(ai_service, "save_ai_lead", save)
     monkeypatch.setattr(hit_service, "get_hit", get_hit)
     monkeypatch.setattr(auth_service, "decrypt_token", Mock(return_value="trusted-token"))
     monkeypatch.setattr(ai_transport, "generate", generate)
-    return generate, save, load_user, get_hit, user
+    return generate, save, get_user, get_hit, user
 
 
 def test_worker_processes_one_alert_and_saves(monkeypatch):
-    generate, save, _load_user, get_hit, user = setup_worker(monkeypatch)
+    generate, save, get_user, get_hit, user = setup_worker(monkeypatch)
 
     ai_triage_worker._process(make_job())
 
@@ -41,13 +43,19 @@ def test_worker_processes_one_alert_and_saves(monkeypatch):
     assert generate.call_args.args[1] == "trusted-token"
     assert generate.call_args.args[2] == "safe system prompt"
     assert generate.call_args.kwargs["deadline"] == 40
+    get_user.assert_called_once_with("analyst", as_odm=True, version=False)
     get_hit.assert_called_once_with("hit-1", as_odm=True, version=True, user=user)
     save.assert_called_once_with("hit-1", user, "generated opinion")
 
 
-def test_worker_discards_job_after_role_or_account_revocation(monkeypatch):
-    revoked_user = Mock(uname="analyst", is_active=True, type=["user"])
-    generate, save, _load_user, get_hit, _user = setup_worker(monkeypatch, user=revoked_user)
+@pytest.mark.parametrize("state", ["missing", "inactive", "revoked"], ids=["missing", "inactive", "revoked-role"])
+def test_worker_discards_missing_inactive_or_revoked_initiator(monkeypatch, state):
+    generate, save, get_user, get_hit, _user = setup_worker(monkeypatch)
+    get_user.return_value = {
+        "missing": None,
+        "inactive": Mock(uname="analyst", is_active=False, type=["user", "actionrunner_basic"]),
+        "revoked": Mock(uname="analyst", is_active=True, type=["user"]),
+    }[state]
 
     ai_triage_worker._process(make_job())
 
@@ -56,9 +64,15 @@ def test_worker_discards_job_after_role_or_account_revocation(monkeypatch):
     save.assert_not_called()
 
 
-def test_worker_discards_alert_that_is_no_longer_eligible(monkeypatch):
-    hit = make_hit(status="resolved")
-    generate, save, _load_user, _get_hit, _user = setup_worker(monkeypatch, hit=hit)
+@pytest.mark.parametrize("state", ["inaccessible", "resolved", "assessed"])
+def test_worker_discards_alert_that_is_no_longer_eligible(monkeypatch, state):
+    generate, save, _get_user, get_hit, _user = setup_worker(monkeypatch)
+    hit = {
+        "inaccessible": None,
+        "resolved": make_hit(status="resolved"),
+        "assessed": make_hit(assessment="legitimate"),
+    }[state]
+    get_hit.return_value = (hit, "source-version")
 
     ai_triage_worker._process(make_job())
 
@@ -67,7 +81,7 @@ def test_worker_discards_alert_that_is_no_longer_eligible(monkeypatch):
 
 
 def test_worker_logs_provider_failure_reason_and_discards_result(monkeypatch, caplog):
-    generate, save, _load_user, _get_hit, _user = setup_worker(monkeypatch)
+    generate, save, _get_user, _get_hit, _user = setup_worker(monkeypatch)
     generate.side_effect = ai_transport.AITransportError("provider unavailable")
 
     ai_triage_worker._process(make_job())
@@ -77,7 +91,7 @@ def test_worker_logs_provider_failure_reason_and_discards_result(monkeypatch, ca
 
 
 def test_worker_hides_unexpected_exception_details(monkeypatch, caplog):
-    generate, save, _load_user, _get_hit, _user = setup_worker(monkeypatch)
+    generate, save, _get_user, _get_hit, _user = setup_worker(monkeypatch)
     generate.side_effect = RuntimeError("credential-secret")
 
     ai_triage_worker._process(make_job())

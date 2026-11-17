@@ -38,7 +38,7 @@ core:
 `headers` are private server configuration; inject secret values from a secret
 manager. Howler rejects headers that could replace authorization or core HTTP
 fields. The initiating request's Bearer token is forwarded to the configured
-endpoint; Basic and API-key credentials are not. Requests do not follow redirects
+endpoint; Basic and API-key credentials are not. Provider calls do not follow redirects
 or inherit credentials from `.netrc` or proxy environment variables. Use only a
 trusted endpoint and verify its TLS certificate.
 
@@ -57,7 +57,9 @@ The consumer runs only when `HWL_USE_JOB_SYSTEM` is enabled. If it is disabled,
 the action can still queue jobs in Redis, but they remain there unprocessed until
 the job system starts a consumer.
 
-`timeout_seconds` bounds each provider request. `max_concurrent_jobs` is the
+`timeout_seconds` bounds each provider request, including connection setup and
+response headers/body. Request bodies are limited to 200,000 serialized UTF-8
+bytes and responses to 100,000 decoded bytes. `max_concurrent_jobs` is the
 number of consumer threads **per Howler process running the job system**;
 multiple Howler processes multiply total concurrency. Queue pops are atomic, so
 the same queued job is not processed by multiple consumers. A failed job is

@@ -9,7 +9,7 @@ from apscheduler.schedulers.base import BaseScheduler
 from howler.actions.ai_triage import ROLES
 from howler.common.logging import get_logger
 from howler.config import config
-from howler.services import ai_service, ai_transport, auth_service, hit_service
+from howler.services import ai_service, ai_transport, auth_service, hit_service, user_service
 
 logger = get_logger(__file__)
 
@@ -27,7 +27,7 @@ def _process(job: Any) -> None:
         prompt = job["prompt"]
         deadline = time.monotonic() + config.core.ai.timeout_seconds
 
-        user = ai_service.load_current_user(uname)
+        user = user_service.get_user(uname, as_odm=True, version=False)
         if user is None or not user.is_active or not (set(ROLES) | {"admin"}) & set(user.type):
             logger.info("Discarding AI triage job because its initiator is no longer authorized")
             return

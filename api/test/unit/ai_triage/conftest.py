@@ -1,20 +1,22 @@
 from urllib.parse import urlsplit
 
 import pytest
-import requests
+import urllib3
 
 
 @pytest.fixture(autouse=True)
 def forbid_unmocked_http(monkeypatch):
     allowed_urls = set()
-    original_request = requests.sessions.Session.request
+    original_request = urllib3.HTTPConnectionPool.urlopen
 
     def guard_request(self, method, url, *args, **kwargs):
-        if method.upper() != "POST" or url not in allowed_urls:
-            pytest.fail(f"Unexpected HTTP request: {method} {url}")
+        host = f"[{self.host}]" if ":" in self.host else self.host
+        endpoint = f"{self.scheme}://{host}:{self.port}{url}"
+        if method.upper() != "POST" or endpoint not in allowed_urls:
+            pytest.fail(f"Unexpected HTTP request: {method} {endpoint}")
         return original_request(self, method, url, *args, **kwargs)
 
-    monkeypatch.setattr(requests.sessions.Session, "request", guard_request)
+    monkeypatch.setattr(urllib3.HTTPConnectionPool, "urlopen", guard_request)
     return allowed_urls
 
 
@@ -23,7 +25,7 @@ def allow_local_http(forbid_unmocked_http):
     def allow_exact_endpoint(endpoint):
         parsed = urlsplit(endpoint)
         if (
-            parsed.scheme != "http"
+            parsed.scheme not in {"http", "https"}
             or parsed.hostname not in {"127.0.0.1", "::1"}
             or parsed.port is None
             or parsed.path != "/slow-stream"

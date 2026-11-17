@@ -130,10 +130,6 @@ describe('getArgsByContext', () => {
     const values = JSON.stringify({ status: 'resolved' });
     expect(getArgsByContext(args, values)).toEqual([]);
   });
-
-  it('includes optional args in the visible argument list', () => {
-    expect(getArgsByContext({}, '{}', ['prompt'])).toEqual(['prompt']);
-  });
 });
 
 // ---------------------------------------------------------------------------

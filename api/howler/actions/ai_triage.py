@@ -2,7 +2,7 @@
 
 from typing import Any, cast
 
-from howler.actions import ADVANCED_ROLES, check_hit_limit
+from howler.actions import ADVANCED_ROLES
 from howler.common.logging import get_logger
 from howler.odm.models.action import VALID_TRIGGERS
 from howler.odm.models.user import User
@@ -42,19 +42,8 @@ def execute(
         if not auth_token:
             return report("error", "Authentication required", "AI triage requires a Bearer authorization token.")
 
-        filtered_query = f"({query}) AND NOT howler.status:resolved AND NOT howler.assessment:*"
         current_user = cast(User, user)
         max_hits = MAX_HITS_ADVANCED if ADVANCED_ROLES & set(current_user["type"]) else MAX_HITS_BASIC
-        limit_error = check_hit_limit(
-            filtered_query,
-            current_user,
-            MAX_HITS_BASIC,
-            MAX_HITS_ADVANCED,
-            access_control=current_user.access_control,
-        )
-        if limit_error:
-            return [limit_error]
-
         count = ai_service.enqueue_alerts(query, current_user, auth_token, prompt=prompt, max_hits=max_hits)
     except Exception:
         # Redis and datastore errors can contain connection details or secrets.

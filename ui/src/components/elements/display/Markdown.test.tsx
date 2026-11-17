@@ -2,15 +2,12 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import Markdown from './Markdown';
 
-vi.mock('commons/components/app/hooks', () => ({
+vi.mock('@tui/core', () => ({
   useAppTheme: () => ({ isDark: false })
 }));
 
 vi.mock('mermaid', () => ({
-  default: {
-    initialize: vi.fn(),
-    run: vi.fn()
-  }
+  default: { initialize: vi.fn(), run: vi.fn() }
 }));
 
 vi.mock('./Notebook', () => ({

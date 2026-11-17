@@ -130,12 +130,7 @@ def get_specification(operation_id: str) -> ActionSpecification | None:
 
 
 def check_hit_limit(
-    query: str,
-    user: User,
-    max_hits_basic: int | None,
-    max_hits_advanced: int | None,
-    *,
-    access_control: str | None = None,
+    query: str, user: User, max_hits_basic: int | None, max_hits_advanced: int | None
 ) -> dict[str, Any] | None:
     """Check if the user exceeds hit count limits. Returns error dict if exceeded, None otherwise.
 
@@ -144,7 +139,6 @@ def check_hit_limit(
         user: The user executing the action.
         max_hits_basic: Maximum hits allowed for basic users (None for no limit).
         max_hits_advanced: Maximum hits allowed for advanced users (None for no limit).
-        access_control: Optional access control filter for the count query.
 
     Returns:
         Error dict if limit exceeded, None otherwise.
@@ -153,11 +147,7 @@ def check_hit_limit(
     limit = max_hits_advanced if is_advanced else max_hits_basic
 
     if limit is not None:
-        search = datastore().hit.search
-        if access_control is None:
-            hit_count = search(query, rows=0)["total"]
-        else:
-            hit_count = search(query, rows=0, access_control=access_control)["total"]
+        hit_count = datastore().hit.search(query, rows=0)["total"]
         if hit_count > limit:
             return {
                 "query": query,

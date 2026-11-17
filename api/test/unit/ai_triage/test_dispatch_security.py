@@ -53,8 +53,10 @@ def test_dispatch_only_forwards_bearer_to_operations_that_require_it(monkeypatch
 
 def test_missing_bearer_returns_the_ai_operation_error_report(monkeypatch):
     execute = Mock(wraps=ai_triage.execute)
+    enqueue = Mock()
     monkeypatch.setattr(ai_triage, "is_available", lambda: True)
     monkeypatch.setattr(ai_triage, "execute", execute)
+    monkeypatch.setattr("howler.services.ai_service.enqueue_alerts", enqueue)
     monkeypatch.setattr(actions, "_get_operation", lambda _operation_id: ai_triage)
 
     result = actions.execute("ai_triage", "*:*", make_user(), bearer_token=None)
@@ -68,3 +70,4 @@ def test_missing_bearer_returns_the_ai_operation_error_report(monkeypatch):
         }
     ]
     assert execute.call_args.kwargs["auth_token"] is None
+    enqueue.assert_not_called()

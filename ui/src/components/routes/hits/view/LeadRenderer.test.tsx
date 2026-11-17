@@ -7,10 +7,7 @@ vi.mock('@tui/core', () => ({
 }));
 
 vi.mock('mermaid', () => ({
-  default: {
-    initialize: vi.fn(),
-    run: vi.fn()
-  }
+  default: { initialize: vi.fn(), run: vi.fn() }
 }));
 
 vi.mock('components/elements/display/Notebook', () => ({

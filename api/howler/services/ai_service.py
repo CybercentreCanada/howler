@@ -4,7 +4,6 @@ import json
 from typing import Any, TypedDict, cast
 
 from howler.common.loader import datastore
-from howler.common.logging import get_logger
 from howler.config import config
 from howler.datastore.exceptions import VersionConflictException
 from howler.odm.models.hit import Hit
@@ -12,8 +11,6 @@ from howler.odm.models.lead import Lead
 from howler.odm.models.user import User
 from howler.remote.datatypes.queues.named import NamedQueue
 from howler.services import auth_service, hit_service
-
-logger = get_logger(__file__)
 
 LEAD_OWNER = "howler.ai_triage"
 AI_TRIAGE_QUEUE_NAME = "howler.ai_triage.alerts"
@@ -54,21 +51,20 @@ def _eligible_hit(hit: Hit) -> bool:
     return hit.howler.status != "resolved" and not hit.howler.assessment
 
 
-def _eligible_targets(query: str, user: User, max_hits: int) -> list[Hit] | None:
+def _eligible_targets(query: str, user: User, max_hits: int) -> list[str] | None:
     filtered_query = f"({query}) AND NOT howler.status:resolved AND NOT howler.assessment:*"
     result = datastore().hit.search(
         filtered_query,
         as_obj=True,
         rows=max_hits + 1,
+        fl="howler.id",
         access_control=user.access_control,
-        track_total_hits=True,
     )
     items = result.get("items", [])
-    total = int(result.get("total", 0))
-    if total > max_hits or len(items) > max_hits:
+    if len(items) > max_hits:
         return None
 
-    return [hit for hit in items if _eligible_hit(hit)]
+    return [hit.howler.id for hit in items]
 
 
 def enqueue_alerts(
@@ -85,24 +81,15 @@ def enqueue_alerts(
     safe_prompt = prompt.strip() if isinstance(prompt, str) and prompt.strip() else None
     jobs: list[AIAlertJob] = [
         {
-            "hit_id": str(hit.howler.id),
+            "hit_id": str(hit_id),
             "uname": str(user.uname),
             "bearer_token": encrypted_token,
             "prompt": safe_prompt,
         }
-        for hit in targets
+        for hit_id in targets
     ]
     get_queue().push(*jobs)
     return len(targets)
-
-
-def load_current_user(uname: str) -> User | None:
-    """Reload the initiator so role and account revocations take effect."""
-    try:
-        return datastore().user.get(uname)
-    except Exception:
-        logger.warning("AI triage initiator is no longer available")
-        return None
 
 
 def filter_input_field(value: Any, path: str) -> None:
@@ -143,14 +130,17 @@ def build_system_prompt(prompt: str | None) -> str:
     return system_prompt
 
 
-def _lead_owner(lead: Any) -> str | None:
-    metadata = lead.get("metadata") if isinstance(lead, dict) else getattr(lead, "metadata", None)
-    if isinstance(metadata, str):
-        try:
-            metadata = json.loads(metadata)
-        except (TypeError, json.JSONDecodeError):
-            return None
-    return metadata.get("owner") if isinstance(metadata, dict) else None
+def _lead_owner(lead: Lead) -> str | None:
+    if not lead.metadata:
+        return None
+    try:
+        metadata = json.loads(lead.metadata)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(metadata, dict):
+        return None
+    owner = metadata.get("owner")
+    return owner if isinstance(owner, str) else None
 
 
 def _managed_lead(content: str) -> Lead:

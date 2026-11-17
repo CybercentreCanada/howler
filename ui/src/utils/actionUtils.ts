@@ -77,12 +77,8 @@ export const getOptionsByContext = (
  * @param values the current list of values provided by the user
  * @returns A list of arguments to display
  */
-export const getArgsByContext = (
-  args: ActionOperationStep['args'],
-  values: string,
-  optionalArgs: string[] = []
-): string[] => {
-  const filteredArgs = Object.entries(args)
+export const getArgsByContext = (args: ActionOperationStep['args'], values: string): string[] =>
+  Object.entries(args)
     .filter(([_, conditions]) => {
       // If the array is empty, we always want to show this argument
       if (conditions.length < 1) {
@@ -97,9 +93,6 @@ export const getArgsByContext = (
       return conditions.some(c => context.includes(c));
     })
     .map(([arg, _]) => arg);
-
-  return [...filteredArgs, ...optionalArgs];
-};
 
 /**
  * Check to see if a given action has all the data necessary to execute successfully

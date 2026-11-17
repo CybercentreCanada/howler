@@ -49,7 +49,7 @@ const OperationStep: FC<{
         : null;
 
   const args = useMemo(
-    () => getArgsByContext(step.args, values, step.optional_args),
+    () => [...getArgsByContext(step.args, values), ...(step.optional_args ?? [])],
     [step.args, step.optional_args, values]
   );
   const parsedValues = useMemo(() => JSON.parse(values), [values]);
@@ -67,19 +67,15 @@ const OperationStep: FC<{
    * Get a well formatted label based on the argument key
    */
   const getLabel = useCallback(
-    (argId?: string) =>
-      (argId ?? '')
+    (argId: string) => {
+      const label = argId
         .replace(/[-_]/g, ' ')
         .split(' ')
         .map(part => capitalize(part))
-        .join(' '),
-    []
-  );
-
-  const getInputLabel = useCallback(
-    (arg: string) =>
-      step.optional_args?.includes(arg) ? `${getLabel(arg)} (${t('route.actions.optional')})` : getLabel(arg),
-    [getLabel, step.optional_args, t]
+        .join(' ');
+      return step.optional_args?.includes(argId) ? `${label} (${t('route.actions.optional')})` : label;
+    },
+    [step.optional_args, t]
   );
 
   /**
@@ -153,7 +149,7 @@ const OperationStep: FC<{
                       </InputAdornment>
                     )
                   }}
-                  label={getInputLabel(arg)}
+                  label={getLabel(arg)}
                 />
               )}
               onChange={(_, value) => setValues?.(JSON.stringify({ ...parsedValues, [arg]: value }))}
@@ -166,7 +162,7 @@ const OperationStep: FC<{
               disabled={readonly}
               value={parsedValues?.[arg] || ''}
               onChange={e => setValues?.(JSON.stringify({ ...parsedValues, [arg]: e.target.value }))}
-              label={getInputLabel(arg)}
+              label={getLabel(arg)}
             />
           );
         }

@@ -2,10 +2,14 @@
 
 import json
 import time
-from threading import Event, Thread
-from typing import Any
+from typing import Any, cast
 
-import requests
+import urllib3
+from gevent import Timeout, socket, ssl
+from requests.utils import DEFAULT_CA_BUNDLE_PATH
+from urllib3.connection import HTTPConnection, HTTPSConnection
+from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
+from urllib3.response import BaseHTTPResponse
 
 from howler.odm.models.config import AITriage
 
@@ -21,56 +25,39 @@ class AITransportError(Exception):
         self.reason = reason
 
 
-def _session() -> requests.Session:
-    """Create an isolated session without implicit proxies or netrc credentials."""
-    session = requests.Session()
-    session.trust_env = False
-    return session
+class _HTTPConnection(HTTPConnection):
+    """Use cancellable I/O without globally monkey-patching development/tests."""
+
+    def _new_conn(self):
+        return socket.create_connection((self.host, self.port), self.timeout, self.source_address)
 
 
-def _start_deadline_watchdog(
-    response: requests.Response, deadline: float, deadline_reached: Event
-) -> tuple[Event, Thread]:
-    """Interrupt a response body read when its absolute deadline expires."""
-    cancelled = Event()
-
-    def abort_body_read() -> None:
-        while not cancelled.is_set():
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                deadline_reached.set()
-                try:
-                    # urllib3 exposes this public API from 2.3.0. It shuts down
-                    # the socket read side and wakes a blocking iter_content().
-                    response.raw.shutdown()
-                except (AttributeError, OSError, RuntimeError, ValueError):
-                    # The response may have completed, closed, or been released
-                    # to the pool concurrently.
-                    pass
-                return
-            if cancelled.wait(remaining):
-                return
-
-    watchdog = Thread(
-        target=abort_body_read,
-        name=f"ai-triage-deadline-{id(response):x}",
-        daemon=True,
-    )
-    watchdog.start()
-    return cancelled, watchdog
+class _HTTPSConnection(HTTPSConnection, _HTTPConnection):
+    """Use the same cancellable connection for TLS endpoints."""
 
 
-def _read_bounded_json(response: requests.Response, deadline: float) -> dict[str, Any]:
-    body = bytearray()
-    for chunk in response.iter_content(chunk_size=8192):
-        if time.monotonic() >= deadline:
-            raise AITransportError("Provider exceeded its timeout")
-        if chunk:
-            body.extend(chunk)
-            if len(body) > MAX_OUTPUT_BYTES:
-                raise AITransportError("Provider response exceeded the size limit")
-    if time.monotonic() >= deadline:
+class _HTTPPool(HTTPConnectionPool):
+    # urllib3's concrete connections conflict with its own protocol annotations.
+    ConnectionCls = cast(Any, _HTTPConnection)
+
+
+class _HTTPSPool(HTTPSConnectionPool):
+    ConnectionCls = cast(Any, _HTTPSConnection)
+
+
+def _remaining_time(deadline: float) -> float:
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
         raise AITransportError("Provider exceeded its timeout")
+    return remaining
+
+
+def _read_bounded_json(response: BaseHTTPResponse) -> dict[str, Any]:
+    body = bytearray()
+    for chunk in response.stream(8192):
+        body.extend(chunk)
+        if len(body) > MAX_OUTPUT_BYTES:
+            raise AITransportError("Provider response exceeded the size limit")
 
     try:
         payload = json.loads(body)
@@ -78,63 +65,7 @@ def _read_bounded_json(response: requests.Response, deadline: float) -> dict[str
         raise AITransportError("Provider returned an invalid response") from exc
     if not isinstance(payload, dict):
         raise AITransportError("Provider returned an invalid response")
-    if time.monotonic() >= deadline:
-        raise AITransportError("Provider exceeded its timeout")
     return payload
-
-
-def _post_json(
-    session: requests.Session,
-    config: AITriage,
-    token: str,
-    body: dict[str, Any],
-    *,
-    deadline: float,
-) -> dict[str, Any]:
-    endpoint = config.endpoint
-    if not endpoint:
-        raise AITransportError("AI triage is not configured")
-
-    headers = {
-        **config.headers,
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-    }
-    remaining = deadline - time.monotonic()
-    if remaining <= 0:
-        raise AITransportError("Provider exceeded its timeout")
-
-    deadline_reached = Event()
-    try:
-        with session.post(
-            endpoint,
-            json=body,
-            headers=headers,
-            timeout=(min(10, remaining), remaining),
-            allow_redirects=False,
-            stream=True,
-        ) as response:
-            if deadline_reached.is_set() or time.monotonic() >= deadline:
-                raise AITransportError("Provider exceeded its timeout")
-            if not 200 <= response.status_code < 300:
-                if response.status_code in {401, 403}:
-                    raise AITransportError("Provider rejected the authorization token")
-                raise AITransportError(f"Provider returned HTTP {response.status_code}")
-
-            cancelled, watchdog = _start_deadline_watchdog(response, deadline, deadline_reached)
-            try:
-                payload = _read_bounded_json(response, deadline)
-                if deadline_reached.is_set() or time.monotonic() >= deadline:
-                    raise AITransportError("Provider exceeded its timeout")
-                return payload
-            finally:
-                cancelled.set()
-                watchdog.join()
-    except requests.RequestException as exc:
-        if deadline_reached.is_set() or time.monotonic() >= deadline:
-            raise AITransportError("Provider exceeded its timeout") from exc
-        raise AITransportError("AI provider is temporarily unavailable") from exc
 
 
 def generate(
@@ -145,25 +76,65 @@ def generate(
     *,
     deadline: float,
 ) -> str:
-    """Generate bounded text from the configured OpenAI-compatible endpoint."""
-    alert_json = json.dumps(alert_data, ensure_ascii=False, separators=(",", ":"))
-    if len((system_prompt + alert_json).encode("utf-8")) > MAX_INPUT_BYTES:
+    """Generate text within a request-wide deadline and exact byte limits."""
+    if not config.endpoint:
+        raise AITransportError("AI triage is not configured")
+
+    body = json.dumps(
+        {
+            "model": config.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": json.dumps(alert_data, ensure_ascii=False, separators=(",", ":"))},
+            ],
+            "stream": False,
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    if len(body) > MAX_INPUT_BYTES:
         raise AITransportError("Alert input exceeded the size limit")
 
-    body = {
-        "model": config.model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": alert_json},
-        ],
-        "stream": False,
-    }
-    session = _session()
-    try:
-        payload = _post_json(session, config, token, body, deadline=deadline)
-    finally:
-        session.close()
+    remaining = _remaining_time(deadline)
 
+    # urllib3 does not inherit proxies or .netrc credentials. Cooperative sockets
+    # and TLS make the deadline interrupt DNS, connect, headers, and body reads.
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.load_verify_locations(cafile=DEFAULT_CA_BUNDLE_PATH)
+    pool = urllib3.PoolManager(ssl_context=context)
+    pools: dict[str, type[HTTPConnectionPool] | type[HTTPSConnectionPool]] = {"http": _HTTPPool, "https": _HTTPSPool}
+    pool.pool_classes_by_scheme = pools
+    try:
+        remaining = _remaining_time(deadline)
+        with Timeout(remaining, AITransportError("Provider exceeded its timeout")):
+            with pool.request(
+                "POST",
+                config.endpoint,
+                body=body,
+                headers={
+                    **config.headers,
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+                timeout=urllib3.Timeout(connect=min(10, remaining), read=remaining),
+                retries=False,
+                redirect=False,
+                preload_content=False,
+            ) as response:
+                if not 200 <= response.status < 300:
+                    if response.status in {401, 403}:
+                        raise AITransportError("Provider rejected the authorization token")
+                    raise AITransportError(f"Provider returned HTTP {response.status}")
+                payload = _read_bounded_json(response)
+    except urllib3.exceptions.HTTPError as exc:
+        if time.monotonic() >= deadline:
+            raise AITransportError("Provider exceeded its timeout") from exc
+        raise AITransportError("AI provider is temporarily unavailable") from exc
+    finally:
+        pool.clear()
+
+    _remaining_time(deadline)
     choices = payload.get("choices")
     first_choice = choices[0] if isinstance(choices, list) and choices else None
     message = first_choice.get("message") if isinstance(first_choice, dict) else None
