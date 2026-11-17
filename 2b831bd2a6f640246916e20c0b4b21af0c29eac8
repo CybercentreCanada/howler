@@ -1,0 +1,64 @@
+api/howler/models/base.py
+  s_d6edb65d80b70a::t_9b86fb0a0ccd68 9,18,22,63,77-82,92,95,102-103,108-109,153-157,159-161,216-218,238-241,243,322,374,385-386,504,531,540
+api/howler/plugins/config.py
+  s_d6edb65d80b70a::t_51a069c4bd627a 17-24,97-99,108-110,115-119
+api/build_scripts/generate_md_docs.py
+  s_d6edb65d80b70a::t_70cce82ea1d037 357-358
+api/howler/models/case.py
+  s_d6edb65d80b70a::t_ecbac977e35289 184-185
+api/howler/models/event.py
+  s_d6edb65d80b70a::t_d51efc1933776a 20
+api/howler/models/schema.py
+  s_d6edb65d80b70a::t_4f95db652e8079 124,151,318,321
+  s_d6edb65d80b70a::t_328cb68c63e7a0 102
+api/howler/sample_data/random_data.py
+  s_d6edb65d80b70a::t_8f311a7f6ad6e4 99-102,535,625,636,754,757,775,840
+api/howler/models/fields.py
+  s_d6edb65d80b70a::t_aeb80c11389f73 128-159
+  s_d6edb65d80b70a::t_a72ff403956474 84,181,183,227-228
+  s_d6edb65d80b70a::t_7928707c4c96b5 492,503,518,527,532,535,556,561-562,573,584,589
+  s_d6edb65d80b70a::t_59a4d4436fd4e9 609-610,613-614,659,661-662,665,676,693,698,703,708,713-723,725-726,728,739,744,749-755,761,776-777,797-798
+api/howler/models/registry.py
+  s_d6edb65d80b70a::t_b1e51ca686f684 167,176-178,181
+  s_d6edb65d80b70a::t_99d3b55caec831 170-171
+api/howler/sample_data/helper.py
+  s_d6edb65d80b70a::t_3f766599badf93 742,756,772-774,796-798,833,847,857
+  s_d6edb65d80b70a::t_1d761889fe0a9a 32
+api/build_scripts/generate_classes.py
+  s_d6edb65d80b70a::t_99d3b55caec831 512,514
+  s_d6edb65d80b70a::t_925687a50f5759 513,515-541,544-546,548-587,589-596,598-599,601-605,607-608
+  s_d6edb65d80b70a::t_0dafbf20187c6c 107,261,410,508
+api/test/unit/models/test_case.py
+  s_d6edb65d80b70a::t_5f3813bb7a54f2 43,48-51,70
+api/howler/models/clue.py
+  s_d6edb65d80b70a::t_d51efc1933776a 40-45
+api/test/unit/models/test_fields.py
+  s_d6edb65d80b70a::t_1b2bf7b90fd74d 263,272-273,275-286,291
+  s_d6edb65d80b70a::t_99d3b55caec831 262
+api/howler/models/extensions.py
+  s_d6edb65d80b70a::t_ad4ec350027253 79-80,87,98-105
+  s_d6edb65d80b70a::t_b1e51ca686f684 73,86,107
+  s_d6edb65d80b70a::t_ec470bd72ba7ee 106
+api/howler/models/record.py
+  s_d6edb65d80b70a::t_ecbac977e35289 66-67
+api/test/unit/models/test_validation_errors.py
+  s_d6edb65d80b70a::t_5f3813bb7a54f2 52-56,184-188,196-213
+api/howler/sample_data/randomizer.py
+  s_d6edb65d80b70a::t_8fe6edec4aaf33 107,110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2b831bd2a6f640246916e20c0b4b21af0c29eac8",
+  "prompts": {},
+  "sessions": {
+    "s_d6edb65d80b70a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e405b06711b25f05bade549db9dd89a5",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

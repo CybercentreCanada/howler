@@ -1,0 +1,46 @@
+plugins/sentinel/test/unit/models/test_sentinel.py
+  s_ccab270793bce6::t_c9d0eb6f0518de 8,56-60,64-65,67-69
+  s_ccab270793bce6::t_2d6ab5cb967131 4-6,11,14,66,70-75,78-80,82,84-87
+ui/src/components/elements/record/RecordComments.test.tsx
+  s_ccab270793bce6::t_2d6ab5cb967131 219-224,230,236-239,242-243
+  s_ccab270793bce6::t_f2fa6b97c02b47 258
+plugins/sync/sync/services/sync_service.py
+  s_ccab270793bce6::t_9137ae7c25273c 41-42
+plugins/sync/test/conftest.py
+  s_ccab270793bce6::t_9137ae7c25273c 61-63
+plugins/evidence/evidence/models/hit.py
+  s_ccab270793bce6::t_9137ae7c25273c 17-23
+plugins/sentinel/sentinel/actions/azure_emit_hash.py
+  s_ccab270793bce6::t_9137ae7c25273c 7-8,12,124-126,139-141
+plugins/sync/test/unit/iceberg/test_build_schema.py
+  s_ccab270793bce6::t_2d6ab5cb967131 3-4,34,61,89-92,117,149-158
+  s_ccab270793bce6::t_a218b7367fbf3c 88
+ui/src/components/elements/record/RecordComments.tsx
+  s_ccab270793bce6::t_9137ae7c25273c 105-107
+plugins/sync/sync/iceberg/build.py
+  s_ccab270793bce6::t_9137ae7c25273c 10,86
+ui/src/components/routes/cases/modals/ResolveModal.test.tsx
+  s_ccab270793bce6::t_9137ae7c25273c 101,108
+plugins/sentinel/sentinel/manifest.yml
+  s_ccab270793bce6::t_9137ae7c25273c 3-5
+plugins/sentinel/sentinel/models/hit.py
+  s_ccab270793bce6::t_9137ae7c25273c 17-23
+plugins/sentinel/test/conftest.py
+  s_ccab270793bce6::t_2d6ab5cb967131 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c0796fea4d75a629b1ddf2be78ac020dd93a7708",
+  "prompts": {},
+  "sessions": {
+    "s_ccab270793bce6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2e6c10701805da209b950cba7345fafa",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

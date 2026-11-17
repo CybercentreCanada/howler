@@ -1,0 +1,83 @@
+docs/api/plugins.md
+  s_fccfab0a4df0c1::t_7953ea2ce56a54 9-19,295-300
+  s_fccfab0a4df0c1::t_c3b5bde46da982 20
+documentation/docs/installation/elasticsearch_9_preflight.md
+  s_fccfab0a4df0c1::t_34cb7cde7a68cb 74-76
+  s_fccfab0a4df0c1::t_f649a21b34ab8b 16-17
+  s_fccfab0a4df0c1::t_dbfcdb6b0f36ca 8-10,59-60
+api/howler/external/elasticsearch_cutover_verify.py
+  s_fccfab0a4df0c1::t_b63d5db0a7c958 219-230,263,265-268,277,302-303,329-339,385,393-395,397
+  s_fccfab0a4df0c1::t_27e067be5d5452 534-545,550-553,557-559,563-591,593-594
+  s_fccfab0a4df0c1::t_72052bca3a8d01 434-437,439,447,467-475,515-516,524-525
+  s_fccfab0a4df0c1::t_28db6c62d37d2d 752,786,878,893,899,993
+  s_fccfab0a4df0c1::t_0d6c9d8fc5711d 959-960,979,1118,1150,1192-1193,1241,1252
+  s_fccfab0a4df0c1::t_0e01503bb49c30 1410-1411,1416-1417,1431,1455,1466-1477,1492
+  s_fccfab0a4df0c1::t_c8e89456f0c10c 264,279-281,307-315,319-325,389,413-418,423-429,448-455,461-466,492-497,607-612,619-622,627-631,655-661,676-681,699-704,721-726,732-736,742-746,754-760,768-774,788-794,799-803,808-814,820-826,834-839,842-848,851-856,880-883,886-890,902-906,909-912,917-920,923-926,929-933,939-943,946-950,963-968,971-975,983-989,1020-1025,1028-1033,1039-1044,1048-1055,1061-1066,1072-1079,1084-1089,1092-1099,1159-1166,1170-1177,1180-1188,1195-1204,1208-1213,1216-1223,1228-1235,1254-1258,1272-1275
+  s_fccfab0a4df0c1::t_e3f4afb29feea7 646-647,664-673,686,689,692,708-717,730,776,778
+  s_fccfab0a4df0c1::t_07f63da00e3752 24-25,28-33,36-38,46-49,56,73,77
+  s_fccfab0a4df0c1::t_bd8f18804d17fd 188
+  s_fccfab0a4df0c1::t_a8ca05c8954cd5 546-549,554-556,560-562,592
+  s_fccfab0a4df0c1::t_5f957db119d26d 1296,1315-1319,1323-1326,1336-1339
+api/test/unit/test_elasticsearch_preflight.py
+  s_fccfab0a4df0c1::t_6fb35f93f406a7 5,271-285,289-299,301-307,310-315
+  s_fccfab0a4df0c1::t_8f85072a79afb5 239-240,244,247-254,257-258,260-262,267-268,322
+  s_fccfab0a4df0c1::t_5454316415bb49 3-4,10,17,103-105,168-169,173,175-180
+api/howler/external/elasticsearch_initialize_collections.py
+  s_fccfab0a4df0c1::t_fe1fc6f0c10463 71
+  s_fccfab0a4df0c1::t_b485b659fb0acf 38-41
+api/howler/external/elasticsearch_preflight.py
+  s_fccfab0a4df0c1::t_919d8eb83c4ed9 217-219
+  s_fccfab0a4df0c1::t_f0be2b9ff592ca 19
+  s_fccfab0a4df0c1::t_e66c9ee76353a6 13-14,17,20,22-23,46,50,52-53,57-58,87-94,96,184,199,202-210,213-216,220,248,256,261
+  s_fccfab0a4df0c1::t_56972e356ad2ea 18,95
+documentation/docs/installation/elasticsearch_9_cutover.md
+  s_fccfab0a4df0c1::t_1c4c534b729af0 47-48,189-192
+  s_fccfab0a4df0c1::t_bb7a42feb405d1 193-194,237-239,285-286,289,461-462,471-472
+  s_fccfab0a4df0c1::t_2fba6ef3bf5c9e 288
+  s_fccfab0a4df0c1::t_f4f5d11226354e 275-277
+  s_fccfab0a4df0c1::t_772aa24d3399c4 290
+  s_fccfab0a4df0c1::t_1a9d5e3270e40e 451-454,459-460,468-470,477
+  s_fccfab0a4df0c1::t_4755a78ec78e4a 614,616-618
+  s_fccfab0a4df0c1::t_634868e4fbff56 287
+api/howler/external/elasticsearch_rest.py
+  s_fccfab0a4df0c1::t_3940cc9ea0bbc6 9,435
+  s_fccfab0a4df0c1::t_297aae34eb2908 218-219
+  s_fccfab0a4df0c1::t_7a44d2ea9cd56f 5,32-40,68,70,93,161,193-200,208,263,316-396,398-420,422-426,428-434,436-442
+  s_fccfab0a4df0c1::t_5cdae2a1181389 397,421,427
+  s_fccfab0a4df0c1::t_338713dce9a6bf 443-444
+api/test/unit/test_elasticsearch_cutover_verify.py
+  s_fccfab0a4df0c1::t_3e621e391eb4ca 36,39-40,1372-1394,1440
+  s_fccfab0a4df0c1::t_9602cd4aff6836 1505-1524,1528-1533,1535,1540-1546
+  s_fccfab0a4df0c1::t_8474e50791c1f1 1526,1539
+  s_fccfab0a4df0c1::t_451094abd8fbb7 3,6,15-18
+  s_fccfab0a4df0c1::t_fea41596f9c488 462-478,480-481,483,485-486
+  s_fccfab0a4df0c1::t_042b7034185200 321-331,333,336-337,449
+  s_fccfab0a4df0c1::t_5130dea961184f 69-77,234-235
+  s_fccfab0a4df0c1::t_5a1c7807afb46e 525-526,528-530,532,534-536,538-542
+  s_fccfab0a4df0c1::t_94e8165be11d92 487
+  s_fccfab0a4df0c1::t_92f1c7490d9b0e 1030-1042
+  s_fccfab0a4df0c1::t_b9afda4fd6a9d6 42
+  s_fccfab0a4df0c1::t_4514c0bd52f8ef 881-885,893,904-908
+  s_fccfab0a4df0c1::t_7d603866497cc2 369,401,416-417,426,429-430,432,436,438-446,452,456,458-459
+  s_fccfab0a4df0c1::t_6b37550daed482 838-841,846-847
+  s_fccfab0a4df0c1::t_a1279c79f3c065 236
+  s_fccfab0a4df0c1::t_6c9c5bcb787452 1527
+api/test/unit/test_elasticsearch_initialize_collections.py
+  s_fccfab0a4df0c1::t_af1d4e22b614a5 9-11,15-24,117-120,124-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "7c9fdccd80c01aae7027422bd8a7289295917714",
+  "prompts": {},
+  "sessions": {
+    "s_fccfab0a4df0c1": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_9471430c298559d602c65ff4d01b43b6",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
