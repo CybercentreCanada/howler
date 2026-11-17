@@ -1,0 +1,59 @@
+ui/src/components/elements/display/Markdown.tsx
+  s_703976a49408eb::t_18acfb388405a2 98
+ui/src/components/elements/display/Markdown.test.tsx
+  s_703976a49408eb::t_18acfb388405a2 5,10
+.github/workflows/api-workflow.yml
+  s_703976a49408eb::t_18acfb388405a2 193
+api/test/unit/ai_triage/test_transport_deadline.py
+  s_703976a49408eb::t_18acfb388405a2 7,16,18,23-29,35,37-56,58-60,66-71,74,79,82-123
+.github/workflows/client-workflow.yml
+  s_703976a49408eb::t_18acfb388405a2 188
+api/howler/cronjobs/ai_triage_worker.py
+  s_703976a49408eb::t_18acfb388405a2 12,30
+api/test/unit/ai_triage/test_service.py
+  s_703976a49408eb::t_18acfb388405a2 129-133,135,138-139,144-145,148-153,158-162,167,182-195,199,208-209,211-212,214,217,222-223,226-229,245,255,275,282-312
+api/howler/services/ai_service.py
+  s_703976a49408eb::t_18acfb388405a2 54,60,64,67,84,89,133-143
+api/test/unit/ai_triage/test_transport.py
+  s_703976a49408eb::t_18acfb388405a2 2,12-17,20-24,27-34,36,38-40,44-49,51-52,54-56,62,70-88,91-93,96-98,100,102-179
+api/howler/services/ai_transport.py
+  s_703976a49408eb::t_18acfb388405a2 5,7-12,28-29,31-32,35-42,44-48,52-60,63-68,79-95,98-106,108-133,135,137
+api/howler/actions/ai_triage.py
+  s_703976a49408eb::t_18acfb388405a2 5
+api/howler/actions/__init__.py
+  s_703976a49408eb::t_18acfb388405a2 133,150
+api/test/unit/ai_triage/test_worker.py
+  s_703976a49408eb::t_18acfb388405a2 4-5,7,16-18,20,27,34,38,46,51-58,67-75,84,94
+documentation/docs/installation/ai_triage.md
+  s_703976a49408eb::t_18acfb388405a2 41,60-62
+ui/src/components/routes/action/shared/OperationStep.test.tsx
+  s_703976a49408eb::t_18acfb388405a2 29,68-75,90,96-100,108,110,117-122,127-136
+api/test/unit/ai_triage/test_dispatch_security.py
+  s_703976a49408eb::t_18acfb388405a2 56,59,73
+ui/src/utils/actionUtils.ts
+  s_703976a49408eb::t_18acfb388405a2 80-81
+ui/src/components/routes/hits/view/LeadRenderer.test.tsx
+  s_703976a49408eb::t_18acfb388405a2 10
+ui/src/components/routes/action/shared/OperationStep.tsx
+  s_703976a49408eb::t_18acfb388405a2 52,70-71,75-78,152,165
+api/test/unit/ai_triage/conftest.py
+  s_703976a49408eb::t_18acfb388405a2 4,10,13-16,19,28
+api/poetry.lock
+  s_703976a49408eb::t_36cd27302b6d55 1,2646,3430
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c229c7e73a7121fdc2e4a5764db571562cfd7a43",
+  "prompts": {},
+  "sessions": {
+    "s_703976a49408eb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1616f357ffehcJHYSrBZ5VdWn",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

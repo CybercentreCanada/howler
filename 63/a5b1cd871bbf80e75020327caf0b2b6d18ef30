@@ -1,0 +1,14 @@
+api/howler/services/ai_service.py
+  h_f221159cc9f457 277
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "63a5b1cd871bbf80e75020327caf0b2b6d18ef30",
+  "prompts": {},
+  "humans": {
+    "h_f221159cc9f457": {
+      "author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+api/howler/services/auth_service.py
+  h_f221159cc9f457 10,260-273
+  h_f221159cc9f457 274-275
+api/howler/actions/__init__.py
+  h_f221159cc9f457 16
+api/howler/services/action_service.py
+  h_f221159cc9f457 207
+  h_f221159cc9f457 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "532fbb620d874c0ce2f20b5855bae038ad9b22bc",
+  "prompts": {},
+  "humans": {
+    "h_f221159cc9f457": {
+      "author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

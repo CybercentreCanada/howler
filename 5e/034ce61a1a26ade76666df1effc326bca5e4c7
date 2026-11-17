@@ -1,0 +1,37 @@
+api/howler/actions/ai_triage.py
+  h_f221159cc9f457 34,38-48,52-53,67
+  s_a56a51906edb88::t_0075e4653b2b1c 7
+  h_f221159cc9f457 3
+api/test/unit/ai_triage/test_service.py
+  s_a56a51906edb88::t_9b38236710207c 9,69-93
+  s_b23410104fb27d::t_70f6716ee99308 94-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5e034ce61a1a26ade76666df1effc326bca5e4c7",
+  "prompts": {},
+  "humans": {
+    "h_f221159cc9f457": {
+      "author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  },
+  "sessions": {
+    "s_a56a51906edb88": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "5429b3cd-ef8f-465a-9fe7-36c0186844db",
+        "model": "unknown"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_b23410104fb27d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e166c7019ffe2R1toPV0kb0kEJ",
+        "model": "gemini-4-carbon"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
