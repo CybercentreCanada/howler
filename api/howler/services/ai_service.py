@@ -274,7 +274,7 @@ def generate(config: AITriage, token: str, system_prompt: str, alert_data: dict[
 
     try:
         content = payload["choices"][0]["message"]["content"]
-    except (KeyError, IndexError):
+    except (KeyError, IndexError, TypeError):
         raise AITransportError("AI provider returned an invalid format.")
 
     if not isinstance(content, str) or not content.strip():
