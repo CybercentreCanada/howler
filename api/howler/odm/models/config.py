@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, YamlConfigSettingsSource
 
 from howler.common.logging.format import HWL_DATE_FORMAT, HWL_LOG_FORMAT
@@ -631,33 +631,34 @@ class AITriage(BaseModel):
         description="Fields omitted from alert data sent to the provider",
     )
 
-    def locally_valid(self) -> bool:
-        """Return whether this configuration is safe to advertise as available.
+    @model_validator(mode="after")
+    def validate_enabled_configuration(self) -> "AITriage":
+        if not self.enabled:
+            return self
 
-        This intentionally performs only local validation; availability checks
-        must not make network calls to a provider endpoint.
-        """
         from urllib.parse import urlparse
 
-        if not self.enabled or not isinstance(self.endpoint, str) or not self.endpoint.strip():
-            return False
+        if not isinstance(self.endpoint, str) or not self.endpoint.strip():
+            raise ValueError("AI triage endpoint is required when enabled")
 
         try:
             parsed = urlparse(self.endpoint)
             hostname = parsed.hostname
             parsed.port
-        except ValueError:
-            return False
+        except ValueError as exc:
+            raise ValueError("AI triage endpoint must be a valid URL") from exc
         if parsed.scheme != "https" and not (parsed.scheme == "http" and hostname in {"localhost", "127.0.0.1", "::1"}):
-            return False
+            raise ValueError("AI triage endpoint must use HTTPS, except for localhost HTTP endpoints")
         if not hostname or parsed.username is not None or parsed.password is not None:
-            return False
+            raise ValueError("AI triage endpoint must include a hostname and no embedded credentials")
         if not isinstance(self.model, str) or not self.model.strip():
-            return False
+            raise ValueError("AI triage model is required when enabled")
         if not self.system_prompt.strip():
-            return False
+            raise ValueError("AI triage system prompt cannot be empty")
+        if any(key.strip().lower() in AI_RESERVED_HEADERS for key in self.headers):
+            raise ValueError("AI triage headers cannot override reserved request headers")
 
-        return not any(key.strip().lower() in AI_RESERVED_HEADERS for key in self.headers)
+        return self
 
 
 class Core(BaseModel):

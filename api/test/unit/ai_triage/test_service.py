@@ -43,17 +43,23 @@ def test_unavailable_ai_operation_is_not_advertised(settings, monkeypatch):
 
 def test_config_accepts_local_openai_endpoint_and_rejects_reserved_headers():
     local = AITriage(enabled=True, endpoint="http://localhost:8080/chat", model="model", max_concurrent_jobs=6)
-    assert local.locally_valid()
+    assert local.enabled
 
-    invalid = AITriage(
-        enabled=True,
-        endpoint="https://ai.invalid/chat",
-        model="model",
-        headers={"aUtHoRiZaTiOn": "override"},
-    )
-    assert not invalid.locally_valid()
-    assert not AITriage(enabled=True, endpoint="http://ai.invalid/chat", model="model").locally_valid()
-    assert not AITriage(enabled=True, endpoint="https://user@ai.invalid/chat", model="model").locally_valid()
+    with pytest.raises(ValidationError):
+        AITriage(
+            enabled=True,
+            endpoint="https://ai.invalid/chat",
+            model="model",
+            headers={"aUtHoRiZaTiOn": "override"},
+        )
+    with pytest.raises(ValidationError):
+        AITriage(enabled=True, endpoint="http://ai.invalid/chat", model="model")
+    with pytest.raises(ValidationError):
+        AITriage(enabled=True, endpoint="https://user@ai.invalid/chat", model="model")
+    with pytest.raises(ValidationError):
+        AITriage(enabled=True, endpoint="https://ai.invalid/chat", model=" ")
+    with pytest.raises(ValidationError):
+        AITriage(enabled=True, endpoint="https://ai.invalid/chat", model="model", system_prompt=" ")
 
 
 def test_config_concurrency_has_no_artificial_upper_limit():

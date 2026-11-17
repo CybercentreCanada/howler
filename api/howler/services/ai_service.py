@@ -72,7 +72,7 @@ def is_available() -> bool:
     Returns:
         Whether the provider configuration is valid and token encryption is available.
     """
-    return config.core.ai.locally_valid() and config.system.encryption_key is not None
+    return config.core.ai.enabled and config.system.encryption_key is not None
 
 
 def _eligible_hit(hit: Hit) -> bool:
