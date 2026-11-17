@@ -162,22 +162,15 @@ class ElasticBulkPlan(object):
     def _input_primitives(doc: Any) -> Any:
         if isinstance(doc, BaseModel):
             return doc.model_dump(by_alias=True)
-        if hasattr(doc, "as_primitives"):
-            return doc.as_primitives()
         return doc
 
     def _serialize_full(self, doc: Any) -> dict[str, Any]:
         if self.model:
             model_type = cast(Any, self.model)
-            if issubclass(model_type, BaseModel):
-                raw = self._input_primitives(doc)
-                if isinstance(raw, dict):
-                    raw = {key: value for key, value in raw.items() if key not in _MODEL_HELPER_FIELDS}
-                model = model_type.validate_howler(raw)
-            elif isinstance(doc, model_type):
-                model = doc
-            else:
-                model = model_type(self._input_primitives(doc))
+            raw = self._input_primitives(doc)
+            if isinstance(raw, dict):
+                raw = {key: value for key, value in raw.items() if key not in _MODEL_HELPER_FIELDS}
+            model = model_type.validate_howler(raw)
             return model.as_primitives(hidden_fields=True)
         if not isinstance(doc, dict):
             return {"__non_doc_raw__": doc}
@@ -191,10 +184,8 @@ class ElasticBulkPlan(object):
             raw = self._input_primitives(doc)
             if not isinstance(raw, dict):
                 raise TypeError(f"Expected partial document mapping, got {type(raw).__name__}")
-            if issubclass(model_type, BaseModel):
-                raw = {key: value for key, value in raw.items() if key not in _MODEL_HELPER_FIELDS}
-                return partial_primitives(model_type, raw)
-            return model_type(raw, mask=list(raw)).as_primitives(hidden_fields=True)
+            raw = {key: value for key, value in raw.items() if key not in _MODEL_HELPER_FIELDS}
+            return partial_primitives(model_type, raw)
         if not isinstance(doc, dict):
             return {"__non_doc_raw__": doc}
         return deepcopy(doc)
@@ -360,15 +351,12 @@ class ElasticBulkPlan(object):
                 etc.). A path with no wildcard is kept wholesale, including any nested
                 subfields, e.g. ``"items"`` alone also keeps every subfield of ``items``.
         """
-        if fields is not None and self.model and not issubclass(cast(Any, self.model), BaseModel):
-            saved_doc = prune_to_paths(self._serialize_partial(doc), allowed=expand_field_patterns(self.model, fields))
-            saved_doc.pop("__index", None)
-        elif fields is not None:
+        if fields is not None:
             allowed = expand_field_patterns(self.model, fields)
             raw = self._input_primitives(doc)
             if isinstance(raw, dict):
                 raw = prune_to_paths(raw, allowed=allowed)
-                if self.model and issubclass(cast(Any, self.model), BaseModel):
+                if self.model:
                     for path in fields:
                         if "*" not in path:
                             raw = self._validate_complete_path(raw, path, path.split("."))

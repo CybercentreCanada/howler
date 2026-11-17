@@ -29,8 +29,7 @@ def to_camel_case(snake_str):
 # log.basicConfig(level=log.DEBUG)
 log.basicConfig(level=log.INFO)
 
-# In order for this to run, you need to be hosting a development server at this address. There also needs to be
-# randomized data added to each of the endpoints we want to pull from, so we can validate the model we create.
+# In order for this to run, you need to be hosting a development server at this address.
 API_PATH = "http://localhost:5000/api/v1/"
 
 # Resolve relative to this script, including when it runs in a Git worktree.
@@ -185,7 +184,7 @@ def member_names(structure):
 
 
 def get_api_response(endpoint):
-    """Fail on API errors before interpreting the response as configuration or sample data."""
+    """Fail on API errors before interpreting the response as configuration."""
     headers = {"Authorization": f"Basic {base64.b64encode(b'user:devkey:user').decode('utf-8')}"}
     response = requests.get(API_PATH + endpoint, headers=headers, timeout=60)
     if response.status_code == 401:
@@ -259,14 +258,11 @@ def generate_model_structure(model, index_data, prefix="", parent_list=False):
 
 
 def generate_structure(config):
-    """Generate from metadata; samples are only a check that the API was seeded."""
+    """Generate from metadata without requiring sample documents."""
     from howler.common.loader import datastore
 
     structure = {}
     for index, index_data in sorted(config["indexes"].items()):
-        items = get_api_response("search/" + index + "/?query=*:*")["items"]
-        if not items:
-            raise ValueError(f"No validation object found for index {index}; seed the API first")
         model = datastore().get_collection(index).schema_model
         structure[index] = generate_model_structure(model, index_data)
         if index in {"hit", "event", "case"}:

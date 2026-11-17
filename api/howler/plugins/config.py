@@ -17,7 +17,7 @@ logger.addHandler(console)
 class ODMModules(BaseModel):
     "A set of fields for adding additional fields to Howler's ODM."
 
-    modify_odm: dict[str, ImportString] = {}
+    modify_odm: dict[str, str | bool] = {}
     generation: dict[str, ImportString] = {}
 
 
@@ -100,16 +100,9 @@ class BasePluginConfig(BaseSettings):
 
         if "odm" in data["modules"] and isinstance(data["modules"]["odm"], dict):
             if "modify_odm" in data["modules"]["odm"] and isinstance(data["modules"]["odm"]["modify_odm"], dict):
-                new_modify_odm_dict: dict[str, str] = {}
-                for odm_name, value in data["modules"]["odm"]["modify_odm"].items():
-                    if value is True:
-                        new_modify_odm_dict[odm_name] = f"{plugin_name}.odm.{odm_name}:modify_odm"
-                    elif value is False:
-                        continue
-                    else:
-                        new_modify_odm_dict[odm_name] = value
-
-                data["modules"]["odm"]["modify_odm"] = new_modify_odm_dict
+                data["modules"]["odm"]["modify_odm"] = {
+                    name: value for name, value in data["modules"]["odm"]["modify_odm"].items() if value is not False
+                }
 
             if "generation" in data["modules"]["odm"] and isinstance(data["modules"]["odm"]["generation"], dict):
                 new_generation_dict: dict[str, str] = {}

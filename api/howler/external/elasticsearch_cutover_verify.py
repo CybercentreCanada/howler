@@ -36,77 +36,16 @@ _ILM_COLLECTIONS = frozenset({"hit", "event", "case"})
 _COLLECTION_MODELS: tuple[tuple[str, type[BaseModel] | None], ...] = ()
 
 
-def _collection_models() -> tuple[tuple[str, type[BaseModel] | None], ...]:  # noqa: C901
-    """Load Howler's model registry and finalize enabled typed plugin extensions.
-
-    This deliberately reproduces the pure schema-finalization portion of
-    ``HowlerDatastore.__init__``. It does not construct a datastore or collection,
-    create clients, or perform index/template/policy reconciliation.
-    """
+def _collection_models() -> tuple[tuple[str, type[BaseModel] | None], ...]:
+    """Use application schema finalization without constructing a datastore or reconciling Elasticsearch."""
     global _COLLECTION_MODELS
     plugins = load_configured_plugins()
     if _COLLECTION_MODELS:
         return _COLLECTION_MODELS
 
-    from howler.config_models import config
-    from howler.models import model_extensions
-    from howler.models.action import Action
-    from howler.models.analytic import Analytic
-    from howler.models.case import Case
-    from howler.models.clue import declare_hit_extension
-    from howler.models.dossier import Dossier
-    from howler.models.event import Event
-    from howler.models.hit import Hit
-    from howler.models.migration import MigrationRecord
-    from howler.models.overview import Overview
-    from howler.models.template import Template
-    from howler.models.user import User
-    from howler.models.view import View
+    from howler.datastore.howler_store import finalize_models
 
-    model_extensions.clear()
-    models: dict[str, type[BaseModel] | None] = {
-        "hit": Hit,
-        "event": Event,
-        "case": Case,
-        "template": Template,
-        "overview": Overview,
-        "analytic": Analytic,
-        "action": Action,
-        "migration": MigrationRecord,
-        "user": User,
-        "view": View,
-        "dossier": Dossier,
-        "user_avatar": None,
-    }
-    for plugin in plugins:
-        legacy_only = {
-            target
-            for target in plugin.modules.odm.modify_odm
-            if models.get(target) is not None and target not in plugin.modules.models.declare_extensions
-        }
-        if legacy_only:
-            targets = ", ".join(sorted(legacy_only))
-            raise ValueError(
-                f"Plugin {plugin.name} uses legacy modify_odm for {targets}; add typed model extensions before cutover."
-            )
-
-    if config.core.clue.enabled:
-        declare_hit_extension()
-    for plugin in plugins:
-        for target in models:
-            if declare_extension := plugin.modules.models.declare_extensions.get(target):
-                declare_extension()
-
-    from howler.models import schema
-
-    finalized: list[tuple[str, type[BaseModel] | None]] = []
-    for name, model in models.items():
-        final_model = model_extensions.finalize(model) if model is not None else None
-        # Building the mapping validates extension fields without touching Elasticsearch.
-        schema.document_mapping(final_model)
-        finalized.append((name, final_model))
-
-    _COLLECTION_MODELS = tuple(finalized)
+    _COLLECTION_MODELS = tuple(finalize_models(plugins).items())
     return _COLLECTION_MODELS
 
 

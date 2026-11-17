@@ -1379,14 +1379,7 @@ def update_case_rule(
         raise NotFoundException(f"Rule {rule_id} not found in case {case_id}")
 
     updated_rule, changes = _apply_case_rule_patch(rule, patch)
-    if updated_rule is not rule:
-        case.rules[case.rules.index(rule)] = updated_rule
-        rule = updated_rule
-
-    if rule.timeframe is not None and (not isinstance(rule.timeframe, int) or rule.timeframe <= 0):
-        raise HowlerValueError("Rule timeframe must be a positive integer or None")
-    elif rule.timeframe is None and rule.expire_after_resolved:
-        raise InvalidDataException("Rule cannot expire after resolved when no timeframe is set")
+    case.rules[case.rules.index(rule)] = updated_rule
 
     case.log.append(
         CaseLog.validate_howler(

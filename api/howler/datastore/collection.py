@@ -35,11 +35,6 @@ from howler.datastore.exceptions import (
     VersionConflictException,
 )
 from howler.datastore.support.elastic import error_message, error_status, response_body, total_hits_value
-from howler.datastore.support.schemas import (
-    default_dynamic_templates,
-    default_index,
-    default_mapping,
-)
 from howler.datastore.types import AggSearchResult, SearchResult
 from howler.datastore.utils import expand_field_patterns
 from howler.models import (
@@ -3370,22 +3365,13 @@ class ESCollection(Generic[ModelType]):
 
         :param ilm_config: The global ILMConfig (unused directly but kept for symmetry).
         """
-        if self.schema_model is not None:
-            template = new_schema.ilm_template_body(
-                self.schema_model,
-                shards=self.shards,
-                replicas=self.replicas,
-                policy_name=f"{self.name}_policy",
-                rollover_alias=self.name,
-            )
-        else:
-            settings = self._get_index_settings()
-            settings["index"]["lifecycle.name"] = f"{self.name}_policy"
-            settings["index"]["lifecycle.rollover_alias"] = self.name
-            template = {
-                "settings": settings,
-                "mappings": self._get_index_mappings(),
-            }
+        template = new_schema.ilm_template_body(
+            self.schema_model,
+            shards=self.shards,
+            replicas=self.replicas,
+            policy_name=f"{self.name}_policy",
+            rollover_alias=self.name,
+        )
 
         self.with_retries(
             self.datastore.client.indices.put_index_template,
@@ -3396,50 +3382,10 @@ class ESCollection(Generic[ModelType]):
         logger.info("Index template %s_template created/updated", self.name)
 
     def _get_index_settings(self) -> dict:
-        if self.schema_model is not None:
-            return new_schema.index_settings(self.schema_model, shards=self.shards, replicas=self.replicas)
-
-        default_stub: dict = deepcopy(default_index)
-        settings: dict = default_stub.pop("settings", {})
-
-        if "index" not in settings:
-            settings["index"] = {}
-        settings["index"]["number_of_shards"] = self.shards
-        settings["index"]["number_of_replicas"] = self.replicas
-
-        if "mapping" not in settings["index"]:
-            settings["index"]["mapping"] = {}
-
-        if "total_fields" not in settings["index"]["mapping"]:
-            settings["index"]["mapping"]["total_fields"] = {}
-
-        settings["index"]["mapping"]["total_fields"]["limit"] = 1500
-
-        return settings
+        return new_schema.index_settings(self.schema_model, shards=self.shards, replicas=self.replicas)
 
     def _get_index_mappings(self) -> dict:
-        if self.schema_model is not None:
-            return new_schema.document_mapping(self.schema_model)
-
-        mappings: dict = deepcopy(default_mapping)
-        mappings["dynamic_templates"] = deepcopy(default_dynamic_templates)
-
-        if not mappings["dynamic_templates"]:
-            # Setting dynamic to strict prevents any documents with fields not in the properties to be added
-            mappings["dynamic"] = "strict"
-
-        mappings["properties"]["id"] = {
-            "store": True,
-            "doc_values": True,
-            "type": "keyword",
-        }
-
-        mappings["properties"]["__text__"] = {
-            "store": False,
-            "type": "text",
-        }
-
-        return mappings
+        return new_schema.document_mapping(self.schema_model)
 
     def _check_fields(self: Self):
         if not self.validate:

@@ -8,7 +8,7 @@ from ipaddress import ip_address
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
+from pydantic import Field, ValidationError
 
 from howler.common.exceptions import HowlerTypeError, HowlerValueError
 from howler.models import (
@@ -20,7 +20,6 @@ from howler.models import (
     construct_partial,
     construct_safe,
     date,
-    document_adapter,
     flat_to_nested,
     flattened_list_object,
     flattened_object,
@@ -201,41 +200,6 @@ def test_primitive_serialization_modes_and_access_fields() -> None:
     assert FoundationDocument.model_validate(data).as_primitives(ip_format="int")["maybe_ip"] == 2130706433
 
 
-def test_document_adapter_round_trip_preserves_metadata() -> None:
-    """The Howler adapter preserves aliases, empty collections, and ES metadata."""
-    model = FoundationDocument.model_validate(_document_data())
-    model.meta.id = "es-id"
-    model.meta.index = "howler-foundation"
-    model.meta.version = 4
-
-    document = document_adapter.to_doc(model)
-    source = document.to_dict(skip_empty=False)
-
-    assert source["from"] == "source"
-    assert source["children"] == []
-    assert source["tags"] == ["one", "2"]
-    assert source["__access_lvl__"] == 100
-    assert document.meta.id == "es-id"
-    assert document.meta.version == 4
-
-    restored = document_adapter.from_doc(FoundationDocument, document)
-    assert restored.as_primitives() == model.as_primitives()
-    assert restored.meta.id == "es-id"
-    assert restored.meta.version == 4
-
-
-def test_document_adapter_ignores_synthetic_stored_fields() -> None:
-    """Stored access/id helpers aren't treated as strict model input."""
-    model = FoundationDocument.model_validate(_document_data())
-    document = document_adapter.to_doc(model)
-    document.id = "stored-id"
-    document.__access_lvl__ = 100
-
-    restored = document_adapter.from_doc(FoundationDocument, document)
-
-    assert restored.document_id == "document-1"
-
-
 def test_partial_construction_validates_selected_fields_without_defaults() -> None:
     """Projected models validate present leaves without requiring unrelated fields."""
     partial = construct_partial(
@@ -264,6 +228,20 @@ def test_partial_primitives_rejects_unknown_fields() -> None:
 
     with pytest.raises(HowlerModelValidationError):
         construct_partial(FoundationDocument, {"child": None})
+
+
+def test_partial_construction_does_not_evaluate_omitted_defaults() -> None:
+    class ProjectedDocument(HowlerESModel):
+        value: str = Field(alias="stored_value")
+        omitted: str
+        generated: str = Field(default_factory=lambda: pytest.fail("Omitted default factory ran"))
+        defaulted: str = "unused"
+        nullable: str | None = None
+
+    partial = construct_partial(ProjectedDocument, {"stored_value": "selected"})
+
+    assert partial.as_primitives(strip_null=False) == {"stored_value": "selected", "nullable": None}
+    assert partial.model_fields_set == {"value", "meta"}
 
 
 def test_partial_primitives_preserve_storage_serialization_and_access_fields() -> None:

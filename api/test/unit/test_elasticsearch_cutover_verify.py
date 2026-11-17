@@ -1063,6 +1063,7 @@ def test_legacy_modify_odm_plugin_rejection_includes_plugin_name(monkeypatch: py
     from types import SimpleNamespace
 
     from howler import plugins as plugin_loader
+    from howler.common.exceptions import HowlerAttributeError
     from howler.config_models import config
     from howler.external import elasticsearch_cutover_verify as verifier
     from howler.models import model_extensions
@@ -1085,7 +1086,7 @@ def test_legacy_modify_odm_plugin_rejection_includes_plugin_name(monkeypatch: py
     PLUGINS.clear()
     model_extensions.clear()
     try:
-        with pytest.raises(ValueError, match="legacy-plugin"):
+        with pytest.raises(HowlerAttributeError, match="legacy-plugin"):
             _collection_models()
     finally:
         model_extensions.clear()

@@ -1,12 +1,10 @@
 """Pydantic and Elasticsearch DSL model foundation."""
 
 from howler.models.base import (
-    HowlerDocumentAdapter,
     HowlerEmbeddedModel,
     HowlerESModel,
     HowlerModelValidationError,
     construct_partial,
-    document_adapter,
     flat_to_nested,
     partial_primitives,
     strip_unknown_fields,
@@ -62,7 +60,6 @@ from howler.models.registry import FieldDefinition, ModelMetadata, model_registr
 __all__ = [
     "ClassificationValue",
     "FieldDefinition",
-    "HowlerDocumentAdapter",
     "HowlerEmbeddedModel",
     "HowlerESModel",
     "HowlerFieldMetadata",
@@ -79,7 +76,6 @@ __all__ = [
     "construct_partial",
     "construct_safe",
     "date",
-    "document_adapter",
     "domain",
     "email",
     "emptyable_keyword",

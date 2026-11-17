@@ -51,16 +51,14 @@ def test_validation(caplog):
         {"name": "test", "modules": {"odm": True}}
     )
 
-    result = CustomTestConfig.initialize_plugin_configuration(  # type: ignore[operator]
+    result = CustomTestConfig.model_validate(
         {
             "name": "test",
             "modules": {"odm": {"modify_odm": {"hit": True, "user": "custom.module.example", "dossier": False}}},
         }
     )
 
-    assert result["modules"]["odm"]["modify_odm"]["hit"] == "test.odm.hit:modify_odm"
-    assert result["modules"]["odm"]["modify_odm"]["user"] == "custom.module.example"
-    assert "dossier" not in result["modules"]["odm"]["modify_odm"]
+    assert result.modules.odm.modify_odm == {"hit": True, "user": "custom.module.example"}
 
     result = CustomTestConfig.initialize_plugin_configuration(  # type: ignore[operator]
         {

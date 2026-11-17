@@ -41,56 +41,46 @@ INDEXES = {
 ILM_ENABLED_INDEXES = {"hit", "event", "case"}
 
 
+def finalize_models(plugins: list[Any]) -> dict[str, Any]:
+    """Compose and validate collection schemas without constructing a datastore or writing Elasticsearch state."""
+    # Each composition starts fresh so prior datastore/verifier instances cannot leak extensions.
+    model_extensions.clear()
+    for plugin in plugins:
+        legacy_only_targets = {
+            target
+            for target in plugin.modules.odm.modify_odm
+            if INDEXES.get(target) is not None and target not in plugin.modules.models.declare_extensions
+        }
+        if legacy_only_targets:
+            targets = ", ".join(sorted(legacy_only_targets))
+            raise HowlerAttributeError(
+                f"Plugin {plugin.name} defines legacy ODM extensions for {targets} without matching typed "
+                "model extensions. Add modules.models.declare_extensions entries before using this plugin "
+                "with Pydantic-backed collections."
+            )
+
+    if config.core.clue.enabled:
+        declare_clue_hit_extension()
+
+    for plugin in plugins:
+        for _index in INDEXES:
+            if declare_extension := plugin.modules.models.declare_extensions.get(_index):
+                logger.info("Declaring %s model extension with function from plugin %s", _index, plugin.name)
+                declare_extension()
+
+    finalized_schema_models: dict[str, Any] = {}
+    for _index, _schema in INDEXES.items():
+        finalized = model_extensions.finalize(_schema) if _schema is not None else None
+        new_schema.document_mapping(finalized)
+        finalized_schema_models[_index] = finalized
+    return finalized_schema_models
+
+
 class HowlerDatastore(object):
     def __init__(self, datastore_object: "ESStore"):
         self.ds: "ESStore" = datastore_object
 
-        # Reset/compose new-model plugin extension state deterministically on every datastore
-        # startup. ``model_extensions`` is a process-wide singleton; without this reset, a prior
-        # ``HowlerDatastore``/test instance's declared or finalized extensions (e.g. Clue applied
-        # in one test but not another) would silently leak into this one, purely depending on
-        # import/construction order.
-        model_extensions.clear()
-
-        plugins = get_plugins()
-        for plugin in plugins:
-            legacy_only_targets = {
-                target
-                for target in plugin.modules.odm.modify_odm
-                if INDEXES.get(target) is not None and target not in plugin.modules.models.declare_extensions
-            }
-            if legacy_only_targets:
-                targets = ", ".join(sorted(legacy_only_targets))
-                raise HowlerAttributeError(
-                    f"Plugin {plugin.name} defines legacy ODM extensions for {targets} without matching typed "
-                    "model extensions. Add modules.models.declare_extensions entries before using this plugin "
-                    "with Pydantic-backed collections."
-                )
-
-        if config.core.clue.enabled:
-            declare_clue_hit_extension()
-
-        for plugin in plugins:
-            for _index in INDEXES:
-                if declare_extension := plugin.modules.models.declare_extensions.get(_index):
-                    logger.info("Declaring %s model extension with function from plugin %s", _index, plugin.name)
-                    declare_extension()
-
-        finalized_schema_models: dict[str, Any] = {}
-        for _index, _schema in INDEXES.items():
-            if _schema is None:
-                finalized_schema_models[_index] = None
-                continue
-
-            finalized = model_extensions.finalize(_schema)
-            # Validate every finalized top-level schema by building its complete mapping (settings
-            # + properties + dynamic templates) before registration, so a broken plugin extension
-            # or schema regression fails loudly at datastore startup rather than at first index
-            # access/reconciliation.
-            new_schema.document_mapping(finalized)
-            finalized_schema_models[_index] = finalized
-
-        for _index in INDEXES:
+        for _index, _schema in finalize_models(get_plugins()).items():
             ilm_index_config = config.datastore.ilm.indices.get(_index)
             if ilm_index_config is None:
                 ilm_index_config = ILMIndexConfig(enabled=_index in ILM_ENABLED_INDEXES)
@@ -99,9 +89,9 @@ class HowlerDatastore(object):
 
             self.ds.register(
                 _index,
-                finalized_schema_models[_index],
+                _schema,
                 ilm_config=ilm_index_config,
-                schema_model=finalized_schema_models[_index],
+                schema_model=_schema,
             )
 
     def __enter__(self):

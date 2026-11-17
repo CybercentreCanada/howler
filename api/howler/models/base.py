@@ -547,7 +547,10 @@ def construct_partial(
     if "meta" in model_type.model_fields:
         meta_info = model_type.model_fields["meta"]
         values["meta"] = TypeAdapter(cast(Any, meta_info.annotation)).validate_python(meta or {})
-    instance = model_type.model_construct(_fields_set=set(values), **values)
+    # Supply placeholders so omitted defaults and factories are never evaluated.
+    instance = model_type.model_construct(
+        _fields_set=set(values), **{**dict.fromkeys(model_type.model_fields), **values}
+    )
     instance_values = cast(dict[str, Any], object.__getattribute__(instance, "__dict__"))
     for python_name, info in model_type.model_fields.items():
         if python_name in values or info.default is None:
@@ -751,35 +754,3 @@ def _primitive(
             if not (strip_null and item is None)
         }
     return value
-
-
-class HowlerDocumentAdapter:
-    """Stable adapter around Elasticsearch's Technical Preview conversion API."""
-
-    @staticmethod
-    def to_doc(model: HowlerESModel, *, hidden_fields: bool = True) -> dsl.Document:
-        """Convert a model to a DSL document without relying on preview serialization semantics."""
-        data = model.as_primitives(hidden_fields=hidden_fields)
-        metadata = {
-            f"_{key}": value for key, value in model.meta.model_dump().items() if value not in ("", 0, 0.0, None)
-        }
-        return model._doc(**metadata, **data)
-
-    @staticmethod
-    def from_doc(model_type: type[ModelType], document: dsl.Document) -> ModelType:
-        """Build a model and metadata from a DSL document."""
-        source = document.to_dict()
-        for field in SYNTHETIC_SOURCE_FIELDS:
-            source.pop(field, None)
-        try:
-            return model_type.model_validate(
-                {
-                    "meta": document.meta.to_dict(),
-                    **source,
-                }
-            )
-        except ValidationError as error:
-            raise HowlerModelValidationError(error, model_type) from error
-
-
-document_adapter = HowlerDocumentAdapter()

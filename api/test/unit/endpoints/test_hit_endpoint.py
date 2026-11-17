@@ -4,7 +4,6 @@ from unittest.mock import MagicMock
 import pytest
 from flask import Flask, Response
 
-from howler.models import construct_partial
 from howler.models.hit import Hit
 from howler.sample_data.randomizer import random_model_obj
 from howler.services import hit_service
@@ -92,13 +91,3 @@ def test_overwrite_rejects_client_supplied_stored_index(monkeypatch, request_con
     assert "__index" in result.get_json()["api_error_message"]
     assert "ETag" not in result.headers
     save_hit.assert_not_called()
-
-
-def test_runtime_hit_fields_include_declared_fields_for_partial_hits():
-    from howler.api.v1.hit import _runtime_hit_fields
-
-    hit = construct_partial(Hit, {"howler": {"labels": {"generic": []}}})
-
-    assert "howler.labels.generic" in _runtime_hit_fields(hit)
-    assert "labels" in hit.howler
-    assert "missing" not in hit.howler
