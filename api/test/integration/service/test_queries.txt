@@ -61,6 +61,13 @@ process.working_directory:"also/to/visit/edge"
 (howler.labels.operation:"OP_HOWLER" AND file.elf.header.data:("is" OR "testing") AND process.working_directory:("also/to/visit/edge" OR "us/technologies")) AND related.ip:("199.62.243.193" OR "85.242.133.188") AND source.user.roles:("edge" OR "order")
 user_agent.original:"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101 Firefox/102.0"
 container.name:("do_state.lnk" AND "government.xls") OR process.parent.interactive:(false OR true) AND process.parent.parent.code_signature.trusted:(false OR false)
+destination.user.name:("them_participating.xls" OR "emerging_sizes_new.gif") AND email.to.address:("are@cyber.biz" OR "market@market.com") OR file.name:("industry.doc" OR "to_commercial.ppt") OR file.pe.company:"new" AND process.parent.name:("partnerships_visit_from.exe" OR "invite_problems_determine.doc") OR threat.indicator.file.pe.imphash:("website" OR "supports") AND threat.indicator.provider:("To" AND "to")
+threat.indicator.provider:("To" AND "to")
+threat.indicator.provider:"to"
+threat.indicator.provider:to
+howler.analytic:"exploit patcher"
+howler.analytic:("Exploit Patcher" AND "exploit patcher")
+event.risk_score:[-1000 TO 1000]
 
 # List Issues
 howler.analytic:*Exploit* AND _exists_:howler.incidents
