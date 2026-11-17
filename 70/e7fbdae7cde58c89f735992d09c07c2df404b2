@@ -1,0 +1,29 @@
+api/howler/actions/ai_triage.py
+  s_09d373064440f9::t_a5c68274210f5a 6,22-27,86,88-95,99-105
+api/howler/actions/models.py
+  s_09d373064440f9::t_947836c8e2a7f8 244-246
+  s_09d373064440f9::t_3caf0bd86cf979 164-166,273
+api/test/unit/ai_triage/test_dispatch_security.py
+  s_09d373064440f9::t_a5c68274210f5a 6,17-19,21-23,28-43
+  s_09d373064440f9::t_faf60b5359f65e 16,20,24-27,44-45
+  s_09d373064440f9::t_c92d0e5a598e84 1,10,49-56,58-59,98-104,106-107
+api/test/unit/ai_triage/test_api_key_flow.py
+  s_09d373064440f9::t_c92d0e5a598e84 109-113,123,136-138
+  s_09d373064440f9::t_cb9b8b6061289a 139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "70e7fbdae7cde58c89f735992d09c07c2df404b2",
+  "prompts": {},
+  "sessions": {
+    "s_09d373064440f9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e152e62e5ffecMuPig0JNhDMBA",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
