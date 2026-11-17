@@ -1,20 +1,40 @@
 """Small shared helpers for the asynchronous AI triage action."""
 
 import json
+import os
 from typing import Any, TypedDict, cast
+
+import requests
+from urllib3.exceptions import ReadTimeoutError
 
 from howler.common.loader import datastore
 from howler.config import config
 from howler.datastore.exceptions import VersionConflictException
+from howler.odm.models.config import AITriage
 from howler.odm.models.hit import Hit
 from howler.odm.models.lead import Lead
 from howler.odm.models.user import User
 from howler.remote.datatypes.queues.named import NamedQueue
 from howler.services import auth_service, hit_service
+from howler.utils.dict_utils import remove_path
 
 LEAD_OWNER = "howler.ai_triage"
 AI_TRIAGE_QUEUE_NAME = "howler.ai_triage.alerts"
 CAS_RETRIES = 3
+MAX_INPUT_BYTES = int(os.getenv("HOWLER_AI_MAX_INPUT_BYTES", "200000"))
+
+
+class AITransportError(Exception):
+    """Provider failure with a safe, user-visible reason."""
+
+    def __init__(self, reason: str):
+        """Initialize the error with a safe, user-visible reason.
+
+        Args:
+            reason: Safe explanation of the provider failure.
+        """
+        super().__init__(reason)
+        self.reason = reason
 
 
 class AIAlertJob(TypedDict):
@@ -30,7 +50,11 @@ _queue: NamedQueue[AIAlertJob] | None = None
 
 
 def get_queue() -> NamedQueue[AIAlertJob]:
-    """Return the persistent queue used by the AI triage workers."""
+    """Get the persistent queue used by AI triage workers.
+
+    Returns:
+        The shared AI triage job queue.
+    """
     global _queue
     if _queue is None:
         _queue = NamedQueue(
@@ -43,15 +67,37 @@ def get_queue() -> NamedQueue[AIAlertJob]:
 
 
 def is_available() -> bool:
-    """Check local configuration and encrypted-token prerequisites only."""
+    """Check whether local AI triage prerequisites are configured.
+
+    Returns:
+        Whether the provider configuration is valid and token encryption is available.
+    """
     return config.core.ai.locally_valid() and config.system.encryption_key is not None
 
 
 def _eligible_hit(hit: Hit) -> bool:
+    """Check whether a hit is unresolved and has no assessment.
+
+    Args:
+        hit: Hit to check.
+
+    Returns:
+        Whether the hit is eligible for AI triage.
+    """
     return hit.howler.status != "resolved" and not hit.howler.assessment
 
 
 def _eligible_targets(query: str, user: User, max_hits: int) -> list[str] | None:
+    """Find eligible hit IDs, stopping when the result exceeds the limit.
+
+    Args:
+        query: Search query used to select hits.
+        user: User whose access controls constrain the search.
+        max_hits: Maximum number of eligible hits to return.
+
+    Returns:
+        Eligible hit IDs, or ``None`` if more than ``max_hits`` hits match.
+    """
     filtered_query = f"({query}) AND NOT howler.status:resolved AND NOT howler.assessment:*"
     result = datastore().hit.search(
         filtered_query,
@@ -70,7 +116,18 @@ def _eligible_targets(query: str, user: User, max_hits: int) -> list[str] | None
 def enqueue_alerts(
     query: str, user: User, bearer_token: str, prompt: str | None = None, *, max_hits: int
 ) -> int | None:
-    """Select eligible hits and enqueue one minimal job per alert."""
+    """Select eligible hits and enqueue one minimal job per alert.
+
+    Args:
+        query: Search query used to select hits.
+        user: User initiating triage and constraining hit access.
+        bearer_token: Token encrypted into each queued job.
+        prompt: Optional additional analyst context.
+        max_hits: Maximum number of matching hits to enqueue.
+
+    Returns:
+        Number of jobs queued, or ``None`` if the hit limit was exceeded.
+    """
     targets = _eligible_targets(query, user, max_hits)
     if targets is None:
         return None
@@ -92,35 +149,30 @@ def enqueue_alerts(
     return len(targets)
 
 
-def filter_input_field(value: Any, path: str) -> None:
-    """Remove one nested path from a serialized hit in place."""
-    keys = path.split(".")
-
-    def remove_path(node: Any, remaining: list[str]) -> None:
-        if isinstance(node, list):
-            for item in node:
-                remove_path(item, remaining)
-            return
-        if not isinstance(node, dict) or not remaining:
-            return
-        if len(remaining) == 1:
-            node.pop(remaining[0], None)
-            return
-        remove_path(node.get(remaining[0]), remaining[1:])
-
-    remove_path(value, keys)
-
-
 def provider_input(hit: Hit) -> dict[str, Any]:
-    """Serialize a fresh hit and remove configured private fields."""
+    """Serialize a hit and remove configured private fields.
+
+    Args:
+        hit: Hit to serialize for the provider.
+
+    Returns:
+        A primitive hit representation with excluded fields removed.
+    """
     data = hit.as_primitives()
     for path in config.core.ai.excluded_input_fields:
-        filter_input_field(data, path)
+        remove_path(data, path)
     return data
 
 
 def build_system_prompt(prompt: str | None) -> str:
-    """Add optional action context without replacing server-side safety guidance."""
+    """Add optional analyst context to the configured system prompt.
+
+    Args:
+        prompt: Optional additive context supplied by the analyst.
+
+    Returns:
+        The configured system prompt, followed by the analyst context when provided.
+    """
     system_prompt = config.core.ai.system_prompt
     if prompt:
         system_prompt += (
@@ -130,7 +182,117 @@ def build_system_prompt(prompt: str | None) -> str:
     return system_prompt
 
 
+def _check_status(response: requests.Response, *args: Any, **kwargs: Any) -> requests.Response:
+    """Reject non-success responses before requests processes their body.
+
+    Args:
+        response: Response being processed by the requests response hook.
+        *args: Additional positional response-hook arguments.
+        **kwargs: Additional keyword response-hook arguments.
+
+    Returns:
+        The response when its status code indicates success.
+
+    Raises:
+        AITransportError: If the provider returns a non-success status code.
+    """
+    if not 200 <= response.status_code < 300:
+        response.close()
+        if response.status_code in {401, 403}:
+            raise AITransportError("Provider rejected the authorization token")
+
+        raise AITransportError(f"Provider returned HTTP {response.status_code}")
+
+    return response
+
+
+def generate(config: AITriage, token: str, system_prompt: str, alert_data: dict[str, Any]) -> str:
+    """Generate a response from the configured AI provider.
+
+    Args:
+        config: Provider endpoint, model, headers, and timeout settings.
+        token: Bearer token sent to the provider.
+        system_prompt: Instructions sent as the system message.
+        alert_data: Filtered alert data sent as the user message.
+
+    Returns:
+        The provider's generated message content.
+
+    Raises:
+        AITransportError: If configuration, input size, transport, status, or response
+            content is invalid.
+    """
+    if not config.endpoint:
+        raise AITransportError("AI triage is not configured")
+
+    alert_content = json.dumps(alert_data, ensure_ascii=False, separators=(",", ":"))
+    if len(system_prompt.encode("utf-8")) + len(alert_content.encode("utf-8")) > MAX_INPUT_BYTES:
+        raise AITransportError("Alert input exceeded the size limit")
+
+    body = {
+        "model": config.model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": alert_content},
+        ],
+        "stream": False,
+    }
+    try:
+        with requests.Session() as session:
+            # Do not inherit proxy, CA bundle, or .netrc settings from the environment.
+            session.trust_env = False
+            with session.post(
+                config.endpoint,
+                json=body,
+                headers={
+                    **config.headers,
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+                timeout=(min(10, config.timeout_seconds), config.timeout_seconds),
+                allow_redirects=False,
+                stream=True,
+                hooks={"response": _check_status},
+            ) as response:
+                payload = response.json()
+
+    except requests.exceptions.JSONDecodeError as exc:
+        raise AITransportError("Provider returned an invalid response") from exc
+
+    except requests.exceptions.Timeout as exc:
+        raise AITransportError("Provider response timed out") from exc
+
+    except requests.exceptions.ConnectionError as exc:
+        # requests wraps urllib3 read timeouts as ConnectionError while streaming.
+        if isinstance(exc.__context__, ReadTimeoutError) or any(isinstance(arg, ReadTimeoutError) for arg in exc.args):
+            raise AITransportError("Provider response timed out") from exc
+        raise AITransportError("AI provider is temporarily unavailable") from exc
+
+    except requests.exceptions.RequestException as exc:
+        raise AITransportError("AI provider is temporarily unavailable") from exc
+
+    try:
+        content = payload["choices"][0]["message"]["content"]
+    except (KeyError, IndexError):
+        raise AITransportError("AI provider returned an invalid format.")
+
+    if not isinstance(content, str) or not content.strip():
+        raise AITransportError("AI provider returned an invalid format.")
+
+    return content.strip()
+
+
 def _lead_owner(lead: Lead) -> str | None:
+    """Read the owner marker from a lead's JSON metadata.
+
+    Args:
+        lead: Lead whose metadata contains the owner marker.
+
+    Returns:
+        The owner value, or ``None`` when metadata is missing, invalid, or has no
+        string owner value.
+    """
     if not lead.metadata:
         return None
     try:
@@ -144,6 +306,14 @@ def _lead_owner(lead: Lead) -> str | None:
 
 
 def _managed_lead(content: str) -> Lead:
+    """Build an AI triage lead marked as managed by this service.
+
+    Args:
+        content: Generated content for the lead.
+
+    Returns:
+        A lead with the AI triage label and ownership metadata.
+    """
     return Lead(
         {
             "label": {"en": "AI Triage", "fr": "Triage IA"},
@@ -155,7 +325,17 @@ def _managed_lead(content: str) -> Lead:
 
 
 def save_ai_lead(hit_id: str, user: User, content: str) -> bool:
-    """Replace only the managed lead, retrying optimistic write conflicts."""
+    """Replace the managed AI triage lead, retrying write conflicts.
+
+    Args:
+        hit_id: ID of the hit to update.
+        user: User whose permissions are used to retrieve the hit.
+        content: Generated content to store in the managed lead.
+
+    Returns:
+        Whether the lead was saved. Returns ``False`` if the hit is missing, no longer
+        eligible, or all optimistic-write retries conflict.
+    """
     for _ in range(CAS_RETRIES):
         hit, version = hit_service.get_hit(hit_id, as_odm=True, version=True, user=user)
         if hit is None or not _eligible_hit(hit):

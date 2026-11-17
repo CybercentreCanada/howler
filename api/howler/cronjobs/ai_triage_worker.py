@@ -1,7 +1,6 @@
 """Concurrent consumers for per-alert AI triage jobs."""
 
 import threading
-import time
 from typing import Any, cast
 
 from apscheduler.schedulers.base import BaseScheduler
@@ -9,7 +8,7 @@ from apscheduler.schedulers.base import BaseScheduler
 from howler.actions.ai_triage import ROLES
 from howler.common.logging import get_logger
 from howler.config import config
-from howler.services import ai_service, ai_transport, auth_service, hit_service, user_service
+from howler.services import ai_service, auth_service, hit_service, user_service
 
 logger = get_logger(__file__)
 
@@ -25,8 +24,6 @@ def _process(job: Any) -> None:
         uname = job["uname"]
         encrypted_token = job["bearer_token"]
         prompt = job["prompt"]
-        deadline = time.monotonic() + config.core.ai.timeout_seconds
-
         user = user_service.get_user(uname, as_odm=True, version=False)
         if user is None or not user.is_active or not (set(ROLES) | {"admin"}) & set(user.type):
             logger.info("Discarding AI triage job because its initiator is no longer authorized")
@@ -38,16 +35,15 @@ def _process(job: Any) -> None:
             logger.info("Discarding AI triage job because its alert is no longer eligible or accessible")
             return
 
-        result = ai_transport.generate(
+        result = ai_service.generate(
             config.core.ai,
             cast(str, token),
             ai_service.build_system_prompt(prompt),
             ai_service.provider_input(hit),
-            deadline=deadline,
         )
         if not ai_service.save_ai_lead(hit_id, user, result):
             logger.warning("AI triage result was not saved for alert %s", hit_id)
-    except ai_transport.AITransportError as exc:
+    except ai_service.AITransportError as exc:
         logger.warning("AI triage provider failed for alert %s: %s", hit_id, exc.reason)
     except Exception:
         # Exception messages may contain credentials, provider content, or infrastructure details.

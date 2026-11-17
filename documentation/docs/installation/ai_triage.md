@@ -57,9 +57,13 @@ The consumer runs only when `HWL_USE_JOB_SYSTEM` is enabled. If it is disabled,
 the action can still queue jobs in Redis, but they remain there unprocessed until
 the job system starts a consumer.
 
-`timeout_seconds` bounds each provider request, including connection setup and
-response headers/body. Request bodies are limited to 200,000 serialized UTF-8
-bytes and responses to 100,000 decoded bytes. `max_concurrent_jobs` is the
+`timeout_seconds` sets the provider read-inactivity timeout; the connection
+timeout is the smaller of 10 seconds and `timeout_seconds`. These are not a
+total request deadline: DNS resolution or a provider that keeps sending data
+can extend a call and delay queued jobs. The combined system prompt and
+serialized alert content are limited to 200,000 UTF-8 bytes as a coarse safeguard,
+not an exact model-token limit; the provider enforces its own context window.
+Responses are buffered without a size limit. `max_concurrent_jobs` is the
 number of consumer threads **per Howler process running the job system**;
 multiple Howler processes multiply total concurrency. Queue pops are atomic, so
 the same queued job is not processed by multiple consumers. A failed job is

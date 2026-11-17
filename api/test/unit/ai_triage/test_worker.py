@@ -4,7 +4,7 @@ from unittest.mock import Mock
 import pytest
 
 from howler.cronjobs import ai_triage_worker
-from howler.services import ai_service, ai_transport, auth_service, hit_service, user_service
+from howler.services import ai_service, auth_service, hit_service, user_service
 
 from .support import make_hit, make_user
 
@@ -23,14 +23,13 @@ def setup_worker(monkeypatch):
     monkeypatch.setattr(
         ai_triage_worker, "config", SimpleNamespace(core=SimpleNamespace(ai=SimpleNamespace(timeout_seconds=30)))
     )
-    monkeypatch.setattr(ai_triage_worker.time, "monotonic", lambda: 10)
     monkeypatch.setattr(user_service, "get_user", get_user)
     monkeypatch.setattr(ai_service, "build_system_prompt", Mock(return_value="safe system prompt"))
     monkeypatch.setattr(ai_service, "provider_input", Mock(return_value={"event": "alert"}))
     monkeypatch.setattr(ai_service, "save_ai_lead", save)
     monkeypatch.setattr(hit_service, "get_hit", get_hit)
     monkeypatch.setattr(auth_service, "decrypt_token", Mock(return_value="trusted-token"))
-    monkeypatch.setattr(ai_transport, "generate", generate)
+    monkeypatch.setattr(ai_service, "generate", generate)
     return generate, save, get_user, get_hit, user
 
 
@@ -42,7 +41,8 @@ def test_worker_processes_one_alert_and_saves(monkeypatch):
     generate.assert_called_once()
     assert generate.call_args.args[1] == "trusted-token"
     assert generate.call_args.args[2] == "safe system prompt"
-    assert generate.call_args.kwargs["deadline"] == 40
+    assert generate.call_args.args[0] is ai_triage_worker.config.core.ai
+    assert generate.call_args.kwargs == {}
     get_user.assert_called_once_with("analyst", as_odm=True, version=False)
     get_hit.assert_called_once_with("hit-1", as_odm=True, version=True, user=user)
     save.assert_called_once_with("hit-1", user, "generated opinion")
@@ -82,7 +82,7 @@ def test_worker_discards_alert_that_is_no_longer_eligible(monkeypatch, state):
 
 def test_worker_logs_provider_failure_reason_and_discards_result(monkeypatch, caplog):
     generate, save, _get_user, _get_hit, _user = setup_worker(monkeypatch)
-    generate.side_effect = ai_transport.AITransportError("provider unavailable")
+    generate.side_effect = ai_service.AITransportError("provider unavailable")
 
     ai_triage_worker._process(make_job())
 

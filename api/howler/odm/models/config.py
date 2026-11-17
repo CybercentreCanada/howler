@@ -624,7 +624,7 @@ class AITriage(BaseModel):
         ),
         description="Server-side base prompt for AI triage",
     )
-    timeout_seconds: int = Field(default=120, ge=1, le=600, description="Maximum time spent on one alert")
+    timeout_seconds: int = Field(default=120, ge=1, le=600, description="Provider read inactivity timeout in seconds")
     max_concurrent_jobs: int = Field(default=4, ge=1, description="Maximum concurrent alert triage jobs")
     excluded_input_fields: list[str] = Field(
         default_factory=lambda: ["howler.dossier", "howler.log"],

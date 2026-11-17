@@ -1,65 +1,71 @@
 import json
-import ssl
-import time
 from unittest.mock import MagicMock, Mock
 
 import pytest
+import requests
+from urllib3.exceptions import ReadTimeoutError
 
 from howler.odm.models.config import AITriage
-from howler.services import ai_transport as transport
+from howler.services import ai_service as transport
 
 
 @pytest.fixture
 def provider(monkeypatch):
-    pool = MagicMock()
-    factory = Mock(return_value=pool)
-    monkeypatch.setattr(transport.urllib3, "PoolManager", factory)
-    return pool, factory
+    session = MagicMock()
+    session.__enter__.return_value = session
+    factory = Mock(return_value=session)
+    monkeypatch.setattr(transport.requests, "Session", factory)
+
+    def post(_endpoint, **kwargs):
+        reply = session.reply
+        return kwargs["hooks"]["response"](reply)
+
+    session.post.side_effect = post
+    return session, factory
 
 
-def response(body, status=200):
-    result = MagicMock(status=status)
-    result.stream.return_value = [body]
+def response(payload, status=200):
+    result = MagicMock(status_code=status)
+    result.json.return_value = payload
     result.__enter__.return_value = result
     return result
 
 
 def generate(
-    *,
-    prompt="Conservative system prompt",
-    alert=None,
-    deadline=None,
-    model="qa-model",
-    endpoint="https://ai.invalid/chat",
+    *, prompt="Conservative system prompt", alert=None, model="qa-model", endpoint="https://ai.invalid/chat", timeout=30
 ):
     return transport.generate(
-        AITriage(enabled=True, endpoint=endpoint, model=model, headers={"X-Provider-Key": "private-key"}),
+        AITriage(
+            enabled=True,
+            endpoint=endpoint,
+            model=model,
+            headers={"X-Provider-Key": "private-key"},
+            timeout_seconds=timeout,
+        ),
         "qa-access-token",
         prompt,
         {"event": "alert"} if alert is None else alert,
-        deadline=time.monotonic() + 30 if deadline is None else deadline,
     )
 
 
-def test_repeated_success_preserves_request_security_and_cleans_up(provider, monkeypatch):
-    pool, factory = provider
+def test_success_preserves_request_security_and_cleans_up(provider, monkeypatch):
+    session, factory = provider
     monkeypatch.setenv("HTTPS_PROXY", "https://proxy.invalid")
     monkeypatch.setenv("NETRC", "/nonexistent/private-credentials")
-    replies = [response(b'{"choices":[{"message":{"content":"  Conservative opinion  "}}]}') for _ in range(2)]
-    pool.request.side_effect = replies
+    reply = response({"choices": [{"message": {"content": "  Conservative opinion  "}}]})
+    session.reply = reply
 
-    for _ in range(2):
-        assert generate() == "Conservative opinion"
+    assert generate() == "Conservative opinion"
 
-    args, kwargs = pool.request.call_args
-    assert args == ("POST", "https://ai.invalid/chat")
+    args, kwargs = session.post.call_args
+    assert args == ("https://ai.invalid/chat",)
     assert kwargs["headers"] == {
         "X-Provider-Key": "private-key",
         "Authorization": "Bearer qa-access-token",
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
-    assert json.loads(kwargs["body"]) == {
+    assert kwargs["json"] == {
         "model": "qa-model",
         "messages": [
             {"role": "system", "content": "Conservative system prompt"},
@@ -67,113 +73,136 @@ def test_repeated_success_preserves_request_security_and_cleans_up(provider, mon
         ],
         "stream": False,
     }
-    assert kwargs["redirect"] is False and kwargs["retries"] is False
-    assert kwargs["preload_content"] is False
-    assert factory.call_args.kwargs["ssl_context"].verify_mode == ssl.CERT_REQUIRED
-    assert type(factory.call_args.kwargs["ssl_context"]) is transport.ssl.SSLContext
-    assert pool.clear.call_count == 2
-    for reply in replies:
-        reply.__exit__.assert_called_once()
+    assert kwargs["allow_redirects"] is False and kwargs["stream"] is True
+    assert kwargs["timeout"] == (10, 30)
+    assert session.trust_env is False
+    factory.assert_called_once_with()
+    session.__exit__.assert_called_once()
+    reply.__exit__.assert_called_once()
+
+
+def test_connect_timeout_is_bounded_by_configured_timeout(provider):
+    session, _factory = provider
+    session.reply = response({"choices": [{"message": {"content": "opinion"}}]})
+    assert generate(timeout=3) == "opinion"
+    assert session.post.call_args.kwargs["timeout"] == (3, 3)
 
 
 @pytest.mark.parametrize(
     "status,reason", [(401, "authorization token"), (403, "authorization token"), (503, "HTTP 503"), (302, "HTTP 302")]
 )
 def test_http_errors_do_not_read_or_expose_provider_details(provider, status, reason):
-    pool, _factory = provider
-    reply = response(b'{"error":"private provider detail"}', status)
-    pool.request.return_value = reply
+    session, _factory = provider
+    reply = response({"error": "private provider detail"}, status)
+    session.reply = reply
 
     with pytest.raises(transport.AITransportError, match=reason) as error:
         generate()
 
     assert "private provider detail" not in str(error.value)
-    reply.stream.assert_not_called()
-    reply.__exit__.assert_called_once()
-    pool.clear.assert_called_once()
+    reply.json.assert_not_called()
+    reply.close.assert_called_once()
+    session.__exit__.assert_called_once()
 
 
-def test_network_failure_is_safe_and_cleans_up(provider):
-    pool, _factory = provider
-    pool.request.side_effect = transport.urllib3.exceptions.ReadTimeoutError(None, "/chat", "provider-secret")
-    with pytest.raises(transport.AITransportError, match="temporarily unavailable") as error:
+@pytest.mark.parametrize(
+    "failure,reason",
+    [
+        (requests.exceptions.ConnectTimeout("provider-secret"), "timed out"),
+        (requests.exceptions.ReadTimeout("provider-secret"), "timed out"),
+        (requests.exceptions.ConnectionError(ReadTimeoutError(None, "/chat", "provider-secret")), "timed out"),
+        (requests.exceptions.ConnectionError("provider-secret"), "temporarily unavailable"),
+        (requests.exceptions.RequestException("provider-secret"), "temporarily unavailable"),
+    ],
+)
+def test_network_failure_is_safe_and_cleans_up(provider, failure, reason):
+    session, _factory = provider
+    session.post.side_effect = failure
+    with pytest.raises(transport.AITransportError, match=reason) as error:
         generate()
     assert "provider-secret" not in str(error.value)
-    pool.clear.assert_called_once()
+    session.__exit__.assert_called_once()
+
+
+def test_streaming_read_timeout_is_reported_as_timeout(provider):
+    session, _factory = provider
+    reply = response(None)
+    reply.json.side_effect = requests.exceptions.ConnectionError(ReadTimeoutError(None, "/chat", "provider-secret"))
+    session.reply = reply
+    with pytest.raises(transport.AITransportError, match="timed out"):
+        generate()
+    reply.__exit__.assert_called_once()
+    session.__exit__.assert_called_once()
 
 
 @pytest.mark.parametrize(
-    "body,reason",
+    "payload,reason",
     [
-        (b"not-json", "invalid response"),
-        (b"\xff", "invalid response"),
-        (b"[]", "invalid response"),
-        (b"{}", "no text"),
-        (b'{"choices":[null]}', "no text"),
-        (b'{"choices":[{"message":{"content":" "}}]}', "no text"),
+        ([], "invalid response"),
+        ({}, "no text"),
+        ({"choices": [None]}, "no text"),
+        ({"choices": [{"message": {"content": " "}}]}, "no text"),
     ],
 )
-def test_invalid_provider_responses_are_rejected(provider, body, reason):
-    pool, _factory = provider
-    pool.request.return_value = response(body)
+def test_invalid_provider_responses_are_rejected(provider, payload, reason):
+    session, _factory = provider
+    session.reply = response(payload)
     with pytest.raises(transport.AITransportError, match=reason):
         generate()
-    pool.clear.assert_called_once()
+    session.__exit__.assert_called_once()
+
+
+def test_invalid_json_is_rejected(provider):
+    session, _factory = provider
+    session.reply = response(None)
+    session.reply.json.side_effect = requests.exceptions.JSONDecodeError("invalid", "", 0)
+    with pytest.raises(transport.AITransportError, match="invalid response"):
+        generate()
+
+
+def test_large_response_is_accepted(provider):
+    session, _factory = provider
+    content = "x" * 100_001
+    session.reply = response({"choices": [{"message": {"content": content}}]})
+    assert generate() == content
 
 
 @pytest.mark.parametrize("extra", [0, 1])
-def test_response_byte_limit(provider, extra):
-    pool, _factory = provider
-    body = b'{"choices":[{"message":{"content":"opinion"}}]}'
-    pool.request.return_value = response(body + b" " * (transport.MAX_OUTPUT_BYTES - len(body) + extra))
-    if extra:
-        with pytest.raises(transport.AITransportError, match="response exceeded the size limit"):
-            generate()
-    else:
-        assert generate() == "opinion"
-    pool.clear.assert_called_once()
-
-
-@pytest.mark.parametrize("extra", [0, 1])
-def test_input_limit_counts_the_complete_transmitted_body(provider, extra):
-    pool, factory = provider
-    frame = (
-        b'{"model":"qa-model","messages":['
-        b'{"role":"system","content":""},'
-        b'{"role":"user","content":"{}"}],"stream":false}'
-    )
-    pool.request.return_value = response(b'{"choices":[{"message":{"content":"opinion"}}]}')
-    prompt = "x" * (transport.MAX_INPUT_BYTES - len(frame) + extra)
+def test_input_limit_counts_message_content_not_request_envelope(provider, extra):
+    session, factory = provider
+    session.reply = response({"choices": [{"message": {"content": "opinion"}}]})
+    prompt = '"' * (transport.MAX_INPUT_BYTES - len(b"{}") + extra)
     if extra:
         with pytest.raises(transport.AITransportError, match="input exceeded the size limit"):
-            generate(prompt=prompt, alert={})
+            generate(prompt=prompt, alert={}, model="model-name-does-not-count")
         factory.assert_not_called()
     else:
-        assert generate(prompt=prompt, alert={}) == "opinion"
-        assert len(pool.request.call_args.kwargs["body"]) == transport.MAX_INPUT_BYTES
+        assert generate(prompt=prompt, alert={}, model="model-name-does-not-count") == "opinion"
+        assert len(json.dumps(session.post.call_args.kwargs["json"]).encode()) > transport.MAX_INPUT_BYTES
 
 
-def test_unicode_is_sent_as_bounded_utf8_not_reencoded_ascii(provider):
-    pool, _factory = provider
-    pool.request.return_value = response(b'{"choices":[{"message":{"content":"opinion"}}]}')
+def test_input_limit_counts_unicode_utf8_bytes(provider):
+    session, factory = provider
+    session.reply = response({"choices": [{"message": {"content": "opinion"}}]})
+    assert generate(prompt="😀" * 49_999 + "xx", alert={}) == "opinion"
+    factory.reset_mock()
+    with pytest.raises(transport.AITransportError, match="input exceeded the size limit"):
+        generate(prompt="😀" * 49_999 + "xxx", alert={})
+    factory.assert_not_called()
+
+
+def test_alert_json_content_counts_towards_input_limit(provider):
+    session, _factory = provider
+    session.reply = response({"choices": [{"message": {"content": "opinion"}}]})
     alert = {"event": "😀" * 20_000}
     assert generate(alert=alert) == "opinion"
-    body = pool.request.call_args.kwargs["body"]
-    assert isinstance(body, bytes) and len(body) < transport.MAX_INPUT_BYTES
-    assert json.loads(json.loads(body)["messages"][1]["content"]) == alert
+    assert json.loads(session.post.call_args.kwargs["json"]["messages"][1]["content"]) == alert
+    with pytest.raises(transport.AITransportError, match="input exceeded the size limit"):
+        generate(prompt="", alert={"event": "😀" * 50_000})
 
 
-@pytest.mark.parametrize(
-    "kwargs,reason",
-    [
-        ({"prompt": '"' * 100_000}, "input exceeded the size limit"),
-        ({"model": "x" * 200_000}, "input exceeded the size limit"),
-        ({"deadline": 0}, "exceeded its timeout"),
-        ({"endpoint": None}, "not configured"),
-    ],
-)
-def test_rejected_input_or_expired_deadline_never_contacts_provider(provider, kwargs, reason):
-    _pool, factory = provider
-    with pytest.raises(transport.AITransportError, match=reason):
-        generate(**kwargs)
+def test_missing_endpoint_never_contacts_provider(provider):
+    _session, factory = provider
+    with pytest.raises(transport.AITransportError, match="not configured"):
+        generate(endpoint=None)
     factory.assert_not_called()

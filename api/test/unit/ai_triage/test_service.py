@@ -10,6 +10,7 @@ from howler.config import CLASSIFICATION
 from howler.datastore.exceptions import VersionConflictException
 from howler.odm.models.config import AITriage, config
 from howler.services import ai_service as service
+from howler.utils.dict_utils import remove_path
 
 from .support import make_hit, make_lead, make_user
 
@@ -130,7 +131,7 @@ def test_provider_input_redacts_comment_values_in_all_list_items_without_mutatin
     assert hit.as_primitives() == original
 
 
-def test_filter_input_field_recurses_nested_lists_without_consuming_path(settings):
+def test_remove_path_recurses_nested_lists_without_consuming_path():
     data = {
         "howler": {
             "comment": [
@@ -141,7 +142,7 @@ def test_filter_input_field_recurses_nested_lists_without_consuming_path(setting
         }
     }
 
-    service.filter_input_field(data, "howler.comment.value")
+    remove_path(data, "howler.comment.value")
 
     assert data == {
         "howler": {
@@ -164,7 +165,7 @@ def test_action_selects_role_limit_without_http_call(settings, monkeypatch, role
     enqueue = Mock(return_value=2)
     monkeypatch.setattr(service, "enqueue_alerts", enqueue)
     generate = Mock()
-    monkeypatch.setattr("howler.services.ai_transport.generate", generate)
+    monkeypatch.setattr(service, "generate", generate)
 
     result = ai_triage.execute("event.kind:alert", user, auth_token="qa-token", prompt="Be concise")
 
@@ -261,7 +262,7 @@ def test_enqueue_failure_returns_safe_error_without_provider_fallback(settings, 
     enqueue = Mock(side_effect=RuntimeError("redis-password-secret"))
     generate = Mock()
     monkeypatch.setattr(service, "enqueue_alerts", enqueue)
-    monkeypatch.setattr("howler.services.ai_transport.generate", generate)
+    monkeypatch.setattr(service, "generate", generate)
 
     result = ai_triage.execute("*:*", make_user(), auth_token="qa-token")
 
