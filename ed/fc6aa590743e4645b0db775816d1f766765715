@@ -1,0 +1,29 @@
+api/howler/actions/models.py
+  s_09d373064440f9::t_5113e35842388c 22-24
+api/howler/actions/ai_triage.py
+  s_09d373064440f9::t_5113e35842388c 122
+api/test/unit/endpoints/test_action_endpoint.py
+  s_09d373064440f9::t_327b3433a25ff8 286,291-292
+api/howler/services/action_service.py
+  s_09d373064440f9::t_b1239e34f97a33 151,162,179-180,255,277,281,283,288-301,400,426-428,469
+api/test/unit/services/test_enqueue_action.py
+  s_09d373064440f9::t_327b3433a25ff8 403-404,444-445
+api/howler/actions/__init__.py
+  s_09d373064440f9::t_5113e35842388c 232-242,250,259-262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "edfc6aa590743e4645b0db775816d1f766765715",
+  "prompts": {},
+  "sessions": {
+    "s_09d373064440f9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e152e62e5ffecMuPig0JNhDMBA",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
