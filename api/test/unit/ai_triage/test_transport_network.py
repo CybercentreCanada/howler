@@ -37,7 +37,7 @@ class Handler(BaseHTTPRequestHandler):
             if stop.wait(0.3):
                 return
 
-    def log_message(self, *_args):
+    def log_message(self, format: str, *args: object) -> None:
         pass
 
 
