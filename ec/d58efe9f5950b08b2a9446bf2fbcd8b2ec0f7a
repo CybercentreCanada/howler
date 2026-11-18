@@ -1,0 +1,28 @@
+api/test/unit/ai_triage/test_dispatch_security.py
+  s_25d4ccb7b7f23f::t_66a98f5202829f 40,63,68,73,77-78,90,95,108,114,123
+api/test/unit/services/test_enqueue_action.py
+  s_25d4ccb7b7f23f::t_028c2c1a8abdcb 425
+  s_25d4ccb7b7f23f::t_60e908b9fa96e9 360-361,382,384-385
+api/test/unit/actions/test_init.py
+  s_25d4ccb7b7f23f::t_60e908b9fa96e9 155
+api/howler/services/action_service.py
+  s_25d4ccb7b7f23f::t_60e908b9fa96e9 390
+api/howler/actions/__init__.py
+  s_25d4ccb7b7f23f::t_66a98f5202829f 231-232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ecd58efe9f5950b08b2a9446bf2fbcd8b2ec0f7a",
+  "prompts": {},
+  "sessions": {
+    "s_25d4ccb7b7f23f": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "1fb1b6ef-9571-4908-a526-cf3370db76c9",
+        "model": "unknown"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
