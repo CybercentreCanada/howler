@@ -152,7 +152,7 @@ def test_execute_transition_escalation_handling(
 
 @patch("howler.actions.datastore")
 @patch("howler.actions.add_label.execute")
-def test_execute_forwards_auth_token_separately_from_validated_arguments(mock_execute, mock_datastore):
+def test_execute_does_not_forward_auth_token_without_opt_in(mock_execute, mock_datastore):
     user: User = random_model_obj(User)
     user.type = ["actionrunner_basic"]
     mock_execute.return_value = []
@@ -174,7 +174,6 @@ def test_execute_forwards_auth_token_separately_from_validated_arguments(mock_ex
         user=user,
         category="generic",
         label="kept",
-        auth_token="plugin-token",
     )
 
 

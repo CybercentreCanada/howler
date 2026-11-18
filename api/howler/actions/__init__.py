@@ -176,7 +176,6 @@ def execute(
     user: User | None,
     request_id: Optional[str] = None,
     auth_token: Optional[str] = None,
-    bearer_token: str | None = None,
     **kwargs,
 ) -> list[dict[str, Any]]:
     """Execute an operation with strict validation of its arguments."""
@@ -229,12 +228,8 @@ def execute(
 
     # Unset arguments are left out so the operation's own defaults still apply
     operation_kwargs = validated_arguments.model_dump(exclude_unset=True)
-    if getattr(specification, "requires_auth_token", False):
-        # HTTP operation data is untrusted; only background callers may supply
-        # a bearer token explicitly after decrypting it from the action queue.
-        operation_kwargs["auth_token"] = auth_service.get_token() if has_request_context() else bearer_token
-    elif auth_token is not None:
-        operation_kwargs["auth_token"] = auth_token
+    if specification.requires_auth_token:
+        operation_kwargs["auth_token"] = auth_service.get_token() if has_request_context() else auth_token
 
     # Skip central limit check if operation handles it locally with transformed query
     if not getattr(operation, "SKIP_CENTRAL_LIMIT", False):

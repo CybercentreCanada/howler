@@ -37,7 +37,7 @@ def test_dispatch_rejects_non_string_prompt(monkeypatch):
     monkeypatch.setattr(ai_triage, "execute", execute)
     monkeypatch.setattr(actions, "_get_operation", lambda _operation_id: ai_triage)
 
-    result = actions.execute("ai_triage", "*:*", make_user(), bearer_token="token", prompt=123)
+    result = actions.execute("ai_triage", "*:*", make_user(), auth_token="token", prompt=123)
 
     assert result[0]["title"] == "Invalid Arguments"
     execute.assert_not_called()
@@ -60,23 +60,22 @@ def operation(monkeypatch):
     return execute
 
 
-def test_dispatch_overrides_persisted_auth_token_with_request_bearer(operation):
+def test_background_dispatch_uses_explicit_auth_token(operation):
     result = actions.execute(
         "requires_auth",
         "*:*",
         make_user(),
-        bearer_token="request-token",
-        auth_token="persisted-token",
+        auth_token="queued-token",
     )
 
     assert result[0]["outcome"] == "success"
     operation.assert_called_once()
-    assert operation.call_args.kwargs["auth_token"] == "request-token"
+    assert operation.call_args.kwargs["auth_token"] == "queued-token"
     assert "bearer_token" not in operation.call_args.kwargs
 
 
-def test_background_dispatch_does_not_use_persisted_auth_token(operation):
-    actions.execute("requires_auth", "*:*", make_user(), auth_token="persisted-token")
+def test_background_dispatch_without_auth_token(operation):
+    actions.execute("requires_auth", "*:*", make_user())
 
     assert operation.call_args.kwargs["auth_token"] is None
 
@@ -88,12 +87,12 @@ def test_background_dispatch_does_not_use_persisted_auth_token(operation):
 def test_http_dispatch_ignores_credentials_in_operation_data(operation, authorization, expected):
     headers = {"Authorization": authorization} if authorization else {}
     with Flask(__name__).test_request_context(headers=headers):
-        actions.execute("requires_auth", "*:*", make_user(), bearer_token="spoofed-token", auth_token="persisted-token")
+        actions.execute("requires_auth", "*:*", make_user(), auth_token="spoofed-token")
 
     assert operation.call_args.kwargs["auth_token"] == expected
 
 
-def test_dispatch_only_forwards_bearer_to_operations_that_require_it(monkeypatch):
+def test_dispatch_only_forwards_auth_token_to_operations_that_require_it(monkeypatch):
     execute = Mock(return_value=[])
     operation = ModuleType("ordinary")
     operation.SKIP_CENTRAL_LIMIT = True
@@ -106,13 +105,13 @@ def test_dispatch_only_forwards_bearer_to_operations_that_require_it(monkeypatch
     operation.execute = execute
     monkeypatch.setattr(actions, "_get_operation", lambda _operation_id: operation)
 
-    actions.execute("ordinary", "*:*", make_user(), bearer_token="request-token")
+    actions.execute("ordinary", "*:*", make_user(), auth_token="queued-token")
 
     assert "auth_token" not in execute.call_args.kwargs
     assert "bearer_token" not in execute.call_args.kwargs
 
 
-def test_missing_bearer_returns_the_ai_operation_error_report(monkeypatch):
+def test_missing_auth_token_returns_the_ai_operation_error_report(monkeypatch):
     execute = Mock(wraps=ai_triage.execute)
     enqueue = Mock()
     monkeypatch.setattr(ai_triage, "is_available", lambda: True)
@@ -121,7 +120,7 @@ def test_missing_bearer_returns_the_ai_operation_error_report(monkeypatch):
     monkeypatch.setattr("howler.services.ai_service.enqueue_alerts", enqueue)
     monkeypatch.setattr(actions, "_get_operation", lambda _operation_id: ai_triage)
 
-    result = actions.execute("ai_triage", "*:*", make_user(), bearer_token=None)
+    result = actions.execute("ai_triage", "*:*", make_user(), auth_token=None)
 
     assert result == [
         {

@@ -1,6 +1,5 @@
 from collections import defaultdict
 from collections.abc import Callable, Mapping
-from importlib.util import find_spec
 from typing import Any, Literal, Optional, TypedDict, overload
 
 from cryptography.exceptions import InvalidTag
@@ -80,11 +79,6 @@ def get_action(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...  # codeql
 def get_action(id: str, as_odm=False, version=False, user: User | None = None):
     """Retrieve an action from the datastore as an ODM object or dictionary."""
     return datastore().action.get_if_exists(key=id, as_obj=as_odm, version=version)
-
-
-def _is_builtin_operation(operation_id: str) -> bool:
-    """Return whether an operation is implemented by Howler's built-in actions package."""
-    return find_spec(f"howler.actions.{operation_id}") is not None
 
 
 def _parse_and_audit_operation(
@@ -389,14 +383,11 @@ def _execute_bulk_operation(
     if not user:
         raise NotImplementedError("Running actions without a user object is not currently supported")
 
-    if auth_token is not None and not _is_builtin_operation(operation.operation_id):
-        parsed_data["auth_token"] = auth_token
-
     report = actions.execute(
         operation_id=operation.operation_id,
         query=intersected_query,
         user=user,
-        **({"bearer_token": auth_token} if auth_token else {}),
+        auth_token=auth_token,
         **parsed_data,
     )
 
