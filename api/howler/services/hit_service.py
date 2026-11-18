@@ -361,27 +361,27 @@ def exists(id: str) -> bool:
 
 
 @overload
-def get_hit(
-    id: str, as_odm: Literal[True], version: Literal[True], user: User | None = None
-) -> tuple[Hit, str]: ...  # codeql[py/ineffectual-statement]
+def get_hit(id: str, as_odm: Literal[True], version: Literal[True], user: User | None = None) -> tuple[Hit, str]:
+    pass
 
 
 @overload
-def get_hit(
-    id: str, as_odm: Literal[True], version: Literal[False] = False, user: User | None = None
-) -> Hit: ...  # codeql[py/ineffectual-statement]
+def get_hit(id: str, as_odm: Literal[True], version: Literal[False] = False, user: User | None = None) -> Hit:
+    pass
 
 
 @overload
 def get_hit(
     id: str, as_odm: Literal[False], version: Literal[True], user: User | None = None
-) -> tuple[dict[str, Any], str]: ...  # codeql[py/ineffectual-statement]
+) -> tuple[dict[str, Any], str]:
+    pass
 
 
 @overload
 def get_hit(
     id: str, as_odm: Literal[False] = False, version: Literal[False] = False, user: User | None = None
-) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
+) -> dict[str, Any]:
+    pass
 
 
 @tracer.start_as_current_span(f"{__name__}.get_hit")

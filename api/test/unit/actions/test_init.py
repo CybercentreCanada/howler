@@ -204,6 +204,26 @@ def test_legacy_specification_loads_warns_once_and_forbids_extras(caplog):
             specification.validate_arguments({"plugin_value": "enabled", extra_key: "not permitted"})
 
 
+@pytest.mark.parametrize("typed_step", [False, True])
+def test_legacy_specification_infers_optional_arguments(typed_step):
+    step = {"args": {}, "optional_args": ["prompt"], "options": {"prompt": ["Summarize"]}}
+    specification = ActionSpecification.from_legacy(
+        {
+            "id": "legacy-optional",
+            "title": "Legacy optional argument",
+            "description": {"short": "Legacy plugin operation"},
+            "roles": ["admin"],
+            "steps": [ActionStep.model_validate(step) if typed_step else step],
+        }
+    )
+
+    assert specification.to_ui_dict()["steps"] == [step]
+    assert specification.validate_arguments({}).model_dump(exclude_unset=True) == {}
+    assert specification.validate_arguments({"prompt": "Summarize"}).model_dump(exclude_unset=True) == {
+        "prompt": "Summarize"
+    }
+
+
 @pytest.mark.parametrize("model_options", [{}, {"arguments": None}, {"arguments": ActionArguments}])
 def test_argument_free_specification(model_options):
     specification = ActionSpecification.model_validate(

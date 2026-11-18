@@ -286,23 +286,12 @@ class ActionSpecification(BaseModel):
     @classmethod
     def from_legacy(cls, specification: Mapping[str, Any]) -> "ActionSpecification":
         """Build a specification from the dict format, deriving allowed argument names from its steps."""
+        steps = TypeAdapter(list[ActionStep]).validate_python(specification.get("steps", []))
         field_definitions: dict[str, Any] = {}
-        raw_steps = specification.get("steps")
-        if isinstance(raw_steps, list):
-            for raw_step in raw_steps:
-                step_args: Any = (
-                    raw_step.args
-                    if isinstance(raw_step, ActionStep)
-                    else raw_step.get("args")
-                    if isinstance(raw_step, Mapping)
-                    else None
-                )
-                if not isinstance(step_args, Mapping):
-                    continue
-
-                for arg_name in step_args:
-                    if isinstance(arg_name, str) and not arg_name.startswith("_") and arg_name not in field_definitions:
-                        field_definitions[arg_name] = (Any, None)
+        for step in steps:
+            for arg_name in (*step.args, *(step.optional_args or [])):
+                if not arg_name.startswith("_"):
+                    field_definitions[arg_name] = (Any, None)
 
         spec_id = specification.get("id")
         model_name = f"{spec_id}_Arguments" if isinstance(spec_id, str) and spec_id else "InferredActionArguments"
@@ -311,7 +300,7 @@ class ActionSpecification(BaseModel):
             __base__=ActionArguments,
             **field_definitions,
         )
-        return cls.model_validate({**specification, "arguments": arguments_model})
+        return cls.model_validate({**specification, "steps": steps, "arguments": arguments_model})
 
     def validate_arguments(self, data: Mapping[str, Any]) -> ActionArguments:
         """Validate the arguments an operation is executed with."""
