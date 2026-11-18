@@ -111,8 +111,7 @@ def test_lucene_wildcard_with_spaces(datastore: HowlerDatastore):
         es_result = datastore.hit.search(f"({query}) AND howler.id:{powershell_hit.howler.id}", rows=0)["total"] > 0
         lucene_result = lucene_service.match(query, data)
         assert lucene_result == es_result, (
-            f"lucene_service.match returned {lucene_result} but Elasticsearch returned {es_result}"
-            f" for query: {query}"
+            f"lucene_service.match returned {lucene_result} but Elasticsearch returned {es_result} for query: {query}"
         )
 
 
@@ -179,3 +178,34 @@ def test_lucene_and_not(datastore: HowlerDatastore):
                 f" for query: {query}"
                 f" (hit labels.assignments={test_hit.howler.labels.assignments})"
             )
+
+
+def test_lucene_case_sensitivity_and_negative_ranges(datastore: HowlerDatastore):
+    """Regression test for field case-sensitivity, missing fields, zero values, and negative float ranges."""
+    test_hit: Hit = random_model_obj(cast(Model, Hit))
+    test_hit.threat.indicator.provider = "To"
+    test_hit.howler.analytic = "Exploit Patcher"
+    test_hit.labels["env_t"] = "prod"
+    test_hit.event.risk_score = -440990.3408391987
+    test_hit.event.count = 0
+    test_hit.destination.user.name = None
+    test_hit.destination.nat.port = None
+    datastore.hit.save(test_hit.howler.id, test_hit)
+    datastore.hit.commit()
+
+    data = test_hit.as_primitives()
+    for query in [
+        'threat.indicator.provider:("To" AND "to")',
+        'threat.indicator.provider:"To"',
+        'threat.indicator.provider:"to"',
+        'howler.analytic:("Exploit Patcher" AND "exploit patcher")',
+        "labels.env_t:PROD",
+        r"event.risk_score:\-440990.3408391987",
+        "event.risk_score:[-500000 TO -400000]",
+        "event.risk_score:[* TO 0]",
+        "event.count:[0 TO 10]",
+        "destination.user.name:*",
+        "destination.nat.port:[0 TO 100]",
+    ]:
+        es_result = datastore.hit.search(f"({query}) AND howler.id:{test_hit.howler.id}", rows=0)["total"] > 0
+        assert lucene_service.match(query, data) == es_result, f"Mismatch for query: {query}"
