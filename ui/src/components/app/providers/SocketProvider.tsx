@@ -270,8 +270,8 @@ const SocketProvider: React.FC<PropsWithChildren> = ({ children }) => {
       socket.current.removeEventListener('error', onWsError);
       socket.current.removeEventListener('message', onMessageError);
 
+      // Detach from this socket, but keep subscriptions for the next authenticated connection.
       Object.values(listeners.current).forEach(l => socket.current!.removeEventListener('message', l));
-      listeners.current = {};
 
       window.removeEventListener('beforeunload', onBeforeUnload);
 

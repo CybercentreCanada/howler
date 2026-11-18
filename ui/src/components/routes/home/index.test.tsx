@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import SocketProvider, { SocketContext, Status } from 'components/app/providers/SocketProvider';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 const mockDispatchApi = vi.hoisted(() => vi.fn());
 const mockSetDashboard = vi.hoisted(() => vi.fn());
@@ -9,7 +10,6 @@ const mockSetUser = vi.hoisted(() => vi.fn());
 const mockAddToAppBar = vi.hoisted(() => vi.fn());
 const mockRemoveFromAppBar = vi.hoisted(() => vi.fn());
 const appBarContextToken = vi.hoisted(() => ({ name: 'app-bar-context' }));
-const socketContextToken = vi.hoisted(() => ({ name: 'socket-context' }));
 const mockAddListener = vi.hoisted(() => vi.fn());
 const mockRemoveListener = vi.hoisted(() => vi.fn());
 const mockGetUserNotifications = vi.hoisted(() => vi.fn());
@@ -101,10 +101,6 @@ vi.mock('components/app/providers/AppBarProvider', () => ({
   AppBarContext: appBarContextToken
 }));
 
-vi.mock('components/app/providers/SocketProvider', () => ({
-  SocketContext: socketContextToken
-}));
-
 vi.mock('components/elements/addons/buttons/CustomButton', () => ({
   default: ({ children, onClick, disabled }: any) => (
     <button disabled={disabled} onClick={onClick}>
@@ -118,6 +114,7 @@ vi.mock('components/hooks/useMyApi', () => ({
 }));
 
 vi.mock('components/hooks/useMyLocalStorage', () => ({
+  default: () => ({ get: () => 'test-app-token' }),
   useMyLocalStorageItem: () => ['2024-01-01T00:00:00', mockSetLastViewed]
 }));
 
@@ -141,9 +138,6 @@ vi.mock('react', async importOriginal => {
     useContext: (context: any) => {
       if (context === appBarContextToken) {
         return { addToAppBar: mockAddToAppBar, removeFromAppBar: mockRemoveFromAppBar };
-      }
-      if (context === socketContextToken) {
-        return { addListener: mockAddListener, removeListener: mockRemoveListener };
       }
       return actual.useContext(context);
     }
@@ -202,6 +196,24 @@ vi.mock('./ViewRefresh', () => ({
 
 import Home from './index';
 
+const renderHome = () =>
+  render(
+    <SocketContext.Provider
+      value={{
+        addListener: mockAddListener,
+        removeListener: mockRemoveListener,
+        emit: vi.fn(),
+        status: Status.CLOSED,
+        reconnect: vi.fn(),
+        open: false,
+        viewers: {},
+        fetchViewers: vi.fn()
+      }}
+    >
+      <Home />
+    </SocketContext.Provider>
+  );
+
 describe('Home', () => {
   beforeEach(() => {
     currentUser = {
@@ -228,7 +240,7 @@ describe('Home', () => {
 
   it('renders the empty state and updated-hit alert actions', async () => {
     searchResult = { total: 2 };
-    render(<Home />);
+    renderHome();
 
     await waitFor(() => expect(screen.getByText('route.home.alert.updated.description:2')).toBeInTheDocument());
     expect(screen.getByText('route.home.title')).toBeInTheDocument();
@@ -249,7 +261,7 @@ describe('Home', () => {
       ]
     };
 
-    render(<Home />);
+    renderHome();
 
     await waitFor(() => expect(screen.getByText('view:view-1')).toBeInTheDocument());
     expect(screen.getByText('analytic:a1:created')).toBeInTheDocument();
@@ -295,7 +307,7 @@ describe('Home', () => {
   it('loads the unread notification count and passes it to the app bar settings', async () => {
     notificationResult = { unread: 4 };
 
-    render(<Home />);
+    renderHome();
 
     await waitFor(() => expect(latestHomeSettings().props.unreadNotifications).toBe(4));
     expect(mockGetUserNotifications).toHaveBeenCalledWith({ rows: 1 }, expect.any(AbortSignal));
@@ -308,7 +320,7 @@ describe('Home', () => {
   it('keeps the unread notification count at zero when it cannot be loaded', async () => {
     notificationResult = undefined;
 
-    render(<Home />);
+    renderHome();
 
     await waitFor(() =>
       expect(mockDispatchApi).toHaveBeenCalledWith('unread-notifications-request', expect.anything())
@@ -319,7 +331,7 @@ describe('Home', () => {
   it('increments the unread notification count for unread socket notifications only', async () => {
     notificationResult = { unread: 1 };
 
-    render(<Home />);
+    renderHome();
 
     await waitFor(() => expect(latestHomeSettings().props.unreadNotifications).toBe(1));
     expect(mockAddListener).toHaveBeenCalledWith(expect.stringMatching(/^home-notifications-/), expect.any(Function));
@@ -336,7 +348,7 @@ describe('Home', () => {
   it('applies unread notification changes reported by the app bar settings', async () => {
     notificationResult = { unread: 3 };
 
-    render(<Home />);
+    renderHome();
 
     await waitFor(() => expect(latestHomeSettings().props.unreadNotifications).toBe(3));
 
@@ -348,7 +360,7 @@ describe('Home', () => {
   });
 
   it('removes its notification socket listener on unmount', async () => {
-    const { unmount } = render(<Home />);
+    const { unmount } = renderHome();
 
     await waitFor(() => expect(mockAddListener).toHaveBeenCalled());
     const key = mockAddListener.mock.calls.at(-1)![0];
@@ -356,5 +368,64 @@ describe('Home', () => {
     unmount();
 
     expect(mockRemoveListener).toHaveBeenCalledWith(key);
+  });
+
+  it('resyncs missed notifications and resumes live updates without remounting on reconnect', async () => {
+    const sockets: TestSocket[] = [];
+    class TestSocket extends EventTarget {
+      constructor() {
+        super();
+        sockets.push(this);
+      }
+      send = vi.fn();
+      close = vi.fn();
+
+      receive(data: object) {
+        this.dispatchEvent(new MessageEvent('message', { data: JSON.stringify(data) }));
+      }
+
+      authenticate() {
+        this.dispatchEvent(new Event('open'));
+        this.receive({ status: 200, message: 'Authenticated' });
+      }
+    }
+
+    vi.stubGlobal('WebSocket', TestSocket);
+    onTestFinished(() => {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    });
+
+    notificationResult = { unread: 2 };
+    render(
+      <SocketProvider>
+        <Home />
+      </SocketProvider>
+    );
+
+    await act(async () => sockets[0].authenticate());
+    expect(latestHomeSettings().props.unreadNotifications).toBe(2);
+
+    vi.useFakeTimers();
+    act(() => {
+      sockets[0].dispatchEvent(new CloseEvent('close', { code: 1006 }));
+    });
+    notificationResult = { unread: 4 };
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    vi.useRealTimers();
+    expect(latestHomeSettings().props.unreadNotifications).toBe(2);
+
+    await act(async () => sockets[1].authenticate());
+    expect(latestHomeSettings().props.unreadNotifications).toBe(4);
+
+    act(() => sockets[0].receive({ type: 'notification', read: false }));
+    expect(latestHomeSettings().props.unreadNotifications).toBe(4);
+
+    act(() => sockets[1].receive({ type: 'notification', read: false }));
+    expect(latestHomeSettings().props.unreadNotifications).toBe(5);
+
+    act(() => {
+      sockets[1].dispatchEvent(new CloseEvent('close', { code: 1000 }));
+    });
   });
 });

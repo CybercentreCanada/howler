@@ -43,7 +43,7 @@ const Home: FC = () => {
   const { dispatchApi } = useMyApi();
   const { user, setUser } = useAppUser<HowlerUser>();
   const { addToAppBar, removeFromAppBar } = useContext(AppBarContext);
-  const { addListener, removeListener } = useContext(SocketContext);
+  const { addListener, open, removeListener } = useContext(SocketContext);
   const notificationListenerKey = `home-notifications-${useId()}`;
 
   const { setDashboard, setRefreshRate: setRefreshRateBackend } = useMyUserFunctions();
@@ -64,6 +64,7 @@ const Home: FC = () => {
   const [refreshRate, setRefreshRate] = useState(user.refresh_rate ?? 15);
   const [refreshTick, setRefreshTick] = useState<symbol>();
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const hasConnectedRef = useRef(false);
   const viewRefreshRef = useRef<ViewRefreshHandle>(null);
   const refreshRateRef = useRef(refreshRate);
   const refreshableCardIdsRef = useRef<string[]>([]);
@@ -211,6 +212,12 @@ const Home: FC = () => {
   }, [addToAppBar, handleRefresh, removeFromAppBar]);
 
   useEffect(() => {
+    // Load on mount even without a socket, then resync when it opens rather than when it drops.
+    if (!open && hasConnectedRef.current) {
+      return;
+    }
+    hasConnectedRef.current = open;
+
     const controller = new AbortController();
 
     const loadUnreadNotifications = async () => {
@@ -229,7 +236,7 @@ const Home: FC = () => {
     return () => {
       controller.abort();
     };
-  }, [dispatchApi]);
+  }, [dispatchApi, open]);
 
   useEffect(() => {
     addListener(notificationListenerKey, (data: RecievedDataType) => {
