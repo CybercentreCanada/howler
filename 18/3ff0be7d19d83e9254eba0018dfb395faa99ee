@@ -1,0 +1,32 @@
+api/howler/actions/ai_triage.py
+  s_8e7994340c1a6d::t_678491baeb0443 62-64
+api/test/unit/ai_triage/test_service.py
+  s_8e7994340c1a6d::t_5139bceaaa6353 194-208
+documentation/docs/installation/ai_triage.md
+  s_8e7994340c1a6d::t_658c486e9ab8c4 57-58
+  s_8e7994340c1a6d::t_660702d12fcc22 34-36,74-75
+api/test/unit/ai_triage/test_transport.py
+  s_8e7994340c1a6d::t_5139bceaaa6353 36-42,51,204,211-221
+api/howler/services/ai_service.py
+  s_8e7994340c1a6d::t_6591cf22b36d4a 237
+helm/values.yaml
+  s_8e7994340c1a6d::t_660702d12fcc22 227-241
+api/howler/odm/models/config.py
+  s_8e7994340c1a6d::t_8e4a078dc956b5 630-640
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "183ff0be7d19d83e9254eba0018dfb395faa99ee",
+  "prompts": {},
+  "sessions": {
+    "s_8e7994340c1a6d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e109c9347ffeh6xYgjXpuw1e9b",
+        "model": "us.anthropic.claude-sonnet-5-5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
