@@ -2,9 +2,10 @@
 
 import json
 import os
-from typing import Any, TypedDict, cast
+from typing import Any, cast
 
 import requests
+from pydantic import BaseModel
 from urllib3.exceptions import ReadTimeoutError
 
 from howler.common.loader import datastore
@@ -37,7 +38,7 @@ class AITransportError(Exception):
         self.reason = reason
 
 
-class AIAlertJob(TypedDict):
+class AIAlertJob(BaseModel):
     """Minimal reference and trusted initiating context for one alert."""
 
     hit_id: str
@@ -59,6 +60,7 @@ def get_queue() -> NamedQueue[AIAlertJob]:
     if _queue is None:
         _queue = NamedQueue(
             AI_TRIAGE_QUEUE_NAME,
+            model=AIAlertJob,
             host=config.core.redis.persistent.host,
             port=config.core.redis.persistent.port,
             private=False,
@@ -140,12 +142,7 @@ def enqueue_alerts(
     encrypted_token = None if config.core.ai.api_key else cast(str, auth_service.encrypt_token(bearer_token))
     safe_prompt = prompt.strip() if isinstance(prompt, str) and prompt.strip() else None
     jobs: list[AIAlertJob] = [
-        {
-            "hit_id": str(hit_id),
-            "uname": str(user.uname),
-            "bearer_token": encrypted_token,
-            "prompt": safe_prompt,
-        }
+        AIAlertJob(hit_id=hit_id, uname=user.uname, bearer_token=encrypted_token, prompt=safe_prompt)
         for hit_id in targets
     ]
     get_queue().push(*jobs)

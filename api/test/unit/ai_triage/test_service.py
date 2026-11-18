@@ -218,8 +218,8 @@ def test_enqueue_creates_minimal_jobs_and_normalizes_prompt(settings, monkeypatc
 
     assert count == 2
     queue.push.assert_called_once_with(
-        {"hit_id": "hit-1", "uname": "analyst", "bearer_token": "ciphertext", "prompt": "Be concise"},
-        {"hit_id": "hit-2", "uname": "analyst", "bearer_token": "ciphertext", "prompt": "Be concise"},
+        service.AIAlertJob(hit_id="hit-1", uname="analyst", bearer_token="ciphertext", prompt="Be concise"),
+        service.AIAlertJob(hit_id="hit-2", uname="analyst", bearer_token="ciphertext", prompt="Be concise"),
     )
     assert "event" not in repr(queue.push.call_args)
     assert "trusted-token" not in repr(queue.push.call_args)
@@ -236,7 +236,9 @@ def test_enqueue_with_provider_api_key_stores_no_credentials(settings, monkeypat
 
     assert service.enqueue_alerts("*:*", make_user(), bearer_token, max_hits=10) == 1
 
-    queue.push.assert_called_once_with({"hit_id": "hit-1", "uname": "analyst", "bearer_token": None, "prompt": None})
+    queue.push.assert_called_once_with(
+        service.AIAlertJob(hit_id="hit-1", uname="analyst", bearer_token=None, prompt=None)
+    )
     encrypt.assert_not_called()
     assert "provider-secret" not in repr(queue.push.call_args)
     assert "incoming-token" not in repr(queue.push.call_args)
@@ -275,7 +277,7 @@ def test_enqueue_ignores_blank_or_non_string_prompt(settings, monkeypatch, promp
 
     service.enqueue_alerts("*:*", make_user(), "token", prompt=prompt, max_hits=10)
 
-    assert queue.push.call_args.args[0]["prompt"] is None
+    assert queue.push.call_args.args[0].prompt is None
 
 
 @pytest.mark.parametrize(("max_hits", "count"), [(10, 10), (10, 11), (50, 50), (50, 51)])

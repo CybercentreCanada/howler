@@ -1,7 +1,6 @@
 """Concurrent consumers for per-alert AI triage jobs."""
 
 import threading
-from typing import Any
 
 from apscheduler.schedulers.base import BaseScheduler
 
@@ -15,15 +14,15 @@ logger = get_logger(__file__)
 _threads: dict[int, threading.Thread] = {}
 
 
-def _process(job: Any) -> None:
+def _process(job: ai_service.AIAlertJob) -> None:
     """Process one alert once; failures are logged safely and discarded."""
     hit_id = "unknown"
 
     try:
-        hit_id = job["hit_id"]
-        uname = job["uname"]
-        encrypted_token = job["bearer_token"]
-        prompt = job["prompt"]
+        hit_id = job.hit_id
+        uname = job.uname
+        encrypted_token = job.bearer_token
+        prompt = job.prompt
         user = user_service.get_user(uname, as_odm=True, version=False)
         if user is None or not user.is_active or not (set(ROLES) | {"admin"}) & set(user.type):
             logger.info("Discarding AI triage job because its initiator is no longer authorized")

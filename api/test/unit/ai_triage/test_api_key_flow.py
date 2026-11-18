@@ -10,6 +10,7 @@ from howler.actions import ai_triage
 from howler.config import CLASSIFICATION, config
 from howler.cronjobs import ai_triage_worker
 from howler.odm.models.config import AITriage
+from howler.remote.datatypes.queues import named
 from howler.services import action_service, ai_service, auth_service, hit_service, user_service
 
 from .support import make_hit, make_user
@@ -23,8 +24,13 @@ def test_dispatch_and_worker_use_provider_key_without_queueing_credentials(monke
     monkeypatch.setattr(CLASSIFICATION, "enforce", False)
     monkeypatch.setattr(actions, "_get_operation", lambda _operation_id: ai_triage)
     monkeypatch.setattr(ai_service, "_eligible_targets", lambda *_args: ["hit-1"])
-    queue = Mock()
-    monkeypatch.setattr(ai_service, "get_queue", lambda: queue)
+    redis_client = MagicMock()
+    client_factory = Mock(return_value=redis_client)
+    monkeypatch.setattr(named, "get_client", client_factory)
+    monkeypatch.setattr(ai_service, "_queue", None)
+    queue = ai_service.get_queue()
+    assert ai_service.get_queue() is queue
+    client_factory.assert_called_once_with(config.core.redis.persistent.host, config.core.redis.persistent.port, False)
     encrypt = Mock()
     decrypt = Mock()
     monkeypatch.setattr(auth_service, "encrypt_token", encrypt)
@@ -46,8 +52,13 @@ def test_dispatch_and_worker_use_provider_key_without_queueing_credentials(monke
         report = actions.execute("ai_triage", "*:*", user)
 
     assert report[0]["outcome"] == "success"
-    job = queue.push.call_args.args[0]
-    assert job["bearer_token"] is None
+    redis_client.rpush.assert_called_once()
+    payload = redis_client.rpush.call_args.args[2]
+    redis_client.blpop.return_value = (queue.name.encode(), payload.encode())
+    job = queue.pop(timeout=1)
+    assert isinstance(job, ai_service.AIAlertJob)
+    assert job.bearer_token is None
+    redis_client.blpop.assert_called_once_with(queue.name, 1)
     assert "provider-secret" not in repr(job)
     assert "incoming-token" not in repr(job)
     encrypt.assert_not_called()
@@ -69,7 +80,7 @@ def test_worker_discards_key_backed_job_if_key_was_removed(monkeypatch, caplog):
     monkeypatch.setattr(ai_service, "save_ai_lead", save)
     monkeypatch.setattr(ai_service.requests, "Session", session)
 
-    ai_triage_worker._process({"hit_id": "hit-1", "uname": "analyst", "bearer_token": None, "prompt": None})
+    ai_triage_worker._process(ai_service.AIAlertJob(hit_id="hit-1", uname="analyst", bearer_token=None, prompt=None))
 
     assert "requires a provider credential" in caplog.text
     session.assert_not_called()
@@ -139,7 +150,7 @@ def test_triggered_action_uses_decrypted_token_without_request_context(monkeypat
 
     queue.push.assert_called_once()
     job = queue.push.call_args.args[0]
-    assert auth_service.decrypt_token(job["bearer_token"]) == "trusted-token"
+    assert auth_service.decrypt_token(job.bearer_token) == "trusted-token"
     assert "persisted-token" not in repr(job)
 
 
@@ -174,7 +185,7 @@ def test_bearer_fallback_is_encrypted_and_forwarded(monkeypatch, token):
     assert report[0]["outcome"] == "success"
     job = queue.push.call_args.args[0]
     assert token not in repr(job)
-    assert auth_service.decrypt_token(job["bearer_token"]) == token
+    assert auth_service.decrypt_token(job.bearer_token) == token
 
     ai_triage_worker._process(job)
 

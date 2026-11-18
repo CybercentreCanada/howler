@@ -22,8 +22,138 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import redis
+from pydantic import BaseModel, ValidationError
+from pydantic_core import PydanticSerializationError
 
 from howler.remote.datatypes import decode, get_client, get_pool, now_as_iso, reply_queue_name, retry_call
+from howler.remote.datatypes.queues.named import NamedQueue, select
+
+
+class QueueJob(BaseModel):
+    name: str
+    count: int
+
+
+@pytest.fixture
+def named_queue(monkeypatch):
+    client = MagicMock()
+    monkeypatch.setattr("howler.remote.datatypes.queues.named.get_client", lambda *_args: client)
+    return NamedQueue("test-jobs", model=QueueJob, ttl=60), client
+
+
+@pytest.mark.parametrize("operation", ["blocking", "nonblocking", "peek", "batch", "select"])
+@pytest.mark.parametrize("typed", [True, False], ids=["model", "json"])
+def test_named_queue_decodes_with_constructor_model(named_queue, operation, typed):
+    typed_queue, client = named_queue
+    queue = typed_queue if typed else NamedQueue("test-jobs")
+    payload = b'{"name":"job","count":2}'
+    expected = QueueJob(name="job", count=2) if typed else {"name": "job", "count": 2}
+    client.blpop.return_value = (b"test-jobs", payload)
+    client.lpop.return_value = [payload] if operation == "batch" else payload
+    client.lrange.return_value = [payload]
+
+    if operation == "blocking":
+        assert queue.pop(timeout=3) == expected
+        client.blpop.assert_called_once_with("test-jobs", 3)
+    elif operation == "nonblocking":
+        assert queue.pop(blocking=False) == expected
+        client.lpop.assert_called_once_with("test-jobs")
+    elif operation == "peek":
+        assert queue.peek_next() == expected
+        client.lrange.assert_called_once_with("test-jobs", 0, 0)
+    elif operation == "batch":
+        assert queue.pop_batch(2) == [expected]
+        client.lpop.assert_called_once_with("test-jobs", 2)
+    else:
+        assert select(queue, timeout=3) == ("test-jobs", expected)
+        client.blpop.assert_called_once_with(["test-jobs"], 3)
+
+
+@pytest.mark.parametrize("operation", ["blocking", "nonblocking", "peek", "batch", "select"])
+def test_named_queue_empty_reads(named_queue, operation):
+    queue, client = named_queue
+    client.blpop.return_value = None
+    client.lpop.return_value = None
+    client.lrange.return_value = []
+
+    if operation == "blocking":
+        assert queue.pop(timeout=1) is None
+    elif operation == "nonblocking":
+        assert queue.pop(blocking=False) is None
+    elif operation == "peek":
+        assert queue.peek_next() is None
+    elif operation == "batch":
+        assert queue.pop_batch(2) == []
+    else:
+        assert select(queue, timeout=1) is None
+
+
+@pytest.mark.parametrize("payload", [b"not-json", b'{"name":"job","count":"invalid"}', b'{"name":"job"}'])
+@pytest.mark.parametrize("operation", ["blocking", "nonblocking", "peek", "batch", "select"])
+def test_named_queue_rejects_invalid_model_payloads(named_queue, operation, payload):
+    queue, client = named_queue
+    client.blpop.return_value = (b"test-jobs", payload)
+    client.lpop.return_value = [payload] if operation == "batch" else payload
+    client.lrange.return_value = [payload]
+
+    with pytest.raises(ValidationError):
+        if operation == "blocking":
+            queue.pop(timeout=1)
+        elif operation == "nonblocking":
+            queue.pop(blocking=False)
+        elif operation == "peek":
+            queue.peek_next()
+        elif operation == "batch":
+            queue.pop_batch(2)
+        else:
+            select(queue, timeout=1)
+
+
+@pytest.mark.parametrize("typed", [True, False], ids=["model", "json"])
+def test_named_queue_push_and_unpop_round_trip(named_queue, typed):
+    typed_queue, client = named_queue
+    queue = typed_queue if typed else NamedQueue("test-jobs", ttl=60)
+    first = QueueJob(name="first", count=1) if typed else {"name": "first", "count": 1}
+    second = QueueJob(name="second", count=2) if typed else {"name": "second", "count": 2}
+
+    queue.push(first, second)
+
+    payloads = client.rpush.call_args.args[1:]
+    assert [json.loads(payload) for payload in payloads] == [
+        {"name": "first", "count": 1},
+        {"name": "second", "count": 2},
+    ]
+    client.expire.assert_called_once_with("test-jobs", 60)
+    client.lpop.return_value = [payload.encode() for payload in payloads]
+    assert queue.pop_batch(2) == [first, second]
+
+    queue.unpop(first, second)
+
+    assert [json.loads(call.args[1]) for call in client.lpush.call_args_list] == [
+        {"name": "first", "count": 1},
+        {"name": "second", "count": 2},
+    ]
+    client.lpop.return_value = client.lpush.call_args.args[1].encode()
+    assert queue.pop(blocking=False) == second
+    client.expire.assert_called_once()
+
+
+def test_named_queue_rejects_wrong_model_before_push(named_queue):
+    queue, client = named_queue
+
+    with pytest.raises(PydanticSerializationError):
+        queue.push("not a job")
+
+    client.rpush.assert_not_called()
+
+
+def test_named_queue_select_uses_selected_queue_model(named_queue):
+    queue, client = named_queue
+    other = NamedQueue("plain-json")
+    client.blpop.return_value = (b"test-jobs", b'{"name":"job","count":2}')
+
+    assert select(other, queue) == ("test-jobs", QueueJob(name="job", count=2))
+
 
 # ---------------------------------------------------------------------------
 # now_as_iso

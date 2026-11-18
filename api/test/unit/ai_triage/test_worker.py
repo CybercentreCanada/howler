@@ -10,7 +10,7 @@ from .support import make_hit, make_user
 
 
 def make_job(hit_id="hit-1"):
-    return {"hit_id": hit_id, "uname": "analyst", "bearer_token": "encrypted-token", "prompt": "Be concise"}
+    return ai_service.AIAlertJob(hit_id=hit_id, uname="analyst", bearer_token="encrypted-token", prompt="Be concise")
 
 
 def setup_worker(monkeypatch):
@@ -53,7 +53,7 @@ def test_worker_processes_job_without_queued_token(monkeypatch):
     decrypt = Mock()
     monkeypatch.setattr(auth_service, "decrypt_token", decrypt)
     job = make_job()
-    job["bearer_token"] = None
+    job.bearer_token = None
 
     ai_triage_worker._process(job)
 

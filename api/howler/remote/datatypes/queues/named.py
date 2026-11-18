@@ -3,6 +3,7 @@ import time
 from typing import Generic, Optional, TypeVar
 
 import redis
+from pydantic import BaseModel, TypeAdapter
 
 from howler.common.exceptions import HowlerTypeError
 from howler.remote.datatypes import get_client, retry_call
@@ -11,11 +12,26 @@ T = TypeVar("T")
 
 
 class NamedQueue(Generic[T]):
-    def __init__(self, name: str, host=None, port=None, private: bool = False, ttl: int = 0):
+    def __init__(
+        self, name: str, host=None, port=None, private: bool = False, ttl: int = 0, *, model: type[T] | None = None
+    ):
         self.c: redis.Redis | redis.StrictRedis | redis.RedisCluster = get_client(host, port, private)
         self.name: str = name
         self.ttl: int = ttl
         self.last_expire_time: float = 0
+        self._adapter: TypeAdapter[T] | None = TypeAdapter(model) if model is not None else None
+
+    def _deserialize(self, message: str | bytes) -> T:
+        if self._adapter is not None:
+            return self._adapter.validate_json(message)
+        return json.loads(message)
+
+    def _serialize(self, message: T) -> str:
+        if self._adapter is not None:
+            return self._adapter.dump_json(message, warnings="error").decode("utf-8")
+        if isinstance(message, BaseModel):
+            return message.model_dump_json()
+        return json.dumps(message)
 
     def __enter__(self):
         return self
@@ -43,15 +59,16 @@ class NamedQueue(Generic[T]):
         response = retry_call(self.c.lrange, self.name, 0, 0)
 
         if response:
-            return json.loads(response[0])
+            return self._deserialize(response[0])
         return None
 
-    def pop_batch(self, size) -> list[T]:
+    def pop_batch(self, size: int) -> list[T]:
         response = retry_call(self.c.lpop, self.name, size)
 
         if not response:
             return []
-        return [json.loads(r) for r in response]
+
+        return [self._deserialize(message) for message in response]
 
     def pop(self, blocking: bool = True, timeout: int = 0) -> Optional[T]:
         if blocking:
@@ -60,21 +77,22 @@ class NamedQueue(Generic[T]):
             response = retry_call(self.c.lpop, self.name)
 
         if not response:
-            return response
+            return None
 
         if blocking:
-            return json.loads(response[1])
+            return self._deserialize(response[1])
         else:
-            return json.loads(response)
+            return self._deserialize(response)
 
     def push(self, *messages: T):
-        retry_call(self.c.rpush, self.name, *[json.dumps(message) for message in messages])
+        raw_messages = [self._serialize(message) for message in messages]
+        retry_call(self.c.rpush, self.name, *raw_messages)
         self._conditional_expire()
 
     def unpop(self, *messages: T):
         """Put all messages passed back at the head of the FIFO queue."""
         for message in messages:
-            retry_call(self.c.lpush, self.name, json.dumps(message))
+            retry_call(self.c.lpush, self.name, self._serialize(message))
         self._conditional_expire()
 
 
@@ -91,4 +109,6 @@ def select(*queues, **kw):
     if not response:
         return response
 
-    return response[0].decode("utf-8"), json.loads(response[1])
+    name = response[0].decode("utf-8")
+    queue = next(queue for queue in queues if queue.name == name)
+    return name, queue._deserialize(response[1])
