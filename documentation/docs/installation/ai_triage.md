@@ -31,6 +31,9 @@ core:
       data, not instructions.
     timeout_seconds: 120
     max_concurrent_jobs: 4
+    max_hits_basic: 10
+    max_hits_advanced: 50
+    max_input_bytes: 200000
     excluded_input_fields:
       - howler.dossier
       - howler.log
@@ -51,8 +54,8 @@ removing the API key before a key-backed job is processed causes it to fail.
 ## Selection and processing
 
 Only unresolved alerts without an assessment are eligible. The request is
-rejected if it exceeds the fixed limit: 10 alerts for basic roles, or 50 for
-advanced/admin roles. Each queue item contains an alert ID, initiating username,
+rejected if it exceeds the configured limit: `max_hits_basic` alerts (default 10)
+for basic roles, or `max_hits_advanced` (default 50) for advanced/admin roles. Each queue item contains an alert ID, initiating username,
 optional prompt, and, only when no provider API key is configured, an encrypted
 Bearer token—not an alert or user snapshot. Provider API keys are never stored in
 the AI queue. Before processing, the worker reloads the user and alert,
@@ -68,7 +71,8 @@ the job system starts a consumer.
 timeout is the smaller of 10 seconds and `timeout_seconds`. These are not a
 total request deadline: DNS resolution or a provider that keeps sending data
 can extend a call and delay queued jobs. The combined system prompt and
-serialized alert content are limited to 200,000 UTF-8 bytes as a coarse safeguard,
+serialized alert content are limited to `max_input_bytes` UTF-8 bytes (default
+200,000) as a coarse safeguard,
 not an exact model-token limit; the provider enforces its own context window.
 Responses are buffered without a size limit. `max_concurrent_jobs` is the
 number of consumer threads **per Howler process running the job system**;

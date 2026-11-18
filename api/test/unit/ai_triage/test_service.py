@@ -191,6 +191,21 @@ def test_action_selects_role_limit_without_http_call(settings, monkeypatch, role
     generate.assert_not_called()
 
 
+def test_action_limits_are_configurable(settings, monkeypatch):
+    monkeypatch.setattr(settings, "max_hits_basic", 3)
+    monkeypatch.setattr(settings, "max_hits_advanced", 7)
+    enqueue = Mock(return_value=1)
+    monkeypatch.setattr(service, "enqueue_alerts", enqueue)
+    basic = make_user()
+    advanced = make_user()
+    advanced.type = ["user", "actionrunner_advanced"]
+
+    ai_triage.execute("event.kind:alert", basic, auth_token="qa-token")
+    ai_triage.execute("event.kind:alert", advanced, auth_token="qa-token")
+
+    assert [call.kwargs["max_hits"] for call in enqueue.call_args_list] == [3, 7]
+
+
 @pytest.mark.parametrize(
     ("count", "outcome", "title"),
     [(0, "skipped", "No matching alerts"), (None, "error", "Hit limit exceeded")],

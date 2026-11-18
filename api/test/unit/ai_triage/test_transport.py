@@ -33,7 +33,13 @@ def response(payload, status=200):
 
 
 def generate(
-    *, prompt="Conservative system prompt", alert=None, model="qa-model", endpoint="https://ai.invalid/chat", timeout=30
+    *,
+    prompt="Conservative system prompt",
+    alert=None,
+    model="qa-model",
+    endpoint="https://ai.invalid/chat",
+    timeout=30,
+    **settings,
 ):
     return transport.generate(
         AITriage(
@@ -42,6 +48,7 @@ def generate(
             model=model,
             headers={"X-Provider-Key": "private-key"},
             timeout_seconds=timeout,
+            **settings,
         ),
         "qa-access-token",
         prompt,
@@ -194,14 +201,24 @@ def test_large_response_is_accepted(provider):
 def test_input_limit_counts_message_content_not_request_envelope(provider, extra):
     session, factory = provider
     session.reply = response({"choices": [{"message": {"content": "opinion"}}]})
-    prompt = '"' * (transport.MAX_INPUT_BYTES - len(b"{}") + extra)
+    prompt = '"' * (AITriage().max_input_bytes - len(b"{}") + extra)
     if extra:
         with pytest.raises(transport.AITransportError, match="input exceeded the size limit"):
             generate(prompt=prompt, alert={}, model="model-name-does-not-count")
         factory.assert_not_called()
     else:
         assert generate(prompt=prompt, alert={}, model="model-name-does-not-count") == "opinion"
-        assert len(json.dumps(session.post.call_args.kwargs["json"]).encode()) > transport.MAX_INPUT_BYTES
+        assert len(json.dumps(session.post.call_args.kwargs["json"]).encode()) > AITriage().max_input_bytes
+
+
+def test_input_limit_is_configurable(provider):
+    session, factory = provider
+    session.reply = response({"choices": [{"message": {"content": "opinion"}}]})
+    assert generate(prompt="x" * 10, alert={}, max_input_bytes=12) == "opinion"
+    factory.reset_mock()
+    with pytest.raises(transport.AITransportError, match="input exceeded the size limit"):
+        generate(prompt="x" * 11, alert={}, max_input_bytes=12)
+    factory.assert_not_called()
 
 
 def test_input_limit_counts_unicode_utf8_bytes(provider):

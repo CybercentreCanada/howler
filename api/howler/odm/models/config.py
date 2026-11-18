@@ -627,6 +627,17 @@ class AITriage(BaseModel):
     )
     timeout_seconds: int = Field(default=120, ge=1, le=600, description="Provider read inactivity timeout in seconds")
     max_concurrent_jobs: int = Field(default=4, ge=1, description="Maximum concurrent alert triage jobs")
+    max_hits_basic: int = Field(
+        default=10, ge=1, description="Maximum alerts a basic user can send to AI triage in one action"
+    )
+    max_hits_advanced: int = Field(
+        default=50, ge=1, description="Maximum alerts an advanced user or admin can send to AI triage in one action"
+    )
+    max_input_bytes: int = Field(
+        default=200_000,
+        ge=1,
+        description="Maximum UTF-8 size in bytes of the system prompt plus serialized alert sent to the provider",
+    )
     excluded_input_fields: list[str] = Field(
         default_factory=lambda: ["howler.dossier", "howler.log"],
         description="Fields omitted from alert data sent to the provider",

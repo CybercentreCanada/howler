@@ -14,8 +14,6 @@ logger = get_logger(__file__)
 
 OPERATION_ID = "ai_triage"
 ROLES = ["automation_basic", "automation_advanced", "actionrunner_basic", "actionrunner_advanced"]
-MAX_HITS_BASIC = 10
-MAX_HITS_ADVANCED = 50
 SKIP_CENTRAL_LIMIT = True
 
 
@@ -61,7 +59,9 @@ def execute(
         if not config.core.ai.api_key and not auth_token:
             return report("error", "Authentication required", "AI triage requires a Bearer authorization token.")
 
-        max_hits = MAX_HITS_ADVANCED if ADVANCED_ROLES & set(user.type) else MAX_HITS_BASIC
+        max_hits = (
+            config.core.ai.max_hits_advanced if ADVANCED_ROLES & set(user.type) else config.core.ai.max_hits_basic
+        )
         count = ai_service.enqueue_alerts(query, user, auth_token, prompt=prompt, max_hits=max_hits)
     except Exception:
         # Redis and datastore errors can contain connection details or secrets.

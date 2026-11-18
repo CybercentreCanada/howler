@@ -1,7 +1,6 @@
 """Small shared helpers for the asynchronous AI triage action."""
 
 import json
-import os
 from typing import Any, cast
 
 import requests
@@ -22,7 +21,6 @@ from howler.utils.dict_utils import remove_path
 LEAD_OWNER = "howler.ai_triage"
 AI_TRIAGE_QUEUE_NAME = "howler.ai_triage.alerts"
 CAS_RETRIES = 3
-MAX_INPUT_BYTES = int(os.getenv("HOWLER_AI_MAX_INPUT_BYTES", "200000"))
 
 
 class AITransportError(Exception):
@@ -236,7 +234,7 @@ def generate(config: AITriage, token: str | None, system_prompt: str, alert_data
     credential = _provider_credential(config, token)
 
     alert_content = json.dumps(alert_data, ensure_ascii=False, separators=(",", ":"))
-    if len(system_prompt.encode("utf-8")) + len(alert_content.encode("utf-8")) > MAX_INPUT_BYTES:
+    if len(system_prompt.encode("utf-8")) + len(alert_content.encode("utf-8")) > config.max_input_bytes:
         raise AITransportError("Alert input exceeded the size limit")
 
     body = {
