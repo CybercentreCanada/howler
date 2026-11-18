@@ -1,0 +1,17 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5cc2851dc61bcfb79f4bd48ff4975b966460ea3a",
+  "prompts": {},
+  "sessions": {
+    "s_15290b0d50a379": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e163dbd47ffeLLjldj3TsfP6qw",
+        "model": "gemini-4-carbon"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
