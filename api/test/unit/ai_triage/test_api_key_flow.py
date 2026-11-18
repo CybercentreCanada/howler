@@ -53,7 +53,7 @@ def test_dispatch_and_worker_use_provider_key_without_queueing_credentials(monke
 
     assert report[0]["outcome"] == "success"
     redis_client.rpush.assert_called_once()
-    payload = redis_client.rpush.call_args.args[2]
+    payload = redis_client.rpush.call_args.args[1]
     redis_client.blpop.return_value = (queue.name.encode(), payload.encode())
     job = queue.pop(timeout=1)
     assert isinstance(job, ai_service.AIAlertJob)

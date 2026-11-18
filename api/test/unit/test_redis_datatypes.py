@@ -53,19 +53,24 @@ def test_named_queue_decodes_with_constructor_model(named_queue, operation, type
     client.lrange.return_value = [payload]
 
     if operation == "blocking":
-        assert queue.pop(timeout=3) == expected
+        result = queue.pop(timeout=3)
+        assert result == expected
         client.blpop.assert_called_once_with("test-jobs", 3)
     elif operation == "nonblocking":
-        assert queue.pop(blocking=False) == expected
+        result = queue.pop(blocking=False)
+        assert result == expected
         client.lpop.assert_called_once_with("test-jobs")
     elif operation == "peek":
-        assert queue.peek_next() == expected
+        result = queue.peek_next()
+        assert result == expected
         client.lrange.assert_called_once_with("test-jobs", 0, 0)
     elif operation == "batch":
-        assert queue.pop_batch(2) == [expected]
+        result = queue.pop_batch(2)
+        assert result == [expected]
         client.lpop.assert_called_once_with("test-jobs", 2)
     else:
-        assert select(queue, timeout=3) == ("test-jobs", expected)
+        result = select(queue, timeout=3)
+        assert result == ("test-jobs", expected)
         client.blpop.assert_called_once_with(["test-jobs"], 3)
 
 
@@ -77,15 +82,20 @@ def test_named_queue_empty_reads(named_queue, operation):
     client.lrange.return_value = []
 
     if operation == "blocking":
-        assert queue.pop(timeout=1) is None
+        result = queue.pop(timeout=1)
+        assert result is None
     elif operation == "nonblocking":
-        assert queue.pop(blocking=False) is None
+        result = queue.pop(blocking=False)
+        assert result is None
     elif operation == "peek":
-        assert queue.peek_next() is None
+        result = queue.peek_next()
+        assert result is None
     elif operation == "batch":
-        assert queue.pop_batch(2) == []
+        result = queue.pop_batch(2)
+        assert result == []
     else:
-        assert select(queue, timeout=1) is None
+        result = select(queue, timeout=1)
+        assert result is None
 
 
 @pytest.mark.parametrize("payload", [b"not-json", b'{"name":"job","count":"invalid"}', b'{"name":"job"}'])
@@ -125,7 +135,8 @@ def test_named_queue_push_and_unpop_round_trip(named_queue, typed):
     ]
     client.expire.assert_called_once_with("test-jobs", 60)
     client.lpop.return_value = [payload.encode() for payload in payloads]
-    assert queue.pop_batch(2) == [first, second]
+    popped = queue.pop_batch(2)
+    assert popped == [first, second]
 
     queue.unpop(first, second)
 
@@ -134,7 +145,8 @@ def test_named_queue_push_and_unpop_round_trip(named_queue, typed):
         {"name": "second", "count": 2},
     ]
     client.lpop.return_value = client.lpush.call_args.args[1].encode()
-    assert queue.pop(blocking=False) == second
+    last = queue.pop(blocking=False)
+    assert last == second
     client.expire.assert_called_once()
 
 
