@@ -367,31 +367,21 @@ def get_hit(
 
 
 @overload
-def get_hit(id: str, as_odm: Literal[True], version: Literal[False]) -> Hit: ...  # codeql[py/ineffectual-statement]
-
-
-@overload
-def get_hit(id: str, as_odm: Literal[True]) -> Hit: ...  # codeql[py/ineffectual-statement]
-
-
-@overload
-def get_hit(id: str) -> Hit: ...  # codeql[py/ineffectual-statement]
+def get_hit(
+    id: str, as_odm: Literal[True], version: Literal[False] = False, user: User | None = None
+) -> Hit: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
 def get_hit(
-    id: str, as_odm: Literal[False], version: Literal[True]
+    id: str, as_odm: Literal[False], version: Literal[True], user: User | None = None
 ) -> tuple[dict[str, Any], str]: ...  # codeql[py/ineffectual-statement]
 
 
 @overload
 def get_hit(
-    id: str, as_odm: Literal[False], version: Literal[False]
+    id: str, as_odm: Literal[False] = False, version: Literal[False] = False, user: User | None = None
 ) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
-
-
-@overload
-def get_hit(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
 
 
 @tracer.start_as_current_span(f"{__name__}.get_hit")

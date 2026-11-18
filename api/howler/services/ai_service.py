@@ -1,6 +1,7 @@
 """Small shared helpers for the asynchronous AI triage action."""
 
 import json
+import os
 from typing import Any, cast
 
 import requests
@@ -20,7 +21,7 @@ from howler.utils.dict_utils import remove_path
 
 LEAD_OWNER = "howler.ai_triage"
 AI_TRIAGE_QUEUE_NAME = "howler.ai_triage.alerts"
-CAS_RETRIES = 3
+AI_LEAD_RETRIES = int(os.getenv("AI_LEAD_RETRIES", "3"))
 
 
 class AITransportError(Exception):
@@ -75,7 +76,7 @@ def is_available() -> bool:
     return config.core.ai.enabled and (bool(config.core.ai.api_key) or config.system.encryption_key is not None)
 
 
-def _eligible_hit(hit: Hit) -> bool:
+def eligible_hit(hit: Hit) -> bool:
     """Check whether a hit is unresolved and has no assessment.
 
     Args:
@@ -303,13 +304,16 @@ def _lead_owner(lead: Lead) -> str | None:
     """
     if not lead.metadata:
         return None
+
     try:
         metadata = json.loads(lead.metadata)
     except json.JSONDecodeError:
         return None
     if not isinstance(metadata, dict):
         return None
+
     owner = metadata.get("owner")
+
     return owner if isinstance(owner, str) else None
 
 
@@ -344,9 +348,9 @@ def save_ai_lead(hit_id: str, user: User, content: str) -> bool:
         Whether the lead was saved. Returns ``False`` if the hit is missing, no longer
         eligible, or all optimistic-write retries conflict.
     """
-    for _ in range(CAS_RETRIES):
+    for _ in range(AI_LEAD_RETRIES):
         hit, version = hit_service.get_hit(hit_id, as_odm=True, version=True, user=user)
-        if hit is None or not _eligible_hit(hit):
+        if hit is None or not eligible_hit(hit):
             return False
 
         preserved = [lead for lead in hit.howler.dossier or [] if _lead_owner(lead) != LEAD_OWNER]
@@ -357,6 +361,7 @@ def save_ai_lead(hit_id: str, user: User, content: str) -> bool:
             hit_service.save_hit(hit, version=version)
         except VersionConflictException:
             continue
+
         return True
 
     return False

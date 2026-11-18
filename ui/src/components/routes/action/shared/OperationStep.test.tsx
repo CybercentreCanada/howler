@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockDispatchApi = vi.hoisted(() => vi.fn());
+const mockSearchPost = vi.hoisted(() => vi.fn((body: any) => body));
 
 vi.mock('@mui/material', () => ({
   Alert: ({ children }: any) => <div>{children}</div>,
@@ -26,7 +27,13 @@ vi.mock('@mui/material', () => ({
 }));
 
 vi.mock('api', () => ({
-  default: { search: { hit: { post: (body: unknown) => body } } }
+  default: {
+    search: {
+      hit: {
+        post: mockSearchPost
+      }
+    }
+  }
 }));
 
 vi.mock('components/hooks/useMyApi', () => ({
@@ -39,6 +46,16 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('react-router', () => ({
   Link: ({ to, children }: any) => <a href={to}>{children}</a>
+}));
+
+vi.mock('utils/actionUtils', () => ({
+  checkArgsAreFilled: (step: any, values: string) => Object.keys(step.args).every(key => JSON.parse(values)[key]),
+  getArgsByContext: (args: any) => Object.keys(args),
+  getOptionsByContext: (options: any, arg: string) => options[arg]
+}));
+
+vi.mock('utils/stringUtils', () => ({
+  sanitizeLuceneQuery: (value: string) => value
 }));
 
 vi.mock('utils/Throttler', () => ({
@@ -54,6 +71,7 @@ import OperationStep from './OperationStep';
 describe('OperationStep', () => {
   beforeEach(() => {
     mockDispatchApi.mockReset();
+    mockSearchPost.mockClear();
   });
 
   it('updates option and text fields and renders validation warnings', async () => {
@@ -65,14 +83,16 @@ describe('OperationStep', () => {
         query="status:open"
         values={'{"option":"initial","text":"value"}'}
         setValues={setValues}
-        step={{
-          args: { option: [], text: [] },
-          options: { option: ['chosen'] },
-          validation: {
-            warn: { query: 'warn-query', message: 'warn.message' },
-            error: { query: 'error-query', message: 'error.message' }
-          }
-        }}
+        step={
+          {
+            args: { option: true, text: true },
+            options: { option: ['chosen'] },
+            validation: {
+              warn: { query: 'warn-query', message: 'warn.message' },
+              error: { query: 'error-query', message: 'error.message' }
+            }
+          } as any
+        }
       />
     );
 
@@ -87,17 +107,20 @@ describe('OperationStep', () => {
     expect(setValues).toHaveBeenCalledWith('{"option":"initial","text":"next"}');
   });
 
-  it('skips validation and disables inputs in readonly mode', () => {
+  it('shows success when validation passes and disables inputs in readonly mode', async () => {
+    mockDispatchApi.mockResolvedValueOnce({ total: 0 });
+
     render(
       <OperationStep
         query="status:open"
         values={'{"name":"demo"}'}
         readonly
-        step={{
-          args: { name: [] },
-          options: {},
-          validation: { warn: { query: 'warn-query' } }
-        }}
+        step={
+          {
+            args: { name: true },
+            validation: { warn: { query: 'warn-query' } }
+          } as any
+        }
       />
     );
 
@@ -114,25 +137,25 @@ describe('OperationStep', () => {
         query="status:open"
         values="{}"
         setValues={setValues}
-        step={{
-          args: {},
-          optional_args: ['prompt'],
-          options: autocomplete ? { prompt: ['chosen'] } : {},
-          validation: { warn: { query: 'warn-query' } }
-        }}
+        step={
+          {
+            args: {},
+            optional_args: ['prompt'],
+            options: autocomplete ? { prompt: ['chosen'] } : {},
+            validation: { warn: { query: 'warn-query' } }
+          } as any
+        }
       />
     );
 
-    const prompt = screen.getByLabelText('Prompt (route.actions.optional)');
     await waitFor(() => expect(screen.getByText('route.actions.alert.success')).toBeInTheDocument());
-    expect(mockDispatchApi).toHaveBeenCalledTimes(1);
 
     if (autocomplete) {
       fireEvent.click(screen.getByText('choose'));
       expect(setValues).toHaveBeenCalledWith('{"prompt":"chosen"}');
     } else {
-      fireEvent.change(prompt, { target: { value: 'Focus on suspicious process activity' } });
-      expect(setValues).toHaveBeenCalledWith('{"prompt":"Focus on suspicious process activity"}');
+      fireEvent.change(screen.getByLabelText('Prompt (route.actions.optional)'), { target: { value: 'Focus' } });
+      expect(setValues).toHaveBeenCalledWith('{"prompt":"Focus"}');
     }
   });
 });

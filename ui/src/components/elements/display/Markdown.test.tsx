@@ -7,7 +7,10 @@ vi.mock('@tui/core', () => ({
 }));
 
 vi.mock('mermaid', () => ({
-  default: { initialize: vi.fn(), run: vi.fn() }
+  default: {
+    initialize: vi.fn(),
+    run: vi.fn()
+  }
 }));
 
 vi.mock('./Notebook', () => ({
@@ -30,15 +33,13 @@ describe('Markdown', () => {
   });
 
   it('renders untrusted markdown without raw HTML, images, or external links', () => {
-    const { container } = render(
-      <Markdown
-        untrusted
-        disableLinks
-        md={
-          '<img src="https://attacker.invalid/raw" onerror="alert(1)" />\n\n![remote](https://attacker.invalid/image)\n\n[external](https://attacker.invalid/page)\n\n[protocol relative](//evil.com)'
-        }
-      />
-    );
+    const md = [
+      '<img src="https://attacker.invalid/raw" onerror="alert(1)" />',
+      '![remote](https://attacker.invalid/image)',
+      '[external](https://attacker.invalid/page)',
+      '[protocol relative](//evil.com)'
+    ].join('\n\n');
+    const { container } = render(<Markdown untrusted disableLinks md={md} />);
 
     expect(container.querySelector('img')).toBeNull();
     expect(container.querySelector('[onerror]')).toBeNull();

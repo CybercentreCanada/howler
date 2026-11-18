@@ -16,37 +16,34 @@ _threads: dict[int, threading.Thread] = {}
 
 def _process(job: ai_service.AIAlertJob) -> None:
     """Process one alert once; failures are logged safely and discarded."""
-    hit_id = "unknown"
-
     try:
-        hit_id = job.hit_id
-        uname = job.uname
-        encrypted_token = job.bearer_token
-        prompt = job.prompt
-        user = user_service.get_user(uname, as_odm=True, version=False)
+        user = user_service.get_user(job.uname, as_odm=True, version=False)
         if user is None or not user.is_active or not (set(ROLES) | {"admin"}) & set(user.type):
             logger.info("Discarding AI triage job because its initiator is no longer authorized")
             return
 
-        token = auth_service.decrypt_token(encrypted_token) if encrypted_token is not None else None
-        hit, _version = hit_service.get_hit(hit_id, as_odm=True, version=True, user=user)
-        if hit is None or not ai_service._eligible_hit(hit):
+        token = auth_service.decrypt_token(job.bearer_token) if job.bearer_token is not None else None
+        hit = hit_service.get_hit(job.hit_id, as_odm=True, user=user)
+        if hit is None or not ai_service.eligible_hit(hit):
             logger.info("Discarding AI triage job because its alert is no longer eligible or accessible")
             return
 
         result = ai_service.generate(
             config.core.ai,
             token,
-            ai_service.build_system_prompt(prompt),
+            ai_service.build_system_prompt(job.prompt),
             ai_service.provider_input(hit),
         )
-        if not ai_service.save_ai_lead(hit_id, user, result):
-            logger.warning("AI triage result was not saved for alert %s", hit_id)
+
+        if not ai_service.save_ai_lead(job.hit_id, user, result):
+            logger.warning("AI triage result was not saved for alert %s", job.hit_id)
+
     except ai_service.AITransportError as exc:
-        logger.warning("AI triage provider failed for alert %s: %s", hit_id, exc.reason)
+        logger.warning("AI triage provider failed for alert %s: %s", job.hit_id, exc.reason)
+
     except Exception:
         # Exception messages may contain credentials, provider content, or infrastructure details.
-        logger.error("AI triage job failed for alert %s", hit_id)  # noqa: TRY400
+        logger.error("AI triage job failed for alert %s", job.hit_id)  # noqa: TRY400
 
 
 def run_worker() -> None:  # pragma: no cover – exercised through job processing helpers
@@ -54,9 +51,9 @@ def run_worker() -> None:  # pragma: no cover – exercised through job processi
     queue = ai_service.get_queue()
     while True:
         try:
-            job = queue.pop(blocking=True, timeout=1)
-            if job:
+            if job := queue.pop(blocking=True, timeout=1):
                 _process(job)
+
         except Exception:
             logger.exception("Unexpected error in AI triage consumer loop")
 

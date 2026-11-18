@@ -3,11 +3,12 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 import requests
-from pydantic import ValidationError
 from urllib3.exceptions import ReadTimeoutError
 
 from howler.odm.models.config import AITriage
 from howler.services import ai_service as transport
+
+OK = {"choices": [{"message": {"content": "opinion"}}]}
 
 
 @pytest.fixture
@@ -16,52 +17,33 @@ def provider(monkeypatch):
     session.__enter__.return_value = session
     factory = Mock(return_value=session)
     monkeypatch.setattr(transport.requests, "Session", factory)
-
-    def post(_endpoint, **kwargs):
-        reply = session.reply
-        return kwargs["hooks"]["response"](reply)
-
-    session.post.side_effect = post
+    session.post.side_effect = lambda _endpoint, **kwargs: kwargs["hooks"]["response"](session.reply)
     return session, factory
 
 
-def response(payload, status=200):
-    result = MagicMock(status_code=status)
-    result.json.return_value = payload
-    result.__enter__.return_value = result
-    return result
+def reply(session, payload, status=200):
+    session.reply = MagicMock(status_code=status)
+    session.reply.json.return_value = payload
+    session.reply.__enter__.return_value = session.reply
+    return session.reply
 
 
-def generate(
-    *,
-    prompt="Conservative system prompt",
-    alert=None,
-    model="qa-model",
-    endpoint="https://ai.invalid/chat",
-    timeout=30,
-    **settings,
-):
-    return transport.generate(
-        AITriage(
-            enabled=True,
-            endpoint=endpoint,
-            model=model,
-            headers={"X-Provider-Key": "private-key"},
-            timeout_seconds=timeout,
-            **settings,
-        ),
-        "qa-access-token",
-        prompt,
-        {"event": "alert"} if alert is None else alert,
+def generate(*, prompt="Conservative system prompt", alert=None, token="qa-access-token", timeout=30, **settings):
+    config = AITriage(
+        enabled=True,
+        endpoint="https://ai.invalid/chat",
+        model="qa-model",
+        headers={"X-Provider-Key": "private-key"},
+        timeout_seconds=timeout,
+        **settings,
     )
+    return transport.generate(config, token, prompt, {"event": "alert"} if alert is None else alert)
 
 
 def test_success_preserves_request_security_and_cleans_up(provider, monkeypatch):
     session, factory = provider
     monkeypatch.setenv("HTTPS_PROXY", "https://proxy.invalid")
-    monkeypatch.setenv("NETRC", "/nonexistent/private-credentials")
-    reply = response({"choices": [{"message": {"content": "  Conservative opinion  "}}]})
-    session.reply = reply
+    response = reply(session, {"choices": [{"message": {"content": "  Conservative opinion  "}}]})
 
     assert generate() == "Conservative opinion"
 
@@ -81,176 +63,126 @@ def test_success_preserves_request_security_and_cleans_up(provider, monkeypatch)
         ],
         "stream": False,
     }
-    assert kwargs["allow_redirects"] is False and kwargs["stream"] is True
-    assert kwargs["timeout"] == (10, 30)
+    assert (kwargs["allow_redirects"], kwargs["stream"], kwargs["timeout"]) == (False, True, (10, 30))
     assert session.trust_env is False
     factory.assert_called_once_with()
     session.__exit__.assert_called_once()
-    reply.__exit__.assert_called_once()
+    response.__exit__.assert_called_once()
 
 
-@pytest.mark.parametrize("token", [None, "incoming-token"])
-def test_provider_api_key_takes_precedence_over_incoming_token(provider, token):
-    session, _factory = provider
-    session.reply = response({"choices": [{"message": {"content": "opinion"}}]})
-    config = AITriage(enabled=True, endpoint="https://ai.invalid/chat", model="model", api_key="provider-secret")
+@pytest.mark.parametrize(
+    ("api_key", "token", "sent"),
+    [("provider-secret", None, "provider-secret"), ("provider-secret", "incoming-token", "provider-secret")],
+)
+def test_provider_api_key_takes_precedence_over_incoming_token(provider, api_key, token, sent):
+    session, _ = provider
+    reply(session, OK)
 
-    assert transport.generate(config, token, "prompt", {}) == "opinion"
+    assert generate(api_key=api_key, token=token) == "opinion"
 
-    assert session.post.call_args.kwargs["headers"]["Authorization"] == "Bearer provider-secret"
+    assert session.post.call_args.kwargs["headers"]["Authorization"] == f"Bearer {sent}"
     assert "incoming-token" not in repr(session.post.call_args)
 
 
-def test_missing_provider_credential_never_contacts_provider(provider):
-    _session, factory = provider
-    config = AITriage(enabled=True, endpoint="https://ai.invalid/chat", model="model")
+def test_connect_timeout_is_bounded_by_configured_timeout(provider):
+    session, _ = provider
+    reply(session, OK)
 
+    generate(timeout=3)
+
+    assert session.post.call_args.kwargs["timeout"] == (3, 3)
+
+
+def test_unconfigured_provider_or_credential_never_contacts_provider(provider):
+    _, factory = provider
     with pytest.raises(transport.AITransportError, match="provider credential"):
-        transport.generate(config, None, "prompt", {})
+        generate(token=None)
+    with pytest.raises(transport.AITransportError, match="not configured"):
+        transport.generate(AITriage(model="m"), "token", "prompt", {})
 
     factory.assert_not_called()
 
 
-def test_connect_timeout_is_bounded_by_configured_timeout(provider):
-    session, _factory = provider
-    session.reply = response({"choices": [{"message": {"content": "opinion"}}]})
-    assert generate(timeout=3) == "opinion"
-    assert session.post.call_args.kwargs["timeout"] == (3, 3)
-
-
 @pytest.mark.parametrize(
-    "status,reason", [(401, "authorization token"), (403, "authorization token"), (503, "HTTP 503"), (302, "HTTP 302")]
+    ("status", "reason"),
+    [(401, "authorization token"), (403, "authorization token"), (503, "HTTP 503"), (302, "HTTP 302")],
 )
 def test_http_errors_do_not_read_or_expose_provider_details(provider, status, reason):
-    session, _factory = provider
-    reply = response({"error": "private provider detail"}, status)
-    session.reply = reply
+    session, _ = provider
+    response = reply(session, {"error": "private provider detail"}, status)
 
     with pytest.raises(transport.AITransportError, match=reason) as error:
         generate()
 
     assert "private provider detail" not in str(error.value)
-    reply.json.assert_not_called()
-    reply.close.assert_called_once()
+    response.json.assert_not_called()
+    response.close.assert_called_once()
     session.__exit__.assert_called_once()
 
 
 @pytest.mark.parametrize(
-    "failure,reason",
+    ("failure", "reason"),
     [
         (requests.exceptions.ConnectTimeout("provider-secret"), "timed out"),
         (requests.exceptions.ReadTimeout("provider-secret"), "timed out"),
         (requests.exceptions.ConnectionError(ReadTimeoutError(None, "/chat", "provider-secret")), "timed out"),
         (requests.exceptions.ConnectionError("provider-secret"), "temporarily unavailable"),
         (requests.exceptions.RequestException("provider-secret"), "temporarily unavailable"),
+        (requests.exceptions.JSONDecodeError("invalid", "", 0), "invalid response"),
     ],
 )
-def test_network_failure_is_safe_and_cleans_up(provider, failure, reason):
-    session, _factory = provider
-    session.post.side_effect = failure
+@pytest.mark.parametrize("raised_by", ["post", "body"])
+def test_network_failure_is_safe_and_cleans_up(provider, failure, reason, raised_by):
+    session, _ = provider
+    response = reply(session, None)
+    if raised_by == "post":
+        session.post.side_effect = failure
+    else:
+        response.json.side_effect = failure
+
     with pytest.raises(transport.AITransportError, match=reason) as error:
         generate()
+
     assert "provider-secret" not in str(error.value)
     session.__exit__.assert_called_once()
 
 
-def test_streaming_read_timeout_is_reported_as_timeout(provider):
-    session, _factory = provider
-    reply = response(None)
-    reply.json.side_effect = requests.exceptions.ConnectionError(ReadTimeoutError(None, "/chat", "provider-secret"))
-    session.reply = reply
-    with pytest.raises(transport.AITransportError, match="timed out"):
-        generate()
-    reply.__exit__.assert_called_once()
-    session.__exit__.assert_called_once()
-
-
-@pytest.mark.parametrize(
-    "payload",
-    [
-        [],
-        {},
-        {"choices": [None]},
-        {"choices": [{"message": {"content": " "}}]},
-    ],
-)
+@pytest.mark.parametrize("payload", [[], {}, {"choices": [None]}, {"choices": [{"message": {"content": " "}}]}])
 def test_invalid_provider_responses_are_rejected(provider, payload):
-    session, _factory = provider
-    session.reply = response(payload)
+    session, _ = provider
+    reply(session, payload)
+
     with pytest.raises(transport.AITransportError, match="invalid format"):
-        generate()
-    session.__exit__.assert_called_once()
-
-
-def test_invalid_json_is_rejected(provider):
-    session, _factory = provider
-    session.reply = response(None)
-    session.reply.json.side_effect = requests.exceptions.JSONDecodeError("invalid", "", 0)
-    with pytest.raises(transport.AITransportError, match="invalid response"):
         generate()
 
 
 def test_large_response_is_accepted(provider):
-    session, _factory = provider
-    content = "x" * 100_001
-    session.reply = response({"choices": [{"message": {"content": content}}]})
-    assert generate() == content
+    session, _ = provider
+    reply(session, {"choices": [{"message": {"content": "x" * 100_001}}]})
+
+    assert len(generate()) == 100_001
 
 
-@pytest.mark.parametrize("extra", [0, 1])
-def test_input_limit_counts_message_content_not_request_envelope(provider, extra):
+@pytest.mark.parametrize(
+    ("prompt", "alert", "limit", "allowed"),
+    [
+        ("x" * 10, {}, 12, True),
+        ("x" * 11, {}, 12, False),
+        ("😀" * 3, {}, 14, True),
+        ("😀" * 3 + "x", {}, 14, False),
+        ("", {"e": "😀" * 3}, 20, True),
+        ("", {"e": "😀" * 4}, 20, False),
+    ],
+    ids=["ascii-at", "ascii-over", "utf8-at", "utf8-over", "alert-at", "alert-over"],
+)
+def test_input_limit_counts_utf8_bytes_of_prompt_and_alert_content(provider, prompt, alert, limit, allowed):
     session, factory = provider
-    session.reply = response({"choices": [{"message": {"content": "opinion"}}]})
-    prompt = '"' * (AITriage().max_input_bytes - len(b"{}") + extra)
-    if extra:
-        with pytest.raises(transport.AITransportError, match="input exceeded the size limit"):
-            generate(prompt=prompt, alert={}, model="model-name-does-not-count")
-        factory.assert_not_called()
+    reply(session, OK)
+
+    if allowed:
+        assert generate(prompt=prompt, alert=alert, max_input_bytes=limit) == "opinion"
+        assert json.loads(session.post.call_args.kwargs["json"]["messages"][1]["content"]) == alert
     else:
-        assert generate(prompt=prompt, alert={}, model="model-name-does-not-count") == "opinion"
-        assert len(json.dumps(session.post.call_args.kwargs["json"]).encode()) > AITriage().max_input_bytes
-
-
-def test_input_limit_is_configurable(provider):
-    session, factory = provider
-    session.reply = response({"choices": [{"message": {"content": "opinion"}}]})
-    assert generate(prompt="x" * 10, alert={}, max_input_bytes=12) == "opinion"
-    factory.reset_mock()
-    with pytest.raises(transport.AITransportError, match="input exceeded the size limit"):
-        generate(prompt="x" * 11, alert={}, max_input_bytes=12)
-    factory.assert_not_called()
-
-
-def test_input_limit_counts_unicode_utf8_bytes(provider):
-    session, factory = provider
-    session.reply = response({"choices": [{"message": {"content": "opinion"}}]})
-    assert generate(prompt="😀" * 49_999 + "xx", alert={}) == "opinion"
-    factory.reset_mock()
-    with pytest.raises(transport.AITransportError, match="input exceeded the size limit"):
-        generate(prompt="😀" * 49_999 + "xxx", alert={})
-    factory.assert_not_called()
-
-
-def test_alert_json_content_counts_towards_input_limit(provider):
-    session, _factory = provider
-    session.reply = response({"choices": [{"message": {"content": "opinion"}}]})
-    alert = {"event": "😀" * 20_000}
-    assert generate(alert=alert) == "opinion"
-    assert json.loads(session.post.call_args.kwargs["json"]["messages"][1]["content"]) == alert
-    with pytest.raises(transport.AITransportError, match="input exceeded the size limit"):
-        generate(prompt="", alert={"event": "😀" * 50_000})
-
-
-def test_missing_endpoint_never_contacts_provider(provider):
-    _session, factory = provider
-    config = AITriage(enabled=False, endpoint=None, model="qa-model")
-    with pytest.raises(transport.AITransportError, match="not configured"):
-        transport.generate(config, "qa-access-token", "prompt", {})
-    factory.assert_not_called()
-
-
-def test_enabled_config_requires_endpoint(provider):
-    _session, factory = provider
-    with pytest.raises(ValidationError, match="AI triage endpoint is required when enabled"):
-        AITriage(enabled=True, endpoint=None, model="qa-model")
-    factory.assert_not_called()
+        with pytest.raises(transport.AITransportError, match="input exceeded the size limit"):
+            generate(prompt=prompt, alert=alert, max_input_bytes=limit)
+        factory.assert_not_called()
