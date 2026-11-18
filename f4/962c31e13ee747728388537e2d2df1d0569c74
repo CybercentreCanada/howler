@@ -1,0 +1,20 @@
+ui/src/components/elements/hit/HitNotebooks.test.tsx
+  s_2a789b126b205c::t_b12c3691726afc 179-182
+  s_2a789b126b205c::t_551f43679334c0 163,178,183,211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f4962c31e13ee747728388537e2d2df1d0569c74",
+  "prompts": {},
+  "sessions": {
+    "s_2a789b126b205c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e0fee301effe4o22KHIOx5puu2",
+        "model": "gemini-4-hydrogen"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
