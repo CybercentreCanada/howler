@@ -1,0 +1,77 @@
+api/test/unit/ai_triage/test_api_key_flow.py
+  s_6a266b5013e9bd::t_b897dd3b344e10 5,138-141
+  s_6a266b5013e9bd::t_23dec4f095f1f4 95-106,136-137
+  s_6a266b5013e9bd::t_08b9b0772051a5 4,77-94,142-174
+  s_6a266b5013e9bd::t_3a2ec87c2ee2d9 2-3,6-12,14-76
+  s_6a266b5013e9bd::t_4f502ac670d6fb 1,13,107-135
+api/howler/odm/models/config.py
+  s_6a266b5013e9bd::t_34adcff6b9c074 609-611,617
+api/howler/cronjobs/ai_triage_worker.py
+  s_6a266b5013e9bd::t_34adcff6b9c074 4,32,40
+documentation/docs/installation/ai_triage.md
+  s_6a266b5013e9bd::t_d3601a15ede618 58-59
+  s_6a266b5013e9bd::t_4023d4ee60b592 60-61
+  s_6a266b5013e9bd::t_c9438649b25f5e 6-8,13-17,25,39-49,56-57
+api/test/unit/ai_triage/test_transport.py
+  s_6a266b5013e9bd::t_188c48331f1f7e 84-105
+api/howler/services/ai_service.py
+  s_6a266b5013e9bd::t_dcefe5cba9899e 212-219,239
+  s_6a266b5013e9bd::t_34adcff6b9c074 45,73,75,117,124,131-133,140,220,225,262
+  s_e8296559738009::t_055ba168c040ad 240
+api/test/unit/ai_triage/test_service.py
+  s_6a266b5013e9bd::t_188c48331f1f7e 77-80,84-86,228-252
+  s_6a266b5013e9bd::t_3e56fd48bdf645 81-83
+  s_6a266b5013e9bd::t_c61971610a5cdd 23,110
+  s_6a266b5013e9bd::t_2c9e662ab2b020 253-254
+api/howler/actions/ai_triage.py
+  s_6a266b5013e9bd::t_34adcff6b9c074 7,54
+  s_6a266b5013e9bd::t_c61971610a5cdd 21-25,39
+api/howler/actions/__init__.py
+  s_6a266b5013e9bd::t_c61971610a5cdd 9,11,233-234
+  s_09d373064440f9::t_5ef4e5756f2355 235
+api/test/unit/ai_triage/test_dispatch_security.py
+  s_6a266b5013e9bd::t_c61971610a5cdd 5,9,47-58,78
+  s_6a266b5013e9bd::t_a01b8857b38784 41-46
+api/test/unit/services/test_enqueue_action.py
+  s_6a266b5013e9bd::t_c61971610a5cdd 24,26
+api/test/unit/ai_triage/test_worker.py
+  s_6a266b5013e9bd::t_188c48331f1f7e 51-52,55-59,61-64
+  s_6a266b5013e9bd::t_a818ad9c5949e3 53-54,60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0d9fe2133aba70c34828ed9da83f972ac9b527df",
+  "prompts": {},
+  "humans": {
+    "h_f221159cc9f457": {
+      "author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  },
+  "sessions": {
+    "s_09d373064440f9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e152e62e5ffecMuPig0JNhDMBA",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_6a266b5013e9bd": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e155e0e48ffebtDGnyqMY1dufh",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_e8296559738009": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e161043daffe8Yi0rZ0nl6ZGwR",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

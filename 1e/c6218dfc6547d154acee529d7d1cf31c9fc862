@@ -1,0 +1,72 @@
+api/howler/services/ai_triage_worker.py
+  s_09d373064440f9::t_766aa86ef7454f 26,37,39-43,45-52,54-55,58-59,63-67,84,95,97,116-128,130-131,136,143-147,166-185,202,208-209,213,221,229-236,251,254-264,266,272,274-282,295-296,299,303-305,312,318,320,322,333,341,349,352,354-362,367-369,372-374,376-381,383,385
+api/test/unit/ai_triage/test_queue.py
+  s_09d373064440f9::t_766aa86ef7454f 1-42
+api/howler/odm/models/config.py
+  s_09d373064440f9::t_766aa86ef7454f 603-618,693
+ui/src/components/routes/action/edit/ActionEditor.tsx
+  s_09d373064440f9::t_766aa86ef7454f 59-70,290-294
+ui/src/components/routes/action/shared/ActionRunHistory.tsx
+  s_09d373064440f9::t_766aa86ef7454f 25-26,39,44-46,56,58,63-67,71-73,75-85,88,93-94,97-99,101-102,104-106,108-109,118,127,131,133-143,150-151,155-156,161,164-168,176,180,184,191,193-200,208,211-212,216-221,225,229,233-243,246-248,256,258,265-273,276,279,282-284,288,308,312,320-322,348,360-367,374-376
+ui/src/components/routes/action/useMyActionFunctions.test.tsx
+  s_09d373064440f9::t_766aa86ef7454f 281,339,344,362,366-370,385-390,392-395,399-403,421
+api/test/unit/services/test_enqueue_action.py
+  s_09d373064440f9::t_766aa86ef7454f 66-68,215,228-229,349,364
+ui/src/components/routes/action/useMyActionFunctions.tsx
+  s_09d373064440f9::t_766aa86ef7454f 8,14,18-27,41,48-50,52-73,75-77,79-99,103,108,111-113,116,121,124-128,131-132,135-140,143,146-164,167-179,181-184,187-214,217-234,236-252,255-270,272,274-279,281-283,287-299,301-304,306-318,323-326,328-347,350-369
+api/howler/actions/__init__.py
+  s_09d373064440f9::t_766aa86ef7454f 25-30,269-270
+  s_09d373064440f9::t_3eaf80c92bddc2 271
+api/test/unit/test_app.py
+  s_09d373064440f9::t_766aa86ef7454f 46-47,62
+api/howler/services/ai_triage_queue.py
+  s_09d373064440f9::t_766aa86ef7454f 96-98,100,104-106,108-112,116,188,190,196-198,244,282-289,297-298,340,343,346-351,358-370,540,634-640,668-686,688-690,694-695,699,706,716-721,726-727
+api/test/unit/ai_triage/test_dispatch_security.py
+  s_09d373064440f9::t_766aa86ef7454f 116-135,172,209
+api/test/integration/service/test_ai_triage_recovery.py
+  s_09d373064440f9::t_766aa86ef7454f 316,368-374,376,384-391,398-408,501,515,592,727,805-806,810-811,814-815,818,820,822-827
+api/test/unit/ai_triage/README.md
+  s_09d373064440f9::t_766aa86ef7454f 40-41,44-47,60-61,74-76,86,91-93
+documentation/docs/installation/ai_triage.md
+  s_09d373064440f9::t_766aa86ef7454f 85-89,92-103,114-117,145,148-151
+ui/src/components/routes/action/view/ActionDetails.test.tsx
+  s_09d373064440f9::t_766aa86ef7454f 13,155-156,173,216,253,260,282-300
+api/test/unit/ai_triage/test_socket_privacy.py
+  s_09d373064440f9::t_766aa86ef7454f 25
+api/howler/actions/ai_triage.py
+  s_09d373064440f9::t_766aa86ef7454f 63,69
+api/howler/services/ai_triage_service.py
+  s_09d373064440f9::t_766aa86ef7454f 7,194-223,226-231,234,244-252,290-293,300-308,456,459-466,479-495,499,501,503-504,508,510-513,516,520-521,525-527,530,532-537,540-542,580-581,594-595,603-607,617-618,625,641
+api/howler/app.py
+  s_09d373064440f9::t_766aa86ef7454f 102
+api/test/unit/ai_triage/worker_probe.py
+  s_09d373064440f9::t_766aa86ef7454f 99
+ui/src/components/routes/action/shared/ActionRunHistory.test.tsx
+  s_09d373064440f9::t_766aa86ef7454f 5-8,10-11,13-15,18-19,48,68-70,82,88,94-95,97,99,103-104,106,109-119,123-134,138,140-141,144-149,153-156,159-161,166-167,172-186,188-191,194-196,198,202-204,208-209,213-216,218-221,223,226-227,230-231,235-250,252-260,264-266,269-273,275-278,280-286,288-289,291,293-311,313-326,329-332,334,336-338,341-345,347-354
+api/test/unit/ai_triage/test_service.py
+  s_09d373064440f9::t_766aa86ef7454f 11,32,83,138,140-173
+ui/src/components/routes/action/view/ActionDetails.tsx
+  s_09d373064440f9::t_766aa86ef7454f 26,44-54,227-236
+ui/src/components/routes/action/edit/ActionEditor.test.tsx
+  s_09d373064440f9::t_766aa86ef7454f 7,104,150,168-175
+api/howler/services/ai_transport.py
+  s_09d373064440f9::t_766aa86ef7454f 13,24,44,117-143,156-163,191-196,198,320,335-338,351,355,364-405,416,437,439,442-443,447-464,474-476,478-479,485-487,506-508,510-516,526,537-538,542-543,545,548-550,559,564-566,590-598
+api/howler/services/action_service.py
+  s_09d373064440f9::t_766aa86ef7454f 36,247,269,273-275,277,283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1ec6218dfc6547d154acee529d7d1cf31c9fc862",
+  "prompts": {},
+  "sessions": {
+    "s_09d373064440f9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e152e62e5ffecMuPig0JNhDMBA",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

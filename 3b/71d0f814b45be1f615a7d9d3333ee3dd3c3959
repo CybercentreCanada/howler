@@ -1,0 +1,64 @@
+ui/src/components/routes/action/shared/OperationStep.test.tsx
+  s_4050c6c44f7fca::t_191b5d22a24251 6,30-36,51-60,74,86-95,110-112,118-123,140-147,157-158
+api/howler/services/ai_service.py
+  h_f221159cc9f457 4,24,79,307,314,316,351,353,364
+api/howler/services/hit_service.py
+  s_6a23fb5c1b2449::t_585a43cbf2c507 370-372,377,383
+api/howler/cronjobs/ai_triage_worker.py
+  h_f221159cc9f457 20,25-27,34,37-40,42-43,46,54,56
+api/test/integration/test_ai_triage_credentials.py
+  s_4050c6c44f7fca::t_685b5ea7913017 1-6,12,20,22-27,29-41,44-47,52-54,57,62-64,67-90,93-94,96-99,103-104,107-108,113-114,117-118,124,127-129,141-142,145-150
+api/test/unit/ai_triage/conftest.py
+  s_4050c6c44f7fca::t_4465e47a01d7ba 6-7,9-12,14
+ui/src/components/routes/hits/view/LeadRenderer.test.tsx
+  s_4050c6c44f7fca::t_853cf4e8c83778 25-28
+  s_4050c6c44f7fca::t_e112cba1099393 2,5-6,9-10,23-24,29-30,32-33,35-36,39-42,44-47
+api/test/unit/ai_triage/test_transport.py
+  s_4050c6c44f7fca::t_62288b641fecda 173-174
+  s_4050c6c44f7fca::t_23c44a9c1816e2 11-12,20-21,24-28,31-38,40,46,66,70,73-79,81,83,87-89,91,93,96-103,107-108,111-112,118-119,124,131,134-142,146,150,152-153,155,160-161,163,166-172,175-178,180,182-188
+api/test/unit/test_redis_datatypes.py
+  s_4050c6c44f7fca::t_cc425eea1cf715 37-48,50,53-54,56-60,62-63,65-66,68-79,83-85,88,92-104,106,108,113-114,116-119
+api/test/unit/ai_triage/test_service.py
+  s_4050c6c44f7fca::t_28c9526c87f4ae 82,180-187,190-194,276
+  s_4050c6c44f7fca::t_a6aa4d85b9108b 2
+  s_4050c6c44f7fca::t_b086674201c5c3 17-19,23,25,30-31,34-48,50-52,55,57,59-61,66-79,83,86-89,96-97,102,104-105,118-123,125,130-131,134-135,138-139,142-154,157,159,161-164,166-168,171-173,175,177,199-200,204,216,219-233,235,237-240,243-272,278,288-293,295,303-305,311,315-318
+  s_4050c6c44f7fca::t_bfd8513eae9e41 62
+  s_4050c6c44f7fca::t_f1672437fa9fff 277
+api/test/unit/ai_triage/test_worker.py
+  s_4050c6c44f7fca::t_a520a6c7d8dedc 12-24,26-60,64-66,69-75,79-80,83-91,95-97,100-101,106-107,112-114
+ui/src/components/elements/display/Markdown.test.tsx
+  s_4050c6c44f7fca::t_191b5d22a24251 10-13,36-42
+api/test/unit/ai_triage/test_dispatch_security.py
+  s_4050c6c44f7fca::t_8bd708341350d6 16-32,38,41-43,61-62,64,66,68,71-78,80,82
+api/test/unit/ai_triage/test_transport_network.py
+  s_4050c6c44f7fca::t_52b9ce939f33aa 1-2,13,16-17,19-22,26,29-30,33-38,40-41,45-49,52-56,59-61,64-68,71-72,75-77,79-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3b71d0f814b45be1f615a7d9d3333ee3dd3c3959",
+  "prompts": {},
+  "humans": {
+    "h_f221159cc9f457": {
+      "author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  },
+  "sessions": {
+    "s_4050c6c44f7fca": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1071cb89ffe3fgZ7u0FYAFUVz",
+        "model": "us.anthropic.claude-sonnet-5-5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_6a23fb5c1b2449": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e107e074dffev3YupAQ4nQcLfg",
+        "model": "us.anthropic.claude-sonnet-5-5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

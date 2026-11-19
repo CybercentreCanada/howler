@@ -1,0 +1,23 @@
+api/test/unit/ai_triage/test_api_key_flow.py
+  s_8e7994340c1a6d::t_67eb47680f9749 56
+api/test/unit/test_redis_datatypes.py
+  s_8e7994340c1a6d::t_16b4e255f7ec72 138-139
+  s_8e7994340c1a6d::t_f48d8800810c09 148-149
+  s_8e7994340c1a6d::t_63d1146a7f1383 56-57,60-61,64-65,68-69,72-73,85-86,88-89,91-92,94-95,97-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c34ed635186fab17ed3b4a0a634e4916dbb0aa47",
+  "prompts": {},
+  "sessions": {
+    "s_8e7994340c1a6d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e109c9347ffeh6xYgjXpuw1e9b",
+        "model": "us.anthropic.claude-sonnet-5-5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

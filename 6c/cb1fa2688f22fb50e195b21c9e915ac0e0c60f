@@ -1,0 +1,23 @@
+api/howler/actions/models.py
+  s_31ac6932134b36::t_e3c66e71ce675a 289,291-294,303
+api/howler/services/hit_service.py
+  s_31ac6932134b36::t_e3c66e71ce675a 364-365,369-370,376-377,383-384
+api/test/unit/actions/test_init.py
+  s_31ac6932134b36::t_de33a37b104fb6 207-226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6ccb1fa2688f22fb50e195b21c9e915ac0e0c60f",
+  "prompts": {},
+  "sessions": {
+    "s_31ac6932134b36": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e10074c41ffeqU8w6MmoqiDuYG",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

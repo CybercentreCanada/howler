@@ -1,0 +1,23 @@
+api/howler/services/ai_triage_service.py
+  s_09d373064440f9::t_addab1d06f33b3 76
+api/howler/services/ai_triage_queue.py
+  s_09d373064440f9::t_addab1d06f33b3 96,104,235-253,494-495,497,512,519-520,522,537-538,540-541,557-558,560
+api/howler/services/ai_triage_worker.py
+  s_09d373064440f9::t_addab1d06f33b3 126-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "8acf2325011f826cbbedd9caab96a88c6825f937",
+  "prompts": {},
+  "sessions": {
+    "s_09d373064440f9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e152e62e5ffecMuPig0JNhDMBA",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

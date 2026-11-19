@@ -1,0 +1,19 @@
+api/test/unit/ai_triage/test_transport_network.py
+  s_31ac6932134b36::t_d5a099d18f74b7 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9dbca58c03d48cd2e3aa34373220df45df86fc1d",
+  "prompts": {},
+  "sessions": {
+    "s_31ac6932134b36": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e10074c41ffeqU8w6MmoqiDuYG",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

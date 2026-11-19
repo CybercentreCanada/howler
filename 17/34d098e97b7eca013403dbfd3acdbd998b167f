@@ -1,0 +1,40 @@
+api/test/unit/ai_triage/test_worker.py
+  s_1b85f95a5279a6::t_0ff7cf2beb9cc2 13,56
+api/test/unit/test_redis_datatypes.py
+  s_1b85f95a5279a6::t_0ff7cf2beb9cc2 25-26,29-153
+  s_1b85f95a5279a6::t_e847f6115ba9b2 154-156
+api/howler/remote/datatypes/queues/named.py
+  h_f221159cc9f457 70,80,89
+  s_1b85f95a5279a6::t_ac0e3fb9105365 6,15-17,22-34,62,65,71,83,85,88,95,112-114
+api/howler/services/ai_service.py
+  s_1b85f95a5279a6::t_ac0e3fb9105365 63
+  h_f221159cc9f457 8,41,145
+  s_1b85f95a5279a6::t_d50edffb0c0755 5
+api/test/unit/ai_triage/test_service.py
+  s_1b85f95a5279a6::t_0ff7cf2beb9cc2 221-222,239-241,280
+api/test/unit/ai_triage/test_api_key_flow.py
+  s_1b85f95a5279a6::t_0ff7cf2beb9cc2 13,27-33,55-61,83,153,188
+api/howler/cronjobs/ai_triage_worker.py
+  s_1b85f95a5279a6::t_ac0e3fb9105365 17,22-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1734d098e97b7eca013403dbfd3acdbd998b167f",
+  "prompts": {},
+  "humans": {
+    "h_f221159cc9f457": {
+      "author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  },
+  "sessions": {
+    "s_1b85f95a5279a6": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "a2fbe8fd-54ae-4d6d-aaf3-3ab475bf3be1",
+        "model": "unknown"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

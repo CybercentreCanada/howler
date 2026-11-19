@@ -1,0 +1,59 @@
+documentation/docs/installation/ai_triage.md
+  s_1d639313ac8aa1::t_f1a36539878bc7 60-66
+api/howler/cronjobs/ai_triage_worker.py
+  s_1d639313ac8aa1::t_9d297535f658c9 38,46
+  h_f221159cc9f457 11
+api/test/unit/ai_triage/test_worker.py
+  s_1d639313ac8aa1::t_f1a36539878bc7 44-45
+  s_1d639313ac8aa1::t_9d297535f658c9 32,85
+  h_f221159cc9f457 7
+api/howler/services/ai_service.py
+  s_a56a51906edb88::t_0918dd957162b8 19,163
+  h_f221159cc9f457 4,24,203,205,259,262,265,271,275-279,281-282
+  s_1d639313ac8aa1::t_9d297535f658c9 7-9,13,25-30,36-37,185,199-202,204,206-209,225-258,260-261,263-264,266-270,272-274,280,283
+  s_a56a51906edb88::t_3a35840e4f33dd 31-35,53-57,70-74,79-86,91-100,119-130,152-153,155-156,158-160,168-175,186-198,210-224,287-295,309-316,328-338
+  s_1d639313ac8aa1::t_6a29d62ad8c25b 284-285
+api/howler/utils/dict_utils.py
+  s_a56a51906edb88::t_0918dd957162b8 17-35
+api/test/unit/ai_triage/test_transport.py
+  s_1d639313ac8aa1::t_9d297535f658c9 9
+  s_1d639313ac8aa1::t_ca78cc769794a6 5-6,14-17,19-21,23-29,35,38-44,51-52,55-56,58,60-61,68,76-88,95-97,103-105,108-121,124-135,139,141-144,147-149,152,155-167,171-174,177,180-181,184-196,199-201,204-207
+api/test/unit/ai_triage/test_transport_network.py
+  s_1d639313ac8aa1::t_9d297535f658c9 10
+  s_1d639313ac8aa1::t_7d312da41d192b 21,27,34-37,44-45,53-55,123,126-128,130-132,134-139
+  s_1d639313ac8aa1::t_8837c07d3522ff 1,13,17,24,26,31-33,40-43,46-48,50-52,58-61,63-64,73-74,77,88-95,97-102,108-122,133
+api/test/unit/ai_triage/test_service.py
+  s_a56a51906edb88::t_0918dd957162b8 13,134,145
+  s_1d639313ac8aa1::t_9d297535f658c9 168,265
+api/howler/odm/models/config.py
+  s_1d639313ac8aa1::t_f1a36539878bc7 627
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9c41ec5f26485f602e9ad1c71389a6f948b3fcac",
+  "prompts": {},
+  "humans": {
+    "h_f221159cc9f457": {
+      "author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  },
+  "sessions": {
+    "s_1d639313ac8aa1": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e15b83ab9ffezzIux20jtBqmEy",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_a56a51906edb88": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "5429b3cd-ef8f-465a-9fe7-36c0186844db",
+        "model": "unknown"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
