@@ -1,0 +1,40 @@
+.github/workflows/api-workflow.yml
+  s_7dcb1935aaf88e::t_750a9085b71c2e 12-13,28-29,99-102
+docs/api/codebase.md
+  s_7dcb1935aaf88e::t_750a9085b71c2e 11-12
+api/howler/helper/search.py
+  s_7dcb1935aaf88e::t_aa5556d4226a54 5,91
+.opencode/opencode.jsonc
+  s_7dcb1935aaf88e::t_750a9085b71c2e 3,12,36
+api/howler/datastore/types.py
+  s_7dcb1935aaf88e::t_a29c10454af722 1
+  s_7dcb1935aaf88e::t_86e4c7e46f38ee 20
+  s_7dcb1935aaf88e::t_aa5556d4226a54 4,9-19,21
+  s_c46543ba5a0bab::t_44a768ab4959b5 22-23
+AGENTS.md
+  s_7dcb1935aaf88e::t_750a9085b71c2e 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "cc48009ec00df2554a8f53057b37dd007211927a",
+  "prompts": {},
+  "sessions": {
+    "s_7dcb1935aaf88e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e0b9e3e8bffe7czVJfs9206Km7",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_c46543ba5a0bab": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ad79bbc5091efc08fd54581da613d5b3",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

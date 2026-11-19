@@ -1,0 +1,135 @@
+api/test/unit/actions/test_change_field.py
+  s_c46543ba5a0bab::t_797304693cbf8d 29-30,34
+  s_51d3e290a1d701::t_80d9da8755ac68 1-2,6-7,10,15,17-20,23,45,50-61,63-91
+  s_c46543ba5a0bab::t_8528dae0e95ea8 9,11,14,43-44,46-49,62
+api/howler/services/ingest_service.py
+  s_5e8d02c0e17bc7::t_8a6ec3ef70229c 58,64
+  s_51d3e290a1d701::t_bc2a3a9985c3e5 1
+  s_c46543ba5a0bab::t_0263ef349650e7 2-6,8-53,79-82,84-88
+  s_51d3e290a1d701::t_abaf52f5f5ed43 65,78,83
+  s_5e8d02c0e17bc7::t_506c0527360ea4 7,54-57,59-63,66-77
+api/howler/models/base.py
+  s_5e8d02c0e17bc7::t_506c0527360ea4 529-559,573
+api/howler/api/v1/hit.py
+  s_c46543ba5a0bab::t_0263ef349650e7 42-49,347-353,355
+api/test/unit/services/test_ingest_service.py
+  s_5e8d02c0e17bc7::t_50d52cb6a2474a 201-208,210-211,219-223,235-268
+  s_5e8d02c0e17bc7::t_c40ed9a6311d8b 1,27,41-46,108-133,139-142,144-147,152-163,165
+  s_5e8d02c0e17bc7::t_236b6c7fcdf1ef 7-8,10-11,13-18,26,83-85,89-93
+  s_5e8d02c0e17bc7::t_0263551a826ecd 86-88,94-98
+  s_5e8d02c0e17bc7::t_6cf2d35439cdf1 209,212-218,224-234
+  s_5e8d02c0e17bc7::t_cb834c135df7d7 37-39,99-107
+  s_51d3e290a1d701::t_626c8f19734612 182,190,199
+  s_51d3e290a1d701::t_46b1e93214dd54 2-6,19-25,28-36,40,47-82,174-176,179-181,184,188-189,191-192,194-198
+  s_5e8d02c0e17bc7::t_2030c29a19ce2d 9,134-138,143,148-151,164,166-173
+  s_5e8d02c0e17bc7::t_8a6ec3ef70229c 12,269-291
+  s_51d3e290a1d701::t_abaf52f5f5ed43 177-178,183,185-187,193,200
+api/test/unit/models/test_base.py
+  s_5e8d02c0e17bc7::t_501fcd24701518 24,273-281,283-290,292-300,302-305,319-335
+  s_5e8d02c0e17bc7::t_cb834c135df7d7 282,291,301,306-318
+  s_5e8d02c0e17bc7::t_b953c73648ed87 336-337
+api/howler/services/dossier_service.py
+  s_c46543ba5a0bab::t_1ce5add7e5963c 162-163,238-240
+api/test/unit/services/test_dossier_service.py
+  s_c46543ba5a0bab::t_e282cc2e4c86bc 1-33
+api/test/unit/services/test_event_service.py
+  s_c46543ba5a0bab::t_e282cc2e4c86bc 8,25-55,268
+api/howler/services/hit_service.py
+  s_c46543ba5a0bab::t_1ce5add7e5963c 250,268-269,304,354
+api/test/unit/services/test_case_service.py
+  s_c46543ba5a0bab::t_e282cc2e4c86bc 16,171-179,184,192,194-195,197-206,209,211,217,225,232,237,239,244,246,254,1954,3083,3149,3162
+api/howler/actions/change_field.py
+  s_c46543ba5a0bab::t_1ce5add7e5963c 2,62
+api/howler/services/case_service.py
+  s_c46543ba5a0bab::t_1ce5add7e5963c 194-195
+api/test/unit/endpoints/test_ingest_endpoint.py
+  s_5e8d02c0e17bc7::t_236b6c7fcdf1ef 698-720
+  s_c46543ba5a0bab::t_14d693f601ac8b 10,721,725,731-736,745,749-750,762-764
+  s_c46543ba5a0bab::t_3917b11d326ed6 692-697,772,800,837,855,875,890-913
+  s_c46543ba5a0bab::t_fc5ec4bbea37fa 914
+api/howler/api/v2/ingest.py
+  s_c46543ba5a0bab::t_0263ef349650e7 21,286-287,291-292,301-306,308-309
+plugins/sentinel/test/unit/models/test_sentinel.py
+  s_c46543ba5a0bab::t_797304693cbf8d 4,22-25,29,62,67-72,74-76
+  s_51d3e290a1d701::t_f4b5cf7e7e2403 19-21,79
+docs/api/plugins.md
+  s_c46543ba5a0bab::t_1ce5add7e5963c 119,122,204
+plugins/evidence/test/unit/models/test_evidence.py
+  s_51d3e290a1d701::t_bae171a254389a 65-66
+  s_51d3e290a1d701::t_f4b5cf7e7e2403 22-28
+  s_51d3e290a1d701::t_b20ce726003bf0 67-69,77
+  s_51d3e290a1d701::t_626c8f19734612 2,4,7-9,50-64,70-76,78-85
+  s_c46543ba5a0bab::t_797304693cbf8d 1,34-49
+  s_51d3e290a1d701::t_46b1e93214dd54 14,86-93
+  s_6dd3cba0969779::t_b4353cbc0df3a1 94-95
+api/test/unit/endpoints/test_hit_endpoint.py
+  s_c46543ba5a0bab::t_3917b11d326ed6 8,10,75-78,84-85,87-93,96-98,112-122
+  s_5e8d02c0e17bc7::t_236b6c7fcdf1ef 99-111
+  s_c46543ba5a0bab::t_14d693f601ac8b 7,79-83,86,94-95
+  s_c46543ba5a0bab::t_e05a4d36523f0f 123-124
+api/howler/datastore/howler_store.py
+  s_c46543ba5a0bab::t_8528dae0e95ea8 1,44,59,63,68-73,90
+  s_c46543ba5a0bab::t_1ce5add7e5963c 2,83-84
+  s_51d3e290a1d701::t_dff610a6d5d14d 85-89,91
+  s_6f11bae7c304f9::t_aa36fc28d4ad2a 74,92-93
+api/howler/services/event_service.py
+  s_c46543ba5a0bab::t_1ce5add7e5963c 138-139,162,166,168
+plugins/sentinel/sentinel/actions/azure_emit_hash.py
+  s_c46543ba5a0bab::t_1ce5add7e5963c 7,121
+  s_51d3e290a1d701::t_f4b5cf7e7e2403 119
+api/test/unit/services/test_dossier_group_service.py
+  s_c46543ba5a0bab::t_f90ae753749020 173
+api/howler/utils/dict_utils.py
+  s_5e8d02c0e17bc7::t_506c0527360ea4 75-81,88,107
+  s_c46543ba5a0bab::t_1ce5add7e5963c 1,161,163,165-171
+  s_5e8d02c0e17bc7::t_963af61dfa6191 190
+  s_51d3e290a1d701::t_dff610a6d5d14d 2,123,129,131-133,139-141,160,162,164,172-189,191-199,202-203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2ea8297a9ee4171d9e207fad908fc7bcb01bec2e",
+  "prompts": {},
+  "sessions": {
+    "s_51d3e290a1d701": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0414902e34c39aaa7658d1ba0ae0ca37",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_5e8d02c0e17bc7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_a73827ae95311c1b8da44bb2b52e592b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_6dd3cba0969779": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_20e8b1c30189a91677cca48475bffb52",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_6f11bae7c304f9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_4c0402a3e6da7f23d2d9f232c7dbf9ba",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_c46543ba5a0bab": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ad79bbc5091efc08fd54581da613d5b3",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

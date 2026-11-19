@@ -1,0 +1,64 @@
+api/test/unit/test_elasticsearch_cutover_verify.py
+  s_3c76a6837a7998::t_baaa7281328b37 1023-1035,1067-1102,1104-1105,1107-1112,1194-1213,1215-1218,1430-1435,1446-1448,1455,1457-1460,1465
+  s_3c76a6837a7998::t_2174843688a8af 1326,1330-1337,1340-1341,1344
+  s_6f11bae7c304f9::t_86956bdd9542f4 764,771-775,777-782,785-794,799-818
+  s_3c76a6837a7998::t_e6757d90d57808 22,88-95,103,117,177,180-181,218,571-576,590-594,605,907-910,1139,1420,1443,1452,1630-1631
+  s_6f11bae7c304f9::t_708b3e6f3d9e46 776,784,795-798
+  s_3c76a6837a7998::t_44243b8dda9ce6 190-198,962-963,1036-1066,1103,1106,1154-1193,1214,1310-1325,1327-1329,1338-1339,1342-1343,1345-1349,1352-1355
+  s_9548d33f7b5ff9::t_5c7b410cecfd56 182
+api/howler/external/elasticsearch_preflight.py
+  s_3c76a6837a7998::t_42158b27738c34 182
+api/howler/external/elasticsearch_rest.py
+  s_3c76a6837a7998::t_42158b27738c34 250-261,263-266,288-291,315-316,318,347
+api/test/unit/test_elasticsearch_preflight.py
+  s_3c76a6837a7998::t_e6757d90d57808 41,67-71,220-247
+  s_3c76a6837a7998::t_64bd8d56001d05 248-249
+documentation/docs/installation/elasticsearch_9_cutover.md
+  s_3c76a6837a7998::t_f2fc7c491eaea4 468-469,482-483
+  s_6f11bae7c304f9::t_73f2a4b7a5901f 493-497
+  s_3c76a6837a7998::t_baaa7281328b37 484-485,490
+  s_3c76a6837a7998::t_2174843688a8af 470
+  s_3c76a6837a7998::t_7470b6515aa74a 486-489,491-492
+api/howler/external/elasticsearch_cutover_verify.py
+  s_3c76a6837a7998::t_7470b6515aa74a 225-226
+  s_3c76a6837a7998::t_44243b8dda9ce6 443
+  s_3c76a6837a7998::t_201ac2b74ed46d 16,144-149,220-224,227-229,436-437,439-442,444-456,459,462-477,540-547,577-578,632-633,670,763,778,808,1140,1176,1216,1219-1226
+  s_6f11bae7c304f9::t_33b38711385b0b 307
+  s_3c76a6837a7998::t_059a0979c6512b 17,73-74,78-79,82,92,95,100-101,127,215-219,394-395,415-435,438,457-458,460-461,478-480,548,576,581-582,585-586,898,910-911,1075,1152,1161-1171,1227-1236
+  s_6f11bae7c304f9::t_73f2a4b7a5901f 25,244-246,300-302,310,333-334,341
+documentation/docs/installation/elasticsearch_9_preflight.md
+  s_3c76a6837a7998::t_f2fc7c491eaea4 64-68
+  s_3c76a6837a7998::t_2174843688a8af 69-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2e3a46543458a044197560ce737ba2bed86f07e3",
+  "prompts": {},
+  "sessions": {
+    "s_3c76a6837a7998": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_b2779bbca0ab6e10a7103e5bdad22e20",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_6f11bae7c304f9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_4c0402a3e6da7f23d2d9f232c7dbf9ba",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_9548d33f7b5ff9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_07497f381f649f91bd67fdb1337d731f",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

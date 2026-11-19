@@ -1,0 +1,43 @@
+plugins/sync/sync/iceberg/build.py
+  s_2f1abaee3d2b7c::t_c0a19570710611 17-18,26-29,49,56
+  s_2f1abaee3d2b7c::t_5f95cdb5628c68 4,31-33,35-39
+plugins/sync/test/unit/iceberg/test_build_schema.py
+  s_2f1abaee3d2b7c::t_015adf3a167b06 3,10,23,74,76-77,80-81,120-121,137,141-144,156-157,159-171,173,180-190,193-197,223
+  s_2f1abaee3d2b7c::t_502a9f9a4c2338 12
+  s_2f1abaee3d2b7c::t_a74365c12284fb 35,202-222
+  s_2f1abaee3d2b7c::t_8e7a3762db9231 179,191,198-201,224
+  s_00079406991575::t_8a97b77c56658c 192
+api/test/unit/models/fixtures/legacy_public_contract.json
+  s_2f1abaee3d2b7c::t_806c64993ba86c 1-87
+api/test/unit/models/fixtures/legacy_public_contract_examples.json
+  s_2f1abaee3d2b7c::t_806c64993ba86c 1-147
+api/test/unit/models/test_legacy_parity.py
+  s_2f1abaee3d2b7c::t_45f6625fffbfbc 1-97
+docs/api/model-compatibility.md
+  s_2f1abaee3d2b7c::t_8e7a3762db9231 9-10,27-34
+  s_2f1abaee3d2b7c::t_502a9f9a4c2338 1-8,11-26,35-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5e6f23792f2cc8e4b99960ecf8304da807174a4e",
+  "prompts": {},
+  "sessions": {
+    "s_00079406991575": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0f6c72f36e84209526d71c34721b0bf4",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_2f1abaee3d2b7c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_7dbe67789f6e02da5588461193ffbd40",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

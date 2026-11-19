@@ -1,0 +1,29 @@
+api/test/unit/test_generate_entity_types.py
+  s_7dcb1935aaf88e::t_303cc9b405c9f6 85-95
+  s_7dcb1935aaf88e::t_7934b38c0a2a4f 8,154
+  s_0b6ca7a832ea05::t_4dc6a5ed2630fb 1-7,9-84,96-153,155-166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d415fa70737334e2efc96fdc861b3e14b9c1c548",
+  "prompts": {},
+  "sessions": {
+    "s_0b6ca7a832ea05": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_161a9e029f6139cb39e2cbece2cc1ea5",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_7dcb1935aaf88e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e0b9e3e8bffe7czVJfs9206Km7",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
