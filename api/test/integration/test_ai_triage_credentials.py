@@ -4,6 +4,7 @@ Needs the Redis container from `api/dev/docker-compose.yml`. The provider HTTP s
 lookups are still mocked; everything between dispatch and worker (serialization, storage) is real.
 """
 
+import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock
 
@@ -59,9 +60,10 @@ def pipeline(monkeypatch, queue):
     monkeypatch.setattr(ai_service, "save_ai_lead", save)
     session = MagicMock()
     session.__enter__.return_value = session
-    session.post.return_value.__enter__.return_value.json.return_value = {
-        "choices": [{"message": {"content": "generated opinion"}}]
-    }
+    response = session.post.return_value.__enter__.return_value
+    response.iter_content.side_effect = lambda chunk_size: iter(
+        [json.dumps({"choices": [{"message": {"content": "generated opinion"}}]}).encode("utf-8")]
+    )
     monkeypatch.setattr(ai_service.requests, "Session", Mock(return_value=session))
 
     def dispatch(authorization):

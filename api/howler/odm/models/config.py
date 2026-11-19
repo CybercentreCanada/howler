@@ -638,6 +638,11 @@ class AITriage(BaseModel):
         ge=1,
         description="Maximum UTF-8 size in bytes of the system prompt plus serialized alert sent to the provider",
     )
+    max_response_bytes: int = Field(
+        default=1_000_000,
+        ge=1,
+        description="Maximum decompressed response size in bytes accepted from the AI provider",
+    )
     excluded_input_fields: list[str] = Field(
         default_factory=lambda: ["howler.dossier", "howler.log"],
         description="Fields omitted from alert data sent to the provider",

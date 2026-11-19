@@ -22,6 +22,7 @@ from howler.utils.dict_utils import remove_path
 LEAD_OWNER = "howler.ai_triage"
 AI_TRIAGE_QUEUE_NAME = "howler.ai_triage.alerts"
 AI_LEAD_RETRIES = int(os.getenv("AI_LEAD_RETRIES", "3"))
+AI_RESPONSE_CHUNK_SIZE = 64 * 1024
 
 
 class AITransportError(Exception):
@@ -213,6 +214,18 @@ def _provider_credential(config: AITriage, token: str | None) -> str:
     return credential
 
 
+def _read_response_body(response: requests.Response, max_response_bytes: int) -> bytearray:
+    """Read a decompressed provider response without buffering past its configured limit."""
+    response_body = bytearray()
+    for chunk in response.iter_content(chunk_size=AI_RESPONSE_CHUNK_SIZE):
+        if not chunk:
+            continue
+        if len(response_body) + len(chunk) > max_response_bytes:
+            raise AITransportError("Provider response exceeded the size limit")
+        response_body.extend(chunk)
+    return response_body
+
+
 def generate(config: AITriage, token: str | None, system_prompt: str, alert_data: dict[str, Any]) -> str:
     """Generate a response from the configured AI provider.
 
@@ -264,9 +277,9 @@ def generate(config: AITriage, token: str | None, system_prompt: str, alert_data
                 stream=True,
                 hooks={"response": _check_status},
             ) as response:
-                payload = response.json()
+                payload = json.loads(_read_response_body(response, config.max_response_bytes))
 
-    except requests.exceptions.JSONDecodeError as exc:
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         raise AITransportError("Provider returned an invalid response") from exc
 
     except requests.exceptions.Timeout as exc:
@@ -358,7 +371,7 @@ def save_ai_lead(hit_id: str, user: User, content: str) -> bool:
         hit.howler.dossier = preserved
 
         try:
-            hit_service.save_hit(hit, version=version)
+            hit_service.save_hit(hit, version=version, refresh="wait_for")
         except VersionConflictException:
             continue
 

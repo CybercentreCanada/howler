@@ -21,9 +21,17 @@ def provider(monkeypatch):
     return session, factory
 
 
-def reply(session, payload, status=200):
+def reply(session, payload, status=200, *, chunks=None):
     session.reply = MagicMock(status_code=status)
-    session.reply.json.return_value = payload
+    body = payload if isinstance(payload, bytes) else json.dumps(payload).encode("utf-8")
+
+    def iter_content(chunk_size):
+        session.reply.chunk_size = chunk_size
+        if chunks is not None:
+            return iter(chunks)
+        return (body[start : start + chunk_size] for start in range(0, len(body), chunk_size))
+
+    session.reply.iter_content.side_effect = iter_content
     session.reply.__enter__.return_value = session.reply
     return session.reply
 
@@ -68,6 +76,8 @@ def test_success_preserves_request_security_and_cleans_up(provider, monkeypatch)
     factory.assert_called_once_with()
     session.__exit__.assert_called_once()
     response.__exit__.assert_called_once()
+    response.json.assert_not_called()
+    assert response.chunk_size == transport.AI_RESPONSE_CHUNK_SIZE
 
 
 @pytest.mark.parametrize(
@@ -115,6 +125,7 @@ def test_http_errors_do_not_read_or_expose_provider_details(provider, status, re
         generate()
 
     assert "private provider detail" not in str(error.value)
+    response.iter_content.assert_not_called()
     response.json.assert_not_called()
     response.close.assert_called_once()
     session.__exit__.assert_called_once()
@@ -138,7 +149,7 @@ def test_network_failure_is_safe_and_cleans_up(provider, failure, reason, raised
     if raised_by == "post":
         session.post.side_effect = failure
     else:
-        response.json.side_effect = failure
+        response.iter_content.side_effect = failure
 
     with pytest.raises(transport.AITransportError, match=reason) as error:
         generate()
@@ -161,6 +172,73 @@ def test_large_response_is_accepted(provider):
     reply(session, {"choices": [{"message": {"content": "x" * 100_001}}]})
 
     assert len(generate()) == 100_001
+
+
+def test_response_limit_accepts_exact_byte_boundary(provider):
+    session, _ = provider
+    body = json.dumps(OK, separators=(",", ":")).encode("utf-8")
+    response = reply(session, body)
+
+    assert generate(max_response_bytes=len(body)) == "opinion"
+
+    assert response.chunk_size == transport.AI_RESPONSE_CHUNK_SIZE
+    response.json.assert_not_called()
+
+
+def test_response_limit_counts_cumulative_chunks_and_stops_before_decoding(provider, monkeypatch):
+    session, _ = provider
+    response = reply(session, b"unused")
+    chunks = [b"123456", b"78901", b"not read"]
+    read_chunks = []
+
+    def iter_chunks(chunk_size):
+        response.chunk_size = chunk_size
+        for chunk in chunks:
+            read_chunks.append(chunk)
+            yield chunk
+
+    response.iter_content.side_effect = iter_chunks
+    decoder = Mock(wraps=json.loads)
+    monkeypatch.setattr(transport.json, "loads", decoder)
+
+    with pytest.raises(transport.AITransportError, match="response exceeded the size limit") as error:
+        generate(max_response_bytes=10)
+
+    assert "unused" not in str(error.value)
+    assert read_chunks == chunks[:2]
+    assert response.chunk_size == transport.AI_RESPONSE_CHUNK_SIZE
+    decoder.assert_not_called()
+    response.__exit__.assert_called_once()
+    session.__exit__.assert_called_once()
+
+
+def test_response_limit_counts_multibyte_utf8_as_encoded_bytes(provider):
+    session, _ = provider
+    body = json.dumps({"choices": [{"message": {"content": "😀"}}]}, ensure_ascii=False, separators=(",", ":")).encode(
+        "utf-8"
+    )
+    response = reply(session, body)
+
+    assert generate(max_response_bytes=len(body)) == "😀"
+
+    response.iter_content.reset_mock()
+    with pytest.raises(transport.AITransportError, match="response exceeded the size limit"):
+        generate(max_response_bytes=len(body) - 1)
+    response.json.assert_not_called()
+
+
+@pytest.mark.parametrize("body", [b'{"choices":', b"\xff"], ids=["malformed-json", "invalid-encoding"])
+def test_malformed_json_and_invalid_encoding_are_safe_and_cleaned_up(provider, body):
+    session, _ = provider
+    response = reply(session, body)
+
+    with pytest.raises(transport.AITransportError, match="invalid response") as error:
+        generate()
+
+    assert str(error.value) == "Provider returned an invalid response"
+    response.json.assert_not_called()
+    response.__exit__.assert_called_once()
+    session.__exit__.assert_called_once()
 
 
 @pytest.mark.parametrize(

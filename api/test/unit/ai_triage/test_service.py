@@ -83,6 +83,13 @@ def test_config_accepts_localhost_http_and_many_concurrent_jobs():
     assert AITriage(enabled=True, endpoint="http://localhost:8080/chat", model="m", max_concurrent_jobs=20).enabled
 
 
+def test_response_size_limit_defaults_to_one_megabyte_and_must_be_positive():
+    assert AITriage().max_response_bytes == 1_000_000
+
+    with pytest.raises(ValidationError):
+        AITriage(max_response_bytes=0)
+
+
 @pytest.mark.parametrize(("enforce", "outcome"), [(False, "success"), (True, "error")])
 def test_action_requires_access_control_only_when_classification_is_enforced(settings, monkeypatch, enforce, outcome):
     monkeypatch.setattr(CLASSIFICATION, "enforce", enforce)
@@ -276,6 +283,7 @@ def test_save_replaces_only_managed_lead_and_retries_on_concurrent_edit(settings
     assert service.save_ai_lead("hit-1", make_user(), "new generated note")
 
     assert [c.kwargs["version"] for c in save_hit.call_args_list] == ["v1", "v2"]
+    assert [c.kwargs["refresh"] for c in save_hit.call_args_list] == ["wait_for", "wait_for"]
     saved = save_hit.call_args.args[0]
     assert [lead.content for lead in saved.howler.dossier] == [
         "Concurrent analyst edit",
@@ -283,6 +291,35 @@ def test_save_replaces_only_managed_lead_and_retries_on_concurrent_edit(settings
         "new generated note",
     ]
     assert json.loads(saved.howler.dossier[-1].metadata) == {"owner": service.LEAD_OWNER}
+
+
+def test_save_emits_search_visible_dossier_after_wait_for_refresh(settings, monkeypatch):
+    read_hit = make_hit(id="hit-1")
+    write_hit = make_hit(id="hit-1")
+    visible_hit = {"hit": read_hit}
+    storage = Mock()
+
+    def save(_hit_id, hit, *, version=None, refresh=None):
+        if refresh == "wait_for":
+            visible_hit["hit"] = hit
+
+    def search_get(_hit_id, **_kwargs):
+        return visible_hit["hit"].as_primitives(), "v2"
+
+    storage.hit.save.side_effect = save
+    storage.hit.get.side_effect = search_get
+    emit = Mock()
+    monkeypatch.setattr(service.hit_service, "get_hit", Mock(return_value=(write_hit, "v1")))
+    monkeypatch.setattr(service.hit_service, "datastore", lambda: storage)
+    monkeypatch.setattr(service.hit_service.comms_service, "emit", emit)
+
+    assert service.save_ai_lead("hit-1", make_user(), "generated note")
+
+    storage.hit.save.assert_called_once()
+    assert storage.hit.save.call_args.kwargs == {"version": "v1", "refresh": "wait_for"}
+    assert storage.hit.get.call_args.kwargs == {"as_obj": False, "version": True}
+    emitted_hit = emit.call_args.args[1]["hit"]
+    assert any(lead["content"] == "generated note" for lead in emitted_hit["howler"]["dossier"])
 
 
 @pytest.mark.parametrize(
@@ -309,6 +346,7 @@ def test_save_stops_after_retries_are_exhausted(settings, monkeypatch):
     assert not service.save_ai_lead("hit-1", make_user(), "generated note")
 
     assert get_hit.call_count == save_hit.call_count == service.AI_LEAD_RETRIES
+    assert all(call.kwargs["refresh"] == "wait_for" for call in save_hit.call_args_list)
 
 
 @pytest.mark.parametrize("metadata", ["not-json", "[]", "null", "42"])

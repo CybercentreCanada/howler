@@ -34,6 +34,7 @@ core:
     max_hits_basic: 10
     max_hits_advanced: 50
     max_input_bytes: 200000
+    max_response_bytes: 1000000
     excluded_input_fields:
       - howler.dossier
       - howler.log
@@ -74,8 +75,11 @@ can extend a call and delay queued jobs. The combined system prompt and
 serialized alert content are limited to `max_input_bytes` UTF-8 bytes (default
 200,000) as a coarse safeguard,
 not an exact model-token limit; the provider enforces its own context window.
-Responses are buffered without a size limit. `max_concurrent_jobs` is the
-number of consumer threads **per Howler process running the job system**;
+Provider responses are read in fixed-size chunks and capped at
+`max_response_bytes` (default 1,000,000 bytes). The limit counts the complete
+response body after HTTP content decompression; an oversized response is rejected
+before JSON parsing. `max_concurrent_jobs` is the number of consumer threads
+**per Howler process running the job system**;
 multiple Howler processes multiply total concurrency. Queue pops are atomic, so
 the same queued job is not processed by multiple consumers. A failed job is
 logged and discarded, and a job lost after dequeue is not automatically
@@ -91,4 +95,6 @@ The ordinary action report indicates how many alerts were queued. There is no
 run ID, run-history API, or progress event. Successful analyses appear as
 markdown dossier leads with metadata owner `howler.ai_triage`. Saving replaces
 only an earlier AI triage lead, preserves unrelated leads, and uses optimistic
-versioning so concurrent alert edits are not overwritten.
+versioning so concurrent alert edits are not overwritten. Each save waits for
+search refresh so the emitted hit event and subsequent search-backed reads include
+the saved lead.
