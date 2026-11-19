@@ -1,5 +1,6 @@
 /// <reference types="vitest" />
 import { act, renderHook } from '@testing-library/react';
+import type { Hit } from 'models/entities/generated/Hit';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockDispatchApi = vi.hoisted(() => vi.fn());
@@ -211,5 +212,22 @@ describe('useHitActions', () => {
       transition: 'assign_to_other',
       data: { assignee: 'bob' }
     });
+  });
+
+  it.each([
+    { assignments: ['bob', 'bob'], expected: 'bob' },
+    { assignments: ['bob', 'alice'], expected: 'unassigned' }
+  ])('passes $expected as the delegation drawer assignment', async ({ assignments, expected }) => {
+    const hits = assignments.map((assignment, index) => ({
+      howler: { id: `hit-${index}`, status: 'open', assignment, assessment: 'benign', escalation: 'hit' }
+    })) as Hit[];
+    mockDrawerOpen.mockImplementation(({ children }) => children.props.onAssigned('bob'));
+
+    const { result } = renderHook(() => useHitActions(hits));
+    await act(async () => {
+      await result.current.manage('assign_to_other');
+    });
+
+    expect(mockDrawerOpen.mock.lastCall?.[0].children.props.assignment).toBe(expected);
   });
 });

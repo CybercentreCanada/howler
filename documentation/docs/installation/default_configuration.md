@@ -58,6 +58,7 @@ auth:
         uid_randomize_delimiter: '-'
         uid_randomize_digits: 0
         uid_regex: null
+        trust_username_claim: false
         user_get: null
     strict_apikeys: true
 core:

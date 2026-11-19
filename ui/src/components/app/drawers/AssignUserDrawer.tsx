@@ -9,6 +9,7 @@ import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { FC } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
+import { groupUserIdentities } from 'utils/userIdentity';
 
 type AssignUserDrawerProps = {
   assignment: string;
@@ -24,11 +25,24 @@ const AssignUserDrawer: FC<AssignUserDrawerProps> = ({ assignment, ids, onAssign
 
   const userIds = useMemo(() => new Set(['*']), []);
   const users = useMyUserList(userIds);
+  const { canonicalUsers, getCanonicalUser } = useMemo(() => groupUserIdentities(Object.values(users)), [users]);
   const [assignedUserId, setAssignedUserId] = useState(assignment === 'unassigned' ? null : assignment);
   const [loading, setLoading] = useState(false);
 
+  const canonicalUser =
+    assignedUserId && assignedUserId !== 'unassigned' ? getCanonicalUser(assignedUserId) : undefined;
+  const usernameToSubmit = canonicalUser?.username ?? assignedUserId;
+  const value = useMemo(() => {
+    // MUI skips onChange for the same object. Let users explicitly select the canonical option for a duplicate.
+    if (canonicalUser && canonicalUser.username !== assignedUserId) {
+      return { ...canonicalUser };
+    }
+
+    return canonicalUser ?? null;
+  }, [assignedUserId, canonicalUser]);
+
   const onSubmit = useCallback(async () => {
-    if (!assignedUserId) {
+    if (!usernameToSubmit) {
       return;
     }
 
@@ -39,7 +53,7 @@ const AssignUserDrawer: FC<AssignUserDrawerProps> = ({ assignment, ids, onAssign
           ids.map(id =>
             dispatchApi(
               api.hit.assign.put(id, {
-                value: assignedUserId === 'unassigned' ? null : assignedUserId
+                value: usernameToSubmit === 'unassigned' ? null : usernameToSubmit
               })
             )
           )
@@ -51,8 +65,8 @@ const AssignUserDrawer: FC<AssignUserDrawerProps> = ({ assignment, ids, onAssign
       }
     }
 
-    onAssigned(assignedUserId);
-  }, [assignedUserId, dispatchApi, ids, onAssigned, showInfoMessage, skipSubmit, t]);
+    onAssigned(usernameToSubmit);
+  }, [dispatchApi, ids, onAssigned, showInfoMessage, skipSubmit, t, usernameToSubmit]);
 
   return (
     <Stack direction="column" spacing={2} sx={{ mt: 2 }}>
@@ -60,29 +74,27 @@ const AssignUserDrawer: FC<AssignUserDrawerProps> = ({ assignment, ids, onAssign
         <Trans i18nKey="app.drawer.hit.assignment.description" />
       </Typography>
       <Autocomplete
-        disabled={Object.keys(users).length < 1}
+        disabled={canonicalUsers.length < 1}
         autoComplete
         options={[
-          ...Object.values(users),
+          ...canonicalUsers,
           {
             email: t('app.drawer.hit.assignment.unassigned.email'),
             name: t('app.drawer.hit.assignment.unassigned.name'),
             username: 'unassigned'
           } as HowlerUser
         ]}
-        filterOptions={(_users, { inputValue }) =>
-          _users.filter(
-            u =>
-              u.email.toLowerCase().includes(inputValue.toLowerCase()) ||
-              u.name.toLowerCase().includes(inputValue.toLowerCase())
-          )
-        }
+        filterOptions={(options, { inputValue }) => {
+          const query = inputValue.toLowerCase();
+          return options.filter(u => u.email?.toLowerCase().includes(query) || u.name.toLowerCase().includes(query));
+        }}
         onKeyDown={e => e.stopPropagation()}
         getOptionLabel={(u: HowlerUser) => u.name}
+        getOptionKey={u => u.username}
         isOptionEqualToValue={(u, u2) => u.username === u2.username}
-        renderOption={(props, u) => {
+        renderOption={({ key, ...props }, u) => {
           return (
-            <li {...props} key={u.email}>
+            <li key={key} {...props}>
               <Box
                 sx={{
                   display: 'grid',
@@ -115,11 +127,11 @@ const AssignUserDrawer: FC<AssignUserDrawerProps> = ({ assignment, ids, onAssign
         renderInput={params => (
           <TextField {...params} label={<Trans i18nKey="app.drawer.hit.assignment.autocomplete.label" />} />
         )}
-        value={assignedUserId ? (users[assignedUserId] ?? null) : null}
+        value={value}
         onChange={(_, value: HowlerUser | null) => setAssignedUserId(value?.username ?? null)}
       />
       <Button
-        disabled={!assignedUserId || assignedUserId === assignment || loading}
+        disabled={!usernameToSubmit || assignedUserId === assignment || usernameToSubmit === assignment || loading}
         variant="contained"
         sx={{ alignSelf: 'end' }}
         onClick={onSubmit}
