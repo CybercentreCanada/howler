@@ -1,0 +1,592 @@
+ui/src/models/entities/generated/Agent.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Event.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,7,12-13,19-20,22,25-26,30-32,46,48,50-51,55,60,65-67,72,74,76
+ui/src/models/entities/generated/Machine.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+documentation/docs/odm/class/label.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 19-20
+api/test/unit/endpoints/test_hit_endpoint.py
+  s_7dcb1935aaf88e::t_66ce304b606174 7-8,10,75-122
+  s_7dcb1935aaf88e::t_080c84cc488b28 123-124
+ui/src/models/entities/generated/Cbs.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Image.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Item.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,4,6-7
+ui/src/models/entities/generated/Lead.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,8
+ui/src/models/entities/generated/HowlerComment.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Organization.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/components/routes/views/ViewComposer.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 82,251,305
+documentation/docs/odm/class/section.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 19-20
+ui/src/models/entities/generated/TlsServer.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Comment.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/howler/datastore/types.py
+  s_7dcb1935aaf88e::t_ee104529a550d1 1,4,9-21
+  s_7dcb1935aaf88e::t_4d0b1428d32e6b 22-23
+plugins/sync/sync/iceberg/build.py
+  s_7dcb1935aaf88e::t_4535e9f3bd0df0 4,17-18,26-29,31-33,35-39,49,56
+ui/src/models/entities/generated/CodeSignature.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,3
+ui/src/models/entities/generated/Egress.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/ShortUser.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-7
+ui/src/models/entities/generated/Votes.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+documentation/docs/odm/class/egress.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 11-12
+documentation/docs/odm/class/header.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 14-15
+documentation/docs/odm/class/network.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 13-14
+ui/src/components/routes/cases/detail/CaseDetailControls.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 3,8-10,12,15-20,26-33,49,56
+ui/src/models/entities/generated/As.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-5
+ui/src/models/entities/generated/HitFile.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,4,21,32
+documentation/docs/odm/class/group.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 13-14
+api/test/unit/models/fixtures/legacy_public_contract.json
+  s_7dcb1935aaf88e::t_4535e9f3bd0df0 1-87
+ui/src/models/entities/generated/Request.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/ParentProcess.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-32
+ui/src/models/entities/generated/Url.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/build_scripts/model_json_schema.py
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 1-275
+ui/src/models/entities/generated/Section.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+documentation/docs/odm/class/error.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 12-13
+api/howler/datastore/collection.py
+  s_7dcb1935aaf88e::t_a7f1df55b04aee 28,37,57-58,61,122-124,311,343-346,349-350,352,355-356,358-364,386,404,409,416-420,426-428,775,777,1287,1290,1292,1295-1300,1326,1328-1339,1341-1356,1361-1362,1364,1366,1369-1381,1383-1386,1607,1612-1615,1619,1643-1648,1650-1661,1663-1677,1826,1836,1846,1848,1875,1882-1883,1893,1895,1898-1904,2037,2098,2108,2114,2116,2126,3149,3160-3164,3172,3174-3179,3181-3189,3191-3201,3203-3206,3226-3228,3231-3232,3235-3239,3245-3247,3249-3254,3281-3310,3345,3379,3383-3385,3387-3391,3395-3433,3464,3472-3473,3483-3484,3487-3488,3509,3513,3519-3520,3524-3538,3543-3546,3577,3604-3605,3612-3616,3618-3620,3622-3626,3628,3635,3643,3657,3664,3671,3674,3678,3699,3727,3733,3736-3784,3786-3787,3793
+documentation/docs/odm/class/host.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 17-18
+ui/src/models/entities/generated/Template.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,8
+ui/src/models/entities/generated/Faas.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+documentation/docs/odm/class/account.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 12-13
+ui/src/models/entities/generated/Response.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/test/unit/test_elasticsearch_cutover_verify.py
+  s_7dcb1935aaf88e::t_81f496f5109b19 22,88-95,103,117,177,180-182,190-198,218,571-576,590-594,605,764,771-782,784-818,907-910,962-963,1023-1112,1139,1154-1218,1310-1349,1352-1355,1420,1430-1435,1443,1446-1448,1452,1455,1457-1460,1465,1630-1631
+documentation/docs/odm/class/sharepointuser.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 13-14
+api/test/unit/services/test_event_service.py
+  s_7dcb1935aaf88e::t_66ce304b606174 8,25-55,268
+ui/src/models/entities/generated/Nat.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Host.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,6
+ui/src/models/entities/generated/LocalizedLabel.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-5
+docs/api/codebase.md
+  s_7dcb1935aaf88e::t_ee104529a550d1 11-12
+ui/src/models/entities/generated/Assemblyline.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,6-10,12-13
+ui/src/models/entities/generated/Dns.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-3,6,10-11
+ui/src/models/entities/generated/Hash.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Attachment.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+docs/api/plugins.md
+  s_7dcb1935aaf88e::t_66ce304b606174 119,122,204
+ui/src/models/entities/generated/TriageOptions.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-7
+ui/src/models/entities/generated/ThreatEmail.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-4
+documentation/docs/odm/class/url.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 24-25
+ui/src/models/entities/generated/Instance.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+documentation/docs/odm/class/localizedlabel.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 12-13
+documentation/docs/odm/class/machine.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 11-12
+ui/src/components/routes/cases/modals/AddEventModal.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 18,104-105,116-118,128-130,169,193,240
+ui/src/models/entities/generated/Enrichments.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Overview.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Client.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Mitre.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,5-6
+ui/src/models/entities/generated/Pe.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+documentation/docs/odm/class/device.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 11-12
+ui/src/models/entities/generated/Task.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+documentation/docs/odm/class/ecsversion.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 11-12
+ui/src/models/entities/generated/CloudAccount.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/TypeMap.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-5
+api/howler/models/fields.py
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 8-9,21,82,139,162-172,186-188,205,207,209-213,215,217-218,233-249,271,275-277,281,295-297,308,317-319,321,830-836,888-901,903,906,908-910
+documentation/docs/odm/class/shortgroup.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 12-13
+api/howler/services/event_service.py
+  s_7dcb1935aaf88e::t_66ce304b606174 138-139,162,166,168
+ui/src/models/entities/generated/Feed.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+documentation/docs/odm/class/dnsanswer.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 15-16
+documentation/docs/odm/class/interface.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 12-13
+ui/src/models/entities/generated/Project.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/components/routes/cases/modals/AddEventModal.test.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 135-145,167-170,191-192
+api/howler/models/registry.py
+  s_7dcb1935aaf88e::t_a7f1df55b04aee 8,44-72,78-79,81,88-92,110-114,157-158,183-190,200-202,228-232,241-250,252,259-260,269,283-284,292-294,367
+ui/src/components/elements/record/RecordContextMenu.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 32,94
+documentation/docs/odm/class/tactic.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 13-14
+api/howler/datastore/utils.py
+  s_7dcb1935aaf88e::t_a7f1df55b04aee 38,101-105,109
+api/howler/helper/search.py
+  s_7dcb1935aaf88e::t_ee104529a550d1 5,91
+api/test/unit/services/test_lucene_service.py
+  s_7dcb1935aaf88e::t_1056dad4abd7db 1,9,29,33-74,84-86,95-97,100-111,133,142-218,220-222
+ui/src/components/app/hooks/useMatchers.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 4,13
+ui/src/models/entities/generated/AwsAccount.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-5
+ui/src/models/entities/generated/Device.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/ECSRule.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Link.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+documentation/docs/odm/class/os.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 17-18
+ui/src/models/entities/generated/ECSEvent.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,4,14,17,27
+ui/src/models/entities/generated/Address.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-4
+api/build_scripts/generate_classes.py
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-3,7,9-39,43-51,55-155,157-213,215-217,219,223
+ui/src/models/entities/generated/Dossier.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,6,9,14
+documentation/docs/odm/class/hashes.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 17-18
+documentation/docs/odm/class/rule.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 20-21
+api/howler/models/extensions.py
+  s_7dcb1935aaf88e::t_a7f1df55b04aee 13-15,20,24,35-38,40-42,48-64,72-73,75-85,88,94-99,103,107,118-120,122,132,145,149-152
+ui/src/models/entities/generated/Os.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+documentation/docs/odm/class/body.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 12-13
+ui/src/models/entities/generated/EntryMeta.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+AGENTS.md
+  s_7dcb1935aaf88e::t_ee104529a550d1 44
+ui/src/models/entities/generated/HitOrganization.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/build_scripts/generate_api_config_types.py
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-302
+ui/src/models/entities/generated/Source.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,5,10,17
+ui/src/models/entities/generated/Settings.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,6-7
+documentation/docs/odm/class/usernested.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 17-18
+api/test/unit/actions/test_change_field.py
+  s_7dcb1935aaf88e::t_66ce304b606174 1-2,6-7,9-11,14-15,17-20,23,29-30,34,43-91
+documentation/docs/odm/class/organization.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 12-13
+ui/src/models/entities/generated/Clue.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,5
+ui/src/models/entities/generated/Outline.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/components/routes/help/HitSchemaDocumentation.test.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 37,43,67
+ui/src/models/entities/generated/Observer.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,11
+ui/src/models/entities/generated/View.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,5-7,14
+documentation/docs/odm/class/dnsquestion.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 16-17
+api/test/unit/models/test_fields.py
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 9,245-333
+  s_7dcb1935aaf88e::t_9d8bae4044f84a 334-335
+documentation/docs/odm/class/shortuser.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 14-15
+documentation/docs/odm/class/feed.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 14-15
+plugins/evidence/test/unit/models/test_evidence.py
+  s_7dcb1935aaf88e::t_66ce304b606174 1-2,4,7-9,14,22-28,34-93
+  s_7dcb1935aaf88e::t_343b4f088fed78 94-95
+documentation/docs/odm/class/hash.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 11-12
+ui/src/models/entities/generated/ECSVersion.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-4
+documentation/docs/odm/class/entrymeta.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 11-12
+ui/src/models/entities/generated/DNSAnswer.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-8
+documentation/docs/odm/class/instance.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 12-13
+api/howler/api/v2/ingest.py
+  s_7dcb1935aaf88e::t_66ce304b606174 21,286-287,291-292,301-306,308-309
+ui/src/api/search/fields/index.test.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 23,25-34,38-39,41
+ui/src/models/entities/generated/Hashes.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-10
+documentation/docs/odm/class/related.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 18-19
+api/test/unit/test_ilm_collection.py
+  s_7dcb1935aaf88e::t_a7f1df55b04aee 8,19-30,54-57,808,810-811,831-833,838,858-859,870-871,884-885,929,931-932,1059-1094,1137,1145-1146,1150-1157,1163-1171,1173-1174,1176,1179,1196-1199,1201-1245,1287,1289-1290,1296-1434,1786,1811-1816,1952-1953,1982-1988,2113-2124,2128-2138,2143-2149,2155,2160-2174,2196-2222,2253-2280,2282-2397,2399-2485,2490,2560,2576,2579,2601
+ui/src/models/entities/generated/DNSQuestion.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-9
+api/howler/api/v1/hit.py
+  s_7dcb1935aaf88e::t_66ce304b606174 42-49,347-353,355
+ui/src/models/entities/generated/Notebook.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Server.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/GridColumn.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-5
+api/howler/services/dossier_service.py
+  s_7dcb1935aaf88e::t_66ce304b606174 162-163,238-240
+ui/src/models/entities/generated/Registry.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,5
+ui/src/models/entities/generated/SharepointData.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-5
+ui/src/models/entities/generated/Tls.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/howler/services/hit_service.py
+  s_7dcb1935aaf88e::t_66ce304b606174 250,268-269,304,354
+ui/src/models/entities/generated/Howler.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,5,13,19-20,36,38
+ui/src/models/entities/generated/Action.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,6-7,12
+api/test/unit/models/test_base.py
+  s_7dcb1935aaf88e::t_66ce304b606174 24,273-335
+  s_7dcb1935aaf88e::t_37dea9c1cffe61 336-337
+api/test/unit/services/test_case_service.py
+  s_7dcb1935aaf88e::t_66ce304b606174 16,171-179,184,192,194-195,197-206,209,211,217,225,232,237,239,244,246,254,1954,3083,3149,3162
+ui/src/models/entities/generated/Related.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,7,9
+documentation/docs/odm/class/codesignature.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 19-20
+documentation/docs/odm/class/service.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 11-12
+ui/src/models/entities/generated/ThreatTactic.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Hit.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,13,50,52
+ui/src/models/entities/generated/Aws.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,6
+documentation/docs/installation/elasticsearch_9_cutover.md
+  s_7dcb1935aaf88e::t_81f496f5109b19 468-470,482-497
+ui/src/models/entities/generated/GeoPoint.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-5
+ui/src/models/entities/generated/ApiType.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 11,13-16
+api/howler/utils/dict_utils.py
+  s_7dcb1935aaf88e::t_66ce304b606174 1-2,75-81,88,107,123,129,131-133,139-141,160-199,202-203
+ui/src/utils/stringUtils.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 3-4
+ui/src/models/entities/generated/Network.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+documentation/docs/odm/class/comment.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 16-17
+api/test/unit/services/test_dossier_group_service.py
+  s_7dcb1935aaf88e::t_66ce304b606174 173
+ui/src/models/entities/generated/Trigger.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,4
+ui/src/models/entities/generated/Ingress.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Threat.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,3,14,17
+api/howler/actions/change_field.py
+  s_7dcb1935aaf88e::t_66ce304b606174 2,62
+api/test/unit/endpoints/test_ingest_endpoint.py
+  s_7dcb1935aaf88e::t_66ce304b606174 10,692-721,725,731-736,745,749-750,762-764,772,800,837,855,875,890-913
+  s_7dcb1935aaf88e::t_052019ea1ac55a 914
+api/test/unit/test_generate_entity_types.py
+  s_7dcb1935aaf88e::t_95ecccb47d7689 8,85-95,154
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-7,9-84,96-153,155-166
+ui/src/models/entities/generated/ALRecord.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-7
+ui/src/models/entities/generated/Matched.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Software.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/test/unit/services/test_ingest_service.py
+  s_7dcb1935aaf88e::t_66ce304b606174 1-291
+ui/src/models/entities/generated/RegistryData.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-6
+ui/src/models/entities/generated/Interface.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Incident.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/howler/models/base.py
+  s_7dcb1935aaf88e::t_66ce304b606174 529-559,573
+ui/src/models/entities/generated/Rule.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,5-6,8-11
+ui/src/models/entities/generated/OriginalClient.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-17
+.github/workflows/api-workflow.yml
+  s_7dcb1935aaf88e::t_ee104529a550d1 12-13,28-29,99-102
+ui/src/components/routes/action/view/ActionDetails.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 22,26,51-52,57-58,180,191
+ui/src/models/entities/generated/Gcp.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/ThreatEnrichment.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/components/routes/action/useMyActionFunctions.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 9,77
+ui/src/models/entities/generated/Operation.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+documentation/docs/odm/class/agent.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 14-15
+api/howler/services/case_service.py
+  s_7dcb1935aaf88e::t_66ce304b606174 194-195
+ui/src/models/entities/generated/Analytic.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,4,17-18
+documentation/docs/odm/class/pe.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 18-19
+api/howler/datastore/howler_store.py
+  s_7dcb1935aaf88e::t_66ce304b606174 1-2,44,59,63,68-74,83-91
+  s_7dcb1935aaf88e::t_67726b1be6d276 92-93
+ui/src/models/entities/generated/User.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/howler/external/elasticsearch_rest.py
+  s_7dcb1935aaf88e::t_81f496f5109b19 250-261,263-266,288-291,315-316,318,347
+documentation/docs/odm/class/log.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 18-19
+plugins/sync/test/unit/iceberg/test_build_schema.py
+  s_7dcb1935aaf88e::t_4535e9f3bd0df0 3,10,12,23,35,74,76-77,80-81,120-121,137,141-144,156-157,159-171,173,179-222
+  s_7dcb1935aaf88e::t_a941ce47340eaf 223-224
+documentation/docs/odm/class/gcp.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 15-16
+documentation/docs/odm/class/thread.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 12-13
+ui/src/components/routes/cases/detail/TaskPanel.test.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 172
+ui/src/models/entities/generated/UserAgent.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+documentation/docs/odm/class/geopoint.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 12-13
+ui/src/models/entities/generated/EventHowler.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,9
+ui/src/models/entities/generated/Body.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/components/routes/advanced/yamlCompletionProvider.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 36,47
+ui/src/models/entities/generated/CaseLog.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Vulnerability.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+documentation/docs/odm/class/chardevice.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 12-13
+documentation/docs/odm/class/nat.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 12-13
+ui/src/components/routes/cases/modals/CreateCaseModal.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 31,41
+ui/src/models/entities/generated/UserUser.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,8,16
+ui/src/models/entities/generated/File.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,6
+ui/src/models/ActionTypes.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,4-5,35
+ui/src/models/entities/generated/ParentEmail.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-14
+ui/src/models/entities/generated/Case.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,11,15,18,23
+api/howler/external/elasticsearch_preflight.py
+  s_7dcb1935aaf88e::t_81f496f5109b19 182
+documentation/docs/odm/class/alrecord.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 14-15
+documentation/docs/odm/class/registrydata.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 13-14
+documentation/docs/odm/class/segment.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 12-13
+documentation/docs/odm/class/project.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 12-13
+documentation/docs/odm/class/sharepointdata.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 12-13
+api/howler/services/ingest_service.py
+  s_7dcb1935aaf88e::t_66ce304b606174 1-88
+documentation/docs/odm/class/address.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 11-12
+ui/src/components/routes/help/components/CaseDocumentationPreviews.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 148-149
+ui/src/models/entities/generated/Indicator.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-3,8-9
+documentation/docs/odm/class/matched.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 11-12
+documentation/docs/odm/class/software.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 16-17
+ui/src/models/entities/generated/Group.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+docs/api/model-compatibility.md
+  s_7dcb1935aaf88e::t_4535e9f3bd0df0 1-54
+documentation/docs/odm/class/vulnerability.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 17-18
+ui/src/models/entities/generated/Pivot.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,6,8,10
+api/test/unit/models/test_extensions.py
+  s_7dcb1935aaf88e::t_a7f1df55b04aee 5-7,19,24-25,102-140,192-244
+  s_7dcb1935aaf88e::t_d726172c8712c0 245-246
+ui/src/components/routes/action/useMyActionFunctions.test.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 153,159
+api/test/unit/models/test_registry_cache.py
+  s_7dcb1935aaf88e::t_a7f1df55b04aee 1-110
+ui/src/api/search/fields/index.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 5,8
+ui/src/components/routes/action/edit/ActionEditor.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 24,28,64,206-211
+ui/src/models/entities/generated/Email.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,4,8-9,13,17-19,21
+ui/src/models/entities/generated/DashboardEntry.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-6
+ui/src/models/entities/generated/Process.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,4-5,7,20,23,30
+api/build_scripts/generate_md_docs.py
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 7,11,14,99-101,103-111,113-122,138,142-165,170,173-181,183-186,188-191,193-194,281-291,316-320,325-326,328-329
+ui/src/models/entities/generated/Sharepoint.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,5-6
+documentation/docs/odm/class/server.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 13-14
+documentation/docs/odm/class/votes.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 13-14
+ui/src/models/WithMetadata.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 6-8,14
+ui/src/models/entities/generated/Service.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+documentation/docs/odm/class/event.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 36-37
+plugins/sentinel/sentinel/actions/azure_emit_hash.py
+  s_7dcb1935aaf88e::t_66ce304b606174 7,119,121
+ui/src/models/entities/generated/Log.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,9
+ui/src/models/entities/generated/Error.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/test/unit/test_bulk.py
+  s_7dcb1935aaf88e::t_a7f1df55b04aee 7,51-70
+  s_7dcb1935aaf88e::t_c47ced0583d8ad 71-72
+documentation/docs/odm/class/as.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 12-13
+api/test/unit/services/test_dossier_service.py
+  s_7dcb1935aaf88e::t_66ce304b606174 1-33
+ui/src/components/routes/templates/TemplateViewer.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 50-53,250,324
+ui/src/models/entities/generated/Elf.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,14
+api/howler/external/elasticsearch_cutover_verify.py
+  s_7dcb1935aaf88e::t_81f496f5109b19 16-17,25,73-74,78-79,82,92,95,100-101,127,144-149,215-229,244-246,300-302,307,310,333-334,341,394-395,415-480,540-548,576-578,581-582,585-586,632-633,670,763,778,808,898,910-911,1075,1140,1152,1161-1171,1176,1216,1219-1236
+api/howler/datastore/bulk.py
+  s_7dcb1935aaf88e::t_a7f1df55b04aee 9-10,15,27-61,67,82-83,99-100,109-110,116-117,121-134,136-151,159,169,172-173,188-197,200,202-204,210-214,223-227,230-237,323-324,326,427-430
+.opencode/opencode.jsonc
+  s_7dcb1935aaf88e::t_ee104529a550d1 3,12,36
+plugins/sentinel/test/unit/models/test_sentinel.py
+  s_7dcb1935aaf88e::t_66ce304b606174 4,19-25,29,62,67-72,74-76,79
+ui/src/components/routes/help/HitSchemaDocumentation.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 25,55,76,80,88,90
+ui/src/models/entities/generated/Http.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+documentation/docs/odm/class/subtechnique.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 13-14
+ui/src/components/elements/hit/HitOutline.test.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 3-5,12,53-58,62,65-66,70,91-108
+  s_7dcb1935aaf88e::t_0cd8d87ede2733 109
+api/howler/services/lucene_service.py
+  s_7dcb1935aaf88e::t_1056dad4abd7db 5,7,13,16,24,35-76,221-228,230-231,234,246-250,253-254,257-258,261-269,272-279,282,284-286,289-347,406,408-411,415-417,419-420,423,425-428,430-432,436,445-446,455,457-460,469-470,511,526-533
+documentation/docs/odm/class/azure.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 15-16
+ui/src/components/routes/help/HitBannerDocumentation.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 30-31
+documentation/docs/odm/class/trigger.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 12-13
+ui/src/models/entities/generated/Cloud.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Azure.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Geo.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,10
+documentation/docs/odm/class/incident.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 13-14
+documentation/docs/odm/class/link.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 13-14
+ui/src/models/entities/generated/Labels.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Header.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/ThreatGroup.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/test/unit/test_elasticsearch_preflight.py
+  s_7dcb1935aaf88e::t_81f496f5109b19 41,67-71,220-247
+  s_7dcb1935aaf88e::t_b3ea71ac04f1e1 248-249
+documentation/docs/installation/elasticsearch_9_preflight.md
+  s_7dcb1935aaf88e::t_81f496f5109b19 64-70
+ui/src/models/entities/generated/Container.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/test/unit/models/test_legacy_parity.py
+  s_7dcb1935aaf88e::t_4535e9f3bd0df0 1-97
+ui/src/components/routes/cases/detail/CaseDetails.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 51
+api/howler/datastore/ilm_contract.py
+  s_7dcb1935aaf88e::t_a7f1df55b04aee 1-154
+ui/src/components/elements/hit/HitOutline.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 10,36,45
+api/test/unit/models/fixtures/legacy_public_contract_examples.json
+  s_7dcb1935aaf88e::t_4535e9f3bd0df0 1-147
+ui/src/models/entities/generated/Mapping.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/ParentParentProcess.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-30
+api/test/unit/models/test_json_schema_export.py
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 1-253
+ui/src/components/routes/advanced/luceneCompletionProvider.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 106,125
+.pre-commit-config.yaml
+  s_bd178b7c06332a::t_699fb0f398d7e4 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "de409016357630bc5bdd115bc0d9d0944d9edbc9",
+  "prompts": {},
+  "sessions": {
+    "s_7dcb1935aaf88e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e0b9e3e8bffe7czVJfs9206Km7",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_bd178b7c06332a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e0adcdb9affefBOfpO58jVs7k9",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
