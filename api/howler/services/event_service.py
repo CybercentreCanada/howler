@@ -135,7 +135,8 @@ def convert_event(  # noqa: C901
         HowlerTypeError: If the data cannot be converted to an Event model
         ResourceExists: If unique=True and an event with the generated ID already exists
     """
-    data = flatten(data, odm=Event)
+    event_type: type[Event] = datastore().event.model_class or Event
+    data = flatten(data, odm=event_type)
 
     if "howler.hash" not in data:
         hash_contents = {
@@ -158,13 +159,13 @@ def convert_event(  # noqa: C901
 
         data["howler.data"] = parsed_data
 
-    unused_keys = extra_keys(Event, data)
+    unused_keys = extra_keys(event_type, data)
     if unused_keys and not ignore_extra_values:
         raise HowlerValueError(f"Event was created with invalid parameters: {', '.join(unused_keys)}")
 
-    odm = Event.validate_howler(strip_unknown_fields(Event, data) if ignore_extra_values else data)
+    odm = event_type.validate_howler(strip_unknown_fields(event_type, data) if ignore_extra_values else data)
 
-    odm_flatten = model_registry.flat_fields(Event, show_compound=True)
+    odm_flatten = model_registry.flat_fields(event_type, show_compound=True)
     deprecated_keys = {
         key for key in odm_flatten.keys() & data.keys() if getattr(odm_flatten[key].metadata, "deprecated", False)
     }

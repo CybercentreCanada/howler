@@ -61,11 +61,13 @@ The command exits non-zero when the cluster:
 - contains an index created before Elasticsearch 8.0.
 
 The report also inventories each index's UUID, health, open/closed status,
-creation version, settings, and alias `is_write_index` values. For configured
-Howler-prefixed indices it collects primary-shard document counts,
-`max_seq_no`, and `global_checkpoint` from `_stats?level=shards`; these use the
-same stats contract as the post-cutover baseline verifier. It also records ILM
-explain state for Howler-prefixed indices; composable, component,
+creation version, settings, and alias `is_write_index` values. For each open
+Howler-prefixed index it collects primary-shard document counts, `max_seq_no`,
+and `global_checkpoint` from `_stats?level=shards`. Both tools require every
+primary ID from `0` through `index.number_of_shards - 1`. If a primary is
+missing, the report leaves the index document count `null` rather than reporting
+a partial total. It also records ILM explain state for Howler-prefixed indices;
+composable, component,
 and legacy templates; ILM policies; ingest pipelines; node settings; snapshot
 repositories; remote clusters; and all informational or warning-level
 deprecations. Use only a report with `baseline_capture: true` as the pre-upgrade

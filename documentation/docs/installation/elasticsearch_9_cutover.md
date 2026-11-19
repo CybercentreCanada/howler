@@ -465,8 +465,9 @@ Assistant completion message; the Upgrade Assistant review was performed on
     empty, unwritten ILM generation rollover and empty post-baseline
     initialization of configured collections. It blocks missing/replaced
     baseline indices, UUID or alias metadata changes, and per-shard document
-    count or `max_seq_no` changes. Baseline and current primary checkpoints must
-    be synchronized; if not, keep the cluster quiesced and follow the preflight
+    count or `max_seq_no` changes. Both captures must cover all configured
+    primary shard IDs for each open Howler index, with synchronized checkpoints.
+    If either check fails, keep the cluster quiesced and follow the preflight
     guide's checkpoint recovery procedure before rerunning. There is no implicit
     sequence-number tolerance. A cutover lead may explicitly accept drift on a
     named physical index with repeatable `--accept-sequence-drift <index>` flags, for example
@@ -478,11 +479,22 @@ Assistant completion message; the Upgrade Assistant review was performed on
 
     It loads the deployed configuration and finalized models without
     constructing a datastore or reconciling Elasticsearch. It checks each
-    initialized collection's configured `_hot` or ILM layout, one write index,
-    ILM explain plus the future rollover index template and hot rollover policy,
-    expected property definitions and ordered active templates, field limits,
-    and `field_caps` conflicts. Schema-less `user_avatar` property/template drift
-    is reported as a warning to mirror application startup behavior. The source
+    initialized collection's configured `_hot` or ILM layout and one write index.
+    An ILM read alias must cover every canonical generation and no other indices,
+    even without a baseline. The latest generation must explicitly set
+    `is_write_index: true`, so rollover keeps the older data searchable. A sole
+    legacy `_hot` index may write implicitly. The verifier checks ILM explain,
+    the future rollover template, and the configured policy: hot rollover
+    thresholds, any configured warm and cold phases, and no extra actions or
+    phases (including deletion).
+    `_source` must be enabled on every backing index and in the rollover template;
+    omitting it uses Elasticsearch's enabled default. The verifier checks each
+    backing index's root `dynamic` mode, expected properties, ordered active
+    templates, field limits, and `field_caps` conflicts. On a backing index or
+    rollover template, an obsolete template that matches before an active one
+    and changes its mapping blocks cutover for a modeled collection. The report
+    names both templates. Harmless extra templates and schema-less `user_avatar`
+    property/template drift are warnings. The source
     default-template list has a duplicate `date` name: Elasticsearch keeps the
     last definition (`*_dts`) at the first name position, so the shadowed `*_dt`
     rule is reported as informational readiness debt; do not fix it in this

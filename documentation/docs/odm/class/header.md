@@ -11,3 +11,5 @@
 | target | Keyword | The target of the record. | :material-minus-box-outline: Optional | `None` |
 | indicators | List [Keyword] | Indicators of the record. | :material-checkbox-marked-outline: Yes | `[]` |
 | summary | Keyword | Summary of the record. | :material-minus-box-outline: Optional | `None` |
+
+

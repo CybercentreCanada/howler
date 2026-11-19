@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Any
+from collections.abc import Collection
+from typing import TYPE_CHECKING, Any, cast
 
 from howler.common.exceptions import HowlerAttributeError
 from howler.config import config
@@ -40,10 +41,7 @@ INDEXES = {
 ILM_ENABLED_INDEXES = {"hit", "event", "case"}
 
 
-def finalize_models(plugins: list[Any]) -> dict[str, Any]:
-    """Compose and validate collection schemas without constructing a datastore or writing Elasticsearch state."""
-    # Each composition starts fresh so prior datastore/verifier instances cannot leak extensions.
-    model_extensions.clear()
+def _declare_extensions(plugins: list[Any], indexes: Collection[str]) -> None:
     for plugin in plugins:
         legacy_only_targets = {
             target
@@ -58,14 +56,21 @@ def finalize_models(plugins: list[Any]) -> dict[str, Any]:
                 "with Pydantic-backed collections."
             )
 
-    if config.core.clue.enabled:
+    if "hit" in indexes and config.core.clue.enabled:
         declare_clue_hit_extension()
 
     for plugin in plugins:
-        for _index in INDEXES:
+        for _index in indexes:
             if declare_extension := plugin.modules.models.declare_extensions.get(_index):
                 logger.info("Declaring %s model extension with function from plugin %s", _index, plugin.name)
                 declare_extension()
+
+
+def finalize_models(plugins: list[Any]) -> dict[str, Any]:
+    """Compose and validate collection schemas without constructing a datastore or writing Elasticsearch state."""
+    # Each composition starts fresh so prior datastore/verifier instances cannot leak extensions.
+    model_extensions.clear()
+    _declare_extensions(plugins, INDEXES)
 
     finalized_schema_models: dict[str, Any] = {}
     for _index, _schema in INDEXES.items():
@@ -73,6 +78,17 @@ def finalize_models(plugins: list[Any]) -> dict[str, Any]:
         schema.document_mapping(finalized)
         finalized_schema_models[_index] = finalized
     return finalized_schema_models
+
+
+def get_action_hit_model() -> type[Hit]:
+    """Use the startup Hit schema for action specifications, even before a datastore exists."""
+    if model_extensions.is_finalized(Hit):
+        return cast(type[Hit], model_extensions.finalize(Hit))
+
+    # Startup may already have pending declarations, including from the same hooks.
+    with model_extensions.isolated():
+        _declare_extensions(get_plugins(), ("hit",))
+        return cast(type[Hit], model_extensions.finalize(Hit))
 
 
 class HowlerDatastore(object):

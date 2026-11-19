@@ -16,3 +16,5 @@
 | timestamp | Date | Date and time when the code signature was generated and signed. | :material-minus-box-outline: Optional | `None` |
 | trusted | Boolean | Stores the trust status of the certificate chain. | :material-minus-box-outline: Optional | `None` |
 | valid | Boolean | Boolean to capture if the digital signature is verified against the binary content. | :material-minus-box-outline: Optional | `None` |
+
+

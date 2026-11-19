@@ -38,7 +38,7 @@ def _inventory() -> dict[str, Any]:
                 "doc_count": 2,
                 "health": "green",
                 "primary_shards": {"0": {"doc_count": 2, "max_seq_no": 7, "global_checkpoint": 7}},
-                "settings": {"index.version.created": "8191199", "index.uuid": "uuid-1"},
+                "settings": {"index.version.created": "8191199", "index.uuid": "uuid-1", "index.number_of_shards": "1"},
                 "status": "open",
                 "uuid": "uuid-1",
             }
@@ -64,7 +64,11 @@ class FakeRestClient:
             "/*": {
                 "howler-hit_hot": {
                     "aliases": {"howler-hit": {}},
-                    "settings": {"index.version.created": "8191199", "index.uuid": "uuid-1"},
+                    "settings": {
+                        "index.version.created": "8191199",
+                        "index.uuid": "uuid-1",
+                        "index.number_of_shards": "1",
+                    },
                 }
             },
             "/_cat/indices": [{"index": "howler-hit_hot", "health": "green", "status": "open", "docs.count": "2"}],
@@ -211,6 +215,36 @@ def test_closed_howler_indices_are_classified_for_preflight_and_baseline_capture
         blocker["check"] == "closed_howler_index" and blocker["index"] == "howler-archive_closed"
         for blocker in capture_checks["blockers"]
     )
+
+
+@pytest.mark.parametrize("baseline_capture", [True, False])
+def test_missing_primary_response_cannot_certify_a_partial_total(baseline_capture: bool) -> None:
+    class PartialStatsClient(FakeRestClient):
+        def get(self, path: str, params: dict[str, Any] | None = None) -> Any:
+            data = super().get(path, params)
+            if path == "/*":
+                data["howler-hit_hot"]["settings"]["index.number_of_shards"] = "2"
+                # The cluster-wide preflight inventories this index but only requests Howler shard stats.
+                data["other-app"] = {"settings": {"index.version.created": "8191199", "index.number_of_shards": "3"}}
+            elif path == "/howler-*/_stats":
+                data["indices"]["howler-hit_hot"]["shards"]["1"] = [
+                    {
+                        "routing": {"primary": False, "shard": 1},
+                        "docs": {"count": 100},
+                        "seq_no": {"max_seq_no": 99, "global_checkpoint": 99},
+                    }
+                ]
+            return data
+
+    report = build_report(PartialStatsClient(), baseline_capture=baseline_capture)  # type: ignore[arg-type]
+
+    assert report["inventory"]["indices"]["howler-hit_hot"]["doc_count"] is None
+    checks = report["checks"]
+    assert checks["ready"] is (not baseline_capture)
+    (finding,) = checks["blockers"] if baseline_capture else checks["warnings"]
+    assert finding["resources"] == {
+        "howler-hit_hot": [{"reason": "incomplete_layout", "number_of_shards": "2", "primary_ids": ["0"]}]
+    }
 
 
 def test_build_report_uses_plain_get_inventory_and_adds_baseline_fields() -> None:

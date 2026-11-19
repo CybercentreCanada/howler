@@ -2,7 +2,6 @@ import json
 from typing import Any, Literal, cast
 
 from flask import request
-from mergedeep import Strategy, merge
 
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
 from howler.api.v1.utils.etag import add_etag
@@ -19,8 +18,7 @@ from howler.models.hit import Hit
 from howler.models.user import User
 from howler.security.login import api_login
 from howler.security.utils import is_classification_accessible, validate_bulk_operation_targets
-from howler.services import correlation_service, event_service, hit_service
-from howler.utils.dict_utils import flatten
+from howler.services import correlation_service, event_service, hit_service, ingest_service
 
 MAX_COMMENT_LEN = 5000
 
@@ -285,50 +283,30 @@ def overwrite(
     if "," in index:
         return bad_request(err="You cannot overwrite across multiple indexes.")
 
-    ds = datastore()
-
-    record, server_version = ds[index].get(id, as_obj=False, version=True)
+    collection = datastore()[index]
+    record, server_version = collection.get(id, as_obj=False, version=True)
     if not record:
         return not_found(err="Record %s does not exist" % id)
 
-    if has_access_control(index) and not is_classification_accessible(user, record.get("classification")):
+    access_controlled = has_access_control(index)
+    if access_controlled and not is_classification_accessible(user, record.get("classification")):
         # Generic 404 so classified records are indistinguishable from nonexistent ones
         return not_found(err="Record %s does not exist" % id)
-
-    # The datastore may include the backing index as a synthetic root-level field.
-    # It is not part of the stored document and must not be merged into the model.
-    record = {key: value for key, value in record.items() if key != "__index"}
 
     new_fields = request.json
     if not isinstance(new_fields, dict):
         return bad_request(err="The JSON payload must be a subset of a valid record.")
 
     try:
-        model = ds[index].model_class
-
-        # TODO: This is inefficient. We can use elastic's `update` command to just directly patch the document
-        new_record = cast(
-            dict[str, Any],
-            merge(
-                flatten(record, odm=model),
-                flatten(new_fields, odm=model),
-                strategy=Strategy.REPLACE
-                if bool(request.args.get("replace", False, type=lambda v: v.lower() == "true"))
-                else Strategy.ADDITIVE,
-            ),
+        updated = ingest_service.prepare_overwrite(
+            record,
+            new_fields,
+            collection.model_class,
+            user=user if access_controlled else None,
+            replace=request.args.get("replace", False, type=lambda v: v.lower() == "true"),
         )
-
-        if has_access_control(index) and not is_classification_accessible(user, new_record.get("classification")):
-            return bad_request(err=f"Cannot set classification to {new_record.get('classification')}")
-
-        ds[index].save(
-            id,
-            model.validate_howler(new_record) if model else new_record,
-            version=server_version,
-            refresh=refresh,
-        )
-
-        new_record, new_version = ds[index].get(id, as_obj=False, version=True)
+        collection.save(id, updated, version=server_version, refresh=refresh)
+        new_record, new_version = collection.get(id, as_obj=False, version=True)
 
         return ok(new_record), new_version
     except HowlerValueError as e:

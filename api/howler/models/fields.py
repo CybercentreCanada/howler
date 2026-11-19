@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 import re
 import types
-from copy import deepcopy
-from dataclasses import dataclass, field
+from copy import copy, deepcopy
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
 from ipaddress import ip_address
@@ -18,6 +18,7 @@ import validators
 from elasticsearch import dsl
 from pydantic import BeforeValidator
 from pydantic import Field as PydanticField
+from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefined
 
 from howler.common import loader
@@ -78,6 +79,7 @@ class HowlerFieldMetadata:
     deprecated_description: str | None = None
     sync: bool = True
     options: tuple[tuple[str, TypingAny], ...] = field(default_factory=tuple)
+    optional: bool = False
 
 
 class ClassificationValue:
@@ -134,7 +136,7 @@ def _dsl_field(
     mapping_options: dict[str, TypingAny] | None = None,
     **kwargs: TypingAny,
 ) -> TypingAny:
-    copy_to = _copy_to(kwargs.get("copyto"))
+    copy_to = _copy_to(kwargs.pop("copyto", None))
     es_field = field_type(
         **_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=doc_values, extra=mapping_options)
     )
@@ -157,6 +159,17 @@ def _dsl_keyword(
     )
 
 
+def _howler_metadata(
+    kind: str, inherit: HowlerFieldMetadata | None, overrides: dict[str, TypingAny]
+) -> HowlerFieldMetadata:
+    """Normalize builder spellings once, preserving child options unless explicitly overridden."""
+    if "copyto" in overrides:
+        overrides["copy_to"] = _copy_to(overrides.pop("copyto"))
+    if "options" in overrides:
+        overrides["options"] = tuple(sorted((overrides["options"] or {}).items()))
+    return replace(inherit, **overrides) if inherit else HowlerFieldMetadata(kind=kind, **overrides)
+
+
 def _annotated(
     annotation: TypingAny,
     kind: str,
@@ -169,18 +182,11 @@ def _annotated(
     description: str | None = None,
     alias: str | None = None,
     es_name: str | None = None,
-    index: bool | None = None,
-    store: bool | None = None,
-    copyto: str | Iterable[str] | None = None,
-    reference: str | None = None,
-    deprecated: bool = False,
-    deprecated_description: str | None = None,
-    sync: bool = True,
-    options: dict[str, TypingAny] | None = None,
     constraints: dict[str, TypingAny] | None = None,
-    copy_to: tuple[str, ...] | None = None,
+    inherit: HowlerFieldMetadata | None = None,
+    inherited_alias: str | None = None,
+    **field_options: TypingAny,
 ) -> TypingAny:
-    copy_to = _copy_to(copyto) if copy_to is None else copy_to
     metadata: list[TypingAny] = []
     if validator is not None:
         effective_validator = validator
@@ -196,30 +202,20 @@ def _annotated(
         metadata.append(BeforeValidator(effective_validator))
     if es_field is not None or es_name is not None or alias is not None:
         metadata.append(dsl.mapped_field(es_field, es_name=es_name or alias))
-    metadata.append(
-        HowlerFieldMetadata(
-            kind=kind,
-            index=index,
-            store=store,
-            copy_to=copy_to,
-            reference=reference,
-            deprecated=deprecated,
-            deprecated_description=deprecated_description,
-            sync=sync,
-            options=tuple(sorted((options or {}).items())),
-        )
-    )
+    metadata.append(_howler_metadata(kind, inherit, field_options))
 
-    field_options = dict(constraints or {})
+    pydantic_options = dict(constraints or {})
     if description is not None:
-        field_options["description"] = description
-    if alias is not None:
-        field_options["alias"] = alias
+        pydantic_options["description"] = description
+    # An inherited wire alias does not declare a new DSL mapping: the child's
+    # mapped field already carries its storage name, which can differ from it.
+    if (wire_alias := alias if alias is not None else inherited_alias) is not None:
+        pydantic_options["alias"] = wire_alias
     if default_factory is not None:
-        field_options["default_factory"] = default_factory
+        pydantic_options["default_factory"] = default_factory
     elif default is not PydanticUndefined:
-        field_options["default"] = default
-    metadata.append(PydanticField(**field_options))
+        pydantic_options["default"] = default
+    metadata.append(PydanticField(**pydantic_options))
     return _make_annotated(annotation, *metadata)
 
 
@@ -232,6 +228,23 @@ def _make_annotated(annotation: TypingAny, *metadata: TypingAny) -> TypingAny:
 def _is_mapped_field_metadata(metadata: TypingAny) -> bool:
     """Return whether metadata is an Elasticsearch DSL mapped-field dictionary."""
     return isinstance(metadata, dict) and set(metadata) >= {"_field", "_es_name", "exclude"}
+
+
+def _with_storage_index(item: TypingAny, index: bool) -> TypingAny:
+    """Override the registry and DSL representations without mutating a reusable annotation."""
+    if isinstance(item, HowlerFieldMetadata):
+        return replace(item, index=index)
+    if not _is_mapped_field_metadata(item) or item["_field"] is None:
+        return item
+    mapping = deepcopy(item)
+    field = mapping["_field"]
+    if isinstance(field, dsl.Object):
+        field.enabled = index
+    else:
+        field.index = index
+        if not isinstance(field, dsl.Text):
+            field.doc_values = index
+    return mapping
 
 
 def _rebuild_generic_alias(annotation: TypingAny, origin: TypingAny, arguments: list[TypingAny]) -> TypingAny:
@@ -255,14 +268,17 @@ def _rebuild_generic_alias(annotation: TypingAny, origin: TypingAny, arguments: 
 
 def _strip_annotated_mapped_field_metadata(
     annotation: TypingAny,
+    index: bool | None,
 ) -> tuple[TypingAny, list[dict[str, TypingAny]]]:
     """Extract mapped-field metadata directly attached to an Annotated alias."""
     original_nested, *metadata = get_args(annotation)
-    nested, nested_mappings = _strip_mapped_field_metadata(original_nested)
+    nested, nested_mappings = _strip_mapped_field_metadata(original_nested, index)
+    if index is not None:
+        metadata = [_with_storage_index(item, index) for item in metadata]
     mapping_metadata = [item for item in metadata if _is_mapped_field_metadata(item)]
     remaining_metadata = [item for item in metadata if not _is_mapped_field_metadata(item)]
 
-    if not mapping_metadata and not nested_mappings and nested is original_nested:
+    if index is None and not mapping_metadata and not nested_mappings and nested is original_nested:
         return annotation, []
 
     if mapping_metadata:
@@ -276,7 +292,9 @@ def _strip_annotated_mapped_field_metadata(
     return safe_annotation, [*mapping_metadata, *nested_mappings]
 
 
-def _strip_mapped_field_metadata(annotation: TypingAny) -> tuple[TypingAny, list[dict[str, TypingAny]]]:
+def _strip_mapped_field_metadata(
+    annotation: TypingAny, index: bool | None
+) -> tuple[TypingAny, list[dict[str, TypingAny]]]:
     """Move DSL mapping metadata outside a nullable union's hashable type arguments.
 
     Python 3.10's ``typing.Union`` hashes its members while constructing a union. The
@@ -287,7 +305,7 @@ def _strip_mapped_field_metadata(annotation: TypingAny) -> tuple[TypingAny, list
     """
     origin = get_origin(annotation)
     if origin is Annotated:
-        return _strip_annotated_mapped_field_metadata(annotation)
+        return _strip_annotated_mapped_field_metadata(annotation, index)
 
     arguments = get_args(annotation)
     if not arguments:
@@ -296,8 +314,11 @@ def _strip_mapped_field_metadata(annotation: TypingAny) -> tuple[TypingAny, list
     safe_arguments: list[TypingAny] = []
     mapped_metadata: list[dict[str, TypingAny]] = []
     changed = False
+    # Lists and nullable branches use the same ES field as their wrapper. Object
+    # keys and values have their own fields, so their index options stay independent.
+    child_index = index if origin in (list, Union, types.UnionType) else None
     for argument in arguments:
-        safe_argument, nested_mappings = _strip_mapped_field_metadata(argument)
+        safe_argument, nested_mappings = _strip_mapped_field_metadata(argument, child_index)
         safe_arguments.append(safe_argument)
         mapped_metadata.extend(nested_mappings)
         changed = changed or safe_argument is not argument
@@ -806,7 +827,13 @@ def classification_string(*, yml_config: str | None = None, **kwargs: TypingAny)
 
 def list_field(child_type: TypingAny, **kwargs: TypingAny) -> TypingAny:
     """Create a typed array field."""
-    return _annotated(types.GenericAlias(list, (child_type,)), "List", None, **kwargs)
+    return _annotated(
+        types.GenericAlias(list, (child_type,)),
+        "List",
+        None,
+        validator=lambda value: [] if value is None else value,
+        **kwargs,
+    )
 
 
 def mapping(child_type: TypingAny, **kwargs: TypingAny) -> TypingAny:
@@ -858,26 +885,29 @@ def compound(model_type: type[TypingAny], **kwargs: TypingAny) -> TypingAny:
 def optional(child_type: TypingAny, **kwargs: TypingAny) -> TypingAny:
     """Create a nullable field with a null default."""
     child_metadata = _field_metadata(child_type)
-    if child_metadata is not None:
-        kwargs.setdefault("index", child_metadata.index)
-        kwargs.setdefault("store", child_metadata.store)
-        if child_metadata.copy_to:
-            kwargs.setdefault("copyto", child_metadata.copy_to)
-        if child_metadata.reference is not None:
-            kwargs.setdefault("reference", child_metadata.reference)
-        if child_metadata.deprecated:
-            kwargs.setdefault("deprecated", True)
-        if child_metadata.deprecated_description is not None:
-            kwargs.setdefault("deprecated_description", child_metadata.deprecated_description)
-        kwargs.setdefault("sync", child_metadata.sync)
-        if child_metadata.options:
-            kwargs.setdefault("options", dict(child_metadata.options))
+    child_info = next((item for item in get_args(child_type)[1:] if isinstance(item, FieldInfo)), None)
+    if child_info and child_info.alias is not None:
+        # A wire alias belongs to the field, not to one branch of its nullable
+        # union. Lift it without touching the child's DSL mapping or validators.
+        base, *metadata = get_args(child_type)
+        branch_info = copy(child_info)
+        branch_info.alias = branch_info.validation_alias = branch_info.serialization_alias = None
+        branch_info.alias_priority = None
+        child_type = _make_annotated(base, *(branch_info if item is child_info else item for item in metadata))
+    # Legacy Optional let Keyword.check use the child's default on "", but passed
+    # explicit null through. EmptyableKeyword, in particular, retains the empty string.
+    if child_metadata and child_metadata.kind in {"Keyword", "LowerKeyword", "UpperKeyword", "CaseInsensitiveKeyword"}:
+        if child_info is None or child_info.default in (None, PydanticUndefined):
+            kwargs["validator"] = lambda value: None if value == "" else value
     kwargs.setdefault("default", None)
-    safe_child_type, mapped_field_metadata = _strip_mapped_field_metadata(child_type)
+    safe_child_type, mapped_field_metadata = _strip_mapped_field_metadata(child_type, kwargs.get("index"))
     nullable_field = _annotated(
         safe_child_type | None,
-        child_metadata.kind if child_metadata is not None else "Optional",
+        "Optional",
         None,
+        inherit=child_metadata,
+        inherited_alias=child_info.alias if child_info else None,
+        optional=True,
         **kwargs,
     )
     return _make_annotated(nullable_field, *mapped_field_metadata) if mapped_field_metadata else nullable_field

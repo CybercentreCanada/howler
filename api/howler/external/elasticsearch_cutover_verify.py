@@ -13,6 +13,8 @@ import json
 import os
 import re
 from copy import deepcopy
+from decimal import Decimal, InvalidOperation
+from math import ceil
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -20,6 +22,7 @@ from urllib.parse import quote
 from pydantic import BaseModel, ValidationError
 
 from howler.common.exceptions import HowlerAttributeError, HowlerRuntimeError
+from howler.datastore.ilm_contract import ilm_policy, shadowed_dynamic_templates
 from howler.external.elasticsearch_rest import (
     NO_MIGRATION_NEEDED,
     SOURCE_STACK_VERSION,
@@ -67,15 +70,16 @@ def _prefix() -> str:
     return DATASTORE_INDEX_PREFIX
 
 
-def _configured_ilm(collection: str) -> bool:
-    """Resolve ILM using the same global/per-collection defaults as Howler startup."""
+def _configured_ilm_policy(collection: str) -> dict[str, Any] | None:
+    """Resolve the managed policy using the same configuration as Howler startup."""
     from howler.config_models import ILMIndexConfig, config
     from howler.datastore.howler_store import ILM_ENABLED_INDEXES
 
-    index_config = config.datastore.ilm.indices.get(collection)
+    global_config = config.datastore.ilm
+    index_config = global_config.indices.get(collection)
     if index_config is None:
         index_config = ILMIndexConfig(enabled=collection in ILM_ENABLED_INDEXES)
-    return bool(config.datastore.ilm.enabled and index_config.enabled)
+    return ilm_policy(index_config, global_config) if global_config.enabled and index_config.enabled else None
 
 
 def _expectations() -> dict[str, dict[str, Any]]:
@@ -85,15 +89,16 @@ def _expectations() -> dict[str, dict[str, Any]]:
     contracts: dict[str, dict[str, Any]] = {}
     for collection, model in _collection_models():
         alias = f"{prefix}-{collection}"
-        ilm = _configured_ilm(collection)
+        policy = _configured_ilm_policy(collection)
         contract: dict[str, Any] = {
             "alias": alias,
-            "ilm": ilm,
+            "ilm": policy is not None,
             "mapping": schema.document_mapping(model),
             "model": model,
             "total_fields_limit": schema.total_fields_limit(model),
         }
-        if ilm:
+        if policy is not None:
+            contract["ilm_policy"] = policy
             shards, replicas = _collection_shards_replicas(collection)
             contract["ilm_template"] = schema.ilm_template_body(
                 model,
@@ -119,8 +124,7 @@ def _collection_indices(alias: str, ilm: bool, indices: dict[str, Any]) -> tuple
     """Return configured-layout backing indices and all indices attached to the alias."""
     attached = sorted(name for name, data in indices.items() if alias in data.get("aliases", {}))
     if ilm:
-        generation = re.compile(rf"^{re.escape(alias)}-(\d{{6}})$")
-        expected_layout = sorted(name for name in indices if generation.fullmatch(name))
+        expected_layout = [name for name in indices if canonical_ilm_generation(alias, name) is not None]
     else:
         hot = f"{alias}_hot"
         expected_layout = [hot] if hot in indices else []
@@ -137,20 +141,12 @@ def _configured_backing_index_names(expectations: dict[str, dict[str, Any]], ind
     return names
 
 
-def _effective_write_indices(alias: str, attached: list[str], indices: dict[str, Any]) -> list[str]:
-    explicit = []
-    implicit = []
-    for name in attached:
-        alias_data = indices[name].get("aliases", {}).get(alias, {})
-        if alias_data.get("is_write_index") is True:
-            explicit.append(name)
-        elif alias_data.get("is_write_index") is None and "is_write_index" not in alias_data:
-            implicit.append(name)
-    if explicit:
-        return explicit
-    # Elasticsearch treats a single-index alias with no flag as its write index;
-    # legacy Howler _hot aliases have historically used exactly this representation.
-    return implicit if len(attached) == 1 else []
+def _effective_write_indices(alias: str, attached: list[str], indices: dict[str, Any], *, ilm: bool) -> list[str]:
+    # A legacy _hot alias can write implicitly. ILM needs an explicit write flag so rollover
+    # keeps the old generation on the read alias instead of moving the alias to the new index.
+    if not ilm and len(attached) == 1 and "is_write_index" not in indices[attached[0]]["aliases"][alias]:
+        return attached
+    return [name for name in attached if indices[name]["aliases"][alias].get("is_write_index") is True]
 
 
 def _flatten_properties(properties: dict[str, Any], prefix: str = "") -> dict[str, dict[str, Any]]:
@@ -216,6 +212,21 @@ def _mapping_matches(expected: dict[str, Any], actual: dict[str, Any]) -> bool:
     return _normalized_mapping(expected) == _normalized_mapping(actual)
 
 
+def _root_dynamic(mapping: dict[str, Any]) -> str:
+    # ES defaults to true and can render the dynamic mode as either a boolean or a string.
+    return str(mapping.get("dynamic", True)).lower()
+
+
+def _source_enabled(mapping: dict[str, Any], index_data: dict[str, Any]) -> bool:
+    source = mapping.get("_source", {})
+    return (
+        isinstance(source, dict)
+        and str(source.get("enabled", True)).lower() == "true"
+        and str(source.get("mode")).lower() != "disabled"
+        and str(index_setting(index_data, "index.mapping.source.mode")).lower() != "disabled"
+    )
+
+
 def _mapping_differences(
     expected_mapping: dict[str, Any], actual_mapping: dict[str, Any]
 ) -> list[tuple[str, dict[str, Any], dict[str, Any] | None]]:
@@ -230,7 +241,9 @@ def _mapping_differences(
 
 def _template_key(template: Any) -> str | None:
     if isinstance(template, dict) and len(template) == 1:
-        return next(iter(template))
+        name, body = next(iter(template.items()))
+        if isinstance(body, dict):
+            return name
     return None
 
 
@@ -284,14 +297,17 @@ def _template_checks(
     changed = sorted(
         name for name in expected_name_set & set(actual_by_name) if expected_by_name[name] != actual_by_name[name]
     )
-    if missing or changed or invalid_templates or actual_active_order != expected_active_order:
+    extra = {name for name in actual_names if name is not None and name not in expected_name_set}
+    conflicts = shadowed_dynamic_templates(expected, actual) if extra and not invalid_templates else []
+    if missing or changed or invalid_templates or actual_active_order != expected_active_order or conflicts:
         finding = {
             "check": "schema_less_dynamic_templates" if schema_less else "dynamic_templates",
             "collection": collection,
             "index": index,
-            "message": "Dynamic templates are missing, changed, malformed, or reordered.",
+            "message": "Dynamic templates are missing, changed, malformed, reordered, or shadowed.",
             "missing": missing,
             "changed": changed,
+            "shadowed": [{"obsolete": obsolete, "active": active} for obsolete, active in conflicts],
             "actual_active_order": actual_active_order,
             "expected_active_order": expected_active_order,
         }
@@ -314,15 +330,15 @@ def _template_checks(
             names=duplicate_names,
             shadowed_definitions=shadowed,
         )
-    extra = sorted(name for name in actual_names if name is not None and name not in expected_name_set)
-    if extra:
+    retained = sorted(extra - {obsolete for obsolete, _ in conflicts})
+    if retained:
         _issue(
             warnings,
             "obsolete_dynamic_templates",
             "Extra dynamic templates are retained; verify they belong to disabled extensions.",
             collection=collection,
             index=index,
-            templates=extra,
+            templates=retained,
         )
 
 
@@ -373,12 +389,10 @@ def _alias_contract(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def _empty_unwritten_index(data: dict[str, Any]) -> bool:
-    shards = data.get("primary_shards")
     return (
         data.get("doc_count") == 0
-        and isinstance(shards, dict)
-        and bool(shards)
-        and all(shard.get("max_seq_no") == -1 for shard in shards.values())
+        and not primary_shard_sync_issues(data)
+        and all(shard["max_seq_no"] == -1 for shard in data["primary_shards"].values())
     )
 
 
@@ -396,6 +410,72 @@ def _shard_sequence_contract(data: dict[str, Any]) -> dict[str, tuple[int, int]]
             return None
         result[str(shard_id)] = (doc_count, max_seq_no)
     return result
+
+
+def _ilm_age(value: Any) -> Any:
+    """Compare phase and rollover ages in nanoseconds, independent of their wire units."""
+    if not isinstance(value, str):
+        return value
+    if value == "0":
+        return "0nanos"
+    units = {
+        "nanos": 1,
+        "micros": 1000,
+        "ms": 10**6,
+        "s": 10**9,
+        "m": 60 * 10**9,
+        "h": 3600 * 10**9,
+        "d": 86400 * 10**9,
+    }
+    match = re.fullmatch(r"(\d+)\s*(nanos|micros|ms|s|m|h|d)", value.strip(), re.IGNORECASE)
+    if match is None or match[2] == "M":
+        return value
+    return f"{int(match[1]) * units[match[2].lower()]}nanos"
+
+
+def _ilm_size(value: Any) -> int | None:
+    """Read an ES ByteSizeValue: integral bytes, or up to two decimals in a larger unit, rounded up."""
+    if not isinstance(value, str):
+        return None
+    if value in {"0", "-1"}:
+        return int(value)
+    match = re.fullmatch(r"([0-9.e+-]+)\s*(b|[kmgtp]b?)", value.strip().lower())
+    if match is None:
+        return None
+    number, unit = match.groups()
+    if unit == "b" and not re.fullmatch(r"[+-]?[0-9]+", number):
+        return None  # ES parses bytes as a long, not a decimal.
+    try:
+        amount = Decimal(number)
+    except InvalidOperation:
+        return None
+    max_bytes = 2**63 - 1
+    if amount > max_bytes or amount < (-1 if unit == "b" else 0) or int(amount.as_tuple().exponent) < -2:
+        return None
+    size = ceil(amount * 1024 ** "bkmgtp".index(unit[0]))
+    return size if size <= max_bytes else None
+
+
+def _managed_policy_phases(policy: Any) -> dict[str, Any] | None:
+    """Normalize the managed behavior; policy metadata and GET response bookkeeping are not actions."""
+    phases = deepcopy(policy.get("phases")) if isinstance(policy, dict) else None
+    if not isinstance(phases, dict):
+        return None
+    for phase in phases.values():
+        if not isinstance(phase, dict):
+            return None
+        phase["min_age"] = _ilm_age(phase.get("min_age", "0ms"))
+        actions = phase.get("actions")
+        rollover = actions.get("rollover") if isinstance(actions, dict) else None
+        if isinstance(rollover, dict):
+            if "max_age" in rollover:
+                rollover["max_age"] = _ilm_age(rollover["max_age"])
+            if "max_primary_shard_size" in rollover:
+                size = _ilm_size(rollover["max_primary_shard_size"])
+                if size is None:
+                    return None
+                rollover["max_primary_shard_size"] = size
+    return phases
 
 
 def _check_ilm_template_and_policy(  # noqa: C901
@@ -457,7 +537,15 @@ def _check_ilm_template_and_policy(  # noqa: C901
 
         actual_mapping = actual_template.get("mappings", {})
         expected_mapping = expected_template.get("mappings", {})
-        if actual_mapping.get("dynamic", True) != expected_mapping.get("dynamic", True):
+        if not _source_enabled(actual_mapping, actual_settings):
+            _issue(
+                blockers,
+                "ilm_template_source_disabled",
+                "The ILM template must keep _source enabled for future generations.",
+                collection=collection,
+                template=template_name,
+            )
+        if _root_dynamic(actual_mapping) != _root_dynamic(expected_mapping):
             _issue(
                 blockers,
                 "ilm_template_mapping",
@@ -485,16 +573,17 @@ def _check_ilm_template_and_policy(  # noqa: C901
         )
 
     policy = inventory.get("ilm_policies", {}).get(collection)
-    phases = policy.get("phases", {}) if isinstance(policy, dict) else {}
-    hot_actions = phases.get("hot", {}).get("actions", {}) if isinstance(phases, dict) else {}
-    rollover = hot_actions.get("rollover") if isinstance(hot_actions, dict) else None
-    if not isinstance(rollover, dict):
+    expected_policy_body = expectation["ilm_policy"]
+    expected_phases = _managed_policy_phases(expected_policy_body)
+    if expected_phases is None or _managed_policy_phases(policy) != expected_phases:
         _issue(
             blockers,
-            "ilm_policy_rollover",
-            "ILM policy is missing or has no hot-phase rollover action.",
+            "ilm_policy_phases",
+            "ILM policy phases, actions or thresholds differ from the configured Howler policy.",
             collection=collection,
             policy=f"{alias}_policy",
+            expected=expected_policy_body["phases"],
+            actual=policy.get("phases") if isinstance(policy, dict) else None,
         )
 
 
@@ -540,6 +629,8 @@ def _post_baseline_index_contract(
     attached: list[str],
     indices: dict[str, Any],
     blockers: list[dict[str, Any]],
+    *,
+    ilm: bool,
 ) -> bool:
     """Validate the common empty, single-alias, single-write-index post-baseline contract."""
     is_new_collection = kind == "new_collection"
@@ -576,7 +667,7 @@ def _post_baseline_index_contract(
         )
         return False
 
-    write_indices = _effective_write_indices(alias, attached, indices)
+    write_indices = _effective_write_indices(alias, attached, indices, ilm=ilm)
     if write_indices != [index]:
         _issue(
             blockers,
@@ -648,7 +739,6 @@ def _compare_baseline(  # noqa: C901
                 valid_layout = len(canonical) == 1 and len(current_new) == len(canonical) == len(current_backers)
             else:
                 hot = f"{alias}_hot"
-                canonical = [name for name in current_new if name == hot]
                 expected_write = hot if len(current_backers) == 1 and current_backers[0] == hot else None
                 valid_layout = current_new == [hot] and current_backers == [hot]
             if not valid_layout or expected_write is None or current_attached != [expected_write]:
@@ -670,6 +760,7 @@ def _compare_baseline(  # noqa: C901
                 current_attached,
                 new_indices,
                 blockers,
+                ilm=ilm,
             ):
                 continue
             permitted_new.update(current_new)
@@ -684,7 +775,7 @@ def _compare_baseline(  # noqa: C901
 
         if ilm and old_collection_present:
             new_generations = [name for name in current_new if canonical_ilm_generation(alias, name) is not None]
-            baseline_write_indices = _effective_write_indices(alias, old_attached, old_indices)
+            baseline_write_indices = _effective_write_indices(alias, old_attached, old_indices, ilm=True)
             baseline_generation = (
                 canonical_ilm_generation(alias, baseline_write_indices[0]) if len(baseline_write_indices) == 1 else None
             )
@@ -714,6 +805,7 @@ def _compare_baseline(  # noqa: C901
                     current_attached,
                     new_indices,
                     blockers,
+                    ilm=True,
                 ):
                     continue
                 permitted_new.add(new_generation)
@@ -803,7 +895,7 @@ def _compare_baseline(  # noqa: C901
                 index=name,
             )
         else:
-            baseline_sync = primary_shard_sync_issues(before.get("primary_shards"))
+            baseline_sync = primary_shard_sync_issues(before)
             if baseline_sync:
                 _issue(
                     blockers,
@@ -815,6 +907,8 @@ def _compare_baseline(  # noqa: C901
                 )
                 continue
 
+            if primary_shard_sync_issues(after):
+                continue  # Already reported for the current inventory; drift acceptance requires complete evidence.
             drift = _sequence_drift(before_shards, after_shards)
             if drift is None:
                 _issue(
@@ -978,7 +1072,7 @@ def evaluate_inventory(  # noqa: C901
     for index, data in sorted(indices.items()):
         if not index.startswith(f"{current_prefix}-") or is_closed_index(data):
             continue
-        sync_issues = primary_shard_sync_issues(data.get("primary_shards"))
+        sync_issues = primary_shard_sync_issues(data)
         if sync_issues:
             _issue(
                 blockers,
@@ -1043,7 +1137,7 @@ def evaluate_inventory(  # noqa: C901
                 collection=collection,
                 alias=alias,
             )
-        write_indices = _effective_write_indices(alias, attached, indices)
+        write_indices = _effective_write_indices(alias, attached, indices, ilm=ilm)
         if len(write_indices) != 1:
             _issue(
                 blockers,
@@ -1055,8 +1149,7 @@ def evaluate_inventory(  # noqa: C901
                 write_indices=write_indices,
             )
         if ilm:
-            canonical_generation = re.compile(rf"^{re.escape(alias)}-(\d{{6}})$")
-            canonical_backers = [name for name in backers if canonical_generation.fullmatch(name)]
+            canonical_backers = [name for name in backers if canonical_ilm_generation(alias, name) is not None]
             if not canonical_backers:
                 _issue(
                     blockers,
@@ -1065,14 +1158,22 @@ def evaluate_inventory(  # noqa: C901
                     collection=collection,
                     alias=alias,
                 )
-            expected_write = (
-                max(canonical_backers, key=lambda name: int(name.rsplit("-", 1)[-1])) if canonical_backers else None
-            )
+            if attached != canonical_backers:
+                _issue(
+                    blockers,
+                    "ilm_alias_members",
+                    "The read alias must include every canonical ILM generation and no other indices.",
+                    collection=collection,
+                    alias=alias,
+                    missing=sorted(set(canonical_backers) - set(attached)),
+                    unexpected=sorted(set(attached) - set(canonical_backers)),
+                )
+            expected_write = canonical_backers[-1] if canonical_backers else None
             if expected_write is not None and write_indices != [expected_write]:
                 _issue(
                     blockers,
                     "ilm_write_index",
-                    "ILM alias write index must be the latest canonical six-digit backing index.",
+                    "The latest canonical ILM generation must have is_write_index explicitly set to true.",
                     collection=collection,
                     alias=alias,
                     expected=expected_write,
@@ -1112,9 +1213,27 @@ def evaluate_inventory(  # noqa: C901
                     "index": index,
                     "message": "No live mapping was returned for a backing index.",
                 }
-                (warnings if schema_less else blockers).append(finding)
+                blockers.append(finding)  # Even schema-less backers must have a verifiable _source.
                 continue
             live_mapping = mappings[index].get("mappings", mappings[index])
+            if not _source_enabled(live_mapping, index_data):
+                _issue(
+                    blockers,
+                    "mapping_source_disabled",
+                    "Backing index must keep _source enabled to retrieve stored documents.",
+                    collection=collection,
+                    index=index,
+                )
+            if _root_dynamic(live_mapping) != _root_dynamic(expected_mapping):
+                _issue(
+                    blockers,
+                    "mapping_dynamic",
+                    "Backing index root dynamic behavior differs from the finalized Howler schema.",
+                    collection=collection,
+                    index=index,
+                    expected=_root_dynamic(expected_mapping),
+                    actual=_root_dynamic(live_mapping),
+                )
             for path, expected_definition, actual_definition in _mapping_differences(expected_mapping, live_mapping):
                 if actual_definition is None:
                     finding = {

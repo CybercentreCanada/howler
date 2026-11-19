@@ -247,7 +247,7 @@ def convert_hit(  # noqa: C901
         data: Dictionary containing hit data to validate and convert
         unique: Whether to enforce uniqueness by checking if the hit ID already exists
         ignore_extra_values: Whether to ignore invalid extra fields (True) or raise an exception (False)
-        index: The index to validate against
+        user: Optional user whose classification must permit creating the hit
 
     Returns:
         Tuple containing:
@@ -265,7 +265,8 @@ def convert_hit(  # noqa: C901
         - Normalizes data fields to ensure consistent storage format
         - Validates analytic and detection names against best practices (letters and spaces only)
     """
-    data = flatten(data, odm=Hit)
+    hit_type: type[Hit] = datastore().hit.model_class or Hit
+    data = flatten(data, odm=hit_type)
 
     if "howler.hash" not in data:
         hash_contents = {
@@ -290,8 +291,6 @@ def convert_hit(  # noqa: C901
 
         data["howler.data"] = parsed_data
 
-    # TODO: This is a really strange double-validation check we should look to refactor
-    hit_type = datastore().hit.model_class or Hit
     unused_keys = extra_keys(hit_type, data)
     if unused_keys and not ignore_extra_values:
         raise HowlerValueError(f"Hit was created with invalid parameters: {', '.join(sorted(unused_keys))}")
@@ -302,7 +301,7 @@ def convert_hit(  # noqa: C901
         odm = hit_type.validate_howler(data)
 
     # Check for deprecated field and unused fields
-    odm_flatten = model_registry.flat_fields(type(odm), show_compound=True)
+    odm_flatten = model_registry.flat_fields(hit_type, show_compound=True)
 
     deprecated_keys = {
         key
@@ -352,7 +351,7 @@ def convert_hit(  # noqa: C901
     if unique and exists(odm.howler.id):
         raise ResourceExists("Resource with id %s already exists" % odm.howler.id)
 
-    return cast(Hit, odm), warnings
+    return odm, warnings
 
 
 @tracer.start_as_current_span(f"{__name__}.exists")

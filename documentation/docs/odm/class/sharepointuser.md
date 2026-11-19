@@ -10,3 +10,5 @@
 | email | Email | The email of the sharepoint user associated with this item. | :material-minus-box-outline: Optional | `None` |
 | full_name | Keyword | The full name of the sharepoint user associated with this item. | :material-minus-box-outline: Optional | `None` |
 | id | Keyword | The id of the sharepoint user associated with this item. | :material-minus-box-outline: Optional | `None` |
+
+

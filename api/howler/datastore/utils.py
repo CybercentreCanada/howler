@@ -24,7 +24,6 @@ def expand_field_patterns(model: Optional[type], patterns: Iterable[str], preser
     if model is None:
         return set(patterns)
 
-    known_paths = list(model_registry.flat_fields(model))
     expanded: set[str] = set()
     for pattern in patterns:
         if "*" not in pattern:
@@ -36,8 +35,7 @@ def expand_field_patterns(model: Optional[type], patterns: Iterable[str], preser
             continue
 
         regex = re.compile("^" + re.escape(pattern).replace(r"\*", ".*") + "$")
-        matches = [path for path in known_paths if regex.match(path)]
-        expanded.update(matches)
+        expanded.update(path for path in model_registry.flat_field_view(model) if regex.match(path))
     return expanded
 
 
@@ -100,12 +98,15 @@ def stored_field_paths(fields: ABCMapping[str, FieldDefinition]) -> set[str]:
 
 def _field_status(collection: ESCollection, path: str) -> bool | None:
     """Return whether a declared field, compound parent, or Mapping child is stored."""
-    fields = model_registry.flat_fields(collection.model_class) if collection.model_class else collection.stored_fields
+    fields = (
+        model_registry.flat_field_view(collection.model_class) if collection.model_class else collection.stored_fields
+    )
+    if (exact := fields.get(path)) is not None:
+        return bool(exact.metadata and exact.metadata.store)
     matches = [
         field
         for name, field in fields.items()
-        if name == path
-        or name.startswith(f"{path}.")
+        if name.startswith(f"{path}.")
         or (field.metadata is not None and field.metadata.kind == "Mapping" and path.startswith(f"{name}."))
     ]
     return any(field.metadata is not None and field.metadata.store for field in matches) if matches else None

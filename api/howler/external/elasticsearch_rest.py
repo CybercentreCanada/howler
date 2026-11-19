@@ -247,12 +247,23 @@ def load_configured_plugins() -> list[Any]:
     return plugins
 
 
-def primary_shard_sync_issues(primary_shards: Any) -> list[dict[str, Any]]:
-    """Describe incomplete primary stats and any shard whose global checkpoint trails its max sequence number."""
-    if not isinstance(primary_shards, dict) or not primary_shards:
-        return [{"shard": None, "reason": "incomplete"}]
+def _complete_primary_layout(shards: dict[str, Any], shard_count: Any) -> bool:
+    # ES flat settings are strings. Compare with the observed count before enumerating IDs:
+    # a failed primary can be entirely absent from _stats (or only a replica can respond).
+    return bool(shards) and str(shard_count) == str(len(shards)) and all(str(i) in shards for i in range(len(shards)))
 
+
+def primary_shard_sync_issues(index_data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Describe missing configured primary IDs, incomplete stats and unsynced global checkpoints."""
+    primary_shards = index_data.get("primary_shards")
+    if not isinstance(primary_shards, dict):
+        primary_shards = {}
+    shard_count = index_setting(index_data, "index.number_of_shards")
     issues: list[dict[str, Any]] = []
+    if not _complete_primary_layout(primary_shards, shard_count):
+        issues.append(
+            {"reason": "incomplete_layout", "number_of_shards": shard_count, "primary_ids": sorted(primary_shards)}
+        )
     for shard_id, shard in sorted(primary_shards.items()):
         if not isinstance(shard, dict):
             issues.append({"shard": str(shard_id), "reason": "incomplete"})
@@ -274,8 +285,10 @@ def primary_shard_sync_issues(primary_shards: Any) -> list[dict[str, Any]]:
     return issues
 
 
-def collect_primary_shard_stats(client: ElasticsearchRestClient, index_prefix: str) -> dict[str, dict[str, Any]]:
-    """Collect primary document counts and sequence/checkpoint values from one stats response."""
+def collect_primary_shard_stats(
+    client: ElasticsearchRestClient, index_prefix: str, indices: dict[str, Any]
+) -> dict[str, dict[str, Any]]:
+    """Collect per-primary stats; report a total only when every configured primary supplied a count."""
     prefix = urllib.parse.quote(index_prefix, safe="-_.")
     response = client.get(
         f"/{prefix}-*/_stats",
@@ -299,15 +312,10 @@ def collect_primary_shard_stats(client: ElasticsearchRestClient, index_prefix: s
                 "global_checkpoint": _nonnegative_or_minus_one(seq_no.get("global_checkpoint")),
             }
         counts = [shard["doc_count"] for shard in primary_shards.values()]
-        primary_count = _nonnegative(index_stats.get("primaries", {}).get("docs", {}).get("count"))
-        if primary_shards:
-            primary_count = (
-                sum(count for count in counts if count is not None)
-                if all(count is not None for count in counts)
-                else None
-            )
+        shard_count = index_setting(indices.get(index_name, {}), "index.number_of_shards")
+        complete = _complete_primary_layout(primary_shards, shard_count) and None not in counts
         result[index_name] = {
-            "doc_count": primary_count,
+            "doc_count": sum(count for count in counts if count is not None) if complete else None,
             "primary_shards": primary_shards,
         }
     return result
@@ -336,7 +344,7 @@ def collect_index_inventory(client: ElasticsearchRestClient, prefix: str, *, sco
         },
     )
     catalog = {row.get("index"): row for row in catalog_rows if row.get("index")}
-    stats = collect_primary_shard_stats(client, prefix)
+    stats = collect_primary_shard_stats(client, prefix, indices)
     for name, data in indices.items():
         settings = index_setting(data, "index.uuid") or index_setting(data, "uuid")
         row = catalog.get(name, {})

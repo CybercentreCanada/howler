@@ -34,13 +34,13 @@ const config = {
         list: true,
         deprecated: true,
         regex: '^id-.*$',
-        values: ['one', 'two'],
+        values: ['one', false],
         deprecated_description: 'Use another field'
       },
       'event.action': {
         type: 'text',
         description: 'Action field',
-        values: []
+        values: null
       },
       'howler.id.key_a': {
         type: 'keyword',
@@ -64,6 +64,7 @@ describe('HitSchemaDocumentation', () => {
     expect(screen.getByText('event.action')).toBeInTheDocument();
     expect(screen.getByText('list')).toBeInTheDocument();
     expect(screen.getByText('deprecated')).toBeInTheDocument();
+    expect(screen.getByText('false')).toBeInTheDocument();
     expect(screen.getByText('help.hit.schema.regex')).toBeInTheDocument();
     expect(screen.getByText('Use another field')).toBeInTheDocument();
 

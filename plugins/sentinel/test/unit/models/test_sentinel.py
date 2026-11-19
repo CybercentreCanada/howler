@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
+from howler.datastore import howler_store
 from howler.models import compound, model_extensions, model_registry, optional, schema
 from howler.models.azure import Azure
 from howler.models.ecs.file import File
@@ -15,13 +16,17 @@ from sentinel.odm.hit import generate
 
 
 @pytest.fixture
-def registered_hit(monkeypatch):
-    model_extensions.clear()
+def isolated_models():
+    with model_extensions.isolated():
+        yield
+
+
+@pytest.fixture
+def registered_hit(monkeypatch, isolated_models):
     declare_hit_extension()
     hit_type = model_extensions.finalize(Hit)
     monkeypatch.setattr(hit_service, "datastore", lambda: SimpleNamespace(hit=SimpleNamespace(model_class=hit_type)))
-    yield hit_type
-    model_extensions.clear()
+    return hit_type
 
 
 def test_sentinel_extension_mapping(registered_hit):
@@ -54,28 +59,24 @@ def test_build_sentinel_alert(registered_hit):
 
 
 @pytest.mark.parametrize("finalized", [False, True])
-def test_hash_specification_includes_finalized_hit_extensions(monkeypatch, finalized):
+def test_hash_specification_includes_finalized_hit_extensions(monkeypatch, finalized, isolated_models):
     def declare_extensions():
         declare_hit_extension()
         model_extensions.declare(Hit, "extra_file", optional(compound(File)), plugin="test")
 
-    model_extensions.clear()
-    try:
-        plugin = BasePluginConfig(name="test", modules={"models": {"declare_extensions": {"hit": declare_extensions}}})
-        monkeypatch.setattr(azure_emit_hash, "get_plugins", lambda: [plugin])
-        monkeypatch.setattr(azure_emit_hash, "datastore", lambda: pytest.fail("Specification opened a datastore"))
-        if finalized:
-            declare_extensions()
-            model_extensions.finalize(Hit)
+    plugin = BasePluginConfig(name="test", modules={"models": {"declare_extensions": {"hit": declare_extensions}}})
+    monkeypatch.setattr(howler_store, "get_plugins", lambda: [plugin])
+    monkeypatch.setattr(azure_emit_hash, "datastore", lambda: pytest.fail("Specification opened a datastore"))
+    if finalized:
+        declare_extensions()
+        model_extensions.finalize(Hit)
 
-        fields = azure_emit_hash.specification()["steps"][0]["options"]["field"]
-        assert "file.hash.sha256" in fields
-        assert "extra_file.hash.sha256" in fields
-    finally:
-        model_extensions.clear()
+    fields = azure_emit_hash.specification()["steps"][0]["options"]["field"]
+    assert "file.hash.sha256" in fields
+    assert "extra_file.hash.sha256" in fields
 
 
-@pytest.mark.parametrize("azure", [None, Azure(tenant_id="old-tenant-id")])
+@pytest.mark.parametrize("azure", [None, Azure.validate_howler({"tenant_id": "old-tenant-id"})])
 def test_generate_populates_finalized_hit(registered_hit, azure):
     hit = registered_hit.model_construct(azure=azure)
 

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from howler.datastore.bulk import ElasticBulkPlan
+from howler.datastore.bulk import DocumentLocation, ElasticBulkPlan
 from howler.datastore.collection import ESCollection
 from howler.models import construct_partial
 from howler.models.action import Action
@@ -46,6 +46,28 @@ def test_get_plan_batches(bulk_plan, operations, operation_length, batch_size):
 
     assert len(batches) == math.ceil(operation_length / (batch_size or operation_length))
     assert "".join(batches) == bulk_plan.get_plan_data()
+
+
+@pytest.mark.parametrize("batch_size,expected_sizes", [(2, [2, 2, 1]), (None, [3, 2])])
+def test_location_queries_are_bounded_even_for_unbatched_writes(batch_size, expected_sizes, monkeypatch):
+    monkeypatch.setattr("howler.datastore.bulk.MAX_LOCATION_BATCH_SIZE", 3)
+    requests = []
+
+    def locate(ids):
+        requests.append(list(ids))
+        return {key: [DocumentLocation("test-000002"), DocumentLocation("test-000001")] for key in ids}
+
+    plan = ElasticBulkPlan(["test"], document_locations=locate)
+    for key in ("a", "b", "c", "d", "e", "b"):
+        plan.add_delete_operation(key)
+
+    batches = list(plan.get_plan_batches(batch_size))
+    assert [len(ids) for ids in requests] == expected_sizes
+    assert [key for ids in requests for key in ids] == list("abcde")
+    assert [json.loads(row)["delete"] for batch in batches for row in batch.splitlines()] == [
+        {"_id": key, "_index": index} for key in "abcdeb" for index in ("test-000002", "test-000001")
+    ]
+    assert len(batches) == (6 if batch_size else 1)
 
 
 def test_collection_bulk_returns_false_and_logs_errors():

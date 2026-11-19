@@ -8,3 +8,5 @@
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
 | address | Email | The email address. | :material-checkbox-marked-outline: Yes | `None` |
+
+

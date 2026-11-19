@@ -145,8 +145,8 @@ export const CaseControlsPreview: FC = () => (
 
 export const CaseDetailsPreview: FC = () => {
   const { t } = useTranslation();
-  const [status, setStatus] = useState('in-progress');
-  const [escalation, setEscalation] = useState('focus');
+  const [status, setStatus] = useState<Case['status']>('in-progress');
+  const [escalation, setEscalation] = useState<Case['escalation']>('focus');
   const { user } = useAppUser<HowlerUser>();
 
   return (

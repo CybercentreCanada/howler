@@ -3,7 +3,6 @@ import json
 from typing import Any, Literal, cast
 
 from flask import request
-from mergedeep import Strategy, merge
 
 from howler.api import (
     bad_request,
@@ -40,7 +39,14 @@ from howler.models.registry import model_registry
 from howler.models.user import User
 from howler.security.login import api_login
 from howler.security.utils import is_classification_accessible, validate_bulk_operation_targets
-from howler.services import action_service, analytic_service, comms_service, correlation_service, hit_service
+from howler.services import (
+    action_service,
+    analytic_service,
+    comms_service,
+    correlation_service,
+    hit_service,
+    ingest_service,
+)
 from howler.utils.constants import DEBUG_FORCE_REFRESH
 from howler.utils.str_utils import sanitize_lucene_query
 
@@ -338,28 +344,15 @@ def overwrite_hit(
         return bad_request(err="The JSON payload must be a subset of a valid Hit object.")
 
     try:
-        cached_hit = record.as_primitives()
-        # __index is added by read-side serialization for legacy consumers, but is not a Hit field.
-        # Strip only this cached helper; caller-supplied fields remain subject to strict validation.
-        cached_hit.pop("__index", None)
-
-        new_hit = cast(
-            dict[str, Any],
-            merge(
-                hit_service.flatten(cached_hit, odm=Hit),
-                hit_service.flatten(new_fields),
-                strategy=Strategy.REPLACE
-                if bool(request.args.get("replace", False, type=lambda v: v.lower() == "true"))
-                else Strategy.ADDITIVE,
-            ),
+        hit = ingest_service.prepare_overwrite(
+            record.as_primitives(),
+            new_fields,
+            type(record),
+            user=user,
+            replace=request.args.get("replace", False, type=lambda v: v.lower() == "true"),
+            flatten_patch_mappings=True,
         )
-
-        if not is_classification_accessible(user, new_hit.get("classification")):
-            return bad_request(err=f"Cannot set classification to {new_hit.get('classification')}")
-
-        hit_model = datastore().hit.model_class or Hit
-        new_hit, new_version = hit_service.save_hit(hit_model.validate_howler(new_hit), server_version, refresh=refresh)
-
+        new_hit, new_version = hit_service.save_hit(hit, server_version, refresh=refresh)
         return ok(new_hit), new_version
     except HowlerValueError as e:
         return bad_request(err=e.message)

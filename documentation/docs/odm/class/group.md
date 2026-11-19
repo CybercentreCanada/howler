@@ -10,3 +10,5 @@
 | domain | Keyword | Name of the directory the group is a member of. | :material-minus-box-outline: Optional | `None` |
 | id | Keyword | Unique identifier for the group on the system/platform. | :material-minus-box-outline: Optional | `None` |
 | name | Keyword | Name of the group. | :material-minus-box-outline: Optional | `None` |
+
+

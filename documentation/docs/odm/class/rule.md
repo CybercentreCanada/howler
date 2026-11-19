@@ -17,3 +17,5 @@
 | ruleset | Keyword | Name of the ruleset, policy, group, or parent category in which the rule used to generate this event is a member. | :material-minus-box-outline: Optional | `None` |
 | uuid | Keyword | A rule ID that is unique within the scope of a set or group of agents, observers, or other entities using the rule for detection of this event. | :material-minus-box-outline: Optional | `None` |
 | version | Keyword | The version / revision of the rule being used for analysis. | :material-minus-box-outline: Optional | `None` |
+
+

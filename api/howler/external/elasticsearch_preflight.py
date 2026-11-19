@@ -179,7 +179,7 @@ def evaluate_inventory(  # noqa: C901
 
     prefix = inventory.get("index_prefix", _index_prefix())
     sequence_sync_issues = {
-        index: primary_shard_sync_issues(index_data.get("primary_shards"))
+        index: primary_shard_sync_issues(index_data)
         for index, index_data in inventory["indices"].items()
         if index.startswith(f"{prefix}-") and not is_closed_index(index_data)
     }

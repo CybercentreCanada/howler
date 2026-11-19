@@ -21,6 +21,7 @@ from howler.models import (
     flattened_object,
     integer,
     ip,
+    json_field,
     keyword,
     list_field,
     mapping,
@@ -267,6 +268,71 @@ def test_read_normalization_drops_unknown_fields_but_preserves_mapping_keys() ->
     assert "removed_plugin_field" not in clean
     assert "removed_child_field" not in clean["child"]
     assert model.counters["dynamic_key"] == 2
+
+
+def test_strip_unknown_fields_traverses_typed_containers_without_pruning_loose_data() -> None:
+    class Leaf(HowlerEmbeddedModel):
+        value: optional(keyword())
+        count: optional(integer())
+
+    class Containers(HowlerEmbeddedModel):
+        grouped: mapping(compound(Leaf), index=False)
+        listed: list_field(compound(Leaf))
+        nested: mapping(list_field(mapping(compound(Leaf), index=False)), index=False)
+        maybe_grouped: optional(mapping(optional(compound(Leaf)), index=False))
+        json_value: json_field()
+        loose: dict[str, object]
+        flat: flattened_object()
+
+    data = {
+        "grouped": {"team": {"value": "keep", "unknown": "drop"}},
+        "listed": [{"value": "keep", "unknown": "drop"}],
+        "nested": {"team": [{"key": {"value": "keep", "unknown": "drop"}}]},
+        "maybe_grouped": {"team": {"value": "keep", "unknown": "drop"}, "empty": None},
+        "json_value": {"arbitrary": {"unknown": [1, {"other": True}]}},
+        "loose": {"arbitrary": {"unknown": [1, {"other": True}]}},
+        "flat": {"arbitrary": {"unknown": "keep"}},
+    }
+    clean = strip_unknown_fields(Containers, data)
+
+    assert clean["grouped"] == {"team": {"value": "keep"}}
+    assert clean["listed"] == [{"value": "keep"}]
+    assert clean["nested"] == {"team": [{"key": {"value": "keep"}}]}
+    assert clean["maybe_grouped"] == {"team": {"value": "keep"}, "empty": None}
+    for key in ("json_value", "loose", "flat"):
+        assert clean[key] == data[key]
+    Containers.validate_howler(clean)
+    assert data["grouped"]["team"]["unknown"] == "drop"
+
+
+def test_strip_unknown_fields_does_not_prune_bare_typed_maps() -> None:
+    class Leaf(HowlerEmbeddedModel):
+        value: optional(keyword())
+
+    class Containers(HowlerEmbeddedModel):
+        bare: dict[str, mapping(compound(Leaf), index=False)]
+
+    data = {"bare": {"outer": {"inner": {"value": "keep", "unknown": "retain"}}}}
+    assert strip_unknown_fields(Containers, data) == data
+    with pytest.raises(HowlerModelValidationError, match="unknown"):
+        Containers.validate_howler(strip_unknown_fields(Containers, data))
+
+
+def test_strip_unknown_fields_leaves_invalid_container_values_for_validation() -> None:
+    class Leaf(HowlerEmbeddedModel):
+        count: integer()
+
+    class Containers(HowlerEmbeddedModel):
+        grouped: mapping(compound(Leaf), index=False)
+        listed: list_field(compound(Leaf))
+
+    for data in (
+        {"grouped": {"team": {"count": "invalid", "unknown": 1}}, "listed": []},
+        {"grouped": {"team": "not an object"}, "listed": []},
+        {"grouped": {}, "listed": ["not an object"]},
+    ):
+        with pytest.raises(HowlerModelValidationError):
+            Containers.validate_howler(strip_unknown_fields(Containers, data))
 
 
 def test_registry_fields_flattening_and_mapping() -> None:

@@ -4,25 +4,14 @@ import inspect
 import textwrap
 from pathlib import Path
 from types import NoneType
-from typing import Annotated, get_args, get_origin
+from typing import get_args, get_origin
 
 import yaml
 from pydantic import BaseModel
-from pydantic.fields import FieldInfo
+from pydantic.json_schema import JsonSchemaValue
 from pydantic_settings import SettingsConfigDict
 
-from howler.config_models import Config
-from howler.models.assemblyline import ALRecord, AssemblyLine, Mitre
-from howler.models.aws import Organization as AWSOrganization
-from howler.models.ecs.elf import Header as ELFHeader
-from howler.models.ecs.event import ECSEvent
-from howler.models.ecs.process import ParentProcess
-from howler.models.header import Header
-from howler.models.lead import Lead
-from howler.models.localized_label import LocalizedLabel
-from howler.models.log import Log
-from howler.models.record import ECSVersion
-from howler.models.registry import FieldDefinition, field_metadata, model_annotation, model_registry, unwrap_annotation
+from build_scripts.model_json_schema import documentation_schema
 
 root_dir = Path(__file__).parent.parent.parent
 model_path = root_dir / "api/howler/models"
@@ -40,8 +29,6 @@ MODELS_TO_EXPORT = [
         if _file.stem != "__init__"
     ),
 ]
-EXTRA_MODELS = (ALRecord, AssemblyLine, Header, Lead, LocalizedLabel, Log, Mitre, ParentProcess)
-PUBLISHED_NAMES: dict[type[BaseModel], str] = {ECSEvent: "Event"}
 
 
 intro_data = """
@@ -109,52 +96,30 @@ intro_data += """
 
 def write_generated(path: Path, content: str, check: bool) -> None:
     """Write a generated document, or fail if the committed copy is stale."""
+    expected = content.encode("utf-8")
+    if path.exists() and path.read_bytes() == expected:
+        return
     if check:
-        if not path.exists() or path.read_text() != content:
-            raise SystemExit(f"Generated documentation is stale: {path}")
-    else:
-        path.write_text(content)
+        raise SystemExit(f"Generated documentation is stale: {path}")
+    path.write_bytes(expected)
 
 
-def _published_name(model: type[BaseModel]) -> str:
-    return PUBLISHED_NAMES.get(model, model.__name__)
+def _published_name(name: str) -> str:
+    return "Event" if name == "ECSEvent" else name
 
 
-def _field_type(definition: FieldDefinition) -> str:
-    """Format the field using the public ODM documentation vocabulary."""
-    child_model = model_annotation(definition.annotation)
-    if child_model is not None:
-        name = _published_name(child_model)
-        link = f"[{name}](/howler/odm/class/{name.lower()})"
-        return f"List [{link}]" if definition.metadata and definition.metadata.kind == "List" else link
-    annotation = unwrap_annotation(definition.annotation)
-    if get_origin(annotation) is list:
-        child = get_args(annotation)[0]
-        nested = field_metadata(child)
-        return f"List [{nested.kind if nested else 'Any'}]"
-    if get_origin(annotation) is dict and definition.metadata and definition.metadata.kind == "Mapping":
-        child = get_args(annotation)[1]
-        nested = field_metadata(child)
-        return f"Mapping [{nested.kind if nested else 'Any'}]"
-    return definition.metadata.kind if definition.metadata else "Any"
-
-
-def _has_optional_wrapper(annotation: object) -> bool:
-    """Return whether the annotation contains the nullable wrapper emitted by ``optional()``."""
-    args = get_args(annotation)
-    if NoneType not in args:
-        return False
-    for branch in args:
-        if branch is NoneType or get_origin(branch) is not Annotated:
-            continue
-        _, *metadata = get_args(branch)
-        if any(isinstance(item, FieldInfo) and item.annotation is None for item in metadata):
-            return True
-    return False
-
-
-def _classes_to_export() -> list[type[BaseModel]]:
+def documentation_models() -> dict[str, type[BaseModel]]:
     """Resolve all published model pages before generating any files."""
+    from howler.models.assemblyline import ALRecord, AssemblyLine, Mitre
+    from howler.models.aws import Organization as AWSOrganization
+    from howler.models.ecs.elf import Header as ELFHeader
+    from howler.models.ecs.process import ParentProcess
+    from howler.models.header import Header
+    from howler.models.lead import Lead
+    from howler.models.localized_label import LocalizedLabel
+    from howler.models.log import Log
+    from howler.models.record import ECSVersion
+
     classes: dict[str, type[BaseModel]] = {}
     for module_name in MODELS_TO_EXPORT:
         module = importlib.import_module(module_name)
@@ -170,48 +135,63 @@ def _classes_to_export() -> list[type[BaseModel]]:
             if obj is AWSOrganization:
                 # The published ``organization`` page is the ECS organization field set.
                 continue
-            name = _published_name(obj).lower()
+            name = _published_name(obj.__name__).lower()
             if name == "file" and module_name == "howler.models.ecs.email":
                 continue  # The published File page is the ECS file, not the email attachment model.
             classes.setdefault(name, obj)
-    for obj in (*EXTRA_MODELS, ECSVersion):
-        classes.setdefault(_published_name(obj).lower(), obj)
-    return [classes[name] for name in sorted(classes)]
+    for obj in (ALRecord, AssemblyLine, Header, Lead, LocalizedLabel, Log, Mitre, ParentProcess, ECSVersion):
+        classes.setdefault(_published_name(obj.__name__).lower(), obj)
+    return classes
 
 
-def render_model(model: type[BaseModel]) -> str:
-    """Render an existing published field table from the Pydantic field registry."""
+def _field_type(prop: JsonSchemaValue, definitions: JsonSchemaValue) -> str:
+    if "$ref" in prop:
+        target = definitions[prop["$ref"].split("/")[-1]]
+        if "properties" not in target:
+            return prop.get("x-howler-kind", "Any")
+        name = _published_name(target["title"])
+        return f"[{name}](/howler/odm/class/{name.lower()})"
+    if "anyOf" in prop:
+        return _field_type(next(branch for branch in prop["anyOf"] if branch.get("type") != "null"), definitions)
+    kind = prop.get("x-howler-kind", "Any")
+    if kind == "List":
+        return f"List [{_field_type(prop['items'], definitions)}]"
+    if kind == "Mapping":
+        return f"Mapping [{_field_type(prop['additionalProperties'], definitions)}]"
+    return kind
+
+
+def render_model(model: JsonSchemaValue, definitions: JsonSchemaValue) -> str:
+    """Render the published ingest field states and defaults, independent of output presence."""
     content = (
         '??? success "Auto-Generated Documentation"\n'
         "    This set of documentation is automatically generated from source, and will help ensure any change to "
         "functionality will always be documented and available on release.\n\n"
-        f"# {_published_name(model)}\n\n> {model_registry.metadata(model).description}\n\n"
+        f"# {_published_name(model['title'])}\n\n> {model.get('description')}\n\n"
         "| Field | Type | Description | Required | Default |\n| :--- | :--- | :--- | :--- | :--- |\n"
     )
-    definitions = model_registry.fields(model)
-    for name, definition in definitions.items():
-        metadata = definition.metadata
-        kind = _field_type(definition)
-        description = definition.description or "None"
-        if metadata and metadata.reference:
-            description += f'<br><a href="{metadata.reference}">Reference Link</a><br>'
-        if metadata and metadata.kind == "Enum":
-            values = dict(metadata.options).get("values", ())
-            rendered_values = ", ".join('"{}"'.format(v) if v else str(v) for v in sorted(values))
+    linked_table = False
+    for name, prop in model["properties"].items():
+        kind = _field_type(prop, definitions)
+        linked_table |= "](/howler/odm/class/" in kind
+        description = prop.get("description", "None")
+        if reference := prop.get("x-howler-reference"):
+            description += f'<br><a href="{reference}">Reference Link</a><br>'
+        if kind == "Enum":
+            rendered_values = ", ".join(f'"{v}"' for v in prop["enum"])
             description += f"<br>Values:<br>`{rendered_values}`"
-        optional = _has_optional_wrapper(definition.annotation) or (
-            not definition.required and definition.default is None and definition.default_factory is None
+        required = (
+            ":material-minus-box-outline: Optional"
+            if prop.get("x-howler-optional")
+            else ":material-checkbox-marked-outline: Yes"
         )
-        required = ":material-minus-box-outline: Optional" if optional else ":material-checkbox-marked-outline: Yes"
-        if metadata and metadata.deprecated:
-            required += f" :material-alert-box-outline: Deprecated - {metadata.deprecated_description}"
-        default = f"`{definition.default}`"
-        child_model = model_annotation(definition.annotation)
-        if child_model and isinstance(definition.default, dict):
-            child_name = _published_name(child_model)
-            default = f"See [{child_name}](/howler/odm/class/{child_name.lower()}) for more details."
+        if prop.get("deprecated"):
+            required += f" :material-alert-box-outline: Deprecated - {prop['x-howler-deprecation']}"
+        value = prop.get("x-howler-default")
+        default = f"See {kind} for more details." if "$ref" in prop and isinstance(value, dict) else f"`{value}`"
         content += f"| {name} | {kind} | {description} | {required} | {default} |\n"
-    return content
+    # Published leaf tables ended with two blank lines; linked tables did not.
+    return content if linked_table else content + "\n\n"
 
 
 def get_type_name(annotation):
@@ -296,18 +276,19 @@ config_locations = [
 ]
 
 
-class DocsConfig(Config):
-    model_config = SettingsConfigDict(
-        yaml_file=config_locations,
-        yaml_file_encoding="utf-8",
-        strict=True,
-        env_nested_delimiter="__",
-        env_prefix="hwl_",
-    )
-
-
 def generate_configuration_docs() -> None:
     """Render configuration pages using the existing settings schema."""
+    from howler.config_models import Config
+
+    class DocsConfig(Config):
+        model_config = SettingsConfigDict(
+            yaml_file=config_locations,
+            yaml_file_encoding="utf-8",
+            strict=True,
+            env_nested_delimiter="__",
+            env_prefix="hwl_",
+        )
+
     (root_dir / "documentation/docs/installation/configuration.md").write_text(preamble + build_docs_for_model(Config))
     (root_dir / "documentation/docs/installation/default_configuration.md").write_text(
         f"""
@@ -332,20 +313,20 @@ def generate_model_docs(*, check: bool = False) -> None:
     write_generated(
         root_dir / "documentation/docs/odm/getting_started.md", textwrap.dedent(intro_data).strip() + "\n", check
     )
-    classes = _classes_to_export()
-    processed_classes = {_published_name(obj).lower() for obj in classes}
-    for obj in classes:
-        name = _published_name(obj).lower()
-        write_generated(root_dir / f"documentation/docs/odm/class/{name}.md", render_model(obj), check)
+    schema = documentation_schema()
+    definitions = schema["$defs"]
+    for name, prop in schema["properties"].items():
+        model = definitions[prop["$ref"].split("/")[-1]]
+        write_generated(root_dir / f"documentation/docs/odm/class/{name}.md", render_model(model, definitions), check)
     if check:
         # A historical page with no corresponding model in either implementation remains
         # available for old documentation links, but is not generated from the registry.
         published = {path.stem for path in (root_dir / "documentation/docs/odm/class").glob("*.md")}
-        published.discard("previousprocess")
-        if published != processed_classes:
+        expected = {*schema["properties"], "previousprocess"}
+        if published != expected:
             raise SystemExit(
-                f"Generated class set differs: missing={sorted(processed_classes - published)}, "
-                f"stale={sorted(published - processed_classes)}"
+                f"Generated class set differs: missing={sorted(expected - published)}, "
+                f"stale={sorted(published - expected)}"
             )
 
 

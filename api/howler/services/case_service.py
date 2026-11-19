@@ -191,7 +191,8 @@ def create_case(
         case_data["case_id"] = case_id
     items = case_data.pop("items", [])
 
-    case = Case.validate_howler(case_data)
+    case_type: type[Case] = datastore().case.model_class or Case
+    case = case_type.validate_howler(case_data)
     case.log = [
         CaseLog.validate_howler(
             {"timestamp": "NOW", "explanation": "Case created", "user": user.uname if user else "system"}

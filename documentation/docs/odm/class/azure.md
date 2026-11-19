@@ -12,3 +12,5 @@
 | resource_group | Keyword | The name of the Azure resource group. | :material-minus-box-outline: Optional | `None` |
 | upn | Keyword | The user principal name (UPN) in Azure, used for authentication. Alias of user.name. | :material-minus-box-outline: Optional | `None` |
 | resource_id | Keyword | The unique Azure Resource Identifier (AzureRI). | :material-minus-box-outline: Optional | `None` |
+
+

@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from howler.common.exceptions import HowlerTypeError, HowlerValueError, ResourceExists
+from howler.models import HowlerEmbeddedModel, compound, keyword
 from howler.models.event import Event
 from howler.models.registry import model_registry
 from howler.services import event_service
@@ -19,6 +20,37 @@ SAMPLE_EVENT_DATA: dict[str, Any] = {
     "howler.hash": "abcdef1234567890",
     "howler.data": ["raw_data_entry"],
 }
+
+
+@pytest.fixture(autouse=True)
+def event_collection(monkeypatch):
+    storage = MagicMock()
+    storage.event.model_class = Event
+    monkeypatch.setattr(event_service, "datastore", lambda: storage)
+    return storage.event
+
+
+@pytest.mark.parametrize("ignore_extra_values", [False, True])
+def test_convert_event_uses_collection_extension(event_collection, ignore_extra_values):
+    class PluginData(HowlerEmbeddedModel):
+        legacy: keyword(deprecated=True)
+
+    class ExtendedEvent(Event):
+        plugin: compound(PluginData)
+
+    event_collection.model_class = ExtendedEvent
+    plugin = {"legacy": "keep"}
+    expected_warnings = ["plugin.legacy is deprecated."]
+    if ignore_extra_values:
+        plugin["unused"] = "drop"
+        expected_warnings.append("plugin.unused is not currently used by howler.")
+    event, warnings = event_service.convert_event(
+        {"plugin": plugin}, unique=False, ignore_extra_values=ignore_extra_values
+    )
+
+    assert type(event) is ExtendedEvent
+    assert event.as_primitives()["plugin"] == {"legacy": "keep"}
+    assert sorted(warnings) == sorted(expected_warnings)
 
 
 @patch("howler.services.event_service.datastore")
@@ -233,7 +265,7 @@ def test_convert_event_deprecated_fields(mock_exists):
         "howler.score": 0.5,
     }
 
-    ff = model_registry.flat_fields(Event, show_compound=True)
+    ff = dict(model_registry.flat_fields(Event, show_compound=True))
     with patch.object(model_registry, "flat_fields") as mock_flat_fields:
         ff["howler.score"] = MagicMock(metadata=MagicMock(deprecated=True))
         mock_flat_fields.return_value = ff

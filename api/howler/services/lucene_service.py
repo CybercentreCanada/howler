@@ -2,16 +2,18 @@ import fnmatch
 import os
 import re
 import sys
-from collections.abc import Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from datetime import datetime, timedelta
+from functools import lru_cache
 from hashlib import sha256
 from typing import Any, Literal, Union
 
 import elasticsearch
 from luqum.parser import parser
-from luqum.tree import AndOperation, BoolOperation, Phrase, Plus, Prohibit, Range, SearchField, Word
+from luqum.tree import AndOperation, BoolOperation, Phrase, Plus, Prohibit, Range, Regex, SearchField, Word
 from luqum.utils import UnknownOperationResolver
 from luqum.visitor import TreeVisitor
+from pydantic import BaseModel
 
 from howler.api import get_logger
 from howler.common.exceptions import InvalidDataException
@@ -19,6 +21,7 @@ from howler.common.loader import datastore
 from howler.config import redis
 from howler.datastore.exceptions import SearchException, SearchRetryException
 from howler.datastore.support.elastic import error_message, response_body
+from howler.models.schema import build_properties
 from howler.remote.datatypes.hash import Hash
 from howler.utils.constants import TESTING
 from howler.utils.dict_utils import flatten_deep
@@ -27,6 +30,48 @@ from howler.utils.lucene import coerce, normalize_phrase, try_parse_date, try_pa
 logger = get_logger(__file__)
 
 TRANSPORT_TIMEOUT = int(os.environ.get("HWL_DATASTORE_TRANSPORT_TIMEOUT", "10"))
+
+
+@lru_cache(maxsize=1)
+def _lowercase_fields(hit_model: type[BaseModel]) -> frozenset[str]:
+    """Read the keyword normalizers once per finalized Hit class (including its plugin fields)."""
+    properties, _ = build_properties(hit_model)
+    return frozenset(
+        path for path, spec in properties.items() if spec.get("normalizer") in {"lowercase", "lowercase_normalizer"}
+    )
+
+
+def _lucene_lower(value: str) -> str:
+    """Lucene lowercases each code point independently (e.g. İ → i, and final Σ → σ)."""
+    return value.lower() if value.isascii() else "".join(character.lower()[0] for character in value)
+
+
+def _has_escaped_wildcard(term: str) -> bool:
+    return r"\*" in term or r"\?" in term
+
+
+def _escaped_wildcard_pattern(term: str) -> str:
+    parts = []
+    characters = iter(term)
+    for character in characters:
+        if character == "\\":
+            literal = next(characters, "\\")
+            parts.append(f"[{literal}]" if literal in "*?[" else literal)
+        else:
+            parts.append("[[]" if character == "[" else character)
+    return "".join(parts)
+
+
+def _match_escaped_wildcard(term: str, fields: Iterable[tuple[str, Any]], lowercase_fields: frozenset[str]) -> bool:
+    """Compare against original text so literal '*' and '?' survive, applying only the field's own case rule."""
+    pattern = _escaped_wildcard_pattern(term)
+    for field, value in fields:
+        lowercase = field in lowercase_fields
+        field_pattern = _lucene_lower(pattern) if lowercase else pattern
+        for item in value if isinstance(value, list) else [value]:
+            if isinstance(item, str) and fnmatch.fnmatchcase(_lucene_lower(item) if lowercase else item, field_pattern):
+                return True
+    return False
 
 
 class LuceneProcessor(TreeVisitor):
@@ -173,14 +218,20 @@ class LuceneProcessor(TreeVisitor):
         return candidates
 
     def __handle_word_or_phrase(self, node: Union[Phrase, Word], context: dict[str, Any]):
-        sanitized_value = self.__sanitize_value(node.value)
-
-        if "field" not in context:
-            yield any(value == sanitized_value for value in context["hit"].values())
-        elif context["field"] == "_exists_":
+        field = context.get("field")
+        if field == "_exists_":
             yield context["hit"].get(node.value) is not None
+            return
+        if isinstance(node, Word) and _has_escaped_wildcard(node.value):
+            fields = context["hit"].items() if field is None else ((field, context["hit"].get(field)),)
+            yield _match_escaped_wildcard(node.value, fields, context["lowercase_fields"])
+            return
+
+        sanitized_value = self.__sanitize_value(node.value)
+        if field is None:
+            yield any(value == sanitized_value for value in context["hit"].values())
         else:
-            candidates = self.__build_candidates(context["hit"].get(context["field"]), context["term_type"])
+            candidates = self.__build_candidates(context["hit"].get(field), context["term_type"])
 
             yield len(fnmatch.filter(candidates, sanitized_value)) > 0
 
@@ -192,78 +243,108 @@ class LuceneProcessor(TreeVisitor):
         "Handle phrases"
         yield from self.__handle_word_or_phrase(node, {**context, "term_type": "phrase"})
 
+    def visit_regex(self, node: Regex, context: dict[str, Any]):
+        """An opaque Lucene automaton cannot establish a local match, even under NOT."""
+        # Use the conservative truth value for this polarity. Other clauses may still establish an OR match.
+        yield context.get("negated", False)
+
     def visit_prohibit(self, node: Prohibit, context: dict[str, Any]):
         "Handle NOT operation"
-        yield from (not entry for entry in self.generic_visit(node, context))
+        child_context = {**context, "negated": not context.get("negated", False)}
+        yield from (not entry for entry in self.generic_visit(node, child_context))
 
 
-NORMALIZED_QUERY_CACHE: Hash[str] = Hash("normalized_queries", redis)
-
-SEARCH_PHRASE_CACHE: dict[str, str] = {}
-WILDCARD_TOKEN_PATTERN = re.compile(
-    r"[\[{](?:\\.|[^\\\]}])*[\]}]|"
-    r'(?:(?<=\()|(?<!\S))((?:\\.|[^\s()"\[\]{}])*[?*](?:\\.|[^\s()"\[\]{}])*)(?=$|[\s)])'
-)
-LUCENE_HASH_PATTERN = re.compile(r"([0-9a-f]{64})")
+NORMALIZED_QUERY_CACHE: Hash[str] = Hash("normalized_queries_v2", redis)
+LUCENE_HASH_PATTERN = re.compile(r'"([0-9a-f]{64})"|\b([0-9a-f]{64})\b')
 
 
-def replace_lucene_phrase(match: re.Match[str]) -> str:
-    "Replace a phrase in lucene with its sha256 hash, to circumvent mangling by ES"
-    result = match.group(2) or ""
-
-    value = match.group(3)
-
-    if try_parse_date(value.replace('"', "")):
-        result += value
-    elif try_parse_ip(value.replace('"', "")):
-        result += value.replace(":", "@colon")
-    else:
-        key = sha256(value.encode()).hexdigest()
-
-        SEARCH_PHRASE_CACHE[key] = value
-
-        result += key
-
-    result += match.group(4) or ""
-
-    return result
+def _unescaped_characters(value: str, start: int) -> Iterator[tuple[int, str]]:
+    position = start
+    while position < len(value):
+        character = value[position]
+        if character == "\\":
+            position += 2
+        else:
+            yield position, character
+            position += 1
 
 
-def try_reinsert_lucene_phrase(match: re.Match[str]) -> str:
-    "Given a potential sha256 hash, replace that hash with the original lucene phrase (if it exists)"
-    key = match.group(1)
+def _unescaped_unquoted_characters(value: str, start: int = 0) -> Iterator[tuple[int, str]]:
+    """Yield characters outside quotes, skipping Lucene escapes."""
+    quoted = False
+    for position, character in _unescaped_characters(value, start):
+        if character == '"':
+            quoted = not quoted
+        elif not quoted:
+            yield position, character
 
-    if key in SEARCH_PHRASE_CACHE:
-        return SEARCH_PHRASE_CACHE[key]
-    else:
-        return key
 
-
-def replace_lucene_wildcard(match: re.Match[str]) -> str:
-    """Replace a wildcard value with a stable term before requesting a Lucene explanation."""
-    wildcard_expression = match.group(1)
-    # Asterisks inside ranges represent unbounded endpoints, not wildcard terms.
-    if wildcard_expression is None:
-        return match.group(0)
-    if wildcard_expression == "*:*":
-        return wildcard_expression
-
-    field, separator, value = wildcard_expression.partition(":")
-    if not separator:
-        value = field
-        field = ""
-
+def _protect_term(value: str, tokens: dict[str, str] | None) -> str:
     key = sha256(value.encode()).hexdigest()
-    SEARCH_PHRASE_CACHE[key] = value
-    return f"{field}{separator}{key}"
+    if tokens is not None:
+        tokens[key] = value
+    return key
 
 
-def prepare_lucene_query(lucene: str, *, protect_wildcards: bool = True) -> str:
-    """Protect Lucene phrases and wildcards while Elasticsearch explains a query."""
-    escaped_lucene = re.sub(r'((:\()?(".+?")(\)?))', replace_lucene_phrase, lucene)
-    if protect_wildcards:
-        return WILDCARD_TOKEN_PATTERN.sub(replace_lucene_wildcard, escaped_lucene)
-    return escaped_lucene
+def _prepare_delimited(query: str, start: int, tokens: dict[str, str] | None) -> tuple[str, int]:
+    delimiter = query[start]
+    for position, character in _unescaped_characters(query, start + 1):
+        if character != delimiter:
+            continue
+        literal = query[start : position + 1]
+        if delimiter == "/":
+            # Let Lucene validate the complete regexp, including its character classes and escapes.
+            return literal, position + 1
+        value = literal[1:-1]
+        if not value or try_parse_date(value):
+            return literal, position + 1
+        if try_parse_ip(value):
+            return literal.replace(":", "@colon"), position + 1
+        # A quoted placeholder retains the token boundary even in queries such as field:"one"OR field:"two".
+        return f'"{_protect_term(literal, tokens)}"', position + 1
+    # Leave an unclosed literal for Elasticsearch to validate.
+    return query[start:], len(query)
+
+
+def _prepare_word(query: str, start: int, protect_wildcards: bool, tokens: dict[str, str] | None) -> tuple[str, int]:
+    value_start = start
+    end = len(query)
+    for position, character in _unescaped_characters(query, start):
+        if character.isspace() or character in '()[]{}"/':
+            end = position
+            break
+        if character == ":" and value_start == start:
+            value_start = position + 1
+
+    word = query[start:end]
+    value = query[value_start:end]
+    # Lucene can render both an active '*' and a literal '\*' as '*'. Protect either spelling.
+    if protect_wildcards and word != "*:*" and ("*" in value or "?" in value):
+        word = query[start:value_start] + _protect_term(value, tokens)
+    return word, end
+
+
+def prepare_lucene_query(lucene: str, *, protect_wildcards: bool = True, tokens: dict[str, str] | None = None) -> str:
+    """Protect Lucene terms, optionally recording their originals for this query's explanation."""
+    parts = []
+    position = 0
+    while position < len(lucene):
+        character = lucene[position]
+        if character in '"/':
+            part, position = _prepare_delimited(lucene, position, tokens)
+        elif character in "[{":
+            # A range (including mixed bounds) is opaque; its '*' endpoints are not wildcard terms.
+            end = next(
+                (i + 1 for i, c in _unescaped_unquoted_characters(lucene, position + 1) if c in "]}"), len(lucene)
+            )
+            part, position = lucene[position:end], end
+        elif character.isspace() or character in "()]}+-!":
+            part = character
+            position += 1
+        else:
+            part, position = _prepare_word(lucene, position, protect_wildcards, tokens)
+        parts.append(part)
+    return "".join(parts)
 
 
 def explain_query(query: str, index_name: str) -> dict[str, Any]:
@@ -280,25 +361,6 @@ def explain_query(query: str, index_name: str) -> dict[str, Any]:
     for explanation in result.get("explanations", []):
         explanation.pop("index", None)
     return result
-
-
-def _unescaped_unquoted_characters(value: str, start: int = 0):
-    """Yield characters outside quotes, skipping Lucene escapes."""
-    quoted = False
-    escaped = False
-    for position in range(start, len(value)):
-        character = value[position]
-        if escaped:
-            escaped = False
-            continue
-        if character == "\\":
-            escaped = True
-            continue
-        if character == '"':
-            quoted = not quoted
-            continue
-        if not quoted:
-            yield position, character
 
 
 def _matching_parenthesis(value: str, opening: int) -> int | None:
@@ -341,39 +403,37 @@ def _first_query_argument(value: str, argument_name: str | None = None) -> str:
     return value[:comma].strip() if comma is not None else value.strip()
 
 
-def _rewrite_query_wrapper(value: str, wrapper: str, argument_name: str | None = None, prefix: str = "") -> str:
+def _rewrite_query_wrapper(value: str, wrapper: re.Pattern[str], argument_name: str | None, prefix: str) -> str:
     """Replace wrapped Lucene query text with its parseable inner query."""
-    marker = f"{wrapper}("
-    position = value.find(marker)
-
-    while position != -1:
-        closing = _matching_parenthesis(value, position + len(wrapper))
+    parts = []
+    start = 0
+    while match := wrapper.search(value, start):
+        closing = _matching_parenthesis(value, match.end() - 1)
         if closing is None:
             break
 
-        content = value[position + len(marker) : closing]
-        replacement = f"{prefix}{_first_query_argument(content, argument_name)}"
-        value = f"{value[:position]}{replacement}{value[closing + 1 :]}"
-        position = value.find(marker, position + len(replacement))
+        parts.append(value[start : match.start()])
+        parts.append(prefix + _first_query_argument(value[match.end() : closing], argument_name))
+        start = closing + 1
 
-    return value
+    parts.append(value[start:])
+    return "".join(parts)
 
 
+_EXISTS_WRAPPER = r"\b(?:DocValues)?FieldExistsQuery"
 _QUERY_WRAPPERS = (
-    ("IndexOrDocValuesQuery", "indexQuery", ""),
-    ("ConstantScore", None, ""),
-    ("ConstantScoreQuery", None, ""),
-    ("BoostQuery", None, ""),
-    ("FieldExistsQuery", "field", "_exists_:"),
-    ("DocValuesFieldExistsQuery", "field", "_exists_:"),
+    (re.compile(r"\bIndexOrDocValuesQuery\("), "indexQuery", ""),
+    (re.compile(r"\bConstantScore(?:Query)?\("), None, ""),
+    (re.compile(r"\bBoostQuery\("), None, ""),
+    (re.compile(_EXISTS_WRAPPER + r"\("), "field", "_exists_:"),
 )
-_EXISTS_QUERY_PATTERNS = (
-    (re.compile(r"FieldExistsQuery\s*\[\s*field=([^\]]+)\]"), r"_exists_:\1"),
-    (re.compile(r"DocValuesFieldExistsQuery\s*\[\s*field=([^\]]+)\]"), r"_exists_:\1"),
+_BRACKETED_EXISTS_QUERY = re.compile(_EXISTS_WRAPPER + r"\s*\[\s*field=([^\]]+)\]")
+_OPAQUE_AUTOMATON = re.compile(
+    r"\bAutomatonQuery\s*\{\s*org\.apache\.lucene\.util\.automaton\.Automaton@[0-9a-f]+\s*\}"
 )
 
 
-def normalize_lucene_explanation(explanation: str) -> str:
+def normalize_lucene_explanation(explanation: str, tokens: Mapping[str, str] | None = None) -> str:
     """Convert Elasticsearch/Lucene explain text to the stable query syntax we parse.
 
     Lucene 10 changed several implementation details in explain strings and can
@@ -382,6 +442,8 @@ def normalize_lucene_explanation(explanation: str) -> str:
     boolean queries, and nested wrappers remain intact.
     """
     normalized = explanation.strip()
+    # Lucene returns an object identity for some regexes. Retain one Regex leaf when parsing the boolean query.
+    normalized = _OPAQUE_AUTOMATON.sub("/AutomatonQuery/", normalized)
 
     for _ in range(8):
         previous = normalized
@@ -390,11 +452,12 @@ def normalize_lucene_explanation(explanation: str) -> str:
         if normalized == previous:
             break
 
-    for pattern, replacement in _EXISTS_QUERY_PATTERNS:
-        normalized = pattern.sub(replacement, normalized)
+    normalized = _BRACKETED_EXISTS_QUERY.sub(r"_exists_:\1", normalized)
     normalized = re.sub(r"\bConstantScore(?:Query)?\b", "", normalized)
-    normalized = LUCENE_HASH_PATTERN.sub(try_reinsert_lucene_phrase, normalized)
-    return normalized.replace("@colon", ":")
+    normalized = normalized.replace("@colon", ":")
+    if tokens:
+        normalized = LUCENE_HASH_PATTERN.sub(lambda match: tokens.get(match[1] or match[2], match[0]), normalized)
+    return normalized
 
 
 def match(lucene: str, obj: dict[str, Any]):
@@ -403,7 +466,8 @@ def match(lucene: str, obj: dict[str, Any]):
 
     # We cache the results back from ES, since we will frequently run the same validation queries over and over again.
     if (normalized_query := NORMALIZED_QUERY_CACHE.get(hash_key)) is None or TESTING:
-        escaped_lucene = prepare_lucene_query(lucene)
+        tokens: dict[str, str] = {}
+        escaped_lucene = prepare_lucene_query(lucene, tokens=tokens)
 
         # Elasticsearch normalizes ambiguous boolean syntax in its explanation. Wildcards are replaced before
         # validation because Lucene 10 renders them as opaque AutomatonQuery internals instead of parseable terms.
@@ -444,7 +508,7 @@ def match(lucene: str, obj: dict[str, Any]):
             logger.error("Valid lucene query included no parseable explanation")
             return False
 
-        normalized_query = normalize_lucene_explanation(explanation)
+        normalized_query = normalize_lucene_explanation(explanation, tokens)
 
         # Cache the normalized query
         NORMALIZED_QUERY_CACHE.set(hash_key, normalized_query)
@@ -459,7 +523,14 @@ def match(lucene: str, obj: dict[str, Any]):
         tree = UnknownOperationResolver(resolve_to=BoolOperation)(parser.parse(normalized_query))
 
         # Actually run the validation
-        return LuceneProcessor(track_parents=True).visit(tree, {"hit": flatten_deep(obj)})
+        lowercase_fields = (
+            _lowercase_fields(datastore().ds.get_models()["hit"])
+            if _has_escaped_wildcard(normalized_query)
+            else frozenset()
+        )
+        return LuceneProcessor(track_parents=True).visit(
+            tree, {"hit": flatten_deep(obj), "lowercase_fields": lowercase_fields}
+        )
     except Exception:
         logger.exception("Exception on processing lucene:")
         return False

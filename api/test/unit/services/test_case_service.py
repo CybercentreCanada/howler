@@ -13,6 +13,7 @@ from howler.common.exceptions import (
 from howler.config import CLASSIFICATION
 from howler.datastore.collection import CREATE_TOKEN
 from howler.datastore.exceptions import DataStoreException, VersionConflictException
+from howler.models import keyword
 from howler.models.case import Case as SchemaCase
 from howler.models.case import CaseItem as SchemaCaseItem
 from howler.models.case import CaseLog as SchemaCaseLog
@@ -167,12 +168,20 @@ class TestAccessValidation:
 # ---------------------------------------------------------------------------
 
 
+@pytest.fixture
+def case_collection(monkeypatch):
+    storage = MagicMock()
+    storage.case.model_class = SchemaCase
+    monkeypatch.setattr(case_service, "datastore", lambda: storage)
+    return storage.case
+
+
+@pytest.mark.usefixtures("case_collection")
 class TestCreateCase:
     """Tests for case_service.create_case."""
 
     @patch("howler.services.case_service.is_classification_accessible", return_value=False)
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_rejects_classification_above_user_clearance(self, mock_ds_fn, _mock_accessible):
+    def test_create_case_rejects_classification_above_user_clearance(self, _mock_accessible, case_collection):
         """create_case raises before saving when the requested classification is inaccessible."""
         with pytest.raises(ForbiddenException, match="cannot create case"):
             case_service.create_case(
@@ -180,27 +189,32 @@ class TestCreateCase:
                 user=_make_user(classification=CLASSIFICATION.UNRESTRICTED),
             )
 
-        mock_ds_fn.return_value.case.save.assert_not_called()
+        case_collection.save.assert_not_called()
 
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_saves_to_datastore(self, _mock_ds_fn):
-        """create_case constructs a Case from title/summary and saves it."""
-        result = case_service.create_case({"title": "New Case", "summary": "A summary"}, user=_make_user())
+    def test_create_case_saves_to_datastore(self, case_collection):
+        """The create-only write includes fields declared on the collection model."""
 
-        assert isinstance(result, SchemaCase)
-        assert result.case_id
+        class ExtendedCase(SchemaCase):
+            plugin: keyword()
+
+        case_collection.model_class = ExtendedCase
+        result = case_service.create_case(
+            {"title": "New Case", "summary": "A summary", "plugin": "keep"}, user=_make_user()
+        )
+
+        assert isinstance(result, ExtendedCase)
+        assert result.as_primitives()["plugin"] == "keep"
         assert result.title == "New Case"
         assert result.summary == "A summary"
+        case_collection.save.assert_called_once_with(result.case_id, result, refresh="wait_for", version=CREATE_TOKEN)
 
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_generates_unique_id(self, _mock_ds_fn):
+    def test_create_case_generates_unique_id(self):
         """create_case auto-generates a unique UUID for each case."""
         id_a = case_service.create_case({"title": "Title A", "summary": "Summary A"}, user=_make_user()).case_id
         id_b = case_service.create_case({"title": "Title B", "summary": "Summary B"}, user=_make_user()).case_id
         assert id_a != id_b
 
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_sets_log_entry(self, _mock_ds_fn):
+    def test_create_case_sets_log_entry(self):
         """create_case adds a creation log entry for the given user."""
         user = _make_user()
         result = case_service.create_case({"title": "Title", "summary": "Summary"}, user=user)
@@ -208,38 +222,28 @@ class TestCreateCase:
         assert len(result.log) == 1
         assert result.log[0].user == user.uname
 
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_no_user_defaults_to_system(self, _mock_ds_fn):
+    def test_create_case_no_user_defaults_to_system(self):
         """create_case uses 'system' as the log user when user='' (the default)."""
         result = case_service.create_case({"title": "Title", "summary": "Summary"})
 
         assert len(result.log) == 1
         assert result.log[0].user == "system"
 
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_raises_when_empty_data(self, mock_ds_fn):
+    def test_create_case_raises_when_empty_data(self, case_collection):
         """create_case raises InvalidDataException when case data is empty."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
         with pytest.raises(InvalidDataException):
             case_service.create_case({})
 
-        mock_ds.case.save.assert_not_called()
+        case_collection.save.assert_not_called()
 
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_raises_when_none_data(self, mock_ds_fn):
+    def test_create_case_raises_when_none_data(self, case_collection):
         """create_case raises InvalidDataException when case data is None."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
         with pytest.raises(InvalidDataException):
             case_service.create_case(None)  # type: ignore[arg-type]
 
-        mock_ds.case.save.assert_not_called()
+        case_collection.save.assert_not_called()
 
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_strips_case_id(self, _mock_ds_fn):
+    def test_create_case_strips_case_id(self):
         """create_case ignores any case_id supplied in the input dict."""
         result = case_service.create_case(
             {"case_id": "should-be-removed", "title": "T", "summary": "S"}, user=_make_user()
@@ -247,8 +251,7 @@ class TestCreateCase:
 
         assert result["case_id"] != "should-be-removed"
 
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_uses_only_trusted_keyword_case_id(self, _mock_ds_fn):
+    def test_create_case_uses_only_trusted_keyword_case_id(self):
         """A trusted internal ID replaces, rather than trusts, a request payload ID."""
         trusted_case_id = "7d09f1a0-9976-4c08-b761-90be247b2f13"
 
@@ -1948,12 +1951,8 @@ class TestCaseEventEmission:
         assert args[0][1]["case"]["title"] == "New"
 
     @patch("howler.services.case_service.comms_service")
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_emits_event(self, mock_ds_fn, mock_events):
+    def test_create_case_emits_event(self, mock_events, case_collection):
         """create_case emits a 'cases' event with the new case."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
         case_service.create_case({"title": "New", "summary": "S"}, user=_make_user())
 
         mock_events.emit.assert_called_once()
@@ -3081,6 +3080,7 @@ class TestIsDescendant:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.usefixtures("case_collection")
 class TestCreateCaseWithItems:
     """Tests for create_case when the items list is non-empty."""
 
@@ -3146,12 +3146,8 @@ class TestCreateCaseWithItems:
 
     @patch("howler.services.case_service.save_case", return_value=True)
     @patch("howler.services.case_service.append_case_item")
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_with_items_does_not_refetch_parent(self, mock_ds_fn, mock_append_item, mock_save):
+    def test_create_case_with_items_does_not_refetch_parent(self, mock_append_item, mock_save, case_collection):
         """The service finalizes its in-memory parent rather than issuing a stale re-fetch."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
         result = case_service.create_case(
             {
                 "title": "T",
@@ -3163,7 +3159,7 @@ class TestCreateCaseWithItems:
 
         assert isinstance(result, SchemaCase)
         mock_append_item.assert_called_once()
-        mock_ds.case.get.assert_not_called()
+        case_collection.get.assert_not_called()
         mock_save.assert_called_once_with(result, refresh=None, version=CREATE_TOKEN)
 
     @patch("howler.services.case_service.save_case", return_value=True)

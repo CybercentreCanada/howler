@@ -1,8 +1,7 @@
 /* eslint-disable no-console */
 import { has } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Template } from 'models/entities/generated/Template';
-import type { WithMetadata } from 'models/WithMetadata';
+import type { MatchedTemplate, WithMetadata } from 'models/WithMetadata';
 import { useCallback } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { RecordContext } from '../providers/RecordProvider';
@@ -11,7 +10,7 @@ const useMatchers = (lazy = false) => {
   const getRecord = useContextSelector(RecordContext, ctx => ctx.getRecord);
 
   const getMatchingTemplate = useCallback(
-    async (hit: WithMetadata<Hit>, providedTemplate?: Template) => {
+    async (hit: WithMetadata<Hit>, providedTemplate?: MatchedTemplate) => {
       if (providedTemplate) {
         return providedTemplate;
       }

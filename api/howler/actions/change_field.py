@@ -1,11 +1,9 @@
 from howler.common.loader import datastore
-from howler.datastore.howler_store import finalize_models
+from howler.datastore.howler_store import get_action_hit_model
 from howler.datastore.operations import OdmHelper
-from howler.models import model_extensions
 from howler.models.action import VALID_TRIGGERS
 from howler.models.hit import Hit
 from howler.models.registry import model_registry
-from howler.plugins import get_plugins
 
 OPERATION_ID = "change_field"
 
@@ -61,9 +59,7 @@ def execute(query: str, field: str, value: str, **kwargs):
 
 def specification():
     """Specify various properties of the action, such as title, descriptions, permissions and input steps."""
-    hit_model = (
-        model_extensions.finalize(Hit) if model_extensions.is_finalized(Hit) else finalize_models(get_plugins())["hit"]
-    )
+    hit_model = get_action_hit_model()
     return {
         "id": OPERATION_ID,
         "title": "Change Field",

@@ -8,12 +8,12 @@ export interface APIIndex {
   indexed: boolean;
   list: boolean;
   stored: boolean;
-  deprecated: boolean;
+  deprecated?: boolean;
   type: string;
-  description: string;
-  regex: string;
-  values: string[];
-  deprecated_description: string;
+  description: string | null;
+  regex: string | null;
+  values: unknown[] | null;
+  deprecated_description: string | null;
 }
 
 /**

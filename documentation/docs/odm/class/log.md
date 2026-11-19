@@ -15,3 +15,5 @@
 | type | Enum | The operation performed on the value.<br>Values:<br>`"appended", "removed", "set"` | :material-minus-box-outline: Optional | `None` |
 | previous_value | Keyword | The value the key is changing from. | :material-minus-box-outline: Optional | `None` |
 | user | Keyword | User ID who created the log event. | :material-checkbox-marked-outline: Yes | `None` |
+
+

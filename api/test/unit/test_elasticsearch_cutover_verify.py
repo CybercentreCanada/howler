@@ -19,7 +19,7 @@ from howler.external import elasticsearch_cutover_verify as verifier
 from howler.external.elasticsearch_cutover_verify import (
     _collection_indices,
     _collection_models,
-    _configured_ilm,
+    _configured_ilm_policy,
     _merge_dynamic_templates,
     _prefix,
     _read_baseline,
@@ -85,6 +85,14 @@ def _expectations(*, ilm: bool = False) -> dict[str, dict[str, Any]]:
             "total_fields_limit": 1600,
             **(
                 {
+                    "ilm_policy": {
+                        "phases": {
+                            "hot": {
+                                "min_age": "0ms",
+                                "actions": {"rollover": {"max_age": "30d", "max_primary_shard_size": "50gb"}},
+                            }
+                        }
+                    },
                     "ilm_template": {
                         "settings": {
                             "index.lifecycle.name": "howler-alpha_policy",
@@ -92,7 +100,7 @@ def _expectations(*, ilm: bool = False) -> dict[str, dict[str, Any]]:
                             "index.mapping.total_fields.limit": 1600,
                         },
                         "mappings": _mapping(),
-                    }
+                    },
                 }
                 if ilm
                 else {}
@@ -106,6 +114,7 @@ def _inventory(*, ilm: bool = False) -> dict[str, Any]:
     aliases = {"howler-alpha": {"is_write_index": True}} if ilm else {"howler-alpha": {}}
     settings = {
         "index.uuid": "alpha-uuid",
+        "index.number_of_shards": "1",
         "index.mapping.total_fields.limit": "1600",
     }
     if ilm:
@@ -165,15 +174,26 @@ def _inventory(*, ilm: bool = False) -> dict[str, Any]:
                     "index.lifecycle.rollover_alias": "howler-alpha",
                     "index.mapping.total_fields.limit": "1600",
                 },
-                "mappings": live_mapping,
+                "mappings": deepcopy(live_mapping),
             },
         }
-        inventory["ilm_policies"]["alpha"] = {"phases": {"hot": {"actions": {"rollover": {"max_age": "30d"}}}}}
+        inventory["ilm_policies"]["alpha"] = {
+            "phases": {"hot": {"actions": {"rollover": {"max_age": "30d", "max_primary_shard_size": "50gb"}}}}
+        }
     return inventory
 
 
 def _baseline(inventory: dict[str, Any]) -> dict[str, Any]:
     return {"index_prefix": "howler", "inventory": {"indices": inventory["indices"]}}
+
+
+def _add_ilm_read_index(inventory: dict[str, Any], index: str) -> None:
+    write_index = "howler-alpha-000002"
+    for key in ("indices", "mappings", "ilm_explain"):
+        inventory[key][index] = deepcopy(inventory[key][write_index])
+    data = inventory["indices"][index]
+    data["settings"]["index.uuid"] = data["uuid"] = "older"
+    data["aliases"]["howler-alpha"]["is_write_index"] = False
 
 
 class FakeVerifierRest:
@@ -195,6 +215,7 @@ class FakeVerifierRest:
                     "aliases": {"howler-alpha": {}},
                     "settings": {
                         "index.uuid": "alpha-uuid",
+                        "index.number_of_shards": "1",
                         "index.mapping.total_fields.limit": "1600",
                     },
                 }
@@ -547,7 +568,12 @@ def test_expectations_apply_prefix_ilm_and_schema_contracts(monkeypatch: pytest.
 
     monkeypatch.setattr(verifier, "_collection_models", lambda: (("alpha", object), ("avatar", None)))
     monkeypatch.setattr(verifier, "_prefix", lambda: "cutover")
-    monkeypatch.setattr(verifier, "_configured_ilm", lambda name: name == "alpha")
+    monkeypatch.setattr(config.datastore.ilm, "enabled", True)
+    monkeypatch.setattr(
+        config.datastore.ilm, "indices", {"alpha": ILMIndexConfig(warm="11d", warm_forcemerge_segments=5, cold="36d")}
+    )
+    monkeypatch.setattr(config.datastore.ilm, "rollover_max_age", "4d")
+    monkeypatch.setattr(config.datastore.ilm, "rollover_max_size", "2.5G")
     monkeypatch.setattr(verifier, "_collection_shards_replicas", lambda _: (3, 2))
     monkeypatch.setattr(schema, "document_mapping", lambda model: {"model": model})
     monkeypatch.setattr(schema, "total_fields_limit", lambda model: 2161 if model is object else 1000)
@@ -561,6 +587,11 @@ def test_expectations_apply_prefix_ilm_and_schema_contracts(monkeypatch: pytest.
 
     assert expectations["alpha"]["alias"] == "cutover-alpha"
     assert expectations["alpha"]["ilm"] is True
+    assert expectations["alpha"]["ilm_policy"]["phases"] == {
+        "hot": {"min_age": "0ms", "actions": {"rollover": {"max_age": "4d", "max_primary_shard_size": "2.5G"}}},
+        "warm": {"min_age": "11d", "actions": {"forcemerge": {"max_num_segments": 5}}},
+        "cold": {"min_age": "36d", "actions": {}},
+    }
     assert expectations["alpha"]["total_fields_limit"] == 2161
     assert expectations["alpha"]["ilm_template"]["options"] == {
         "shards": 3,
@@ -571,6 +602,7 @@ def test_expectations_apply_prefix_ilm_and_schema_contracts(monkeypatch: pytest.
     assert expectations["avatar"]["alias"] == "cutover-avatar"
     assert expectations["avatar"]["ilm"] is False
     assert "ilm_template" not in expectations["avatar"]
+    assert "ilm_policy" not in expectations["avatar"]
 
 
 @pytest.mark.parametrize("status", ["IN_PROGRESS", "ERROR"])
@@ -729,20 +761,61 @@ def test_schema_less_property_and_template_drift_is_warning_only() -> None:
     assert any(warning["check"] == "schema_less_mapping_property_missing" for warning in report["warnings"])
 
 
-def test_active_dynamic_template_order_is_preserved_and_extra_template_warns() -> None:
+def test_reordered_active_dynamic_templates_block() -> None:
     inventory = _inventory()
     templates = inventory["mappings"]["howler-alpha_hot"]["mappings"]["dynamic_templates"]
     templates.reverse()
     reordered = _checks(inventory)
     assert _blockers(reordered, "dynamic_templates")
 
-    inventory = _inventory()
-    inventory["mappings"]["howler-alpha_hot"]["mappings"]["dynamic_templates"].append(
-        {"disabled_plugin_template": {"match": "legacy", "mapping": {"type": "keyword"}}}
+
+@pytest.mark.parametrize(
+    "target", ["howler-alpha-000001", "howler-alpha_template"], ids=["read-backer", "rollover-template"]
+)
+@pytest.mark.parametrize("schema_less", [False, True], ids=["modeled", "schema-less"])
+def test_obsolete_catchall_reports_shadowed_active_templates(target: str, schema_less: bool) -> None:
+    inventory = _inventory(ilm=True)
+    _add_ilm_read_index(inventory, "howler-alpha-000001")
+    mapping = (
+        inventory["ilm_templates"]["alpha"]["template"]["mappings"]
+        if target == "howler-alpha_template"
+        else inventory["mappings"][target]["mappings"]
     )
-    extra = _checks(inventory)
-    assert extra["ready"] is True
-    assert extra["warnings"][0]["templates"] == ["disabled_plugin_template"]
+    mapping["dynamic_templates"].insert(0, {"retired_catchall": {"path_match": "*", "mapping": {"type": "text"}}})
+    expectations = _expectations(ilm=True)
+    if schema_less:
+        expectations["alpha"]["model"] = None
+
+    report = evaluate_inventory(inventory, expectations)
+
+    assert report["ready"] is schema_less
+    (finding,) = report["warnings" if schema_less else "blockers"]
+    assert finding["check"] == ("schema_less_dynamic_templates" if schema_less else "dynamic_templates")
+    assert finding["index"] == target
+    assert finding["shadowed"] == [
+        {"obsolete": "retired_catchall", "active": "strings_as_keywords"},
+        {"obsolete": "retired_catchall", "active": "label_tpl"},
+    ]
+
+
+@pytest.mark.parametrize(
+    ("position", "body"),
+    [
+        (2, {"path_match": "*", "mapping": {"type": "text"}}),
+        (0, {"path_match": "retired.*", "mapping": {"type": "text"}}),
+        (0, {"match_mapping_type": "string", "mapping": {"type": "keyword", "ignore_above": 8191, "doc_values": True}}),
+    ],
+    ids=["later-catchall", "unrelated-selector", "equivalent-mapping"],
+)
+def test_harmless_obsolete_dynamic_template_warns(position: int, body: dict[str, Any]) -> None:
+    inventory = _inventory()
+    inventory["mappings"]["howler-alpha_hot"]["mappings"]["dynamic_templates"].insert(position, {"retired": body})
+
+    report = _checks(inventory)
+
+    assert report["ready"]
+    (warning,) = report["warnings"]
+    assert (warning["check"], warning["templates"]) == ("obsolete_dynamic_templates", ["retired"])
 
 
 def test_real_schema_less_default_templates_merge_to_live_15_entry_shape() -> None:
@@ -831,8 +904,10 @@ def test_runtime_prefix_and_per_collection_ilm_resolution(monkeypatch: pytest.Mo
     monkeypatch.setattr(config.datastore.ilm, "indices", {"hit": ILMIndexConfig(enabled=False)})
 
     assert _prefix() == "cutover-test"
-    assert _configured_ilm("case") is True
-    assert _configured_ilm("hit") is False
+    assert _configured_ilm_policy("case") is not None
+    assert _configured_ilm_policy("hit") is None
+    monkeypatch.setattr(config.datastore.ilm, "enabled", False)
+    assert _configured_ilm_policy("case") is None
 
 
 def test_verifier_fails_closed_for_missing_configured_plugin(
@@ -884,20 +959,8 @@ def test_field_caps_conflict_on_non_schema_field_warns_only() -> None:
 )
 def test_legacy_backing_index_field_limits_are_classified(limit: str, expected_check: str) -> None:
     inventory = _inventory(ilm=True)
-    inventory["indices"]["howler-alpha-000001"] = {
-        "aliases": {"howler-alpha": {"is_write_index": False}},
-        "doc_count": 4,
-        "primary_shards": {"0": {"doc_count": 4, "max_seq_no": 3, "global_checkpoint": 3}},
-        "settings": {
-            "index.uuid": "older",
-            "index.mapping.total_fields.limit": limit,
-            "index.lifecycle.name": "howler-alpha_policy",
-            "index.lifecycle.rollover_alias": "howler-alpha",
-        },
-        "uuid": "older",
-    }
-    inventory["mappings"]["howler-alpha-000001"] = inventory["mappings"]["howler-alpha-000002"]
-    inventory["ilm_explain"]["howler-alpha-000001"] = inventory["ilm_explain"]["howler-alpha-000002"]
+    _add_ilm_read_index(inventory, "howler-alpha-000001")
+    inventory["indices"]["howler-alpha-000001"]["settings"]["index.mapping.total_fields.limit"] = limit
 
     report = _checks(inventory, ilm=True)
 
@@ -957,6 +1020,96 @@ def test_ilm_without_canonical_generation_blocks() -> None:
     assert _blockers(_checks(inventory, ilm=True), "ilm_backing_indices")
 
 
+def test_sole_ilm_generation_requires_an_explicit_write_flag() -> None:
+    inventory = _inventory(ilm=True)
+    latest = "howler-alpha-000002"
+    del inventory["indices"][latest]["aliases"]["howler-alpha"]["is_write_index"]
+
+    report = _checks(inventory, ilm=True)
+
+    assert not report["ready"]
+    (blocker,) = _blockers(report, "ilm_write_index")
+    assert blocker["expected"] == latest and blocker["actual"] == []
+    assert _checks(_inventory())["ready"]  # The single legacy _hot alias still writes implicitly.
+
+
+@pytest.mark.parametrize("unexpected", [False, True], ids=["detached-populated-generation", "attached-temporary"])
+def test_ilm_read_alias_membership_without_baseline(unexpected: bool) -> None:
+    inventory = _inventory(ilm=True)
+    older = "howler-alpha-000001__reindex" if unexpected else "howler-alpha-000001"
+    _add_ilm_read_index(inventory, older)
+    if not unexpected:
+        inventory["indices"][older]["aliases"].clear()
+
+    report = _checks(inventory, ilm=True)
+
+    assert not report["ready"]
+    (blocker,) = report["blockers"]
+    assert blocker["check"] == "ilm_alias_members"
+    assert blocker["missing"] == ([] if unexpected else [older])
+    assert blocker["unexpected"] == ([older] if unexpected else [])
+
+
+def test_verify_root_dynamic_on_each_live_generation_independently_of_template() -> None:
+    inventory = _inventory(ilm=True)
+    older = "howler-alpha-000001"
+    _add_ilm_read_index(inventory, older)
+    del inventory["mappings"]["howler-alpha-000002"]["mappings"]["dynamic"]  # ES default
+    inventory["ilm_templates"]["alpha"]["template"]["mappings"]["dynamic"] = "true"
+    assert _checks(inventory, ilm=True)["ready"]
+
+    inventory["mappings"][older]["mappings"]["dynamic"] = "strict"
+    report = _checks(inventory, ilm=True)
+
+    assert not report["ready"]
+    (blocker,) = report["blockers"]
+    assert (blocker["check"], blocker["index"], blocker["actual"]) == ("mapping_dynamic", older, "strict")
+
+
+@pytest.mark.parametrize("schema_less", [False, True])
+def test_every_live_generation_requires_source_independently_of_template(schema_less: bool) -> None:
+    inventory = _inventory(ilm=True)
+    older = "howler-alpha-000001"
+    _add_ilm_read_index(inventory, older)
+    expectations = _expectations(ilm=True)
+    if schema_less:
+        expectations["alpha"]["model"] = None
+    inventory["mappings"][older]["mappings"]["_source"] = {"enabled": False}
+
+    report = evaluate_inventory(inventory, expectations)
+
+    assert not report["ready"]
+    (blocker,) = report["blockers"]
+    assert (blocker["check"], blocker["index"]) == ("mapping_source_disabled", older)
+
+
+def test_future_ilm_template_requires_source_independently_of_live_generations() -> None:
+    inventory = _inventory(ilm=True)
+    template = inventory["ilm_templates"]["alpha"]["template"]
+    template["mappings"]["_source"] = {"enabled": False}
+
+    report = _checks(inventory, ilm=True)
+
+    assert not report["ready"]
+    (blocker,) = report["blockers"]
+    assert (blocker["check"], blocker["template"]) == ("ilm_template_source_disabled", "howler-alpha_template")
+
+
+def test_source_mode_setting_applies_even_when_source_mapping_is_omitted() -> None:
+    inventory = _inventory(ilm=True)
+    template_settings = inventory["ilm_templates"]["alpha"]["template"]["settings"]
+    template_settings["index.mapping.source.mode"] = "synthetic"
+    assert _checks(inventory, ilm=True)["ready"]
+
+    inventory["indices"]["howler-alpha-000002"]["settings"]["index.mapping.source.mode"] = "disabled"
+    template_settings["index.mapping.source.mode"] = "disabled"
+
+    assert {b["check"] for b in _checks(inventory, ilm=True)["blockers"]} == {
+        "mapping_source_disabled",
+        "ilm_template_source_disabled",
+    }
+
+
 def test_ilm_explain_unmanaged_index_blocks() -> None:
     inventory = _inventory(ilm=True)
     inventory["ilm_explain"]["howler-alpha-000002"]["managed"] = False
@@ -983,7 +1136,7 @@ def test_ilm_future_template_and_rollover_policy_are_verified() -> None:
     report = _checks(inventory, ilm=True)
 
     assert _blockers(report, "ilm_template_patterns")
-    assert _blockers(report, "ilm_policy_rollover")
+    assert _blockers(report, "ilm_policy_phases")
 
     inventory = _inventory(ilm=True)
     inventory["ilm_templates"]["alpha"] = None
@@ -996,6 +1149,71 @@ def test_ilm_future_template_and_rollover_policy_are_verified() -> None:
     report = _checks(inventory, ilm=True)
     assert _blockers(report, "ilm_template_property")
     assert _blockers(report, "dynamic_templates")
+
+
+@pytest.mark.parametrize(
+    ("path", "replacement"),
+    [
+        pytest.param((), None, id="configured-overrides-and-es-defaults"),
+        (("hot", "actions", "rollover", "max_age"), "30d"),
+        (("hot", "actions", "rollover", "max_primary_shard_size"), "50gb"),
+        (("hot", "actions", "rollover", "min_docs"), 500),
+        (("warm", "actions", "forcemerge", "max_num_segments"), 1),
+        (("cold", "min_age"), "0ms"),
+        (("delete",), {"min_age": "1d", "actions": {"delete": {}}}),
+    ],
+)
+def test_ilm_policy_matches_configured_phases_actions_and_thresholds(
+    monkeypatch: pytest.MonkeyPatch, path: tuple[str, ...], replacement: Any
+) -> None:
+    monkeypatch.setattr(config.datastore.ilm, "enabled", True)
+    monkeypatch.setattr(config.datastore.ilm, "rollover_max_age", "2d")
+    monkeypatch.setattr(config.datastore.ilm, "rollover_max_size", "2.5G")
+    monkeypatch.setattr(
+        config.datastore.ilm, "indices", {"alpha": ILMIndexConfig(warm="4d", cold="10d", warm_forcemerge_segments=5)}
+    )
+    expectations = _expectations(ilm=True)
+    expectations["alpha"]["ilm_policy"] = _configured_ilm_policy("alpha")
+    inventory = _inventory(ilm=True)
+    phases = {
+        "hot": {"actions": {"rollover": {"max_age": "48h", "max_primary_shard_size": "2684354560b"}}},
+        "warm": {"min_age": "4d", "actions": {"forcemerge": {"max_num_segments": 5}}},
+        "cold": {"min_age": "10d", "actions": {}},
+    }
+    inventory["ilm_policies"]["alpha"] = {"_meta": {"description": "cluster note"}, "phases": phases}
+    if path:
+        parent: Any = phases
+        for key in path[:-1]:
+            parent = parent[key]
+        parent[path[-1]] = replacement
+
+    report = evaluate_inventory(inventory, expectations)
+
+    assert report["ready"] is (not path)
+    assert [b["check"] for b in report["blockers"]] == (["ilm_policy_phases"] if path else [])
+
+
+@pytest.mark.parametrize(
+    ("configured", "wire", "ready"),
+    [
+        (".5gb", "536870912b", True),
+        ("1.1kb", "1127b", True),  # ES rounds up fractional results in larger units.
+        ("1.5b", "2b", False),
+        ("2b", "1.5b", False),
+        ("1.5b", "1.5b", False),
+        (".001kb", "2b", False),  # More than two decimal places isn't an ES ByteSizeValue.
+    ],
+)
+def test_ilm_rollover_size_uses_elasticsearch_byte_size_semantics(configured: str, wire: str, ready: bool) -> None:
+    expectations = _expectations(ilm=True)
+    inventory = _inventory(ilm=True)
+    expectations["alpha"]["ilm_policy"]["phases"]["hot"]["actions"]["rollover"]["max_primary_shard_size"] = configured
+    inventory["ilm_policies"]["alpha"]["phases"]["hot"]["actions"]["rollover"]["max_primary_shard_size"] = wire
+
+    report = evaluate_inventory(inventory, expectations)
+
+    assert report["ready"] is ready
+    assert [b["check"] for b in report["blockers"]] == ([] if ready else ["ilm_policy_phases"])
 
 
 @pytest.mark.parametrize(
@@ -1089,9 +1307,52 @@ def test_unsynced_baseline_checkpoint_blocks_with_recapture_guidance() -> None:
     assert "capture a new baseline" in blocker["message"]
 
 
+@pytest.mark.parametrize("incomplete", [{"baseline"}, {"current"}, {"baseline", "current"}])
+def test_integrity_rechecks_configured_primary_ids_in_each_capture(incomplete: set[str]) -> None:
+    index = "howler-alpha_hot"
+    before, current = _inventory(), _inventory()
+    for capture, inventory in (("baseline", before), ("current", current)):
+        data = inventory["indices"][index]
+        data["settings"].pop("index.number_of_shards")
+        data["settings"]["index"] = {"number_of_shards": 2}
+        if capture not in incomplete:
+            data["primary_shards"]["1"] = {"doc_count": 0, "max_seq_no": -1, "global_checkpoint": -1}
+        inventory["indices"]["other-app"] = {}  # No Howler stats contract for a different prefix.
+
+    report = _checks(current, baseline=_baseline(before), integrity_only=True, accepted_sequence_drift={index})
+
+    assert not report["ready"]
+    assert not report["warnings"]
+    findings = {}
+    for blocker in report["blockers"]:
+        assert blocker["index"] == index
+        assert blocker["check"] == "sequence_checkpoint_unsynced"
+        if "baseline_issues" in blocker:
+            findings["baseline"] = blocker["baseline_issues"]
+        else:
+            findings["current"] = blocker["shards"]
+    assert findings == {
+        capture: [{"reason": "incomplete_layout", "number_of_shards": 2, "primary_ids": ["0"]}]
+        for capture in incomplete
+    }
+
+
+@pytest.mark.parametrize(("shard_count", "shard_id"), [("1", "1"), (None, "0"), (False, "0")])
+def test_verifier_rejects_wrong_primary_id_or_unusable_shard_count(shard_count: Any, shard_id: str) -> None:
+    inventory = _inventory()
+    data = inventory["indices"]["howler-alpha_hot"]
+    data["primary_shards"][shard_id] = data["primary_shards"].pop("0")
+    data["settings"]["index.number_of_shards"] = shard_count
+
+    assert _blockers(_checks(inventory), "sequence_checkpoint_unsynced")
+
+
 def test_explicit_sequence_drift_acceptance_warns_and_records_per_shard_changes() -> None:
     before = _inventory()
-    current = _inventory()
+    data = before["indices"]["howler-alpha_hot"]
+    data["settings"]["index.number_of_shards"] = "2"
+    data["primary_shards"]["1"] = {"doc_count": 0, "max_seq_no": -1, "global_checkpoint": -1}
+    current = deepcopy(before)
     current["indices"]["howler-alpha_hot"]["primary_shards"]["0"].update(
         doc_count=5,
         max_seq_no=4,
@@ -1156,7 +1417,7 @@ def test_baseline_allows_one_empty_new_ilm_generation_with_write_alias_swap() ->
         "aliases": {"howler-alpha": {"is_write_index": True}},
         "doc_count": 0,
         "primary_shards": {"0": {"doc_count": 0, "max_seq_no": -1, "global_checkpoint": -1}},
-        "settings": {"index.uuid": "new", "index.mapping.total_fields.limit": "1600"},
+        "settings": {"index.uuid": "new", "index.mapping.total_fields.limit": "1600", "index.number_of_shards": "1"},
         "uuid": "new",
     }
 
@@ -1166,7 +1427,12 @@ def test_baseline_allows_one_empty_new_ilm_generation_with_write_alias_swap() ->
     assert [warning["check"] for warning in report["warnings"]] == ["baseline_ilm_rollover"]
 
 
-def test_baseline_allows_empty_new_configured_collection() -> None:
+@pytest.mark.parametrize(
+    ("ilm", "alias_flags", "ready"), [(False, {}, True), (True, {"is_write_index": True}, True), (True, {}, False)]
+)
+def test_new_empty_collection_must_have_a_layout_appropriate_write_alias(
+    ilm: bool, alias_flags: dict[str, bool], ready: bool
+) -> None:
     before = _inventory()
     before["indices"].pop("howler-alpha_hot")
     before["indices"]["howler-beta_hot"] = {
@@ -1174,23 +1440,29 @@ def test_baseline_allows_empty_new_configured_collection() -> None:
         "doc_count": 0,
         "primary_shards": {"0": {"doc_count": 0, "max_seq_no": -1, "global_checkpoint": -1}},
         "uuid": "beta",
+        "settings": {"index.number_of_shards": "1"},
     }
     current = deepcopy(before)
-    current["indices"]["howler-alpha_hot"] = {
-        "aliases": {"howler-alpha": {}},
+    index = "howler-alpha-000001" if ilm else "howler-alpha_hot"
+    current["indices"][index] = {
+        "aliases": {"howler-alpha": alias_flags},
         "doc_count": 0,
         "primary_shards": {"0": {"doc_count": 0, "max_seq_no": -1, "global_checkpoint": -1}},
         "uuid": "alpha",
+        "settings": {"index.number_of_shards": "1"},
     }
 
-    report = _checks(current, baseline=_baseline(before), integrity_only=True)
+    report = _checks(current, ilm=ilm, baseline=_baseline(before), integrity_only=True)
 
-    assert report["ready"] is True
+    assert report["ready"] is ready
+    if not ready:
+        assert _blockers(report, "baseline_new_collection_write_index")
+        return
     assert report["warnings"] == [
         {
             "check": "baseline_new_empty_collection",
             "collection": "alpha",
-            "indices": ["howler-alpha_hot"],
+            "indices": [index],
             "message": "A configured collection absent from the baseline was initialized empty after it.",
         }
     ]
@@ -1355,7 +1627,8 @@ def test_primary_stats_use_one_scoped_shard_stats_request() -> None:
             }
 
     client = StatsClient()
-    stats = collect_primary_shard_stats(client, "howler")  # type: ignore[arg-type]
+    indices = {"howler-hit_hot": {"settings": {"index.number_of_shards": "1"}}}
+    stats = collect_primary_shard_stats(client, "howler", indices)  # type: ignore[arg-type]
 
     assert client.calls == [
         (

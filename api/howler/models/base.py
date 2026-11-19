@@ -526,6 +526,37 @@ def construct_partial(
     return instance
 
 
+def _strip_unknown_value(annotation: Any, value: Any) -> Any:
+    """Follow typed containers, leaving opaque or invalid values for validation."""
+    current = annotation
+    kind = None
+    while True:
+        origin = get_origin(current)
+        if origin is Annotated:
+            current, *metadata = get_args(current)
+            if kind is None and (field := field_metadata(Any, metadata)) is not None:
+                kind = field.kind
+        elif origin in (Union, types.UnionType):
+            members = [item for item in get_args(current) if item is not type(None)]
+            if len(members) != 1:
+                break
+            current = members[0]
+        else:
+            break
+
+    if kind in {"FlattenedObject", "FlattenedListObject", "Json"}:
+        return value
+    origin = get_origin(current)
+    args = get_args(current)
+    if isinstance(current, type) and issubclass(current, BaseModel) and isinstance(value, dict):
+        return strip_unknown_fields(current, value)
+    if origin is list and args and isinstance(value, list):
+        return [_strip_unknown_value(args[0], item) for item in value]
+    if kind == "Mapping" and origin is dict and len(args) == 2 and isinstance(value, dict):
+        return {key: _strip_unknown_value(args[1], item) for key, item in value.items()}
+    return value
+
+
 def strip_unknown_fields(model_type: type[BaseModel], data: dict[str, Any]) -> dict[str, Any]:
     """Drop undeclared stored fields while preserving typed compounds and mappings."""
     nested = cast(dict[str, Any], cast(Any, model_type)._normalize_flat_input(data))
@@ -539,20 +570,7 @@ def strip_unknown_fields(model_type: type[BaseModel], data: dict[str, Any]) -> d
         python_name, info = entry
         serialized_name = _serialized_field_name(python_name, info)
         full_annotation = _make_annotated(info.annotation, *info.metadata) if info.metadata else info.annotation
-        metadata = field_metadata(info.annotation, info.metadata)
-        unwrapped = unwrap_annotation(full_annotation)
-        child_model = model_annotation(unwrapped)
-
-        if metadata is not None and metadata.kind in {"Mapping", "FlattenedObject", "FlattenedListObject", "Json"}:
-            output[serialized_name] = value
-        elif child_model is not None and isinstance(value, dict):
-            output[serialized_name] = strip_unknown_fields(child_model, value)
-        elif child_model is not None and isinstance(value, list):
-            output[serialized_name] = [
-                strip_unknown_fields(child_model, item) if isinstance(item, dict) else item for item in value
-            ]
-        else:
-            output[serialized_name] = value
+        output[serialized_name] = _strip_unknown_value(full_annotation, value)
 
     return output
 

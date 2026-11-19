@@ -1,7 +1,7 @@
 """Build Spark schemas from finalized Howler Pydantic model metadata."""
 
 import types
-from typing import Annotated, Any, Union, get_args, get_origin
+from typing import Any, Union, get_args, get_origin
 
 from howler.common.exceptions import HowlerValueError
 from howler.common.logging import get_logger
@@ -14,6 +14,8 @@ from howler.models.registry import (
     unwrap_annotation,
 )
 from pydantic import BaseModel
+from pydantic.fields import FieldInfo
+from pydantic_core import PydanticUndefined
 from pyspark.sql.types import ArrayType, DataType, MapType, StructField, StructType
 
 from sync.iceberg.mappings import TYPE_MAPPING
@@ -21,18 +23,20 @@ from sync.iceberg.mappings import TYPE_MAPPING
 logger = get_logger(__file__)
 
 
-def _is_optional(annotation: Any) -> bool:
-    origin = get_origin(annotation)
-    if origin in (Union, types.UnionType):
-        return type(None) in get_args(annotation)
-    if origin is Annotated:
-        return _is_optional(get_args(annotation)[0])
-    return False
+def _nullable(field: FieldDefinition | FieldInfo) -> bool:
+    """Sync permits null unless this field has a default and is not wrapped in optional()."""
+    if field.default_factory is None and (field.default is None or field.default is PydanticUndefined):
+        return True
 
+    annotation = field.annotation
+    if get_origin(annotation) not in (Union, types.UnionType) or type(None) not in get_args(annotation):
+        return False
 
-def _nullable(field: FieldDefinition) -> bool:
-    """Required fields and fields without a default or factory are nullable in the sync schema."""
-    return field.required or (field.default is None and field.default_factory is None)
+    # optional() wraps a Howler field inside the union, or sets the outer kind to
+    # "Optional" for a bare type such as list[keyword()]. A scalar builder like
+    # date(default="NOW") puts its kind only *outside* its datetime | None union.
+    metadata = field.metadata if isinstance(field, FieldDefinition) else field_metadata(annotation, field.metadata)
+    return metadata is None or metadata.kind == "Optional" or field_metadata(annotation) is not None
 
 
 def _type_from_annotation(annotation: Any, field: FieldDefinition, allow_any_as_string: bool) -> DataType:
@@ -42,14 +46,14 @@ def _type_from_annotation(annotation: Any, field: FieldDefinition, allow_any_as_
         child = get_args(unwrapped)[0]
         return ArrayType(
             _type_from_annotation(child, field, allow_any_as_string),
-            containsNull=_is_optional(child),
+            containsNull=_nullable(FieldInfo.from_annotation(child)),
         )
     if origin is dict:
         child = get_args(unwrapped)[1]
         return MapType(
             TYPE_MAPPING["Keyword"],
             _type_from_annotation(child, field, allow_any_as_string),
-            valueContainsNull=_is_optional(child),
+            valueContainsNull=_nullable(FieldInfo.from_annotation(child)),
         )
     if nested := model_annotation(unwrapped):
         return build_schema(nested, allow_any_as_string=allow_any_as_string)

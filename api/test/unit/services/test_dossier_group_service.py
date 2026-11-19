@@ -170,6 +170,7 @@ def test_get_pivot_groups_stops_after_the_page_limit(mock_datastore):
 
 def test_create_and_update_dossier_persist_editable_fields():
     storage = MagicMock()
+    storage.dossier.model_class = Dossier
     requester = User.validate_howler({"uname": "analyst", "name": "Analyst", "password": "hash"})
     dossier_data = {"title": "Investigation", "query": "howler.id:*", "type": "personal"}
 

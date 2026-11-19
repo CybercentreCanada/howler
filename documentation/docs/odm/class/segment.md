@@ -9,3 +9,5 @@
 | :--- | :--- | :--- | :--- | :--- |
 | sections | Keyword | ELF object segment sections. | :material-minus-box-outline: Optional | `None` |
 | type | Keyword | ELF object segment type. | :material-minus-box-outline: Optional | `None` |
+
+

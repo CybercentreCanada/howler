@@ -116,8 +116,10 @@ Actions are bulk operations that can be performed on hits. Each action file shou
 from typing import Any, Optional
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
+from howler.datastore.howler_store import get_action_hit_model
 from howler.models.action import VALID_TRIGGERS
 from howler.models.hit import Hit
+from howler.models.registry import model_registry
 
 logger = get_logger(__file__)
 
@@ -199,7 +201,7 @@ def specification():
             {
                 "args": {"url": [], "field": []},  # Arguments the action accepts
                 "options": {  # Pre-populated options for UI dropdowns
-                    "field": [field for field in Hit.flat_fields().keys() if "hash" in field]
+                    "field": [field for field in model_registry.flat_fields(get_action_hit_model()) if "hash" in field]
                 },
                 "validation": {  # Validation rules
                     "warn": {"query": "-_exists_:$field"}  # Warn if field doesn't exist

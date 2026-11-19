@@ -14,3 +14,5 @@
 | hostname | Keyword | Hostname of the host. It normally contains what the hostname command returns on the host machine | :material-minus-box-outline: Optional | `None` |
 | domain | Keyword | Domain the host is a member of. | :material-minus-box-outline: Optional | `None` |
 | type | Keyword | As described by CSP. | :material-minus-box-outline: Optional | `None` |
+
+

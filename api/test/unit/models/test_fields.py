@@ -6,6 +6,7 @@ import base64
 from datetime import datetime
 from ipaddress import ip_address
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Annotated, Any, get_args, get_origin
 
 import pytest
@@ -239,6 +240,97 @@ def test_keyword_can_disable_string_coercion() -> None:
     assert adapter.validate_python("value") == "value"
     with pytest.raises(ValidationError):
         adapter.validate_python(123)
+
+
+def test_legacy_empty_hit_fields_are_normalized_during_ingest(monkeypatch: pytest.MonkeyPatch) -> None:
+    from howler.models.hit import Hit
+    from howler.services import hit_service
+
+    monkeypatch.setattr(hit_service, "datastore", lambda: SimpleNamespace(hit=SimpleNamespace(model_class=Hit)))
+    hit, warnings = hit_service.convert_hit({"howler.analytic": "Sample", "howler.detection": "", "tags": None}, False)
+    assert warnings == []
+    assert hit.howler.detection is None
+    document = hit.as_primitives()
+    assert document["tags"] == [] and "detection" not in document["howler"]
+
+    assert TypeAdapter(optional(list_field(keyword()), default=[])).validate_python(None) is None
+    assert TypeAdapter(optional(emptyable_keyword())).validate_python("") == ""
+    with pytest.raises(ValidationError):
+        TypeAdapter(keyword()).validate_python("")
+    with pytest.raises(ValidationError):
+        TypeAdapter(optional(list_field(keyword()))).validate_python([""])
+
+
+def test_optional_metadata_overrides_preserve_wrapped_mapping_and_validation() -> None:
+    class Probe(HowlerESModel):
+        address: optional(
+            ip(index=False, store=True, copyto="__text__", deprecated=True, reference="old", sync=False),
+            alias="ip_address",
+            store=False,
+            reference="new",
+            deprecated=False,
+        )
+
+    details = model_registry.fields(Probe)["ip_address"].metadata
+    assert details is not None and details.kind == "IP" and details.optional
+    assert details.index is False and details.store is False and details.sync is False
+    assert details.copy_to == ("__text__",) and details.reference == "new" and not details.deprecated
+    assert "validation_regex" in dict(details.options)
+    es_field = model_registry.mapping(Probe)["properties"]["ip_address"]
+    assert es_field["type"] == "ip" and es_field["index"] is False and es_field["copy_to"] == "__text__"
+    assert Probe.model_validate({"ip_address": "192.0.2.1"}).as_primitives(ip_format="int") == {
+        "ip_address": int(ip_address("192.0.2.1"))
+    }
+    with pytest.raises(ValidationError):
+        Probe.model_validate({"ip_address": "invalid"})
+
+
+@pytest.mark.parametrize(
+    ("outer", "wire", "stored"),
+    [
+        ({}, "wire", "stored"),
+        ({"es_name": "outer_stored"}, "wire", "outer_stored"),
+        ({"alias": "outer_wire"}, "outer_wire", "outer_wire"),
+        ({"alias": "outer_wire", "es_name": "outer_stored"}, "outer_wire", "outer_stored"),
+    ],
+)
+def test_optional_wire_alias_and_storage_name(outer, wire, stored):
+    annotation = optional(ip(alias="wire", es_name="stored", index=False), **outer)
+    probe = type("Probe", (HowlerESModel,), {"__annotations__": {"address": annotation}})
+    assert set(model_registry.fields(probe)) == {wire}
+    assert probe.model_validate({wire: "192.0.2.1"}).as_primitives() == {wire: "192.0.2.1"}
+    properties = model_registry.mapping(probe)["properties"]
+    assert set(properties) == {stored}
+    assert properties[stored]["type"] == "ip" and properties[stored]["index"] is False
+
+
+@pytest.mark.parametrize("array", [False, True], ids=["scalar", "list"])
+@pytest.mark.parametrize(
+    "builder, child_index, indexed", [(ip, None, False), (ip, True, False), (ip, False, True), (text, True, False)]
+)
+def test_optional_index_override_reaches_the_storage_field_without_mutating_the_child(
+    builder, child_index, indexed, array
+):
+    names = {"alias": "wire", "es_name": "stored"}
+    options = {"index": child_index, "copyto": "__text__"}
+    child = list_field(builder(**options), **names) if array else builder(**options, **names)
+    wrapped = optional(child, index=indexed)
+    for annotation, expected in ((wrapped, indexed), (child, child_index)):
+        probe = type("Probe", (HowlerESModel,), {"__annotations__": {"value": annotation}})
+        leaf = model_registry.flat_fields(probe)["wire"]
+        assert leaf.multivalued is array and leaf.metadata.index is expected
+        storage = {"type": "ip" if builder is ip else "text", "copy_to": "__text__"}
+        if expected is not None:
+            storage["index"] = expected
+            if builder is ip:
+                storage["doc_values"] = expected
+        assert probe._doc._doc_type.mapping.to_dict()["properties"] == {"stored": storage}
+        assert model_registry.mapping(probe)["properties"] == {"stored": storage}
+
+        address = "192.0.2.1"
+        model = probe.model_validate({"wire": [address] if array else address})
+        output = int(ip_address(address)) if builder is ip else address
+        assert model.as_primitives(ip_format="int") == {"wire": [output] if array else output}
 
 
 def test_any_field_accepts_arbitrary_python_values() -> None:

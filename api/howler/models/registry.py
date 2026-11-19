@@ -5,7 +5,7 @@ from __future__ import annotations
 import types
 from copy import deepcopy
 from dataclasses import dataclass, replace
-from typing import Annotated, Any, Callable, TypeVar, Union, get_args, get_origin
+from typing import Annotated, Any, Callable, Generic, TypeVar, Union, get_args, get_origin
 
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
@@ -41,20 +41,53 @@ class ModelMetadata:
     embedded: bool
 
 
-@dataclass(frozen=True)
+def _snapshot(value: Any) -> Any:
+    # Most metadata contains only immutable scalar/tuple options. Reuse it on the hot path.
+    if isinstance(value, HowlerFieldMetadata) and deepcopy(value.options) is value.options:
+        return value
+    return deepcopy(value)
+
+
+_T = TypeVar("_T")
+
+
+class _DeclaredValue(Generic[_T]):
+    """Keep mutable defaults and field options out of shared views without changing their public types."""
+
+    def __set_name__(self, owner: type, name: str) -> None:
+        self.storage = f"_declared_{name}"
+
+    def __get__(self, instance: FieldDefinition | None, owner: type | None = None) -> _T:
+        if instance is None:
+            # A descriptor-typed dataclass field with no class default is a required constructor argument.
+            raise AttributeError(self.storage)
+        snapshot, copy_on_read = vars(instance)[self.storage]
+        return deepcopy(snapshot) if copy_on_read else snapshot
+
+    def __set__(self, instance: FieldDefinition, value: _T) -> None:
+        snapshot = _snapshot(value)
+        vars(instance)[self.storage] = (snapshot, snapshot is not value)
+
+
+@dataclass(frozen=True, kw_only=True)
 class FieldDefinition:
     """Canonical field view independent of Pydantic's internal structures."""
 
     name: str
     path: str
-    annotation: Any
-    metadata: HowlerFieldMetadata | None
+    annotation: _DeclaredValue[Any] = _DeclaredValue()
+    metadata: _DeclaredValue[HowlerFieldMetadata | None] = _DeclaredValue()
     required: bool
-    default: Any
+    default: _DeclaredValue[Any] = _DeclaredValue()
     default_factory: Any
     description: str | None
     multivalued: bool = False
     compound_model: type[BaseModel] | None = None
+
+
+def serialized_field_name(python_name: str, info: FieldInfo) -> str:
+    """Return the field's name in serialized Howler documents."""
+    return info.serialization_alias or info.alias or python_name.rstrip("_")
 
 
 def annotation_metadata(annotation: Any, extra: list[Any] | None = None) -> list[Any]:
@@ -74,9 +107,11 @@ def annotation_metadata(annotation: Any, extra: list[Any] | None = None) -> list
 
 def field_metadata(annotation: Any, extra: list[Any] | None = None) -> HowlerFieldMetadata | None:
     """Find the outermost Howler field metadata for an annotation."""
-    return next(
-        (item for item in annotation_metadata(annotation, extra) if isinstance(item, HowlerFieldMetadata)),
-        None,
+    return _snapshot(
+        next(
+            (item for item in annotation_metadata(annotation, extra) if isinstance(item, HowlerFieldMetadata)),
+            None,
+        )
     )
 
 
@@ -119,6 +154,8 @@ class ModelRegistry:
 
     def __init__(self) -> None:
         self._models: dict[type[BaseModel], ModelMetadata] = {}
+        self._fields: dict[type[BaseModel], types.MappingProxyType[str, FieldDefinition]] = {}
+        self._flat_fields: dict[tuple[type[BaseModel], bool, bool], types.MappingProxyType[str, FieldDefinition]] = {}
 
     def register(
         self,
@@ -143,16 +180,14 @@ class ModelRegistry:
             if not FIELD_SANITIZER.match(name) or name in BANNED_FIELDS:
                 raise HowlerValueError(f"Illegal variable name: {name}")
 
-        if (
-            id_field is not None
-            and id_field not in definitions
-            and id_field
-            not in self.flat_fields(
-                model_type,
-                show_compound=True,
-            )
-        ):
-            raise HowlerValueError(f"id_field must reference a declared field: {id_field}")
+        if id_field is not None:
+            root, *children = id_field.split(".")
+            definition = definitions.get(root)
+            for name in children:
+                child = model_annotation(definition.annotation) if definition else None
+                definition = self.fields(child).get(name) if child else None
+            if definition is None:
+                raise HowlerValueError(f"id_field must reference a declared field: {id_field}")
 
         self._models[model_type] = ModelMetadata(
             name=model_type.__name__,
@@ -162,6 +197,9 @@ class ModelRegistry:
             store=store,
             embedded=embedded,
         )
+        # If this model has been traversed, it can also appear inside several cached parents.
+        if self._fields.pop(model_type, None) is not None:
+            self._flat_fields.clear()
         return model_type
 
     def register_derived(self, model_type: type[BaseModel], base_type: type[BaseModel]) -> type[BaseModel]:
@@ -187,9 +225,11 @@ class ModelRegistry:
             self.register(model_type, embedded=True)
         return self._models[model_type]
 
-    def fields(self, model_type: type[BaseModel]) -> dict[str, FieldDefinition]:
-        """Return the canonical top-level field definitions."""
-        return self._field_definitions(model_type)
+    def fields(self, model_type: type[BaseModel]) -> types.MappingProxyType[str, FieldDefinition]:
+        """Return the read-only top-level field definitions."""
+        if model_type not in self._fields:
+            self._fields[model_type] = types.MappingProxyType(self._field_definitions(model_type))
+        return self._fields[model_type]
 
     def flat_fields(
         self,
@@ -198,16 +238,26 @@ class ModelRegistry:
         show_compound: bool = False,
         skip_mappings: bool = False,
     ) -> dict[str, FieldDefinition]:
-        """Return field definitions keyed by dotted storage path."""
+        """Return a caller-owned dictionary backed by the cached traversal's definitions."""
+        return self.flat_field_view(model_type, show_compound=show_compound, skip_mappings=skip_mappings).copy()
+
+    def flat_field_view(
+        self, model_type: type[BaseModel], *, show_compound: bool = False, skip_mappings: bool = False
+    ) -> types.MappingProxyType[str, FieldDefinition]:
+        """Share a read-only traversal for this concrete model and flag combination."""
+        key = (model_type, show_compound, skip_mappings)
+        if key in self._flat_fields:
+            return self._flat_fields[key]
         output: dict[str, FieldDefinition] = {}
-        for definition in self._field_definitions(model_type).values():
+        for definition in self.fields(model_type).values():
             self._flatten_definition(
                 definition,
                 output,
                 show_compound=show_compound,
                 skip_mappings=skip_mappings,
             )
-        return output
+        self._flat_fields[key] = types.MappingProxyType(output)
+        return self._flat_fields[key]
 
     def mapping(self, model_type: type[BaseModel]) -> dict[str, Any]:
         """Return the DSL-generated Elasticsearch mapping."""
@@ -216,7 +266,7 @@ class ModelRegistry:
             raise HowlerTypeError(f"{model_type.__name__} is not an Elasticsearch document model")
         mapping = deepcopy(document_type._doc_type.mapping.to_dict())
         properties = mapping.setdefault("properties", {})
-        for definition in self.flat_fields(model_type).values():
+        for definition in self.flat_field_view(model_type).values():
             self._apply_field_mapping(properties, definition)
         if any(
             definition.metadata is not None and definition.metadata.kind == "Classification"
@@ -230,6 +280,8 @@ class ModelRegistry:
     def clear(self) -> None:
         """Clear registrations, primarily for isolated tests."""
         self._models.clear()
+        self._fields.clear()
+        self._flat_fields.clear()
 
     def _field_definitions(self, model_type: type[BaseModel]) -> dict[str, FieldDefinition]:
         definitions: dict[str, FieldDefinition] = {}
@@ -237,7 +289,9 @@ class ModelRegistry:
         for python_name, info in model_type.model_fields.items():
             if python_name == "meta":
                 continue
-            name = info.serialization_alias or info.alias or python_name.rstrip("_")
+            name = serialized_field_name(python_name, info)
+            if name in definitions or (name != python_name and name in model_type.model_fields):
+                raise HowlerValueError(f"Duplicate serialized field name {name!r} on {model_type.__name__}")
             metadata = field_metadata(info.annotation, info.metadata)
             metadata = _resolve_metadata(metadata, model_defaults)
             definitions[name] = self._definition(name, name, info, metadata)
@@ -310,7 +364,7 @@ class ModelRegistry:
                     multivalued=definition.multivalued or is_list,
                     compound_model=child_model,
                 )
-            for child in self._field_definitions(child_model).values():
+            for child in self.fields(child_model).values():
                 nested = replace(
                     child,
                     path=f"{definition.path}.{child.name}",

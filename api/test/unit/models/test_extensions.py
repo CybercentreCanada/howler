@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+from contextvars import Context
+
 import pytest
 from pydantic import ValidationError
 
@@ -13,10 +16,13 @@ from howler.models import (
     compound,
     keyword,
     list_field,
+    model_extensions,
     model_registry,
     optional,
     register_model,
 )
+from howler.models.clue import declare_hit_extension
+from howler.models.hit import Hit
 from howler.models.user import User
 
 
@@ -93,6 +99,45 @@ def test_extension_colliding_with_existing_field_is_rejected() -> None:
         registry.declare(ExtensionTarget, "name", optional(keyword()), plugin="plugin_one")
 
 
+def test_extension_alias_cannot_shadow_serialized_base_or_pending_field() -> None:
+    class AliasedTarget(ExtensionTarget):
+        internal_name: keyword(alias="public_name")
+
+    registry = ModelExtensionRegistry()
+    with pytest.raises(HowlerValueError, match="conflicts with an existing field"):
+        registry.declare(AliasedTarget, "plugin_name", keyword(alias="public_name"), plugin="one")
+    registry.declare(AliasedTarget, "first", keyword(alias="shared"), plugin="one")
+    with pytest.raises(HowlerValueError, match="Duplicate serialized field name 'shared'"):
+        registry.declare(AliasedTarget, "second", keyword(alias="shared"), plugin="two")
+    with pytest.raises(HowlerValueError, match="Illegal extension field name: id"):
+        registry.declare(ExtensionTarget, "looks_valid", keyword(alias="id"), plugin="two")
+
+    assert list(registry.pending(AliasedTarget)) == ["first"]
+    assert not registry.is_finalized(AliasedTarget)
+
+
+def test_registration_rejects_duplicate_final_serialization_names() -> None:
+    class DuplicateTarget(ExtensionTarget):
+        different_name: keyword(alias="name")
+
+    with pytest.raises(HowlerValueError, match="Duplicate serialized field name 'name'"):
+        model_registry.register_derived(DuplicateTarget, ExtensionTarget)
+
+
+@pytest.mark.parametrize("name,storage", [("public_name", "other_storage"), ("other_name", "internal_name")])
+def test_python_and_storage_names_cannot_cross_between_fields(name, storage):
+    class BaseTarget(ExtensionTarget):
+        internal_name: keyword(alias="public_name")
+
+    registry = ModelExtensionRegistry()
+    with pytest.raises(HowlerValueError, match="conflicts"):
+        registry.declare(BaseTarget, name, keyword(alias=storage), plugin="second")
+    registry.declare(ExtensionTarget, "internal_name", keyword(alias="public_name"), plugin="first")
+    with pytest.raises(HowlerValueError, match="conflicts"):
+        registry.declare(ExtensionTarget, name, keyword(alias=storage), plugin="second")
+    assert set(registry.pending(ExtensionTarget)) == {"internal_name"}
+
+
 def test_invalid_extension_field_name_is_rejected() -> None:
     """Extension field names must pass the same sanitizer as regular model fields."""
     registry = ModelExtensionRegistry()
@@ -142,6 +187,61 @@ def test_registry_instances_are_isolated() -> None:
     finalized_two = registry_two.finalize(ExtensionTarget)
     assert finalized_two is ExtensionTarget
     assert "only_in_one" not in finalized_two.model_fields
+
+
+def test_imported_hook_uses_nested_scope_and_restores_outer_model_on_error() -> None:
+    previous_pending = model_extensions.pending(Hit)
+    previously_finalized = model_extensions.is_finalized(Hit)
+    with model_extensions.isolated():
+        model_extensions.declare(Hit, "outer_only", keyword(), plugin="outer")
+        outer_model = model_extensions.finalize(Hit)
+        with pytest.raises(HowlerValueError, match="already been finalized"), model_extensions.isolated():
+            assert model_extensions.pending(Hit) == {}
+            assert not model_extensions.is_finalized(Hit)
+            # The Clue hook imported the singleton before either scope was entered.
+            declare_hit_extension()
+            assert set(model_extensions.pending(Hit)) == {"clue"}
+            inner_model = model_extensions.finalize(Hit)
+            assert "clue" in inner_model.model_fields and "outer_only" not in inner_model.model_fields
+            declare_hit_extension()
+
+        assert model_extensions.finalize(Hit) is outer_model
+        assert set(model_extensions.pending(Hit)) == {"outer_only"}
+
+    assert model_extensions.pending(Hit) == previous_pending
+    assert model_extensions.is_finalized(Hit) == previously_finalized
+
+
+def test_concurrent_scopes_preserve_unscoped_startup_changes() -> None:
+    registry = ModelExtensionRegistry()
+    registry.declare(ExtensionTarget, "startup", keyword(), plugin="startup")
+    original = registry.finalize(ExtensionTarget)
+
+    def recompose_in_worker():
+        assert registry.finalize(ExtensionTarget) is original
+        with registry.isolated():
+            assert not registry.is_finalized(ExtensionTarget)
+            registry.declare(ExtensionTarget, "worker", keyword(), plugin="worker")
+            assert "worker" in registry.finalize(ExtensionTarget).model_fields
+        assert registry.finalize(ExtensionTarget) is original
+        registry.clear()
+        registry.declare(ExtensionTarget, "replacement", keyword(), plugin="startup")
+        return registry.finalize(ExtensionTarget)
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        # Start the worker in the unscoped context, as a running startup thread would be.
+        assert pool.submit(registry.finalize, ExtensionTarget).result(timeout=10) is original
+        with registry.isolated():
+            registry.clear()
+            registry.declare(ExtensionTarget, "local", keyword(), plugin="local")
+            local = registry.finalize(ExtensionTarget)
+            assert Context().run(registry.finalize, ExtensionTarget) is original
+            replacement = pool.submit(recompose_in_worker).result(timeout=10)
+            assert registry.finalize(ExtensionTarget) is local
+            assert set(registry.pending(ExtensionTarget)) == {"local"}
+
+    assert registry.finalize(ExtensionTarget) is replacement
+    assert set(registry.pending(ExtensionTarget)) == {"replacement"}
 
 
 def test_disabled_extension_leaves_target_unmodified() -> None:

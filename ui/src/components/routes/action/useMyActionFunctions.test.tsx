@@ -150,13 +150,13 @@ describe('useMyActionFunctions', () => {
     expect(mockShowErrorMessage).toHaveBeenCalledWith('route.actions.query.empty');
 
     await act(async () => {
-      await result.current.saveAction('New Action', 'status:open', [], ['manual']);
+      await result.current.saveAction('New Action', 'status:open', [], ['create']);
     });
     expect(mockActionPost).toHaveBeenCalledWith({
       name: 'New Action',
       query: 'status:open',
       operations: [],
-      triggers: ['manual']
+      triggers: ['create']
     });
     expect(mockNavigate).toHaveBeenCalledWith('/action/action-1');
 

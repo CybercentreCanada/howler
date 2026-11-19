@@ -9,3 +9,5 @@
 | :--- | :--- | :--- | :--- | :--- |
 | en | Text | The english localization of a label | :material-checkbox-marked-outline: Yes | `None` |
 | fr | Text | The french localization of a label | :material-checkbox-marked-outline: Yes | `None` |
+
+

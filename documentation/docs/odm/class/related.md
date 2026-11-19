@@ -15,3 +15,5 @@
 | id | Keyword | The id related to the event. | :material-minus-box-outline: Optional :material-alert-box-outline: Deprecated - related.ids should be used instead of related.id. | `None` |
 | uri | List [URI] | All of the URIs related to the event. | :material-minus-box-outline: Optional | `None` |
 | signature | List [Keyword] | All the signatures/rules that were triggered by the event. | :material-minus-box-outline: Optional | `None` |
+
+
