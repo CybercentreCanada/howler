@@ -393,6 +393,19 @@ client.hit.overwrite(
 )
 ```
 
+#### Ajouter et retirer des étiquettes
+
+Indiquez le nom de l’ensemble d’étiquettes (par exemple, `generic`) et une chaîne ou une liste de chaînes.
+Les deux méthodes renvoient le hit mis à jour.
+
+```python
+updated_hit = client.hit.add_label(hit_id, "generic", ["reviewed", "triaged"])
+updated_hit = client.hit.remove_label(hit_id, "generic", "reviewed", refresh="wait_for")
+```
+
+L’ajout d’une étiquette déjà présente dans l’ensemble déclenche une erreur `ClientError` (400).
+Si le hit ou l’ensemble d’étiquettes n’existe pas, une erreur `ClientError` (404) est déclenchée.
+
 #### Mises à jour transactionnelles (Pour les opérations en lot)
 
 Pour des scénarios plus complexes comme les mises à jour en lot ou les opérations atomiques (incrémenter, ajouter, etc.),
