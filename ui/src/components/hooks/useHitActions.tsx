@@ -86,7 +86,7 @@ const useHitActions = (_hits: Hit | Hit[]) => {
               ids={hits.map(hit => hit.howler.id)}
               assignment={
                 (hits.every(hit => hit.howler.assignment === hits[0]!.howler.assignment) &&
-                  hits[0]?.howler.assessment) ||
+                  hits[0]?.howler.assignment) ||
                 'unassigned'
               }
               onAssigned={h => {

@@ -100,6 +100,7 @@ OAuth endpoints required for the authentication flow.
 | `auto_sync` | `bool` | Should we automatically sync with OAuth provider? | :material-checkbox-marked-outline: Yes | `False`
 | `auto_properties` | `list[OAuthAutoProperty]` | Automatic role and classification assignments | :material-checkbox-marked-outline: Yes | `[]`
 | `uid_randomize` | `bool` | Should we generate a random username for the authenticated user? | :material-checkbox-marked-outline: Yes | `False`
+| `trust_username_claim` | `bool` | Reuse an existing account whose username matches the provider's username claim even when the email differs. Enable only when the provider's usernames are unique and never reassigned. | :material-checkbox-marked-outline: Yes | `False`
 | `uid_randomize_digits` | `int` | How many digits should we add at the end of the username? | :material-checkbox-marked-outline: Yes | `0`
 | `uid_randomize_delimiter` | `str` | What is the delimiter used by the random name generator? | :material-checkbox-marked-outline: Yes | `-`
 | `uid_regex` | `str` | Regex used to parse an email address and capture parts to create a user ID out of it | :material-minus-box-outline: Optional | `None`
