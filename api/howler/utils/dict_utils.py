@@ -14,6 +14,25 @@ def strip_nulls(d: Any):
         return d
 
 
+def remove_path(value: Any, path: str) -> None:
+    """Remove a dot-delimited path from nested dictionaries, including list items."""
+    keys = path.split(".")
+
+    def remove(node: Any, remaining: list[str]) -> None:
+        if isinstance(node, list):
+            for item in node:
+                remove(item, remaining)
+            return
+        if not isinstance(node, dict) or not remaining:
+            return
+        if len(remaining) == 1:
+            node.pop(remaining[0], None)
+            return
+        remove(node.get(remaining[0]), remaining[1:])
+
+    remove(value, keys)
+
+
 def recursive_update(
     d: Optional[dict[str, Any]],
     u: Optional[_Mapping[str, Any]],

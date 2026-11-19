@@ -19,7 +19,19 @@ from pydantic.fields import FieldInfo
 from howler.odm.models.action import VALID_TRIGGERS
 
 # Supplied to every operation by the dispatcher, never by the user
-DISPATCHER_ARGUMENTS = frozenset({"query", "user", "request_id", "auth_token", "operation_id"})
+DISPATCHER_ARGUMENTS = frozenset(
+    {
+        "query",
+        "user",
+        "request_id",
+        "auth_token",
+        "bearer_token",
+        "trusted_auth_token",
+        "action_id",
+        "trigger",
+        "operation_id",
+    }
+)
 MAX_LISTED_VALUES = 20
 
 
@@ -149,6 +161,9 @@ class ActionStep(BaseModel):
         default_factory=dict,
         description="Argument names, each mapped to the 'argument:value' conditions under which it is shown.",
     )
+    optional_args: Optional[list[str]] = Field(
+        default=None, description="Argument names that are displayed but not required by the UI."
+    )
     options: dict[str, list[str] | dict[str, list[str]]] = Field(
         default_factory=dict,
         description="Allowed values per argument, either as a list or keyed by an 'argument:value' condition.",
@@ -160,7 +175,7 @@ class ActionStep(BaseModel):
     @model_validator(mode="after")
     def _validate_options(self) -> "ActionStep":
         for name in self.options:
-            if name not in self.args:
+            if name not in self.args and name not in (self.optional_args or []):
                 raise ValueError(f"Options are provided for '{name}', which is not an argument of the same step.")
 
         return self
@@ -226,6 +241,9 @@ class ActionSpecification(BaseModel):
     )
     description: ActionDescription = Field(description="The descriptions of the operation.")
     roles: list[str] = Field(min_length=1, description="The roles allowed to run the operation.")
+    requires_auth_token: Optional[bool] = Field(
+        default=None, description="Whether the operation receives the caller's bearer token."
+    )
     steps: list[ActionStep] = Field(default_factory=list, description="The arguments to ask for, grouped in steps.")
     triggers: list[str] = Field(default_factory=list, description="The events that can trigger the operation.")
     arguments: Annotated[
@@ -252,7 +270,7 @@ class ActionSpecification(BaseModel):
         if reserved := DISPATCHER_ARGUMENTS & set(fields):
             raise ValueError(f"The arguments model declares reserved argument(s): {', '.join(sorted(reserved))}.")
 
-        step_args = {name for step in self.steps for name in step.args}
+        step_args = {name for step in self.steps for name in (*step.args, *(step.optional_args or []))}
         if missing := step_args - set(fields):
             raise ValueError(f"Step argument(s) missing from the arguments model: {', '.join(sorted(missing))}.")
 
@@ -268,23 +286,12 @@ class ActionSpecification(BaseModel):
     @classmethod
     def from_legacy(cls, specification: Mapping[str, Any]) -> "ActionSpecification":
         """Build a specification from the dict format, deriving allowed argument names from its steps."""
+        steps = TypeAdapter(list[ActionStep]).validate_python(specification.get("steps", []))
         field_definitions: dict[str, Any] = {}
-        raw_steps = specification.get("steps")
-        if isinstance(raw_steps, list):
-            for raw_step in raw_steps:
-                step_args: Any = (
-                    raw_step.args
-                    if isinstance(raw_step, ActionStep)
-                    else raw_step.get("args")
-                    if isinstance(raw_step, Mapping)
-                    else None
-                )
-                if not isinstance(step_args, Mapping):
-                    continue
-
-                for arg_name in step_args:
-                    if isinstance(arg_name, str) and not arg_name.startswith("_") and arg_name not in field_definitions:
-                        field_definitions[arg_name] = (Any, None)
+        for step in steps:
+            for arg_name in (*step.args, *(step.optional_args or [])):
+                if not arg_name.startswith("_"):
+                    field_definitions[arg_name] = (Any, None)
 
         spec_id = specification.get("id")
         model_name = f"{spec_id}_Arguments" if isinstance(spec_id, str) and spec_id else "InferredActionArguments"
@@ -293,7 +300,7 @@ class ActionSpecification(BaseModel):
             __base__=ActionArguments,
             **field_definitions,
         )
-        return cls.model_validate({**specification, "arguments": arguments_model})
+        return cls.model_validate({**specification, "steps": steps, "arguments": arguments_model})
 
     def validate_arguments(self, data: Mapping[str, Any]) -> ActionArguments:
         """Validate the arguments an operation is executed with."""

@@ -127,4 +127,35 @@ describe('OperationStep', () => {
     expect(screen.getByLabelText('Name')).toBeDisabled();
     expect(mockDispatchApi).not.toHaveBeenCalled();
   });
+
+  it.each([false, true])('renders an editable optional prompt (autocomplete: %s)', async autocomplete => {
+    const setValues = vi.fn();
+    mockDispatchApi.mockResolvedValueOnce({ total: 0 });
+
+    render(
+      <OperationStep
+        query="status:open"
+        values="{}"
+        setValues={setValues}
+        step={
+          {
+            args: {},
+            optional_args: ['prompt'],
+            options: autocomplete ? { prompt: ['chosen'] } : {},
+            validation: { warn: { query: 'warn-query' } }
+          } as any
+        }
+      />
+    );
+
+    await waitFor(() => expect(screen.getByText('route.actions.alert.success')).toBeInTheDocument());
+
+    if (autocomplete) {
+      fireEvent.click(screen.getByText('choose'));
+      expect(setValues).toHaveBeenCalledWith('{"prompt":"chosen"}');
+    } else {
+      fireEvent.change(screen.getByLabelText('Prompt (route.actions.optional)'), { target: { value: 'Focus' } });
+      expect(setValues).toHaveBeenCalledWith('{"prompt":"Focus"}');
+    }
+  });
 });

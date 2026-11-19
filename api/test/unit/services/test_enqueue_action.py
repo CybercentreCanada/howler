@@ -21,7 +21,9 @@ class TestEnqueueActionExecution:
         app = Flask(__name__)
 
         with app.test_request_context(headers={"Authorization": "malformed-token"}):
-            assert action_service._request_auth_token() is None
+            assert auth_service.get_token() is None
+        with app.test_request_context(headers={"Authorization": "Basic dXNlcjpwYXNz"}):
+            assert auth_service.get_token() is None
 
     @patch.object(action_service, "get_action_queue")
     @patch("howler.services.action_service.config")
@@ -355,8 +357,8 @@ class TestBulkExecuteOnQuery:
     @patch.object(action_service, "audit")
     @patch.object(action_service.actions, "execute", return_value=[])
     @patch.object(action_service, "datastore")
-    def test_only_plugin_operations_receive_auth_token(self, mock_datastore, mock_execute, mock_audit):
-        """Built-in actions omit auth_token while plugin actions receive it."""
+    def test_all_operations_receive_dispatcher_auth_token(self, mock_datastore, mock_execute, mock_audit):
+        """Built-in and plugin actions use the same dispatcher token parameter."""
         built_in_operation = Operation({"operation_id": "add_label"})
         plugin_operation = Operation({"operation_id": "plugin_action", "data_json": "{}"})
         action = random_model_obj(Action)
@@ -377,8 +379,10 @@ class TestBulkExecuteOnQuery:
 
         assert built_in_operation.data_json is None
         built_in_call, plugin_call = mock_execute.call_args_list
-        assert "auth_token" not in built_in_call.kwargs
+        assert built_in_call.kwargs["auth_token"] == "oauth-access-token"
         assert plugin_call.kwargs["auth_token"] == "oauth-access-token"
+        assert "bearer_token" not in built_in_call.kwargs
+        assert "bearer_token" not in plugin_call.kwargs
 
     @pytest.mark.parametrize(
         "data_json",
@@ -418,6 +422,7 @@ class TestBulkExecuteOnQuery:
             operation_id="remove_label",
             query="(howler.id:(id1)) AND (howler.id:*)",
             user=user,
+            auth_token=None,
         )
         first_audit = mock_audit.call_args_list[0].args[1]
         assert first_audit == {

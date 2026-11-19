@@ -1,0 +1,75 @@
+"""Concurrent consumers for per-alert AI triage jobs."""
+
+import threading
+
+from apscheduler.schedulers.base import BaseScheduler
+
+from howler.actions.ai_triage import ROLES
+from howler.common.logging import get_logger
+from howler.config import config
+from howler.services import ai_service, auth_service, hit_service, user_service
+
+logger = get_logger(__file__)
+
+_threads: dict[int, threading.Thread] = {}
+
+
+def _process(job: ai_service.AIAlertJob) -> None:
+    """Process one alert once; failures are logged safely and discarded."""
+    try:
+        user = user_service.get_user(job.uname, as_odm=True, version=False)
+        if user is None or not user.is_active or not (set(ROLES) | {"admin"}) & set(user.type):
+            logger.info("Discarding AI triage job because its initiator is no longer authorized")
+            return
+
+        token = auth_service.decrypt_token(job.bearer_token) if job.bearer_token is not None else None
+        hit = hit_service.get_hit(job.hit_id, as_odm=True, user=user)
+        if hit is None or not ai_service.eligible_hit(hit):
+            logger.info("Discarding AI triage job because its alert is no longer eligible or accessible")
+            return
+
+        result = ai_service.generate(
+            config.core.ai,
+            token,
+            ai_service.build_system_prompt(job.prompt),
+            ai_service.provider_input(hit),
+        )
+
+        if not ai_service.save_ai_lead(job.hit_id, user, result):
+            logger.warning("AI triage result was not saved for alert %s", job.hit_id)
+
+    except ai_service.AITransportError as exc:
+        logger.warning("AI triage provider failed for alert %s: %s", job.hit_id, exc.reason)
+
+    except Exception:
+        # Exception messages may contain credentials, provider content, or infrastructure details.
+        logger.error("AI triage job failed for alert %s", job.hit_id)  # noqa: TRY400
+
+
+def run_worker() -> None:  # pragma: no cover – exercised through job processing helpers
+    """Consume jobs from the persistent queue until the process exits."""
+    queue = ai_service.get_queue()
+    while True:
+        try:
+            if job := queue.pop(blocking=True, timeout=1):
+                _process(job)
+
+        except Exception:
+            logger.exception("Unexpected error in AI triage consumer loop")
+
+
+def setup_job(_scheduler: BaseScheduler) -> None:
+    """Start the configured number of daemon consumers when AI triage is available."""
+    if not ai_service.is_available():
+        logger.info("AI triage worker not started because local configuration is unavailable")
+        return
+
+    for index in range(config.core.ai.max_concurrent_jobs):
+        thread = _threads.get(index)
+        if thread is not None and thread.is_alive():
+            continue
+
+        thread = threading.Thread(target=run_worker, name=f"ai-triage-consumer-{index}", daemon=True)
+        thread.start()
+        _threads[index] = thread
+        logger.info("AI triage consumer thread started (%d/%d)", index + 1, config.core.ai.max_concurrent_jobs)

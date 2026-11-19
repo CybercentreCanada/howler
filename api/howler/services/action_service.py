@@ -1,10 +1,9 @@
 from collections import defaultdict
 from collections.abc import Callable, Mapping
-from importlib.util import find_spec
 from typing import Any, Literal, Optional, TypedDict, overload
 
 from cryptography.exceptions import InvalidTag
-from flask import Response, has_request_context, request
+from flask import Response
 from pydantic import ValidationError
 
 from howler import actions
@@ -80,23 +79,6 @@ def get_action(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...  # codeql
 def get_action(id: str, as_odm=False, version=False, user: User | None = None):
     """Retrieve an action from the datastore as an ODM object or dictionary."""
     return datastore().action.get_if_exists(key=id, as_obj=as_odm, version=version)
-
-
-def _is_builtin_operation(operation_id: str) -> bool:
-    """Return whether an operation is implemented by Howler's built-in actions package."""
-    return find_spec(f"howler.actions.{operation_id}") is not None
-
-
-def _request_auth_token() -> str | None:
-    """Extract the credential portion of the current request's authorization header."""
-    if not has_request_context():
-        return None
-
-    authorization = request.headers.get("Authorization")
-    if authorization is None or " " not in authorization:
-        return None
-
-    return authorization.split(" ", maxsplit=1)[1]
 
 
 def _parse_and_audit_operation(
@@ -216,7 +198,7 @@ def enqueue_action_execution(hit_ids: str | list[str], trigger: str = "create", 
     if trigger not in VALID_TRIGGERS:
         raise HowlerValueError(f"Invalid trigger {trigger!r}. Must be one of {VALID_TRIGGERS}")
 
-    auth_token = _request_auth_token()
+    auth_token = auth_service.get_token()
 
     if not config.system.action_queue.enabled:
         logger.debug(
@@ -401,14 +383,11 @@ def _execute_bulk_operation(
     if not user:
         raise NotImplementedError("Running actions without a user object is not currently supported")
 
-    if auth_token is not None and not _is_builtin_operation(operation.operation_id):
-        logger.debug("Appending auth token to external operation %s", operation.operation_id)
-        parsed_data["auth_token"] = auth_token
-
     report = actions.execute(
         operation_id=operation.operation_id,
         query=intersected_query,
         user=user,
+        auth_token=auth_token,
         **parsed_data,
     )
 

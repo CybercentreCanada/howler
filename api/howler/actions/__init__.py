@@ -6,6 +6,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, Optional
 
+from flask import has_request_context
 from pydantic import ValidationError
 
 from howler.actions.models import ActionSpecification, invalid_arguments_report
@@ -13,6 +14,7 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.odm.models.user import User
 from howler.plugins import get_plugins
+from howler.services import auth_service
 
 logger = get_logger(__file__)
 
@@ -226,8 +228,8 @@ def execute(
 
     # Unset arguments are left out so the operation's own defaults still apply
     operation_kwargs = validated_arguments.model_dump(exclude_unset=True)
-    if auth_token is not None:
-        operation_kwargs["auth_token"] = auth_token
+    if specification.requires_auth_token:
+        operation_kwargs["auth_token"] = auth_service.get_token() if has_request_context() else auth_token
 
     # Skip central limit check if operation handles it locally with transformed query
     if not getattr(operation, "SKIP_CENTRAL_LIMIT", False):
@@ -255,6 +257,9 @@ def specifications() -> list[dict[str, Any]]:
     ):
         try:
             operation = importlib.import_module(f"howler.actions.{module.stem}")
+
+            if hasattr(operation, "is_available") and not operation.is_available():
+                continue
 
             specifications.append(__sanitize_specification(_load_specification(operation)))
 

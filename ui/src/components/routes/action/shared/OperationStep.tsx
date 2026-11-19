@@ -48,7 +48,10 @@ const OperationStep: FC<{
         ? 'success'
         : null;
 
-  const args = useMemo(() => getArgsByContext(step.args, values), [step.args, values]);
+  const args = useMemo(
+    () => [...getArgsByContext(step.args, values), ...(step.optional_args ?? [])],
+    [step.args, step.optional_args, values]
+  );
   const parsedValues = useMemo(() => JSON.parse(values), [values]);
 
   /**
@@ -64,13 +67,15 @@ const OperationStep: FC<{
    * Get a well formatted label based on the argument key
    */
   const getLabel = useCallback(
-    (argId?: string) =>
-      (argId ?? '')
+    (argId: string) => {
+      const label = argId
         .replace(/[-_]/g, ' ')
         .split(' ')
         .map(part => capitalize(part))
-        .join(' '),
-    []
+        .join(' ');
+      return step.optional_args?.includes(argId) ? `${label} (${t('route.actions.optional')})` : label;
+    },
+    [step.optional_args, t]
   );
 
   /**
