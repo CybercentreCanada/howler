@@ -788,7 +788,7 @@ def delete_hits(hit_ids: set[str], refresh: Literal["true", "false", "wait_for"]
     operations: list[OdmUpdateOperation] = []
 
     for hit_id in hit_ids:
-        success = success and ds.hit.delete(hit_id)
+        success = success and ds.hit.delete(hit_id, refresh=refresh)
         operations.append(odm_helper.list_remove("howler.related", hit_id, silent=True))
 
     ds.hit.update_by_query(f"howler.related:({' OR '.join(hit_ids)})", operations, refresh=refresh)
