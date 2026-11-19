@@ -1,0 +1,191 @@
+documentation/docs/odm/class/localizedlabel.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 12-13
+documentation/docs/odm/class/feed.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 14-15
+documentation/docs/odm/class/link.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 13-14
+documentation/docs/odm/class/comment.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 16-17
+documentation/docs/odm/class/subtechnique.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 13-14
+documentation/docs/odm/class/codesignature.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 19-20
+documentation/docs/odm/class/device.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 11-12
+documentation/docs/odm/class/incident.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 13-14
+documentation/docs/odm/class/vulnerability.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 17-18
+documentation/docs/odm/class/pe.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 18-19
+api/test/unit/models/test_fields.py
+  s_5ebd89599a2829::t_e8dd09c254bb76 9,245-285
+  s_5ebd89599a2829::t_e649a90ad69f7c 298-302
+  s_9548d33f7b5ff9::t_9f75b82622d6a6 317,319,334-335
+  s_5ebd89599a2829::t_b326f2e40488bf 288-297,303-306
+  s_9548d33f7b5ff9::t_4fa9ad86f6767d 307-316,318,320-333
+  s_0b6ca7a832ea05::t_0905907cbf7ea5 286-287
+documentation/docs/odm/class/dnsanswer.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 15-16
+documentation/docs/odm/class/group.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 13-14
+documentation/docs/odm/class/server.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 13-14
+documentation/docs/odm/class/url.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 24-25
+documentation/docs/odm/class/votes.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 13-14
+documentation/docs/odm/class/section.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 19-20
+documentation/docs/odm/class/address.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 11-12
+documentation/docs/odm/class/body.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 12-13
+documentation/docs/odm/class/trigger.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 12-13
+documentation/docs/odm/class/dnsquestion.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 16-17
+documentation/docs/odm/class/geopoint.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 12-13
+documentation/docs/odm/class/instance.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 12-13
+documentation/docs/odm/class/event.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 36-37
+documentation/docs/odm/class/hash.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 11-12
+documentation/docs/odm/class/entrymeta.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 11-12
+documentation/docs/odm/class/azure.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 15-16
+documentation/docs/odm/class/network.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 13-14
+documentation/docs/odm/class/account.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 12-13
+documentation/docs/odm/class/software.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 16-17
+documentation/docs/odm/class/agent.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 14-15
+documentation/docs/odm/class/usernested.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 17-18
+documentation/docs/odm/class/registrydata.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 13-14
+documentation/docs/odm/class/chardevice.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 12-13
+documentation/docs/odm/class/sharepointuser.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 13-14
+documentation/docs/odm/class/related.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 18-19
+documentation/docs/odm/class/tactic.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 13-14
+documentation/docs/odm/class/shortgroup.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 12-13
+documentation/docs/odm/class/alrecord.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 14-15
+api/build_scripts/generate_md_docs.py
+  s_5ebd89599a2829::t_6b46857baa4124 99-101,103-104
+  s_5ebd89599a2829::t_bc9fd625f63308 7,11,14,107-111,113-122,138,142-148,153-165,170,173-181,183-186,188-191,193-194,281-291,316-320
+  s_9548d33f7b5ff9::t_e70daa778fa887 149-152
+  s_5ebd89599a2829::t_caaf6db057ff55 325-326
+  s_5ebd89599a2829::t_f59d0f2d7c1370 328-329
+  s_5ebd89599a2829::t_23db9ca686f94f 105-106
+documentation/docs/odm/class/project.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 12-13
+documentation/docs/odm/class/label.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 19-20
+documentation/docs/odm/class/gcp.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 15-16
+documentation/docs/odm/class/host.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 17-18
+documentation/docs/odm/class/egress.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 11-12
+documentation/docs/odm/class/nat.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 12-13
+documentation/docs/odm/class/os.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 17-18
+documentation/docs/odm/class/as.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 12-13
+api/test/unit/models/test_json_schema_export.py
+  s_9548d33f7b5ff9::t_9f75b82622d6a6 8,177,179-183,185-190,192-199,203-207,209-211,215-217
+  s_5ebd89599a2829::t_a16bd3bf472810 1-3,9-12,14-16,18-108,219-223,225-237,241-253
+  s_5ebd89599a2829::t_02032692f00a74 4-7,13,17,109-176,178,184,191,200-202
+  s_9548d33f7b5ff9::t_ceab238d50b51d 208,212-214,218
+  s_5ebd89599a2829::t_d7d3f07009face 224,238-240
+documentation/docs/odm/class/ecsversion.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 11-12
+documentation/docs/odm/class/sharepointdata.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 12-13
+documentation/docs/odm/class/interface.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 12-13
+documentation/docs/odm/class/matched.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 11-12
+documentation/docs/odm/class/hashes.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 17-18
+api/howler/models/fields.py
+  s_5ebd89599a2829::t_0d4ef6a466497e 9,21,82,186,188,207,209,215,217-218,830-836,888,897-901,908,910
+  s_9548d33f7b5ff9::t_8b859afcee94fb 233-249,271,275-277,281,295-297,308,317-319,321,903
+  s_5ebd89599a2829::t_423022407d96b9 187,210-213,909
+  s_5ebd89599a2829::t_d7d3f07009face 162-172,205
+  s_5ebd89599a2829::t_533138a9092880 139,906
+  s_5ebd89599a2829::t_ac6176baeab592 8,889-896
+documentation/docs/odm/class/error.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 12-13
+documentation/docs/odm/class/organization.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 12-13
+api/build_scripts/model_json_schema.py
+  s_9548d33f7b5ff9::t_e70daa778fa887 40-42,78,85-86,102-103,105-109
+  s_5ebd89599a2829::t_3f498885d146c2 36-37,39,77,79-80
+  s_5ebd89599a2829::t_2c6db2f278ccb0 1-16,18,20-22,25-32,44-45,63,67,69-76,81-84,110-111,114-123,126-128,137,140-150,189-196,203,218-226,228-262,268-275
+  s_9548d33f7b5ff9::t_be243717c4cfc6 19,87-101,104
+  s_5ebd89599a2829::t_d7d3f07009face 46-62,64,68
+  s_5ebd89599a2829::t_2b2380483c63ba 129-136,138-139,188,197
+  s_5ebd89599a2829::t_6b46857baa4124 201
+  s_5ebd89599a2829::t_8f5824d44de506 17,23-24,33-35,38,43,65-66,112-113,124-125,151-187,198-200,202,204-217,227,263-267
+documentation/docs/odm/class/service.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 11-12
+documentation/docs/odm/class/shortuser.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 14-15
+documentation/docs/odm/class/rule.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 20-21
+documentation/docs/odm/class/thread.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 12-13
+documentation/docs/odm/class/header.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 14-15
+documentation/docs/odm/class/log.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 18-19
+documentation/docs/odm/class/segment.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 12-13
+documentation/docs/odm/class/machine.md
+  s_5ebd89599a2829::t_a75a1bf138a5a6 11-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1dee96f75732fa9017c0a4a1826e15383cccc898",
+  "prompts": {},
+  "sessions": {
+    "s_0b6ca7a832ea05": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_161a9e029f6139cb39e2cbece2cc1ea5",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_5ebd89599a2829": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_9f169f73ce87f41991a06cbe96dde39a",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_9548d33f7b5ff9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_07497f381f649f91bd67fdb1337d731f",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
