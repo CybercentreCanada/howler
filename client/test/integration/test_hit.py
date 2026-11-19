@@ -269,6 +269,40 @@ def test_update(client: Client):
     result["howler"]["log"][len(result["howler"]["log"]) - 1]["explanation"] == "Hit updated by admin"
 
 
+def test_hit_labels(client: Client):
+    created = client.hit.create(
+        {
+            "howler.analytic": "Test hit labels",
+            "howler.score": 0,
+            "howler.hash": random_hash(),
+            "howler.labels.generic": ["keep"],
+        },
+        refresh="wait_for",
+    )
+    assert created is not None
+    assert not created["invalid"]
+    hit_id = created["valid"][0]["howler"]["id"]
+
+    try:
+        updated = client.hit.add_label(hit_id, "generic", ["reviewed", "triaged"], refresh="wait_for")
+        assert updated["howler"]["id"] == hit_id
+        assert set(updated["howler"]["labels"]["generic"]) == {"keep", "reviewed", "triaged"}
+
+        with pytest.raises(ClientError) as duplicate:
+            client.hit.add_label(hit_id, "generic", "reviewed")
+        assert duplicate.value.status_code == 400
+
+        updated = client.hit.remove_label(hit_id, "generic", "reviewed", refresh="wait_for")
+        assert set(updated["howler"]["labels"]["generic"]) == {"keep", "triaged"}
+        assert set(client.hit(hit_id)["howler"]["labels"]["generic"]) == {"keep", "triaged"}
+
+        with pytest.raises(ClientError) as missing_set:
+            client.hit.remove_label(hit_id, "nonexistent-label-set", "triaged")
+        assert missing_set.value.status_code == 404
+    finally:
+        client.hit.delete([hit_id], refresh="wait_for")
+
+
 def test_update_by_query(client: Client):
     hit_to_check = client.search.hit("howler.id:*", rows=1)["items"][0]
 
