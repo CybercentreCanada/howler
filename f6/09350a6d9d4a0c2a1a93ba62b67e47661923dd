@@ -1,0 +1,360 @@
+api/howler/actions/models.py
+  s_09d373064440f9::t_5113e35842388c 22,34
+  s_09d373064440f9::t_c33aeef7382c34 23-33
+  s_09d373064440f9::t_947836c8e2a7f8 244-246
+  s_09d373064440f9::t_3caf0bd86cf979 164-166,273
+  s_09d373064440f9::t_433977f4d05ad8 178
+  s_31ac6932134b36::t_e3c66e71ce675a 289,291-294,303
+api/howler/odm/models/config.py
+  s_09d373064440f9::t_766aa86ef7454f 601,603-605
+  s_09d373064440f9::t_f7d3cc416e9019 5,602,629,664,669,671
+  s_1d639313ac8aa1::t_f1a36539878bc7 628
+  s_4d517d309c2fd0::t_e9eab8db763a88 7,651-654,658-659,665-666,668,670,672,674-676,678
+  s_6a266b5013e9bd::t_34adcff6b9c074 609-611,617
+  s_8e7994340c1a6d::t_8e4a078dc956b5 630-640
+ui/src/components/routes/action/useMyActionFunctions.tsx
+  s_09d373064440f9::t_766aa86ef7454f 81-82,144,147-148
+  s_09d373064440f9::t_4d4bbd692befec 27,34,47-53,67,75-78,79-80,83-84,86-94,95-98,100-109,110-112,114,117,119-121,122-123,126,130-132,142,143,149,151-153,157-161,162,164-183,185-189,192-195,198-230,235,237-239,242-248,250-252,254-255,257
+  s_09d373064440f9::t_f7d3cc416e9019 5-6,13,26,31-32,35-38,41,46,54,57,60-66,68-74,85,99,115,118,127-129,133-141,144-147,150,154-156,184,191,231-233,236,240,249,253,256
+api/test/unit/ai_triage/test_service.py
+  s_09d373064440f9::t_766aa86ef7454f 208,210,212,278,280
+  s_09d373064440f9::t_4d4bbd692befec 115-117,122-123,143,144,163,165-167,172,176
+  s_09d373064440f9::t_f7d3cc416e9019 5,10,49,53,54,59,64,65,80,102,105-106,113,116-117,119,133-134,135-136,139-140,178,180-183,185-186,208,210,212-213,215-218,221,222,241,243,280,281,287-288,293-295,354
+  s_09d373064440f9::t_5a9d9aef59f2ac 91-92,100,102,105-106
+  s_703976a49408eb::t_18acfb388405a2 107-108,110,114,121,124,131,161,162-163,165,176-177,209,214,219-220,289,331,333-336,337-339,343-347,350-352
+  s_a56a51906edb88::t_9b38236710207c 9,85,88,91-92,97-102
+  s_a56a51906edb88::t_0918dd957162b8 13
+  s_4d517d309c2fd0::t_e9eab8db763a88 54
+  s_6a266b5013e9bd::t_188c48331f1f7e 81,84,162-163,165,176-177,181,183
+  s_6a266b5013e9bd::t_c61971610a5cdd 26
+  s_6a266b5013e9bd::t_2c9e662ab2b020 185-186
+  s_1b85f95a5279a6::t_0ff7cf2beb9cc2 167,172
+  s_8e7994340c1a6d::t_5139bceaaa6353 122-123
+  s_4050c6c44f7fca::t_28c9526c87f4ae 82,187-194,197-201,283
+  s_4050c6c44f7fca::t_a6aa4d85b9108b 2
+  s_4050c6c44f7fca::t_b086674201c5c3 17-19,23,25,30-31,34-48,50-52,55,57,59-61,66-79,83,93-96,103-104,109,111-112,125-130,132,137-138,141-142,145-146,149-161,164,166,168-171,173-175,178-180,182,184,206-207,211,223,226-240,242,244-247,250-279,285,325-330,332,340-342,348,353-356
+  s_4050c6c44f7fca::t_bfd8513eae9e41 62
+  s_4050c6c44f7fca::t_f1672437fa9fff 284
+ui/src/components/routes/action/view/ActionDetails.tsx
+  s_09d373064440f9::t_766aa86ef7454f 26
+  s_09d373064440f9::t_4d4bbd692befec 29
+  s_09d373064440f9::t_f7d3cc416e9019 2-11,42-43,92,112-113,206-215
+api/howler/services/action_service.py
+  s_09d373064440f9::t_766aa86ef7454f 248,254
+  s_09d373064440f9::t_f7d3cc416e9019 36,226,252,259-270
+  s_09d373064440f9::t_68d47785135504 431
+  h_f221159cc9f457 6,201
+  s_25d4ccb7b7f23f::t_60e908b9fa96e9 390
+ui/src/components/routes/action/shared/ActionReportDisplay.tsx
+  s_09d373064440f9::t_4d4bbd692befec 44,57,59
+api/howler/api/v1/action.py
+  s_09d373064440f9::t_4d4bbd692befec 18
+api/test/unit/ai_triage/test_dispatch_security.py
+  s_09d373064440f9::t_4d4bbd692befec 67,69,70,94
+  s_09d373064440f9::t_f7d3cc416e9019 9,55,56,83-85,88,91,95-102
+  s_703976a49408eb::t_18acfb388405a2 87,90,103
+  s_6a266b5013e9bd::t_c61971610a5cdd 5,11,57-60,63,65,67,69-70,89
+  s_6a266b5013e9bd::t_a01b8857b38784 52,55-56
+  s_09d373064440f9::t_a5c68274210f5a 6,33-35,37,44-50,52-54
+  s_09d373064440f9::t_faf60b5359f65e 36,39-40,55-56
+  s_09d373064440f9::t_c92d0e5a598e84 1,10
+  s_25d4ccb7b7f23f::t_66a98f5202829f 51,86,93
+  s_4050c6c44f7fca::t_8bd708341350d6 16-32,38,41-43,61-62,64,66,68,71-78,80,82
+ui/src/components/elements/display/Markdown.tsx
+  s_09d373064440f9::t_4d4bbd692befec 35,62,66-67,93-95,165-168
+  s_703976a49408eb::t_18acfb388405a2 98
+api/howler/cronjobs/ai_triage_worker.py
+  s_09d373064440f9::t_4d4bbd692befec 2-3,4,5,6,8-9,11-13,15-16,18,19,43,47,48,52-53,57-58,59-61,64-65
+  s_09d373064440f9::t_f7d3cc416e9019 1,7,14,21-24,28-30,32,36,45,49-50,55,62,66-75
+  s_1d639313ac8aa1::t_9d297535f658c9 31,41
+  h_f221159cc9f457 10,20,25-27,34,37-40,42-43,46,54,56
+  s_6a266b5013e9bd::t_34adcff6b9c074 33
+  s_1b85f95a5279a6::t_ac0e3fb9105365 17
+ui/src/api/action/index.test.ts
+  s_09d373064440f9::t_4d4bbd692befec 30
+ui/src/api/action/index.ts
+  s_09d373064440f9::t_4d4bbd692befec 43
+api/howler/api/socket.py
+  s_09d373064440f9::t_4d4bbd692befec 20
+  s_09d373064440f9::t_f7d3cc416e9019 107
+ui/src/components/elements/display/Markdown.test.tsx
+  s_09d373064440f9::t_4d4bbd692befec 37-38,45,49-53,120
+  s_09d373064440f9::t_f7d3cc416e9019 54
+  s_703976a49408eb::t_18acfb388405a2 8
+  s_4050c6c44f7fca::t_191b5d22a24251 13-16,39-44
+ui/src/components/routes/action/view/ActionDetails.test.tsx
+  s_09d373064440f9::t_4d4bbd692befec 145
+  s_09d373064440f9::t_f7d3cc416e9019 41,144,199
+ui/src/components/routes/hits/view/LeadRenderer.tsx
+  s_09d373064440f9::t_4d4bbd692befec 14
+  s_09d373064440f9::t_f7d3cc416e9019 3,13,15,17,19,28-32
+api/test/unit/ai_triage/test_worker.py
+  s_09d373064440f9::t_4d4bbd692befec 6,10,11,14-15,61-63,81,82,92,94,98-99,102-103,105,108-111
+  s_09d373064440f9::t_f7d3cc416e9019 8-9,25,104
+  s_703976a49408eb::t_18acfb388405a2 4-5
+  h_f221159cc9f457 7
+  s_4050c6c44f7fca::t_a520a6c7d8dedc 12-24,26-60,64-66,69-75,79-80,83-91,95-97,100-101,106-107,112-114
+ui/src/components/routes/action/edit/ActionEditor.tsx
+  s_09d373064440f9::t_4d4bbd692befec 59
+  s_09d373064440f9::t_f7d3cc416e9019 11,58,142-152,156,158,167-170,172,181,192,268-277,352
+documentation/docs/installation/ai_triage.md
+  s_09d373064440f9::t_4d4bbd692befec 55,66
+  s_09d373064440f9::t_f7d3cc416e9019 3-5,12,32-33,38-40,57,67-69,83-86,88-90,92,94-97
+  s_1d639313ac8aa1::t_f1a36539878bc7 71-74,77
+  s_6a266b5013e9bd::t_d3601a15ede618 62-63
+  s_6a266b5013e9bd::t_4023d4ee60b592 64-65
+  s_6a266b5013e9bd::t_c9438649b25f5e 6-8,13-17,25,43-53,60-61
+  s_8e7994340c1a6d::t_658c486e9ab8c4 58-59
+  s_8e7994340c1a6d::t_660702d12fcc22 34-36,75-76
+api/howler/actions/ai_triage.py
+  s_09d373064440f9::t_4d4bbd692befec 38,39-42,67-71,83,87,96-97
+  s_09d373064440f9::t_f7d3cc416e9019 16,34,36,44-47,48,51,73-78,80-82
+  s_09d373064440f9::t_5a9d9aef59f2ac 64
+  s_703976a49408eb::t_18acfb388405a2 5
+  h_f221159cc9f457 3,48-58,65,79
+  s_6a266b5013e9bd::t_34adcff6b9c074 8,59
+  s_6a266b5013e9bd::t_c61971610a5cdd 26-30,44
+  s_09d373064440f9::t_a5c68274210f5a 6,20-25,86,88-95,99-105
+  s_8e7994340c1a6d::t_678491baeb0443 62-64
+ui/src/components/routes/hits/view/LeadRenderer.test.tsx
+  s_09d373064440f9::t_4d4bbd692befec 37-38
+  s_4050c6c44f7fca::t_853cf4e8c83778 25-28
+  s_4050c6c44f7fca::t_e112cba1099393 2,5-6,9-10,23-24,29-30,32-33,35-36,39-42,44-47
+ui/src/components/elements/display/HandlebarsMarkdown.tsx
+  s_09d373064440f9::t_f7d3cc416e9019 33,104,150
+api/howler/actions/__init__.py
+  s_09d373064440f9::t_f7d3cc416e9019 73,78,87-96
+  s_703976a49408eb::t_18acfb388405a2 135,152
+  h_f221159cc9f457 17
+  s_6a266b5013e9bd::t_c61971610a5cdd 9,11
+  s_25d4ccb7b7f23f::t_66a98f5202829f 231-232
+ui/src/utils/actionUtils.ts
+  s_09d373064440f9::t_f7d3cc416e9019 12,16,82-86,88,90-96,109-115
+  s_703976a49408eb::t_18acfb388405a2 80-81
+helm/templates/correlation-deployment.yaml
+  s_09d373064440f9::t_f7d3cc416e9019 56
+ui/src/components/routes/action/shared/OperationStep.tsx
+  s_09d373064440f9::t_f7d3cc416e9019 162
+  s_703976a49408eb::t_18acfb388405a2 52,70-71,75-78,152,165
+api/test/unit/ai_triage/test_transport.py
+  s_09d373064440f9::t_f7d3cc416e9019 1,44,55,57,61-65,67-73,75,112,157
+  s_09d373064440f9::t_5a9d9aef59f2ac 90,92
+  s_703976a49408eb::t_18acfb388405a2 14-15,53,60,114-116,119-120,123-125,132-134,136,143-144,155,156,159,160,165,219,229,234,242-244,246,253,255
+  s_1d639313ac8aa1::t_9d297535f658c9 9
+  s_1d639313ac8aa1::t_ca78cc769794a6 5-6,16-19,33,37,51-52,56,58-59,66,75-77,95-97,103,131,134,136-141,143-144,154,158-160,167,176,181,203,206
+  s_6a266b5013e9bd::t_188c48331f1f7e 90,92,94-96,100,102,104-105
+  s_09d373064440f9::t_40964a361d50ad 162,166,213-214
+  s_8e7994340c1a6d::t_5139bceaaa6353 183,186
+  s_4050c6c44f7fca::t_62288b641fecda 251-252
+  s_4050c6c44f7fca::t_23c44a9c1816e2 11-12,20-21,25,35-36,39-46,48,54,74,78,83-89,91,93,97-99,101,103,106-113,117-118,121-122,129-130,135,142,145-151,153,157,161,163-164,166,171-172,174,244-250,253-256,258,260-266
+api/test/unit/services/test_enqueue_action.py
+  s_09d373064440f9::t_f7d3cc416e9019 25,65-67,210,221-222,331,346
+  s_6a266b5013e9bd::t_c61971610a5cdd 24,26
+  s_25d4ccb7b7f23f::t_028c2c1a8abdcb 425
+  s_25d4ccb7b7f23f::t_60e908b9fa96e9 360-361,382,384-385
+ui/src/components/routes/action/useMyActionFunctions.test.tsx
+  s_09d373064440f9::t_f7d3cc416e9019 17,21-25,28,57-58,61-62,90-102,113,127-128,177,192-197
+api/howler/app.py
+  s_09d373064440f9::t_f7d3cc416e9019 83-85,208,254-255
+api/build_scripts/run_tests.py
+  s_09d373064440f9::t_f7d3cc416e9019 48
+api/howler/patched.py
+  s_09d373064440f9::t_f7d3cc416e9019 5
+api/pyproject.toml
+  s_09d373064440f9::t_f7d3cc416e9019 364
+  s_09d373064440f9::t_5a9d9aef59f2ac 309
+api/test/unit/actions/test_init.py
+  s_09d373064440f9::t_f7d3cc416e9019 32-35,37
+  s_09d373064440f9::t_7c7b57336bdb46 10
+  s_09d373064440f9::t_5a9d9aef59f2ac 451-452,453-461
+  s_09d373064440f9::t_40964a361d50ad 326-359
+  s_25d4ccb7b7f23f::t_60e908b9fa96e9 155
+  s_31ac6932134b36::t_de33a37b104fb6 207-226
+api/test/unit/ai_triage/conftest.py
+  s_09d373064440f9::t_5a9d9aef59f2ac 8
+  s_703976a49408eb::t_18acfb388405a2 2
+  s_4050c6c44f7fca::t_4465e47a01d7ba 6-7,9-12,14
+.github/workflows/api-workflow.yml
+  s_703976a49408eb::t_18acfb388405a2 193
+.github/workflows/client-workflow.yml
+  s_703976a49408eb::t_18acfb388405a2 188
+api/howler/services/ai_service.py
+  s_703976a49408eb::t_18acfb388405a2 92,108,112,115,146,308,318-319,321-326,328,330
+  s_a56a51906edb88::t_0918dd957162b8 20,163
+  h_f221159cc9f457 4,8,24,41,80,145,203,205,281,284,287,293,297-298,299,300-301,303-304,320,327,329,364,366,377
+  s_1d639313ac8aa1::t_9d297535f658c9 7,9-10,14,26-31,37-38,185,199-202,204,206-208,245-247,250,252-270,272-279,283,285-286,288-292,294-296,302,305
+  s_a56a51906edb88::t_3a35840e4f33dd 32-36,54-58,72-74,76,81-88,93-102,121-125,127-132,152-153,155-156,158-160,168-175,186-198,230-233,235-244,309-317,334-341,353-363
+  s_1d639313ac8aa1::t_6a29d62ad8c25b 306-307
+  s_6a266b5013e9bd::t_dcefe5cba9899e 209-216,248
+  s_6a266b5013e9bd::t_34adcff6b9c074 46,75,77,119,126,133-135,142,229,234,271
+  s_e8296559738009::t_055ba168c040ad 249
+  s_1b85f95a5279a6::t_ac0e3fb9105365 63
+  s_1b85f95a5279a6::t_d50edffb0c0755 5
+  s_8e7994340c1a6d::t_6591cf22b36d4a 251
+ui/src/components/routes/action/shared/OperationStep.test.tsx
+  s_703976a49408eb::t_18acfb388405a2 131,133,151,152-156,159
+  s_4050c6c44f7fca::t_191b5d22a24251 6,30-36,51-60,74,86-95,110-112,118-123,140-147,157-158
+api/poetry.lock
+  s_703976a49408eb::t_36cd27302b6d55 1,2646,3430
+api/howler/services/auth_service.py
+  h_f221159cc9f457 10,260-273
+  h_f221159cc9f457 274-275
+api/howler/utils/dict_utils.py
+  s_a56a51906edb88::t_0918dd957162b8 17-35
+api/test/unit/ai_triage/test_transport_network.py
+  s_1d639313ac8aa1::t_9d297535f658c9 12
+  s_1d639313ac8aa1::t_7d312da41d192b 91,95
+  s_1d639313ac8aa1::t_8837c07d3522ff 4,26-27,41,42-43,45,80,84,86
+  s_4050c6c44f7fca::t_52b9ce939f33aa 1-2,14,17,20,22-25,44,47-48,50-55,58,62-66,69-73,76-78,81-85,88-89,92-94,96-97
+  s_31ac6932134b36::t_d5a099d18f74b7 57
+api/test/unit/test_redis_datatypes.py
+  s_1b85f95a5279a6::t_0ff7cf2beb9cc2 25-26,29-36,49,51-52,55,61,64,67,69,71,73,74,78,86,89,90,96,99,104,105,107,109-112
+  s_1b85f95a5279a6::t_e847f6115ba9b2 115,120
+  s_4050c6c44f7fca::t_cc425eea1cf715 37-48,50,53-54,56-60,62-63,65-66,68-79,83-85,88,92-104,106,108,113-114,116-119
+api/howler/remote/datatypes/queues/named.py
+  h_f221159cc9f457 70,80,89
+  s_1b85f95a5279a6::t_ac0e3fb9105365 6,15-17,22-34,62,65,71,83,85,88,95,112-114
+helm/values.yaml
+  s_8e7994340c1a6d::t_660702d12fcc22 227-241
+api/howler/services/hit_service.py
+  s_6a23fb5c1b2449::t_585a43cbf2c507 375,382
+  s_31ac6932134b36::t_e3c66e71ce675a 364-365,369-370,376-377,383-384
+api/test/integration/test_ai_triage_credentials.py
+  s_4050c6c44f7fca::t_685b5ea7913017 1-6,13,21,23-28,30-42,45-48,53-55,58,69-92,95-96,98-101,105-106,109-110,115-116,119-120,126,129-131,143-144,147-152
+ui/src/components/elements/hit/HitNotebooks.test.tsx
+  s_2a789b126b205c::t_b12c3691726afc 179-182
+  s_2a789b126b205c::t_551f43679334c0 163,178,183,211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f609350a6d9d4a0c2a1a93ba62b67e47661923dd",
+  "prompts": {},
+  "humans": {
+    "h_f221159cc9f457": {
+      "author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  },
+  "sessions": {
+    "s_09d373064440f9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e152e62e5ffecMuPig0JNhDMBA",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_1b85f95a5279a6": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "a2fbe8fd-54ae-4d6d-aaf3-3ab475bf3be1",
+        "model": "unknown"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_1d639313ac8aa1": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e15b83ab9ffezzIux20jtBqmEy",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_25d4ccb7b7f23f": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "1fb1b6ef-9571-4908-a526-cf3370db76c9",
+        "model": "unknown"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_2a789b126b205c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e0fee301effe4o22KHIOx5puu2",
+        "model": "gemini-4-hydrogen"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_31ac6932134b36": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e10074c41ffeqU8w6MmoqiDuYG",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_4050c6c44f7fca": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1071cb89ffe3fgZ7u0FYAFUVz",
+        "model": "us.anthropic.claude-sonnet-5-5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_4d517d309c2fd0": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "7e386a2b-1419-40f8-bbb4-62d74b02e9ee",
+        "model": "unknown"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_6a23fb5c1b2449": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e107e074dffev3YupAQ4nQcLfg",
+        "model": "us.anthropic.claude-sonnet-5-5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_6a266b5013e9bd": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e155e0e48ffebtDGnyqMY1dufh",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_703976a49408eb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1616f357ffehcJHYSrBZ5VdWn",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_8e7994340c1a6d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e109c9347ffeh6xYgjXpuw1e9b",
+        "model": "us.anthropic.claude-sonnet-5-5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_a56a51906edb88": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "5429b3cd-ef8f-465a-9fe7-36c0186844db",
+        "model": "unknown"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_b23410104fb27d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e166c7019ffe2R1toPV0kb0kEJ",
+        "model": "gemini-4-carbon"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_e8296559738009": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e161043daffe8Yi0rZ0nl6ZGwR",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
