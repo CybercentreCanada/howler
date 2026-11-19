@@ -1,0 +1,34 @@
+ui/src/components/elements/display/Markdown.test.tsx
+  s_b07554b0928ad5::t_b3f65e0fdfa8ae 1-2,4,45-49,56-120
+api/test/unit/ai_triage/test_transport.py
+  s_b07554b0928ad5::t_96492748679fcd 24,26-34,79-80,128,152,177-241
+  s_b07554b0928ad5::t_a3d9796665de75 242-243
+documentation/docs/installation/ai_triage.md
+  s_b07554b0928ad5::t_96492748679fcd 37,78-82,98-100
+api/test/unit/ai_triage/test_transport_network.py
+  s_b07554b0928ad5::t_96492748679fcd 3,18-19,29-43,98-103
+api/howler/services/ai_service.py
+  s_b07554b0928ad5::t_96492748679fcd 25,217-228,280,282,374
+api/test/integration/test_ai_triage_credentials.py
+  s_b07554b0928ad5::t_96492748679fcd 7,63-66
+api/howler/odm/models/config.py
+  s_b07554b0928ad5::t_96492748679fcd 641-645
+api/test/unit/ai_triage/test_service.py
+  s_b07554b0928ad5::t_96492748679fcd 86-92,286,296-324,349
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c0dc190dfa2de53c916e8a40adaaaa643ce86e05",
+  "prompts": {},
+  "sessions": {
+    "s_b07554b0928ad5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e0bb3158fffezd4quoZPYlTjnr",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
