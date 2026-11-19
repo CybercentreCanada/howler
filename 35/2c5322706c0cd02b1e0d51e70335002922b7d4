@@ -1,0 +1,20 @@
+ui/src/components/elements/display/Markdown.test.tsx
+  s_cd11288a695565::t_16491f89594bb5 114,116
+  s_cd11288a695565::t_368a55c7ce6550 1-2,4,45-49,56-113,115,117-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "352c5322706c0cd02b1e0d51e70335002922b7d4",
+  "prompts": {},
+  "sessions": {
+    "s_cd11288a695565": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_d80569d2eefecda189cfc4beda2c821f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
