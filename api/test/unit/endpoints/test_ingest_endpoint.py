@@ -181,6 +181,24 @@ class TestCreateEndpoint:
 
             assert result.status_code == 400
 
+    @patch("howler.api.v2.ingest.hit_service")
+    @patch("howler.security.login.auth_service")
+    def test_create_disallowed_index_returns_400(self, mock_auth_service, mock_hit_svc, request_context: Flask):
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        with request_context.test_request_context(
+            method="POST",
+            json=[_sample_hit()],
+            headers={"Authorization": "******"},
+        ):
+            from howler.api.v2.ingest import create
+
+            result: Response = create(index="notification")
+
+            assert result.status_code == 400
+            mock_hit_svc.convert_hit.assert_not_called()
+
     @patch("howler.api.v2.ingest.correlation_service._get_ingestion_queue")
     @patch("howler.api.v2.ingest.hit_service")
     @patch("howler.security.login.auth_service")
@@ -397,19 +415,12 @@ class TestDeleteEndpoint:
 
     @patch("howler.api.v2.ingest.datastore")
     @patch("howler.security.login.auth_service")
-    def test_delete_uses_access_control_only_for_protected_indexes(
+    def test_delete_rejects_indexes_outside_ingest_allowlist(
         self, mock_auth_service, mock_datastore, request_context: Flask
     ):
-        """Unprotected indexes are checked without the user's classification filter."""
+        """Only hit and event indexes can be deleted through the ingest API."""
         user = _build_user(["admin", "user"])
-        user.access_control = "__access_lvl__:[0 TO 100]"
         _mock_auth(mock_auth_service, user)
-
-        mock_ds = MagicMock()
-        mock_datastore.return_value = mock_ds
-        mock_index = MagicMock()
-        mock_index.exists.return_value = True
-        mock_ds.__getitem__ = MagicMock(return_value=mock_index)
 
         with request_context.test_request_context(
             method="DELETE",
@@ -418,13 +429,10 @@ class TestDeleteEndpoint:
         ):
             from howler.api.v2.ingest import delete
 
-            result: Response = delete(indexes="template", user=user)
+            result: Response = delete(indexes="hit,notification", user=user)
 
-            assert result.status_code == 204
-            assert mock_index.exists.call_args_list == [
-                (("record-001",), {"access_control": None}),
-                (("record-001",), {"access_control": None}),
-            ]
+            assert result.status_code == 400
+            mock_datastore.assert_not_called()
 
     @patch("howler.api.v2.ingest.datastore")
     @patch("howler.security.login.auth_service")
@@ -746,6 +754,24 @@ class TestOverwrite:
 
     @patch("howler.api.v2.ingest.datastore")
     @patch("howler.security.login.auth_service")
+    def test_overwrite_disallowed_index_returns_400(self, mock_auth_service, mock_ds, request_context: Flask):
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        with request_context.test_request_context(
+            method="PATCH",
+            json={"unread": False},
+            headers={"Authorization": "******"},
+        ):
+            from howler.api.v2.ingest import overwrite
+
+            result: Response = overwrite(index="notification", id="notification-001", user=user)
+
+            assert result.status_code == 400
+            mock_ds.assert_not_called()
+
+    @patch("howler.api.v2.ingest.datastore")
+    @patch("howler.security.login.auth_service")
     def test_overwrite_not_found(self, mock_auth_service, mock_ds, request_context: Flask):
         """Returns 404 when the record does not exist."""
         user = _build_user()
@@ -792,6 +818,27 @@ class TestOverwrite:
 
 class TestUpdateByQuery:
     """Tests for the update_by_query endpoint."""
+
+    @patch("howler.api.v2.ingest.datastore")
+    @patch("howler.security.login.auth_service")
+    def test_update_by_query_rejects_disallowed_index(self, mock_auth_service, mock_ds, request_context: Flask):
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        with request_context.test_request_context(
+            method="PUT",
+            json={
+                "query": "howler.id:*",
+                "operations": [["SET", "unread", False]],
+            },
+            headers={"Authorization": "******"},
+        ):
+            from howler.api.v2.ingest import update_by_query
+
+            result: Response = update_by_query(indexes="hit,notification", user=user)
+
+            assert result.status_code == 400
+            mock_ds.assert_not_called()
 
     @patch("howler.api.v2.ingest.datastore")
     @patch("howler.security.login.auth_service")

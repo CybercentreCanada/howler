@@ -25,6 +25,7 @@ from howler.services import correlation_service, event_service, hit_service
 from howler.utils.dict_utils import flatten
 
 MAX_COMMENT_LEN = 5000
+ALLOWED_INGEST_INDEXES = {"hit", "event"}
 
 SUB_API = "ingest"
 ingest_api = make_subapi_blueprint(SUB_API, api_version=2)
@@ -41,7 +42,7 @@ hit_helper = OdmHelper(Hit)
 @ingest_api.route("/<index>", methods=["POST"])
 @api_login(required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def create(index: str, user: User, *, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
+def create(index: str, user: User, *, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):  # noqa: C901
     """Create new records in a given index.
 
     Variables:
@@ -68,6 +69,9 @@ def create(index: str, user: User, *, refresh: Literal["true", "false", "wait_fo
     """
     if "," in index:
         return bad_request(err="You cannot create in multiple indexes.")
+
+    if index not in ALLOWED_INGEST_INDEXES:
+        return bad_request(err="Only hit and event indexes are supported by the ingest API.")
 
     records = request.json
 
@@ -155,6 +159,9 @@ def delete(
         return forbidden(err="Cannot delete hit, only administrators are permitted to delete.")
 
     index_list = indexes.split(",")
+    if not set(index_list).issubset(ALLOWED_INGEST_INDEXES):
+        return bad_request(err="Only hit and event indexes are supported by the ingest API.")
+
     access_controls = {index: user.access_control if has_access_control(index) else None for index in index_list}
 
     ds = datastore()
@@ -289,6 +296,9 @@ def overwrite(
     if "," in index:
         return bad_request(err="You cannot overwrite across multiple indexes.")
 
+    if index not in ALLOWED_INGEST_INDEXES:
+        return bad_request(err="Only hit and event indexes are supported by the ingest API.")
+
     ds = datastore()
 
     record, server_version = ds[index].get(id, as_obj=False, version=True)
@@ -371,6 +381,10 @@ def update_by_query(
         "success": True
     }
     """
+    index_list = indexes.split(",")
+    if not set(index_list).issubset(ALLOWED_INGEST_INDEXES):
+        return bad_request(err="Only hit and event indexes are supported by the ingest API.")
+
     data = cast(dict[str, Any], request.json)
 
     try:
@@ -402,7 +416,7 @@ def update_by_query(
         ds = datastore()
 
         results = []
-        for index in indexes.split(","):
+        for index in index_list:
             results.append(
                 ds[index].update_by_query(
                     query,
