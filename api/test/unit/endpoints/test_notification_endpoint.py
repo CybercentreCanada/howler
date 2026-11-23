@@ -33,7 +33,7 @@ def _configure_auth(mock_auth_service, user: User, privileges: list[str] | None 
 
 
 class TestGetUserNotificationsEndpoint:
-    """Tests for GET /api/v2/notification/get/user."""
+    """Tests for GET /api/v2/notification."""
 
     @patch("howler.api.QUOTA_TRACKER")
     @patch("howler.security.login.QUOTA_TRACKER")
@@ -52,7 +52,7 @@ class TestGetUserNotificationsEndpoint:
         }
 
         with request_context.test_request_context(
-            method="GET", path="/api/v2/notification/get/user", headers={"Authorization": "Bearer token"}
+            method="GET", path="/api/v2/notification", headers={"Authorization": "Bearer token"}
         ):
             from howler.api.v2.notification import get_user_notifications
 
@@ -82,7 +82,7 @@ class TestGetUserNotificationsEndpoint:
 
         with request_context.test_request_context(
             method="GET",
-            path="/api/v2/notification/get/user",
+            path="/api/v2/notification",
             query_string={"offset": "10", "rows": "5"},
             headers={"Authorization": "Bearer token"},
         ):
@@ -124,7 +124,7 @@ class TestGetUserNotificationsEndpoint:
 
         with request_context.test_request_context(
             method="GET",
-            path="/api/v2/notification/get/user",
+            path="/api/v2/notification",
             query_string=query_string,
             headers={"Authorization": "Bearer token"},
         ):
@@ -148,7 +148,7 @@ class TestGetUserNotificationsEndpoint:
         mock_notification_service.get_user_notifications.side_effect = InvalidDataException("bad search")
 
         with request_context.test_request_context(
-            method="GET", path="/api/v2/notification/get/user", headers={"Authorization": "Bearer token"}
+            method="GET", path="/api/v2/notification", headers={"Authorization": "Bearer token"}
         ):
             from howler.api.v2.notification import get_user_notifications
 
@@ -158,7 +158,7 @@ class TestGetUserNotificationsEndpoint:
 
     @patch("howler.security.login.auth_service")
     def test_requires_authentication(self, mock_auth_service, request_context: Flask):
-        with request_context.test_request_context(method="GET", path="/api/v2/notification/get/user"):
+        with request_context.test_request_context(method="GET", path="/api/v2/notification"):
             from howler.api.v2.notification import get_user_notifications
 
             result: Response = get_user_notifications()

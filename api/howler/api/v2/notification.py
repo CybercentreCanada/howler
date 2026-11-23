@@ -16,7 +16,7 @@ notification_api._doc = "Send user notifications"  # type: ignore[attr-defined]
 
 
 @generate_swagger_docs()
-@notification_api.route("/notify", methods=["POST"])
+@notification_api.route("/", methods=["POST"])
 @api_login(required_priv=["W"])
 def notify_user(user: dict[str, Any], **kwargs):
     """Notifies user that a comment has been made on their resource.
@@ -30,7 +30,7 @@ def notify_user(user: dict[str, Any], **kwargs):
     Data Block:
     {
         "analytic_id": "d23e8c2d-0f09-4a60-a50d-aac7db97b10a",
-        "commenter": "analyst"
+        "commenter": <user_who_commented>
     }
 
     Result Example:
@@ -68,7 +68,7 @@ def notify_user(user: dict[str, Any], **kwargs):
 
 
 @generate_swagger_docs()
-@notification_api.route("/get/user", methods=["GET"])
+@notification_api.route("/", methods=["GET"])
 @api_login(required_priv=["R"])
 @parse_parameters(
     offset=int_parser("offset", 0, minimum=0),

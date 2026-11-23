@@ -14,22 +14,11 @@ logger = get_logger(__file__)
 
 def create_analytic_comment_notification(analytic_id: str, actor: str) -> Notification | None:
     """Create, persist, and emit a notification for a new analytic comment."""
-    try:
-        result = datastore().analytic.search(
-            f'analytic_id:"{sanitize_lucene_query(analytic_id)}"',
-            as_obj=False,
-            rows=2,
-        )
-    except SearchException as error:
-        logger.exception("Unable to find analytic %s for notification", analytic_id)
-        raise InvalidDataException(str(error)) from error
-
-    analytics = result["items"]
-    if not analytics:
+    analytic = datastore().analytic.get_if_exists(analytic_id, as_obj=True)
+    if not analytic:
         raise NotFoundException(f"Analytic {analytic_id} does not exist.")
 
-    analytic = analytics[0]
-    owner = analytic.get("owner")
+    owner = analytic.owner
     if not owner:
         raise InvalidDataException(f"Analytic {analytic_id} does not have an owner.")
     if owner == actor:
@@ -41,10 +30,10 @@ def create_analytic_comment_notification(analytic_id: str, actor: str) -> Notifi
             "recipient": owner,
             "sender": actor,
             "resource_type": "analytic",
-            "resource_id": analytic["analytic_id"],
-            "resource_name": analytic["name"],
-            "message": f"{actor} commented on your analytic {analytic['name']}.",
-            "url": f"/analytics/{analytic['analytic_id']}",
+            "resource_id": analytic.analytic_id,
+            "resource_name": analytic.name,
+            "message": f"{actor} commented on your analytic {analytic.name}.",
+            "url": f"/analytics/{analytic.analytic_id}",
         }
     )
 
@@ -88,8 +77,8 @@ def _get_user_notification(notification_id: str, username: str) -> dict[str, Any
     return notification
 
 
-def mark_notification_read(notification_id: str, username: str) -> dict[str, Any]:
-    """Mark one of the user's notifications as read and return the updated notification."""
+def mark_notification_read(notification_id: str, username: str, read: bool = True) -> dict[str, Any]:
+    """Mark one of the user's notifications as read or unread and return the updated notification."""
     notification = _get_user_notification(notification_id, username)
     if notification.get("read"):
         return notification
@@ -104,6 +93,3 @@ def mark_notification_read(notification_id: str, username: str) -> dict[str, Any
 def delete_notification(notification_id: str, username: str) -> None:
     """Delete one of the user's notifications."""
     _get_user_notification(notification_id, username)
-
-    if not datastore().notification.delete(notification_id):
-        raise NotFoundException(f"Notification {notification_id} does not exist.")

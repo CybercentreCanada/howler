@@ -17,7 +17,7 @@ import type { Notification } from 'api/v2/notification';
 import useMyApi from 'components/hooks/useMyApi';
 import { useCallback, useEffect, useState, type Dispatch, type FC, type MouseEvent, type SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import { twitterShort } from 'utils/utils';
 
 const NOTIFICATION_ROWS = 25;
@@ -31,7 +31,6 @@ interface NotificationCardProps {
 const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnreadChange }) => {
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
-  const navigate = useNavigate();
   const open = !!anchorEl;
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -47,6 +46,7 @@ const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnre
 
   const markRead = useCallback(
     async (event: MouseEvent, notification: Notification) => {
+      event.preventDefault();
       event.stopPropagation();
 
       const id = notification.notification_id;
@@ -73,6 +73,7 @@ const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnre
 
   const deleteNotification = useCallback(
     async (event: MouseEvent, notification: Notification) => {
+      event.preventDefault();
       event.stopPropagation();
 
       const id = notification.notification_id;
@@ -97,16 +98,6 @@ const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnre
       }
     },
     [dispatchApi, onUnreadChange]
-  );
-
-  const openNotification = useCallback(
-    (notification: Notification) => {
-      onClose();
-      if (notification.url) {
-        void navigate(notification.url);
-      }
-    },
-    [navigate, onClose]
   );
 
   useEffect(() => {
@@ -145,7 +136,7 @@ const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnre
 
       try {
         const response = await dispatchApi(
-          api.v2.notification.get.user.get(
+          api.v2.notification.get(
             { offset: (page - 1) * NOTIFICATION_ROWS, rows: NOTIFICATION_ROWS },
             controller.signal
           ),
@@ -203,7 +194,9 @@ const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnre
             <MenuItem
               key={notification.notification_id}
               id={`notification-${notification.notification_id}`}
-              onClick={() => openNotification(notification)}
+              component={Link}
+              to={notification.url ?? `/analytics/${notification.resource_id}`}
+              onClick={onClose}
               sx={itemSx}
             >
               <ListItemIcon>

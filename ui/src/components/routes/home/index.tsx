@@ -221,7 +221,7 @@ const Home: FC = () => {
     const controller = new AbortController();
 
     const loadUnreadNotifications = async () => {
-      const response = await dispatchApi(api.v2.notification.get.user.get({ rows: 1 }, controller.signal), {
+      const response = await dispatchApi(api.v2.notification.get({ rows: 1 }, controller.signal), {
         showError: false,
         throwError: false
       });

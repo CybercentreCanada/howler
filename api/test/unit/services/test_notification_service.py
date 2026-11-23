@@ -6,6 +6,7 @@ import pytest
 
 from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.datastore.exceptions import SearchException
+from howler.odm.models.analytic import Analytic
 from howler.services import notification_service
 
 
@@ -153,17 +154,19 @@ class TestCreateAnalyticCommentNotification:
     """Tests for creating analytic comment notifications."""
 
     @staticmethod
-    def _analytic(owner: str = "owner") -> dict:
-        return {
-            "analytic_id": "a7c2f1f0-2f43-4d2b-9b4c-2c7e9f6d1e11",
-            "name": "Suspicious Login",
-            "owner": owner,
-        }
+    def _analytic(owner: str | None = "owner") -> Analytic:
+        return Analytic(
+            {
+                "analytic_id": "a7c2f1f0-2f43-4d2b-9b4c-2c7e9f6d1e11",
+                "name": "Suspicious Login",
+                "owner": owner,
+            }
+        )
 
     @patch("howler.services.notification_service.comms_service")
     @patch("howler.services.notification_service.datastore")
     def test_skips_self_comment(self, mock_datastore, mock_comms):
-        mock_datastore.return_value.analytic.search.return_value = {"items": [self._analytic("owner")]}
+        mock_datastore.return_value.analytic.get_if_exists.return_value = self._analytic("owner")
 
         assert notification_service.create_analytic_comment_notification("id", "owner") is None
         mock_datastore.return_value.notification.save.assert_not_called()
@@ -173,7 +176,7 @@ class TestCreateAnalyticCommentNotification:
     @patch("howler.services.notification_service.datastore")
     def test_saves_and_emits_for_owner(self, mock_datastore, mock_comms):
         datastore_instance: MagicMock = mock_datastore.return_value
-        datastore_instance.analytic.search.return_value = {"items": [self._analytic("owner")]}
+        datastore_instance.analytic.get_if_exists.return_value = self._analytic("owner")
 
         notification = notification_service.create_analytic_comment_notification("id", "analyst")
 
@@ -181,5 +184,29 @@ class TestCreateAnalyticCommentNotification:
         assert notification.recipient == "owner"
         assert notification.sender == "analyst"
         assert notification.read is False
+        assert notification.resource_id == "a7c2f1f0-2f43-4d2b-9b4c-2c7e9f6d1e11"
+        assert notification.resource_name == "Suspicious Login"
+        assert notification.url == "/analytics/a7c2f1f0-2f43-4d2b-9b4c-2c7e9f6d1e11"
+        datastore_instance.analytic.get_if_exists.assert_called_once_with("id", as_obj=True)
         datastore_instance.notification.save.assert_called_once_with(notification.notification_id, notification)
         mock_comms.emit.assert_called_once_with("notification", notification.as_primitives())
+
+    @patch("howler.services.notification_service.comms_service")
+    @patch("howler.services.notification_service.datastore")
+    def test_missing_analytic_raises_not_found(self, mock_datastore, mock_comms):
+        mock_datastore.return_value.analytic.get_if_exists.return_value = None
+
+        with pytest.raises(NotFoundException):
+            notification_service.create_analytic_comment_notification("id", "analyst")
+        mock_datastore.return_value.notification.save.assert_not_called()
+        mock_comms.emit.assert_not_called()
+
+    @patch("howler.services.notification_service.comms_service")
+    @patch("howler.services.notification_service.datastore")
+    def test_analytic_without_owner_raises_invalid_data(self, mock_datastore, mock_comms):
+        mock_datastore.return_value.analytic.get_if_exists.return_value = self._analytic(None)
+
+        with pytest.raises(InvalidDataException):
+            notification_service.create_analytic_comment_notification("id", "analyst")
+        mock_datastore.return_value.notification.save.assert_not_called()
+        mock_comms.emit.assert_not_called()

@@ -55,7 +55,7 @@ vi.mock('api', () => ({
     },
     v2: {
       notification: {
-        notify: (analyticId: string, commenter: string) => ({ analyticId, commenter, op: 'notify' })
+        post: (analyticId: string, commenter: string) => ({ analyticId, commenter, op: 'notify' })
       }
     }
   }

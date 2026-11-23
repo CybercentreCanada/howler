@@ -83,11 +83,7 @@ vi.mock('api', () => ({
     },
     v2: {
       notification: {
-        get: {
-          user: {
-            get: (...args: unknown[]) => mockGetUserNotifications(...args)
-          }
-        }
+        get: (...args: unknown[]) => mockGetUserNotifications(...args)
       }
     }
   }

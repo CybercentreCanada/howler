@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import i18n from 'i18n';
 import type { PropsWithChildren } from 'react';
 import { I18nextProvider } from 'react-i18next';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, useLocation } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import NotificationCard from './NotificationCard';
 
@@ -12,17 +12,12 @@ const mockGetUserNotifications = vi.hoisted(() => vi.fn());
 const mockDispatchApi = vi.hoisted(() => vi.fn());
 const mockMarkRead = vi.hoisted(() => vi.fn());
 const mockDelete = vi.hoisted(() => vi.fn());
-const mockNavigate = vi.hoisted(() => vi.fn());
 
 vi.mock('api', () => ({
   default: {
     v2: {
       notification: {
-        get: {
-          user: {
-            get: (...args: unknown[]) => mockGetUserNotifications(...args)
-          }
-        },
+        get: (...args: unknown[]) => mockGetUserNotifications(...args),
         read: {
           post: (...args: unknown[]) => mockMarkRead(...args)
         },
@@ -32,18 +27,18 @@ vi.mock('api', () => ({
   }
 }));
 
-vi.mock('react-router', async importOriginal => ({
-  ...(await importOriginal<typeof import('react-router')>()),
-  useNavigate: () => mockNavigate
-}));
-
 vi.mock('components/hooks/useMyApi', () => ({
   default: () => ({ dispatchApi: mockDispatchApi })
 }));
 
+const LocationDisplay = () => <div id="location">{useLocation().pathname}</div>;
+
 const Wrapper = ({ children }: PropsWithChildren) => (
   <I18nextProvider i18n={i18n}>
-    <MemoryRouter>{children}</MemoryRouter>
+    <MemoryRouter>
+      {children}
+      <LocationDisplay />
+    </MemoryRouter>
   </I18nextProvider>
 );
 
@@ -136,8 +131,9 @@ describe('NotificationCard', () => {
 
     await userEvent.click(await screen.findByText('analyst commented on your analytic Suspicious Login.'));
 
+    expect(screen.getByRole('menuitem')).toHaveAttribute('href', '/analytics/analytic-n-1');
     await waitFor(() => expect(onClose).toHaveBeenCalled());
-    expect(mockNavigate).toHaveBeenCalledWith('/analytics/analytic-n-1');
+    expect(screen.getByTestId('location')).toHaveTextContent('/analytics/analytic-n-1');
   });
 
   it('only offers mark as read for unread notifications', async () => {
@@ -167,7 +163,7 @@ describe('NotificationCard', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Mark as read' })).not.toBeInTheDocument());
     expect(screen.getByText('analyst commented on your analytic Suspicious Login.')).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
-    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/);
   });
 
   it('keeps a notification unread when marking it read fails', async () => {
@@ -200,7 +196,7 @@ describe('NotificationCard', () => {
     );
     expect(screen.getByText('analyst commented on your analytic Brute Force.')).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
-    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/);
   });
 
   it('keeps a notification when deleting it fails', async () => {
