@@ -1,0 +1,19 @@
+api/test/unit/test_ilm_collection.py
+  s_4ccc63f74358a2::t_366b5751675128 1082-1083
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "a33543c2d099f411108882cc7be9d969d1b1dac5",
+  "prompts": {},
+  "sessions": {
+    "s_4ccc63f74358a2": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_df785e088ffeLsaAg3cvxyFvHy",
+        "model": "us.anthropic.claude-sonnet-5-5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
