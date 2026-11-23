@@ -13,6 +13,6 @@ class Notification(odm.Model):
     sender: str = odm.Keyword(description="The username that triggered the notification.")
     created: datetime = odm.Date(description="The time the notification was created.", default="NOW")
     resource_name: str = odm.Keyword(description="The display name of the referenced analytic.")
-    read: bool = odm.Boolean(description="The truth value of whether the message was read by recipient.", default=False)
+    read: bool = odm.Boolean(description="Whether the message has been read by recipient.", default=False)
     message: str = odm.Text(description="The message displayed to the recipient.")
     url: Optional[str] = odm.Optional(odm.Keyword(description="A UI path for the referenced resource."))
