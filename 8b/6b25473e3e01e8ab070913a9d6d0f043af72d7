@@ -1,0 +1,30 @@
+ui/src/components/routes/help/OverviewDocumentation.tsx
+  s_b8e28f964215c8::t_ee9fd4be143ab5 8-15,24
+ui/src/components/routes/help/OverviewDocumentation.test.tsx
+  s_b8e28f964215c8::t_0b28fd5b201e89 10-15,38-42
+  s_ff0794253ce979::t_54148743d01425 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "8b6b25473e3e01e8ab070913a9d6d0f043af72d7",
+  "prompts": {},
+  "sessions": {
+    "s_b8e28f964215c8": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_df6e528e2ffe6sfhCQhSP0JhvD",
+        "model": "us.anthropic.claude-sonnet-5-5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_ff0794253ce979": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e0ace54feffeqd00vjqnprQcgy",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
