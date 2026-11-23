@@ -76,7 +76,7 @@ class TestGetUserNotifications:
 
 
 class TestMarkNotificationRead:
-    """Tests for marking a notification as read."""
+    """Tests for marking a notification as read or unread."""
 
     @patch("howler.services.notification_service.datastore")
     def test_marks_unread_notification_read(self, mock_datastore):
@@ -95,6 +95,25 @@ class TestMarkNotificationRead:
         collection.get_if_exists.return_value = {"notification_id": "n-1", "recipient": "alice", "read": True}
 
         assert notification_service.mark_notification_read("n-1", "alice")["read"] is True
+        collection.update.assert_not_called()
+
+    @patch("howler.services.notification_service.datastore")
+    def test_marks_read_notification_unread(self, mock_datastore):
+        collection = mock_datastore.return_value.notification
+        collection.get_if_exists.return_value = {"notification_id": "n-1", "recipient": "alice", "read": True}
+        collection.update.return_value = (True, "1---1")
+
+        result = notification_service.mark_notification_read("n-1", "alice", read=False)
+
+        assert result["read"] is False
+        collection.update.assert_called_once_with("n-1", [(collection.UPDATE_SET, "read", False)])
+
+    @patch("howler.services.notification_service.datastore")
+    def test_already_unread_notification_is_not_updated(self, mock_datastore):
+        collection = mock_datastore.return_value.notification
+        collection.get_if_exists.return_value = {"notification_id": "n-1", "recipient": "alice", "read": False}
+
+        assert notification_service.mark_notification_read("n-1", "alice", read=False)["read"] is False
         collection.update.assert_not_called()
 
     @pytest.mark.parametrize("stored", [None, {"notification_id": "n-1", "recipient": "bob", "read": False}])

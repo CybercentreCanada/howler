@@ -26,6 +26,12 @@ describe('notification read API', () => {
   it('marks the notification as read', () => {
     post('n-1');
 
-    expect(mockHpost).toHaveBeenCalledWith('/api/v2/notification/n-1/read', null);
+    expect(mockHpost).toHaveBeenCalledWith('/api/v2/notification/n-1/read', { read: true });
+  });
+
+  it('marks the notification as unread', () => {
+    post('n-1', false);
+
+    expect(mockHpost).toHaveBeenCalledWith('/api/v2/notification/n-1/read', { read: false });
   });
 });

@@ -116,16 +116,18 @@ def get_user_notifications(user: User, offset: int = 0, rows: int = 25, **kwargs
 @notification_api.route("/<notification_id>/read", methods=["POST"])
 @api_login(required_priv=["W"])
 def mark_notification_read(notification_id: str, user: User, **kwargs):
-    """Mark one of the authenticated user's notifications as read.
+    """Mark one of the authenticated user's notifications as read or unread.
 
     Variables:
-    notification_id => The ID of the notification to mark as read.
+    notification_id => The ID of the notification to update.
 
     Optional Arguments:
     None
 
     Data Block:
-    None
+    {
+        "read": false       # Read state to set (optional, defaults to true)
+    }
 
     Result Example:
     {
@@ -138,11 +140,21 @@ def mark_notification_read(notification_id: str, user: User, **kwargs):
         "message": "analyst commented on your analytic Suspicious Login.",
         "url": "/analytics/d23e8c2d-0f09-4a60-a50d-aac7db97b10a",
         "created": "2026-11-06T14:00:00.000000Z",
-        "read": true
+        "read": false
     }
     """
+    req_data = request.get_json(silent=True)
+    if req_data is None:
+        req_data = {}
+    if not isinstance(req_data, dict):
+        return bad_request(err="Request body must be an object.")
+
+    read = req_data.get("read", True)
+    if not isinstance(read, bool):
+        return bad_request(err="'read' must be a boolean.")
+
     try:
-        return ok(notification_service.mark_notification_read(notification_id, user.uname))
+        return ok(notification_service.mark_notification_read(notification_id, user.uname, read=read))
     except NotFoundException as error:
         return not_found(err=str(error))
     except InvalidDataException as error:

@@ -1,4 +1,4 @@
-import { Delete, MarkEmailRead, Notifications, NotificationsNone } from '@mui/icons-material';
+import { Delete, MarkEmailRead, MarkEmailUnread, Notifications, NotificationsNone } from '@mui/icons-material';
 import {
   Alert,
   CircularProgress,
@@ -44,20 +44,19 @@ const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnre
 
   const pageCount = Math.ceil(total / NOTIFICATION_ROWS);
 
-  const markRead = useCallback(
+  const toggleRead = useCallback(
     async (event: MouseEvent, notification: Notification) => {
       event.preventDefault();
       event.stopPropagation();
 
       const id = notification.notification_id;
+      const read = !notification.read;
       setPending(current => new Set(current).add(id));
 
       try {
-        await dispatchApi(api.v2.notification.read.post(id));
-        setNotifications(current =>
-          current.map(entry => (entry.notification_id === id ? { ...entry, read: true } : entry))
-        );
-        onUnreadChange?.(current => Math.max(current - 1, 0));
+        await dispatchApi(api.v2.notification.read.post(id, read));
+        setNotifications(current => current.map(entry => (entry.notification_id === id ? { ...entry, read } : entry)));
+        onUnreadChange?.(current => (read ? Math.max(current - 1, 0) : current + 1));
       } catch {
         // dispatchApi surfaces the error to the user
       } finally {
@@ -189,6 +188,9 @@ const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnre
       ) : (
         notifications.map(notification => {
           const busy = pending.has(notification.notification_id);
+          const toggleLabel = t(
+            notification.read ? 'route.home.notifications.mark_unread' : 'route.home.notifications.mark_read'
+          );
 
           return (
             <MenuItem
@@ -216,20 +218,18 @@ const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnre
                 }}
               />
               <Stack direction="row" spacing={0.5} ml={1}>
-                {!notification.read && (
-                  <Tooltip title={t('route.home.notifications.mark_read')}>
-                    <span>
-                      <IconButton
-                        size="small"
-                        aria-label={t('route.home.notifications.mark_read')}
-                        disabled={busy}
-                        onClick={event => void markRead(event, notification)}
-                      >
-                        <MarkEmailRead fontSize="small" />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                )}
+                <Tooltip title={toggleLabel}>
+                  <span>
+                    <IconButton
+                      size="small"
+                      aria-label={toggleLabel}
+                      disabled={busy}
+                      onClick={event => void toggleRead(event, notification)}
+                    >
+                      {notification.read ? <MarkEmailUnread fontSize="small" /> : <MarkEmailRead fontSize="small" />}
+                    </IconButton>
+                  </span>
+                </Tooltip>
                 <Tooltip title={t('route.home.notifications.delete')}>
                   <span>
                     <IconButton

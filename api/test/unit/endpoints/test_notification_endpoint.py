@@ -190,7 +190,68 @@ class TestMarkNotificationReadEndpoint:
 
         assert result.status_code == 200
         assert result.get_json()["api_response"] == {"notification_id": "n-1", "read": True}
-        mock_notification_service.mark_notification_read.assert_called_once_with("n-1", "authenticated-user")
+        mock_notification_service.mark_notification_read.assert_called_once_with("n-1", "authenticated-user", read=True)
+
+    @pytest.mark.parametrize("read", [True, False])
+    @patch("howler.api.QUOTA_TRACKER")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.api.v2.notification.notification_service")
+    def test_sets_requested_read_state(
+        self,
+        mock_notification_service,
+        mock_auth_service,
+        mock_login_quota,
+        _mock_api_quota,
+        request_context: Flask,
+        read: bool,
+    ):
+        _configure_auth(mock_auth_service, _user(), ["R", "W"])
+        mock_login_quota.begin.return_value = True
+        mock_notification_service.mark_notification_read.return_value = {"notification_id": "n-1", "read": read}
+
+        with request_context.test_request_context(
+            method="POST",
+            path="/api/v2/notification/n-1/read",
+            headers={"Authorization": "Bearer token"},
+            json={"read": read},
+        ):
+            from howler.api.v2.notification import mark_notification_read
+
+            result: Response = mark_notification_read(notification_id="n-1")
+
+        assert result.status_code == 200
+        mock_notification_service.mark_notification_read.assert_called_once_with("n-1", "authenticated-user", read=read)
+
+    @pytest.mark.parametrize("body", [{"read": "false"}, {"read": 0}, ["read"]])
+    @patch("howler.api.QUOTA_TRACKER")
+    @patch("howler.security.login.QUOTA_TRACKER")
+    @patch("howler.security.login.auth_service")
+    @patch("howler.api.v2.notification.notification_service")
+    def test_rejects_invalid_read_state(
+        self,
+        mock_notification_service,
+        mock_auth_service,
+        mock_login_quota,
+        _mock_api_quota,
+        request_context: Flask,
+        body,
+    ):
+        _configure_auth(mock_auth_service, _user(), ["R", "W"])
+        mock_login_quota.begin.return_value = True
+
+        with request_context.test_request_context(
+            method="POST",
+            path="/api/v2/notification/n-1/read",
+            headers={"Authorization": "Bearer token"},
+            json=body,
+        ):
+            from howler.api.v2.notification import mark_notification_read
+
+            result: Response = mark_notification_read(notification_id="n-1")
+
+        assert result.status_code == 400
+        mock_notification_service.mark_notification_read.assert_not_called()
 
     @pytest.mark.parametrize(
         ("error", "status_code"),

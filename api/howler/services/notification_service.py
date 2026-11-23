@@ -80,14 +80,14 @@ def _get_user_notification(notification_id: str, username: str) -> dict[str, Any
 def mark_notification_read(notification_id: str, username: str, read: bool = True) -> dict[str, Any]:
     """Mark one of the user's notifications as read or unread and return the updated notification."""
     notification = _get_user_notification(notification_id, username)
-    if notification.get("read"):
+    if bool(notification.get("read")) == read:
         return notification
 
     collection = datastore().notification
-    if not collection.update(notification_id, [(collection.UPDATE_SET, "read", True)]):
-        raise InvalidDataException(f"Unable to mark notification {notification_id} as read.")
+    if not collection.update(notification_id, [(collection.UPDATE_SET, "read", read)]):
+        raise InvalidDataException(f"Unable to mark notification {notification_id} as {'read' if read else 'unread'}.")
 
-    return {**notification, "read": True}
+    return {**notification, "read": read}
 
 
 def delete_notification(notification_id: str, username: str) -> None:

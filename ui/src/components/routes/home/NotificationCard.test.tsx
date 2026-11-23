@@ -136,7 +136,7 @@ describe('NotificationCard', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/analytics/analytic-n-1');
   });
 
-  it('only offers mark as read for unread notifications', async () => {
+  it('offers mark as read for unread notifications and mark as unread for read notifications', async () => {
     mockDispatchApi.mockResolvedValue(
       listResponse(notification('n-1', 'Suspicious Login'), notification('n-2', 'Brute Force', true))
     );
@@ -146,6 +146,7 @@ describe('NotificationCard', () => {
     await screen.findByText('analyst commented on your analytic Suspicious Login.');
 
     expect(screen.getAllByRole('button', { name: 'Mark as read' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Mark as unread' })).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: 'Delete notification' })).toHaveLength(2);
   });
 
@@ -158,12 +159,29 @@ describe('NotificationCard', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Mark as read' }));
 
-    expect(mockMarkRead).toHaveBeenCalledWith('n-1');
+    expect(mockMarkRead).toHaveBeenCalledWith('n-1', true);
     expect(mockDispatchApi).toHaveBeenCalledWith('read-request');
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Mark as read' })).not.toBeInTheDocument());
+    expect(await screen.findByRole('button', { name: 'Mark as unread' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Mark as read' })).not.toBeInTheDocument();
     expect(screen.getByText('analyst commented on your analytic Suspicious Login.')).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/);
+  });
+
+  it('toggles a read notification back to unread', async () => {
+    const onClose = vi.fn();
+    mockDispatchApi.mockResolvedValueOnce(listResponse(notification('n-1', 'Suspicious Login', true)));
+    mockMarkRead.mockReturnValue('unread-request');
+
+    render(<NotificationCard anchorEl={anchor} onClose={onClose} />, { wrapper: Wrapper });
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Mark as unread' }));
+
+    expect(mockMarkRead).toHaveBeenCalledWith('n-1', false);
+    expect(mockDispatchApi).toHaveBeenCalledWith('unread-request');
+    expect(await screen.findByRole('button', { name: 'Mark as read' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Mark as unread' })).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('keeps a notification unread when marking it read fails', async () => {
@@ -238,6 +256,21 @@ describe('NotificationCard', () => {
     expect(applyUnread(onUnreadChange, 0)).toBe(0);
     expect(onUnreadChange.mock.calls[1][0](5)).toBe(4);
     expect(onUnreadChange.mock.calls[1][0](0)).toBe(0);
+  });
+
+  it('increments the unread count when a notification is marked unread', async () => {
+    const onUnreadChange = vi.fn();
+    mockDispatchApi.mockResolvedValueOnce(listResponse(notification('n-1', 'Suspicious Login', true)));
+
+    render(<NotificationCard anchorEl={anchor} onClose={vi.fn()} onUnreadChange={onUnreadChange} />, {
+      wrapper: Wrapper
+    });
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Mark as unread' }));
+
+    await waitFor(() => expect(onUnreadChange).toHaveBeenCalledTimes(2));
+    expect(applyUnread(onUnreadChange, 0)).toBe(1);
+    expect(onUnreadChange.mock.calls[1][0](5)).toBe(6);
   });
 
   it('decrements the unread count only when deleting an unread notification', async () => {
