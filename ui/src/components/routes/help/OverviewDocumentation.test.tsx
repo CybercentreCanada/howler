@@ -7,7 +7,12 @@ vi.mock('@tui/core', () => ({
 }));
 
 vi.mock('components/elements/display/HandlebarsMarkdown', () => ({
-  default: ({ md }: { md: string }) => <div>{md}</div>
+  default: ({ md, object }: { md: string; object?: any }) => (
+    <div>
+      {md}
+      <span>{object?.howler?.status}</span>
+    </div>
+  )
 }));
 
 vi.mock('components/hooks/useScrollRestoration', () => ({
@@ -29,5 +34,11 @@ describe('OverviewDocumentation', () => {
     render(<OverviewDocumentation />);
 
     expect(screen.getByText('starting template')).toBeInTheDocument();
+  });
+
+  it('provides example hit data so the helper examples can render', () => {
+    render(<OverviewDocumentation />);
+
+    expect(screen.getByText('open')).toBeInTheDocument();
   });
 });
