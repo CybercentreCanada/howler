@@ -1,3 +1,6 @@
+from typing import Annotated
+
+from howler.actions.models import ActionArguments, ActionDescription, ActionSpecification, ActionStep, one_of
 from howler.common.loader import datastore
 from howler.datastore.operations import OdmHelper
 from howler.odm.models.action import VALID_TRIGGERS
@@ -12,6 +15,13 @@ MAX_HITS_ADVANCED = 1000
 VALID_FIELDS = ["reliability", "severity", "volume", "confidence", "score"]
 
 
+class PrioritizationArguments(ActionArguments):
+    """Arguments of the prioritization operation."""
+
+    field: Annotated[str, one_of("field", VALID_FIELDS)] = "score"
+    value: float = 0.0
+
+
 def execute(query: str, field: str = "score", value: str | float = "0.0", **kwargs):
     """Change one of the priorization fields of a hit
 
@@ -20,27 +30,12 @@ def execute(query: str, field: str = "score", value: str | float = "0.0", **kwar
         field (str, optional): The field to update. Defaults to "score".
         value (str, optional): The value to set it to. Must be a float in string format. Defaults to "0.0".
     """
-    if field not in VALID_FIELDS:
-        return [
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "Invalid field",
-                "message": (
-                    f"Field 'howler.{field}' does not exist. You must pick from one of the following "
-                    + f"values: {', '.join(VALID_FIELDS)}."
-                ),
-            }
-        ]
-
     report = []
 
     try:
-        value = float(value)
-
         datastore().hit.update_by_query(
             query,
-            [hit_helper.update(f"howler.{field}", value)],
+            [hit_helper.update(f"howler.{field}", float(value))],
         )
 
         report.append(
@@ -48,16 +43,7 @@ def execute(query: str, field: str = "score", value: str | float = "0.0", **kwar
                 "query": query,
                 "outcome": "success",
                 "title": "Executed Successfully",
-                "message": f"Field 'howler.{field}' updated to value '{value}' for all matching hits.",
-            }
-        )
-    except ValueError:
-        report.append(
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "Invalid Value",
-                "message": f"'{value}' is not a valid value. It must be a float (i.e. 12.34)",
+                "message": f"Field 'howler.{field}' updated to value '{float(value)}' for all matching hits.",
             }
         )
     except Exception as e:
@@ -73,23 +59,16 @@ def execute(query: str, field: str = "score", value: str | float = "0.0", **kwar
     return report
 
 
-def specification():
+def specification() -> ActionSpecification:
     """Specify various properties of the action, such as title, descriptions, permissions and input steps."""
-    return {
-        "id": OPERATION_ID,
-        "title": "Change Prioritization",
-        "priority": 10,
-        "i18nKey": f"operations.{OPERATION_ID}",
-        "description": {
-            "short": "Change one of the prioritization fields of a hit",
-            "long": execute.__doc__,
-        },
-        "roles": ["automation_basic", "actionrunner_basic"],
-        "steps": [
-            {
-                "args": {"field": [], "value": []},
-                "options": {"field": VALID_FIELDS},
-            }
-        ],
-        "triggers": VALID_TRIGGERS,
-    }
+    return ActionSpecification(
+        id=OPERATION_ID,
+        title="Change Prioritization",
+        priority=10,
+        i18n_key=f"operations.{OPERATION_ID}",
+        description=ActionDescription(short="Change one of the prioritization fields of a hit", long=execute.__doc__),
+        roles=["automation_basic", "actionrunner_basic"],
+        steps=[ActionStep(args={"field": [], "value": []}, options={"field": VALID_FIELDS})],
+        triggers=VALID_TRIGGERS,
+        arguments=PrioritizationArguments,
+    )

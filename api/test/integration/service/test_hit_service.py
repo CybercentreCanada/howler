@@ -1,12 +1,14 @@
 from datetime import datetime
 from typing import Any, cast
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
 
 from howler.common.exceptions import HowlerValueError, NotFoundException, ResourceExists
 from howler.datastore.collection import ESCollection
 from howler.datastore.operations import OdmUpdateOperation
+from howler.datastore.store import ESStore
 from howler.helper.hit import HitStatusTransition
 from howler.helper.workflow import Workflow
 from howler.odm.constants import UTC_TZ
@@ -280,6 +282,50 @@ def test_create_hit_already_exists(mock_exists):
     """Test that create_hit raises ResourceExists if the hit exists and skip_exists is False."""
     with pytest.raises(ResourceExists):
         hit_service.create_hit("some_id", Hit(SAMPLE_HIT_DATA))
+
+
+@pytest.mark.parametrize("refresh", [None, "false", "true", "wait_for"])
+def test_delete_hits_forwards_refresh_to_each_deletion(refresh):
+    storage = MagicMock()
+    storage.hit.delete.return_value = True
+    hit_ids = {"hit-1", "hit-2"}
+
+    with patch("howler.services.hit_service.datastore", return_value=storage):
+        assert hit_service.delete_hits(hit_ids, refresh=refresh) is True
+
+    assert storage.hit.delete.call_count == len(hit_ids)
+    for hit_id in hit_ids:
+        storage.hit.delete.assert_any_call(hit_id, refresh=refresh)
+    storage.hit.update_by_query.assert_called_once()
+    assert storage.hit.update_by_query.call_args.kwargs["refresh"] == refresh
+
+
+def test_delete_hits_refresh_removes_hits_from_search(config):
+    store = ESStore(config)
+    collection = None
+    try:
+        if not store.ping():
+            pytest.skip("Could not connect to Elasticsearch for deletion refresh integration test")
+
+        name = f"delete_refresh_{uuid4().hex}"
+        store.register(name, Hit)
+        collection = getattr(store, name)
+        # Disable periodic refresh so it cannot conceal a missing deletion refresh.
+        store.client.indices.put_settings(index=collection.index_name, settings={"refresh_interval": "-1"})
+        hit = Hit({"howler": {"id": "deleted-hit", "analytic": "Test delete refresh", "hash": "abc123", "score": 0}})
+        collection.save(hit.howler.id, hit, refresh="true")
+        query = f"howler.id:{hit.howler.id}"
+        assert collection.search(query, as_obj=False)["total"] == 1
+
+        with patch("howler.services.hit_service.datastore", return_value=MagicMock(hit=collection)):
+            assert hit_service.delete_hits({hit.howler.id}, refresh="true") is True
+
+        assert not collection.exists(hit.howler.id)
+        assert collection.search(query, as_obj=False)["items"] == []
+    finally:
+        if collection is not None:
+            store.client.indices.delete(index=collection.index_name, ignore_unavailable=True)
+        store.close()
 
 
 @patch("howler.services.hit_service._update_hit", return_value=(random_model_obj(cast(Any, Hit)), "version number"))

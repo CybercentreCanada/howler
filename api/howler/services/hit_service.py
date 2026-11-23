@@ -361,37 +361,27 @@ def exists(id: str) -> bool:
 
 
 @overload
-def get_hit(
-    id: str, as_odm: Literal[True], version: Literal[True], user: User | None = None
-) -> tuple[Hit, str]: ...  # codeql[py/ineffectual-statement]
+def get_hit(id: str, as_odm: Literal[True], version: Literal[True], user: User | None = None) -> tuple[Hit, str]:
+    pass
 
 
 @overload
-def get_hit(id: str, as_odm: Literal[True], version: Literal[False]) -> Hit: ...  # codeql[py/ineffectual-statement]
-
-
-@overload
-def get_hit(id: str, as_odm: Literal[True]) -> Hit: ...  # codeql[py/ineffectual-statement]
-
-
-@overload
-def get_hit(id: str) -> Hit: ...  # codeql[py/ineffectual-statement]
+def get_hit(id: str, as_odm: Literal[True], version: Literal[False] = False, user: User | None = None) -> Hit:
+    pass
 
 
 @overload
 def get_hit(
-    id: str, as_odm: Literal[False], version: Literal[True]
-) -> tuple[dict[str, Any], str]: ...  # codeql[py/ineffectual-statement]
+    id: str, as_odm: Literal[False], version: Literal[True], user: User | None = None
+) -> tuple[dict[str, Any], str]:
+    pass
 
 
 @overload
 def get_hit(
-    id: str, as_odm: Literal[False], version: Literal[False]
-) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
-
-
-@overload
-def get_hit(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
+    id: str, as_odm: Literal[False] = False, version: Literal[False] = False, user: User | None = None
+) -> dict[str, Any]:
+    pass
 
 
 @tracer.start_as_current_span(f"{__name__}.get_hit")
@@ -798,7 +788,7 @@ def delete_hits(hit_ids: set[str], refresh: Literal["true", "false", "wait_for"]
     operations: list[OdmUpdateOperation] = []
 
     for hit_id in hit_ids:
-        success = success and ds.hit.delete(hit_id)
+        success = success and ds.hit.delete(hit_id, refresh=refresh)
         operations.append(odm_helper.list_remove("howler.related", hit_id, silent=True))
 
     ds.hit.update_by_query(f"howler.related:({' OR '.join(hit_ids)})", operations, refresh=refresh)

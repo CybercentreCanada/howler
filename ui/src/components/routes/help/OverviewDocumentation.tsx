@@ -5,6 +5,14 @@ import type { FC } from 'react';
 import ErrorBoundary from '../ErrorBoundary';
 import { useStartingTemplate } from '../overviews/startingTemplate';
 
+const EXAMPLE_HIT = {
+  howler: {
+    status: 'open',
+    escalation: 'alert',
+    is_bundle: false
+  }
+};
+
 const OverviewDocumentation: FC = () => {
   useScrollRestoration();
 
@@ -13,7 +21,7 @@ const OverviewDocumentation: FC = () => {
   return (
     <PageCenter margin={4} width="100%" textAlign="left">
       <ErrorBoundary>
-        <HandlebarsMarkdown md={template} />
+        <HandlebarsMarkdown md={template} object={EXAMPLE_HIT} />
       </ErrorBoundary>
     </PageCenter>
   );

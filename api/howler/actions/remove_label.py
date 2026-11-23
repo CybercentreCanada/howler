@@ -1,5 +1,14 @@
-from typing import Optional
+from typing import Annotated
 
+from howler.actions.models import (
+    ActionArguments,
+    ActionDescription,
+    ActionSpecification,
+    ActionStep,
+    NonEmptyStr,
+    StepValidationRule,
+    one_of,
+)
 from howler.common.loader import datastore
 from howler.datastore.operations import OdmHelper
 from howler.odm.models.action import VALID_TRIGGERS
@@ -16,7 +25,14 @@ MAX_HITS_ADVANCED = 1000
 CATEGORIES = list(Label.fields().keys())
 
 
-def execute(query: str, category: str = "generic", label: Optional[str] = None, **kwargs):
+class RemoveLabelArguments(ActionArguments):
+    """Arguments of the remove_label operation."""
+
+    category: Annotated[str, one_of("category", CATEGORIES)] = "generic"
+    label: NonEmptyStr
+
+
+def execute(query: str, category: str = "generic", label: str = "", **kwargs):
     """Remove a label from a hit.
 
     Args:
@@ -24,26 +40,6 @@ def execute(query: str, category: str = "generic", label: Optional[str] = None, 
         category (str, optional): The category of label from which to remove the label. Defaults to "generic".
         label (str, optional): The label to remove. Defaults to None.
     """
-    if category not in CATEGORIES:
-        return [
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "Invalid Category",
-                "message": f"'{category}' is not a valid category.",
-            }
-        ]
-
-    if not label:
-        return [
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "Invalid Label",
-                "message": "Label cannot be empty.",
-            }
-        ]
-
     report = []
 
     ds = datastore()
@@ -90,24 +86,22 @@ def execute(query: str, category: str = "generic", label: Optional[str] = None, 
     return report
 
 
-def specification():
+def specification() -> ActionSpecification:
     """Specify various properties of the action, such as title, descriptions, permissions and input steps."""
-    return {
-        "id": OPERATION_ID,
-        "title": "Remove Label",
-        "priority": 7,
-        "i18nKey": "operations.remove_label",
-        "description": {
-            "short": "Remove a label from a hit",
-            "long": execute.__doc__,
-        },
-        "roles": ["automation_basic", "actionrunner_basic"],
-        "steps": [
-            {
-                "args": {"category": [], "label": []},
-                "options": {"category": CATEGORIES},
-                "validation": {"warn": {"query": "-howler.labels.$category:$label"}},
-            }
+    return ActionSpecification(
+        id=OPERATION_ID,
+        title="Remove Label",
+        priority=7,
+        i18n_key="operations.remove_label",
+        description=ActionDescription(short="Remove a label from a hit", long=execute.__doc__),
+        roles=["automation_basic", "actionrunner_basic"],
+        steps=[
+            ActionStep(
+                args={"category": [], "label": []},
+                options={"category": CATEGORIES},
+                validation={"warn": StepValidationRule(query="-howler.labels.$category:$label")},
+            )
         ],
-        "triggers": VALID_TRIGGERS,
-    }
+        triggers=VALID_TRIGGERS,
+        arguments=RemoveLabelArguments,
+    )

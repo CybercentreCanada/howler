@@ -32,6 +32,7 @@ export interface MarkdownProps {
   md: string;
   components?: { [index: string]: ReactElement };
   disableLinks?: boolean;
+  untrusted?: boolean;
 }
 
 const customComponents = (type: string, children: any) => {
@@ -58,10 +59,12 @@ const customComponents = (type: string, children: any) => {
   }
 };
 
-const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false }) => {
+const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false, untrusted = false }) => {
   const theme = useTheme();
   const { isDark } = useAppTheme();
   const { t } = useTranslation();
+  const transformUrl = (value: string) =>
+    untrusted && !(value.startsWith('#') || (value.startsWith('/') && !value.startsWith('//'))) ? '' : value;
 
   useEffect(() => {
     mermaid.initialize({
@@ -87,12 +90,12 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
 
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm, codeTabs]}
-      rehypePlugins={[rehypeRaw]}
-      urlTransform={(value: string) => value}
+      remarkPlugins={untrusted ? [remarkGfm] : [remarkGfm, codeTabs]}
+      rehypePlugins={untrusted ? [] : [rehypeRaw]}
+      urlTransform={transformUrl}
       components={{
         code({ node, className, children, ...props }) {
-          if (!node) {
+          if (untrusted || !node) {
             return (
               <code className={className} {...props}>
                 {children}
@@ -159,6 +162,10 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
         },
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         img({ node, ...props }) {
+          if (untrusted) {
+            return null;
+          }
+
           // eslint-disable-next-line jsx-a11y/alt-text
           return <Image {...props} style={{ ...props.style, maxWidth: '75%' }} />;
         },

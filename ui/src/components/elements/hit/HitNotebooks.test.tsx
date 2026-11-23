@@ -160,6 +160,7 @@ describe('HitNotebooks', () => {
       })
     );
 
+    await waitFor(() => expect(screen.getByText('hit.notebook.goTo')).toBeEnabled());
     fireEvent.click(screen.getByText('hit.notebook.goTo'));
 
     await waitFor(() =>
@@ -174,7 +175,12 @@ describe('HitNotebooks', () => {
         expect.objectContaining({ method: 'post' })
       )
     );
-    expect(globalThis.open).toHaveBeenCalledWith('https://nb.example/lab/tree/Loaded Notebook - hit-1.ipynb', '_blank');
+    await waitFor(() =>
+      expect(globalThis.open).toHaveBeenCalledWith(
+        'https://nb.example/lab/tree/Loaded Notebook - hit-1.ipynb',
+        '_blank'
+      )
+    );
   });
 
   it('confirms overwrite for existing notebooks and can hide itself when notebooks are disabled', async () => {
@@ -202,6 +208,7 @@ describe('HitNotebooks', () => {
     fireEvent.click(screen.getByRole('button', { name: /hit\.notebook\.tooltip/i }));
     await waitFor(() => expect(mockDispatchApi).toHaveBeenCalledTimes(2));
 
+    await waitFor(() => expect(screen.getByText('hit.notebook.goTo')).toBeEnabled());
     fireEvent.click(screen.getByText('hit.notebook.goTo'));
 
     await waitFor(() => expect(mockShowModal).toHaveBeenCalled());

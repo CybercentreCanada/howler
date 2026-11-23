@@ -110,8 +110,7 @@ class HowlerApiClient:
             client = self._client
             if client is None:
                 raise RuntimeError("Howler API client has not been started")
-            exchanged_token = await self.auth_provider.get_howler_token(user_access_token.token)
-            headers = {"Authorization": f"Bearer {exchanged_token}"}
+            headers = {"Authorization": await self.auth_provider.get_authorization_header(user_access_token.token)}
             url = f"{self.base_url}/{route.lstrip('/')}"
             response = await client.request(
                 method=method,

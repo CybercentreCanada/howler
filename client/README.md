@@ -51,7 +51,7 @@ Other useful `get_client()` options:
 
 | Attribute          | Purpose                                                                                                                                                                                                 |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `client.hit`       | Create hits (`create`), fetch one by ID (`client.hit(hit_id)`), `overwrite`, `update`, `update_by_query`, `delete`, `generate_hash`. Comments are under `client.hit.comment` (`add`, `edit`, `delete`). |
+| `client.hit`       | Create hits (`create`), fetch one by ID (`client.hit(hit_id)`), `overwrite`, `update`, `update_by_query`, `add_label`, `remove_label`, `delete`, `generate_hash`. Comments are under `client.hit.comment` (`add`, `edit`, `delete`). |
 | `client.search`    | Lucene search over hits (`hit`) and actions (`action`), plus `facet`, `fields`, `grouped`, `histogram`, `stats`, and `stream` helpers, each with a `.hit(...)` method.                                  |
 | `client.action`    | List, create, and execute saved actions.                                                                                                                                                                |
 | `client.user`      | Add, delete, list, and update users; `whoami`.                                                                                                                                                          |

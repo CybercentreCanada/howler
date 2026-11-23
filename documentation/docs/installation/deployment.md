@@ -44,7 +44,7 @@ Howler is flexible in how you provide these dependencies. You have several optio
 
 #### Co-located Dependencies (Recommended for Development/Testing)
 
-The Howler Helm chart includes optional dependencies (Redis and MinIO) that can be deployed in the same Kubernetes
+The Howler Helm chart includes two optional Redis dependencies that can be deployed in the same Kubernetes
 namespace as Howler. This approach is convenient for development, testing, or smaller deployments.
 
 ```yaml
@@ -55,6 +55,25 @@ redis-persistent:
 redis-nonpersistent:
   enabled: true
 ```
+
+The Redis chart uses Bitnami's publicly available community image, pinned by digest. Community images are intended for
+development and testing; use maintained external Redis services or explicitly configured supported images for production.
+The chart preserves the existing default of disabling volume persistence for **both** instances: enable
+`redis-persistent.master.persistence.enabled` and configure storage to retain persistent Redis data across pod recreation.
+
+The Redis subchart upgrade from 17.3.5 to 25.2.0 also upgrades Redis from 7 to 8 (the pinned image is Redis 8.10.3,
+although the subchart's metadata says 8.6.0). Before upgrading an existing release, back up persistent data, review the
+upstream chart and Redis upgrade guidance, and plan for downtime. When volume persistence is enabled, the changed PVC
+template requires recreating the StatefulSet; preserve the PVCs and verify the data before restoring Howler traffic.
+Redis 7 cannot necessarily read data rewritten by Redis 8, so rolling back may require restoring the Redis 7 backup;
+do not assume that a Helm rollback alone will restore the old instance.
+If overriding the image tag or repository, also override or clear `image.digest` for the relevant Redis subchart: the
+digest takes precedence over the tag. Substitute images must be compatible with the Bitnami chart's startup scripts;
+its image verification rejects unrecognized repositories unless `global.security.allowInsecureImages` is set to `true`.
+Review that security tradeoff before disabling verification. If configuring a NodePort, set
+`master.service.nodePorts.redis` to a quoted string, for example `"30379"`.
+Redis authentication is disabled by default; restrict NodePort access to trusted networks and configure authentication
+for both Redis and its clients before exposing it beyond that boundary.
 
 #### External Managed Services (Recommended for Production)
 

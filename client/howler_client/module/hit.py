@@ -328,6 +328,58 @@ class Hit(object):
             api_path("hit/update", refresh=refresh), json={"query": query, "operations": updates}
         )
 
+    def add_label(
+        self: Self,
+        hit_id: str,
+        label_set: str,
+        labels: str | list[str],
+        refresh: bool | Literal["true", "false", "wait_for"] = False,
+    ) -> dict[str, Any]:
+        """Add one or more labels to a hit.
+
+        Args:
+            hit_id: ID of the hit to update.
+            label_set: Name of the label set, such as ``generic``.
+            labels: A label or list of labels to add.
+            refresh: Whether to refresh the index. Use ``wait_for`` to wait for search visibility.
+
+        Returns:
+            The updated hit.
+
+        Raises:
+            ClientError: The labels are invalid or already present (400), or the hit or label set was not found (404).
+        """
+        return self._connection.put(
+            api_path("hit", hit_id, "labels", label_set, refresh=refresh),
+            json={"value": [labels] if isinstance(labels, str) else labels},
+        )
+
+    def remove_label(
+        self: Self,
+        hit_id: str,
+        label_set: str,
+        labels: str | list[str],
+        refresh: bool | Literal["true", "false", "wait_for"] = False,
+    ) -> dict[str, Any]:
+        """Remove one or more labels from a hit.
+
+        Args:
+            hit_id: ID of the hit to update.
+            label_set: Name of the label set, such as ``generic``.
+            labels: A label or list of labels to remove.
+            refresh: Whether to refresh the index. Use ``wait_for`` to wait for search visibility.
+
+        Returns:
+            The updated hit.
+
+        Raises:
+            ClientError: The labels are invalid (400), or the hit or label set was not found (404).
+        """
+        return self._connection.delete(
+            api_path("hit", hit_id, "labels", label_set, refresh=refresh),
+            json={"value": [labels] if isinstance(labels, str) else labels},
+        )
+
     def delete(
         self: Self, hit_ids: list[str], refresh: bool | Literal["true", "false", "wait_for"] = False
     ) -> dict[Literal["success"], bool]:

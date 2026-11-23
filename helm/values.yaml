@@ -143,10 +143,15 @@ redis-persistent:
 
   architecture: standalone
 
+  # Pin the publicly available Bitnami community image; update the digest deliberately.
+  image:
+    digest: sha256:59078af5aec997137eb95f34fed376487b471e05c9a244c2812a13598c434950
+
   auth:
     enabled: false
 
   master:
+    # For NodePort services, nodePorts.redis must be a string (e.g. "30379").
     persistence:
       enabled: false
 
@@ -165,10 +170,14 @@ redis-nonpersistent:
 
   architecture: standalone
 
+  image:
+    digest: sha256:59078af5aec997137eb95f34fed376487b471e05c9a244c2812a13598c434950
+
   auth:
     enabled: false
 
   master:
+    # For NodePort services, nodePorts.redis must be a string (e.g. "30380").
     persistence:
       enabled: false
 
@@ -214,6 +223,21 @@ config:
       nonpersistent:
         host: howler-redis-nonpersistent-master.howler.svc.cluster.local
         port: 6379
+
+    # Optional AI-assisted alert triage. See documentation/docs/installation/ai_triage.md.
+    # Provider credentials (api_key, headers) should be injected from a secret, not set here.
+    # ai:
+    #   enabled: false
+    #   endpoint: https://ai.example.com/v1/chat/completions
+    #   model: triage-model
+    #   timeout_seconds: 120
+    #   # Number of consumer threads per Howler process running the job system.
+    #   max_concurrent_jobs: 4
+    #   # Maximum alerts one action run can queue for basic and advanced/admin users.
+    #   max_hits_basic: 10
+    #   max_hits_advanced: 50
+    #   # Maximum UTF-8 bytes of system prompt plus serialized alert sent to the provider.
+    #   max_input_bytes: 200000
 
     # Names of application plugins to load at startup.
     plugins: []

@@ -135,7 +135,7 @@ The Python workflows in `.github/workflows/` are the source of truth for CI. To 
 
 - Root pre-commit hooks cover Ruff, Actionlint, oxfmt, changed-file oxlint/TypeScript checks, Poetry lock integrity, translation/import checks, and commit messages. Install with `pre-commit install` and run all hooks with `pre-commit run --all-files`.
 - Commit messages use the Conventional Commit types configured in `.release-please-config.json` and the commit-message hook. Valid scopes are `api`, `client`, `ui`, `ci`, `demo`, `helm`, `mcp`, `evidence`, `sentinel`, `sync`, and `main` (for Release Please titles); the hook links issue-like branch names and lowercases the summary.
-- GPG signing is broken in this environment. Whenever the agent creates a local commit, explicitly bypass signing for that invocation, e.g. `git -C <repo-or-worktree> -c commit.gpgsign=false commit ...`; never run bare `git commit` and do not change global or repository signing configuration.
+- Commits must be GPG-signed: the repository's push rules reject commits without verified signatures. Commit normally so the configured signing applies; never bypass it (for example with `-c commit.gpgsign=false` or `--no-gpg-sign`) and do not change global or repository signing configuration. If signing fails, stop and report the failure instead of creating an unsigned commit.
 - PR titles are semantic and their subjects must be lowercase; accepted types are defined in `.github/workflows/pr-title-check.yml`.
 - Release Please creates independent package release PRs from `main` and generates each package's `CHANGELOG.md`. Do not manually add new entries to `docs/RELEASES.md`; it is a read-only archive of historical releases. Keep each package's initial native baseline note and archive link in its local changelog.
 
@@ -151,7 +151,7 @@ The Python workflows in `.github/workflows/` are the source of truth for CI. To 
 - Open each large-task worktree as the active workspace for its implementation agent. OpenCode's project config uses `.worktrees` as the worktree parent; VS Code/Copilot should use worktree isolation when available or create the worktree explicitly. Agent model availability depends on host/plan; use the closest available host binding while keeping `.agents/agents/` as the role-instruction source of truth.
 - After large-task implementation checks pass, have the independent reviewer inspect the complete patch from the pinned base and report specific findings and evidence. Only after approval, generate a binary-capable patch from that agent worktree. Inspect its file list and run `git apply --check` from the primary working tree before applying it there. Apply approved patches sequentially; because ownership sets are disjoint, patches can share the original base, but stop if a check fails or any path overlaps. Do not merge agent branches into the primary branch. After all patches are applied, inspect the primary working tree diff and rerun the relevant package checks there.
 - Never hand-edit a lockfile during patch repair: assign each lockfile to one owner and use its package toolchain (Poetry within each Python package; pnpm in `ui/`), then generate and review a replacement patch. If a patch is rejected or fails to apply, do not force it; resolve the issue in the owning worktree, obtain a fresh adversarial review, and regenerate the patch. If root tests reveal integration-only issues, create a new scoped worktree from the current primary `HEAD` and repeat the review/apply cycle.
-- Agent branch commits may be used as local patch-generation checkpoints only after the reviewer approves; they are not merged. This environment's GPG signing makes a bare `git commit` fail: for every authorized agent-branch checkpoint, explicitly bypass signing for that invocation with `git -C <worktree> -c commit.gpgsign=false commit ...`. Do not change global/repository signing configuration. Applying patches changes only the primary working tree, not its branch history. Worktree/branch teardown, root commits, branch switches, pushes, and PR creation are separate actions: do them only when requested, verify named worktrees are clean before removal, and never force-remove or blanket-prune user work.
+- Agent branch commits may be used as local patch-generation checkpoints only after the reviewer approves; they are not merged. Checkpoint commits must be signed like any other commit (`git -C <worktree> commit ...`); never bypass signing. Applying patches changes only the primary working tree, not its branch history. Worktree/branch teardown, root commits, branch switches, pushes, and PR creation are separate actions: do them only when requested, verify named worktrees are clean before removal, and never force-remove or blanket-prune user work.
 - Model routing: GPT-6 Astra at high/xhigh for architecture and QA verification; GPT-6 Sol at high for orchestration and frontend/high-throughput tasks; GPT-6 Luna at xhigh (or the closest available high-reasoning implementation model) for implementation and tests. Review/resolution uses the active chat model unless the task calls for a different one. Host, plan, and model catalog may limit exact selection; use the closest enabled equivalent and do not claim an unavailable reasoning-effort setting was applied.
 - For large-task worktree workflows, use the portable helpers and workflow in `.agents/skills/howler-worktrees/` (available to OpenCode and skills-compatible Copilot hosts). The helpers validate names, keep the primary checkout on its current branch, generate scoped task manifests and reviewed patches, check patch applicability, and refuse unsafe teardown.
 
@@ -164,3 +164,17 @@ The Python workflows in `.github/workflows/` are the source of truth for CI. To 
 - Elasticsearch ILM maintenance must enumerate `index_list_full`, exclude `__reindex` temporary indexes, preserve source lifecycle metadata, and leave only the latest ILM index as the write target. Legacy aliases must be swapped atomically when creating indexes.
 - `SocketProvider.addListener` replaces a listener with the same key; case consumers must retain a stable per-instance suffix rather than keying only by case ID.
 - MCP process-wide async HTTP clients belong to the returned Starlette application's lifespan, not FastMCP's per-session lifespan; close only clients owned by the application.
+
+## Agent skills
+
+### Issue tracker
+
+Issues for Howler are tracked in GitHub Issues; use `gh` from this repository. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Triage uses `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Howler uses a single-context domain-doc layout with a root `GLOSSARY.md` and `docs/adr/`. See `docs/agents/domain.md`.

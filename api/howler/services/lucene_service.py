@@ -1,6 +1,7 @@
 import fnmatch
 import os
 import re
+import struct
 import sys
 from datetime import datetime, timedelta
 from hashlib import sha256
@@ -16,6 +17,9 @@ from howler.api import get_logger
 from howler.common.exceptions import InvalidDataException
 from howler.common.loader import datastore
 from howler.config import redis
+from howler.datastore.constants import NORMALIZER_MAPPING
+from howler.odm import Boolean, Float, Model, Text
+from howler.odm.models.hit import Hit
 from howler.remote.datatypes.hash import Hash
 from howler.utils.constants import TESTING
 from howler.utils.dict_utils import flatten_deep
@@ -24,6 +28,28 @@ from howler.utils.lucene import coerce, normalize_phrase, try_parse_date, try_pa
 logger = get_logger(__file__)
 
 TRANSPORT_TIMEOUT = int(os.environ.get("HWL_DATASTORE_TRANSPORT_TIMEOUT", "10"))
+
+CASE_INSENSITIVE_FIELD_TYPES = (
+    *(field_cls for field_cls, normalizer in NORMALIZER_MAPPING.items() if normalizer == "lowercase_normalizer"),
+    Boolean,
+    Text,
+)
+_HIT_FIELDS_CACHE: tuple[tuple[Any, ...], dict[str, Any]] | None = None
+
+
+def _get_hit_field(field_name: str) -> Any:
+    "Resolve an ODM field from the initialized Hit model, refreshing when namespaces change."
+    global _HIT_FIELDS_CACHE
+    hit_model = m if isinstance(m := datastore().ds.get_models().get("hit"), type) and issubclass(m, Model) else Hit
+    cache_key = (hit_model, *hit_model.fields().items())
+    if _HIT_FIELDS_CACHE is None or _HIT_FIELDS_CACHE[0] != cache_key:
+        _HIT_FIELDS_CACHE = (cache_key, hit_model.flat_fields())
+    return _HIT_FIELDS_CACHE[1].get(field_name)
+
+
+def is_case_insensitive_field(field_name: str) -> bool:
+    "Check whether an Elasticsearch Hit field performs case-insensitive matching."
+    return field_name == "__text__" or isinstance(_get_hit_field(field_name), CASE_INSENSITIVE_FIELD_TYPES)
 
 
 class LuceneProcessor(TreeVisitor):
@@ -78,21 +104,41 @@ class LuceneProcessor(TreeVisitor):
         yield any(results)
 
     @staticmethod
-    def __parse_range(low: str, value: Union[list[str], str], high: str) -> Any:
-        "Generate the low, value and high components of a range check, ensuring correct types"
-        if datetime_result := coerce(value, try_parse_date):
-            low_datetime_result = cast(Any, datetime.fromtimestamp(int(low) / 1000, tz=datetime_result.tzinfo))
+    def __to_float32(val: int | float) -> float:
+        "Round numbers to 32-bit IEEE 754 float precision to match Elasticsearch 'float' fields."
+        return struct.unpack("f", struct.pack("f", float(val)))[0]
 
-            high_datetime_result = datetime.fromtimestamp(int(high) / 1000, tz=datetime_result.tzinfo)
+    @staticmethod
+    def __extract_range_bound(bound: Any) -> str:
+        "Extract a string bound from a luqum Range endpoint, preserving negative signs parsed as Prohibit."
+        if isinstance(bound, Prohibit):
+            return f"-{LuceneProcessor.__extract_range_bound(bound.children[0])}"
+        return bound.value
+
+    @staticmethod
+    def __parse_range(low: str, value: Any, high: str, *, is_float32: bool = False) -> Any:
+        "Generate the low, value and high components of a range check, ensuring correct types"
+        datetime_result = coerce(value, try_parse_date)
+        if datetime_result is not None and datetime_result != []:
+            tz = datetime_result[0].tzinfo if isinstance(datetime_result, list) else datetime_result.tzinfo
+            low_datetime_result = cast(Any, datetime.fromtimestamp(int(low) / 1000, tz=tz))
+
+            high_datetime_result = datetime.fromtimestamp(int(high) / 1000, tz=tz)
             high_datetime_result += timedelta(milliseconds=1)
 
             return low_datetime_result, datetime_result, high_datetime_result
 
-        if number_result := coerce(value, try_parse_number):
+        number_result = coerce(value, try_parse_number)
+        if number_result is not None and number_result != []:
             low_number_result = coerce(low, try_parse_number)
             high_number_result = coerce(high, try_parse_number)
 
             if low_number_result is not None and high_number_result is not None:
+                if is_float32:
+                    low_number_result = LuceneProcessor.__to_float32(low_number_result)
+                    high_number_result = LuceneProcessor.__to_float32(high_number_result)
+                    number_result = coerce(number_result, LuceneProcessor.__to_float32)
+
                 return low_number_result, number_result, high_number_result
 
         try:
@@ -101,7 +147,8 @@ class LuceneProcessor(TreeVisitor):
         except ValueError:
             pass
 
-        if ip_result := coerce(value, try_parse_ip):
+        ip_result = coerce(value, try_parse_ip)
+        if ip_result is not None and ip_result != []:
             low_ip_result = coerce(low, try_parse_ip)
             high_ip_result = coerce(high, try_parse_ip)
 
@@ -118,7 +165,16 @@ class LuceneProcessor(TreeVisitor):
 
     def visit_range(self, node: Range, context: dict[str, Any]):
         "Handle range queries"
-        low, value, high = self.__parse_range(node.low.value, context["hit"].get(context["field"]), node.high.value)
+        if (raw_value := context["hit"].get(context["field"])) is None:
+            yield False
+            return
+
+        low, value, high = self.__parse_range(
+            self.__extract_range_bound(node.low),
+            raw_value,
+            self.__extract_range_bound(node.high),
+            is_float32=isinstance(_get_hit_field(context["field"]), Float),
+        )
 
         if isinstance(value, list):
             values = value
@@ -139,11 +195,10 @@ class LuceneProcessor(TreeVisitor):
         yield result
 
     @staticmethod
-    def __sanitize_value(value: str) -> str:
+    def __sanitize_value(value: str, *, expand_booleans: bool = False) -> str:
         "Sanitize the value we are validating against"
-        # True/False are shorthanded by elastic - convert back to True/False
-        sanitized_value = re.sub(r"^F$", r"False", value)
-        sanitized_value = re.sub(r"^T$", r"True", sanitized_value)
+        # True/False are shorthanded by elastic - convert back to True/False for boolean fields
+        sanitized_value = re.sub(r"^T$", r"True", re.sub(r"^F$", r"False", value)) if expand_booleans else value
 
         # For phrases, remove the encapsulating quotations
         sanitized_value = re.sub(r'"(.+)"', r"\1", sanitized_value)
@@ -159,27 +214,30 @@ class LuceneProcessor(TreeVisitor):
         return sanitized_value
 
     @staticmethod
-    def __build_candidates(value: Union[list[str], str], type: Union[Literal["phrase"], Literal["word"]]) -> list[str]:
-        candidates: list[str] = []
-        if isinstance(value, list):
-            for entry in value:
-                candidates += normalize_phrase(str(entry), type)
-        else:
-            candidates = normalize_phrase(str(value), type)
-
-        return candidates
+    def __build_candidates(
+        value: Any, type: Union[Literal["phrase"], Literal["word"]], *, case_insensitive: bool = False
+    ) -> list[str]:
+        entries = value if isinstance(value, list) else [value]
+        return [c for entry in entries for c in normalize_phrase(str(entry), type, case_insensitive=case_insensitive)]
 
     def __handle_word_or_phrase(self, node: Union[Phrase, Word], context: dict[str, Any]):
-        sanitized_value = self.__sanitize_value(node.value)
-
         if "field" not in context:
+            sanitized_value = self.__sanitize_value(node.value)
             yield any(value == sanitized_value for value in context["hit"].values())
         elif context["field"] == "_exists_":
             yield context["hit"].get(node.value) is not None
+        elif context["field"] == "*" and node.value == "*":
+            yield True
+        elif (raw_value := context["hit"].get(field_name := context["field"])) is None:
+            yield False
         else:
-            candidates = self.__build_candidates(context["hit"].get(context["field"]), context["term_type"])
-
-            yield len(fnmatch.filter(candidates, sanitized_value)) > 0
+            entries = raw_value if isinstance(raw_value, list) else [raw_value]
+            is_bool = isinstance(_get_hit_field(field_name), Boolean) or any(isinstance(e, bool) for e in entries)
+            sanitized_value = self.__sanitize_value(node.value, expand_booleans=is_bool)
+            if case_insensitive := is_case_insensitive_field(field_name):
+                sanitized_value = sanitized_value.lower()
+            candidates = self.__build_candidates(raw_value, context["term_type"], case_insensitive=case_insensitive)
+            yield any(fnmatch.fnmatchcase(candidate, sanitized_value) for candidate in candidates)
 
     def visit_word(self, node: Phrase, context: dict[str, Any]):
         "Handle words"

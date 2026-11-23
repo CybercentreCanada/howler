@@ -22,8 +22,102 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import redis
+from pydantic import BaseModel, ValidationError
+from pydantic_core import PydanticSerializationError
 
 from howler.remote.datatypes import decode, get_client, get_pool, now_as_iso, reply_queue_name, retry_call
+from howler.remote.datatypes.queues.named import NamedQueue, select
+
+
+class QueueJob(BaseModel):
+    name: str
+    count: int
+
+
+PAYLOAD = b'{"name":"job","count":2}'
+
+# Every way of reading from a queue, so each behaviour is checked against all of them.
+READERS = {
+    "blocking": lambda q: q.pop(timeout=1),
+    "nonblocking": lambda q: q.pop(blocking=False),
+    "peek": lambda q: q.peek_next(),
+    "batch": lambda q: q.pop_batch(2),
+    "select": lambda q: select(q, timeout=1),
+}
+
+
+@pytest.fixture
+def client(monkeypatch):
+    client = MagicMock()
+    monkeypatch.setattr("howler.remote.datatypes.queues.named.get_client", lambda *_args: client)
+    return client
+
+
+def load(client, operation, payload):
+    """Make every redis read primitive return `payload` (or nothing when it is None)."""
+    client.blpop.return_value = (b"test-jobs", payload) if payload else None
+    client.lpop.return_value = ([payload] if operation == "batch" else payload) if payload else None
+    client.lrange.return_value = [payload] if payload else []
+
+
+@pytest.mark.parametrize("operation", READERS)
+@pytest.mark.parametrize("typed", [True, False], ids=["model", "json"])
+def test_named_queue_decodes_with_constructor_model(client, operation, typed):
+    queue = NamedQueue("test-jobs", model=QueueJob if typed else None)
+    expected = QueueJob(name="job", count=2) if typed else {"name": "job", "count": 2}
+    load(client, operation, PAYLOAD)
+
+    result = READERS[operation](queue)
+
+    assert result == {"batch": [expected], "select": ("test-jobs", expected)}.get(operation, expected)
+
+
+@pytest.mark.parametrize("operation", READERS)
+def test_named_queue_empty_reads(client, operation):
+    load(client, operation, None)
+
+    assert READERS[operation](NamedQueue("test-jobs", model=QueueJob)) == ([] if operation == "batch" else None)
+
+
+@pytest.mark.parametrize("payload", [b"not-json", b'{"name":"job","count":"invalid"}', b'{"name":"job"}'])
+@pytest.mark.parametrize("operation", READERS)
+def test_named_queue_rejects_invalid_model_payloads(client, operation, payload):
+    load(client, operation, payload)
+
+    with pytest.raises(ValidationError):
+        READERS[operation](NamedQueue("test-jobs", model=QueueJob))
+
+
+@pytest.mark.parametrize("typed", [True, False], ids=["model", "json"])
+def test_named_queue_push_and_unpop_round_trip(client, typed):
+    queue = NamedQueue("test-jobs", ttl=60, model=QueueJob if typed else None)
+    jobs = [{"name": "first", "count": 1}, {"name": "second", "count": 2}]
+    items = [QueueJob(**job) for job in jobs] if typed else jobs
+
+    queue.push(*items)
+    queue.unpop(*items)
+
+    assert [json.loads(p) for p in client.rpush.call_args.args[1:]] == jobs
+    assert [json.loads(c.args[1]) for c in client.lpush.call_args_list] == jobs
+    client.lpop.return_value = [p.encode() for p in client.rpush.call_args.args[1:]]
+    assert queue.pop_batch(2) == items
+
+
+def test_named_queue_rejects_wrong_model_before_push(client):
+    with pytest.raises(PydanticSerializationError):
+        NamedQueue("test-jobs", model=QueueJob).push("not a job")
+
+    client.rpush.assert_not_called()
+
+
+def test_named_queue_select_uses_selected_queue_model(client):
+    client.blpop.return_value = (b"test-jobs", PAYLOAD)
+
+    assert select(NamedQueue("plain-json"), NamedQueue("test-jobs", model=QueueJob)) == (
+        "test-jobs",
+        QueueJob(name="job", count=2),
+    )
+
 
 # ---------------------------------------------------------------------------
 # now_as_iso

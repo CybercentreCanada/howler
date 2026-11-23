@@ -1,4 +1,3 @@
-import json
 from contextlib import closing
 from itertools import islice
 
@@ -11,7 +10,6 @@ from howler.api.v1.utils.etag import add_etag
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
-from howler.common.logging.audit import audit
 from howler.common.swagger import generate_swagger_docs
 from howler.config import CLASSIFICATION
 from howler.odm.models.action import Action
@@ -295,43 +293,15 @@ def execute_action(id: str, **kwargs) -> Response:
     if not isinstance(execute_req, dict):
         return bad_request(err="Incorrect data structure!")
 
-    action = datastore().action.get(id)
-    if not action:
+    reports = action_service.execute_saved_action(
+        id,
+        query_override=execute_req.get("query"),
+        request_id=execute_req.get("request_id"),
+        user=kwargs.get("user"),
+        audit_fn=execute_action,
+    )
+    if reports is None:
         return not_found(err="The specified action does not exist")
-
-    reports: dict[str, list[dict]] = {}
-    current_user: User | None = kwargs.get("user", None)
-
-    for operation in action.operations:
-        op_data = json.loads(operation.data_json) if operation.data_json else {}
-
-        query = execute_req.get("query", action.query) or action.query
-
-        audit(
-            [],
-            {
-                **kwargs,
-                "query": query,
-                "operation_id": operation.operation_id,
-                **op_data,
-            },
-            current_user["uname"] if current_user is not None else "unknown",
-            current_user,
-            execute_action,
-        )
-
-        report = actions.execute(
-            operation_id=operation.operation_id,
-            request_id=execute_req["request_id"],
-            query=query,
-            user=current_user,
-            **op_data,
-        )
-
-        if operation.operation_id not in reports:
-            reports[operation.operation_id] = []
-
-        reports[operation.operation_id].extend(report)
 
     return ok(reports)
 
@@ -400,44 +370,15 @@ def execute_operations(**kwargs) -> Response:
     }
     """
     execute_req = request.json
-    if not isinstance(execute_req, dict):
-        return bad_request(err="Incorrect data structure!")
+    if error := action_service.validate_execute_request(execute_req):
+        return error
 
-    reports: dict[str, list[dict]] = {}
-    current_user: User | None = kwargs.get("user", None)
-    operations = execute_req["operations"]
-
-    operation_ids = [o["operation_id"] for o in operations]
-    if len(operation_ids) != len(set(operation_ids)):
-        return bad_request(err="You must have a maximum of one operation of each type in request.")
-
-    for operation in operations:
-        op_data = json.loads(operation["data_json"])
-
-        audit(
-            [],
-            {
-                **kwargs,
-                "query": execute_req["query"],
-                "operation_id": operation["operation_id"],
-                **op_data,
-            },
-            current_user["uname"] if current_user is not None else "unknown",
-            current_user,
-            execute_operations,
-        )
-
-        report = actions.execute(
-            operation_id=operation["operation_id"],
-            request_id=execute_req["request_id"],
-            query=execute_req["query"],
-            user=current_user,
-            **op_data,
-        )
-
-        if operation["operation_id"] not in reports:
-            reports[operation["operation_id"]] = []
-
-        reports[operation["operation_id"]].extend(report)
+    reports = action_service.execute_operations(
+        execute_req["query"],
+        execute_req.get("request_id"),
+        execute_req["operations"],
+        kwargs.get("user"),
+        audit_fn=execute_operations,
+    )
 
     return ok(reports)

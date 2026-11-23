@@ -1,9 +1,16 @@
 import os
 from pathlib import Path
+from types import ModuleType, SimpleNamespace
+from typing import Annotated, Literal
 from unittest.mock import patch
 
-from howler.actions import execute, specifications
+import pytest
+from pydantic import Field, ValidationError
+
+from howler.actions import _load_specification, ai_triage, check_hit_limit, execute, specifications
+from howler.actions.models import DISPATCHER_ARGUMENTS, ActionArguments, ActionSpecification, ActionStep
 from howler.config import config
+from howler.odm.models.howler_data import HitStatusTransition
 from howler.odm.models.user import User
 from howler.odm.randomizer import random_model_obj
 
@@ -20,12 +27,14 @@ def test_specifications():
     files: list[Path] = []
 
     for folder in folders:
-        files += list(path for path in folder.glob("*.py") if path.stem != "__init__")
+        files += list(path for path in folder.glob("*.py") if path.stem not in ("__init__", "models"))
 
-    # We ignore the example action, which isn't included in the list of valid actions
-    assert len(result) == len(files) - 1
+    # The example action is excluded, and locally unavailable actions are not advertised.
+    expected_ids = {f.stem for f in files if f.stem != "example_plugin"}
+    if not ai_triage.is_available():
+        expected_ids.discard(ai_triage.OPERATION_ID)
 
-    assert sorted([data["id"] for data in result]) == sorted([f.stem for f in files if f.stem != "example_plugin"])
+    assert {data["id"] for data in result} == expected_ids
 
 
 def test_execute_bad_plugin():
@@ -62,6 +71,290 @@ def test_execute_missing_roles():
     assert result["outcome"] == "error"
     assert result["title"] == "Insufficient permissions"
     assert result["message"].startswith("The operation ID provided (add_label) requires permissions you do not have")
+
+
+@patch("howler.actions.datastore")
+@patch("howler.actions.add_label.execute")
+def test_execute_rejects_extra_arguments(mock_execute, mock_datastore):
+    user: User = random_model_obj(User)
+    user.type = ["actionrunner_basic"]
+
+    for extra_kwargs, expected_message in [
+        ({"===": "unexpected"}, "===: Extra inputs are not permitted (received 'unexpected')"),
+        ({"arguments": 42}, "arguments: Extra inputs are not permitted (received 42)"),
+    ]:
+        result = execute(
+            "add_label",
+            "howler.id:*",
+            user=user,
+            category="generic",
+            label="test",
+            **extra_kwargs,
+        )
+        assert result == [
+            {
+                "query": "(howler.id:*)",
+                "outcome": "error",
+                "title": "Invalid Arguments",
+                "message": expected_message,
+            }
+        ]
+
+    mock_execute.assert_not_called()
+    mock_datastore.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("transition_name", "extra_kwargs", "expected_escalation"),
+    [
+        ("demote", {"escalation": "alert"}, "alert"),
+        ("promote", {"escalation": ""}, "alert"),
+        ("demote", {"escalation": None}, "hit"),
+    ],
+)
+@patch("howler.actions.transition.datastore")
+@patch("howler.actions.datastore")
+@patch("howler.actions.transition.hit_service.transition_hit")
+def test_execute_transition_escalation_handling(
+    mock_transition_hit,
+    mock_action_datastore,
+    mock_transition_datastore,
+    transition_name,
+    extra_kwargs,
+    expected_escalation,
+):
+    user: User = random_model_obj(User)
+    user.type = ["admin"]
+    hit_id = "stored-transition-hit"
+    mock_action_datastore.return_value.hit.search.return_value = {"total": 1}
+    mock_transition_datastore.return_value.hit.search.side_effect = [
+        {"total": 1, "items": [SimpleNamespace(howler=SimpleNamespace(id=hit_id))]},
+        {"total": 0},
+    ]
+
+    result = execute(
+        "transition",
+        "howler.id:*",
+        user=user,
+        status="in-progress",
+        transition=transition_name,
+        **extra_kwargs,
+    )
+
+    assert result[0]["outcome"] == "success"
+    mock_transition_hit.assert_called_once_with(
+        hit_id,
+        HitStatusTransition(transition_name),
+        user,
+        escalation=expected_escalation,
+    )
+
+
+@patch("howler.actions.datastore")
+@patch("howler.actions.add_label.execute")
+def test_execute_does_not_forward_auth_token_without_opt_in(mock_execute, mock_datastore):
+    user: User = random_model_obj(User)
+    user.type = ["actionrunner_basic"]
+    mock_execute.return_value = []
+    mock_datastore.return_value.hit.search.return_value = {"total": 1}
+
+    result = execute(
+        "add_label",
+        "howler.id:*",
+        user=user,
+        category="generic",
+        label="kept",
+        auth_token="plugin-token",
+    )
+
+    assert result == []
+    mock_execute.assert_called_once_with(
+        query="howler.id:*",
+        request_id=None,
+        user=user,
+        category="generic",
+        label="kept",
+    )
+
+
+def test_legacy_specification_loads_warns_once_and_forbids_extras(caplog):
+    legacy_module = ModuleType("legacy_plugin_op")
+    legacy_module.OPERATION_ID = "legacy_plugin_op"  # type: ignore[attr-defined]
+    legacy_module.specification = lambda: {  # type: ignore[attr-defined]
+        "id": "legacy_plugin_op",
+        "title": "Legacy",
+        "description": {"short": "Legacy plugin operation"},
+        "roles": ["admin"],
+        "steps": [
+            {"args": {}, "options": {}, "validation": {}},
+            {"args": {"plugin_value": [], "conditional_value": ["plugin_value:enabled"]}},
+        ],
+    }
+
+    specification = _load_specification(legacy_module)
+    assert _load_specification(legacy_module) is specification
+    assert caplog.text.count("legacy_plugin_op returns a dict specification") == 1
+    assert set(specification.arguments.model_fields) == {"plugin_value", "conditional_value"}
+    assert specification.validate_arguments({"plugin_value": "enabled"}).model_dump(exclude_unset=True) == {
+        "plugin_value": "enabled"
+    }
+
+    for extra_key in ("undeclared", *sorted(DISPATCHER_ARGUMENTS)):
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            specification.validate_arguments({"plugin_value": "enabled", extra_key: "not permitted"})
+
+
+@pytest.mark.parametrize("typed_step", [False, True])
+def test_legacy_specification_infers_optional_arguments(typed_step):
+    step = {"args": {}, "optional_args": ["prompt"], "options": {"prompt": ["Summarize"]}}
+    specification = ActionSpecification.from_legacy(
+        {
+            "id": "legacy-optional",
+            "title": "Legacy optional argument",
+            "description": {"short": "Legacy plugin operation"},
+            "roles": ["admin"],
+            "steps": [ActionStep.model_validate(step) if typed_step else step],
+        }
+    )
+
+    assert specification.to_ui_dict()["steps"] == [step]
+    assert specification.validate_arguments({}).model_dump(exclude_unset=True) == {}
+    assert specification.validate_arguments({"prompt": "Summarize"}).model_dump(exclude_unset=True) == {
+        "prompt": "Summarize"
+    }
+
+
+@pytest.mark.parametrize("model_options", [{}, {"arguments": None}, {"arguments": ActionArguments}])
+def test_argument_free_specification(model_options):
+    specification = ActionSpecification.model_validate(
+        {
+            "id": "no-arguments",
+            "title": "No arguments",
+            "description": {"short": "Operation without arguments"},
+            "roles": ["admin"],
+            **model_options,
+        }
+    )
+
+    assert specification.arguments is ActionArguments
+    assert specification.validate_arguments({}).model_dump() == {}
+    assert specification.to_ui_dict()["steps"] == []
+    assert "arguments" not in specification.to_ui_dict()
+
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        specification.validate_arguments({"unexpected": "not permitted"})
+
+
+def test_specification_model_invariants():
+    for reserved in sorted(DISPATCHER_ARGUMENTS):
+        with pytest.raises(ValidationError, match="declares reserved argument"):
+            ActionSpecification.from_legacy(
+                {
+                    "id": "legacy",
+                    "title": "Legacy",
+                    "description": {"short": "Legacy"},
+                    "roles": ["admin"],
+                    "steps": [{"args": {reserved: []}}],
+                }
+            )
+
+    with pytest.raises(ValidationError, match="Step argument\\(s\\) missing from the arguments model"):
+        ActionSpecification.model_validate(
+            {
+                "id": "missing-model",
+                "title": "Missing model",
+                "description": {"short": "Step requires an argument model"},
+                "roles": ["admin"],
+                "steps": [{"args": {"value": []}}],
+            }
+        )
+
+    class HiddenArguments(ActionArguments):
+        hidden: str
+
+    with pytest.raises(ValidationError, match="not included in any step"):
+        ActionSpecification(
+            id="hidden-arg",
+            title="Hidden arg",
+            description={"short": "Hidden arg"},
+            roles=["admin"],
+            arguments=HiddenArguments,
+        )
+
+    with pytest.raises(ValidationError, match="Options are provided for 'other'"):
+        ActionStep(args={"count": []}, options={"other": ["1"]})
+
+
+@pytest.mark.parametrize(
+    ("conditions", "options", "error"),
+    [
+        (["mode:enabled"], ["1", "2"], None),
+        (["mode:enabled"], {"mode:enabled": ["1"]}, None),
+        (["mode"], [], "must be in the form"),
+        (["unknown:enabled"], [], "must be in the form"),
+        (["mode:invalid"], [], "'invalid' is offered for 'mode' but is invalid"),
+        (["count:0"], [], "'0' is offered for 'count' but is invalid"),
+        ([], ["0"], "'0' is offered for 'count' but is invalid"),
+        ([], {"unknown:enabled": ["1"]}, "must be in the form"),
+        ([], {"mode:invalid": ["1"]}, "'invalid' is offered for 'mode' but is invalid"),
+        ([], {"mode:enabled": ["0"]}, "'0' is offered for 'count' but is invalid"),
+    ],
+)
+def test_action_step_validates_against_specification_arguments(conditions, options, error):
+    class StepArguments(ActionArguments):
+        mode: Literal["enabled", "disabled"]
+        count: Annotated[int, Field(gt=0)]
+
+    step = {"args": {"count": conditions}, "options": {"count": options}}
+    specification = {
+        "id": "step-validation",
+        "title": "Step validation",
+        "description": {"short": "Validate action steps"},
+        "roles": ["admin"],
+        "arguments": StepArguments,
+        "steps": [{"args": {"mode": []}}, step],
+    }
+
+    if error is not None:
+        with pytest.raises(ValidationError, match=error):
+            ActionSpecification.model_validate(specification)
+    else:
+        result = ActionSpecification.model_validate(specification)
+        assert result.to_ui_dict()["steps"][1] == step
+
+
+@pytest.mark.parametrize(
+    ("options", "error"),
+    [
+        (["chosen"], None),
+        ({"mode:enabled": ["chosen"]}, None),
+        (["invalid"], "'invalid' is offered for 'choice' but is invalid"),
+        ({"mode:enabled": ["invalid"]}, "'invalid' is offered for 'choice' but is invalid"),
+        ({"unknown:enabled": ["chosen"]}, "must be in the form"),
+    ],
+)
+def test_optional_argument_options_validate_against_the_specification(options, error):
+    class StepArguments(ActionArguments):
+        mode: Literal["enabled", "disabled"]
+        choice: Literal["chosen", "other"] | None = None
+
+    step = {"args": {"mode": []}, "optional_args": ["choice"], "options": {"choice": options}}
+    specification = {
+        "id": "optional-options",
+        "title": "Optional options",
+        "description": {"short": "Validate options for an optional argument"},
+        "roles": ["admin"],
+        "arguments": StepArguments,
+        "steps": [step],
+    }
+
+    if error is not None:
+        with pytest.raises(ValidationError, match=error):
+            ActionSpecification.model_validate(specification)
+    else:
+        result = ActionSpecification.model_validate(specification)
+        assert result.to_ui_dict()["steps"][0] == step
+        assert result.validate_arguments({"mode": "enabled"}).choice is None
 
 
 @patch("howler.actions.datastore")
@@ -155,3 +448,14 @@ def test_execute_user_with_both_basic_and_advanced_roles(mock_ds, mock_add_label
 
     # Should use advanced limit, so 50 hits should be allowed
     assert all(r["title"] != "Hit limit exceeded" for r in result)
+
+
+@patch("howler.actions.datastore")
+def test_check_hit_limit_preserves_default_unfiltered_call(mock_ds):
+    """Non-AI actions keep the existing count-search arguments when no ACL is passed."""
+    user: User = random_model_obj(User)
+    mock_ds.return_value.hit.search.return_value = {"total": 0}
+
+    assert check_hit_limit("howler.id:*", user, 10, 100) is None
+
+    mock_ds.return_value.hit.search.assert_called_once_with("howler.id:*", rows=0)

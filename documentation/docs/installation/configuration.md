@@ -14,6 +14,9 @@ with the HWL_ prefix.
 Environment variables use double underscores (__) for nested properties.
 For example: HWL_DATASTORE__TYPE=elasticsearch
 
+For provider configuration and security guidance for the optional AI triage
+integration, see [AI Triage](ai_triage.md).
+
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
 | `auth` | [`Auth`](#auth) | Authentication configuration for Howler.      Configures all authentication methods supported by Howler, including     internal username/password authentication and OAuth providers. Also     controls API key settings and restrictions.      | :material-checkbox-marked-outline: Yes | See [Auth](#auth) for details. |

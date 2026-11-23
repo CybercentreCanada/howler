@@ -390,6 +390,19 @@ client.hit.overwrite(
 )
 ```
 
+#### Adding and Removing Labels
+
+Use the dedicated label methods with a label set (for example, `generic`) and either a string or a list of strings.
+Both methods return the updated hit.
+
+```python
+updated_hit = client.hit.add_label(hit_id, "generic", ["reviewed", "triaged"])
+updated_hit = client.hit.remove_label(hit_id, "generic", "reviewed", refresh="wait_for")
+```
+
+Adding a label that is already in the set raises `ClientError` (400). A missing hit or unknown label set raises
+`ClientError` (404).
+
 #### Transactional Updates (For Bulk Operations)
 
 For more complex scenarios like bulk updates or atomic operations (increment, append, etc.), use `client.hit.update()`:

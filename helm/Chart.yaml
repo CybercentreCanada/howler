@@ -14,7 +14,7 @@ type: application
 
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
-version: 0.1.40
+version: 0.1.41
 
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application.
@@ -22,21 +22,21 @@ appVersion: 1.17.0
 
 dependencies:
   - name: common
-    repository: https://charts.bitnami.com/bitnami
+    repository: oci://registry-1.docker.io/bitnamicharts
     tags:
       - bitnami-common
-    version: 2.x.x
+    version: 2.36.0
   - name: redis
-    repository: https://charts.bitnami.com/bitnami
+    repository: oci://registry-1.docker.io/bitnamicharts
     tags:
       - bitnami-common
-    version: 17.3.5
+    version: 25.2.0
     alias: redis-persistent
     condition: redis-persistent.enabled
   - name: redis
-    repository: https://charts.bitnami.com/bitnami
+    repository: oci://registry-1.docker.io/bitnamicharts
     tags:
       - bitnami-common
-    version: 17.3.5
+    version: 25.2.0
     alias: redis-nonpersistent
     condition: redis-nonpersistent.enabled

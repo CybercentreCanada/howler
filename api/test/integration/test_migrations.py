@@ -1,11 +1,13 @@
 """Integration coverage for explicit datastore migrations against Elasticsearch."""
 
+import json
 import random
 import string
 from types import SimpleNamespace
 
 import pytest
 
+from howler.datastore.migrations.action_arguments import ActionArgumentsMigration
 from howler.datastore.migrations.action_owner import ActionOwnerMigration
 from howler.datastore.migrations.runner import run_migrations
 from howler.datastore.store import ESStore
@@ -101,3 +103,46 @@ def test_action_owner_migration_records_zero_matching_documents(migration_datast
     record = datastore.migration.get_if_exists(migration.migration_id, as_obj=False)
     assert record["status"] == "applied"
     assert record["affected_documents"] == 0
+
+
+def test_action_arguments_migration_cleans_raw_documents_and_is_idempotent(migration_datastore, caplog):
+    datastore = migration_datastore
+    documents = {
+        "migrated-action": {
+            "operations": [
+                {
+                    "operation_id": "add_label",
+                    "data_json": json.dumps(
+                        {"category": "generic", "label": "kept", "obsolete": "removed", "query": "spoofed"}
+                    ),
+                },
+                {"operation_id": "transition", "data_json": '{"status":"open","transition":"promote"}'},
+            ]
+        },
+        "untouched-action": {
+            "operations": [
+                {"operation_id": "disabled_plugin", "data_json": '{"query":"preserved"}'},
+                {"operation_id": "add_label", "data_json": "{"},
+            ]
+        },
+    }
+    for document_id, source in documents.items():
+        datastore.action.datastore.client.index(
+            index=datastore.action.name,
+            id=document_id,
+            document=source,
+            refresh="wait_for",
+        )
+
+    migration = ActionArgumentsMigration()
+    assert migration.run(datastore) == 1
+    assert migration.run(datastore) == 0
+
+    migrated = _raw_document(datastore.action, "migrated-action")["operations"]
+    assert json.loads(migrated[0]["data_json"]) == {"category": "generic", "label": "kept"}
+    assert json.loads(migrated[1]["data_json"]) == {"status": "open", "transition": "promote", "escalation": "alert"}
+    assert (
+        _raw_document(datastore.action, "untouched-action")["operations"] == documents["untouched-action"]["operations"]
+    )
+    assert "unknown or disabled" in caplog.text
+    assert "data_json must be valid JSON" in caplog.text
