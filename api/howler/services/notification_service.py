@@ -33,7 +33,7 @@ def create_analytic_comment_notification(analytic_id: str, actor: str) -> Notifi
             "resource_id": analytic.analytic_id,
             "resource_name": analytic.name,
             "message": f"{actor} commented on your analytic {analytic.name}.",
-            "url": f"/analytics/{analytic.analytic_id}",
+            "url_path": f"/analytics/{analytic.analytic_id}",
         }
     )
 

@@ -197,7 +197,7 @@ const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnre
               key={notification.notification_id}
               id={`notification-${notification.notification_id}`}
               component={Link}
-              to={notification.url ?? `/analytics/${notification.resource_id}`}
+              to={notification.url_path ?? `/analytics/${notification.resource_id}`}
               onClick={onClose}
               sx={itemSx}
             >

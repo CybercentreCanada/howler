@@ -95,7 +95,7 @@ def get_user_notifications(user: User, offset: int = 0, rows: int = 25, **kwargs
                 "resource_id": "d23e8c2d-0f09-4a60-a50d-aac7db97b10a",
                 "resource_name": "Suspicious Login",
                 "message": "analyst commented on your analytic Suspicious Login.",
-                "url": "/analytics/d23e8c2d-0f09-4a60-a50d-aac7db97b10a",
+                "url_path": "/analytics/d23e8c2d-0f09-4a60-a50d-aac7db97b10a",
                 "created": "2026-11-06T14:00:00.000000Z",
                 "read": false
             }
@@ -140,7 +140,7 @@ def mark_notification_read(notification_id: str, user: User, **kwargs):
         "resource_id": "d23e8c2d-0f09-4a60-a50d-aac7db97b10a",
         "resource_name": "Suspicious Login",
         "message": "analyst commented on your analytic Suspicious Login.",
-        "url": "/analytics/d23e8c2d-0f09-4a60-a50d-aac7db97b10a",
+        "url_path": "/analytics/d23e8c2d-0f09-4a60-a50d-aac7db97b10a",
         "created": "2026-11-06T14:00:00.000000Z",
         "read": false
     }

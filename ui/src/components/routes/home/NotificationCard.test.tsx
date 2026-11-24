@@ -50,7 +50,7 @@ const notification = (id: string, name: string, read = false) => ({
   sender: 'analyst',
   resource_name: name,
   message: `analyst commented on your analytic ${name}.`,
-  url: `/analytics/analytic-${id}`,
+  url_path: `/analytics/analytic-${id}`,
   created: new Date().toISOString(),
   read
 });

@@ -10,7 +10,7 @@ export interface Notification {
   sender: string;
   resource_name: string;
   message: string;
-  url?: string;
+  url_path?: string;
   created: string;
   read: boolean;
 }

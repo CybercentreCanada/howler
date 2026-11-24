@@ -195,7 +195,7 @@ class TestCreateAnalyticCommentNotification:
         assert notification.read is False
         assert notification.resource_id == "a7c2f1f0-2f43-4d2b-9b4c-2c7e9f6d1e11"
         assert notification.resource_name == "Suspicious Login"
-        assert notification.url == "/analytics/a7c2f1f0-2f43-4d2b-9b4c-2c7e9f6d1e11"
+        assert notification.url_path == "/analytics/a7c2f1f0-2f43-4d2b-9b4c-2c7e9f6d1e11"
         datastore_instance.analytic.get_if_exists.assert_called_once_with("id", as_obj=True)
         datastore_instance.notification.save.assert_called_once_with(notification.notification_id, notification)
         mock_comms.emit.assert_called_once_with("notification", notification.as_primitives())
