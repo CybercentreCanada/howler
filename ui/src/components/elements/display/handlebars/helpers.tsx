@@ -389,9 +389,22 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             if (isNil(str) || isNil(searchValue) || isNil(replaceValue)) {
               throw new HowlerHelperError('Replace expects three arguments');
             }
-            return str.toString().replaceAll(searchValue ?? '', replaceValue ?? '');
+            // Handlebars string literals don't process escape sequences, so "\n" arrives as a backslash and an "n"
+            const unescape = (value: any) =>
+              value
+                .toString()
+                .replace(/\\([nrt])/g, (_: string, char: string) => ({ n: '\n', r: '\r', t: '\t' })[char]);
+
+            const search = unescape(searchValue);
+            let source = str.toString();
+
+            if (search.includes('\n')) {
+              source = source.replaceAll('\r\n', '\n');
+            }
+
+            return source.replaceAll(search, unescape(replaceValue));
           },
-          hint: 'Usage: {{replace str searchValue replaceValue}}'
+          hint: 'Usage: {{replace str searchValue replaceValue}}. Use "\\n", "\\r" and "\\t" to match newlines and tabs'
         },
 
         ...howlerPluginStore.plugins.flatMap(plugin => pluginStore.executeFunction(`${plugin}.helpers`) as HowlerHelper)

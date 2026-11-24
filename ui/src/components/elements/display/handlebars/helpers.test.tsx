@@ -86,6 +86,9 @@ describe('handlebars helpers', () => {
     expect(helperMap.entries.callback?.({ a: 1 }, options)).toEqual([{ key: 'a', value: 1 }]);
     expect(String(helperMap.entries.callback?.(null, options))).toBe('Invalid Object.');
     expect(helperMap.replace.callback?.('alpha beta', 'beta', 'gamma', options)).toBe('alpha gamma');
+    expect(helperMap.replace.callback?.('a\nb\r\nc', '\\n', '<br>', options)).toBe('a<br>b<br>c');
+    expect(helperMap.replace.callback?.('a|b', '|', '\\|', options)).toBe('a\\|b');
+    expect(helperMap.replace.callback?.('a b', ' ', '\\t', options)).toBe('a\tb');
     expect(() => helperMap.replace.callback?.('alpha', undefined, 'x', options)).toThrow(
       'Replace expects three arguments'
     );
