@@ -19,7 +19,7 @@ vi.mock('api', () => ({
       notification: {
         get: (...args: unknown[]) => mockGetUserNotifications(...args),
         read: {
-          post: (...args: unknown[]) => mockMarkRead(...args)
+          put: (...args: unknown[]) => mockMarkRead(...args)
         },
         del: (...args: unknown[]) => mockDelete(...args)
       }

@@ -54,7 +54,7 @@ const NotificationCard: FC<NotificationCardProps> = ({ anchorEl, onClose, onUnre
       setPending(current => new Set(current).add(id));
 
       try {
-        await dispatchApi(api.v2.notification.read.post(id, read));
+        await dispatchApi(api.v2.notification.read.put(id, read));
         setNotifications(current => current.map(entry => (entry.notification_id === id ? { ...entry, read } : entry)));
         onUnreadChange?.(current => (read ? Math.max(current - 1, 0) : current + 1));
       } catch {

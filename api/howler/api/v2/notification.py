@@ -113,10 +113,12 @@ def get_user_notifications(user: User, offset: int = 0, rows: int = 25, **kwargs
 
 
 @generate_swagger_docs()
-@notification_api.route("/<notification_id>/read", methods=["POST"])
+@notification_api.route("/<notification_id>/read", methods=["PUT"])
 @api_login(required_priv=["W"])
 def mark_notification_read(notification_id: str, user: User, **kwargs):
-    """Mark one of the authenticated user's notifications as read or unread.
+    """Set the read state of one of the authenticated user's notifications.
+
+    Setting a notification to the read state it already has makes no changes.
 
     Variables:
     notification_id => The ID of the notification to update.
@@ -126,7 +128,7 @@ def mark_notification_read(notification_id: str, user: User, **kwargs):
 
     Data Block:
     {
-        "read": false       # Read state to set (optional, defaults to true)
+        "read": false       # Read state to set (required)
     }
 
     Result Example:
@@ -144,14 +146,12 @@ def mark_notification_read(notification_id: str, user: User, **kwargs):
     }
     """
     req_data = request.get_json(silent=True)
-    if req_data is None:
-        req_data = {}
     if not isinstance(req_data, dict):
-        return bad_request(err="Request body must be an object.")
+        return bad_request(err="Request body is required.")
 
-    read = req_data.get("read", True)
+    read = req_data.get("read")
     if not isinstance(read, bool):
-        return bad_request(err="'read' must be a boolean.")
+        return bad_request(err="'read' is required and must be a boolean.")
 
     try:
         return ok(notification_service.mark_notification_read(notification_id, user.uname, read=read))

@@ -1,10 +1,10 @@
 /// <reference types="vitest" />
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockHpost = vi.hoisted(() => vi.fn());
+const mockHput = vi.hoisted(() => vi.fn());
 
 vi.mock('api', () => ({
-  hpost: mockHpost,
+  hput: mockHput,
   joinAllUri: (...parts: string[]) => parts.join('/')
 }));
 
@@ -12,11 +12,11 @@ vi.mock('api/v2/notification', () => ({
   uri: () => '/api/v2/notification'
 }));
 
-import { post, uri } from './read';
+import { put, uri } from './read';
 
 describe('notification read API', () => {
   beforeEach(() => {
-    mockHpost.mockReset();
+    mockHput.mockReset();
   });
 
   it('builds the read URI for a notification', () => {
@@ -24,14 +24,14 @@ describe('notification read API', () => {
   });
 
   it('marks the notification as read', () => {
-    post('n-1');
+    put('n-1', true);
 
-    expect(mockHpost).toHaveBeenCalledWith('/api/v2/notification/n-1/read', { read: true });
+    expect(mockHput).toHaveBeenCalledWith('/api/v2/notification/n-1/read', { read: true });
   });
 
   it('marks the notification as unread', () => {
-    post('n-1', false);
+    put('n-1', false);
 
-    expect(mockHpost).toHaveBeenCalledWith('/api/v2/notification/n-1/read', { read: false });
+    expect(mockHput).toHaveBeenCalledWith('/api/v2/notification/n-1/read', { read: false });
   });
 });

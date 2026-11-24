@@ -168,7 +168,7 @@ class TestGetUserNotificationsEndpoint:
 
 
 class TestMarkNotificationReadEndpoint:
-    """Tests for POST /api/v2/notification/<id>/read."""
+    """Tests for PUT /api/v2/notification/<id>/read."""
 
     @patch("howler.api.QUOTA_TRACKER")
     @patch("howler.security.login.QUOTA_TRACKER")
@@ -182,7 +182,10 @@ class TestMarkNotificationReadEndpoint:
         mock_notification_service.mark_notification_read.return_value = {"notification_id": "n-1", "read": True}
 
         with request_context.test_request_context(
-            method="POST", path="/api/v2/notification/n-1/read", headers={"Authorization": "Bearer token"}
+            method="PUT",
+            path="/api/v2/notification/n-1/read",
+            headers={"Authorization": "Bearer token"},
+            json={"read": True},
         ):
             from howler.api.v2.notification import mark_notification_read
 
@@ -211,7 +214,7 @@ class TestMarkNotificationReadEndpoint:
         mock_notification_service.mark_notification_read.return_value = {"notification_id": "n-1", "read": read}
 
         with request_context.test_request_context(
-            method="POST",
+            method="PUT",
             path="/api/v2/notification/n-1/read",
             headers={"Authorization": "Bearer token"},
             json={"read": read},
@@ -223,7 +226,7 @@ class TestMarkNotificationReadEndpoint:
         assert result.status_code == 200
         mock_notification_service.mark_notification_read.assert_called_once_with("n-1", "authenticated-user", read=read)
 
-    @pytest.mark.parametrize("body", [{"read": "false"}, {"read": 0}, ["read"]])
+    @pytest.mark.parametrize("body", [None, {}, {"read": "false"}, {"read": 0}, ["read"]])
     @patch("howler.api.QUOTA_TRACKER")
     @patch("howler.security.login.QUOTA_TRACKER")
     @patch("howler.security.login.auth_service")
@@ -241,7 +244,7 @@ class TestMarkNotificationReadEndpoint:
         mock_login_quota.begin.return_value = True
 
         with request_context.test_request_context(
-            method="POST",
+            method="PUT",
             path="/api/v2/notification/n-1/read",
             headers={"Authorization": "Bearer token"},
             json=body,
@@ -276,7 +279,10 @@ class TestMarkNotificationReadEndpoint:
         mock_notification_service.mark_notification_read.side_effect = error
 
         with request_context.test_request_context(
-            method="POST", path="/api/v2/notification/n-1/read", headers={"Authorization": "Bearer token"}
+            method="PUT",
+            path="/api/v2/notification/n-1/read",
+            headers={"Authorization": "Bearer token"},
+            json={"read": True},
         ):
             from howler.api.v2.notification import mark_notification_read
 
