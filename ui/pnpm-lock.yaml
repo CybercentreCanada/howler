@@ -1029,13 +1029,6 @@ packages:
       react: '>= 15'
       react-dom: '>= 15'
 
-  '@microlink/react-json-view@1.31.51':
-    resolution: {integrity: sha512-rWmxKwSiVsvbHXo7iHA5ht1Z+PBw13NhJ5UNHMXx22baJgLkFuSFzmnnjlrUce2SAbRh7tfh79gzSL0JRz9y6g==}
-    engines: {node: '>=17'}
-    peerDependencies:
-      react: '>= 15'
-      react-dom: '>= 15'
-
   '@microsoft/api-extractor-model@7.31.3':
     resolution: {integrity: sha512-dv4quQI46p0U03TCEpasUf6JrJL3qjMN7JUAobsPElxBv4xayYYvWW9aPpfYV+Jx6hqUcVaLVOeV7+5hxsyoFQ==}
 
@@ -1911,12 +1904,6 @@ packages:
         optional: true
       '@types/react-dom':
         optional: true
-
-  '@testing-library/user-event@14.6.13':
-    resolution: {integrity: sha512-2LVZGptuB5un1Cu/u31o9adkCwbsUTMp4B4p04xupI7uobvTIpgKidSdShqZiReo/mQmvR9xjgdgTgge4oAbYA==}
-    engines: {node: '>=12', npm: '>=6'}
-    peerDependencies:
-      '@testing-library/dom': '>=7.21.4'
 
   '@testing-library/user-event@14.6.13':
     resolution: {integrity: sha512-2LVZGptuB5un1Cu/u31o9adkCwbsUTMp4B4p04xupI7uobvTIpgKidSdShqZiReo/mQmvR9xjgdgTgge4oAbYA==}
@@ -5923,16 +5910,6 @@ snapshots:
     transitivePeerDependencies:
       - '@types/react'
 
-  '@microlink/react-json-view@1.31.51(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
-    dependencies:
-      react: 19.3.1
-      react-base16-styling: 0.10.0
-      react-dom: 19.3.1(react@19.3.1)
-      react-lifecycles-compat: 3.0.4
-      react-textarea-autosize: 8.5.9(@types/react@19.3.0)(react@19.3.1)
-    transitivePeerDependencies:
-      - '@types/react'
-
   '@microsoft/api-extractor-model@7.31.3(@types/node@20.19.43)':
     dependencies:
       '@microsoft/tsdoc': 0.15.1
@@ -6585,10 +6562,6 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.3.0
       '@types/react-dom': 19.3.0(@types/react@19.3.0)
-
-  '@testing-library/user-event@14.6.13(@testing-library/dom@10.4.2)':
-    dependencies:
-      '@testing-library/dom': 10.4.2
 
   '@testing-library/user-event@14.6.13(@testing-library/dom@10.4.2)':
     dependencies:
@@ -7416,11 +7389,11 @@ snapshots:
 
   d3-brush@3.0.1:
     dependencies:
-      d3-dispatch: 3.0.1
-      d3-drag: 3.0.0
-      d3-interpolate: 3.0.1
-      d3-selection: 3.0.0
-      d3-transition: 3.0.1(d3-selection@3.0.0)
+      d3-dispatch: 3.0.2
+      d3-drag: 3.0.1
+      d3-interpolate: 3.0.2
+      d3-selection: 3.0.1
+      d3-transition: 3.0.2(d3-selection@3.0.1)
 
   d3-chord@3.0.1:
     dependencies:
@@ -7428,7 +7401,7 @@ snapshots:
 
   d3-chord@3.0.2:
     dependencies:
-      d3-path: 3.1.0
+      d3-path: 3.1.1
 
   d3-color@3.1.0: {}
 
@@ -7440,7 +7413,7 @@ snapshots:
 
   d3-contour@4.0.3:
     dependencies:
-      d3-array: 3.2.4
+      d3-array: 3.2.5
 
   d3-delaunay@6.0.4:
     dependencies:
@@ -7461,8 +7434,8 @@ snapshots:
 
   d3-drag@3.0.1:
     dependencies:
-      d3-dispatch: 3.0.1
-      d3-selection: 3.0.0
+      d3-dispatch: 3.0.2
+      d3-selection: 3.0.1
 
   d3-dsv@3.0.1:
     dependencies:
@@ -7486,7 +7459,7 @@ snapshots:
 
   d3-fetch@3.0.2:
     dependencies:
-      d3-dsv: 3.0.1
+      d3-dsv: 3.0.2
 
   d3-force@3.0.0:
     dependencies:
@@ -7496,9 +7469,9 @@ snapshots:
 
   d3-force@3.0.1:
     dependencies:
-      d3-dispatch: 3.0.1
-      d3-quadtree: 3.0.1
-      d3-timer: 3.0.1
+      d3-dispatch: 3.0.2
+      d3-quadtree: 3.0.2
+      d3-timer: 3.0.2
 
   d3-format@3.1.2: {}
 
@@ -7510,7 +7483,7 @@ snapshots:
 
   d3-geo@3.1.2:
     dependencies:
-      d3-array: 3.2.4
+      d3-array: 3.2.5
 
   d3-hierarchy@3.1.2: {}
 
@@ -7522,7 +7495,7 @@ snapshots:
 
   d3-interpolate@3.0.2:
     dependencies:
-      d3-color: 3.1.0
+      d3-color: 3.1.1
 
   d3-path@1.0.9: {}
 
@@ -7554,9 +7527,9 @@ snapshots:
 
   d3-scale-chromatic@3.1.1:
     dependencies:
-      d3-color: 3.1.0
-      d3-interpolate: 3.0.1
-      d3-scale: 4.0.2
+      d3-color: 3.1.1
+      d3-interpolate: 3.0.2
+      d3-scale: 4.0.3
 
   d3-scale@4.0.2:
     dependencies:
@@ -7568,11 +7541,11 @@ snapshots:
 
   d3-scale@4.0.3:
     dependencies:
-      d3-array: 3.2.4
-      d3-format: 3.1.2
-      d3-interpolate: 3.0.1
-      d3-time: 3.1.0
-      d3-time-format: 4.1.0
+      d3-array: 3.2.5
+      d3-format: 3.1.3
+      d3-interpolate: 3.0.2
+      d3-time: 3.1.1
+      d3-time-format: 4.1.1
 
   d3-selection@3.0.0: {}
 
@@ -7596,7 +7569,7 @@ snapshots:
 
   d3-time-format@4.1.1:
     dependencies:
-      d3-time: 3.1.0
+      d3-time: 3.1.1
 
   d3-time@3.1.0:
     dependencies:
@@ -7604,7 +7577,7 @@ snapshots:
 
   d3-time@3.1.1:
     dependencies:
-      d3-array: 3.2.4
+      d3-array: 3.2.5
 
   d3-timer@3.0.1: {}
 
@@ -7621,12 +7594,12 @@ snapshots:
 
   d3-transition@3.0.2(d3-selection@3.0.1):
     dependencies:
-      d3-color: 3.1.0
-      d3-dispatch: 3.0.1
-      d3-ease: 3.0.1
-      d3-interpolate: 3.0.1
+      d3-color: 3.1.1
+      d3-dispatch: 3.0.2
+      d3-ease: 3.0.2
+      d3-interpolate: 3.0.2
       d3-selection: 3.0.1
-      d3-timer: 3.0.1
+      d3-timer: 3.0.2
 
   d3-zoom@3.0.0:
     dependencies:
@@ -7638,11 +7611,11 @@ snapshots:
 
   d3-zoom@3.0.1:
     dependencies:
-      d3-dispatch: 3.0.1
-      d3-drag: 3.0.0
-      d3-interpolate: 3.0.1
-      d3-selection: 3.0.0
-      d3-transition: 3.0.1(d3-selection@3.0.0)
+      d3-dispatch: 3.0.2
+      d3-drag: 3.0.1
+      d3-interpolate: 3.0.2
+      d3-selection: 3.0.1
+      d3-transition: 3.0.2(d3-selection@3.0.1)
 
   d3@7.9.0:
     dependencies:
