@@ -174,7 +174,7 @@ types-python-dateutil = "^2.9.0.20261104"
 
 [tool.poetry.dependencies]
 python-dateutil = "^2.9.0.post0"
-opentelemetry-sdk = "1.40.0"
+opentelemetry-sdk = "1.45.2"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

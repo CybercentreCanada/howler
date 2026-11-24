@@ -84,6 +84,7 @@ const RecordProvider: FC<PropsWithChildren> = ({ children }) => {
           api.v2.search.post<Hit | Event>(['hit', 'event'], {
             query: `howler.id:${id}`,
             rows: 1,
+            include_unstored_fields: true,
             metadata: ['template', 'dossiers', 'analytic', 'overview']
           })
         ).then(result => {

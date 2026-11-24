@@ -36,18 +36,23 @@ const DropdownActions: FC<DropdownActionProps> = ({
   const { t } = useTranslation();
   const config = useContext(ApiConfigContext);
   const isHorizontal = useMemo(() => orientation === 'horizontal', [orientation]);
+  const itemSize = isHorizontal ? { xs: 12, sm: 'auto' as const } : 12;
+  const gridWidth = isHorizontal ? undefined : '100%';
 
   if (!config.config.lookups) {
+    const skeletonWidth = isHorizontal ? 200 : '100%';
+    const skeletonHeight = isHorizontal ? 40 : 56;
+
     return (
-      <Grid container justifyContent="end" spacing={4} p={2}>
-        <Grid size={{ sm: 'auto', xs: 12 }}>
-          <Skeleton variant="rounded" width="200px" height={orientation === 'horizontal' ? '40px' : '56px'}></Skeleton>
+      <Grid container justifyContent="end" spacing={isHorizontal ? 4 : 2} p={2} width={gridWidth}>
+        <Grid size={itemSize}>
+          <Skeleton variant="rounded" width={skeletonWidth} height={skeletonHeight} />
         </Grid>
-        <Grid size={{ sm: 'auto', xs: 12 }}>
-          <Skeleton variant="rounded" width="200px" height={orientation === 'horizontal' ? '40px' : '56px'}></Skeleton>
+        <Grid size={itemSize}>
+          <Skeleton variant="rounded" width={skeletonWidth} height={skeletonHeight} />
         </Grid>
-        <Grid size={{ sm: 'auto', xs: 12 }}>
-          <Skeleton variant="rounded" width="200px" height={orientation === 'horizontal' ? '40px' : '56px'}></Skeleton>
+        <Grid size={itemSize}>
+          <Skeleton variant="rounded" width={skeletonWidth} height={skeletonHeight} />
         </Grid>
       </Grid>
     );
@@ -59,9 +64,10 @@ const DropdownActions: FC<DropdownActionProps> = ({
       justifyContent="end"
       spacing={2}
       p={2}
+      width={gridWidth}
       sx={[isHorizontal && { [`& .${formControlClasses.root}`]: { minWidth: '140px' } }]}
     >
-      <Grid size={{ sm: !isHorizontal ? 'grow' : 'auto', xs: 12 }}>
+      <Grid size={itemSize}>
         <FormControl disabled={loading} fullWidth>
           <InputLabel id="transition-label" htmlFor="transition">
             {t('hit.details.actions.action')}
@@ -86,7 +92,7 @@ const DropdownActions: FC<DropdownActionProps> = ({
           </Select>
         </FormControl>
       </Grid>
-      <Grid size={{ sm: !isHorizontal ? 'grow' : 'auto', xs: 12 }}>
+      <Grid size={itemSize}>
         <FormControl disabled={loading || !actions.some(action => action.type === 'assessment')} fullWidth>
           <InputLabel id="assess-label" htmlFor="assess">
             {t('hit.details.actions.assessment')}
@@ -125,7 +131,7 @@ const DropdownActions: FC<DropdownActionProps> = ({
           </Select>
         </FormControl>
       </Grid>
-      <Grid size={{ sm: !isHorizontal ? 'grow' : 'auto', xs: 12 }}>
+      <Grid size={itemSize}>
         <FormControl disabled={loading || !actions.some(action => action.type === 'vote')} fullWidth>
           <InputLabel id="vote-label" htmlFor="vote">
             {t('hit.details.actions.vote')}
