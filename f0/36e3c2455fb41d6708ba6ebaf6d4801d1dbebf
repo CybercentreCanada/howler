@@ -1,0 +1,22 @@
+ui/src/components/elements/display/handlebars/helpers.test.tsx
+  s_98acd51df4f7d8::t_187f5148a01482 89-91
+ui/src/components/elements/display/handlebars/helpers.tsx
+  s_98acd51df4f7d8::t_ab200e574afb51 392-393,397-405,407
+  s_98acd51df4f7d8::t_07253d1564cdaa 394-396
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f036e3c2455fb41d6708ba6ebaf6d4801d1dbebf",
+  "prompts": {},
+  "sessions": {
+    "s_98acd51df4f7d8": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_df2772404ffemIEsSvVz30xNNh",
+        "model": "us.anthropic.claude-sonnet-5-5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
