@@ -1,4 +1,3 @@
-import uuid
 from typing import Any
 
 from howler.common.exceptions import InvalidDataException, NotFoundException
@@ -8,6 +7,7 @@ from howler.datastore.exceptions import SearchException
 from howler.odm.models.notification import Notification
 from howler.services import comms_service
 from howler.utils.str_utils import sanitize_lucene_query
+from howler.utils.uid import get_random_id
 
 logger = get_logger(__file__)
 
@@ -26,7 +26,7 @@ def create_analytic_comment_notification(analytic_id: str, actor: str) -> Notifi
 
     notification = Notification(
         {
-            "notification_id": str(uuid.uuid4()),
+            "notification_id": get_random_id(),
             "recipient": owner,
             "sender": actor,
             "resource_type": "analytic",
