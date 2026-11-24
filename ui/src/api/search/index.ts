@@ -25,6 +25,7 @@ export type HowlerSearchRequest = {
   sort?: string;
   track_total_hits?: boolean;
   fl?: string;
+  include_unstored_fields?: boolean;
   timeout?: number;
   filters?: string[];
   metadata?: string[];

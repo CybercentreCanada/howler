@@ -167,6 +167,35 @@ class TestSearch:
             assert body["api_response"]["total"] == 1
             mock_search_svc.search.assert_called_once()
             assert "sort" not in mock_search_svc.search.call_args.kwargs
+            assert "include_unstored_fields" not in mock_search_svc.search.call_args.kwargs
+
+    @pytest.mark.parametrize("method", ["GET", "POST"])
+    @pytest.mark.parametrize("include_unstored_fields", [True, False])
+    @patch("howler.api.v2.search.search_service")
+    @patch("howler.security.login.auth_service")
+    def test_search_forwards_include_unstored_fields(
+        self, mock_auth_service, mock_search_svc, request_context: Flask, method: str, include_unstored_fields: bool
+    ):
+        """GET and POST requests forward the parsed full-source flag to the service."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+        mock_search_svc.search.return_value = {"total": 0, "items": [], "offset": 0}
+        payload = {"query": "howler.id:*", "include_unstored_fields": include_unstored_fields}
+
+        with request_context.test_request_context(
+            method=method,
+            json=payload if method == "POST" else None,
+            query_string=payload if method == "GET" else None,
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.search import search
+
+            result: Response = search(indexes="hit,event", user=user)
+
+        assert result.status_code == 200
+        mock_search_svc.search.assert_called_once_with(
+            "hit,event", "howler.id:*", user=user, include_unstored_fields=include_unstored_fields
+        )
 
     @patch("howler.services.search_service.get_collection")
     @patch("howler.services.search_service.search")

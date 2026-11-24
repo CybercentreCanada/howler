@@ -86,6 +86,12 @@ describe('RecordProvider', () => {
 
     await act(async () => screen.getByText('select-missing').click());
     await waitFor(() => expect(mockDispatchApi).toHaveBeenCalled());
+    expect(mockDispatchApi).toHaveBeenCalledWith({
+      query: 'howler.id:missing',
+      rows: 1,
+      include_unstored_fields: true,
+      metadata: ['template', 'dossiers', 'analytic', 'overview']
+    });
     await act(async () => screen.getByText('fetch').click());
     expect(document.body.dataset.record).toBe('missing');
 

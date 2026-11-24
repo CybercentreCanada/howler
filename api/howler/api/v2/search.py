@@ -45,17 +45,19 @@ def search(indexes: str, user: User, **kwargs):
     query   =>   Query to search for
 
     Optional Arguments:
-    deep_paging_id      =>   ID of the next page or * to start deep paging
-    scroll              =>   Scroll keep-alive duration for deep paging (default: 5m, max: 10m)
-    filters             =>   List of additional filter queries limit the data
-    offset              =>   Offset in the results
-    rows                =>   Number of results per page
-    sort                =>   How to sort the results (not available in deep paging)
-    fl                  =>   List of fields to return
-    timeout             =>   Maximum execution time (ms)
-    use_archive         =>   Allow access to the datastore achive (Default: False)
-    track_total_hits    =>   Track the total number of query matches, instead of stopping at 10000 (Default: False)
-    metadata            =>   A list of additional features to be added to the result alongside the raw results
+    deep_paging_id          =>  ID of the next page or * to start deep paging
+    scroll                  =>  Scroll keep-alive duration for deep paging (default: 5m, max: 10m)
+    filters                 =>  List of additional filter queries limit the data
+    offset                  =>  Offset in the results
+    rows                    =>  Number of results per page
+    sort                    =>  How to sort the results (not available in deep paging)
+    fl                      =>  List of fields to return
+    include_unstored_fields =>  Include all source fields when fl is omitted (Default: False;
+                                not allowed for user indexes)
+    timeout                 =>  Maximum execution time (ms)
+    use_archive             =>  Allow access to the datastore achive (Default: False)
+    track_total_hits        =>  Track the total number of query matches, instead of stopping at 10000 (Default: False)
+    metadata                =>  A list of additional features to be added to the result alongside the raw results
 
     Data Block:
     # Note that the data block is for POST requests only!
@@ -64,6 +66,7 @@ def search(indexes: str, user: User, **kwargs):
      "rows": 100,               # Max number of results
      "sort": "field asc",       # How to sort the results
      "fl": "id,score",          # List of fields to return
+    "include_unstored_fields": false, # Include all source fields when fl is omitted
      "scroll": "5m",            # Scroll keep-alive duration for deep paging
      "timeout": 1000,           # Maximum execution time (ms)
      "filters": ['fq'],         # List of additional filter queries limit the data
@@ -90,7 +93,7 @@ def search(indexes: str, user: User, **kwargs):
         "track_total_hits",
     ]
     multi_fields = ["filters", "metadata"]
-    boolean_fields = ["use_archive"]
+    boolean_fields = ["use_archive", "include_unstored_fields"]
 
     params, req_data = generate_params(request, fields, multi_fields)
 
