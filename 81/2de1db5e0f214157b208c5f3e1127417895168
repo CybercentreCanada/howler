@@ -1,0 +1,33 @@
+ui/src/components/app/providers/RecordProvider.tsx
+  s_cc056b0e2697e2::t_2c85dd86300a84 87
+ui/src/components/app/providers/RecordProvider.test.tsx
+  s_cc056b0e2697e2::t_2c85dd86300a84 89-94
+ui/src/api/search/index.ts
+  s_cc056b0e2697e2::t_2c85dd86300a84 28
+api/howler/api/v2/search.py
+  s_cc056b0e2697e2::t_2c85dd86300a84 55-60,69,96
+  s_cc056b0e2697e2::t_ad1a33dcf4d7d4 52-54
+api/test/unit/endpoints/test_search_endpoint.py
+  s_cc056b0e2697e2::t_2c85dd86300a84 170-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "812de1db5e0f214157b208c5f3e1127417895168",
+  "prompts": {},
+  "humans": {
+    "h_f221159cc9f457": {
+      "author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  },
+  "sessions": {
+    "s_cc056b0e2697e2": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "668e2c54-9d2d-4ec1-b9f4-6b9290cf2e8a",
+        "model": "unknown"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
