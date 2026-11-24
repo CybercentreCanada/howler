@@ -1,0 +1,19 @@
+ui/src/components/elements/hit/actions/DropdownActions.tsx
+  s_ad779e2ab79c71::t_41791e39076805 39-40,43-45,47-49,51-52,54-55,67,70,95,134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "634306019fda44a62dacf47706d17a6f08bf4309",
+  "prompts": {},
+  "sessions": {
+    "s_ad779e2ab79c71": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_df23570d8ffe3XzLlY4KBtUwjr",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
