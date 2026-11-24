@@ -26,6 +26,8 @@ updates:
       - "/client"
       - "/plugins/evidence"
       - "/plugins/sentinel"
+      - "/plugins/sync"
+      - "/mcp"
     schedule:
       interval: "weekly"
     commit-message:
@@ -39,6 +41,13 @@ updates:
       pip:
         patterns:
           - "*"
+      pip-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"

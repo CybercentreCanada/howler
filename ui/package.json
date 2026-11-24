@@ -91,7 +91,7 @@
     "@types/uuid": "^9.0.8",
     "@vitejs/plugin-react-swc": "^3.11.0",
     "@vitest/coverage-v8": "^4.1.12",
-    "glob": "^11.1.0",
+    "glob": "^14.0.2",
     "http-proxy-middleware": "^2.0.12",
     "msw": "^2.15.0",
     "oxfmt": "^0.79.0",

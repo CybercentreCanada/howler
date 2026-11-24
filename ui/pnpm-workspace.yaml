@@ -14,3 +14,18 @@ minimumReleaseAgeExclude:
 
 overrides:
   handlebars-async-helpers>handlebars: '4.*'
+  # Selectors match intersecting declared ranges, not resolved versions.
+  # Targets retain compatible updates above each security floor.
+  '@xmldom/xmldom@>=0.9.0 <0.9.12': '~0.9.12'
+  # Stay on 1.13.x: a caret would also admit vulnerable 1.14.0-1.14.4.
+  '@grpc/grpc-js@>=1.0.0 <1.13.6': '~1.13.6'
+  'ws@>=8.0.0 <8.21.0': '^8.21.0'
+  'moment@>=2.29.2 <2.31.0': '^2.31.0'
+  'prismjs@>=1.0.0 <1.30.0': '^1.30.0'
+  'ajv@>=8.0.0 <8.18.0': '^8.20.0'
+  'lodash@>=4.0.0 <4.18.1': '^4.18.1'
+  'brace-expansion@>=2.0.0 <2.1.7': '^2.1.7'
+  'brace-expansion@>=5.0.0 <5.0.12': '^5.0.12'
+  'yaml@>=2.0.0 <2.8.3': '^2.8.3'
+  # Clear the high-severity advisory without forcing minimatch 9/10 users to 11.
+  'minimatch@>=10.0.0 <10.2.3': '^10.2.5'
