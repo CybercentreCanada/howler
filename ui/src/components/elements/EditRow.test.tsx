@@ -67,7 +67,7 @@ describe('EditRow', () => {
     fireEvent.click(screen.getByText('check-icon'));
     await waitFor(() => expect(onEdit).toHaveBeenCalledWith('updated'));
 
-    fireEvent.click(screen.getByText('edit-icon'));
+    fireEvent.click(await screen.findByText('edit-icon'));
     fireEvent.keyDown(screen.getByLabelText('text'), { key: 'Escape' });
     expect(screen.queryByLabelText('text')).not.toBeInTheDocument();
     expect(screen.getByText('description')).toBeInTheDocument();
@@ -87,7 +87,7 @@ describe('EditRow', () => {
     fireEvent.click(screen.getByText('check-icon'));
     await waitFor(() => expect(onEdit).toHaveBeenCalledWith('next-secret'));
 
-    fireEvent.click(screen.getByText('edit-icon'));
+    fireEvent.click(await screen.findByText('edit-icon'));
     fireEvent.click(screen.getByText('delete-icon'));
     await waitFor(() => expect(onEdit).toHaveBeenCalledWith(undefined));
   });
