@@ -93,3 +93,5 @@ def mark_notification_read(notification_id: str, username: str, read: bool = Tru
 def delete_notification(notification_id: str, username: str) -> None:
     """Delete one of the user's notifications."""
     _get_user_notification(notification_id, username)
+
+    datastore().notification.delete(notification_id)

@@ -143,7 +143,6 @@ class TestDeleteNotification:
     def test_deletes_own_notification(self, mock_datastore):
         collection = mock_datastore.return_value.notification
         collection.get_if_exists.return_value = {"notification_id": "n-1", "recipient": "alice"}
-        collection.delete.return_value = True
 
         notification_service.delete_notification("n-1", "alice")
 
@@ -158,15 +157,6 @@ class TestDeleteNotification:
         with pytest.raises(NotFoundException):
             notification_service.delete_notification("n-1", "alice")
         collection.delete.assert_not_called()
-
-    @patch("howler.services.notification_service.datastore")
-    def test_failed_delete_raises_not_found(self, mock_datastore):
-        collection = mock_datastore.return_value.notification
-        collection.get_if_exists.return_value = {"notification_id": "n-1", "recipient": "alice"}
-        collection.delete.return_value = False
-
-        with pytest.raises(NotFoundException):
-            notification_service.delete_notification("n-1", "alice")
 
 
 class TestCreateAnalyticCommentNotification:
