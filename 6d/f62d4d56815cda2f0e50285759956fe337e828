@@ -1,0 +1,19 @@
+ui/src/components/elements/EditRow.test.tsx
+  s_98acd51df4f7d8::t_3ac556ec700528 70,90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6df62d4d56815cda2f0e50285759956fe337e828",
+  "prompts": {},
+  "sessions": {
+    "s_98acd51df4f7d8": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_df2772404ffemIEsSvVz30xNNh",
+        "model": "us.anthropic.claude-sonnet-5-5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
