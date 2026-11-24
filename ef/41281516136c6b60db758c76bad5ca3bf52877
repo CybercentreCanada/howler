@@ -1,0 +1,19 @@
+ui/pnpm-lock.yaml
+  s_236a31df1ba8cc::t_22399c91f84ffc 7392-7396,7404,7416,7437-7438,7462,7472-7474,7486,7498,7530-7532,7544-7548,7572,7580,7597-7600,7602,7614-7618
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ef41281516136c6b60db758c76bad5ca3bf52877",
+  "prompts": {},
+  "sessions": {
+    "s_236a31df1ba8cc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_df1dfee5effeWK4mUav0l362cs",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
