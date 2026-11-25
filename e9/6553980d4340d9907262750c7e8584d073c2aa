@@ -1,0 +1,97 @@
+documentation/docs/odm/class/sharepointuser.md
+  s_b237956c3233b6::t_e518ebf735062f 6
+documentation/mkdocs.yml
+  s_b237956c3233b6::t_e518ebf735062f 68,117,121
+api/test/unit/models/test_json_schema_export.py
+  s_b237956c3233b6::t_e518ebf735062f 130,133
+documentation/docs/odm/class/link.md
+  s_b237956c3233b6::t_e518ebf735062f 11
+documentation/docs/odm/getting_started.md
+  s_b237956c3233b6::t_e518ebf735062f 21,30
+documentation/docs/odm/class/host.md
+  s_b237956c3233b6::t_e518ebf735062f 14
+docs/api/codebase.md
+  s_b237956c3233b6::t_e518ebf735062f 11-12
+documentation/docs/odm/class/email.md
+  s_b237956c3233b6::t_e518ebf735062f 10
+documentation/docs/developer/backend.md
+  s_b237956c3233b6::t_e518ebf735062f 64
+documentation/docs/odm/class/label.md
+  s_b237956c3233b6::t_e518ebf735062f 10-18
+documentation/docs/odm/class/localizedlabel.md
+  s_b237956c3233b6::t_e518ebf735062f 1-13
+docs/api/model-compatibility.md
+  s_b237956c3233b6::t_e518ebf735062f 1-53
+documentation/docs/developer/random_data.md
+  s_b237956c3233b6::t_e518ebf735062f 4,13,16,19,22,59,161,170,173,176
+documentation/docs/ingestion/user.fr.md
+  s_b237956c3233b6::t_e518ebf735062f 14,27-30
+.github/workflows/api-workflow.yml
+  s_b237956c3233b6::t_9e8859b754d31e 13,29,99-100
+  s_b237956c3233b6::t_cd1e403a7da9fd 101
+docs/api/plugins.md
+  s_b237956c3233b6::t_e518ebf735062f 3-20,36,103-106,119-122,204,287,289,292-294,296-298,300-301,305-311,316,318-319,322,492,498-499,509,519-520
+  s_b237956c3233b6::t_755caaf3408855 521
+documentation/docs/odm/class/client.md
+  s_b237956c3233b6::t_e518ebf735062f 12
+documentation/docs/odm/class/header.md
+  s_b237956c3233b6::t_e518ebf735062f 6,10-13
+documentation/docs/odm/class/howlerdata.md
+  s_b237956c3233b6::t_e518ebf735062f 13,17,28-29
+documentation/docs/odm/class/matched.md
+  s_b237956c3233b6::t_e518ebf735062f 6
+documentation/docs/odm/class/alrecord.md
+  s_b237956c3233b6::t_e518ebf735062f 1-15
+documentation/docs/odm/class/elf.md
+  s_b237956c3233b6::t_e518ebf735062f 13,17-18
+documentation/docs/ingestion/user.md
+  s_b237956c3233b6::t_e518ebf735062f 13,26-29
+documentation/docs/installation/deployment.md
+  s_b237956c3233b6::t_e518ebf735062f 35
+documentation/docs/odm/class/hit.md
+  s_b237956c3233b6::t_e518ebf735062f 11,14,24,50
+documentation/docs/odm/class/lead.md
+  s_b237956c3233b6::t_e518ebf735062f 12
+documentation/docs/odm/class/file.md
+  s_b237956c3233b6::t_e518ebf735062f 26,28,34-35
+documentation/docs/odm/class/indicator.md
+  s_b237956c3233b6::t_e518ebf735062f 14
+documentation/docs/odm/class/related.md
+  s_b237956c3233b6::t_e518ebf735062f 15
+documentation/docs/odm/class/mitre.md
+  s_b237956c3233b6::t_e518ebf735062f 1-11
+documentation/docs/odm/class/sharepoint.md
+  s_b237956c3233b6::t_e518ebf735062f 6
+documentation/docs/odm/class/geo.md
+  s_b237956c3233b6::t_e518ebf735062f 11
+documentation/docs/odm/class/threat.md
+  s_b237956c3233b6::t_e518ebf735062f 10
+documentation/docs/odm/class/usernested.md
+  s_b237956c3233b6::t_e518ebf735062f 12
+documentation/docs/odm/class/sharepointdata.md
+  s_b237956c3233b6::t_e518ebf735062f 6
+documentation/docs/odm/class/event.md
+  s_b237956c3233b6::t_e518ebf735062f 33
+documentation/docs/odm/class/observer.md
+  s_b237956c3233b6::t_e518ebf735062f 14-15
+documentation/docs/developer/backend.fr.md
+  s_b237956c3233b6::t_e518ebf735062f 64
+documentation/docs/developer/random_data.fr.md
+  s_b237956c3233b6::t_e518ebf735062f 4,13,16,19,22,59,161,170,173,176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e96553980d4340d9907262750c7e8584d073c2aa",
+  "prompts": {},
+  "sessions": {
+    "s_b237956c3233b6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_deb90bec4ffehWV19zI5ySOrQJ",
+        "model": "gemini-4-hydrogen"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
