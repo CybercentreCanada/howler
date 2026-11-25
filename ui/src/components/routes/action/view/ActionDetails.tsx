@@ -19,11 +19,11 @@ import { MembershipManagement } from 'components/elements/membership/MembershipM
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import OperationEntry from 'components/routes/action/shared/OperationEntry';
-import type { ActionOperation } from 'models/ActionTypes';
+import type { ActionOperation, ActionTrigger } from 'models/ActionTypes';
 import type { Action } from 'models/entities/generated/Action';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import howlerPluginStore from 'plugins/store';
-import { useCallback, useContext, useEffect, useState, type ChangeEventHandler } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { Link, useParams } from 'react-router';
@@ -48,19 +48,14 @@ const ActionDetails = () => {
   const { withConfirmDeleteModal } = useContext(ModalContext);
   const { showSuccessMessage } = useMySnackbar();
 
-  const onTriggerChange: ChangeEventHandler<HTMLInputElement> = useCallback(
-    async e => {
+  const onTriggerChange = useCallback(
+    async (trigger: ActionTrigger, checked: boolean) => {
       if (!action?.action_id) {
         return;
       }
 
-      let triggers = action.triggers ?? [];
-
-      if (e.target.checked && !triggers.includes(e.target.name)) {
-        triggers = [...triggers, e.target.name];
-      } else if (!e.target.checked && triggers.includes(e.target.name)) {
-        triggers = triggers.filter(_t => _t !== e.target.name);
-      }
+      const current = action.triggers ?? [];
+      const triggers = checked ? [...new Set([...current, trigger])] : current.filter(value => value !== trigger);
 
       setLoading(true);
 
@@ -182,7 +177,7 @@ const ActionDetails = () => {
             <Stack direction="row" spacing={1}>
               {(action?.operations ?? [])
                 .map(a => operations.find(_action => _action.id === a.operation_id)?.triggers ?? [])
-                .reduce<string[]>(
+                .reduce<ActionTrigger[]>(
                   (availableTriggers, triggers, index) =>
                     index === 0 ? triggers : availableTriggers.filter(trigger => triggers.includes(trigger)),
                   []
@@ -193,7 +188,7 @@ const ActionDetails = () => {
                     control={
                       <Checkbox
                         name={trigger}
-                        onChange={onTriggerChange}
+                        onChange={e => void onTriggerChange(trigger, e.target.checked)}
                         checked={action?.triggers?.includes(trigger) ?? false}
                       />
                     }
