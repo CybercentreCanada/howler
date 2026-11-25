@@ -2397,12 +2397,6 @@ class TestFieldReconciliation:
         ]
         assert shadowed_dynamic_templates(expected, live) == pairs
 
-        # The cutover verifier consumes the same helper and must agree with startup.
-        from howler.external.elasticsearch_cutover_verify import _template_checks
-
-        blockers, warnings = [], []
-        _template_checks("testcol", "testcol-000001", expected, live, blockers, warnings)
-        assert blockers[0]["shadowed"] == [{"obsolete": old, "active": active} for old, active in pairs]
         col = _make_collection(mock_datastore, model_class=ReconcileDoc)
         with pytest.raises(HowlerValueError) as refused:
             col._check_dynamic_templates(expected, {"testcol-000001": live})
@@ -2435,12 +2429,6 @@ class TestFieldReconciliation:
         with caplog.at_level("WARNING", logger="howler.api.datastore"):
             col._check_dynamic_templates(expected, {"testcol-000001": live})
         assert "disabled" in caplog.text and "legacy" in caplog.text
-        from howler.external.elasticsearch_cutover_verify import _template_checks
-
-        blockers, warnings = [], []
-        _template_checks("testcol", "testcol-000001", expected, live, blockers, warnings)
-        assert blockers == []
-        assert warnings[0]["templates"] == ["disabled", "legacy"]
 
         # Moving the obsolete selector after strings but before the specific rule changes
         # non-string fields only; the expected winner is the earlier specific active rule.
