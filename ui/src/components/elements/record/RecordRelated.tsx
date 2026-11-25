@@ -21,14 +21,13 @@ const RecordRelated: FC<{ record: Hit | Event }> = ({ record }) => {
 
   const groups = groupBy(records, '__index');
 
-  const links = isHit(record) ? (record.howler.links ?? []) : [];
-  const hasLinks = links.length > 0;
+  const hasLinks = (record?.howler.links?.length ?? 0) > 0;
   const tabs = [
     hasLinks && 'links',
     groups.hit?.length > 0 && 'hit',
     groups.case?.length > 0 && 'case',
     groups.event?.length > 0 && 'event'
-  ].filter((tab): tab is string => typeof tab === 'string');
+  ].filter(Boolean) as string[];
 
   const [activeTab, setActiveTab] = useState<string | false>(false);
   const currentTab = activeTab !== false && tabs.includes(activeTab) ? activeTab : (tabs[0] ?? false);
@@ -48,7 +47,7 @@ const RecordRelated: FC<{ record: Hit | Event }> = ({ record }) => {
 
       {currentTab === 'links' && (
         <Box display="grid" gridTemplateColumns="repeat(auto-fill, minmax(200px, 1fr))" gap={1} pt={1}>
-          {links.map(l => (
+          {record.howler.links?.map(l => (
             <RelatedLink key={(l.title ?? '') + (l.href ?? '')} {...l} title={l.title!} href={l.href!} />
           ))}
         </Box>

@@ -22,7 +22,6 @@ import { memo, useCallback, useContext, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import Throttler from 'utils/Throttler';
-import { fieldOptionLabel } from 'utils/stringUtils';
 
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import SCHEMA_EN from './markdown/en/schema.md';
@@ -52,7 +51,6 @@ const RowEntry: FC<{ field: string }> = memo(({ field }) => {
   if (!config.indexes) {
     return;
   }
-  const values = config.indexes.hit[field].values ?? [];
 
   return (
     <TableRow>
@@ -73,11 +71,11 @@ const RowEntry: FC<{ field: string }> = memo(({ field }) => {
             <Typography>{t('help.hit.schema.regex')}</Typography>
           </a>
         )}
-        {values.length > 0 && (
+        {config.indexes.hit[field].values?.length > 0 && (
           <Stack spacing={1}>
             <Typography>{t('help.hit.schema.values')}:</Typography>
             <Stack direction="row" spacing={0.5} flexWrap="wrap">
-              {values.map(val => (
+              {config.indexes.hit[field].values.map(val => (
                 <code
                   style={{
                     padding: theme.spacing(0.5),
@@ -85,9 +83,9 @@ const RowEntry: FC<{ field: string }> = memo(({ field }) => {
                     borderColor: theme.palette.divider,
                     borderRadius: theme.shape.borderRadius
                   }}
-                  key={JSON.stringify(val)}
+                  key={val}
                 >
-                  {fieldOptionLabel(val)}
+                  {val}
                 </code>
               ))}
             </Stack>

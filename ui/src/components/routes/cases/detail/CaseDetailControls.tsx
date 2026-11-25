@@ -1,36 +1,27 @@
 import { Check, HourglassBottom, Pause, TrendingUp, WarningRounded } from '@mui/icons-material';
 import { Autocomplete, Stack, TextField, Typography } from '@mui/material';
-import type { Case } from 'models/entities/generated/Case';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ESCALATION_COLOR_MAP } from '../constants';
 
-interface CaseControlProps<T extends string> {
-  value?: T;
-  options: T[];
+interface CaseStatusControlProps {
+  value?: string;
+  options: string[];
   disabled?: boolean;
-  onChange: (value: T) => void;
+  onChange: (status: string) => void;
 }
 
-export const CaseStatusControl: FC<CaseControlProps<NonNullable<Case['status']>>> = ({
-  value,
-  options,
-  disabled = false,
-  onChange
-}) => {
+export const CaseStatusControl: FC<CaseStatusControlProps> = ({ value, options, disabled = false, onChange }) => {
   const { t } = useTranslation();
 
   return (
     <Stack spacing={1}>
       <Stack direction="row" spacing={1} alignItems="center">
-        {
-          {
-            open: <WarningRounded fontSize="small" />,
-            'in-progress': <HourglassBottom color="warning" />,
-            'on-hold': <Pause color="disabled" />,
-            resolved: <Check color="success" />
-          }[value ?? 'open']
-        }
+        {{
+          'in-progress': <HourglassBottom color="warning" />,
+          'on-hold': <Pause color="disabled" />,
+          resolved: <Check color="success" />
+        }[value ?? ''] ?? <WarningRounded fontSize="small" />}
         <Typography variant="body1">{t('page.cases.detail.status')}</Typography>
       </Stack>
       <Autocomplete
@@ -46,14 +37,21 @@ export const CaseStatusControl: FC<CaseControlProps<NonNullable<Case['status']>>
   );
 };
 
-export const CaseEscalationControl: FC<CaseControlProps<NonNullable<Case['escalation']>>> = ({
+interface CaseEscalationControlProps {
+  value?: string;
+  options: string[];
+  disabled?: boolean;
+  onChange: (escalation: string) => void;
+}
+
+export const CaseEscalationControl: FC<CaseEscalationControlProps> = ({
   value,
   options,
   disabled = false,
   onChange
 }) => {
   const { t } = useTranslation();
-  const escalationColor = value && ESCALATION_COLOR_MAP[value];
+  const escalationColor = ESCALATION_COLOR_MAP[value as keyof typeof ESCALATION_COLOR_MAP];
   const escalationIconColor = escalationColor === 'default' ? 'inherit' : escalationColor;
 
   return (

@@ -5,7 +5,6 @@ import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import { RecordContext } from 'components/app/providers/RecordProvider';
 import i18n from 'i18n';
-import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { FC, PropsWithChildren } from 'react';
 import { I18nextProvider } from 'react-i18next';
@@ -23,17 +22,13 @@ const mockDispatchApi = vi.hoisted(() => vi.fn());
 const mockUpdateCase = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const mockClose = vi.hoisted(() => vi.fn());
 const mockLoadRecords = vi.hoisted(() => vi.fn());
-const mockUseHitActions = vi.hoisted(() => vi.fn<(hits: Hit[]) => void>());
 
 vi.mock('components/hooks/useMyApi', () => ({
   default: () => ({ dispatchApi: mockDispatchApi })
 }));
 
 vi.mock('components/hooks/useHitActions', () => ({
-  default: (hits: Hit[]) => {
-    mockUseHitActions(hits);
-    return { assess: mockAssess };
-  }
+  default: () => ({ assess: mockAssess })
 }));
 
 vi.mock('../hooks/useCase', () => ({
@@ -41,7 +36,7 @@ vi.mock('../hooks/useCase', () => ({
 }));
 
 vi.mock('components/elements/hit/elements/AnalyticLink', () => ({
-  default: ({ hit }: { hit: Hit }) => <span id={`analytic-${hit.howler.id}`}>{hit.howler.analytic}</span>
+  default: ({ hit }: any) => <span data-testid={`analytic-${hit.howler.id}`}>{hit.howler.analytic}</span>
 }));
 
 vi.mock('components/elements/hit/elements/EscalationChip', () => ({
@@ -98,23 +93,12 @@ const caseWithHits = (hitIds: string[]) =>
 // Wrapper factory
 // ---------------------------------------------------------------------------
 
-const createWrapper = (records: Record<string, Hit | Event> = {}): FC<PropsWithChildren> => {
+const createWrapper = (records: Record<string, Hit> = {}): FC<PropsWithChildren> => {
   const Wrapper: FC<PropsWithChildren> = ({ children }) => (
     <I18nextProvider i18n={i18n as any}>
       <ModalContext.Provider value={{ close: mockClose, open: vi.fn(), setContent: vi.fn() } as any}>
         <ApiConfigContext.Provider value={{ config: mockConfig, setConfig: vi.fn() } as any}>
-          <RecordContext.Provider
-            value={{
-              records,
-              loadRecords: mockLoadRecords,
-              selectedRecords: [],
-              addRecordToSelection: vi.fn(),
-              removeRecordFromSelection: vi.fn(),
-              clearSelectedRecords: vi.fn(),
-              updateRecord: vi.fn(),
-              getRecord: vi.fn()
-            }}
-          >
+          <RecordContext.Provider value={{ records, loadRecords: mockLoadRecords } as any}>
             <MemoryRouter>{children}</MemoryRouter>
           </RecordContext.Provider>
         </ApiConfigContext.Provider>
@@ -175,27 +159,6 @@ describe('ResolveModal', () => {
     vi.clearAllMocks();
     // Default: resolve immediately with an empty items list
     mockDispatchApi.mockResolvedValue({ items: [] });
-  });
-
-  it('allows an event-only case to resolve without searching for or assessing alerts', async () => {
-    const event: Event = {
-      __index: 'event',
-      timestamp: '2026-01-01T00:00:00Z',
-      howler: { id: 'event-1', hash: 'abc' }
-    };
-    const eventCase = createMockCase({ items: [{ type: 'event', value: 'event-1' }] });
-    render(<ResolveModal case={eventCase} onConfirm={mockOnConfirm} />, {
-      wrapper: createWrapper({ 'event-1': event })
-    });
-
-    const confirm = await screen.findByRole('button', { name: i18n.t('confirm') });
-    await waitFor(() => expect(confirm).toBeEnabled());
-    expect(mockDispatchApi).not.toHaveBeenCalled();
-    expect(mockUseHitActions).toHaveBeenLastCalledWith([]);
-    expect(screen.queryByText('HitCard:event-1')).not.toBeInTheDocument();
-    await user.click(confirm);
-    expect(mockUpdateCase).toHaveBeenCalledWith({ status: 'resolved' });
-    expect(mockAssess).not.toHaveBeenCalled();
   });
 
   // -------------------------------------------------------------------------

@@ -47,10 +47,7 @@ const TemplateViewer = () => {
 
   const [analytic, setAnalytic] = useState<string>(params.get('analytic') ?? '');
   const [detection, setDetection] = useState<string>(params.get('detection') ?? 'ANY');
-  const [type, setType] = useState<NonNullable<Template['type']>>(() => {
-    const requested = params.get('type');
-    return requested === 'global' || requested === 'readonly' ? 'global' : 'personal';
-  });
+  const [type, setType] = useState<string>((params.get('type') ?? 'personal').replace('readonly', 'global'));
   const [loading, setLoading] = useState(false);
   const [templateLoading, setTemplateLoading] = useState(false);
 
@@ -247,7 +244,7 @@ const TemplateViewer = () => {
   );
 
   const onTypeToggle = useCallback(
-    (_type: NonNullable<Template['type']>) => {
+    (_type: string) => {
       setType(_type);
 
       if (noFieldChange) {
@@ -321,7 +318,7 @@ const TemplateViewer = () => {
             value={type}
             disabled={analyticOrDetectionMissing}
             onChange={(__, _type) => {
-              if (_type === 'personal' || _type === 'global') {
+              if (_type) {
                 onTypeToggle(_type);
               }
             }}
