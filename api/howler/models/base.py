@@ -1,29 +1,35 @@
-"""Howler-owned wrappers around the Elasticsearch Pydantic integration."""
+"""Howler-owned Pydantic base models, partial projection helpers, and error translation."""
 
 from __future__ import annotations
 
 import copy
-import types
 from collections.abc import Mapping
-from datetime import datetime, timezone
-from typing import Annotated, Any, ClassVar, Literal, TypeVar, Union, cast, get_args, get_origin
+from datetime import datetime
+from typing import Any, ClassVar, Literal, TypeVar, cast, get_args, get_origin
 
-from elasticsearch import dsl
-from elasticsearch.dsl.pydantic import BaseESModel, BaseESModelMetaclass
-from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError, model_validator
+from pydantic import (
+    AliasGenerator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializationInfo,
+    SerializerFunctionWrapHandler,
+    TypeAdapter,
+    ValidationError,
+    model_serializer,
+    model_validator,
+)
 from typing_extensions import Self
 
 from howler.common.exceptions import HowlerValueError
 from howler.models.fields import (
-    DATEFORMAT,
     FIELD_SANITIZER,
     NOT_INDEXED_SANITIZER,
     ClassificationValue,
-    _is_mapped_field_metadata,
     _make_annotated,
-    ip_to_primitive,
+    format_datetime,
 )
-from howler.models.registry import annotation_metadata, field_metadata, model_annotation, unwrap_annotation
+from howler.models.registry import field_metadata, model_annotation, serialized_field_name, unwrap_annotation
 
 ModelType = TypeVar("ModelType", bound=BaseModel)
 IPFormat = Literal["str", "int", "encoded_bytes"]
@@ -36,6 +42,17 @@ ACCESS_FIELDS = {
     "__access_grp2__",
 }
 SYNTHETIC_SOURCE_FIELDS = {*ACCESS_FIELDS, "id", "__index"}
+
+
+class ESMeta(BaseModel):
+    """Metadata items associated with Elasticsearch documents."""
+
+    id: str = ""
+    index: str = ""
+    primary_term: int = 0
+    seq_no: int = 0
+    version: int = 0
+    score: float = 0.0
 
 
 def flat_to_nested(data: dict[str, Any]) -> dict[str, Any]:
@@ -59,108 +76,25 @@ def _list_item_annotation(annotation: Any) -> Any | None:
     return get_args(unwrapped)[0] if get_origin(unwrapped) is list else None
 
 
-def _mapped_field_metadata(annotation: Any) -> dict[str, Any] | None:
-    mapped_fields = [item for item in annotation_metadata(annotation) if _is_mapped_field_metadata(item)]
-    if not mapped_fields:
-        return None
-
-    resolved = copy.deepcopy(mapped_fields[0])
-    for mapped_field in mapped_fields[1:]:
-        if resolved.get("_field") is None and mapped_field.get("_field") is not None:
-            resolved["_field"] = copy.deepcopy(mapped_field["_field"])
-        if resolved.get("_es_name") is None and mapped_field.get("_es_name") is not None:
-            resolved["_es_name"] = mapped_field["_es_name"]
-        resolved["exclude"] = resolved.get("exclude", False) or mapped_field.get("exclude", False)
-    return resolved
-
-
-def _dsl_annotation(
-    metacls: Any,
-    annotation: Any,
-    compound_model: type[BaseModel] | None = None,
-    inner_doc: type | None = None,
+def _finalize_primitives(
+    value: Any,
+    *,
+    strip_null: bool,
+    timestamp_format: TimestampFormat | None,
 ) -> Any:
-    origin = get_origin(annotation)
-    if origin is Annotated:
-        annotation = get_args(annotation)[0]
-        origin = get_origin(annotation)
-
-    if origin in (Union, types.UnionType):
-        members = get_args(annotation)
-        concrete = [item for item in members if item is not type(None)]
-        if len(concrete) == 1 and len(members) == 2:
-            return _dsl_annotation(metacls, concrete[0], compound_model, inner_doc) | None
-
-    if origin is list:
-        return types.GenericAlias(list, (_dsl_annotation(metacls, get_args(annotation)[0], compound_model, inner_doc),))
-
-    if origin is dict:
-        key_type, value_type = get_args(annotation)
-        return types.GenericAlias(
-            dict,
-            (
-                _dsl_annotation(metacls, key_type, compound_model, inner_doc),
-                _dsl_annotation(metacls, value_type, compound_model, inner_doc),
-            ),
-        )
-
-    if isinstance(annotation, type) and issubclass(annotation, BaseModel):
-        if annotation is compound_model and inner_doc is not None:
-            return inner_doc
-        return metacls.make_dsl_class(metacls, dsl.InnerDoc, annotation)
-    return annotation
-
-
-class HowlerESModelMetaclass(BaseESModelMetaclass):
-    """Separate Pydantic validation annotations from DSL mapping annotations."""
-
-    @staticmethod
-    def make_dsl_class(
-        metacls: Any,
-        dsl_class: type,
-        pydantic_model: type[BaseModel],
-        pydantic_attrs: dict[str, Any] | None = None,
-    ) -> type:
-        """Generate DSL classes from Pydantic's resolved fields, including inherited fields."""
-        dsl_attrs = {name: value for name, value in dsl_class.__dict__.items() if not name.startswith("__")}
-        resolved_annotations = {
-            name: _make_annotated(info.annotation, *info.metadata) if info.metadata else info.annotation
-            for name, info in pydantic_model.model_fields.items()
+    if isinstance(value, datetime):
+        return format_datetime(value, timestamp_format)
+    if isinstance(value, ClassificationValue):
+        return str(value)
+    if isinstance(value, dict):
+        return {
+            key: _finalize_primitives(item, strip_null=strip_null, timestamp_format=timestamp_format)
+            for key, item in value.items()
+            if not (strip_null and item is None)
         }
-        attributes = {
-            **(pydantic_attrs or {}),
-            "__annotations__": metacls.process_annotations(metacls, resolved_annotations),
-        }
-        return type(dsl_class)(
-            f"_ES{pydantic_model.__name__}",
-            (dsl_class,),
-            {
-                **attributes,
-                **dsl_attrs,
-                "__qualname__": f"_ES{pydantic_model.__name__}",
-            },
-        )
-
-    @staticmethod
-    def process_annotations(
-        metacls: Any,
-        annotations: dict[str, Any],
-    ) -> dict[str, Any]:
-        """Return DSL-safe annotations while preserving explicit field mappings."""
-        output: dict[str, Any] = {}
-        for name, annotation in annotations.items():
-            mapped_field = _mapped_field_metadata(annotation)
-            compound_model = model_annotation(annotation)
-            is_excluded = mapped_field is not None and mapped_field.get("exclude")
-            if compound_model is not None and not is_excluded:
-                inner_doc = metacls.make_dsl_class(metacls, dsl.InnerDoc, compound_model)
-                sanitized = _dsl_annotation(metacls, annotation, compound_model, inner_doc)
-                mapped_field = copy.deepcopy(mapped_field) if mapped_field is not None else dsl.mapped_field()
-                mapped_field["_field"] = dsl.Object(inner_doc, multi=_list_item_annotation(annotation) is not None)
-            else:
-                sanitized = _dsl_annotation(metacls, annotation)
-            output[name] = _make_annotated(sanitized, mapped_field) if mapped_field is not None else sanitized
-        return output
+    if isinstance(value, list):
+        return [_finalize_primitives(item, strip_null=strip_null, timestamp_format=timestamp_format) for item in value]
+    return value
 
 
 def _expand_compound_list(value: dict[str, Any]) -> list[dict[str, Any]]:
@@ -213,11 +147,6 @@ class HowlerModelValidationError(HowlerValueError):
         super().__init__(message, cause=error)
 
 
-def _serialized_field_name(python_name: str, info: Any) -> str:
-    """Return the stable serialized name for a declared Pydantic field."""
-    return info.serialization_alias or info.alias or python_name.rstrip("_")
-
-
 def _public_error_location(
     model_type: type[BaseModel] | None,
     root_name: str,
@@ -238,7 +167,7 @@ def _public_error_location(
             field_entry = _field_input_map(unwrapped).get(token)
             if field_entry is not None:
                 python_name, info = field_entry
-                components.append(_serialized_field_name(python_name, info))
+                components.append(serialized_field_name(python_name, info))
                 current = info.annotation
                 position += 1
                 continue
@@ -311,6 +240,7 @@ class HowlerModelMixin:
     """Shared strict input and primitive serialization behavior."""
 
     model_config = ConfigDict(
+        alias_generator=AliasGenerator(serialization_alias=lambda name: name.rstrip("_")),
         arbitrary_types_allowed=True,
         extra="forbid",
         populate_by_name=True,
@@ -343,12 +273,44 @@ class HowlerModelMixin:
                 nested[key] = _expand_compound_list(nested[key])
         return nested
 
+    @model_serializer(mode="wrap")
+    def _serialize_model(self, handler: SerializerFunctionWrapHandler, info: SerializationInfo):  # noqa: ANN202
+        output: dict[str, Any] = handler(self)
+        context = info.context or {}
+        timestamp_format = context.get("timestamp_format")
+        output = {
+            key: _finalize_primitives(
+                value,
+                strip_null=info.exclude_none,
+                timestamp_format=timestamp_format,
+            )
+            for key, value in output.items()
+        }
+        if context.get("hidden_fields") and isinstance(self, HowlerESModel):
+            for python_name in type(self).model_fields:
+                if python_name == "meta":
+                    continue
+                value = self.__dict__.get(python_name)
+                if isinstance(value, ClassificationValue):
+                    output.update(value.get_access_control_parts())
+        if context.get("include_index") and type(self)._include_index:
+            output["__index"] = type(self).__name__.lower()
+        return output
+
     @classmethod
-    def validate_howler(cls, data: Any) -> Self:
+    def validate_howler(
+        cls,
+        data: Any,
+        *,
+        extra: Literal["allow", "ignore", "forbid"] | None = None,
+    ) -> Self:
         """Validate data while exposing the stable Howler exception hierarchy."""
         model_type = cast(type[BaseModel], cls)
         try:
-            return cast(Self, model_type.model_validate(data))
+            validated = (
+                model_type.model_validate(data) if extra is None else model_type.model_validate(data, extra=extra)
+            )
+            return cast(Self, validated)
         except ValidationError as error:
             raise HowlerModelValidationError(error, model_type) from error
 
@@ -357,34 +319,20 @@ class HowlerModelMixin:
         *,
         hidden_fields: bool = False,
         strip_null: bool = True,
-        ip_format: Literal["str", "int", "encoded_bytes"] | None = None,
-        timestamp_format: Literal["iso", "posix"] | None = None,
+        ip_format: IPFormat | None = None,
+        timestamp_format: TimestampFormat | None = None,
     ) -> dict[str, Any]:
         """Return the legacy stored/API primitive representation."""
-        output: dict[str, Any] = {}
-        model_type = cast(type[BaseModel], type(self))
-        for python_name, info in model_type.model_fields.items():
-            if python_name == "meta":
-                continue
-            if python_name not in self.__dict__:
-                continue
-            value = getattr(self, python_name)
-            if value is None and strip_null:
-                continue
-            name = _serialized_field_name(python_name, info)
-            output[name] = _primitive(
-                value,
-                info.annotation,
-                info.metadata,
-                strip_null=strip_null,
-                ip_format=ip_format,
-                timestamp_format=timestamp_format,
-            )
-            if hidden_fields and isinstance(value, ClassificationValue):
-                output.update(value.get_access_control_parts())
-        if type(self)._include_index:
-            output["__index"] = type(self).__name__.lower()
-        return output
+        return cast(BaseModel, self).model_dump(
+            by_alias=True,
+            exclude_none=strip_null,
+            context={
+                "hidden_fields": hidden_fields,
+                "include_index": True,
+                "ip_format": ip_format,
+                "timestamp_format": timestamp_format,
+            },
+        )
 
     def __getitem__(self, name: str) -> Any:
         value: Any = self
@@ -431,8 +379,10 @@ class HowlerEmbeddedModel(HowlerModelMixin, BaseModel):
     """Base for object and nested structures embedded in ES documents."""
 
 
-class HowlerESModel(HowlerModelMixin, BaseESModel, metaclass=HowlerESModelMetaclass):
+class HowlerESModel(HowlerModelMixin, BaseModel):
     """Base for top-level Howler Elasticsearch documents."""
+
+    meta: ESMeta = Field(default_factory=ESMeta, exclude=True)
 
 
 def _field_input_map(model_type: type[BaseModel]) -> dict[str, tuple[str, Any]]:
@@ -446,26 +396,33 @@ def _field_input_map(model_type: type[BaseModel]) -> dict[str, tuple[str, Any]]:
     return fields
 
 
-def _partial_value(annotation: Any, metadata: list[Any], value: Any) -> Any:
+def _partial_value(
+    annotation: Any,
+    metadata: list[Any],
+    value: Any,
+    *,
+    ignore_unknown: bool = False,
+) -> Any:
     full_annotation = _make_annotated(annotation, *metadata) if metadata else annotation
     unwrapped = unwrap_annotation(full_annotation)
     origin = get_origin(unwrapped)
 
+    extra_mode: Literal["ignore"] | None = "ignore" if ignore_unknown else None
     if origin is list:
         child_annotation = get_args(unwrapped)[0]
         child_model = model_annotation(child_annotation)
         if child_model is not None:
             if not isinstance(value, list):
-                return TypeAdapter(full_annotation, config=ADAPTER_CONFIG).validate_python(value)
-            return [construct_partial(child_model, item) for item in value]
+                return TypeAdapter(full_annotation, config=ADAPTER_CONFIG).validate_python(value, extra=extra_mode)
+            return [construct_partial(child_model, item, ignore_unknown=ignore_unknown) for item in value]
 
     embedded = model_annotation(unwrapped)
     if embedded is not None:
         if isinstance(value, dict):
-            return construct_partial(embedded, value)
-        return TypeAdapter(full_annotation).validate_python(value)
+            return construct_partial(embedded, value, ignore_unknown=ignore_unknown)
+        return TypeAdapter(full_annotation).validate_python(value, extra=extra_mode)
 
-    return TypeAdapter(full_annotation, config=ADAPTER_CONFIG).validate_python(value)
+    return TypeAdapter(full_annotation, config=ADAPTER_CONFIG).validate_python(value, extra=extra_mode)
 
 
 def _partial_values(
@@ -483,7 +440,7 @@ def _partial_values(
                 continue
             raise ValueError(f"Unknown field for {model_type.__name__}: {input_name}")
         python_name, info = entry
-        values[python_name] = _partial_value(info.annotation, list(info.metadata), value)
+        values[python_name] = _partial_value(info.annotation, list(info.metadata), value, ignore_unknown=ignore_unknown)
     return values
 
 
@@ -524,55 +481,6 @@ def construct_partial(
             continue
         instance_values.pop(python_name, None)
     return instance
-
-
-def _strip_unknown_value(annotation: Any, value: Any) -> Any:
-    """Follow typed containers, leaving opaque or invalid values for validation."""
-    current = annotation
-    kind = None
-    while True:
-        origin = get_origin(current)
-        if origin is Annotated:
-            current, *metadata = get_args(current)
-            if kind is None and (field := field_metadata(Any, metadata)) is not None:
-                kind = field.kind
-        elif origin in (Union, types.UnionType):
-            members = [item for item in get_args(current) if item is not type(None)]
-            if len(members) != 1:
-                break
-            current = members[0]
-        else:
-            break
-
-    if kind in {"FlattenedObject", "FlattenedListObject", "Json"}:
-        return value
-    origin = get_origin(current)
-    args = get_args(current)
-    if isinstance(current, type) and issubclass(current, BaseModel) and isinstance(value, dict):
-        return strip_unknown_fields(current, value)
-    if origin is list and args and isinstance(value, list):
-        return [_strip_unknown_value(args[0], item) for item in value]
-    if kind == "Mapping" and origin is dict and len(args) == 2 and isinstance(value, dict):
-        return {key: _strip_unknown_value(args[1], item) for key, item in value.items()}
-    return value
-
-
-def strip_unknown_fields(model_type: type[BaseModel], data: dict[str, Any]) -> dict[str, Any]:
-    """Drop undeclared stored fields while preserving typed compounds and mappings."""
-    nested = cast(dict[str, Any], cast(Any, model_type)._normalize_flat_input(data))
-    fields = _field_input_map(model_type)
-    output: dict[str, Any] = {}
-
-    for input_name, value in nested.items():
-        entry = fields.get(input_name)
-        if entry is None:
-            continue
-        python_name, info = entry
-        serialized_name = _serialized_field_name(python_name, info)
-        full_annotation = _make_annotated(info.annotation, *info.metadata) if info.metadata else info.annotation
-        output[serialized_name] = _strip_unknown_value(full_annotation, value)
-
-    return output
 
 
 def partial_primitives(model_type: type[ModelType], data: dict[str, Any]) -> dict[str, Any]:
@@ -656,16 +564,15 @@ def validate_field_value(
 
     resolved = unwrap_annotation(full_annotation)
     if isinstance(resolved, type) and issubclass(resolved, BaseModel):
-        validated = resolved.model_validate(value)
-    else:
-        validated = TypeAdapter(full_annotation, config=ADAPTER_CONFIG).validate_python(value)
+        return resolved.model_validate(value).model_dump(by_alias=True, exclude_none=True)
+
+    adapter = TypeAdapter(full_annotation, config=ADAPTER_CONFIG)
+    validated = adapter.validate_python(value)
     if isinstance(validated, datetime):
         return validated.isoformat()
-    return _primitive(
-        validated,
-        full_annotation,
+    return _finalize_primitives(
+        adapter.dump_python(validated, by_alias=True, exclude_none=True),
         strip_null=True,
-        ip_format=None,
         timestamp_format=None,
     )
 
@@ -675,64 +582,3 @@ def _python_field_name(model_type: type[BaseModel], serialized_name: str) -> str
         if serialized_name in (python_name, info.alias, info.serialization_alias):
             return python_name
     raise KeyError(serialized_name)
-
-
-def _primitive(
-    value: Any,
-    annotation: Any,
-    extra_metadata: list[Any] | None = None,
-    *,
-    strip_null: bool,
-    ip_format: IPFormat | None,
-    timestamp_format: TimestampFormat | None,
-) -> Any:
-    metadata = field_metadata(annotation, extra_metadata)
-    if value is None:
-        return None
-    if isinstance(value, ClassificationValue):
-        return str(value)
-    if isinstance(value, datetime):
-        if timestamp_format == "iso":
-            return value.isoformat()
-        if timestamp_format == "posix":
-            return int(value.timestamp())
-        normalized = value.astimezone(timezone.utc) if value.tzinfo is not None else value
-        return normalized.strftime(DATEFORMAT)
-    if metadata is not None and metadata.kind == "IP":
-        return ip_to_primitive(value, ip_format)
-    if isinstance(value, HowlerModelMixin):
-        return value.as_primitives(
-            strip_null=strip_null,
-            ip_format=ip_format,
-            timestamp_format=timestamp_format,
-        )
-
-    unwrapped = unwrap_annotation(annotation)
-    origin = get_origin(unwrapped)
-    args = get_args(unwrapped)
-    if isinstance(value, list):
-        child = args[0] if origin is list and args else Any
-        return [
-            _primitive(
-                item,
-                child,
-                strip_null=strip_null,
-                ip_format=ip_format,
-                timestamp_format=timestamp_format,
-            )
-            for item in value
-        ]
-    if isinstance(value, dict):
-        child = args[1] if origin is dict and len(args) > 1 else Any
-        return {
-            key: _primitive(
-                item,
-                child,
-                strip_null=strip_null,
-                ip_format=ip_format,
-                timestamp_format=timestamp_format,
-            )
-            for key, item in value.items()
-            if not (strip_null and item is None)
-        }
-    return value

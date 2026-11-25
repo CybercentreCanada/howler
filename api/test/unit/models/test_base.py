@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,7 @@ from howler.models import (
     HowlerEmbeddedModel,
     HowlerESModel,
     HowlerModelValidationError,
+    any_field,
     classification,
     compound,
     construct_partial,
@@ -29,7 +31,6 @@ from howler.models import (
     optional,
     partial_primitives,
     register_model,
-    strip_unknown_fields,
     text,
     uuid,
 )
@@ -262,15 +263,15 @@ def test_read_normalization_drops_unknown_fields_but_preserves_mapping_keys() ->
     data["child"]["removed_child_field"] = "unrecognized"
     data["counters"]["dynamic_key"] = "2"
 
-    clean = strip_unknown_fields(FoundationDocument, data)
-    model = FoundationDocument.model_validate(clean)
+    model = FoundationDocument.validate_howler(data, extra="ignore")
+    primitives = model.as_primitives()
 
-    assert "removed_plugin_field" not in clean
-    assert "removed_child_field" not in clean["child"]
+    assert "removed_plugin_field" not in primitives
+    assert "removed_child_field" not in primitives["child"]
     assert model.counters["dynamic_key"] == 2
 
 
-def test_strip_unknown_fields_traverses_typed_containers_without_pruning_loose_data() -> None:
+def test_extra_ignore_traverses_typed_containers_without_pruning_loose_data() -> None:
     class Leaf(HowlerEmbeddedModel):
         value: optional(keyword())
         count: optional(integer())
@@ -293,32 +294,19 @@ def test_strip_unknown_fields_traverses_typed_containers_without_pruning_loose_d
         "loose": {"arbitrary": {"unknown": [1, {"other": True}]}},
         "flat": {"arbitrary": {"unknown": "keep"}},
     }
-    clean = strip_unknown_fields(Containers, data)
+    model = Containers.validate_howler(data, extra="ignore")
+    clean = model.as_primitives()
 
     assert clean["grouped"] == {"team": {"value": "keep"}}
     assert clean["listed"] == [{"value": "keep"}]
     assert clean["nested"] == {"team": [{"key": {"value": "keep"}}]}
-    assert clean["maybe_grouped"] == {"team": {"value": "keep"}, "empty": None}
-    for key in ("json_value", "loose", "flat"):
-        assert clean[key] == data[key]
-    Containers.validate_howler(clean)
+    assert clean["maybe_grouped"] == {"team": {"value": "keep"}}
+    assert model.maybe_grouped == {"team": Leaf(value="keep", count=None), "empty": None}
+    assert model.loose == data["loose"]
     assert data["grouped"]["team"]["unknown"] == "drop"
 
 
-def test_strip_unknown_fields_does_not_prune_bare_typed_maps() -> None:
-    class Leaf(HowlerEmbeddedModel):
-        value: optional(keyword())
-
-    class Containers(HowlerEmbeddedModel):
-        bare: dict[str, mapping(compound(Leaf), index=False)]
-
-    data = {"bare": {"outer": {"inner": {"value": "keep", "unknown": "retain"}}}}
-    assert strip_unknown_fields(Containers, data) == data
-    with pytest.raises(HowlerModelValidationError, match="unknown"):
-        Containers.validate_howler(strip_unknown_fields(Containers, data))
-
-
-def test_strip_unknown_fields_leaves_invalid_container_values_for_validation() -> None:
+def test_extra_ignore_leaves_invalid_container_values_for_validation() -> None:
     class Leaf(HowlerEmbeddedModel):
         count: integer()
 
@@ -332,7 +320,7 @@ def test_strip_unknown_fields_leaves_invalid_container_values_for_validation() -
         {"grouped": {}, "listed": ["not an object"]},
     ):
         with pytest.raises(HowlerModelValidationError):
-            Containers.validate_howler(strip_unknown_fields(Containers, data))
+            Containers.validate_howler(data, extra="ignore")
 
 
 def test_registry_fields_flattening_and_mapping() -> None:
@@ -508,3 +496,69 @@ def test_index_defaults_and_compound_overrides_reach_flat_fields() -> None:
     assert flat["unindexed_child.inherited"].metadata.index is False
     assert flat["unindexed_child.explicitly_indexed"].metadata is not None
     assert flat["unindexed_child.explicitly_indexed"].metadata.index is True
+
+
+def test_partial_ignore_unknown_propagates_through_mapping_values() -> None:
+    """Partial read normalization ignores stale plugin fields nested inside typed mappings."""
+
+    class Leaf(HowlerEmbeddedModel):
+        value: optional(keyword())
+
+    class Root(HowlerESModel):
+        grouped: mapping(compound(Leaf), index=False)
+        nested: mapping(list_field(mapping(compound(Leaf), index=False)), index=False)
+
+    partial = construct_partial(
+        Root,
+        {
+            "grouped": {"team": {"value": "keep", "old_plugin_field": "drop"}},
+            "nested": {"team": [{"key": {"value": "keep", "old_plugin_field": "drop"}}]},
+        },
+        ignore_unknown=True,
+    )
+    assert partial.as_primitives() == {
+        "grouped": {"team": {"value": "keep"}},
+        "nested": {"team": [{"key": {"value": "keep"}}]},
+    }
+
+
+def test_unaliased_trailing_underscore_fields_serialize_consistently_with_registry() -> None:
+    """Fields ending in '_' without an explicit alias still serialize without the trailing '_'."""
+
+    class TrailingProbe(HowlerESModel):
+        from_: keyword()
+
+    model = TrailingProbe.model_validate({"from_": "value"})
+    assert "from" in model_registry.fields(TrailingProbe)
+    assert "from" in model_registry.mapping(TrailingProbe)["properties"]
+    assert model.as_primitives() == {"from": "value"}
+
+
+def test_any_field_converts_nested_datetimes_to_primitive_formats() -> None:
+    """Arbitrary values containing datetimes still serialize to JSON-compatible primitives."""
+
+    class ArbitraryDoc(HowlerESModel):
+        raw: any_field()
+
+    dt = datetime(2024, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+    doc = ArbitraryDoc.model_validate({"raw": {"when": dt, "items": [dt, None], "drop": None}})
+
+    assert doc.as_primitives() == {"raw": {"when": TIMESTAMP, "items": [TIMESTAMP, None]}}
+    assert doc.as_primitives(timestamp_format="iso") == {
+        "raw": {"when": "2024-01-02T03:04:05+00:00", "items": ["2024-01-02T03:04:05+00:00", None]}
+    }
+    assert doc.as_primitives(timestamp_format="posix") == {"raw": {"when": 1704164645, "items": [1704164645, None]}}
+
+
+def test_model_dump_omits_synthetic_index_and_round_trips() -> None:
+    """Standard model_dump omits __index so instances round-trip cleanly through strict validation."""
+
+    class IndexedDoc(HowlerESModel):
+        _include_index = True
+        name: keyword()
+
+    doc = IndexedDoc.model_validate({"name": "alpha"})
+    dumped = doc.model_dump(by_alias=True)
+    assert "__index" not in dumped
+    assert IndexedDoc.model_validate(dumped).name == "alpha"
+    assert doc.as_primitives() == {"name": "alpha", "__index": "indexeddoc"}

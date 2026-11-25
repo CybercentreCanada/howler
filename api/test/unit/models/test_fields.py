@@ -10,7 +10,6 @@ from types import SimpleNamespace
 from typing import Annotated, Any, get_args, get_origin
 
 import pytest
-from elasticsearch import dsl
 from pydantic import ConfigDict, Field, TypeAdapter, ValidationError
 from pydantic.fields import FieldInfo
 
@@ -324,7 +323,6 @@ def test_optional_index_override_reaches_the_storage_field_without_mutating_the_
             storage["index"] = expected
             if builder is ip:
                 storage["doc_values"] = expected
-        assert probe._doc._doc_type.mapping.to_dict()["properties"] == {"stored": storage}
         assert model_registry.mapping(probe)["properties"] == {"stored": storage}
 
         address = "192.0.2.1"
@@ -483,8 +481,8 @@ def test_list_field_keeps_child_and_container_metadata_separate() -> None:
 
 def test_nullable_annotations_preserve_ordered_unions() -> None:
     """Nullable wrappers preserve both ordered-union validation branches."""
-    first = Annotated[int | str, dsl.mapped_field(dsl.Keyword()), Field(union_mode="left_to_right")]
-    second = Annotated[str | int, dsl.mapped_field(dsl.Keyword()), Field(union_mode="left_to_right")]
+    first = Annotated[int | str, HowlerFieldMetadata(kind="Keyword"), Field(union_mode="left_to_right")]
+    second = Annotated[str | int, HowlerFieldMetadata(kind="Keyword"), Field(union_mode="left_to_right")]
 
     value = TypeAdapter(optional(tuple[first, second])).validate_python(("12", "12"))
     adapter = TypeAdapter(optional(first))

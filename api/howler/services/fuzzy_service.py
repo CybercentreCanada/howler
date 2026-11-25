@@ -12,6 +12,7 @@ from howler.common.logging import get_logger
 from howler.datastore.exceptions import SearchException, SearchRetryException
 from howler.datastore.support.elastic import error_message, response_body, total_hits_value
 from howler.datastore.types import SearchResult
+from howler.models import HowlerESModel
 from howler.models.case import Case
 from howler.models.event import Event
 from howler.models.fields import (
@@ -125,7 +126,7 @@ def _classify_boosted_fields() -> dict[str, str]:
     Returns:
         A dict mapping field name to one of 'ip', 'text', or 'keyword'.
     """
-    model_map = {
+    model_map: dict[str, type[HowlerESModel]] = {
         "hit": Hit,
         "event": Event,
         "case": Case,

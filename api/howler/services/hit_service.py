@@ -27,7 +27,6 @@ from howler.helper.hit import (
     vote_hit,
 )
 from howler.helper.workflow import Transition, Workflow
-from howler.models.base import strip_unknown_fields
 from howler.models.ecs.event import ECSEvent
 from howler.models.hit import Hit
 from howler.models.howler_data import Assessment, HitStatusTransition, Status
@@ -295,10 +294,7 @@ def convert_hit(  # noqa: C901
     if unused_keys and not ignore_extra_values:
         raise HowlerValueError(f"Hit was created with invalid parameters: {', '.join(sorted(unused_keys))}")
 
-    if ignore_extra_values:
-        odm = hit_type.validate_howler(strip_unknown_fields(hit_type, data))
-    else:
-        odm = hit_type.validate_howler(data)
+    odm = hit_type.validate_howler(data, extra="ignore" if ignore_extra_values else None)
 
     # Check for deprecated field and unused fields
     odm_flatten = model_registry.flat_fields(hit_type, show_compound=True)

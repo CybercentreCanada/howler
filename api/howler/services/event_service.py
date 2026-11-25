@@ -9,7 +9,6 @@ from howler.common.exceptions import HowlerValueError, ResourceExists
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
 from howler.datastore.collection import CREATE_TOKEN
-from howler.models import strip_unknown_fields
 from howler.models.ecs.event import ECSEvent
 from howler.models.event import Event
 from howler.models.log import Log
@@ -163,7 +162,7 @@ def convert_event(  # noqa: C901
     if unused_keys and not ignore_extra_values:
         raise HowlerValueError(f"Event was created with invalid parameters: {', '.join(unused_keys)}")
 
-    odm = event_type.validate_howler(strip_unknown_fields(event_type, data) if ignore_extra_values else data)
+    odm = event_type.validate_howler(data, extra="ignore" if ignore_extra_values else None)
 
     odm_flatten = model_registry.flat_fields(event_type, show_compound=True)
     deprecated_keys = {
