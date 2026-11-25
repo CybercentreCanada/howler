@@ -20,25 +20,18 @@ describe('api/search/fields', () => {
   });
 
   it('maps field objects and filters indexed fields', () => {
-    const metadata = { regex: null, values: null, deprecated_description: null };
     const input = {
-      alpha: {
-        ...metadata,
-        default: true,
-        indexed: true,
-        list: false,
-        stored: true,
-        type: 'keyword',
-        description: 'A'
-      },
-      beta: { ...metadata, default: false, indexed: false, list: true, stored: false, type: 'text', description: 'B' }
+      alpha: { default: true, indexed: true, list: false, stored: true, type: 'keyword', description: 'A' },
+      beta: { default: false, indexed: false, list: true, stored: false, type: 'text', description: 'B' }
     };
 
     expect(fields.map(input)).toEqual([
-      { key: 'alpha', ...input.alpha },
-      { key: 'beta', ...input.beta }
+      { key: 'alpha', default: true, indexed: true, list: false, stored: true, type: 'keyword', description: 'A' },
+      { key: 'beta', default: false, indexed: false, list: true, stored: false, type: 'text', description: 'B' }
     ]);
-    expect(fields.indexed(input)).toEqual([{ key: 'alpha', ...input.alpha }]);
+    expect(fields.indexed(input)).toEqual([
+      { key: 'alpha', default: true, indexed: true, list: false, stored: true, type: 'keyword', description: 'A' }
+    ]);
     expect(fields.hit).toEqual({ token: 'hit' });
     expect(fields.user).toEqual({ token: 'user' });
   });

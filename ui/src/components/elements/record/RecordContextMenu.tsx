@@ -29,7 +29,7 @@ import { capitalize, get, groupBy, isEmpty, toString, uniq } from 'lodash-es';
 import type { Action } from 'models/entities/generated/Action';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { MatchedTemplate } from 'models/WithMetadata';
+import type { Template } from 'models/entities/generated/Template';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import howlerPluginStore from 'plugins/store';
 import type { FC, PropsWithChildren } from 'react';
@@ -91,7 +91,7 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
   const selectedRecords = useContextSelector(RecordContext, ctx => ctx.selectedRecords);
 
   const [analytic, setAnalytic] = useState<Analytic>();
-  const [template, setTemplate] = useState<MatchedTemplate | null>();
+  const [template, setTemplate] = useState<Template>();
 
   const [actions, setActions] = useState<Action[]>([]);
 

@@ -10,11 +10,11 @@
 | id | UUID | A UUID for this hit. | :material-checkbox-marked-outline: Yes | `None` |
 | analytic | CaseInsensitiveKeyword | Title of the analytic. | :material-checkbox-marked-outline: Yes | `None` |
 | assignment | Keyword | Unique identifier of the assigned user. | :material-checkbox-marked-outline: Yes | `unassigned` |
-| data | List [Keyword] | Raw telemetry records associated with this hit. | :material-checkbox-marked-outline: Yes | `[]` |
+| data | List [Keyword] | None | :material-checkbox-marked-outline: Yes | `[]` |
 | links | List [[Link](/howler/odm/class/link)] | A list of links associated with this hit. | :material-checkbox-marked-outline: Yes | `[]` |
 | detection | CaseInsensitiveKeyword | The detection that produced this hit. | :material-minus-box-outline: Optional | `None` |
 | hash | HowlerHash | A hash of the event used for deduplicating hits. Supports any hexadecimal string between 1 and 64 characters long. | :material-checkbox-marked-outline: Yes | `None` |
-| related | List [Keyword] | Related records. | :material-checkbox-marked-outline: Yes | `[]` |
+| related | List [Keyword] | None | :material-checkbox-marked-outline: Yes | `[]` |
 | reliability | Float | Metric decoupled from the value in the detection information. | :material-minus-box-outline: Optional | `None` |
 | severity | Float | Metric decoupled from the value in the detection information. | :material-minus-box-outline: Optional | `None` |
 | volume | Float | Metric decoupled from the value in the detection information. | :material-minus-box-outline: Optional | `None` |
@@ -25,8 +25,7 @@
 | escalation | Enum | Level of escalation of this hit.<br>Values:<br>`"alert", "evidence", "hit", "miss"` | :material-checkbox-marked-outline: Yes | `hit` |
 | expiry | Date | User selected time for hit expiry | :material-minus-box-outline: Optional | `None` |
 | assessment | Enum | Assessment of the hit.<br>Values:<br>`"ambiguous", "attempt", "compromise", "development", "false-positive", "legitimate", "mitigated", "recon", "security", "trivial"` | :material-minus-box-outline: Optional | `None` |
-| rationale | Keyword | The rationale behind the hit assessment. Allows it to be understood and verified by other analysts. | :material-minus-box-outline: Optional | `None` |
-| triaged | Date | Timestamp at which the hit was triaged. | :material-minus-box-outline: Optional | `None` |
+| rationale | Text | The rationale behind the hit assessment. Allows it to be understood and verified by other analysts. | :material-minus-box-outline: Optional | `None` |
 | comment | List [[Comment](/howler/odm/class/comment)] | A list of comments with timestamps and attribution. | :material-checkbox-marked-outline: Yes | `[]` |
 | log | List [[Log](/howler/odm/class/log)] | A list of changes to the hit with timestamps and attribution. | :material-checkbox-marked-outline: Yes | `[]` |
 | monitored | Keyword | Link to the incident monitoring dashboard. | :material-minus-box-outline: Optional | `None` |
@@ -37,3 +36,4 @@
 | labels | [Label](/howler/odm/class/label) | List of labels relating to the hit | :material-minus-box-outline: Optional | See [Label](/howler/odm/class/label) for more details. |
 | votes | [Votes](/howler/odm/class/votes) | Votes relating to the hit | :material-minus-box-outline: Optional | See [Votes](/howler/odm/class/votes) for more details. |
 | dossier | List [[Lead](/howler/odm/class/lead)] | A list of leads forming the dossier associated with this hit | :material-checkbox-marked-outline: Yes | `[]` |
+| viewers | List [Keyword] | None | :material-checkbox-marked-outline: Yes | `[]` |

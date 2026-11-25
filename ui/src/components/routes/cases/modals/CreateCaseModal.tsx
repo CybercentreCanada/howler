@@ -28,7 +28,7 @@ import { useTranslation } from 'react-i18next';
 import CaseRecordRow from './CaseRecordRow';
 import { useRecordEntries } from './hooks';
 
-const ESCALATIONS = ['normal', 'focus', 'crisis'] as const;
+const ESCALATIONS = ['normal', 'focus', 'crisis'];
 
 const CreateCaseModal: FC<{ records: (Hit | Event)[] }> = ({ records }) => {
   const { t } = useTranslation();
@@ -38,7 +38,7 @@ const CreateCaseModal: FC<{ records: (Hit | Event)[] }> = ({ records }) => {
   const [caseTitle, setCaseTitle] = useState('');
   const [summary, setSummary] = useState('');
   const [overview, setOverview] = useState('');
-  const [escalation, setEscalation] = useState<(typeof ESCALATIONS)[number] | null>(null);
+  const [escalation, setEscalation] = useState<string | null>(null);
   const [participants, setParticipants] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 

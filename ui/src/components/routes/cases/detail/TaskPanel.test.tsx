@@ -169,7 +169,7 @@ describe('TaskPanel', () => {
   });
 
   it('limits search to first 10 child case item values', async () => {
-    const items: Case['items'] = Array.from({ length: 12 }, (_, i) => ({ type: 'case', value: `c${i}` }));
+    const items = Array.from({ length: 12 }, (_, i) => ({ type: 'case', value: `c${i}` }));
     mockSearchPost.mockReturnValue('search-request');
     mockDispatchApi.mockResolvedValue({ items: [] });
 
