@@ -1,0 +1,361 @@
+ui/src/plugins/clue/utils.test.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-87
+ui/src/models/entities/generated/ECSVersion.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-4
+ui/src/models/entities/generated/Operation.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/components/routes/advanced/luceneCompletionProvider.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 106,125
+ui/src/models/entities/generated/Labels.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Overview.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Server.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/components/elements/record/RecordComments.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 97,100-103,105-107,109-111,262,302
+ui/src/models/entities/generated/Faas.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/ActionTypes.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,4-5,36
+ui/src/components/elements/hit/HitOutline.test.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 3-5,12,53-58,62,65-66,70,91-108
+  s_b237956c3233b6::t_9fd0395c9b49f9 109
+ui/src/models/entities/generated/ThreatTactic.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Dns.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-3,6,10-11
+ui/src/models/entities/generated/Instance.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/HitFile.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,4,21,32
+ui/src/models/entities/generated/Network.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/api/search/fields/index.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 5,8
+ui/src/components/routes/help/HitSchemaDocumentation.test.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 37,43,67
+ui/src/models/entities/generated/SharepointData.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-5
+ui/src/models/entities/generated/Geo.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-2,10
+ui/src/models/entities/generated/Software.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Nat.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/components/routes/cases/detail/TaskPanel.test.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 172
+ui/src/models/entities/generated/Hash.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/plugins/clue/utils.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 6,13
+ui/src/models/entities/generated/Task.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/ApiType.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 11,13-16,25,27,92-93,97
+  s_b237956c3233b6::t_0ccf943b6252d9 98
+ui/src/models/entities/generated/Sharepoint.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-2,5-6
+ui/src/models/entities/generated/Hashes.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-10
+ui/src/components/app/hooks/useMatchers.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 4,13
+ui/src/components/elements/hit/grid/RecordRow.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 86-100,102
+ui/src/models/entities/generated/Header.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/components/app/hooks/useTitle.test.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 3,95,105,125-164
+  s_b237956c3233b6::t_f3a5dc42ae8afd 165
+ui/src/models/entities/generated/UserAgent.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/components/routes/views/ViewComposer.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 82,251,305
+ui/src/models/entities/generated/Incident.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Cbs.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Os.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Link.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Event.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,7,11-13,19-20,22,25-26,30-32,45-46,48,50-51,55,60,65-67,70,72,74,76
+ui/src/models/entities/generated/Lead.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-2,8
+ui/src/models/entities/generated/Email.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-2,4,8-9,13,17-19,21
+ui/src/models/entities/generated/Trigger.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,4
+ui/src/models/entities/generated/ECSRule.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-13
+ui/src/models/entities/generated/ThreatEnrichment.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Url.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Assemblyline.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-2,6-10,12-13
+ui/src/models/entities/generated/RegistryData.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-6
+ui/src/components/elements/record/RecordContextMenu.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 32,94
+ui/src/models/entities/generated/EntryMeta.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/LocalizedLabel.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-5
+ui/src/models/entities/generated/Mitre.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-2,5-6
+ui/src/components/elements/record/RecordRelated.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 24-25,31,51
+ui/src/models/entities/generated/Ingress.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/components/routes/cases/detail/CaseDetailControls.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 3,8-10,12,15-20,26-33,49,56
+ui/src/models/entities/generated/Observer.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,11
+ui/src/models/WithMetadata.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 6-8,14
+ui/src/models/entities/generated/View.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,5-7,14
+ui/src/components/routes/templates/TemplateViewer.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 50-53,250,324
+ui/src/components/routes/cases/modals/ResolveModal.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 37,112,119,134-135,180-182,236
+ui/src/components/routes/help/HitSchemaDocumentation.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 25,55,76,80,88,90
+ui/src/models/entities/generated/Body.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/ALRecord.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-7
+ui/src/models/entities/generated/HitOrganization.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/ECSEvent.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,4,14,17,27
+ui/src/models/entities/generated/Project.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Item.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,4,6-7
+ui/src/components/routes/cases/detail/CaseDetails.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 51
+ui/src/models/entities/generated/As.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-5
+ui/src/models/entities/generated/Image.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/CodeSignature.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,3
+ui/src/models/entities/generated/Service.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Organization.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/ShortUser.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-7
+ui/src/models/entities/generated/Case.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-2,11,14-15,18,23,30
+ui/src/models/entities/generated/Source.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-2,5,10,17
+ui/src/models/entities/generated/TypeMap.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-5
+ui/src/models/entities/generated/GeoPoint.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-5
+ui/src/models/entities/generated/DNSQuestion.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-9
+ui/src/components/routes/cases/modals/ResolveModal.test.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 8,26,33-36,44,101,106-117,180-198
+  s_b237956c3233b6::t_602097246774a4 199-200
+ui/src/models/entities/generated/Clue.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-2,5
+.github/workflows/api-workflow.yml
+  s_b237956c3233b6::t_af9f123a64feca 12,27,97-98
+  s_b237956c3233b6::t_8d5b850d4c7174 99
+ui/src/api/search/fields/index.test.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 23,25-34,38-39,41
+ui/src/components/routes/cases/modals/CreateCaseModal.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 31,41
+ui/src/components/routes/help/HitBannerDocumentation.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 30-31
+ui/src/models/entities/generated/Agent.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Feed.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Machine.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Template.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,8
+ui/src/models/entities/generated/DashboardEntry.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-6
+ui/src/models/entities/generated/Related.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,7,9
+ui/src/models/entities/generated/ParentEmail.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-14
+ui/src/models/entities/generated/Pe.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Error.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Outline.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Howler.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,5,13,19-20,36,38
+ui/src/models/entities/generated/Request.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Pivot.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-2,6,8,10
+ui/src/components/routes/action/view/ActionDetails.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 22,26,51-52,57-58,180,191
+ui/src/models/entities/generated/Http.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Response.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/ParentProcess.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-32
+ui/src/models/entities/generated/ThreatEmail.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-4
+ui/src/models/entities/generated/ThreatGroup.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Analytic.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,4,15-18
+AGENTS.md
+  s_b237956c3233b6::t_35f74c0ee5e33d 44
+ui/src/components/elements/record/RecordRelated.test.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 3-4,116-158
+ui/src/components/routes/help/components/CaseDocumentationPreviews.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 71,148-149
+ui/src/models/entities/generated/Settings.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-2,6-7
+ui/src/models/entities/generated/TlsServer.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/components/elements/hit/grid/RecordRow.test.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-114
+ui/src/models/entities/generated/Aws.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-2,6
+ui/src/components/app/hooks/useTitle.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 7,42-44,48-57
+ui/src/models/entities/generated/DNSAnswer.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-8
+ui/src/models/entities/generated/Device.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Group.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/components/routes/action/edit/ActionEditor.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 24,28,64,206-211
+ui/src/models/entities/generated/ParentParentProcess.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-30
+ui/src/components/routes/cases/modals/AddEventModal.test.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 135-145,167-170,191-192
+ui/src/models/entities/generated/Process.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,4-5,7,20,23,30
+ui/src/models/entities/generated/Vulnerability.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Indicator.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-3,8-9
+api/build_scripts/generate_classes.py
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-3,7,9-39,43-51,55-155,157-217,219,223
+api/test/unit/test_generate_entity_types.py
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-166
+ui/src/models/entities/generated/Egress.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Address.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-4
+ui/src/models/entities/generated/Azure.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Elf.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,14
+ui/src/models/entities/generated/GridColumn.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-5
+ui/src/models/entities/generated/TriageOptions.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-7
+ui/src/models/entities/generated/Notebook.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Gcp.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Host.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,6
+ui/src/models/entities/generated/EventHowler.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,9
+ui/src/components/elements/hit/HitOutline.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 10,36,45
+ui/src/models/entities/generated/Action.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,6-7,12
+ui/src/models/entities/generated/AwsAccount.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-5
+ui/src/models/entities/generated/CaseLog.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-9
+ui/src/models/entities/generated/Dossier.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,6,9,14
+ui/src/models/entities/generated/Comment.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/OriginalClient.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-17
+ui/src/models/entities/generated/Log.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,9
+ui/src/components/routes/advanced/yamlCompletionProvider.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 36,47
+ui/src/models/entities/generated/Container.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Enrichments.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,3-4
+ui/src/models/entities/generated/Attachment.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/UserUser.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-2,8,16
+ui/src/models/entities/generated/Interface.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/components/elements/record/RecordComments.test.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 3-4,218-260
+  s_b237956c3233b6::t_4691f217141e6a 261
+ui/src/components/routes/action/useMyActionFunctions.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 9,77
+ui/src/models/entities/generated/CloudAccount.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Hit.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,12-13,50,52,72
+ui/src/models/entities/generated/Matched.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Tls.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Votes.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/components/routes/action/useMyActionFunctions.test.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 153,159
+api/build_scripts/generate_api_config_types.py
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-302
+ui/src/models/entities/generated/File.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-2,6
+ui/src/models/entities/generated/Registry.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1-2,5
+ui/src/models/entities/generated/User.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Section.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Mapping.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Client.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/components/routes/cases/modals/AddEventModal.tsx
+  s_b237956c3233b6::t_35f74c0ee5e33d 18,104-105,116-118,128-130,169,193,240
+ui/src/models/entities/generated/Cloud.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+ui/src/models/entities/generated/Rule.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,5-6,8-11
+ui/src/utils/stringUtils.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 3-4
+ui/src/models/entities/generated/Threat.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1,3,14,17
+ui/src/models/entities/generated/HowlerComment.d.ts
+  s_b237956c3233b6::t_35f74c0ee5e33d 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0dfecd6140753755e1f44b2d05a82ef542ce7517",
+  "prompts": {},
+  "sessions": {
+    "s_b237956c3233b6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_deb90bec4ffehWV19zI5ySOrQJ",
+        "model": "gemini-4-hydrogen"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
