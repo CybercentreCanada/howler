@@ -1,0 +1,483 @@
+ui/src/models/entities/generated/CloudAccount.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Dashboard.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-8
+ui/src/models/entities/generated/Votes.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Section.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Data.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-8
+ui/src/models/entities/generated/Item.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3,6,8-9
+documentation/docs/developer/backend.fr.md
+  s_b237956c3233b6::t_933d3e5a2c359c 64
+ui/src/models/entities/generated/HitFile.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 3,6-8,23,34
+ui/src/models/entities/generated/Incident.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/ParentHash.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-12
+documentation/docs/ingestion/user.md
+  s_b237956c3233b6::t_933d3e5a2c359c 13,26-31
+ui/src/components/routes/cases/modals/CreateCaseModal.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 31,41
+ui/src/models/entities/generated/ECSEvent.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3,6,16,19,29
+ui/src/models/entities/generated/Hit.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 9,11,29,39-41,53,55,75
+ui/src/components/app/hooks/useMatchers.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 4-5,14
+ui/src/models/entities/generated/Geo.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1,3-5,12
+ui/src/models/entities/generated/Pe.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/EventCloud.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-20
+docs/api/codebase.md
+  s_b237956c3233b6::t_933d3e5a2c359c 11
+documentation/docs/odm/class/hit.md
+  s_b237956c3233b6::t_933d3e5a2c359c 13-14,24
+ui/src/components/routes/templates/TemplateViewer.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 50,247,321
+documentation/docs/odm/class/email.md
+  s_b237956c3233b6::t_933d3e5a2c359c 10
+ui/src/models/entities/generated/Created.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-7
+documentation/docs/odm/class/lead.md
+  s_b237956c3233b6::t_933d3e5a2c359c 12
+ui/src/components/routes/cases/detail/TaskPanel.test.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 172
+ui/src/models/entities/generated/Process.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 4-6,8-10,22,25,32
+ui/src/models/entities/generated/Ingress.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 3-5
+ui/src/models/entities/generated/Aws.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1,4-6,8
+ui/src/models/entities/generated/EventHttp.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-11
+ui/src/components/routes/views/ViewComposer.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 82,251,305
+ui/src/models/entities/generated/Error.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+documentation/docs/odm/class/related.md
+  s_b237956c3233b6::t_933d3e5a2c359c 15
+ui/src/models/entities/generated/Action.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 3-5,12-14
+ui/src/models/entities/generated/DestinationOriginal.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-19
+ui/src/models/entities/generated/Egress.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+documentation/docs/odm/class/sharepointdata.md
+  s_b237956c3233b6::t_933d3e5a2c359c 6
+ui/src/models/entities/generated/Device.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+AGENTS.md
+  s_b237956c3233b6::t_a8434c292640bf 44
+ui/src/models/entities/generated/Modified.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-7
+ui/src/models/entities/generated/Case.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 6-8,14-15,21
+ui/src/models/entities/generated/Network.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Client.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/IndicatorEmail.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-6
+ui/src/models/entities/generated/ParentUser.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-9
+ui/src/components/routes/cases/modals/ResolveModal.test.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 31,39,96,101
+ui/src/models/entities/generated/Hash.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/components/routes/action/useMyActionFunctions.test.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 153,159
+ui/src/models/entities/generated/SourceOriginal.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-19
+ui/src/models/entities/generated/ThreatTechnique.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-8
+ui/src/models/entities/generated/EventOrganization.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-7
+ui/src/models/entities/generated/Server.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/api/search/fields/index.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 5,8-20
+ui/src/models/entities/generated/Registry.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1,3-5,7
+ui/src/models/entities/generated/Cloud.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 7-9
+ui/src/components/app/hooks/useTitle.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 41-43,47-49,51-52
+ui/src/components/routes/cases/modals/ResolveModal.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 111,118,133,231
+ui/src/models/entities/generated/EventTls.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-12
+ui/src/plugins/clue/utils.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 12
+ui/src/models/entities/generated/Container.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 3-5
+ui/src/models/entities/generated/Http.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 4-6
+ui/src/components/elements/hit/HitOutline.test.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 9-13,58,60-61,65
+ui/src/models/entities/generated/Column.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-7
+ui/src/models/entities/generated/Sharepoint.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-2,4-6,8-9
+ui/src/components/routes/cases/modals/AddEventModal.test.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 135,177
+ui/src/models/entities/generated/Software.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Domain.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-9
+ui/src/models/entities/generated/Notebook.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/EventFile.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-36
+ui/src/models/entities/generated/Cc.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-6
+ui/src/models/entities/generated/Trigger.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3,6
+ui/src/models/entities/generated/Feed.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+documentation/docs/odm/class/label.md
+  s_b237956c3233b6::t_933d3e5a2c359c 10-18
+documentation/docs/installation/deployment.md
+  s_b237956c3233b6::t_933d3e5a2c359c 35
+ui/src/models/entities/generated/AttachmentsFile.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-12
+ui/src/models/entities/generated/Header.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Vulnerability.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/AutonomousSystems.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-7
+ui/src/models/entities/generated/Yara.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-9
+ui/src/models/entities/generated/Elf.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 3,5-7,17
+ui/src/models/entities/generated/View.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 3-5,13,15-17
+ui/src/models/entities/generated/EmailParent.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-19
+ui/src/components/routes/cases/modals/AddEventModal.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 54-56,106-107,118,128,167,191,238
+ui/src/models/entities/generated/Question.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-11
+ui/src/models/entities/generated/Clue.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1,3-5,7
+ui/src/models/entities/generated/ThreatGroup.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+documentation/docs/developer/random_data.md
+  s_b237956c3233b6::t_933d3e5a2c359c 4,13,16,19,22,59,161,170,173,176
+documentation/docs/odm/class/threat.md
+  s_b237956c3233b6::t_933d3e5a2c359c 10
+ui/src/components/routes/help/HitSchemaDocumentation.test.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 37,43
+ui/src/models/entities/generated/TriageSettings.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-9
+ui/src/models/entities/generated/Dossier.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 4-6,14-16
+ui/src/models/entities/generated/Response.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 3-5
+ui/src/api/search/fields/index.test.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 24-25,29-33
+ui/src/models/entities/generated/Service.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Template.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3,10
+documentation/docs/odm/getting_started.md
+  s_b237956c3233b6::t_933d3e5a2c359c 21
+ui/src/models/entities/generated/Dns.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-2,4-6,8,12-13
+ui/src/models/entities/generated/Source.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1,4,7-9,12,19
+ui/src/models/entities/generated/Type.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-7
+ui/src/models/entities/generated/Threat.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 5,7,9-11,17,20
+documentation/docs/odm/class/sharepointuser.md
+  s_b237956c3233b6::t_933d3e5a2c359c 6
+ui/src/models/entities/generated/HowlerComment.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Cbs.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 3-5
+ui/src/models/entities/generated/EventDestination.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-23
+ui/src/models/entities/generated/ThreatEnrichment.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 4-6
+ui/src/components/elements/hit/HitOutline.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 10-11,37,46
+ui/src/models/entities/generated/Agent.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Link.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+documentation/docs/odm/class/file.md
+  s_b237956c3233b6::t_933d3e5a2c359c 26,28,34-35
+ui/src/models/entities/generated/Answer.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-10
+ui/src/models/entities/generated/ThreatIndicator.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-21
+ui/src/models/entities/generated/Log.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3,11
+ui/src/models/entities/generated/Rule.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3,5,8-10,12-13
+ui/src/models/entities/generated/ObserverIngress.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-9
+documentation/docs/odm/class/observer.md
+  s_b237956c3233b6::t_933d3e5a2c359c 14-15
+ui/src/components/routes/action/edit/ActionEditor.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 24,28,64,109-119,217
+documentation/docs/odm/class/sharepoint.md
+  s_b237956c3233b6::t_933d3e5a2c359c 6
+ui/src/models/entities/generated/Body.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+documentation/docs/developer/backend.md
+  s_b237956c3233b6::t_933d3e5a2c359c 64
+ui/src/models/entities/generated/Label.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-7
+documentation/docs/odm/class/matched.md
+  s_b237956c3233b6::t_933d3e5a2c359c 6
+ui/src/components/elements/record/RecordContextMenu.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 32,94
+ui/src/components/routes/advanced/yamlCompletionProvider.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 36,47
+ui/src/models/entities/generated/EventProcess.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-34
+ui/src/models/entities/generated/To.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-6
+ui/src/models/entities/generated/EmailAttachment.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-8
+ui/src/models/entities/generated/Indicator.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-2,4-6,10-11
+ui/src/models/entities/generated/Attachment.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 3-5
+ui/src/models/entities/generated/Task.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+documentation/docs/odm/class/indicator.md
+  s_b237956c3233b6::t_933d3e5a2c359c 14
+ui/src/models/entities/generated/EntryMeta.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Attribution.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-9
+ui/src/models/entities/generated/ProcessHash.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-12
+ui/src/models/entities/generated/Pivot.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1,4-6,10,13-14
+documentation/docs/odm/class/geo.md
+  s_b237956c3233b6::t_933d3e5a2c359c 11
+ui/src/models/entities/generated/Outline.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/File.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1,3-5,8
+ui/src/models/entities/generated/Nat.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/components/routes/help/HitSchemaDocumentation.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 74,78,86,88
+ui/src/models/entities/generated/ReplyTo.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-6
+ui/src/models/entities/generated/Howler.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 2,10-12,15,21-22,38,40
+ui/src/models/entities/generated/HowlerDossier.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-14
+ui/src/models/entities/generated/Project.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Uri.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-9
+documentation/docs/odm/class/howlerdata.md
+  s_b237956c3233b6::t_933d3e5a2c359c 13,17,28,39
+ui/src/models/entities/generated/Location.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-7
+ui/src/models/entities/generated/Related.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3,9,11
+ui/src/models/entities/generated/Account.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-7
+ui/src/models/entities/generated/EventSource.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-23
+ui/src/models/entities/generated/Azure.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Analytic.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 3,5-7,17
+ui/src/models/entities/generated/From.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-6
+ui/src/models/entities/generated/Interface.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Comment.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Os.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Group.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Url.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/EventHowler.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 2-5,8,10-12,14-15,17,19-21,25-27,29-30,32,34-35,37-41
+ui/src/models/entities/generated/Sender.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-6
+ui/src/models/entities/generated/ParentParent.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-32
+ui/src/components/routes/cases/detail/CaseDetails.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 51
+ui/src/models/entities/generated/Segment.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-14
+ui/src/models/entities/generated/ThreatTactic.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Bcc.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-6
+ui/src/models/entities/generated/Host.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3,8
+docs/api/plugins.md
+  s_b237956c3233b6::t_933d3e5a2c359c 3,19,85-87,89,102-103,185,268,270,273-284,286,288,291-301,303,308,310-311,314-317,487,493-494,504,512,514
+ui/src/models/WithMetadata.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 11
+ui/src/models/entities/generated/ProcessParent.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-34
+ui/src/models/entities/generated/ProcessUser.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-9
+ui/src/components/routes/action/view/ActionDetails.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 22,26,51-52,57-63,185,196
+ui/src/models/entities/generated/Ecs.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-6
+ui/src/models/entities/generated/Operation.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/UserAgent.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 4-6
+ui/src/components/routes/action/useMyActionFunctions.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 9,77
+ui/src/models/entities/generated/Gcp.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/IndicatorFile.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-36
+ui/src/models/entities/generated/EnrichmentsIndicator.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-21
+ui/src/components/elements/hit/grid/RecordRow.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 86-89,91,93-94
+api/build_scripts/generate_classes.py
+  s_b237956c3233b6::t_933d3e5a2c359c 1,3-4,6,8-9,11-105,108,110-116,118-123,125-141,143-349,352-612,616
+ui/src/models/entities/generated/Machine.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/components/routes/cases/detail/CaseDetailControls.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 7-9,11,14,20-24,40-47,54
+ui/src/models/entities/generated/Behaviour.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-9
+ui/src/models/entities/generated/EventEmail.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-30
+ui/src/models/entities/generated/Assemblyline.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-5,7-8,10-12,14-18,20-21
+ui/src/models/entities/generated/Mitre.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-2,4-6,8-9
+ui/src/models/entities/generated/Settings.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1,3-5,8-9
+documentation/docs/odm/class/event.md
+  s_b237956c3233b6::t_933d3e5a2c359c 33
+documentation/docs/developer/random_data.fr.md
+  s_b237956c3233b6::t_933d3e5a2c359c 4,13,16,19,22,59,161,170,173,176
+ui/src/models/entities/generated/Mapping.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/components/routes/help/HitBannerDocumentation.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 30-31
+ui/src/models/entities/generated/EventObserver.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-21
+ui/src/models/entities/generated/Heuristic.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-9
+ui/src/models/entities/generated/Tls.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 4-6
+ui/src/components/app/hooks/useTitle.test.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 94,104
+ui/src/models/entities/generated/TlsServer.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Parent.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-19
+ui/src/models/entities/generated/Lead.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1,3-5,10
+ui/src/models/entities/generated/Enrichments.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3,5-6
+ui/src/models/entities/generated/EventThreat.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-21
+ui/src/models/entities/generated/Matched.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Tactic.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-9
+ui/src/models/entities/generated/UserUser.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1,3-5,10,17,19
+documentation/docs/ingestion/user.fr.md
+  s_b237956c3233b6::t_933d3e5a2c359c 14,27-32
+ui/src/models/entities/generated/Image.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 3-5
+ui/src/models/entities/generated/Original.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-19
+ui/src/components/elements/record/RecordComments.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 99-100,253,293
+ui/src/models/entities/generated/CodeSignature.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3,5
+ui/src/models/entities/generated/Faas.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 3-5
+ui/src/models/entities/generated/HitOrganization.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/components/elements/record/RecordRelated.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 24,30,50
+ui/src/models/ActionTypes.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 33
+ui/src/models/entities/generated/FileHash.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-12
+.github/workflows/api-workflow.yml
+  s_b237956c3233b6::t_933d3e5a2c359c 12,27
+ui/src/components/routes/advanced/luceneCompletionProvider.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 106,125
+ui/src/models/entities/generated/Request.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 3-5
+ui/src/models/entities/generated/User.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 3-5
+documentation/docs/odm/class/elf.md
+  s_b237956c3233b6::t_933d3e5a2c359c 13,17-18
+ui/src/models/entities/generated/Event.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 6,9,12-15,17-23,32,39-41,49-50,52,54-55,59,64,69-71,74,76,78,80
+ui/src/models/entities/generated/Instance.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Organization.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+ui/src/models/entities/generated/Labels.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+documentation/docs/odm/class/link.md
+  s_b237956c3233b6::t_933d3e5a2c359c 11
+ui/src/models/entities/generated/Overview.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-3
+documentation/docs/odm/class/header.md
+  s_b237956c3233b6::t_933d3e5a2c359c 6,10-13
+ui/src/components/routes/help/components/CaseDocumentationPreviews.tsx
+  s_b237956c3233b6::t_933d3e5a2c359c 71,148-149
+ui/src/models/entities/generated/ApiType.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 11,13-16,92-229
+documentation/docs/odm/class/client.md
+  s_b237956c3233b6::t_933d3e5a2c359c 12
+ui/src/models/entities/generated/Observer.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 5-7,13
+documentation/docs/odm/class/usernested.md
+  s_b237956c3233b6::t_933d3e5a2c359c 12
+ui/src/models/entities/generated/Email.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 2-8,10-12,15-16,20,24-26,28
+ui/src/models/entities/generated/Technique.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-9
+ui/src/models/entities/generated/Destination.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-23
+ui/src/models/entities/generated/Antivirus.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-9
+ui/src/models/entities/generated/HttpResponse.d.ts
+  s_b237956c3233b6::t_933d3e5a2c359c 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b043f619caad7f4475171aba9753621d68b0b2e5",
+  "prompts": {},
+  "sessions": {
+    "s_b237956c3233b6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_deb90bec4ffehWV19zI5ySOrQJ",
+        "model": "gemini-4-hydrogen"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
