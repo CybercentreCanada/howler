@@ -1,0 +1,958 @@
+api/test/integration/test_case_insensitive_metadata.py
+  s_71823f7d2ac076::t_0c8e367e70b0bc 120,195,310,435-437
+plugins/sentinel/test/unit/models/test_sentinel.py
+  s_23cd07e9f28821::t_364b23095c973f 32-60,66,77-78,82,84
+  s_b23410104fb27d::t_5f07dcd57543f9 5-15,61,63-65,73,80-81,83,85-88
+  s_7dcb1935aaf88e::t_66ce304b606174 4,18-29,62,67-72,74-76,79
+  s_7dcb1935aaf88e::t_52b0d080b9c4c0 1-3
+api/test/unit/services/test_enqueue_action.py
+  s_23cd07e9f28821::t_20550ab267d643 12,190-191,435-460,462-463
+ui/src/models/entities/generated/ApiType.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 11,13-16
+  s_71823f7d2ac076::t_bac5d1ef020882 25,27,92-93,97
+  s_71823f7d2ac076::t_72880625ac7976 98
+api/test/unit/services/test_template_service.py
+  s_23cd07e9f28821::t_20550ab267d643 1-20
+ui/src/models/entities/generated/Machine.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/components/app/hooks/useTitle.test.tsx
+  s_71823f7d2ac076::t_23082bf33e9142 165
+  s_71823f7d2ac076::t_bac5d1ef020882 3,95,105,125-164
+ui/src/models/entities/generated/Cloud.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/WithMetadata.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 6-8,14
+documentation/docs/odm/class/hit.md
+  s_71823f7d2ac076::t_1319c51ac37678 50
+ui/src/api/search/fields/index.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 5,8
+ui/src/models/entities/generated/Address.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-4
+ui/src/models/entities/generated/Rule.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,5-6,8-11
+api/test/unit/models/fixtures/legacy_public_contract_examples.json
+  s_7dcb1935aaf88e::t_4535e9f3bd0df0 1-147
+plugins/sentinel/sentinel/models/hit.py
+  s_b23410104fb27d::t_5f07dcd57543f9 17-23
+  s_b23410104fb27d::t_b8561aee35ef1e 14-16
+api/build_scripts/generate_md_docs.py
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 11,14,99-122,138-186,188-194,232,236,279-281,283-290,292-294,308-309,311-329
+  s_b23410104fb27d::t_5f07dcd57543f9 338-339
+  s_71823f7d2ac076::t_1319c51ac37678 50-78,80,131-137,187
+  s_7dcb1935aaf88e::t_b9f11650558f15 96-98
+  s_7dcb1935aaf88e::t_27f88ec52b14c1 330
+  s_b23410104fb27d::t_126b84b6ab1a5c 335-337
+ui/src/models/entities/generated/Response.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Faas.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+plugins/sentinel/test/conftest.py
+  s_b23410104fb27d::t_5f07dcd57543f9 14
+  s_b23410104fb27d::t_9b43cfaf78073c 11-13
+  s_b23410104fb27d::t_b1516b8aefb446 15-17
+.github/workflows/mcp-workflow.yml
+  s_9f73908e04e066::t_1046945c8eb3f8 143
+ui/src/components/routes/action/edit/ActionEditor.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 24,28,64,206-211
+api/howler/sample_data/random_data.py
+  s_b23410104fb27d::t_5f07dcd57543f9 100-841
+  s_b23410104fb27d::t_8a74d8f7f85bba 97-99
+api/howler/models/schema.py
+  s_23cd07e9f28821::t_364b23095c973f 1-10
+  s_b23410104fb27d::t_5f07dcd57543f9 102-321
+api/howler/datastore/operations.py
+  s_b23410104fb27d::t_5f07dcd57543f9 11
+  s_b23410104fb27d::t_8c8976bf21f042 12
+api/howler/actions/__init__.py
+  s_b23410104fb27d::t_5f07dcd57543f9 148,206
+api/howler/services/auth_service.py
+  s_b23410104fb27d::t_5f07dcd57543f9 339,358
+api/test/unit/models/test_base.py
+  s_7dcb1935aaf88e::t_66ce304b606174 24,252,273-335
+  s_7dcb1935aaf88e::t_37dea9c1cffe61 336-337
+  s_50ded30ca60a10::t_19d5a35a528d60 234-235
+  s_23cd07e9f28821::t_364b23095c973f 10-19,36-186,261-262,355-510
+  s_50ded30ca60a10::t_7c5cae3c423482 8,222-233
+  s_50ded30ca60a10::t_c214d598c55315 7
+  s_7dcb1935aaf88e::t_f1908531c2eb9f 25-27
+  s_23cd07e9f28821::t_a3c44bb4d3b1f2 187-189
+  s_50ded30ca60a10::t_eec92522cb088f 236-238
+  s_7dcb1935aaf88e::t_ff3103d3895bcf 249-251
+api/howler/services/analytic_service.py
+  s_b23410104fb27d::t_5f07dcd57543f9 93-94,97-99,147-149,151,157,181,184-185
+api/test/unit/models/test_case.py
+  s_b23410104fb27d::t_5f07dcd57543f9 43,48-51,70
+  s_23cd07e9f28821::t_364b23095c973f 1-42,44-47,52-69,71-326
+api/test/unit/services/test_dossier_service.py
+  s_7dcb1935aaf88e::t_66ce304b606174 1-33
+api/test/unit/services/test_lucene_service.py
+  s_23cd07e9f28821::t_20550ab267d643 2-8,10-28,30-32,75-83,87-94,98-99,112-132,134-141,219,223-255
+  s_7dcb1935aaf88e::t_1056dad4abd7db 1,9,29,33-74,84-86,95-97,100-111,133,142-218,220-222
+ui/src/models/entities/generated/File.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,6
+docs/api/plugins.md
+  s_7dcb1935aaf88e::t_66ce304b606174 119-122,204
+  s_b23410104fb27d::t_5f07dcd57543f9 9-20,297-298,300-301
+  s_b23410104fb27d::t_71a50d30639a46 6-8
+  s_b23410104fb27d::t_194d5b8e6ffe8b 296
+ui/src/models/entities/generated/RegistryData.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-6
+api/howler/api/v2/case.py
+  s_b23410104fb27d::t_5f07dcd57543f9 1,19-20,270
+api/howler/helper/search.py
+  s_b23410104fb27d::t_5f07dcd57543f9 52-53,66
+  s_7dcb1935aaf88e::t_ee104529a550d1 5,91
+  s_7dcb1935aaf88e::t_d22cfbe077ce89 6
+api/howler/api/v1/auth.py
+  s_b23410104fb27d::t_5f07dcd57543f9 143
+ui/src/components/elements/record/RecordContextMenu.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 32,94
+ui/src/components/elements/record/RecordRelated.test.tsx
+  s_71823f7d2ac076::t_bac5d1ef020882 3-4,116-158
+ui/src/models/entities/generated/Aws.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,6
+api/howler/api/v1/hit.py
+  s_7dcb1935aaf88e::t_66ce304b606174 42-49,347-353,355
+  s_50ded30ca60a10::t_7c5cae3c423482 611,680
+  s_b23410104fb27d::t_5f07dcd57543f9 198,855,976
+api/howler/api/v1/user.py
+  s_b23410104fb27d::t_5f07dcd57543f9 147
+ui/src/models/entities/generated/Source.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,5,10,17
+api/howler/datastore/types.py
+  s_7dcb1935aaf88e::t_ee104529a550d1 1,4,9-21
+  s_7dcb1935aaf88e::t_4d0b1428d32e6b 22-23
+api/howler/services/hit_service.py
+  s_b23410104fb27d::t_5f07dcd57543f9 294-297,346,471,473,475,492-494,497-499,501,503,505,619,625,628,631-632,671,755,771-773,778-780,878-891,956
+  s_7dcb1935aaf88e::t_66ce304b606174 250,254,259,268-269,304
+  s_b23410104fb27d::t_71372d4e0cfb5d 298-300
+api/howler/services/config_service.py
+  s_b23410104fb27d::t_5f07dcd57543f9 94,133
+ui/src/components/elements/record/RecordComments.test.tsx
+  s_71823f7d2ac076::t_bac5d1ef020882 3-4,218,225-229,231-235,240-241,244-257,259-261
+  s_b23410104fb27d::t_5f07dcd57543f9 219-224,230,236-239,242-243,258
+ui/src/models/entities/generated/GeoPoint.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-5
+ui/src/models/entities/generated/DashboardEntry.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-6
+api/test/unit/test_access_control.py
+  s_23cd07e9f28821::t_20550ab267d643 24,520-572
+  s_23cd07e9f28821::t_38df71d76d3b1e 23
+documentation/docs/odm/class/header.md
+  s_71823f7d2ac076::t_1319c51ac37678 6,10-13
+api/test/unit/test_ilm_config.py
+  s_b23410104fb27d::t_5f07dcd57543f9 97-99
+ui/src/models/entities/generated/Comment.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/components/routes/cases/modals/CreateCaseModal.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 31,41
+api/test/unit/models/test_registry_cache.py
+  s_7dcb1935aaf88e::t_a7f1df55b04aee 1-110
+api/build_scripts/model_json_schema.py
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 1-275
+api/test/unit/services/test_search_service_user_fields.py
+  s_23cd07e9f28821::t_20550ab267d643 111,128,262,317-318,324-325,366,391,560-581
+api/howler/external/elasticsearch_initialize_collections.py
+  s_16777664874710::t_c565c2e0238549 1-37,42-70,72-91
+  s_b23410104fb27d::t_5f07dcd57543f9 38-41,71
+ui/src/models/entities/generated/Error.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/As.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-5
+ui/src/models/entities/generated/Hash.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/HowlerComment.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Log.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,9
+ui/src/models/entities/generated/ShortUser.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-7
+api/howler/external/elasticsearch_rest.py
+  s_16777664874710::t_c565c2e0238549 1-4,6-8,10-31,41-67,69,71-92,94-160,162-192,201-207,209-217,220-249,262,267-273,275-287,292-314,317,319-323,453-465
+  s_b23410104fb27d::t_5f07dcd57543f9 5,9,32-40,68,70,93,161,193-200,208,218-219,274,324-346,348-450
+  s_b23410104fb27d::t_6afcb16f0a51f1 451-452
+  s_7dcb1935aaf88e::t_81f496f5109b19 250-261,263-266,288-291,315-316,318,347
+ui/src/models/entities/generated/Action.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,6-7,12
+ui/src/models/entities/generated/Vulnerability.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Indicator.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-3,8-9
+ui/src/models/entities/generated/Trigger.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,4
+ui/src/models/entities/generated/Process.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,4-5,7,20,23,30
+api/howler/actions/change_field.py
+  s_b23410104fb27d::t_5f07dcd57543f9 33,35,48,50
+  s_7dcb1935aaf88e::t_66ce304b606174 5
+api/test/integration/service/test_hit_service.py
+  s_b23410104fb27d::t_5f07dcd57543f9 231-233,243,250,257-259,265,284-285,343,360
+  s_b23410104fb27d::t_751d031e6216ba 228-230
+api/howler/services/bundle_compat_service.py
+  s_b23410104fb27d::t_5f07dcd57543f9 109-110,140,169-177,198,224,248,267-268
+  s_b23410104fb27d::t_07c317443e68b8 106-108
+api/howler/models/record.py
+  s_b23410104fb27d::t_5f07dcd57543f9 66
+  s_b23410104fb27d::t_1b7170475621df 67
+  s_b23410104fb27d::t_491badae9c7c51 63-65
+ui/src/models/entities/generated/Instance.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+documentation/docs/odm/class/mitre.md
+  s_71823f7d2ac076::t_1319c51ac37678 1-11
+ui/src/models/entities/generated/Header.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/howler/services/overview_service.py
+  s_b23410104fb27d::t_5f07dcd57543f9 40
+  s_b23410104fb27d::t_32380fe545a013 41
+ui/src/components/routes/action/useMyActionFunctions.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 9,77
+api/test/unit/models/fixtures/legacy_public_contract.json
+  s_7dcb1935aaf88e::t_4535e9f3bd0df0 1-87
+ui/src/components/routes/templates/TemplateViewer.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 50-53,250,324
+ui/src/models/entities/generated/Assemblyline.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,6-10,12-13
+api/test/unit/test_ilm_collection.py
+  s_71823f7d2ac076::t_081ff9da30060e 58,1749-1751,2031-2036,2040-2041,2043,2046-2049,2051-2052,2054
+  s_7dcb1935aaf88e::t_a7f1df55b04aee 8,19-30,54-57,573,583,605,771-772,774,791,793,808-811,817,827-828,830-871,878,884-886,929-932,1023,1033-1034,1036,1059-1081,1084-1095,1125-1126,1132,1134,1138,1146-1147,1151-1180,1196-1246,1270-1271,1273,1280,1283,1288-1435,1787-1793,1812-1817,1953-1954,1983-1989,2114-2125,2129-2139,2144-2150,2156,2161-2175,2197-2223,2254-2281,2283-2486,2491,2561,2577,2580,2602
+  s_71823f7d2ac076::t_a8fb065bdfb646 2037-2038
+  s_4ccc63f74358a2::t_366b5751675128 1082-1083
+  s_71823f7d2ac076::t_d3e8e53f3c7a5c 2044
+  s_23cd07e9f28821::t_20550ab267d643 16,82,86-94,248-261,584,593-594,606-608,610,768,778-779,794,813,824,873-874,920,987,1022,1041-1042,1049,1051,1122,1129-1130,1143,1149,1267,1277-1278,1657,2057,2060,2089,2091-2113,2126-2128,2140-2143,2151-2155,2157-2160,2176-2177,2179-2196,2224,2226-2235,2237-2253,2282,2487-2488,2490,2492-2511,2514-2529,2532-2546,2549-2556,2558,2560,2562-2576,2578-2579,2581-2598,2601,2603-2621,2624-2636,2638-2639
+  s_b23410104fb27d::t_5f07dcd57543f9 31-36,74,265-569,611-703,760-767,823,880-881,892-893,1021,1104-1121,1142,1145,1150,1184-1194,1252-1266,1441-1469,1643-1652,2061-2088,2090,2178,2225,2236,2489,2512-2513,2530-2531,2547-2548,2557,2559,2599-2600,2622-2623
+  s_7dcb1935aaf88e::t_5083f0c5d68da9 7
+  s_7dcb1935aaf88e::t_887cd19205b4ca 9-10
+  s_23cd07e9f28821::t_3013bd3b6b11d2 17
+  s_23cd07e9f28821::t_9d2c21d975ff23 79-81
+  s_7dcb1935aaf88e::t_b5785f6d49a0b6 574-576,580-582
+  s_23cd07e9f28821::t_e9b22e0f55e3da 585-587,590-592
+  s_23cd07e9f28821::t_071cdb7f3f2ad0 609
+  s_7dcb1935aaf88e::t_2df92cf96f041c 773
+  s_7dcb1935aaf88e::t_2b994228c1ae5a 792
+  s_7dcb1935aaf88e::t_732be35d4eca36 829
+  s_b23410104fb27d::t_34f835eabd18e5 894-896
+  s_23cd07e9f28821::t_038a22ecba8ec9 917-919
+  s_7dcb1935aaf88e::t_e1aca1b075ada7 933
+  s_23cd07e9f28821::t_a5527891ee1db3 984-986
+  s_b23410104fb27d::t_b2da3251a221b4 1018-1020
+  s_7dcb1935aaf88e::t_d89fcf56e0982f 1024-1026,1030-1032
+  s_7dcb1935aaf88e::t_fb07445f98043b 1035
+  s_23cd07e9f28821::t_4e5bc2320267b9 1043-1048
+  s_23cd07e9f28821::t_7713f59de29ae0 1050
+  s_7dcb1935aaf88e::t_ec938df60d7888 1133
+  s_7dcb1935aaf88e::t_4b3c7a638e46de 1135-1137
+  s_7dcb1935aaf88e::t_64a4d9a12895e4 1272
+  s_7dcb1935aaf88e::t_c1e497cb54a087 1281-1282
+  s_7dcb1935aaf88e::t_bbfe9e39d7c4f0 1284-1287
+  s_23cd07e9f28821::t_8aaee94dc20601 1658
+  s_7dcb1935aaf88e::t_cfe6469dc10e10 1784-1786
+api/test/unit/test_elasticsearch_preflight.py
+  s_7dcb1935aaf88e::t_b3ea71ac04f1e1 248-249
+  s_16777664874710::t_c565c2e0238549 1-2,6-8,18-40,42-66,72-106,110-155,164,168-169,175-176,178,185-219,250-272,275-277,279-280,289-290,293,297-300,303-304,320-322,334,342-343,350-355,357-369
+  s_b23410104fb27d::t_5f07dcd57543f9 3-5,10-17,107-109,172-173,177,179-184,273-274,278,281-288,291-292,294-296,301-302,305-319,323-333,335-341,344-349,356
+  s_7dcb1935aaf88e::t_81f496f5109b19 41,67-71,220-247
+  s_16777664874710::t_a1968f8e790093 156-158,161-163
+  s_16777664874710::t_becec2e86da30a 165-167
+api/test/unit/test_bulk.py
+  s_7dcb1935aaf88e::t_c47ced0583d8ad 71-72
+  s_7dcb1935aaf88e::t_a7f1df55b04aee 7,9-11,51-70
+AGENTS.md
+  s_7dcb1935aaf88e::t_ee104529a550d1 44
+api/howler/api/v1/analytic.py
+  s_b23410104fb27d::t_5f07dcd57543f9 128,177-182,230,238-239,364,492,545-551,594
+  s_b23410104fb27d::t_0086a2ae6e7777 127
+ui/src/api/search/fields/index.test.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 23,25-34,38-39,41
+ui/src/models/entities/generated/Dns.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-3,6,10-11
+api/howler/models/registry.py
+  s_7dcb1935aaf88e::t_a7f1df55b04aee 8-202,228-367,401,426
+  s_b23410104fb27d::t_5f07dcd57543f9 205-219
+  s_7dcb1935aaf88e::t_6f1c22c0b108c1 5-7
+  s_7dcb1935aaf88e::t_5518eb7302a894 368-370,398-400
+  s_7dcb1935aaf88e::t_999a2e6ac3866b 402-404,423-425
+  s_7dcb1935aaf88e::t_31a8681cf8e5d6 427-429
+api/test/unit/test_elasticsearch_initialize_collections.py
+  s_16777664874710::t_c565c2e0238549 1-8,12-14,25-116,121-123,126-127
+  s_b23410104fb27d::t_5f07dcd57543f9 9-11,15-24,117-120,124-125
+ui/src/models/entities/generated/Elf.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,14
+docs/api/codebase.md
+  s_7dcb1935aaf88e::t_ee104529a550d1 11-12
+ui/src/models/entities/generated/ECSRule.d.ts
+  s_71823f7d2ac076::t_bac5d1ef020882 2-13
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/howler/services/ingest_service.py
+  s_7dcb1935aaf88e::t_66ce304b606174 1-88
+api/test/unit/actions/test_add_to_case.py
+  s_b23410104fb27d::t_5f07dcd57543f9 20-21
+  s_b23410104fb27d::t_cbddd1fe544135 17-19
+  s_b23410104fb27d::t_a766d25cc36cc8 22-23
+ui/src/plugins/clue/utils.ts
+  s_71823f7d2ac076::t_bac5d1ef020882 6,13
+api/test/unit/endpoints/test_analytic_endpoint.py
+  s_23cd07e9f28821::t_20550ab267d643 1-73
+ui/src/models/entities/generated/Container.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/test/unit/test_elasticsearch_cutover_verify.py
+  s_16777664874710::t_c565c2e0238549 1-2,4-5,7-14,19-21,23-35,37-38,41,43-68,78-87,96-102,104-116,118-176,178-179,183-189,199-217,219-254,258-341,353,355-356,359-389,391-421,423-436,439-446,448-449,452,454-456,458,468-469,471-472,474-476,478,481-482,500,503,505,509-545,548,552,554,558,564-570,577-589,595-604,606-763,765-770,783,819-906,911-912,917-920,923-955,961,964-966,972-1022,1113-1138,1140-1153,1219-1247,1261-1309,1350-1351,1356-1419,1421-1429,1436-1442,1444-1445,1449-1451,1453-1454,1456,1461-1464,1466-1629,1632-1644,1668-1712,1714-1777,1798,1807,1809-1811
+  s_b23410104fb27d::t_5f07dcd57543f9 3,6,15-18,36,39-40,42,69-77,255-257,342-352,354,357-358,390,422,437-438,447,450-451,453,457,459-467,470,473,477,479-480,483-499,501-502,504,506-508,546-547,549-551,553,555-557,559-563,913-916,921-922,956-960,967-971,1248-1260,1645-1667,1713,1778-1797,1799-1806,1808,1812-1819
+  s_7dcb1935aaf88e::t_81f496f5109b19 22,88-95,103,117,177,180-182,190-198,218,571-576,590-594,605,764,771-782,784-818,907-910,962-963,1023-1112,1139,1154-1218,1310-1349,1352-1355,1420,1430-1435,1443,1446-1448,1452,1455,1457-1460,1465,1630-1631
+api/test/unit/services/test_dossier_group_service.py
+  s_23cd07e9f28821::t_20550ab267d643 1,3-4,169-172,174-192
+  s_7dcb1935aaf88e::t_66ce304b606174 173
+ui/src/components/app/hooks/useMatchers.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 4,13
+ui/src/models/entities/generated/CodeSignature.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,3
+api/howler/services/case_service.py
+  s_50ded30ca60a10::t_7c5cae3c423482 1381
+  s_7dcb1935aaf88e::t_66ce304b606174 194-195
+  s_7dcb1935aaf88e::t_ab8303d099af8d 196-198
+  s_50ded30ca60a10::t_f42923981153d0 1380
+ui/src/components/routes/cases/detail/CaseDetails.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 51
+ui/src/models/entities/generated/Registry.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,5
+api/test/unit/services/test_analytic_service.py
+  s_23cd07e9f28821::t_20550ab267d643 1-36
+ui/src/models/entities/generated/HitOrganization.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/ThreatEnrichment.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/howler/sample_data/randomizer.py
+  s_b23410104fb27d::t_5f07dcd57543f9 107-110
+  s_b23410104fb27d::t_f140890dd16af3 106
+  s_b23410104fb27d::t_bf91314e94182c 111
+api/test/unit/test_dict_utils.py
+  s_23cd07e9f28821::t_20550ab267d643 1-3,31-51
+ui/src/components/routes/cases/modals/ResolveModal.test.tsx
+  s_71823f7d2ac076::t_bac5d1ef020882 8,26,33-36,44,106-107,109-117,180-200
+  s_b23410104fb27d::t_5f07dcd57543f9 101,108
+api/howler/helper/hit.py
+  s_b23410104fb27d::t_5f07dcd57543f9 1,7-8,16,46-47,50,100,140
+api/howler/datastore/collection.py
+  s_50ded30ca60a10::t_7c5cae3c423482 3359-3363
+  s_b23410104fb27d::t_5f07dcd57543f9 45,1451-1468,1470-1476,1485,1514,1538,3173,3180,3211-3225,3229-3230,3233-3234,3240-3244,3248,3255-3280,3311,3357-3358,3374,3377,3380,3386,3392-3394,3435-3441,3444-3459,3467-3468
+  s_7dcb1935aaf88e::t_a7f1df55b04aee 28,37,57-58,61,75,86-95,97-99,101-117,122-129,131-132,178-203,275-281,297-298,311-313,331-332,336-340,343-346,349-350,352,355-356,358-364,386,404,409,416-420,426-428,775-777,1271-1275,1277,1279-1313,1317,1319,1321-1322,1324,1326-1352,1354-1386,1392,1406,1420,1433,1488,1511,1535,1607,1609-1615,1619,1623,1626,1643-1648,1650-1661,1663-1677,1723-1724,1772,1774,1795-1796,1816,1826,1836,1846,1848,1875-1891,1893-1909,1961,1963,1966,1969,1973-1974,1980-1981,1986,1989,1993-1995,2001-2003,2024-2027,2032,2036-2055,2057-2071,2074-2079,2098,2105-2106,2108,2111-2122,2126,2216-2217,2222,2230-2235,2237-2243,2245-2248,2262-2267,2289-2309,2329-2340,2342-2343,2361,2373-2375,2407,2434,2625,2790,2799-2800,2802,2806,2818-2819,2821,2836,2838,2910-2913,2918,3130,3134,3145-3146,3148-3150,3152-3170,3172,3174,3176-3178,3181-3189,3191-3206,3226-3228,3231-3232,3235-3239,3245-3247,3249-3254,3281-3310,3345,3379,3381,3383-3385,3387-3391,3395-3397,3399-3433,3464,3472-3495,3497-3502,3504-3517,3519-3539,3541,3543-3546,3577,3604-3605,3607,3612-3616,3618-3620,3622-3626,3628,3635,3643,3657,3664,3671,3674,3678,3699,3727,3733-3734,3736-3740,3742-3784,3786-3787,3793
+  s_71823f7d2ac076::t_f059986221c0ec 3729
+  s_71823f7d2ac076::t_3195de02397c05 3576,3728
+  s_71823f7d2ac076::t_d3e8e53f3c7a5c 687-689,3578
+  s_71823f7d2ac076::t_1617af941abb2d 743-744,748
+  s_7dcb1935aaf88e::t_464070f322905c 38
+  s_b23410104fb27d::t_a792cd85ebce3a 42-44
+  s_b23410104fb27d::t_1929da39f5a5ff 46-47
+  s_7dcb1935aaf88e::t_8b32bd6fc1fe58 772-774
+  s_7dcb1935aaf88e::t_f2c16d8bf1b06f 1389-1391
+  s_7dcb1935aaf88e::t_bcfac3c4e1c632 1393-1395
+  s_7dcb1935aaf88e::t_52550af2898eaa 1403-1405
+  s_7dcb1935aaf88e::t_645b247370f40c 1407-1409
+  s_7dcb1935aaf88e::t_af6fbc0ee67567 1417-1419
+  s_7dcb1935aaf88e::t_98c35355f495d7 1421-1423
+  s_7dcb1935aaf88e::t_c42245a3db5fe3 1430-1432
+  s_7dcb1935aaf88e::t_7be570f7093fa9 1434-1436
+  s_b23410104fb27d::t_160b252c19ed96 1448-1450
+  s_b23410104fb27d::t_de3206009ba527 1477-1479,1482-1484
+  s_7dcb1935aaf88e::t_e32088fced8cc9 1489-1491,1508-1510
+  s_7dcb1935aaf88e::t_2c8567b4ddeec6 1532-1534
+ui/src/components/routes/action/view/ActionDetails.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 22,26,51-52,57-58,180,191
+api/test/unit/models/test_json_schema_export.py
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 1-253
+api/howler/models/event.py
+  s_b23410104fb27d::t_5f07dcd57543f9 20
+  s_b23410104fb27d::t_64f6901480f9ee 17-19
+  s_b23410104fb27d::t_dec4d4191b399e 21-22
+api/test/unit/models/test_extensions.py
+  s_7dcb1935aaf88e::t_d726172c8712c0 245-246
+  s_23cd07e9f28821::t_364b23095c973f 257
+  s_7dcb1935aaf88e::t_a7f1df55b04aee 5-244,249,258,268,282
+  s_7dcb1935aaf88e::t_9813b3d9f0dfd4 2-4
+  s_7dcb1935aaf88e::t_e8f73c3fc81566 247-248
+  s_7dcb1935aaf88e::t_b2591e335bd556 259-261,265-267
+  s_7dcb1935aaf88e::t_6152b4cc103dff 269-271,279-281
+  s_7dcb1935aaf88e::t_942aac6cdbcd84 283-285
+ui/src/models/entities/generated/Server.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Project.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Settings.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,6-7
+ui/src/components/routes/advanced/luceneCompletionProvider.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 106,125
+ui/src/models/entities/generated/Case.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,11,15,18,23
+  s_71823f7d2ac076::t_bac5d1ef020882 2,14,30
+ui/src/models/entities/generated/Notebook.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Software.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Interface.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/plugins/clue/utils.test.tsx
+  s_71823f7d2ac076::t_bac5d1ef020882 1-87
+ui/src/models/entities/generated/Enrichments.d.ts
+  s_71823f7d2ac076::t_bac5d1ef020882 3-4
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/components/elements/hit/grid/RecordRow.tsx
+  s_71823f7d2ac076::t_bac5d1ef020882 86-100,102
+api/howler/models/clue.py
+  s_b23410104fb27d::t_5f07dcd57543f9 27,40-45
+  s_23cd07e9f28821::t_364b23095c973f 36-38
+ui/src/models/entities/generated/Incident.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Lead.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,8
+api/howler/models/base.py
+  s_7dcb1935aaf88e::t_66ce304b606174 529-559,573,738
+  s_50ded30ca60a10::t_7c5cae3c423482 517-520,591,670
+  s_b23410104fb27d::t_5f07dcd57543f9 9-504,562-571,646,682,688
+  s_b23410104fb27d::t_12eb226fcaa314 6-8
+  s_b23410104fb27d::t_9c6ea1be95db34 683-687
+ui/src/models/entities/generated/GridColumn.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-5
+api/howler/services/event_service.py
+  s_b23410104fb27d::t_5f07dcd57543f9 8,183,229,252
+  s_7dcb1935aaf88e::t_66ce304b606174 138-139,162,165-168
+  s_7dcb1935aaf88e::t_56909c045169b6 169-171
+api/test/unit/services/test_event_service.py
+  s_7dcb1935aaf88e::t_66ce304b606174 8-10,13-14,25-55,268
+  s_7dcb1935aaf88e::t_ed864c28b2dd99 269-270
+ui/src/components/app/hooks/useTitle.tsx
+  s_71823f7d2ac076::t_bac5d1ef020882 7,42-44,48-57
+plugins/sync/test/unit/iceberg/test_build_schema.py
+  s_b23410104fb27d::t_5f07dcd57543f9 4-5,39-66,96-100,125,177-178,225-227,229,231-232
+  s_7dcb1935aaf88e::t_4535e9f3bd0df0 3,10-25,35,74-81,120-121,137-143,145-173,179-216,218-222
+  s_7dcb1935aaf88e::t_7c49596cb0ef6c 1-2
+  s_7dcb1935aaf88e::t_c52ad3c296e842 8-9
+api/howler/api/v1/search.py
+  s_b23410104fb27d::t_5f07dcd57543f9 205
+plugins/sentinel/sentinel/actions/azure_emit_hash.py
+  s_b23410104fb27d::t_5f07dcd57543f9 134-136
+  s_7dcb1935aaf88e::t_66ce304b606174 7-9,119,121
+plugins/evidence/evidence/models/hit.py
+  s_b23410104fb27d::t_5f07dcd57543f9 17-23
+  s_b23410104fb27d::t_e803c60b4d189e 15-16
+.github/workflows/api-workflow.yml
+  s_7dcb1935aaf88e::t_ee104529a550d1 12-13,28-29,99-102
+  s_7dcb1935aaf88e::t_a02c7e391330f0 103
+api/test/unit/models/test_fields.py
+  s_b23410104fb27d::t_5f07dcd57543f9 354-355,364-365,367-378,383
+  s_23cd07e9f28821::t_364b23095c973f 1-7,10-244,336-353,356-363,366,379-382,384-595,598
+  s_7dcb1935aaf88e::t_9d8bae4044f84a 334-335
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 9,245-333
+  s_23cd07e9f28821::t_5b3fb03361705e 596-597
+  s_23cd07e9f28821::t_4ef422aeeb852f 599-600
+ui/src/models/entities/generated/Ingress.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/howler/datastore/utils.py
+  s_71823f7d2ac076::t_1617af941abb2d 119
+  s_7dcb1935aaf88e::t_a7f1df55b04aee 38,42,90-96,101-105,109
+  s_7dcb1935aaf88e::t_60143dc99aaa2a 110
+  s_71823f7d2ac076::t_8f0ec3be876a1d 118
+  s_71823f7d2ac076::t_ed3ea2177ece53 120
+api/test/unit/models/test_related.py
+  s_23cd07e9f28821::t_364b23095c973f 1-113
+api/howler/api/v1/tool.py
+  s_b23410104fb27d::t_5f07dcd57543f9 93
+ui/src/models/entities/generated/Matched.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Overview.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Task.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/EntryMeta.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/components/elements/hit/HitOutline.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 10,36,45
+api/test/integration/test_datastore.py
+  s_23cd07e9f28821::t_20550ab267d643 7,13,16-17,329,333,337,942-946,949-952,1006-1009,1038,1069-1070,1072,1088,1107,1119,1158-1159,1161,1174,1193-1205,1218,1227-1368,1371,1377-1385,1388,1394-1402,1405,1408-1437
+  s_b23410104fb27d::t_5f07dcd57543f9 1206-1217,1219-1226,1369-1370,1372-1376,1386-1387,1389-1393,1403-1404,1406-1407,1438-1452
+documentation/docs/odm/getting_started.md
+  s_71823f7d2ac076::t_1319c51ac37678 21,30
+ui/src/components/elements/record/RecordRelated.tsx
+  s_71823f7d2ac076::t_bac5d1ef020882 24-25,31,51
+ui/src/models/entities/generated/SharepointData.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-5
+ui/src/models/entities/generated/Geo.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,10
+ui/src/models/entities/generated/DNSQuestion.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-9
+api/test/unit/services/test_view_cleanup.py
+  s_23cd07e9f28821::t_20550ab267d643 1-59
+api/howler/api/v1/overview.py
+  s_b23410104fb27d::t_5f07dcd57543f9 97,146-148,197-199
+ui/src/models/entities/generated/Gcp.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/EventHowler.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,9
+api/test/unit/models/test_hit_event.py
+  s_23cd07e9f28821::t_364b23095c973f 1-123
+ui/src/models/entities/generated/CaseLog.d.ts
+  s_71823f7d2ac076::t_bac5d1ef020882 2-9
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/components/routes/help/HitSchemaDocumentation.test.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 37,43,67
+ui/src/models/entities/generated/Labels.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+documentation/docs/odm/class/localizedlabel.md
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 12-13
+  s_71823f7d2ac076::t_1319c51ac37678 1-11
+ui/src/models/entities/generated/AwsAccount.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-5
+documentation/docs/installation/elasticsearch_9_preflight.md
+  s_7dcb1935aaf88e::t_81f496f5109b19 64-70
+  s_16777664874710::t_c565c2e0238549 14-15,18-58,63,71-75,97-98
+  s_b23410104fb27d::t_5f07dcd57543f9 8-10,16-17,59-60,76-78
+  s_b23410104fb27d::t_8aabec49f41584 5-7
+api/howler/sample_data/helper.py
+  s_b23410104fb27d::t_5f07dcd57543f9 32-858,874,885,914,946
+ui/src/models/entities/generated/Cbs.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Link.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Analytic.d.ts
+  s_71823f7d2ac076::t_bac5d1ef020882 15-16
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,4,17-18
+ui/src/models/entities/generated/UserAgent.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/CloudAccount.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/howler/api/v1/template.py
+  s_b23410104fb27d::t_5f07dcd57543f9 101,156-158,209-211
+ui/src/components/routes/help/HitBannerDocumentation.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 30-31
+documentation/docs/installation/elasticsearch_9_cutover.md
+  s_b23410104fb27d::t_5f07dcd57543f9 47-48,189-194,237-239,275-277,285-290,451-454,459-462,471-473,478,626,628-630
+  s_7dcb1935aaf88e::t_81f496f5109b19 468-470,482-497
+  s_16777664874710::t_c565c2e0238549 1-46,49-61,63-188,195-236,240-274,278-284,291-450,455-458,463-467,474-477,479-481,498-625,627
+  s_23cd07e9f28821::t_364b23095c973f 62
+ui/src/models/entities/generated/Service.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/test/unit/services/test_overview_service.py
+  s_23cd07e9f28821::t_20550ab267d643 1-17
+api/test/integration/service/test_action_service.py
+  s_71823f7d2ac076::t_0c8e367e70b0bc 34,38-39
+  s_71823f7d2ac076::t_718de0dd21bcdd 31-33
+api/test/unit/services/test_ingest_service.py
+  s_7dcb1935aaf88e::t_66ce304b606174 1-291
+api/test/unit/endpoints/test_search_endpoint.py
+  s_b23410104fb27d::t_5f07dcd57543f9 721
+plugins/sync/sync/services/sync_service.py
+  s_b23410104fb27d::t_5f07dcd57543f9 41-42
+  s_b23410104fb27d::t_ea509806e208a2 39-40
+ui/src/models/entities/generated/Outline.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/components/routes/cases/detail/CaseDetailControls.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 3,8-10,12,15-20,26-33,49,56
+ui/src/models/entities/generated/Organization.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/build_scripts/generate_classes.py
+  s_71823f7d2ac076::t_bac5d1ef020882 214
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-3,7,9-39,43-51,55-155,157-213,215-217,219,223
+ui/src/models/entities/generated/User.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Network.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Votes.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/howler/api/v2/ingest.py
+  s_7dcb1935aaf88e::t_66ce304b606174 21,286-287,291-292,301-306,308-309
+  s_b23410104fb27d::t_5f07dcd57543f9 148
+ui/src/models/entities/generated/TypeMap.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-5
+api/howler/external/elasticsearch_preflight.py
+  s_7dcb1935aaf88e::t_81f496f5109b19 182
+  s_b23410104fb27d::t_5f07dcd57543f9 13-14,17-20,22-23,46,50,52-53,57-58,87-96,184,199,202-210,213-220,248,256,261
+  s_16777664874710::t_c565c2e0238549 7-12,15-16,21,24-45,47-49,51,54-56,59-83,114-181,183,185-198,200-201,211-212,221-239,242,249-253,258-260
+  s_16777664874710::t_7ce3c025a417ed 4-6
+  s_16777664874710::t_7c4fba322f686c 240-241
+  s_b23410104fb27d::t_dcc7df0ee9a002 262-264
+api/test/unit/endpoints/test_ingest_endpoint.py
+  s_7dcb1935aaf88e::t_052019ea1ac55a 914
+  s_7dcb1935aaf88e::t_66ce304b606174 10-13,24,692-794,800,808,837,855,875,890-913
+ui/src/models/entities/generated/Mitre.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,5-6
+ui/src/models/entities/generated/Mapping.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/ThreatGroup.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/build_scripts/generate_api_config_types.py
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-302
+api/test/unit/actions/test_change_field.py
+  s_b23410104fb27d::t_5f07dcd57543f9 3-5,8,12-13,16,21-22,24-28,31-33,35-42
+  s_7dcb1935aaf88e::t_66ce304b606174 1-2,6-7,9-11,14-15,17-20,23,29-30,34,43-91
+ui/src/components/routes/views/ViewComposer.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 82,251,305
+api/howler/actions/transition.py
+  s_b23410104fb27d::t_5f07dcd57543f9 21-22,29,170-171,217
+api/test/unit/services/test_user_service.py
+  s_b23410104fb27d::t_5f07dcd57543f9 218-242,302
+  s_b23410104fb27d::t_e90170c9204736 215-217
+  s_b23410104fb27d::t_b797f88bf157ad 243-245,299-301
+  s_b23410104fb27d::t_5787755e6f1859 303-305
+api/howler/models/fields.py
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 8-82,139,162-218,233-321,476,824-825,830-912
+  s_b23410104fb27d::t_5f07dcd57543f9 86-138,140-161,223-224,513-819
+  s_7dcb1935aaf88e::t_77232e99663c90 5-7
+  s_7dcb1935aaf88e::t_9d95c099d5b7fc 322-324,473-475
+  s_7dcb1935aaf88e::t_1602135404c9a4 826-829
+  s_7dcb1935aaf88e::t_2470402267b42b 913-915
+ui/src/models/entities/generated/Related.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,7,9
+ui/src/models/entities/generated/Nat.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/ParentParentProcess.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-30
+api/howler/models/case.py
+  s_b23410104fb27d::t_5f07dcd57543f9 184-185
+  s_b23410104fb27d::t_9e6cdc29e66841 186-187
+ui/src/models/entities/generated/ECSEvent.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,4,14,17,27
+ui/src/models/entities/generated/UserUser.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,8,16
+api/test/unit/services/test_bundle_compat_service.py
+  s_23cd07e9f28821::t_20550ab267d643 3-5,30-66
+api/howler/plugins/config.py
+  s_50ded30ca60a10::t_7c5cae3c423482 28,103-105
+  s_b23410104fb27d::t_5f07dcd57543f9 17-24,97-99,108-119
+api/howler/datastore/howler_store.py
+  s_7dcb1935aaf88e::t_67726b1be6d276 92-93
+  s_7dcb1935aaf88e::t_66ce304b606174 1-2,44,59,63,68-74,83-91
+  s_50ded30ca60a10::t_7c5cae3c423482 45-57,60,62,64-67,75-77,79-80,98,105-107,109
+  s_b23410104fb27d::t_5f07dcd57543f9 8,78
+  s_b23410104fb27d::t_ba4d856d4e27e0 9-11
+  s_50ded30ca60a10::t_973a759099bdc4 108
+api/test/unit/services/test_case_service.py
+  s_b23410104fb27d::t_5f07dcd57543f9 2292-2301,3303
+  s_7dcb1935aaf88e::t_66ce304b606174 16-22,26-41,45,55,67,79,171-179,184,192,194-195,197-206,209,211,217,225,232,237,239,244,246,254,267,494-496,498,533-535,565-568,640-646,715-717,767-800,802-803,807-812,906-908,923,937-939,963,990-992,1108-1110,1145,1149-1151,1236,1412,1496-1504,1530-1538,1639,1954,2916,2919,2947,2969,3033,3083,3087,3106,3126,3137,3145,3147,3149,3160,3162
+  s_b23410104fb27d::t_558d67797f0a45 2302
+  s_7dcb1935aaf88e::t_e52987209387b6 2914-2915
+  s_7dcb1935aaf88e::t_b1bbba90ed5267 2917-2918
+  s_7dcb1935aaf88e::t_c4562befb2873a 2944-2946
+  s_7dcb1935aaf88e::t_f6a21130c9ffd8 2967-2968
+  s_7dcb1935aaf88e::t_09e88949317f26 3031-3032
+  s_7dcb1935aaf88e::t_ea57b38cc12d3e 3163
+ui/src/models/entities/generated/Device.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/LocalizedLabel.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-5
+ui/src/models/entities/generated/Image.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/utils/stringUtils.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 3-4
+ui/src/components/routes/cases/modals/ResolveModal.tsx
+  s_71823f7d2ac076::t_bac5d1ef020882 37,112,119,134-135,180-182,236
+api/test/unit/services/test_correlation_service.py
+  s_23cd07e9f28821::t_20550ab267d643 980-1002
+api/test/unit/models/test_validation_errors.py
+  s_b23410104fb27d::t_5f07dcd57543f9 52-56,184-188,196-213
+  s_23cd07e9f28821::t_364b23095c973f 1-51,57-183,189-195,214-226
+ui/src/models/entities/generated/Pivot.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,6,8,10
+api/test/unit/services/test_hit_service.py
+  s_23cd07e9f28821::t_20550ab267d643 1-98
+ui/src/components/elements/record/RecordComments.tsx
+  s_b23410104fb27d::t_5f07dcd57543f9 105-107
+  s_71823f7d2ac076::t_bac5d1ef020882 97,100-103,109-111,262,302
+ui/src/components/routes/help/components/CaseDocumentationPreviews.tsx
+  s_71823f7d2ac076::t_bac5d1ef020882 71
+  s_7dcb1935aaf88e::t_021adbd6d4568a 148-149
+ui/src/models/entities/generated/Template.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,8
+api/test/unit/test_config.py
+  s_23cd07e9f28821::t_20550ab267d643 5,7-8,22-29,80-126
+api/test/unit/endpoints/test_auth_endpoint.py
+  s_23cd07e9f28821::t_20550ab267d643 1,11-12,27,195-219
+ui/src/models/entities/generated/Http.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/test/unit/endpoints/test_hit_endpoint.py
+  s_7dcb1935aaf88e::t_080c84cc488b28 123-124
+  s_23cd07e9f28821::t_20550ab267d643 1-6,9,11-74,125-140
+  s_7dcb1935aaf88e::t_66ce304b606174 7-8,10,75-122
+ui/src/models/entities/generated/Url.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Host.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,6
+ui/src/models/entities/generated/DNSAnswer.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-8
+ui/src/models/entities/generated/Attachment.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+documentation/mkdocs.yml
+  s_16777664874710::t_c565c2e0238549 46
+  s_71823f7d2ac076::t_24bbaf10ea2b89 70,119
+  s_71823f7d2ac076::t_91746c4263039d 123
+  s_16777664874710::t_e097a4279591c8 45
+ui/src/models/entities/generated/Hashes.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-10
+api/howler/api/v2/search.py
+  s_b23410104fb27d::t_5f07dcd57543f9 28,222
+ui/src/models/entities/generated/Group.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/test/unit/models/test_legacy_parity.py
+  s_7dcb1935aaf88e::t_4535e9f3bd0df0 1-97
+api/howler/datastore/ilm_contract.py
+  s_7dcb1935aaf88e::t_a7f1df55b04aee 1-154
+api/test/unit/models/test_clue.py
+  s_23cd07e9f28821::t_364b23095c973f 1-117
+plugins/sync/test/conftest.py
+  s_b23410104fb27d::t_5f07dcd57543f9 61-63
+  s_b23410104fb27d::t_691eb419121d8a 59-60
+api/test/unit/models/test_documents.py
+  s_23cd07e9f28821::t_364b23095c973f 1-162
+documentation/docs/odm/class/alrecord.md
+  s_71823f7d2ac076::t_1319c51ac37678 1-13
+  s_7dcb1935aaf88e::t_0820e80f4e4b77 14-15
+ui/src/models/entities/generated/TriageOptions.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-7
+ui/src/models/entities/generated/ECSVersion.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-4
+ui/src/models/entities/generated/Client.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/TlsServer.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/components/routes/action/useMyActionFunctions.test.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 153,159
+.pre-commit-config.yaml
+  s_bd178b7c06332a::t_699fb0f398d7e4 23
+api/test/unit/models/test_sample_data.py
+  s_23cd07e9f28821::t_364b23095c973f 1
+  s_23cd07e9f28821::t_4579f5cc2faecd 2-4
+api/test/unit/models/test_schema.py
+  s_23cd07e9f28821::t_364b23095c973f 1-255
+ui/src/models/entities/generated/Section.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Threat.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,3,14,17
+ui/src/models/entities/generated/Email.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,4,8-9,13,17-19,21
+api/howler/datastore/bulk.py
+  s_7dcb1935aaf88e::t_a7f1df55b04aee 9-10,14-17,20,22,26-79,82-83,89-91,96,98-100,103-111,114-118,121-173,188-197,200,202-237,242,323-324,326,427-430
+  s_50ded30ca60a10::t_7c5cae3c423482 251-269,385-386,388
+  s_b23410104fb27d::t_5f07dcd57543f9 175-187,198-199,201,306,345,359,361,363,397-405
+  s_7dcb1935aaf88e::t_78b5c62aa8b1d5 238-241
+  s_50ded30ca60a10::t_fa550477c93494 270-272
+  s_50ded30ca60a10::t_b51156f9005c51 384
+  s_50ded30ca60a10::t_a2d413bb9184a3 387
+  s_50ded30ca60a10::t_ea83bc5219e5fd 389-391
+  s_b23410104fb27d::t_0d5fb490d00e43 395-396
+api/test/integration/test_ilm.py
+  s_71823f7d2ac076::t_0c8e367e70b0bc 423
+ui/src/models/entities/generated/Sharepoint.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,5-6
+api/howler/api/v1/view.py
+  s_b23410104fb27d::t_5f07dcd57543f9 46,105,112,148,202,221,249
+ui/src/models/entities/generated/Clue.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-2,5
+ui/src/models/entities/generated/Dossier.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,6,9,14
+ui/src/models/entities/generated/ParentProcess.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-32
+ui/src/components/routes/cases/modals/AddEventModal.test.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 135-145,167-170,191-192
+ui/src/models/entities/generated/OriginalClient.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-17
+api/test/unit/test_generate_entity_types.py
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-7,9-84,96-153,155-166
+  s_7dcb1935aaf88e::t_95ecccb47d7689 8,85-95,154
+api/howler/actions/demote.py
+  s_b23410104fb27d::t_5f07dcd57543f9 118
+api/howler/models/extensions.py
+  s_b23410104fb27d::t_5f07dcd57543f9 109-116,123-124,135-144
+  s_7dcb1935aaf88e::t_a7f1df55b04aee 13-107,118-122,132,145-152
+  s_7dcb1935aaf88e::t_f550e2cee64d62 10-12
+  s_7dcb1935aaf88e::t_6f9b1e5591fa5a 153-155
+ui/src/models/entities/generated/Item.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,4,6-7
+ui/src/models/entities/generated/Howler.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,5,13,19-20,36,38
+ui/src/models/entities/generated/ParentEmail.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-14
+ui/src/components/routes/help/HitSchemaDocumentation.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 25,55,76,80,88,90
+api/howler/api/v1/dossier.py
+  s_b23410104fb27d::t_5f07dcd57543f9 48
+ui/src/models/entities/generated/ThreatEmail.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-4
+ui/src/models/entities/generated/Azure.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/components/routes/advanced/yamlCompletionProvider.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 36,47
+ui/src/models/entities/generated/Event.d.ts
+  s_71823f7d2ac076::t_bac5d1ef020882 11,45,70
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,7,12-13,19-20,22,25-26,30-32,46,48,50-51,55,60,65-67,72,74,76
+plugins/evidence/test/unit/models/test_evidence.py
+  s_23cd07e9f28821::t_364b23095c973f 31,96-138,173
+  s_7dcb1935aaf88e::t_343b4f088fed78 94-95
+  s_7dcb1935aaf88e::t_66ce304b606174 1-28,34-93,143,148,153,156,161,164
+  s_23cd07e9f28821::t_810fa726f1eaf3 139-141
+  s_7dcb1935aaf88e::t_9309a2cd362524 163
+ui/src/models/entities/generated/Observer.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,11
+ui/src/models/entities/generated/Operation.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Body.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/ThreatTactic.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/howler/services/template_service.py
+  s_b23410104fb27d::t_5f07dcd57543f9 43
+  s_b23410104fb27d::t_8ff45ec0454977 44
+plugins/sync/sync/iceberg/build.py
+  s_7dcb1935aaf88e::t_4535e9f3bd0df0 4,17-19,26-33,35-39,42-56
+  s_b23410104fb27d::t_5f07dcd57543f9 10,90
+  s_7dcb1935aaf88e::t_17a6bfa553633b 1-3
+  s_7dcb1935aaf88e::t_847b7e268232f7 5
+  s_b23410104fb27d::t_9f6b26ea6b0ce9 8-9
+  s_b23410104fb27d::t_4f1daf5f0bbeb5 11-13
+  s_7dcb1935aaf88e::t_ac0adf40764368 16
+  s_7dcb1935aaf88e::t_0ed4f98e3dc4f4 57-59
+  s_b23410104fb27d::t_e7c25598cacd12 87-89
+  s_b23410104fb27d::t_5b7de788234dbb 91-93
+ui/src/models/entities/generated/Agent.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/components/elements/hit/HitOutline.test.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 3-5,12,53-58,62,65-66,70,91-108
+  s_7dcb1935aaf88e::t_0cd8d87ede2733 109
+api/howler/services/lucene_service.py
+  s_7dcb1935aaf88e::t_1056dad4abd7db 6,8,14,17,23-24,27,73-76,78,85,87-121,295-298,300-301,304,306,334-338,341-342,345-346,349-435,494-511,513-516,518-520,524-534,541,543-548,557-558,560-587,589-592,594-597,599,614-621
+  s_b23410104fb27d::t_5f07dcd57543f9 438-450,454-472,512,517,521-523,538-539
+  s_7dcb1935aaf88e::t_0f41cb4fc50ebd 542
+api/howler/api/v1/action.py
+  s_b23410104fb27d::t_5f07dcd57543f9 128,210,246
+ui/src/models/entities/generated/View.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,5-7,14
+api/howler/services/dossier_service.py
+  s_b23410104fb27d::t_5f07dcd57543f9 219
+  s_7dcb1935aaf88e::t_66ce304b606174 162-163,238-240
+docs/api/model-compatibility.md
+  s_7dcb1935aaf88e::t_4535e9f3bd0df0 1-54
+ui/src/models/entities/generated/HitFile.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,4,21,32
+ui/src/models/entities/generated/Tls.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Pe.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/test/integration/plugins/test_config_validation.py
+  s_50ded30ca60a10::t_7c5cae3c423482 54,61
+api/howler/security/login.py
+  s_b23410104fb27d::t_5f07dcd57543f9 166-167,177,179,188,195,198,220,223-224,226,230,232
+api/howler/external/elasticsearch_cutover_verify.py
+  s_7dcb1935aaf88e::t_81f496f5109b19 16-17,25,73-74,78-79,82,92,95,100-101,127,144-149,215-229,244-246,300-302,307,310,333-334,341,394-395,415-480,540-548,576-578,581-582,585-586,632-633,670,763,778,808,898,910-911,1075,1140,1152,1161-1171,1176,1216,1219-1236
+  s_50ded30ca60a10::t_7c5cae3c423482 53-54,60-62
+  s_b23410104fb27d::t_5f07dcd57543f9 27-28,31-36,39-41,49-52,59,76,81,184,230-241,276-281,290,292-294,318-319,323-331,335-340,345-355,399,403,407-409,411,493-498,503-509,514-517,519,527-535,549-563,579-580,583-584,604-605,613-614,623-631,634-669,671-685,698-703,710-713,718-722,737-738,745-751,754-762,764,767-772,777,780,783,790-795,799-807,809,813-818,822,824-828,834-838,844,846-852,860-866,868,870,878,880-886,891-895,900-906,914-920,928-933,936-942,945-950,972,974-977,980-984,987,993,996-1000,1003-1006,1011-1014,1017-1020,1023-1027,1033-1037,1040-1044,1053-1054,1057-1062,1065-1069,1073,1077-1083,1087,1114-1119,1122-1127,1133-1138,1142-1149,1154-1159,1173-1175,1177-1180,1185-1190,1193-1200,1237,1269,1278-1285,1289-1296,1299-1307,1311-1312,1314-1323,1327-1332,1335-1342,1347-1354,1360,1371,1373-1377,1391-1394,1415,1434-1438,1442-1445,1455-1458,1529-1530,1535-1536,1550,1574,1585-1596,1611
+  s_16777664874710::t_c565c2e0238549 1-15,18-24,26,29-30,37-38,42-48,55-58,63-72,75,77,80,83-91,93-94,96-99,102-126,128-143,150-183,185-214,242-243,247-275,282-289,291,295-299,303-306,308-309,311-317,320-322,332,342-344,356-393,396-398,400-402,404-406,410,412-414,481-492,499-502,510-513,518,520-526,536-539,564-575,587-603,606-612,615-622,686-697,704-709,714-717,723-736,739-744,752-753,765-766,773-776,779,781-782,784-789,796-798,810-812,819-821,823,829-833,839-843,845,853-859,867,869,871-877,879,887-890,896-897,899,907-909,912-913,921-927,934-935,943-944,951-971,973,978-979,985-986,988-992,994-995,1001-1002,1007-1010,1015-1016,1021-1022,1028-1032,1038-1039,1045-1052,1055-1056,1063-1064,1070-1072,1074,1076,1084-1086,1088-1113,1120-1121,1128-1132,1139,1141,1150-1151,1153,1160,1172,1181-1184,1191-1192,1201-1215,1217-1218,1238-1268,1270-1277,1286-1288,1297-1298,1308-1310,1313,1324-1326,1333-1334,1343-1346,1355-1359,1361-1370,1372,1378-1390,1395-1414,1416-1433,1439-1441,1446-1454,1459-1528,1531-1534,1537-1549,1551-1573,1575-1584,1597-1610,1612-1616
+ui/src/models/entities/generated/ALRecord.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1-7
+ui/src/models/entities/generated/Feed.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Hit.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,13,50,52
+  s_71823f7d2ac076::t_bac5d1ef020882 12,72
+ui/src/models/entities/generated/Egress.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Request.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+ui/src/models/entities/generated/Os.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1
+api/howler/services/user_service.py
+  s_b23410104fb27d::t_5f07dcd57543f9 73,76,95-96,99,129,244,267-273,341-344,346
+api/howler/utils/dict_utils.py
+  s_7dcb1935aaf88e::t_66ce304b606174 1-2,5,94-100,107,115-117,126,142,148,150-152,158-160,179-216,219-222
+ui/src/components/routes/cases/detail/TaskPanel.test.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 172
+ui/src/models/ActionTypes.d.ts
+  s_7dcb1935aaf88e::t_021adbd6d4568a 1,4-5,36
+ui/src/components/elements/hit/grid/RecordRow.test.tsx
+  s_71823f7d2ac076::t_bac5d1ef020882 1-114
+ui/src/components/routes/cases/modals/AddEventModal.tsx
+  s_7dcb1935aaf88e::t_021adbd6d4568a 18,104-105,116-118,128-130,169,193,240
+api/test/integration/test_datastore_odm.py
+  s_b23410104fb27d::t_5f07dcd57543f9 535,606,636
+  s_23cd07e9f28821::t_20550ab267d643 13-14,20-23,26-29,32-35,38-51,61,72,81,92,100,108,117,126,134,145,155,166,241-245,268,271-273,276-278,298,300,304,351,450-451,453,456,491-495,500,507-509,516-534,536-605,607-635,637-640
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ba68c106dfb8a279cc6ad6f48e133638cbb338c7",
+  "prompts": {},
+  "humans": {
+    "h_f221159cc9f457": {
+      "author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  },
+  "sessions": {
+    "s_16777664874710": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e2f08cdf7ffe9fMEvqDq8vOb5S",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_23cd07e9f28821": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1a863e47ffeQ75cJiNM3xUN86",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_4ccc63f74358a2": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_df785e088ffeLsaAg3cvxyFvHy",
+        "model": "us.anthropic.claude-sonnet-5-5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_50ded30ca60a10": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e16884d2affed8jDxN4NCyamOM",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_71823f7d2ac076": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e38dbe261ffeBB1fW67Tyw5yFl",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_7dcb1935aaf88e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e0b9e3e8bffe7czVJfs9206Km7",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_9f73908e04e066": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1ad33cf5ffeCtfHqnBzlZuuq4",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_b23410104fb27d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e166c7019ffe2R1toPV0kb0kEJ",
+        "model": "gemini-4-carbon"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_bd178b7c06332a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e0adcdb9affefBOfpO58jVs7k9",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
