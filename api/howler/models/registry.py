@@ -5,6 +5,7 @@ from __future__ import annotations
 import types
 from copy import deepcopy
 from dataclasses import dataclass, replace
+from datetime import datetime
 from typing import Annotated, Any, Callable, Generic, TypeVar, Union, get_args, get_origin
 
 from pydantic import BaseModel
@@ -26,6 +27,50 @@ ACCESS_FIELD_MAPPINGS = {
     "__access_req__": {"type": "keyword", "index": True},
     "__access_grp1__": {"type": "keyword", "index": True},
     "__access_grp2__": {"type": "keyword", "index": True},
+}
+_KEYWORD_DEFAULT: dict[str, Any] = {"type": "keyword", "ignore_above": 8191}
+_KEYWORD_LOWER: dict[str, Any] = {"type": "keyword", "ignore_above": 8191, "normalizer": "lowercase_normalizer"}
+KIND_MAPPING_PROPERTIES: dict[str, dict[str, Any]] = {
+    "Any": {"type": "keyword", "index": False, "doc_values": False},
+    "Boolean": {"type": "boolean"},
+    "CaseInsensitiveKeyword": _KEYWORD_LOWER,
+    "Classification": {"type": "keyword"},
+    "ClassificationString": {"type": "keyword"},
+    "Date": {"type": "date", "format": "date_optional_time||epoch_millis"},
+    "Domain": _KEYWORD_DEFAULT,
+    "Email": _KEYWORD_DEFAULT,
+    "EmptyableKeyword": _KEYWORD_DEFAULT,
+    "Enum": _KEYWORD_DEFAULT,
+    "Float": {"type": "float"},
+    "HowlerHash": _KEYWORD_LOWER,
+    "IP": {"type": "ip"},
+    "IndexText": {"type": "text"},
+    "Integer": {"type": "integer"},
+    "Json": _KEYWORD_DEFAULT,
+    "Keyword": _KEYWORD_DEFAULT,
+    "Long": {"type": "long"},
+    "LowerKeyword": _KEYWORD_DEFAULT,
+    "MAC": _KEYWORD_DEFAULT,
+    "MD5": _KEYWORD_LOWER,
+    "PhoneNumber": _KEYWORD_DEFAULT,
+    "Platform": _KEYWORD_DEFAULT,
+    "Processor": _KEYWORD_DEFAULT,
+    "SHA1": _KEYWORD_LOWER,
+    "SHA256": _KEYWORD_LOWER,
+    "SSDeepHash": {"type": "text", "analyzer": "text_fuzzy"},
+    "Text": {"type": "text"},
+    "URI": _KEYWORD_DEFAULT,
+    "URIPath": _KEYWORD_DEFAULT,
+    "UUID": _KEYWORD_DEFAULT,
+    "UpperKeyword": _KEYWORD_DEFAULT,
+    "ValidatedKeyword": _KEYWORD_DEFAULT,
+}
+_PYTHON_TYPE_MAPPINGS: dict[Any, str] = {
+    str: "text",
+    int: "long",
+    float: "float",
+    bool: "boolean",
+    datetime: "date",
 }
 
 
@@ -260,22 +305,16 @@ class ModelRegistry:
         return self._flat_fields[key]
 
     def mapping(self, model_type: type[BaseModel]) -> dict[str, Any]:
-        """Return the DSL-generated Elasticsearch mapping."""
-        document_type = getattr(model_type, "_doc", None)
-        if document_type is None:
+        """Return the Elasticsearch mapping derived from registered model metadata."""
+        if "meta" not in model_type.model_fields:
             raise HowlerTypeError(f"{model_type.__name__} is not an Elasticsearch document model")
-        mapping = deepcopy(document_type._doc_type.mapping.to_dict())
-        properties = mapping.setdefault("properties", {})
-        for definition in self.flat_field_view(model_type).values():
-            self._apply_field_mapping(properties, definition)
+        properties = self._model_properties(model_type)
         if any(
             definition.metadata is not None and definition.metadata.kind == "Classification"
             for definition in self.fields(model_type).values()
         ):
-            mapping.setdefault("properties", {}).update(
-                {name: dict(field_mapping) for name, field_mapping in ACCESS_FIELD_MAPPINGS.items()}
-            )
-        return mapping
+            properties.update({name: dict(field_mapping) for name, field_mapping in ACCESS_FIELD_MAPPINGS.items()})
+        return {"properties": properties}
 
     def clear(self) -> None:
         """Clear registrations, primarily for isolated tests."""
@@ -297,27 +336,63 @@ class ModelRegistry:
             definitions[name] = self._definition(name, name, info, metadata)
         return definitions
 
-    @staticmethod
-    def _apply_field_mapping(properties: dict[str, Any], definition: FieldDefinition) -> None:
-        metadata = definition.metadata
-        if metadata is None or metadata.index is None:
-            return
+    def _model_properties(
+        self,
+        model_type: type[BaseModel],
+        *,
+        inherited_index: bool | None = None,
+    ) -> dict[str, Any]:
+        properties: dict[str, Any] = {}
+        for definition in self.fields(model_type).values():
+            metadata = definition.metadata
+            effective_index = metadata.index if metadata is not None and metadata.index is not None else inherited_index
+            storage_name = (metadata.es_name if metadata is not None and metadata.es_name is not None else None) or (
+                definition.name
+            )
+            unwrapped = unwrap_annotation(definition.annotation)
+            origin = get_origin(unwrapped)
+            is_list = origin is list
+            child_annotation = get_args(unwrapped)[0] if is_list else unwrapped
+            child_model = model_annotation(child_annotation)
 
-        current = properties
-        field_mapping: dict[str, Any] | None = None
-        for component in definition.path.split("."):
-            candidate = current.get(component)
-            if not isinstance(candidate, dict):
-                return
-            field_mapping = candidate
-            nested = candidate.get("properties")
-            current = nested if isinstance(nested, dict) else {}
+            if child_model is not None:
+                properties[storage_name] = {
+                    "type": "object",
+                    "properties": self._model_properties(child_model, inherited_index=effective_index),
+                }
+                continue
 
-        if field_mapping is None or field_mapping.get("type") in {"object", "nested"}:
-            return
-        field_mapping["index"] = metadata.index
-        if field_mapping.get("type", "text") != "text":
-            field_mapping["doc_values"] = metadata.index
+            if (metadata is not None and metadata.kind in {"Mapping", "FlattenedObject", "FlattenedListObject"}) or (
+                metadata is None and (unwrapped is dict or origin is dict)
+            ):
+                mapping_prop: dict[str, Any] = {"type": "object"}
+                if effective_index is False:
+                    mapping_prop["enabled"] = False
+                properties[storage_name] = mapping_prop
+                continue
+
+            leaf_metadata = (
+                _resolve_metadata(field_metadata(child_annotation), metadata) or metadata if is_list else metadata
+            )
+            leaf_index = (
+                leaf_metadata.index
+                if leaf_metadata is not None and leaf_metadata.index is not None
+                else effective_index
+            )
+            if leaf_metadata is not None and leaf_metadata.kind in KIND_MAPPING_PROPERTIES:
+                field_prop: dict[str, Any] = dict(KIND_MAPPING_PROPERTIES[leaf_metadata.kind])
+            else:
+                es_type = _PYTHON_TYPE_MAPPINGS.get(unwrap_annotation(child_annotation), "keyword")
+                field_prop = {"type": es_type}
+
+            if leaf_metadata is not None and leaf_metadata.copy_to:
+                field_prop["copy_to"] = leaf_metadata.copy_to[0]
+            if leaf_index is not None and (leaf_metadata is None or leaf_metadata.kind != "Any"):
+                field_prop["index"] = leaf_index
+                if field_prop.get("type", "text") != "text":
+                    field_prop["doc_values"] = leaf_index
+            properties[storage_name] = field_prop
+        return properties
 
     @staticmethod
     def _definition(

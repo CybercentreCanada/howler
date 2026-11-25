@@ -15,8 +15,12 @@ from typing import Any as TypingAny
 
 import arrow
 import validators
-from elasticsearch import dsl
-from pydantic import BeforeValidator
+from pydantic import (
+    BeforeValidator,
+    PlainSerializer,
+    SerializationInfo,
+    WithJsonSchema,
+)
 from pydantic import Field as PydanticField
 from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefined
@@ -80,6 +84,7 @@ class HowlerFieldMetadata:
     sync: bool = True
     options: tuple[tuple[str, TypingAny], ...] = field(default_factory=tuple)
     optional: bool = False
+    es_name: str | None = None
 
 
 class ClassificationValue:
@@ -110,55 +115,6 @@ def _copy_to(value: str | Iterable[str] | None) -> tuple[str, ...]:
     return tuple(value)
 
 
-def _mapping_options(
-    *,
-    index: bool | None,
-    copy_to: tuple[str, ...],
-    doc_values: bool,
-    extra: dict[str, TypingAny] | None = None,
-) -> dict[str, TypingAny]:
-    options = dict(extra or {})
-    if index is not None:
-        options["index"] = index
-        if doc_values:
-            options["doc_values"] = index
-    if copy_to:
-        options["copy_to"] = copy_to[0]
-    return options
-
-
-def _dsl_field(
-    field_type: Callable[..., dsl.Field],
-    annotation: TypingAny,
-    kind: str,
-    *,
-    doc_values: bool = True,
-    mapping_options: dict[str, TypingAny] | None = None,
-    **kwargs: TypingAny,
-) -> TypingAny:
-    copy_to = _copy_to(kwargs.pop("copyto", None))
-    es_field = field_type(
-        **_mapping_options(index=kwargs.get("index"), copy_to=copy_to, doc_values=doc_values, extra=mapping_options)
-    )
-    return _annotated(annotation, kind, es_field, copy_to=copy_to, **kwargs)
-
-
-def _dsl_keyword(
-    annotation: TypingAny,
-    kind: str,
-    *,
-    mapping_options: dict[str, TypingAny] | None = None,
-    **kwargs: TypingAny,
-) -> TypingAny:
-    return _dsl_field(
-        dsl.Keyword,
-        annotation,
-        kind,
-        mapping_options={"ignore_above": 8191, **(mapping_options or {})},
-        **kwargs,
-    )
-
-
 def _howler_metadata(
     kind: str, inherit: HowlerFieldMetadata | None, overrides: dict[str, TypingAny]
 ) -> HowlerFieldMetadata:
@@ -173,9 +129,9 @@ def _howler_metadata(
 def _annotated(
     annotation: TypingAny,
     kind: str,
-    es_field: dsl.Field | None,
     *,
     validator: Callable[[TypingAny], TypingAny] | None = None,
+    serializers: tuple[TypingAny, ...] = (),
     default_when: Callable[[TypingAny], bool] | None = None,
     default: TypingAny = PydanticUndefined,
     default_factory: Callable[[], TypingAny] | None = None,
@@ -200,15 +156,20 @@ def _annotated(
 
             effective_validator = apply_default
         metadata.append(BeforeValidator(effective_validator))
-    if es_field is not None or es_name is not None or alias is not None:
-        metadata.append(dsl.mapped_field(es_field, es_name=es_name or alias))
+    metadata.extend(serializers)
+
+    resolved_es_name = (
+        es_name
+        if es_name is not None
+        else (alias if alias is not None else (inherit.es_name if inherit is not None else None))
+    )
+    if resolved_es_name is not None:
+        field_options["es_name"] = resolved_es_name
     metadata.append(_howler_metadata(kind, inherit, field_options))
 
     pydantic_options = dict(constraints or {})
     if description is not None:
         pydantic_options["description"] = description
-    # An inherited wire alias does not declare a new DSL mapping: the child's
-    # mapped field already carries its storage name, which can differ from it.
     if (wire_alias := alias if alias is not None else inherited_alias) is not None:
         pydantic_options["alias"] = wire_alias
     if default_factory is not None:
@@ -225,108 +186,30 @@ def _make_annotated(annotation: TypingAny, *metadata: TypingAny) -> TypingAny:
     return Annotated[(annotation, *metadata)]
 
 
-def _is_mapped_field_metadata(metadata: TypingAny) -> bool:
-    """Return whether metadata is an Elasticsearch DSL mapped-field dictionary."""
-    return isinstance(metadata, dict) and set(metadata) >= {"_field", "_es_name", "exclude"}
-
-
-def _with_storage_index(item: TypingAny, index: bool) -> TypingAny:
-    """Override the registry and DSL representations without mutating a reusable annotation."""
-    if isinstance(item, HowlerFieldMetadata):
-        return replace(item, index=index)
-    if not _is_mapped_field_metadata(item) or item["_field"] is None:
-        return item
-    mapping = deepcopy(item)
-    field = mapping["_field"]
-    if isinstance(field, dsl.Object):
-        field.enabled = index
-    else:
-        field.index = index
-        if not isinstance(field, dsl.Text):
-            field.doc_values = index
-    return mapping
-
-
-def _rebuild_generic_alias(annotation: TypingAny, origin: TypingAny, arguments: list[TypingAny]) -> TypingAny:
-    """Rebuild a generic annotation after one or more nested metadata items move."""
-    if origin is types.UnionType:
-        rebuilt = arguments[0]
-        for argument in arguments[1:]:
-            rebuilt = rebuilt | argument
-        return rebuilt
-    if origin is Union:
-        return Union[tuple(arguments)]
-    if isinstance(annotation, types.GenericAlias):
-        return types.GenericAlias(origin, tuple(arguments))
-
-    # ``optional`` is normally given annotations from this module's built-in
-    # list/dict factories. Retain support for other public generic aliases by
-    # reconstructing them through their public origin subscription.
-    subscription = arguments[0] if len(arguments) == 1 else tuple(arguments)
-    return origin[subscription]
-
-
-def _strip_annotated_mapped_field_metadata(
-    annotation: TypingAny,
-    index: bool | None,
-) -> tuple[TypingAny, list[dict[str, TypingAny]]]:
-    """Extract mapped-field metadata directly attached to an Annotated alias."""
-    original_nested, *metadata = get_args(annotation)
-    nested, nested_mappings = _strip_mapped_field_metadata(original_nested, index)
-    if index is not None:
-        metadata = [_with_storage_index(item, index) for item in metadata]
-    mapping_metadata = [item for item in metadata if _is_mapped_field_metadata(item)]
-    remaining_metadata = [item for item in metadata if not _is_mapped_field_metadata(item)]
-
-    if index is None and not mapping_metadata and not nested_mappings and nested is original_nested:
-        return annotation, []
-
-    if mapping_metadata:
-        # CPython considers union equality order-insensitive when caching Annotated
-        # aliases, but Pydantic's left_to_right union mode is order-sensitive. The
-        # source mapping dict was unhashable (and therefore never cacheable); retain
-        # that distinction with a unique immutable metadata marker after lifting it.
-        remaining_metadata.append(object())
-
-    safe_annotation = _make_annotated(nested, *remaining_metadata) if remaining_metadata else nested
-    return safe_annotation, [*mapping_metadata, *nested_mappings]
-
-
-def _strip_mapped_field_metadata(
-    annotation: TypingAny, index: bool | None
-) -> tuple[TypingAny, list[dict[str, TypingAny]]]:
-    """Move DSL mapping metadata outside a nullable union's hashable type arguments.
-
-    Python 3.10's ``typing.Union`` hashes its members while constructing a union. The
-    elasticsearch-dsl ``mapped_field`` metadata is a dict subclass and is deliberately
-    unhashable, so a child ``Annotated`` containing it cannot be used directly as a
-    union member. Keep Pydantic metadata (including child validators) in place and move
-    only those DSL metadata dictionaries to the outer ``Annotated`` wrapper.
-    """
+def _override_index(annotation: TypingAny, index: bool) -> TypingAny:
+    """Override Howler index metadata through lists/unions without mutating reusable annotations."""
     origin = get_origin(annotation)
     if origin is Annotated:
-        return _strip_annotated_mapped_field_metadata(annotation, index)
+        nested, *items = get_args(annotation)
+        updated_nested = _override_index(nested, index)
+        updated_items = [
+            replace(item, index=index) if isinstance(item, HowlerFieldMetadata) else item for item in items
+        ]
+        return _make_annotated(updated_nested, *updated_items)
 
     arguments = get_args(annotation)
-    if not arguments:
-        return annotation, []
+    if not arguments or origin not in (list, Union, types.UnionType):
+        return annotation
 
-    safe_arguments: list[TypingAny] = []
-    mapped_metadata: list[dict[str, TypingAny]] = []
-    changed = False
-    # Lists and nullable branches use the same ES field as their wrapper. Object
-    # keys and values have their own fields, so their index options stay independent.
-    child_index = index if origin in (list, Union, types.UnionType) else None
-    for argument in arguments:
-        safe_argument, nested_mappings = _strip_mapped_field_metadata(argument, child_index)
-        safe_arguments.append(safe_argument)
-        mapped_metadata.extend(nested_mappings)
-        changed = changed or safe_argument is not argument
-
-    if not changed:
-        return annotation, mapped_metadata
-
-    return _rebuild_generic_alias(annotation, origin, safe_arguments), mapped_metadata
+    updated_args = [_override_index(arg, index) for arg in arguments]
+    if origin is types.UnionType:
+        rebuilt = updated_args[0]
+        for arg in updated_args[1:]:
+            rebuilt = rebuilt | arg
+        return rebuilt
+    if origin is Union:
+        return Union[tuple(updated_args)]
+    return types.GenericAlias(list, (updated_args[0],))
 
 
 def _field_metadata(annotation: TypingAny) -> HowlerFieldMetadata | None:
@@ -507,10 +390,38 @@ def _mapping_validator(pattern: re.Pattern[str]) -> Callable[[TypingAny], Typing
     return validate
 
 
+def format_datetime(value: datetime, output_format: str | None = None) -> str | int:
+    """Format a datetime using a Howler primitive timestamp mode."""
+    if output_format == "iso":
+        return value.isoformat()
+    if output_format == "posix":
+        return int(value.timestamp())
+    normalized = value.astimezone(timezone.utc) if value.tzinfo is not None else value
+    return normalized.strftime(DATEFORMAT)
+
+
+def _ip_serializer(value: str | None, info: SerializationInfo) -> str | int | None:
+    if value is None:
+        return None
+    ip_format = info.context.get("ip_format") if info.context else None
+    return ip_to_primitive(value, ip_format)
+
+
+def _date_serializer(value: datetime | None, info: SerializationInfo) -> str | int | None:
+    if value is None:
+        return None
+    timestamp_format = info.context.get("timestamp_format") if info.context else None
+    return format_datetime(value, timestamp_format)
+
+
+def _classification_serializer(value: ClassificationValue | None) -> str | None:
+    return None if value is None else str(value)
+
+
 def keyword(**kwargs: TypingAny) -> TypingAny:
     """Create a non-empty string stored as an Elasticsearch keyword."""
     coerce = kwargs.pop("coerce", True)
-    return _dsl_keyword(
+    return _annotated(
         str,
         "Keyword",
         validator=_keyword_validator(coerce=coerce),
@@ -521,7 +432,7 @@ def keyword(**kwargs: TypingAny) -> TypingAny:
 
 def emptyable_keyword(**kwargs: TypingAny) -> TypingAny:
     """Create a keyword that distinguishes empty strings from null."""
-    return _dsl_keyword(
+    return _annotated(
         str | None,
         "EmptyableKeyword",
         validator=_emptyable_keyword_validator,
@@ -536,7 +447,7 @@ def upper_keyword(**kwargs: TypingAny) -> TypingAny:
     def validate(value: TypingAny) -> str:
         return _keyword_validator()(value).upper()
 
-    return _dsl_keyword(str, "UpperKeyword", validator=validate, default_when=_empty_or_none, **kwargs)
+    return _annotated(str, "UpperKeyword", validator=validate, default_when=_empty_or_none, **kwargs)
 
 
 def lower_keyword(**kwargs: TypingAny) -> TypingAny:
@@ -545,15 +456,14 @@ def lower_keyword(**kwargs: TypingAny) -> TypingAny:
     def validate(value: TypingAny) -> str:
         return _keyword_validator()(value).lower()
 
-    return _dsl_keyword(str, "LowerKeyword", validator=validate, default_when=_empty_or_none, **kwargs)
+    return _annotated(str, "LowerKeyword", validator=validate, default_when=_empty_or_none, **kwargs)
 
 
 def case_insensitive_keyword(**kwargs: TypingAny) -> TypingAny:
     """Create a keyword using the lowercase Elasticsearch normalizer."""
-    return _dsl_keyword(
+    return _annotated(
         str,
         "CaseInsensitiveKeyword",
-        mapping_options={"normalizer": "lowercase_normalizer"},
         validator=_keyword_validator(),
         default_when=_empty_or_none,
         **kwargs,
@@ -564,12 +474,7 @@ def any_field(**kwargs: TypingAny) -> TypingAny:
     """Create an arbitrary, non-indexed value."""
     kwargs["index"] = False
     kwargs["store"] = False
-    return _annotated(
-        TypingAny,
-        "Any",
-        dsl.Keyword(index=False, doc_values=False),
-        **kwargs,
-    )
+    return _annotated(TypingAny, "Any", **kwargs)
 
 
 def validated_keyword(pattern: str | re.Pattern[str], **kwargs: TypingAny) -> TypingAny:
@@ -579,11 +484,14 @@ def validated_keyword(pattern: str | re.Pattern[str], **kwargs: TypingAny) -> Ty
 
 def ip(**kwargs: TypingAny) -> TypingAny:
     """Create an IP-address field."""
-    return _dsl_field(
-        dsl.Ip,
+    return _annotated(
         str | None,
         "IP",
         validator=_ip_validator,
+        serializers=(
+            PlainSerializer(_ip_serializer, return_type=TypingAny),
+            WithJsonSchema({"anyOf": [{"type": "string"}, {"type": "null"}]}, mode="serialization"),
+        ),
         options={"validation_regex": IP_ONLY_REGEX.pattern},
         **kwargs,
     )
@@ -591,7 +499,7 @@ def ip(**kwargs: TypingAny) -> TypingAny:
 
 def domain(*, strict: bool = True, **kwargs: TypingAny) -> TypingAny:
     """Create a normalized domain or hostname field."""
-    return _dsl_keyword(
+    return _annotated(
         str | None,
         "Domain",
         validator=_domain_validator(strict),
@@ -602,12 +510,12 @@ def domain(*, strict: bool = True, **kwargs: TypingAny) -> TypingAny:
 
 def email(**kwargs: TypingAny) -> TypingAny:
     """Create a normalized email-address field."""
-    return _dsl_keyword(str | None, "Email", validator=_email_validator, **kwargs)
+    return _annotated(str | None, "Email", validator=_email_validator, **kwargs)
 
 
 def uri(**kwargs: TypingAny) -> TypingAny:
     """Create a normalized URI field."""
-    return _dsl_keyword(str | None, "URI", validator=_uri_validator, **kwargs)
+    return _annotated(str | None, "URI", validator=_uri_validator, **kwargs)
 
 
 def uri_path(**kwargs: TypingAny) -> TypingAny:
@@ -627,12 +535,9 @@ def phone_number(**kwargs: TypingAny) -> TypingAny:
 
 def ssdeep_hash(**kwargs: TypingAny) -> TypingAny:
     """Create an ssdeep fuzzy-hash field."""
-    return _dsl_field(
-        dsl.Text,
+    return _annotated(
         str,
         "SSDeepHash",
-        doc_values=False,
-        mapping_options={"analyzer": "text_fuzzy"},
         validator=_validated_keyword_validator(SSDEEP_REGEX),
         default_when=_falsy,
         options={"validation_regex": SSDEEP_REGEX},
@@ -642,22 +547,22 @@ def ssdeep_hash(**kwargs: TypingAny) -> TypingAny:
 
 def sha1(**kwargs: TypingAny) -> TypingAny:
     """Create a SHA-1 hash field."""
-    return _special_validated("SHA1", SHA1_REGEX, normalizer="lowercase_normalizer", **kwargs)
+    return _special_validated("SHA1", SHA1_REGEX, **kwargs)
 
 
 def sha256(**kwargs: TypingAny) -> TypingAny:
     """Create a SHA-256 hash field."""
-    return _special_validated("SHA256", SHA256_REGEX, normalizer="lowercase_normalizer", **kwargs)
+    return _special_validated("SHA256", SHA256_REGEX, **kwargs)
 
 
 def howler_hash(**kwargs: TypingAny) -> TypingAny:
     """Create a variable-length Howler hash field."""
-    return _special_validated("HowlerHash", HOWLER_HASH_REGEX, normalizer="lowercase_normalizer", **kwargs)
+    return _special_validated("HowlerHash", HOWLER_HASH_REGEX, **kwargs)
 
 
 def md5(**kwargs: TypingAny) -> TypingAny:
     """Create an MD5 hash field."""
-    return _special_validated("MD5", MD5_REGEX, normalizer="lowercase_normalizer", **kwargs)
+    return _special_validated("MD5", MD5_REGEX, **kwargs)
 
 
 def platform(**kwargs: TypingAny) -> TypingAny:
@@ -673,17 +578,11 @@ def processor(**kwargs: TypingAny) -> TypingAny:
 def _special_validated(
     kind: str,
     pattern: str,
-    *,
-    normalizer: str | None = None,
     **kwargs: TypingAny,
 ) -> TypingAny:
-    mapping_options: dict[str, TypingAny] = {}
-    if normalizer is not None:
-        mapping_options["normalizer"] = normalizer
-    return _dsl_keyword(
+    return _annotated(
         str,
         kind,
-        mapping_options=mapping_options,
         validator=_validated_keyword_validator(pattern),
         default_when=_falsy,
         options={"validation_regex": pattern},
@@ -694,7 +593,7 @@ def _special_validated(
 def enum(values: Iterable[TypingAny] | type[PyEnum], **kwargs: TypingAny) -> TypingAny:
     """Create a keyword restricted to an explicit set of values."""
     validator, allowed = _enum_validator(values)
-    return _dsl_keyword(
+    return _annotated(
         str,
         "Enum",
         validator=validator,
@@ -711,31 +610,30 @@ def uuid(**kwargs: TypingAny) -> TypingAny:
         return str(get_random_id() if value is None else value)
 
     kwargs.setdefault("default_factory", get_random_id)
-    return _dsl_keyword(str, "UUID", validator=validate, **kwargs)
+    return _annotated(str, "UUID", validator=validate, **kwargs)
 
 
 def text(**kwargs: TypingAny) -> TypingAny:
     """Create non-empty analyzed text."""
-    return _dsl_field(dsl.Text, str, "Text", doc_values=False, validator=_text_validator, default_when=_falsy, **kwargs)
+    return _annotated(str, "Text", validator=_text_validator, default_when=_falsy, **kwargs)
 
 
 def index_text(**kwargs: TypingAny) -> TypingAny:
     """Create analyzed text without non-empty validation."""
-    return _dsl_field(dsl.Text, str, "IndexText", doc_values=False, validator=str, **kwargs)
+    return _annotated(str, "IndexText", validator=str, **kwargs)
 
 
 def integer(*, min: int | None = None, max: int | None = None, **kwargs: TypingAny) -> TypingAny:
     """Create a bounded 32-bit Elasticsearch integer."""
-    return _bounded_integer(dsl.Integer, "Integer", min=min, max=max, **kwargs)
+    return _bounded_integer("Integer", min=min, max=max, **kwargs)
 
 
 def long(*, min: int | None = None, max: int | None = None, **kwargs: TypingAny) -> TypingAny:
     """Create a bounded 64-bit Elasticsearch integer."""
-    return _bounded_integer(dsl.Long, "Long", min=min, max=max, **kwargs)
+    return _bounded_integer("Long", min=min, max=max, **kwargs)
 
 
 def _bounded_integer(
-    field_type: Callable[..., dsl.Field],
     kind: str,
     *,
     min: int | None,
@@ -743,8 +641,7 @@ def _bounded_integer(
     **kwargs: TypingAny,
 ) -> TypingAny:
     constraints = {key: value for key, value in {"ge": min, "le": max}.items() if value is not None}
-    return _dsl_field(
-        field_type,
+    return _annotated(
         int,
         kind,
         validator=_integer_validator,
@@ -757,29 +654,34 @@ def _bounded_integer(
 
 def float_field(**kwargs: TypingAny) -> TypingAny:
     """Create a floating-point field."""
-    return _dsl_field(dsl.Float, float, "Float", validator=_float_validator, default_when=_falsy, **kwargs)
+    return _annotated(float, "Float", validator=_float_validator, default_when=_falsy, **kwargs)
 
 
 def boolean(**kwargs: TypingAny) -> TypingAny:
     """Create a boolean field using legacy truthiness coercion."""
-    return _dsl_field(dsl.Boolean, bool, "Boolean", validator=_boolean_validator, **kwargs)
+    return _annotated(bool, "Boolean", validator=_boolean_validator, **kwargs)
 
 
 def date(**kwargs: TypingAny) -> TypingAny:
     """Create a UTC-aware Elasticsearch date field."""
-    return _dsl_field(
-        dsl.Date,
+    return _annotated(
         datetime | None,
         "Date",
-        mapping_options={"format": "date_optional_time||epoch_millis"},
         validator=_date_validator,
+        serializers=(
+            PlainSerializer(_date_serializer, return_type=TypingAny),
+            WithJsonSchema(
+                {"anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]},
+                mode="serialization",
+            ),
+        ),
         **kwargs,
     )
 
 
 def json_field(**kwargs: TypingAny) -> TypingAny:
     """Create a JSON-encoded keyword field."""
-    return _dsl_keyword(str, "Json", validator=_json_validator, **kwargs)
+    return _annotated(str, "Json", validator=_json_validator, **kwargs)
 
 
 def classification(
@@ -794,11 +696,11 @@ def classification(
     def validate(value: TypingAny) -> ClassificationValue:
         return ClassificationValue(engine, value, is_user_classification)
 
-    return _dsl_field(
-        dsl.Keyword,
+    return _annotated(
         ClassificationValue,
         "Classification",
         validator=validate,
+        serializers=(PlainSerializer(_classification_serializer, return_type=str),),
         options={"is_user_classification": is_user_classification},
         **kwargs,
     )
@@ -815,8 +717,7 @@ def classification_string(*, yml_config: str | None = None, **kwargs: TypingAny)
             raise ValueError(f"Invalid classification: {value}")
         return str(value)
 
-    return _dsl_field(
-        dsl.Keyword,
+    return _annotated(
         str,
         "ClassificationString",
         validator=validate,
@@ -830,7 +731,6 @@ def list_field(child_type: TypingAny, **kwargs: TypingAny) -> TypingAny:
     return _annotated(
         types.GenericAlias(list, (child_type,)),
         "List",
-        None,
         validator=lambda value: [] if value is None else value,
         **kwargs,
     )
@@ -843,11 +743,9 @@ def mapping(child_type: TypingAny, **kwargs: TypingAny) -> TypingAny:
         if kwargs.get("index") is not False or kwargs.get("store") is not False
         else NOT_INDEXED_SANITIZER
     )
-    mapping = dsl.Object(enabled=False) if kwargs.get("index") is False else dsl.Object()
     return _annotated(
         types.GenericAlias(dict, (str, child_type)),
         "Mapping",
-        mapping,
         validator=_mapping_validator(sanitizer),
         **kwargs,
     )
@@ -855,11 +753,9 @@ def mapping(child_type: TypingAny, **kwargs: TypingAny) -> TypingAny:
 
 def flattened_object(**kwargs: TypingAny) -> TypingAny:
     """Create a dotted-key object whose values are JSON encoded."""
-    mapping = dsl.Object(enabled=False) if kwargs.get("index") is False else dsl.Object()
     return _annotated(
         types.GenericAlias(dict, (str, json_field())),
         "FlattenedObject",
-        mapping,
         validator=_mapping_validator(FLATTENED_OBJECT_SANITIZER),
         **kwargs,
     )
@@ -867,11 +763,9 @@ def flattened_object(**kwargs: TypingAny) -> TypingAny:
 
 def flattened_list_object(**kwargs: TypingAny) -> TypingAny:
     """Create a dotted-key object containing lists of JSON values."""
-    mapping = dsl.Object(enabled=False) if kwargs.get("index") is False else dsl.Object()
     return _annotated(
         types.GenericAlias(dict, (str, types.GenericAlias(list, (json_field(),)))),
         "FlattenedListObject",
-        mapping,
         validator=_mapping_validator(FLATTENED_OBJECT_SANITIZER),
         **kwargs,
     )
@@ -879,7 +773,7 @@ def flattened_list_object(**kwargs: TypingAny) -> TypingAny:
 
 def compound(model_type: type[TypingAny], **kwargs: TypingAny) -> TypingAny:
     """Create an embedded object field."""
-    return _annotated(model_type, "Compound", None, **kwargs)
+    return _annotated(model_type, "Compound", **kwargs)
 
 
 def optional(child_type: TypingAny, **kwargs: TypingAny) -> TypingAny:
@@ -887,8 +781,7 @@ def optional(child_type: TypingAny, **kwargs: TypingAny) -> TypingAny:
     child_metadata = _field_metadata(child_type)
     child_info = next((item for item in get_args(child_type)[1:] if isinstance(item, FieldInfo)), None)
     if child_info and child_info.alias is not None:
-        # A wire alias belongs to the field, not to one branch of its nullable
-        # union. Lift it without touching the child's DSL mapping or validators.
+        # A wire alias belongs to the field, not to one branch of its nullable union.
         base, *metadata = get_args(child_type)
         branch_info = copy(child_info)
         branch_info.alias = branch_info.validation_alias = branch_info.serialization_alias = None
@@ -900,17 +793,16 @@ def optional(child_type: TypingAny, **kwargs: TypingAny) -> TypingAny:
         if child_info is None or child_info.default in (None, PydanticUndefined):
             kwargs["validator"] = lambda value: None if value == "" else value
     kwargs.setdefault("default", None)
-    safe_child_type, mapped_field_metadata = _strip_mapped_field_metadata(child_type, kwargs.get("index"))
-    nullable_field = _annotated(
-        safe_child_type | None,
+    if kwargs.get("index") is not None:
+        child_type = _override_index(child_type, kwargs["index"])
+    return _annotated(
+        child_type | None,
         "Optional",
-        None,
         inherit=child_metadata,
         inherited_alias=child_info.alias if child_info else None,
         optional=True,
         **kwargs,
     )
-    return _make_annotated(nullable_field, *mapped_field_metadata) if mapped_field_metadata else nullable_field
 
 
 def ip_to_primitive(value: str, output_format: str | None) -> str | int:

@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from howler.common.exceptions import HowlerNotImplementedError
 from howler.common.logging import get_logger
 from howler.models.registry import (
+    KIND_MAPPING_PROPERTIES,
     FieldDefinition,
     field_metadata,
     model_registry,
@@ -37,43 +38,8 @@ logger = get_logger(__name__)
 # Kinds whose dotted-key value is a nested dynamic-key structure rather than a single leaf value.
 DYNAMIC_KEY_KINDS = frozenset({"Mapping", "FlattenedObject", "FlattenedListObject"})
 
-# Elasticsearch type per Howler field "kind", extending the legacy datastore type table with the
-# new-model field kinds that map to the same underlying ES types.
-KIND_TYPE_MAPPING: dict[str, str] = {
-    "Any": "keyword",
-    "Boolean": "boolean",
-    "CaseInsensitiveKeyword": "keyword",
-    "Classification": "keyword",
-    "ClassificationString": "keyword",
-    "Date": "date",
-    "Domain": "keyword",
-    "Email": "keyword",
-    "EmptyableKeyword": "keyword",
-    "Enum": "keyword",
-    "Float": "float",
-    "HowlerHash": "keyword",
-    "IP": "ip",
-    "IndexText": "text",
-    "Integer": "integer",
-    "Json": "keyword",
-    "Keyword": "keyword",
-    "Long": "long",
-    "LowerKeyword": "keyword",
-    "MAC": "keyword",
-    "MD5": "keyword",
-    "PhoneNumber": "keyword",
-    "Platform": "keyword",
-    "Processor": "keyword",
-    "SHA1": "keyword",
-    "SHA256": "keyword",
-    "SSDeepHash": "text",
-    "Text": "text",
-    "URI": "keyword",
-    "URIPath": "keyword",
-    "UUID": "keyword",
-    "UpperKeyword": "keyword",
-    "ValidatedKeyword": "keyword",
-}
+# Elasticsearch type per Howler field "kind", derived from the canonical registry mapping table.
+KIND_TYPE_MAPPING: dict[str, str] = {kind: spec["type"] for kind, spec in KIND_MAPPING_PROPERTIES.items()}
 
 DISABLED_OBJECT_MAPPING: dict[str, Any] = {"type": "object", "enabled": False}
 ID_PROPERTY_MAPPING: dict[str, Any] = {"store": True, "doc_values": True, "type": "keyword"}

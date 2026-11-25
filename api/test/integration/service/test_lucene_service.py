@@ -6,7 +6,6 @@ import pytest
 from howler.common import loader
 from howler.common.logging import get_logger
 from howler.datastore.howler_store import HowlerDatastore
-from howler.models import strip_unknown_fields
 from howler.models.hit import Hit
 from howler.sample_data.helper import generate_useful_hit
 from howler.sample_data.randomizer import random_model_obj
@@ -30,7 +29,7 @@ def hit(datastore_connection):
             json.dump(_hit.as_primitives(), _file)
     else:
         with hit_file_path.open("r") as _file:
-            _hit = Hit.model_validate(strip_unknown_fields(Hit, json.load(_file)))
+            _hit = Hit.model_validate(json.load(_file), extra="ignore")
 
     return _hit
 
@@ -181,7 +180,7 @@ def test_lucene_and_not(datastore: HowlerDatastore):
 
 def test_lucene_case_sensitivity_and_negative_ranges(datastore: HowlerDatastore):
     """Regression test for field case-sensitivity, missing fields, zero values, and negative float ranges."""
-    test_hit: Hit = random_model_obj(cast(Model, Hit))
+    test_hit: Hit = random_model_obj(Hit)
     test_hit.threat.indicator.provider = "To"
     test_hit.howler.analytic = "Exploit Patcher"
     test_hit.labels["env_t"] = "prod"

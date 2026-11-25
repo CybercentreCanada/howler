@@ -1,13 +1,13 @@
 """Pydantic and Elasticsearch DSL model foundation."""
 
 from howler.models.base import (
+    ESMeta,
     HowlerEmbeddedModel,
     HowlerESModel,
     HowlerModelValidationError,
     construct_partial,
     flat_to_nested,
     partial_primitives,
-    strip_unknown_fields,
     validate_field_value,
 )
 from howler.models.extensions import ModelExtension, ModelExtensionRegistry, model_extensions
@@ -58,6 +58,7 @@ from howler.models.registry import FieldDefinition, ModelMetadata, model_registr
 
 __all__ = [
     "ClassificationValue",
+    "ESMeta",
     "FieldDefinition",
     "HowlerEmbeddedModel",
     "HowlerESModel",
@@ -105,7 +106,6 @@ __all__ = [
     "sha1",
     "sha256",
     "ssdeep_hash",
-    "strip_unknown_fields",
     "text",
     "upper_keyword",
     "uri",

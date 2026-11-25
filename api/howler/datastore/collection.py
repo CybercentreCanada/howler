@@ -43,7 +43,6 @@ from howler.models import (
     flat_to_nested,
     partial_primitives,
     schema,
-    strip_unknown_fields,
     validate_field_value,
 )
 from howler.models.fields import FIELD_SANITIZER as MODEL_FIELD_SANITIZER
@@ -1500,8 +1499,6 @@ class ESCollection(Generic[ModelType]):
                 for key, value in raw_data.items()
                 if key not in MODEL_BANNED_FIELDS and key not in {"id", "__index"}
             }
-            if read:
-                model_input = strip_unknown_fields(self.model_class, model_input)
             model = (
                 construct_partial(
                     self.model_class,
@@ -1510,7 +1507,10 @@ class ESCollection(Generic[ModelType]):
                     ignore_unknown=read,
                 )
                 if partial
-                else self.model_class.validate_howler({"meta": resolved_metadata, **model_input})
+                else self.model_class.validate_howler(
+                    {"meta": resolved_metadata, **model_input},
+                    extra="ignore" if read else None,
+                )
             )
 
         for name, value in resolved_metadata.items():
