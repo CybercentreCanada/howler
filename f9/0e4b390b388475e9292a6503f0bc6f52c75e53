@@ -1,0 +1,19 @@
+docs/api/model-compatibility.md
+  s_b237956c3233b6::t_6dc84c28560dd5 53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f90e4b390b388475e9292a6503f0bc6f52c75e53",
+  "prompts": {},
+  "sessions": {
+    "s_b237956c3233b6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_deb90bec4ffehWV19zI5ySOrQJ",
+        "model": "gemini-4-hydrogen"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
