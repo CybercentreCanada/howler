@@ -1,0 +1,41 @@
+api/howler/external/elasticsearch_cutover_verify.py
+  s_b237956c3233b6::t_7e83c5e26c7a9b 1-1616
+api/howler/external/elasticsearch_initialize_collections.py
+  s_b237956c3233b6::t_7e83c5e26c7a9b 1-91
+documentation/docs/installation/elasticsearch_9_preflight.md
+  s_b237956c3233b6::t_7e83c5e26c7a9b 1-98
+api/test/unit/test_elasticsearch_preflight.py
+  s_b237956c3233b6::t_7e83c5e26c7a9b 1-369
+api/howler/external/elasticsearch_preflight.py
+  s_b237956c3233b6::t_7e83c5e26c7a9b 1-267
+api/howler/external/elasticsearch_rest.py
+  s_b237956c3233b6::t_7e83c5e26c7a9b 1-465
+api/test/unit/test_elasticsearch_initialize_collections.py
+  s_b237956c3233b6::t_7e83c5e26c7a9b 1-127
+api/test/unit/test_ilm_collection.py
+  s_b237956c3233b6::t_7e83c5e26c7a9b 2400-2405,2438-2443
+docs/api/model-compatibility.md
+  s_b237956c3233b6::t_7e83c5e26c7a9b 53-54
+api/test/unit/test_elasticsearch_cutover_verify.py
+  s_b237956c3233b6::t_7e83c5e26c7a9b 1-1819
+documentation/docs/installation/elasticsearch_9_cutover.md
+  s_b237956c3233b6::t_7e83c5e26c7a9b 1-630
+documentation/mkdocs.yml
+  s_b237956c3233b6::t_7e83c5e26c7a9b 45-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0bf18e3555438680f7dfdb2d8c713276c6f35fa7",
+  "prompts": {},
+  "sessions": {
+    "s_b237956c3233b6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_deb90bec4ffehWV19zI5ySOrQJ",
+        "model": "gemini-4-hydrogen"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
