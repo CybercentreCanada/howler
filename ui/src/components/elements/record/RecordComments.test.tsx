@@ -1,5 +1,7 @@
 /// <reference types="vitest" />
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { Event } from 'models/entities/generated/Event';
+import type { Hit } from 'models/entities/generated/Hit';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockDispatchApi = vi.hoisted(() => vi.fn());
@@ -212,5 +214,49 @@ describe('RecordComments', () => {
 
     fireEvent.blur(input);
     expect(mockEmit).toHaveBeenCalledWith({ broadcast: true, action: 'stop_typing', id: 'hit-1' });
+  });
+
+  it('supports event comments and clears analytic comments when switching from a hit', async () => {
+    const hit: Hit = {
+      __index: 'hit',
+      timestamp: '2026-01-01T00:00:00Z',
+      howler: { id: 'hit-1', hash: 'abc', analytic: 'Analytic', assignment: 'unassigned' }
+    };
+    const event: Event = {
+      __index: 'event',
+      timestamp: '2026-01-01T00:00:00Z',
+      howler: { id: 'event-1', hash: 'abc', comment: [{ id: 'comment-1', value: 'event note' }] }
+    };
+    mockGetMatchingAnalytic.mockResolvedValue({ comment: [{ id: 'pinned', value: 'pinned note' }] });
+    mockDispatchApi.mockResolvedValue({
+      ...event,
+      howler: { ...event.howler, comment: [{ id: 'comment-2', value: 'saved event note' }] }
+    });
+
+    const { rerender } = render(<RecordComments record={hit} users={{}} />);
+    expect(await screen.findByText('pinned note')).toBeInTheDocument();
+
+    rerender(<RecordComments record={event} users={{}} />);
+
+    expect(screen.getByText('event note')).toBeInTheDocument();
+    expect(mockGetMatchingAnalytic).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('pinned note')).not.toBeInTheDocument();
+    const input = screen.getByLabelText('comments.add');
+    fireEvent.focus(input);
+    expect(mockEmit).toHaveBeenCalledWith({ broadcast: true, action: 'typing', id: 'event-1' });
+    fireEvent.change(input, { target: { value: 'new event comment' } });
+    fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true });
+    await waitFor(() =>
+      expect(mockDispatchApi).toHaveBeenCalledWith(
+        { op: 'post', id: 'event-1', value: 'new event comment' },
+        expect.any(Object)
+      )
+    );
+    expect(await screen.findByText('saved event note')).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    rerender(<RecordComments record={{ ...hit, howler: { ...hit.howler, id: 'hit-2', analytic: '' } }} users={{}} />);
+    expect(screen.queryByText('pinned note')).not.toBeInTheDocument();
+    expect(mockGetMatchingAnalytic).toHaveBeenCalledTimes(1);
   });
 });

@@ -12,7 +12,7 @@ from pydantic import ValidationError
 from howler.actions.models import ActionSpecification, invalid_arguments_report
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.plugins import get_plugins
 from howler.services import auth_service
 
@@ -145,7 +145,7 @@ def check_hit_limit(
     Returns:
         Error dict if limit exceeded, None otherwise.
     """
-    is_advanced = bool(ADVANCED_ROLES & set(user["type"]))
+    is_advanced = bool(ADVANCED_ROLES & set(user.type))
     limit = max_hits_advanced if is_advanced else max_hits_basic
 
     if limit is not None:
@@ -203,7 +203,7 @@ def execute(
 
     specification = _load_specification(operation)
 
-    user_roles = set(user["type"])
+    user_roles = set(user.type)
     is_admin = "admin" in user_roles
     required_roles = set(specification.roles)
     has_roles = required_roles & user_roles

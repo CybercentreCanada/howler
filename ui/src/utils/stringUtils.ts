@@ -1,5 +1,7 @@
 import { get } from 'lodash-es';
 
+export const fieldOptionLabel = (value: unknown): string => (typeof value === 'string' ? value : JSON.stringify(value));
+
 export const nameToInitials = (string: string) => {
   const parts = string.split(' ').slice(0, 2);
 

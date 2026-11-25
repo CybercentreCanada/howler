@@ -3,7 +3,7 @@
 
 # SharepointData
 
-> None
+> Sharepoint application/user metadata.
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |

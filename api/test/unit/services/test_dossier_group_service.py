@@ -1,5 +1,7 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+from howler.models.dossier import Dossier
+from howler.models.user import User
 from howler.services import dossier_service
 
 
@@ -164,3 +166,27 @@ def test_get_pivot_groups_stops_after_the_page_limit(mock_datastore):
         f"network/page{page:02}" for page in range(dossier_service.MAX_GROUP_SUGGESTION_PAGES)
     ]
     assert mock_datastore.return_value.dossier.search.call_count == dossier_service.MAX_GROUP_SUGGESTION_PAGES
+
+
+def test_create_and_update_dossier_persist_editable_fields():
+    storage = MagicMock()
+    storage.dossier.model_class = Dossier
+    requester = User.validate_howler({"uname": "analyst", "name": "Analyst", "password": "hash"})
+    dossier_data = {"title": "Investigation", "query": "howler.id:*", "type": "personal"}
+
+    with patch.object(dossier_service, "datastore", return_value=storage):
+        created = dossier_service.create_dossier(dossier_data, "analyst")
+
+    assert isinstance(created, Dossier)
+    assert created.owner == "analyst"
+    storage.dossier.save.assert_called_once_with(created.dossier_id, created, refresh=None)
+
+    storage.dossier.exists.return_value = True
+    storage.dossier.get_if_exists.return_value = created, "1---1"
+    with patch.object(dossier_service, "datastore", return_value=storage):
+        updated = dossier_service.update_dossier(created.dossier_id, {"title": "Updated"}, requester)
+
+    assert isinstance(updated, Dossier)
+    assert updated.title == "Updated"
+    assert updated.owner == "analyst"
+    storage.dossier.save.assert_called_with(created.dossier_id, updated, version="1---1", refresh=None)

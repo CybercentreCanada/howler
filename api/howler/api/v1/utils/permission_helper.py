@@ -5,13 +5,13 @@ from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import ForbiddenException, InvalidDataException
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import VersionConflictException
-from howler.odm.models.ownership import Ownership
-from howler.odm.models.user import User
+from howler.models.ownership import Ownership
+from howler.models.user import User
 from howler.security.login import api_login
 from howler.services import permission_service
 
 
-def add_access_control_endpoints(api: Blueprint, odm: type[Ownership]):
+def add_access_control_endpoints(api: Blueprint, model_type: type[Ownership]):
     """Add access control routes for managing user permissions."""
 
     @generate_swagger_docs()
@@ -44,7 +44,7 @@ def add_access_control_endpoints(api: Blueprint, odm: type[Ownership]):
         }
         """
         try:
-            result = permission_service.give_privileges(id, user, odm, refresh=kwargs.get("refresh"))
+            result = permission_service.give_privileges(id, user, model_type, refresh=kwargs.get("refresh"))
         except VersionConflictException:
             return conflict(err="Someone has updated this item. Please try again")
         except ForbiddenException as e:
@@ -83,7 +83,7 @@ def add_access_control_endpoints(api: Blueprint, odm: type[Ownership]):
         }
         """
         try:
-            result = permission_service.remove_privileges(id, user, odm, refresh=kwargs.get("refresh"))
+            result = permission_service.remove_privileges(id, user, model_type, refresh=kwargs.get("refresh"))
         except VersionConflictException:
             return conflict(err="Someone has updated this item. Please try again")
         except ForbiddenException as e:

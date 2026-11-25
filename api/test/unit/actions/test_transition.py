@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from howler.actions import transition
 from howler.datastore.exceptions import VersionConflictException
-from howler.odm.models.user import User
+from howler.models.user import User
 
 
 @patch("howler.actions.transition.hit_service.transition_hit", side_effect=VersionConflictException("conflict"))
@@ -16,7 +16,7 @@ def test_execute_reports_concurrent_update_as_error(mock_action_datastore, mock_
         {"items": [SimpleNamespace(howler=SimpleNamespace(id=hit_id))], "total": 1},
         {"total": 0},
     ]
-    user = User({"uname": "admin", "name": "Administrator", "password": "password", "type": ["admin"]})
+    user = User.validate_howler({"uname": "admin", "name": "Administrator", "password": "password", "type": ["admin"]})
 
     report = transition.execute(
         query="howler.id:*",
@@ -47,7 +47,7 @@ def test_execute_retries_concurrent_update(mock_action_datastore, mock_datastore
         {"items": [SimpleNamespace(howler=SimpleNamespace(id=hit_id))], "total": 1},
         {"total": 0},
     ]
-    user = User({"uname": "admin", "name": "Administrator", "password": "password", "type": ["admin"]})
+    user = User.validate_howler({"uname": "admin", "name": "Administrator", "password": "password", "type": ["admin"]})
 
     report = transition.execute(
         query="howler.id:*",

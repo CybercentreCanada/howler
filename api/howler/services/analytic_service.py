@@ -1,13 +1,13 @@
-from typing import Any, Literal, Union, overload
+from typing import Any, Literal, Union, cast, overload
 
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import SearchException
 from howler.datastore.operations import OdmUpdateOperation
-from howler.odm.models.analytic import Analytic
-from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import Assessment
-from howler.odm.models.user import User
+from howler.models.analytic import Analytic
+from howler.models.hit import Hit
+from howler.models.howler_data import Assessment
+from howler.models.user import User
 from howler.utils.str_utils import sanitize_lucene_query
 
 logger = get_logger(__file__)
@@ -59,7 +59,7 @@ def get_analytic(
     as_odm=False,
     version=False,
 ):
-    """Return analytic object as either an ODM or Dict"""
+    """Return an analytic as a model or dictionary."""
     return datastore().analytic.get_if_exists(key=id, as_obj=as_odm, version=version)
 
 
@@ -90,12 +90,13 @@ def get_matching_analytics(hits: Union[list[Hit], list[dict[str, Any]]]) -> list
 
     analytic_names: set[str] = set()
     for hit in hits:
-        analytic_names.add(f'"{sanitize_lucene_query(hit["howler"]["analytic"])}"')
+        name = hit["howler"]["analytic"]
+        analytic_names.add(f'"{sanitize_lucene_query(name)}"')
 
     try:
-        existing_analytics: list[Analytic] = storage.analytic.search(
-            f"name:({' OR '.join(analytic_names)})", as_obj=True
-        )["items"]
+        existing_analytics = cast(
+            list[Analytic], storage.analytic.search(f"name:({' OR '.join(analytic_names)})", as_obj=True)["items"]
+        )
 
         return existing_analytics
     except SearchException:
@@ -143,17 +144,17 @@ def _get_analytic_updates_from_hit_group(analytic_name: str, hit_group: list[Hit
     storage = datastore()
 
     save = False
-    existing_analytics: list[Analytic] = storage.analytic.search(f'name:"{sanitize_lucene_query(analytic_name)}"')[
-        "items"
-    ]
+    existing_analytics = cast(
+        list[Analytic], storage.analytic.search(f'name:"{sanitize_lucene_query(analytic_name)}"')["items"]
+    )
     if len(existing_analytics) > 0:
-        analytic: Analytic = existing_analytics[0]
+        analytic = existing_analytics[0]
 
         if not analytic.owner:
             save = True
             analytic.owner = user.uname
 
-        if user["uname"] not in analytic.contributors:
+        if user.uname not in analytic.contributors:
             analytic.contributors.append(user.uname)
             save = True
 
@@ -177,11 +178,11 @@ def _get_analytic_updates_from_hit_group(analytic_name: str, hit_group: list[Hit
 
     else:
         save = True
-        analytic = Analytic(
+        analytic = Analytic.validate_howler(
             {
                 "name": analytic_name,
-                "owner": user["uname"],
-                "contributors": [user["uname"]],
+                "owner": user.uname,
+                "contributors": [user.uname],
                 "detections": [hit.howler.detection for hit in hit_group if hit.howler.detection],
                 "description": "Placeholder Description - Défaut Description",
                 "triage_settings": {

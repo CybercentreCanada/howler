@@ -1,6 +1,6 @@
 from collections import defaultdict
 from collections.abc import Callable, Mapping
-from typing import Any, Literal, Optional, TypedDict, overload
+from typing import Any, Literal, Optional, TypedDict, cast, overload
 
 from cryptography.exceptions import InvalidTag
 from flask import Response
@@ -18,8 +18,8 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.logging.audit import audit
 from howler.config import config
-from howler.odm.models.action import VALID_TRIGGERS, Action
-from howler.odm.models.user import User
+from howler.models.action import VALID_TRIGGERS, Action
+from howler.models.user import User
 from howler.remote.datatypes.queues.named import NamedQueue
 from howler.services import auth_service
 from howler.utils.constants import TESTING
@@ -410,9 +410,9 @@ def bulk_execute_on_query(
     if trigger not in VALID_TRIGGERS:
         raise HowlerValueError(f"{trigger} is not a valid trigger. It must be one of {','.join(VALID_TRIGGERS)}")
 
-    on_trigger_actions: list[Action] = storage.action.search(f"triggers:{sanitize_lucene_query(trigger)}", rows=10000)[
-        "items"
-    ]
+    on_trigger_actions = cast(
+        list[Action], storage.action.search(f"triggers:{sanitize_lucene_query(trigger)}", rows=10000)["items"]
+    )
 
     for action in on_trigger_actions:
         intersected_query = f"({query}) AND ({action.query})"

@@ -7,8 +7,7 @@ import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import get from 'lodash-es/get';
 import isObject from 'lodash-es/isObject';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Template } from 'models/entities/generated/Template';
-import type { WithMetadata } from 'models/WithMetadata';
+import type { MatchedTemplate, WithMetadata } from 'models/WithMetadata';
 import type { FC } from 'react';
 import { memo, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,7 +33,7 @@ const HitOutline: FC<{
   lazy?: boolean;
   layout: HitLayout;
   forceAllFields?: boolean;
-  template?: Template;
+  template?: MatchedTemplate;
 }> = ({ hit, layout, lazy = false, forceAllFields = false, template: providedTemplate }) => {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -43,7 +42,7 @@ const HitOutline: FC<{
   const { getMatchingTemplate } = useMatchers(lazy);
 
   const [templateFieldCount] = useMyLocalStorageItem<number>(StorageKey.TEMPLATE_FIELD_COUNT);
-  const [template, setTemplate] = useState<Template>();
+  const [template, setTemplate] = useState<MatchedTemplate | null>();
 
   const providerColor = getProviderColor(hit?.event?.provider);
 

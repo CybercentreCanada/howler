@@ -1,10 +1,10 @@
 import random
 from datetime import datetime, timedelta
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
-from howler.odm import Model, flatten
-from howler.odm.models.hit import Hit
-from howler.odm.randomizer import random_model_obj
+from howler.models.hit import Hit
+from howler.sample_data.randomizer import random_model_obj
+from howler.utils.dict_utils import flatten
 
 
 def get_value(_value) -> Optional[str]:
@@ -40,7 +40,7 @@ def generate_lucene_query(hit: dict[str, Any], complexity=0):  # noqa: C901
     "Generate a random lucene query"
     data = flatten(hit, odm=Hit)
 
-    alternative = flatten(random_model_obj(cast(Model, Hit)).as_primitives(), odm=Hit)
+    alternative = flatten(random_model_obj(Hit).as_primitives(), odm=Hit)
 
     queries: list[str] = []
     for key, _value in data.items():

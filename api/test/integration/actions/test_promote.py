@@ -5,8 +5,8 @@ from uuid import uuid4
 import pytest
 
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.models.howler_data import Assessment, Escalation
-from howler.odm.random_data import create_hits, wipe_hits
+from howler.models.howler_data import Assessment, Escalation
+from howler.sample_data.random_data import create_hits, wipe_hits
 from test.conftest import get_api_data
 
 # Assessments that map to the "evidence" escalation

@@ -1,9 +1,6 @@
-import re
-from copy import deepcopy
 from typing import Any
 
 from elasticsearch import BadRequestError
-from elasticsearch._sync.client.indices import IndicesClient
 from flask import request
 from sigma.backends.elasticsearch import LuceneBackend
 from sigma.rule import SigmaRule
@@ -15,7 +12,7 @@ from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import InvalidScrollTokenException, SearchException, SearchRetryException
 from howler.helper.search import get_collection, get_default_sort, has_access_control, list_all_fields
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.security.login import api_login
 from howler.services import hit_service, lucene_service, search_service
 from howler.services.search_service import SensitiveUserFieldsException
@@ -204,23 +201,8 @@ def explain_query(index: str, user: User, **kwargs):
     if not query:
         return bad_request(err="There was no query.")
 
-    # This regex checks for lucene phrases (i.e. the "Example Analytic" part of howler.analytic:"Example Analytic")
-    # And then escapes them.
-    # https://regex101.com/r/8u5F6a/1
-    escaped_lucene = re.sub(r'((:\()?(".+?")(\)?))', lucene_service.replace_lucene_phrase, query)
-
     try:
-        indices_client = IndicesClient(datastore().hit.datastore.client)
-
-        result = deepcopy(
-            indices_client.validate_query(q=escaped_lucene, explain=True, index=collection().index_name).body
-        )
-
-        del result["_shards"]
-
-        for explanation in result["explanations"]:
-            del explanation["index"]
-
+        result = lucene_service.explain_query(query, collection().index_name)
         return ok(result)
     except Exception as e:
         logger.exception("Exception on query explanation")

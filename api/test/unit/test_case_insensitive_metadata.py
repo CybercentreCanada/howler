@@ -9,7 +9,6 @@ from uuid import uuid4
 import pytest
 from elastic_transport import ApiResponseMeta, HeadApiResponse, NodeConfig
 
-from howler import odm
 from howler.common.loader import DATASTORE_INDEX_PREFIX
 from howler.datastore.exceptions import DataStoreException, VersionConflictException
 from howler.datastore.howler_store import HowlerDatastore
@@ -22,13 +21,13 @@ from howler.datastore.migrations.case_insensitive_metadata import (
 )
 from howler.datastore.migrations.runner import MIGRATIONS, run_migrations
 from howler.datastore.store import ESStore
-from howler.datastore.support.build import build_mapping
 from howler.external import run_migrations as migration_cli
-from howler.odm.models.action import Action
-from howler.odm.models.dossier import Dossier
-from howler.odm.models.overview import Overview
-from howler.odm.models.template import Template
-from howler.odm.models.view import View
+from howler.models.action import Action
+from howler.models.dossier import Dossier
+from howler.models.overview import Overview
+from howler.models.registry import model_registry
+from howler.models.template import Template
+from howler.models.view import View
 
 MODEL_FIELDS = {
     View: {"query", "sort"},
@@ -67,22 +66,25 @@ def test_metadata_fields_use_case_insensitive_mappings_without_changing_serializ
     assert sum(len(fields) for fields in MODEL_FIELDS.values()) == 10
 
     for model_class, changed_fields in MODEL_FIELDS.items():
-        mapping, _ = build_mapping(model_class.fields().values())
+        fields = model_registry.fields(model_class)
+        mapping = model_registry.mapping(model_class)["properties"]
         for field_name in changed_fields:
-            field = model_class.fields()[field_name]
-            assert type(field) is odm.CaseInsensitiveKeyword
-            assert field.check(f"MiXeD-{field_name}") == f"MiXeD-{field_name}"
+            field = fields[field_name]
+            assert field.metadata is not None
+            assert field.metadata.kind == "CaseInsensitiveKeyword"
             assert mapping[field_name]["type"] == "keyword"
             assert mapping[field_name]["normalizer"] == "lowercase_normalizer"
 
-        for field_name in {"owner", "admins", "members"} & set(model_class.fields()):
-            field = model_class.fields()[field_name]
-            assert type(field) is not odm.CaseInsensitiveKeyword
+        for field_name in {"owner", "admins", "members"} & set(fields):
+            field = fields[field_name]
+            assert field.metadata is not None
+            assert field.metadata.kind != "CaseInsensitiveKeyword"
             assert "normalizer" not in mapping[field_name]
 
-    overview_fields = Overview.fields()
-    overview_mapping, _ = build_mapping(overview_fields.values())
-    assert type(overview_fields["content"]) is odm.Text
+    overview_fields = model_registry.fields(Overview)
+    overview_mapping = model_registry.mapping(Overview)["properties"]
+    assert overview_fields["content"].metadata is not None
+    assert overview_fields["content"].metadata.kind == "Text"
     assert overview_mapping["content"]["type"] == "text"
     assert "normalizer" not in overview_mapping["content"]
 
@@ -163,7 +165,7 @@ def test_metadata_fields_use_case_insensitive_mappings_without_changing_serializ
     ]
 
     for model_class, values, expected in data:
-        model = model_class(values)
+        model = model_class.validate_howler(values)
         serialized = model.as_primitives()
         assert {name: serialized[name] for name in expected} == expected
         assert serialized["owner"] == "OwnerMiXeD"
@@ -173,7 +175,7 @@ def test_metadata_fields_use_case_insensitive_mappings_without_changing_serializ
 
 
 def test_optional_metadata_fields_allow_absence_and_view_dossier_values_keep_case():
-    view = View(
+    view = View.validate_howler(
         {
             "view_id": str(uuid4()),
             "indexes": ["hit"],
@@ -183,7 +185,7 @@ def test_optional_metadata_fields_allow_absence_and_view_dossier_values_keep_cas
             "owner": "OwnerMiXeD",
         }
     )
-    dossier = Dossier(
+    dossier = Dossier.validate_howler(
         {
             "dossier_id": str(uuid4()),
             "title": "Dossier MiXeD Case",
@@ -193,8 +195,10 @@ def test_optional_metadata_fields_allow_absence_and_view_dossier_values_keep_cas
             "pivots": [],
         }
     )
-    template = Template({"template_id": str(uuid4()), "analytic": "Analytic MiXeD", "type": "personal"})
-    overview = Overview({"overview_id": str(uuid4()), "analytic": "Analytic MiXeD", "content": "Markdown"})
+    template = Template.validate_howler({"template_id": str(uuid4()), "analytic": "Analytic MiXeD", "type": "personal"})
+    overview = Overview.validate_howler(
+        {"overview_id": str(uuid4()), "analytic": "Analytic MiXeD", "content": "Markdown"}
+    )
 
     assert view.sort is None
     assert view.query == "Query MiXeD Case"
@@ -482,7 +486,7 @@ def test_migration_refreshes_only_ilm_template_after_validation_restore_and_befo
     collections["view"].reindex.side_effect = reindex_view
     collections["view"]._index_doc_count.side_effect = count_view
     monkeypatch.setattr(
-        "howler.odm.models.config.config",
+        "howler.datastore.migrations.case_insensitive_metadata.config",
         SimpleNamespace(datastore=SimpleNamespace(ilm=global_ilm_config)),
     )
 
@@ -715,7 +719,12 @@ def test_migration_acquires_registered_lazy_collections_without_validation_and_r
     assert store._collections == {"unrelated": unrelated_collection}
     assert indices.exists.call_count == len(COLLECTION_NAMES)
     assert set(collections) == set(COLLECTION_NAMES)
-    for collection_name, (collection, model_class, collection_validate, collection_ilm_config) in collections.items():
+    for collection_name, (
+        collection,
+        model_class,
+        collection_validate,
+        collection_ilm_config,
+    ) in collections.items():
         assert model_class is expected_models[collection_name]
         assert collection_validate is False
         assert collection_ilm_config is (ilm_config if collection_name == "view" else None)
@@ -779,7 +788,7 @@ def test_failed_template_refresh_is_unrecorded_retry_succeeds_then_applied_migra
     collections["view"]._create_index_template.side_effect = [RuntimeError("template refresh failed"), None]
     global_ilm_config = object()
     monkeypatch.setattr(
-        "howler.odm.models.config.config",
+        "howler.datastore.migrations.case_insensitive_metadata.config",
         SimpleNamespace(datastore=SimpleNamespace(ilm=global_ilm_config)),
     )
     migration = CaseInsensitiveMetadataMigration()

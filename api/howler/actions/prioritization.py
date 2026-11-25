@@ -3,8 +3,8 @@ from typing import Annotated
 from howler.actions.models import ActionArguments, ActionDescription, ActionSpecification, ActionStep, one_of
 from howler.common.loader import datastore
 from howler.datastore.operations import OdmHelper
-from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.hit import Hit
+from howler.models.action import VALID_TRIGGERS
+from howler.models.hit import Hit
 
 hit_helper = OdmHelper(Hit)
 

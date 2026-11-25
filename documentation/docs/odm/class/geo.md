@@ -8,7 +8,7 @@
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
 | city_name | Keyword | City name. | :material-minus-box-outline: Optional | `None` |
-| continent_code | Keyword | Two-letter code representing continent’s name. | :material-minus-box-outline: Optional | `None` |
+| continent_code | Keyword | Two-letter code representing continent's name. | :material-minus-box-outline: Optional | `None` |
 | continent_name | Keyword | Name of the continent. | :material-minus-box-outline: Optional | `None` |
 | country_iso_code | Keyword | Country ISO code. | :material-minus-box-outline: Optional | `None` |
 | country_name | Keyword | Country name. | :material-minus-box-outline: Optional | `None` |

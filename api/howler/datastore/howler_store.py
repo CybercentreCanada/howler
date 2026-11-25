@@ -1,22 +1,23 @@
-from typing import TYPE_CHECKING
+from collections.abc import Collection
+from typing import TYPE_CHECKING, Any, cast
 
 from howler.common.exceptions import HowlerAttributeError
 from howler.config import config
+from howler.config_models import ILMIndexConfig
 from howler.datastore.collection import ESCollection, logger
-from howler.odm.base import Compound
-from howler.odm.models.action import Action
-from howler.odm.models.analytic import Analytic
-from howler.odm.models.case import Case
-from howler.odm.models.clue import Clue
-from howler.odm.models.config import ILMIndexConfig
-from howler.odm.models.dossier import Dossier
-from howler.odm.models.event import Event
-from howler.odm.models.hit import Hit
-from howler.odm.models.migration import MigrationRecord
-from howler.odm.models.overview import Overview
-from howler.odm.models.template import Template
-from howler.odm.models.user import User
-from howler.odm.models.view import View
+from howler.models import model_extensions, schema
+from howler.models.action import Action
+from howler.models.analytic import Analytic
+from howler.models.case import Case
+from howler.models.clue import declare_hit_extension as declare_clue_hit_extension
+from howler.models.dossier import Dossier
+from howler.models.event import Event
+from howler.models.hit import Hit
+from howler.models.migration import MigrationRecord
+from howler.models.overview import Overview
+from howler.models.template import Template
+from howler.models.user import User
+from howler.models.view import View
 from howler.plugins import get_plugins
 
 if TYPE_CHECKING:
@@ -40,33 +41,72 @@ INDEXES = {
 ILM_ENABLED_INDEXES = {"hit", "event", "case"}
 
 
+def _declare_extensions(plugins: list[Any], indexes: Collection[str]) -> None:
+    for plugin in plugins:
+        legacy_only_targets = {
+            target
+            for target in plugin.modules.odm.modify_odm
+            if INDEXES.get(target) is not None and target not in plugin.modules.models.declare_extensions
+        }
+        if legacy_only_targets:
+            targets = ", ".join(sorted(legacy_only_targets))
+            raise HowlerAttributeError(
+                f"Plugin {plugin.name} defines legacy ODM extensions for {targets} without matching typed "
+                "model extensions. Add modules.models.declare_extensions entries before using this plugin "
+                "with Pydantic-backed collections."
+            )
+
+    if "hit" in indexes and config.core.clue.enabled:
+        declare_clue_hit_extension()
+
+    for plugin in plugins:
+        for _index in indexes:
+            if declare_extension := plugin.modules.models.declare_extensions.get(_index):
+                logger.info("Declaring %s model extension with function from plugin %s", _index, plugin.name)
+                declare_extension()
+
+
+def finalize_models(plugins: list[Any]) -> dict[str, Any]:
+    """Compose and validate collection schemas without constructing a datastore or writing Elasticsearch state."""
+    # Each composition starts fresh so prior datastore/verifier instances cannot leak extensions.
+    model_extensions.clear()
+    _declare_extensions(plugins, INDEXES)
+
+    finalized_schema_models: dict[str, Any] = {}
+    for _index, _schema in INDEXES.items():
+        finalized = model_extensions.finalize(_schema) if _schema is not None else None
+        schema.document_mapping(finalized)
+        finalized_schema_models[_index] = finalized
+    return finalized_schema_models
+
+
+def get_action_hit_model() -> type[Hit]:
+    """Use the startup Hit schema for action specifications, even before a datastore exists."""
+    if model_extensions.is_finalized(Hit):
+        return cast(type[Hit], model_extensions.finalize(Hit))
+
+    # Startup may already have pending declarations, including from the same hooks.
+    with model_extensions.isolated():
+        _declare_extensions(get_plugins(), ("hit",))
+        return cast(type[Hit], model_extensions.finalize(Hit))
+
+
 class HowlerDatastore(object):
     def __init__(self, datastore_object: "ESStore"):
         self.ds: "ESStore" = datastore_object
 
-        for plugin in get_plugins():
-            for _index, _odm in INDEXES.items():
-                if _odm is None:
-                    continue
-
-                if modify_odm := plugin.modules.odm.modify_odm.get(_index):
-                    logger.info("Modifying %s odm with function from plugin %s", _index, plugin.name)
-                    modify_odm(_odm)
-
-        if config.core.clue.enabled:
-            Hit.add_namespace(
-                "clue",
-                Compound(Clue, description="Clue-specific overrides for this alert", default=None, optional=True),
-            )
-
-        for _index, _odm in INDEXES.items():
+        for _index, _schema in finalize_models(get_plugins()).items():
             ilm_index_config = config.datastore.ilm.indices.get(_index)
             if ilm_index_config is None:
                 ilm_index_config = ILMIndexConfig(enabled=_index in ILM_ENABLED_INDEXES)
             if not (config.datastore.ilm.enabled and ilm_index_config.enabled):
                 ilm_index_config = None
 
-            self.ds.register(_index, _odm, ilm_config=ilm_index_config)
+            self.ds.register(
+                _index,
+                _schema,
+                ilm_config=ilm_index_config,
+            )
 
     def __enter__(self):
         return self

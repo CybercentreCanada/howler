@@ -23,13 +23,13 @@
 | mode | Keyword | Mode of the file in octal representation. | :material-minus-box-outline: Optional | `None` |
 | mtime | Date | Last time the file content was modified. | :material-minus-box-outline: Optional | `None` |
 | name | Keyword | Name of the file including the extension, without the directory. | :material-minus-box-outline: Optional | `None` |
-| owner | Keyword | File owner’s username. | :material-minus-box-outline: Optional | `None` |
+| owner | Keyword | File owner's username. | :material-minus-box-outline: Optional | `None` |
 | path | Keyword | Full path to the file, including the file name. It should include the drive letter, when appropriate. | :material-minus-box-outline: Optional | `None` |
-| size | Integer | File size in bytes. | :material-minus-box-outline: Optional | `None` |
+| size | Long | File size in bytes. | :material-minus-box-outline: Optional | `None` |
 | target_path | Keyword | Target path for symlinks. | :material-minus-box-outline: Optional | `None` |
 | type | Enum | File type (file, dir, or symlink).<br>Values:<br>`"dir", "file", "symlink"` | :material-minus-box-outline: Optional | `None` |
 | uid | Keyword | The user ID (UID) or security identifier (SID) of the file owner. | :material-minus-box-outline: Optional | `None` |
 | code_signature | [CodeSignature](/howler/odm/class/codesignature) | These fields contain information about binary code signatures. | :material-minus-box-outline: Optional | `None` |
 | elf | [ELF](/howler/odm/class/elf) | These fields contain Linux Executable Linkable Format (ELF) metadata. | :material-minus-box-outline: Optional | `None` |
-| hash | [Hashes](/howler/odm/class/hashes) | These fields contain Windows Portable Executable (PE) metadata. | :material-minus-box-outline: Optional | `None` |
-| pe | [PE](/howler/odm/class/pe) | Hashes, usually file hashes. | :material-minus-box-outline: Optional | `None` |
+| hash | [Hashes](/howler/odm/class/hashes) | Hashes, usually file hashes. | :material-minus-box-outline: Optional | `None` |
+| pe | [PE](/howler/odm/class/pe) | These fields contain Windows Portable Executable (PE) metadata. | :material-minus-box-outline: Optional | `None` |

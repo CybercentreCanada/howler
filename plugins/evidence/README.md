@@ -1,3 +1,3 @@
 # Howler Evidence Plugin
 
-A howler plugin to add additional nested ECS fields to the Howler ODM.
+A Howler plugin that adds additional nested ECS fields to Hit records through typed model extensions.

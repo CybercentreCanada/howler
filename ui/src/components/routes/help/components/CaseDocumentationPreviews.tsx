@@ -68,7 +68,7 @@ const EXAMPLE_EVENT: Event = {
   __index: 'event',
   timestamp: '2025-01-01T12:00:00Z',
   message: 'Manual evidence from VPN investigation',
-  howler: { id: 'event-vpn-001', hash: 'example-hash', analytic: 'VPN Monitor' },
+  howler: { id: 'event-vpn-001', hash: 'example-hash' },
   event: { kind: 'event' }
 };
 
@@ -145,8 +145,8 @@ export const CaseControlsPreview: FC = () => (
 
 export const CaseDetailsPreview: FC = () => {
   const { t } = useTranslation();
-  const [status, setStatus] = useState('in-progress');
-  const [escalation, setEscalation] = useState('focus');
+  const [status, setStatus] = useState<Case['status']>('in-progress');
+  const [escalation, setEscalation] = useState<Case['escalation']>('focus');
   const { user } = useAppUser<HowlerUser>();
 
   return (

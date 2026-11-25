@@ -46,7 +46,9 @@ services:
       MCP_AUDIENCE: ${MCP_AUDIENCE:-howler}
 
   howler-api:
-    image: cccs/howler-api:latest
+    build:
+      context: ../api
+      dockerfile: Dockerfile
     profiles:
       - full
     ports:
@@ -76,7 +78,7 @@ services:
         condition: service_healthy
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.11
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.5.2
     profiles:
       - full
     networks:

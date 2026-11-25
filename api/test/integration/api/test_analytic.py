@@ -3,8 +3,8 @@ import json
 import pytest
 
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.models.analytic import Analytic
-from howler.odm.random_data import create_analytics, wipe_analytics
+from howler.models.analytic import Analytic
+from howler.sample_data.random_data import create_analytics, wipe_analytics
 from test.conftest import get_api_data
 
 
