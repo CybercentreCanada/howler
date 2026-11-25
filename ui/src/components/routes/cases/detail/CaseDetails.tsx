@@ -48,7 +48,7 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
     }
   };
 
-  const handleStatus = (status: NonNullable<Case['status']>) => {
+  const handleStatus = (status: string) => {
     if (status === 'resolved') {
       const onConfirm = () => wrappedUpdate({ status });
       showModal(<ResolveModal case={_case} onConfirm={onConfirm} />, { maxHeight: '80vh' });

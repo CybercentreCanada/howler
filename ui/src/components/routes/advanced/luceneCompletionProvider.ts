@@ -103,7 +103,7 @@ const useLuceneCompletionProvider = (): languages.CompletionItemProvider => {
               {
                 label: item.key,
                 detail: item.type,
-                documentation: item.description ?? undefined,
+                documentation: item.description,
                 kind: monaco.languages.CompletionItemKind.Property,
                 insertText: item.key + ':',
                 range
@@ -122,7 +122,7 @@ const useLuceneCompletionProvider = (): languages.CompletionItemProvider => {
               {
                 label: _field.key,
                 detail: _field.type,
-                documentation: _field.description ?? undefined,
+                documentation: _field.description,
                 kind: monaco.languages.CompletionItemKind.Property,
                 insertText: _field.key + ':',
                 range

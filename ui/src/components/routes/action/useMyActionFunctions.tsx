@@ -6,7 +6,7 @@ import type { RecievedDataType } from 'components/app/providers/SocketProvider';
 import { SocketContext } from 'components/app/providers/SocketProvider';
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
-import type { ActionReport, ActionTrigger } from 'models/ActionTypes';
+import type { ActionReport } from 'models/ActionTypes';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Operation } from 'models/entities/generated/Operation';
 import { useSnackbar, type SnackbarKey } from 'notistack';
@@ -74,7 +74,7 @@ const useMyActionFunctions = () => {
     progress,
     onSearch,
     saveAction: useCallback(
-      async (name: string, query: string, operations: Operation[], triggers: ActionTrigger[]) => {
+      async (name: string, query: string, operations: Operation[], triggers: string[]) => {
         try {
           if (!query) {
             showErrorMessage(t('route.actions.query.empty'));

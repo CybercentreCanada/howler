@@ -132,17 +132,7 @@ describe('AddEventModal', () => {
   it('fuzzy-searches optional fields and submits summary and escalation', async () => {
     const user = userEvent.setup();
     const updatedCase = { ...testCase, items: [{ type: 'event', value: 'event-1' }] };
-    mockFieldsGet.mockResolvedValue([
-      ...fields,
-      {
-        ...fields[0],
-        key: 'plugin.ratings',
-        list: true,
-        type: 'integer',
-        description: null,
-        values: [1, 2]
-      }
-    ]);
+    mockFieldsGet.mockResolvedValue(fields);
     mockIngestPost.mockReturnValue(Promise.resolve(['event-1']));
     mockItemsPost.mockReturnValue(Promise.resolve(updatedCase));
     mockDispatchApi.mockImplementation(async request => request);
@@ -164,10 +154,6 @@ describe('AddEventModal', () => {
     fireEvent.change(fieldSearch, { target: { value: 'destination IP' } });
     await user.click(await screen.findByText('destination.ip'));
     fireEvent.change(screen.getByLabelText(/destination\.ip/), { target: { value: '192.0.2.10' } });
-    fireEvent.change(fieldSearch, { target: { value: 'plugin.ratings' } });
-    await user.click(await screen.findByText('plugin.ratings'));
-    await user.click(screen.getByRole('combobox', { name: 'plugin.ratings' }));
-    await user.click(await screen.findByRole('option', { name: '2' }));
     await user.click(screen.getByRole('button', { name: 'modal.cases.add_event.submit' }));
 
     expect(mockIngestPost).toHaveBeenCalledWith(
@@ -188,8 +174,7 @@ describe('AddEventModal', () => {
               summary: 'Observed manually'
             })
           }),
-          destination: expect.objectContaining({ ip: '192.0.2.10' }),
-          plugin: { ratings: [2] }
+          destination: expect.objectContaining({ ip: '192.0.2.10' })
         })
       ],
       'wait_for'

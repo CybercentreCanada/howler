@@ -27,8 +27,8 @@ const HitBannerDocumentation: FC = () => {
           indicators: ['howler.outline.indicators'],
           summary: 'howler.outline.summary'
         },
-        escalation: 'hit',
-        status: 'open'
+        escalation: 'howler.escalation',
+        status: 'howler.status'
       },
       event: {
         created: '2023-02-11T15:10:31.585826Z',

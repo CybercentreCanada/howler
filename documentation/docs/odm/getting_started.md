@@ -18,7 +18,7 @@ Here is a table of the basic types of fields in our data models and what they're
 | `ClassificationString` | A field storing the classification as a string only. |
 | `Date` | A field storing a datetime value. |
 | `EmptyableKeyword` | A keyword which allow to differentiate between empty and None values. |
-| `Enum` | A field storing a short string that has predefined list of possible values. |
+| `Enum` | A field storing a short string that has predefined list of possible values |
 | `FlattenedListObject` | A field storing a flattened object |
 | `FlattenedObject` | A field storing a flattened object |
 | `Float` | A field storing a floating point value. |
@@ -27,7 +27,6 @@ Here is a table of the basic types of fields in our data models and what they're
 | `Json` | A field storing serializeable structure with their JSON encoded representations. |
 | `Keyword` | A field storing a short string with a technical interpretation. |
 | `List` | A field storing a sequence of typed elements. |
-| `Long` | A field storing a long value. Equivalent to Integer in python, but sets the ES datatype to long. |
 | `LowerKeyword` | A field storing a short lowercase string with a technical interpretation. |
 | `Mapping` | A field storing a sequence of typed elements. |
 | `Optional` | A wrapper field to allow simple types (int, float, bool) to take None values. |

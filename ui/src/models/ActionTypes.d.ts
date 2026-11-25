@@ -1,7 +1,4 @@
-import type { Action } from './entities/generated/Action';
 import type { Operation } from './entities/generated/Operation';
-
-export type ActionTrigger = NonNullable<Action['triggers']>[number];
 
 export interface ActionOperationStep {
   args: {
@@ -33,7 +30,7 @@ export interface ActionOperation {
   };
   roles: string[];
   steps: ActionOperationStep[];
-  triggers: ActionTrigger[];
+  triggers: string[];
   priority?: number;
 }
 

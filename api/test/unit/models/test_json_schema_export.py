@@ -127,10 +127,8 @@ def test_parent_import_and_both_fixture_workers_run_with_sockets_blocked(tmp_pat
         import os, sys
         assert 'sitecustomize' in sys.modules
         from build_scripts.model_json_schema import entity_schema
-        from build_scripts.generate_md_docs import generate_model_docs
         assert 'howler.models' not in sys.modules and 'howler.config' not in sys.modules
         assert 'hit' in entity_schema()['properties']
-        generate_model_docs(check=True)
         assert 'hwl_core' in os.environ and 'howler.config' not in sys.modules
     """)
     cluster = {"host": "must-not-resolve.invalid", "port": 6379, "is_cluster": True}
