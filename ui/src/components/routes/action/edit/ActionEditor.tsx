@@ -21,11 +21,11 @@ import SocketBadge from 'components/elements/display/icons/SocketBadge';
 import useMyApi from 'components/hooks/useMyApi';
 import RecordQuery from 'components/routes/hits/search/RecordQuery';
 import { difference, uniq } from 'lodash-es';
-import type { ActionOperation } from 'models/ActionTypes';
+import type { ActionOperation, ActionTrigger } from 'models/ActionTypes';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Operation } from 'models/entities/generated/Operation';
 import howlerPluginStore from 'plugins/store';
-import { useCallback, useContext, useEffect, useMemo, useState, type ChangeEventHandler, type FC } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { useLocation, useParams, useSearchParams } from 'react-router';
@@ -61,7 +61,7 @@ const ActionEditor: FC = () => {
   const [operations, setOperations] = useState<ActionOperation[]>([]);
   const [name, setName] = useState('');
   const [userOperations, setUserOperations] = useState<Operation[]>([]);
-  const [triggers, setTriggers] = useState<string[]>([]);
+  const [triggers, setTriggers] = useState<ActionTrigger[]>([]);
   const canManageTriggers = (user.roles ?? []).includes('automation_advanced');
 
   const availableOperations = useMemo(
@@ -104,17 +104,6 @@ const ActionEditor: FC = () => {
   const _submitAction = useCallback(
     () => submitAction(responseQuery, userOperations),
     [responseQuery, submitAction, userOperations]
-  );
-
-  const onTriggerChange: ChangeEventHandler<HTMLInputElement> = useCallback(
-    async e => {
-      if (e.target.checked && !triggers.includes(e.target.name)) {
-        setTriggers([...triggers, e.target.name]);
-      } else if (!e.target.checked && triggers.includes(e.target.name)) {
-        setTriggers(triggers.filter(_t => _t !== e.target.name));
-      }
-    },
-    [triggers]
   );
 
   useEffect(() => {
@@ -214,7 +203,12 @@ const ActionEditor: FC = () => {
                     <Checkbox
                       sx={{ mr: 0.5 }}
                       name={trigger}
-                      onChange={onTriggerChange}
+                      onChange={e => {
+                        const checked = e.target.checked;
+                        setTriggers(current =>
+                          checked ? [...new Set([...current, trigger])] : current.filter(value => value !== trigger)
+                        );
+                      }}
                       checked={triggers?.includes(trigger) ?? false}
                     />
                   }

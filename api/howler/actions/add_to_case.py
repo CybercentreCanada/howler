@@ -5,8 +5,8 @@ from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import DataStoreException, VersionConflictException
-from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.user import User
+from howler.models.action import VALID_TRIGGERS
+from howler.models.user import User
 from howler.services import case_service, comms_service
 
 logger = get_logger(__file__)
@@ -107,7 +107,7 @@ def execute(  # noqa: C901
 
     if len(case.items) != original_item_count:
         try:
-            case.save(refresh="wait_for", version=version)
+            case_service.save_case(case, refresh="wait_for", version=version)
         except (DataStoreException, VersionConflictException):
             logger.exception("Exception on save:")
             return [

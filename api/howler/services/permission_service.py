@@ -5,9 +5,9 @@ from flask import request
 
 from howler.common.exceptions import ForbiddenException, HowlerTypeError, InvalidDataException
 from howler.common.loader import datastore
-from howler.odm.models.ownership import Ownership
-from howler.odm.models.permission_request import PermissionRequest
-from howler.odm.models.user import User
+from howler.models.ownership import Ownership
+from howler.models.permission_request import PermissionRequest
+from howler.models.user import User
 
 if TYPE_CHECKING:
     from howler.datastore.collection import ESCollection
@@ -45,7 +45,7 @@ def _build_permissions_request() -> list[PermissionRequest]:
         raise InvalidDataException("Request body must contain at least one permission.")
 
     try:
-        permission_requests = [PermissionRequest(entry) for entry in payload]
+        permission_requests = [PermissionRequest.validate_howler(entry) for entry in payload]
     except (TypeError, ValueError, HowlerTypeError) as e:
         raise InvalidDataException(message=str(e))
 
@@ -69,7 +69,7 @@ def give_privileges(
 
     storage = datastore()
     index_name = object_type.__name__.lower()
-    collection: "ESCollection[Ownership]" = storage[index_name]
+    collection: "ESCollection[Any]" = storage[index_name]
 
     result, version = collection.get(id, as_obj=True, version=True)
     if not result:
@@ -125,7 +125,7 @@ def remove_privileges(  # noqa: C901
 
     storage = datastore()
     index_name = object_type.__name__.lower()
-    collection: "ESCollection[Ownership]" = storage[index_name]
+    collection: "ESCollection[Any]" = storage[index_name]
 
     result, version = collection.get(id, as_obj=True, version=True)
     if not result:

@@ -3,7 +3,6 @@ import json
 from typing import Any, Literal, cast
 
 from flask import request
-from mergedeep import Strategy, merge
 
 from howler.api import (
     bad_request,
@@ -33,13 +32,21 @@ from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import DataStoreException, InvalidScrollTokenException, VersionConflictException
 from howler.datastore.operations import OdmHelper, OdmUpdateOperation
 from howler.helper.workflow import WorkflowException
-from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import Comment, HitStatusTransition
-from howler.odm.models.log import LogOperationType
-from howler.odm.models.user import User
+from howler.models.hit import Hit
+from howler.models.howler_data import Comment, HitStatusTransition
+from howler.models.log import LogOperationType
+from howler.models.registry import model_registry
+from howler.models.user import User
 from howler.security.login import api_login
 from howler.security.utils import is_classification_accessible, validate_bulk_operation_targets
-from howler.services import action_service, analytic_service, comms_service, correlation_service, hit_service
+from howler.services import (
+    action_service,
+    analytic_service,
+    comms_service,
+    correlation_service,
+    hit_service,
+    ingest_service,
+)
 from howler.utils.constants import DEBUG_FORCE_REFRESH
 from howler.utils.str_utils import sanitize_lucene_query
 
@@ -48,8 +55,6 @@ MAX_COMMENT_LEN = 5000
 SUB_API = "hit"
 hit_api = make_subapi_blueprint(SUB_API, api_version=1)
 hit_api._doc = "Manage the different hits in the system"  # type: ignore
-
-FIELDS = Hit.flat_fields()
 
 logger = get_logger(__file__)
 
@@ -190,7 +195,7 @@ def delete_hits(user: User, refresh: Literal["true", "false", "wait_for"] | None
     if hit_ids is None:
         return bad_request(err="No hit ids were sent.")
 
-    if "admin" not in user["type"]:
+    if "admin" not in user.type:
         return forbidden(err="Cannot delete hit, only admin is allowed to delete")
 
     hit_ids = set(hit_ids)
@@ -339,22 +344,15 @@ def overwrite_hit(
         return bad_request(err="The JSON payload must be a subset of a valid Hit object.")
 
     try:
-        new_hit = cast(
-            dict[str, Any],
-            merge(
-                hit_service.flatten(record.as_primitives(), odm=Hit),
-                hit_service.flatten(new_fields),
-                strategy=Strategy.REPLACE
-                if bool(request.args.get("replace", False, type=lambda v: v.lower() == "true"))
-                else Strategy.ADDITIVE,
-            ),
+        hit = ingest_service.prepare_overwrite(
+            record.as_primitives(),
+            new_fields,
+            type(record),
+            user=user,
+            replace=request.args.get("replace", False, type=lambda v: v.lower() == "true"),
+            flatten_patch_mappings=True,
         )
-
-        if not is_classification_accessible(user, new_hit.get("classification")):
-            return bad_request(err=f"Cannot set classification to {new_hit.get('classification')}")
-
-        new_hit, new_version = hit_service.save_hit(Hit(new_hit), server_version, refresh=refresh)
-
+        new_hit, new_version = hit_service.save_hit(hit, server_version, refresh=refresh)
         return ok(new_hit), new_version
     except HowlerValueError as e:
         return bad_request(err=e.message)
@@ -610,7 +608,7 @@ def add_label(
     if not record:
         return not_found(err=f"Hit {id} does not exist")
 
-    if f"howler.labels.{label_set}" not in record.flat_fields():
+    if f"howler.labels.{label_set}" not in model_registry.flat_fields(type(record)):
         return not_found(err=f"Label set {label_set} does not exist")
 
     label_data = request.json
@@ -679,7 +677,7 @@ def remove_labels(
     if not record:
         return not_found(err=f"Hit {id} does not exist")
 
-    if f"howler.labels.{label_set}" not in record.flat_fields():
+    if f"howler.labels.{label_set}" not in model_registry.flat_fields(type(record)):
         return not_found(err=f"Label set {label_set} does not exist")
 
     label_data = request.json
@@ -854,7 +852,7 @@ def add_comment(id: str, user: User, record: Hit | None, server_version: str | N
             [
                 hit_helper.list_add(
                     "howler.comment",
-                    Comment({"user": user.uname, "value": comment_value}),
+                    Comment.validate_howler({"user": user.uname, "value": comment_value}),
                     explanation=f"Added a comment:\n\n{comment_value}",
                     if_missing=True,
                 ),
@@ -975,7 +973,7 @@ def delete_comments(id: str, user: User, record: Hit | None, server_version: str
         return bad_request(err="Supply at least one comment to delete.")
     comments = [comment for comment in record.howler.comment if comment.id in comment_ids]
 
-    if ("admin" not in user["type"]) and any(comment for comment in comments if comment.user != user["uname"]):
+    if ("admin" not in user.type) and any(comment for comment in comments if comment.user != user.uname):
         return forbidden(err="You cannot delete the comment of someone else.")
 
     if len(comments) != len(comment_ids):

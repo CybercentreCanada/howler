@@ -1,0 +1,87 @@
+{
+  "provenance": {
+    "collections": "24940da9642314f6b4b2ea1c1fdf386719ad14e2:api/test/unit/odm/fixtures/odm_contract_inventory.json, collections.<name>.legacy_index. Independently reproduced from the pre-migration merge base below.",
+    "hit_extensions": "3bd051b72cf7e3fbd96fba2d495c8d83f1ae2f4c: fresh interpreter per set, HowlerDatastore with a recording store, config.core.clue.enabled set per case and the selected plugins' original modify_odm hooks. ESCollection._get_index_settings and _get_index_mappings on the resulting Hit; one shard, zero replicas throughout.",
+    "digest": "SHA-256 of UTF-8 json.dumps(value, sort_keys=True, separators=(\",\", \":\")). Only object keys are sorted; all arrays retain their order, including dynamic_templates."
+  },
+  "collections": {
+    "action": {
+      "settings": "963418a11293ddecf77782dbe2c44afa4463d2babf03322df56cdbcc5db746e0",
+      "mappings": "64a47e0aaaf9dbbd2eb9203209ca786450cdfeb8ac3f69a94f083b1ec5123886"
+    },
+    "analytic": {
+      "settings": "963418a11293ddecf77782dbe2c44afa4463d2babf03322df56cdbcc5db746e0",
+      "mappings": "6d712565dc8f1b98ed7bc159e302dbbf1aff822db5dca644e2c39addd5e7a8da"
+    },
+    "case": {
+      "settings": "963418a11293ddecf77782dbe2c44afa4463d2babf03322df56cdbcc5db746e0",
+      "mappings": "ecd87622789453563aae0c4ffa5b8548a334c7efc4a6e5c6a3e76cbaa0678b33"
+    },
+    "dossier": {
+      "settings": "963418a11293ddecf77782dbe2c44afa4463d2babf03322df56cdbcc5db746e0",
+      "mappings": "bc3e3a3870e0c77ca44062116fcf4a23760c9641fb51e20a7304b770fad5ef1f"
+    },
+    "event": {
+      "settings": "963418a11293ddecf77782dbe2c44afa4463d2babf03322df56cdbcc5db746e0",
+      "mappings": "6db01a0bdb906aaf5497e4cf6245628af4c40aa0fae5101965eee69b8f8f6b70"
+    },
+    "hit": {
+      "settings": "963418a11293ddecf77782dbe2c44afa4463d2babf03322df56cdbcc5db746e0",
+      "mappings": "528047e597e75425bf0058c1970561efa0c52d7829e797ebf56f1f83a7faf26d"
+    },
+    "migration": {
+      "settings": "963418a11293ddecf77782dbe2c44afa4463d2babf03322df56cdbcc5db746e0",
+      "mappings": "97fc36383297bea737d6ce91198615da3e5ad7ac658b1083af74747ca36a8b4f"
+    },
+    "overview": {
+      "settings": "963418a11293ddecf77782dbe2c44afa4463d2babf03322df56cdbcc5db746e0",
+      "mappings": "297cd38bbe367f50965d56f571b9acb3c72317df3271c767b98cca13ca0a3b76"
+    },
+    "template": {
+      "settings": "963418a11293ddecf77782dbe2c44afa4463d2babf03322df56cdbcc5db746e0",
+      "mappings": "f712b68c1f2d519f4b0123d1f42836e68ebd9960a01aaf9b224ce0824840ecc5"
+    },
+    "user": {
+      "settings": "963418a11293ddecf77782dbe2c44afa4463d2babf03322df56cdbcc5db746e0",
+      "mappings": "afdcfb927c3ec64f3dd0cd8c67fc9136c110591325b8ecbeb8d8b1e5749e2c12"
+    },
+    "user_avatar": {
+      "settings": "963418a11293ddecf77782dbe2c44afa4463d2babf03322df56cdbcc5db746e0",
+      "mappings": "05075c14b7a47ea517fd761ede9e625e0b3d5315f7803986d78aa63de38e2528"
+    },
+    "view": {
+      "settings": "963418a11293ddecf77782dbe2c44afa4463d2babf03322df56cdbcc5db746e0",
+      "mappings": "9f3cc7ff31cd89017fa056f71c259844e648b5b8ab4a216cba904279c437f589"
+    }
+  },
+  "hit_extensions": {
+    "clue+evidence+sentinel": {
+      "settings": "33563e38b71f486179bb2ef8bd4b0bd86d34a043ec777fbb6e76f5dbb9295650",
+      "mappings": "ed07bd6ba41dda0ac3887a896cb23701998d74bd8d26a4db9cf15f9e03263f1a"
+    },
+    "clue+evidence": {
+      "settings": "6276b15a6d9cedffdcff228bde011ca4a32e080cf47cdaeb947e68454631dc96",
+      "mappings": "26c3655f3942153133679b05f85a8e04d4dc773afec156278622c4f9fb4b2581"
+    },
+    "clue+sentinel": {
+      "settings": "963418a11293ddecf77782dbe2c44afa4463d2babf03322df56cdbcc5db746e0",
+      "mappings": "9b2bbf7ec1767797d8289f72d50c3fe6653bc4eae5a76995a346855580ab207c"
+    },
+    "clue": {
+      "settings": "963418a11293ddecf77782dbe2c44afa4463d2babf03322df56cdbcc5db746e0",
+      "mappings": "40062d59170f7a86e8cfe9a9dac6851654fa59c4c6029a74313c392de9c85178"
+    },
+    "evidence+sentinel": {
+      "settings": "7e94d0669245a5cfd39dd8bae36157d01bca628e112837788f02dcb48c50d56d",
+      "mappings": "f076286335c9d3916557fdaf5c9271a47eb4d0db33a2afc2def7c8948449a546"
+    },
+    "evidence": {
+      "settings": "8b9582fadb270c98f6695e5f954d278a8335626ad7a5f697da2a243c9c913338",
+      "mappings": "54d14de993951491c33568b6bc4571adc7212f3067309d40f88457f1c66abac1"
+    },
+    "sentinel": {
+      "settings": "963418a11293ddecf77782dbe2c44afa4463d2babf03322df56cdbcc5db746e0",
+      "mappings": "dbc77468a9149349d5b78ec309dc5e01f6d461cc7181935b173b54fc73aaa9e3"
+    }
+  }
+}

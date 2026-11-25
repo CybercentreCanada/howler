@@ -3,7 +3,7 @@
 
 # Matched
 
-> None
+> Threat matched-indicator information.
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |

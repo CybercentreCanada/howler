@@ -14,9 +14,9 @@ from howler.actions.models import (
 )
 from howler.common.loader import datastore
 from howler.datastore.operations import OdmHelper
-from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import (
+from howler.models.action import VALID_TRIGGERS
+from howler.models.hit import Hit
+from howler.models.howler_data import (
     Assessment,
     AssessmentEscalationMap,
     Escalation,
@@ -29,7 +29,9 @@ MAX_HITS_ADVANCED = 1000
 
 ESCALATIONS = [esc for esc in Escalation.list() if esc != Escalation.MISS]
 EVIDENCE_ASSESSMENTS = [
-    assessment for assessment in Assessment.list() if AssessmentEscalationMap[assessment] == Escalation.EVIDENCE
+    assessment
+    for assessment in Assessment.list()
+    if AssessmentEscalationMap[Assessment(assessment).name] == Escalation.EVIDENCE
 ]
 
 odm_helper = OdmHelper(Hit)

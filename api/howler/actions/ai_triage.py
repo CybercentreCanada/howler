@@ -6,8 +6,8 @@ from howler.actions import ADVANCED_ROLES
 from howler.actions.models import ActionArguments, ActionDescription, ActionSpecification, ActionStep
 from howler.common.logging import get_logger
 from howler.config import CLASSIFICATION, config
-from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.user import User
+from howler.models.action import VALID_TRIGGERS
+from howler.models.user import User
 from howler.services import ai_service
 
 logger = get_logger(__file__)

@@ -3,26 +3,25 @@
 from unittest.mock import MagicMock, patch
 
 from howler.datastore.collection import ESCollection
-from howler.odm import Compound, Keyword, model
-from howler.odm.base import Model
+from howler.models import HowlerEmbeddedModel, HowlerESModel, fields, register_model
 
 
-@model()
-class _Inner(Model):
+@register_model(index=True, store=True, embedded=True, id_field="field_a")
+class _Inner(HowlerEmbeddedModel):
     """Simple nested model used for wildcard expansion tests."""
 
-    field_a = Keyword()
-    field_b = Keyword()
+    field_a: fields.keyword()
+    field_b: fields.keyword()
 
 
-@model()
-class _TestModel(Model):
+@register_model(index=True, store=True, id_field="id")
+class _TestModel(HowlerESModel):
     """Top-level model used for wildcard expansion tests."""
 
-    id = Keyword()
-    prefix_one = Keyword()
-    prefix_two = Keyword()
-    nested = Compound(_Inner)
+    id: fields.keyword()
+    prefix_one: fields.keyword()
+    prefix_two: fields.keyword()
+    nested: fields.compound(_Inner)
 
 
 def _make_collection():

@@ -1,8 +1,24 @@
+import builtins
 from typing import Generic, TypeVar
 
-from howler.utils.compat import NotRequired, TypedDict
+from typing_extensions import NotRequired, TypedDict
 
 SearchResultType = TypeVar("SearchResultType")
+
+
+class FieldDescription(TypedDict):
+    """Public field descriptor in `/configs` and collection field discovery."""
+
+    default: bool
+    indexed: bool
+    list: bool
+    stored: bool
+    deprecated: NotRequired[bool]  # Omitted on dynamic mapping summaries.
+    type: str
+    description: str | None
+    regex: str | None
+    values: builtins.list[object] | None  # Plugins may declare non-string enum values.
+    deprecated_description: str | None
 
 
 class SearchResult(TypedDict, Generic[SearchResultType]):

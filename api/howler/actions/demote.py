@@ -14,15 +14,15 @@ from howler.actions.models import (
 )
 from howler.common.loader import datastore
 from howler.datastore.operations import OdmHelper
-from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import (
+from howler.models.action import VALID_TRIGGERS
+from howler.models.hit import Hit
+from howler.models.howler_data import (
     Assessment,
     AssessmentEscalationMap,
     Escalation,
     Status,
 )
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.utils.str_utils import sanitize_lucene_query
 
 OPERATION_ID = "demote"
@@ -31,7 +31,9 @@ MAX_HITS_ADVANCED = 1000
 
 ESCALATIONS = [esc for esc in Escalation.list() if esc != Escalation.EVIDENCE]
 MISS_ASSESSMENTS = [
-    assessment for assessment in Assessment.list() if AssessmentEscalationMap[assessment] == Escalation.MISS
+    assessment
+    for assessment in Assessment.list()
+    if AssessmentEscalationMap[Assessment(assessment).name] == Escalation.MISS
 ]
 
 odm_helper = OdmHelper(Hit)
@@ -113,7 +115,7 @@ def execute(
                     *hit_helper.assess_hit(assessment, rationale),
                     odm_helper.update(
                         "howler.assignment",
-                        user.get("uname", "automation") if user else "automation",
+                        user.uname if user else "automation",
                     ),
                     odm_helper.update("howler.status", Status.RESOLVED),
                 ],

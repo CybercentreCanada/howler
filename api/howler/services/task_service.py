@@ -4,7 +4,7 @@ from typing import Any, Literal
 
 from howler.common.exceptions import ForbiddenException
 from howler.common.loader import datastore
-from howler.odm.models.user import User
+from howler.models.user import User
 from howler.services import case_service
 from howler.utils.str_utils import sanitize_lucene_query
 

@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask, Response
 
-from howler.odm.models.user import User
+from howler.models.user import User
 
 
 @pytest.fixture(scope="module")
@@ -16,7 +16,7 @@ def request_context():
 
 
 def _user(access_control: str | None = "classification:UNRESTRICTED") -> User:
-    return User(
+    return User.validate_howler(
         {
             "uname": "authenticated-user",
             "name": "Authenticated User",

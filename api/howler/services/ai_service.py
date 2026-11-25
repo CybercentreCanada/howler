@@ -10,11 +10,11 @@ from urllib3.exceptions import ReadTimeoutError
 
 from howler.common.loader import datastore
 from howler.config import config
+from howler.config_models import AITriage
 from howler.datastore.exceptions import VersionConflictException
-from howler.odm.models.config import AITriage
-from howler.odm.models.hit import Hit
-from howler.odm.models.lead import Lead
-from howler.odm.models.user import User
+from howler.models.hit import Hit
+from howler.models.lead import Lead
+from howler.models.user import User
 from howler.remote.datatypes.queues.named import NamedQueue
 from howler.services import auth_service, hit_service
 from howler.utils.dict_utils import remove_path

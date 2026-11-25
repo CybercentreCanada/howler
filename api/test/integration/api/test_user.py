@@ -3,7 +3,7 @@ import random
 
 import pytest
 
-from howler.odm.random_data import create_users, wipe_users
+from howler.sample_data.random_data import create_users, wipe_users
 from test.conftest import get_api_data
 
 AVATAR = "AVATAR!"
@@ -51,7 +51,7 @@ def test_add_user(datastore, login_session):
 
     datastore.user.commit()
     new_user = datastore.user.get(u.uname)
-    assert new_user == u
+    assert new_user.as_primitives() == u.as_primitives()
 
 
 # noinspection PyUnusedLocal

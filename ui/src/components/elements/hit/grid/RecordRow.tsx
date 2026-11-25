@@ -83,15 +83,24 @@ const RecordRow: FC<{
               <Stack direction="row" spacing={1} flexWrap="nowrap">
                 {isHit(record) && <EscalationChip hit={record} layout={HitLayout.DENSE} hideLabel />}
                 <Typography sx={{ textWrap: 'nowrap', whiteSpace: 'nowrap', fontSize: 'inherit' }}>
-                  {analyticIds[record.howler.analytic] ? (
-                    <Link to={`/analytics/${analyticIds[record.howler.analytic]}`} onClick={e => e.stopPropagation()}>
-                      {record.howler.analytic}
-                    </Link>
+                  {isHit(record) ? (
+                    <>
+                      {analyticIds[record.howler.analytic] ? (
+                        <Link
+                          to={`/analytics/${analyticIds[record.howler.analytic]}`}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          {record.howler.analytic}
+                        </Link>
+                      ) : (
+                        record.howler.analytic
+                      )}
+                      {record.howler.detection && ': '}
+                      {record.howler.detection}
+                    </>
                   ) : (
-                    record.howler.analytic
+                    record.message || record.event?.provider || record.howler.id
                   )}
-                  {record.howler.detection && ': '}
-                  {record.howler.detection}
                 </Typography>
                 {isHit(record) && record.howler.assignment !== 'unassigned' && (
                   <Assigned hit={record} layout={HitLayout.DENSE} hideLabel />

@@ -16,7 +16,7 @@ from pydantic import (
 )
 from pydantic.fields import FieldInfo
 
-from howler.odm.models.action import VALID_TRIGGERS
+from howler.models.action import VALID_TRIGGERS
 
 # Supplied to every operation by the dispatcher, never by the user
 DISPATCHER_ARGUMENTS = frozenset(

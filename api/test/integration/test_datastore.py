@@ -4,15 +4,17 @@ import string
 import time
 import uuid
 import warnings
+from copy import deepcopy
 
 import pytest
 from datemath import dm
 from retrying import retry
 
-from howler import odm
-from howler.datastore.collection import ESCollection
+from howler.datastore.collection import DATASTORE_INDEX_PREFIX, ESCollection
 from howler.datastore.exceptions import DataStoreException, VersionConflictException
 from howler.datastore.store import ESStore
+from howler.models import HowlerESModel, date, fields, integer, keyword, list_field, optional, register_model, text
+from howler.models.schema import document_mapping, index_settings
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -324,14 +326,15 @@ def _test_update_fails(c: ESCollection):
 
     Validates error handling in the update() method:
     - Updates to non-existent documents should fail
-    - Updates with invalid field names should fail
+    - Schema-less collections permit arbitrary field names using bracketed Painless paths
     - Updates with incorrect version numbers should raise VersionConflictException
     """
     assert not c.update("to_update_doesnt_exist", [(c.UPDATE_SET, "map.b", 99)])
-    assert not c.update(
+    assert c.update(
         "to_update",
         [(c.UPDATE_SET, "RTGE$%^Y#$Gavsdfvbkl", "dafgkjbsdfkgjsbdnfgjkhsdfg")],
     )
+    assert c.get("to_update")["RTGE$%^Y#$Gavsdfvbkl"] == "dafgkjbsdfkgjsbdnfgjkhsdfg"
     val = c.get("to_update", version=True)[1]
 
     with pytest.raises(VersionConflictException):
@@ -936,17 +939,17 @@ def test_fix_replicas(es_connection: ESCollection, replicas: int):
             pass
 
 
-@odm.model(index=True)
-class ReindexModel1(odm.Model):
-    field_1 = odm.Keyword(default="default")
-    field_2 = odm.Keyword()
-    field_3 = odm.Keyword(optional=True)
+@register_model(index=True)
+class ReindexModel1(HowlerESModel):
+    field_1: fields.keyword(default="default")
+    field_2: fields.keyword()
+    field_3: fields.optional(fields.keyword())
 
 
-@odm.model(index=True)
-class ReindexModel2(odm.Model):
-    field_2 = odm.Keyword()
-    field_3 = odm.Integer(default=1)
+@register_model(index=True)
+class ReindexModel2(HowlerESModel):
+    field_2: fields.keyword()
+    field_3: fields.integer(default=1)
 
 
 def _register_model(
@@ -1000,8 +1003,10 @@ def test_reindex_success(es_connection: ESCollection):
     try:
         # Register a collection and add two documents
         test_collection = _register_model(es_connection, test_collection_name, ReindexModel1)
-        test_collection.save("example", ReindexModel1({"field_1": "example", "field_2": "example", "field_3": "1"}))
-        test_collection.save("example2", ReindexModel1({"field_1": "example2", "field_2": "example2"}))
+        test_collection.save(
+            "example", ReindexModel1.model_validate({"field_1": "example", "field_2": "example", "field_3": "1"})
+        )
+        test_collection.save("example2", ReindexModel1.model_validate({"field_1": "example2", "field_2": "example2"}))
         test_collection.commit()
 
         assert test_collection.search("field_2:*")["total"] == 2
@@ -1030,7 +1035,7 @@ def test_reindex_refuses_existing_reindex_index(es_connection: ESCollection):
     test_collection = None
     try:
         test_collection = _register_model(es_connection, test_collection_name, ReindexModel1)
-        test_collection.save("example", ReindexModel1({"field_1": "example", "field_2": "example"}))
+        test_collection.save("example", ReindexModel1.model_validate({"field_1": "example", "field_2": "example"}))
         test_collection.commit()
 
         new_name = f"{test_collection.index_name}__reindex"
@@ -1061,9 +1066,10 @@ def test_reindex_failure_preserves_data(es_connection: ESCollection):
         # "example" has a non-integer field_3 that cannot be converted to ReindexModel2
         test_collection = _register_model(es_connection, test_collection_name, ReindexModel1)
         test_collection.save(
-            "example", ReindexModel1({"field_1": "example", "field_2": "example", "field_3": "not-an-int"})
+            "example",
+            ReindexModel1.model_validate({"field_1": "example", "field_2": "example", "field_3": "not-an-int"}),
         )
-        test_collection.save("example2", ReindexModel1({"field_1": "example2", "field_2": "example2"}))
+        test_collection.save("example2", ReindexModel1.model_validate({"field_1": "example2", "field_2": "example2"}))
         test_collection.commit()
 
         assert test_collection.search("field_2:*")["total"] == 2
@@ -1079,7 +1085,7 @@ def test_reindex_failure_preserves_data(es_connection: ESCollection):
 
         # The source index (and all of its data) must still be present after the failure
         test_collection.commit()
-        assert test_collection.search("field_2:*")["total"] == 2
+        assert test_collection.search("field_2:*", rows=0)["total"] == 2
         assert test_collection.get("example", as_obj=False) is not None
         assert test_collection.get("example2", as_obj=False) is not None
 
@@ -1098,7 +1104,7 @@ def test_reindex_failure_preserves_data(es_connection: ESCollection):
             document={"field_1": "example3", "field_2": "example3"},
         )
         test_collection.commit()
-        assert test_collection.search("field_2:*")["total"] == 3
+        assert test_collection.search("field_2:*", rows=0)["total"] == 3
     finally:
         if test_collection is not None:
             _delete_reindex_test_indexes(es_connection, test_collection.name)
@@ -1110,7 +1116,7 @@ def test_reindex_cleanup_errors_when_source_missing(es_connection: ESCollection)
     test_collection = None
     try:
         test_collection = _register_model(es_connection, test_collection_name, ReindexModel1)
-        test_collection.save("example", ReindexModel1({"field_1": "example", "field_2": "example"}))
+        test_collection.save("example", ReindexModel1.model_validate({"field_1": "example", "field_2": "example"}))
         test_collection.commit()
 
         new_name = f"{test_collection.index_name}__reindex"
@@ -1149,9 +1155,10 @@ def test_reindex_allow_failures(es_connection: ESCollection):
     try:
         test_collection = _register_model(es_connection, test_collection_name, ReindexModel1)
         test_collection.save(
-            "example", ReindexModel1({"field_1": "example", "field_2": "example", "field_3": "not-an-int"})
+            "example",
+            ReindexModel1.model_validate({"field_1": "example", "field_2": "example", "field_3": "not-an-int"}),
         )
-        test_collection.save("example2", ReindexModel1({"field_1": "example2", "field_2": "example2"}))
+        test_collection.save("example2", ReindexModel1.model_validate({"field_1": "example2", "field_2": "example2"}))
         test_collection.commit()
 
         assert test_collection.search("field_2:*")["total"] == 2
@@ -1164,7 +1171,7 @@ def test_reindex_allow_failures(es_connection: ESCollection):
         assert test_collection.reindex(allow_failures=True) is True
         test_collection._ensure_collection()
 
-        test_collection.save("example3", ReindexModel2({"field_2": "example3", "field_3": 2}))
+        test_collection.save("example3", ReindexModel2.model_validate({"field_2": "example3", "field_3": 2}))
         test_collection.commit()
 
         # "example" was dropped (could not convert), "example2" and "example3" remain
@@ -1183,3 +1190,263 @@ def test_reindex_allow_failures(es_connection: ESCollection):
     finally:
         if test_collection is not None:
             _delete_reindex_test_indexes(es_connection, test_collection.name)
+
+
+@register_model(index=True, store=True, id_field="key")
+class DatastoreSearchDocument(HowlerESModel):
+    key: keyword()
+    message: text(copyto=["__text__"])
+    status: keyword()
+    owner: optional(keyword())
+    severity: integer()
+    tags: list_field(keyword())
+    observed: date()
+
+
+def _doc(key, message, status, owner, severity, tags, observed):
+    return {
+        "key": key,
+        "message": message,
+        "status": status,
+        "owner": owner,
+        "severity": severity,
+        "tags": tags,
+        "observed": observed,
+    }
+
+
+SEARCH_DOCUMENTS = [
+    _doc("a", "phishing phishing phishing", "open", "alice", 90, ["email", "urgent"], "2025-01-01T00:00:00Z"),
+    _doc("b", "phishing phishing login", "open", "bob", 70, ["email"], "2025-01-01T12:00:00Z"),
+    _doc("c", "phishing login alert", "closed", "alice", 70, ["endpoint", "urgent"], "2025-01-02T00:00:00Z"),
+    _doc("d", "malware network alert", "open", "alice", 40, ["endpoint"], "2025-01-02T12:00:00Z"),
+    _doc("e", "routine login success", "closed", "bob", 20, ["email"], "2025-01-03T00:00:00Z"),
+    _doc("f", "harmless network traffic", "open", None, 0, [], "2025-01-03T12:00:00Z"),
+    _doc("g", "phishing login alert", "open", "alice", 70, ["email", "urgent"], "2025-01-04T00:00:00Z"),
+    _doc("h", "malware login alert", "closed", "charlie", 40, ["endpoint"], "2025-01-04T12:00:00Z"),
+]
+
+
+@pytest.fixture(scope="module")
+def search_contract_collection(es_connection: ESCollection):
+    store = es_connection.datastore
+    client = store.client
+    name = f"search_contract_{uuid.uuid4().hex}"
+    alias = f"{DATASTORE_INDEX_PREFIX}-{name}"
+    physical_index = f"{alias}_hot"
+
+    try:
+        client.indices.create(
+            index=physical_index,
+            mappings=document_mapping(DatastoreSearchDocument),
+            settings=index_settings(DatastoreSearchDocument, shards=1, replicas=0),
+            aliases={alias: {}},
+        )
+        collection = ESCollection(store, name, model_class=DatastoreSearchDocument, max_attempts=1)
+        assert collection.index_name == physical_index
+
+        for document in reversed(SEARCH_DOCUMENTS):
+            assert collection.save(document["key"], deepcopy(document))
+        collection.commit()
+        assert collection.search("*:*", rows=0)["total"] == len(SEARCH_DOCUMENTS)
+
+        yield collection
+    finally:
+        if client.indices.exists(index=physical_index):
+            client.indices.delete(index=physical_index)
+
+
+SEARCH_CASES = [
+    pytest.param(
+        "*:*", ["severity desc", "key asc"], [], None, 8, ["a", "b", "c", "g", "d", "h", "e", "f"], id="sort-ties"
+    ),
+    pytest.param(
+        "message:phishing", ["_score desc", "key asc"], [], None, 4, ["a", "b", "c", "g"], id="relevance-sort"
+    ),
+    pytest.param("phishing", ["key asc"], [], None, 4, ["a", "b", "c", "g"], id="default-text-field"),
+    pytest.param('message:"phishing login"', ["key asc"], ["status:open"], None, 2, ["b", "g"], id="phrase-and-filter"),
+    pytest.param(
+        "message:phishing",
+        ["key asc"],
+        ["status:open", "severity:[70 TO 90]"],
+        "owner:alice",
+        2,
+        ["a", "g"],
+        id="filters-and-access-control",
+    ),
+    pytest.param(
+        "severity:[40 TO 70]",
+        ["severity asc", "key desc"],
+        [],
+        None,
+        5,
+        ["h", "d", "g", "c", "b"],
+        id="inclusive-range",
+    ),
+    pytest.param("severity:{40 TO 90}", ["key asc"], [], None, 3, ["b", "c", "g"], id="exclusive-range"),
+    pytest.param("tags:email AND tags:urgent", ["key desc"], [], None, 2, ["g", "a"], id="multivalue-intersection"),
+    pytest.param("NOT _exists_:owner", ["key asc"], [], None, 1, ["f"], id="missing-owner"),
+    pytest.param(
+        "observed:[2025-01-02T00:00:00Z TO 2025-01-03T00:00:00Z]",
+        ["observed desc", "key asc"],
+        [],
+        None,
+        3,
+        ["e", "d", "c"],
+        id="date-boundary",
+    ),
+    pytest.param("message:malware", ["key asc"], ["tags:email"], None, 0, [], id="empty-intersection"),
+]
+
+
+@pytest.mark.parametrize(("query", "sort", "filters", "access_control", "total", "expected_ids"), SEARCH_CASES)
+@pytest.mark.parametrize("as_obj", [False, True], ids=["dict", "model"])
+def test_search_returns_exact_ids_and_order(
+    search_contract_collection: ESCollection,
+    query: str,
+    sort: list[str],
+    filters: list[str],
+    access_control: str | None,
+    total: int,
+    expected_ids: list[str],
+    as_obj: bool,
+):
+    result = search_contract_collection.search(
+        query,
+        filters=deepcopy(filters),
+        access_control=access_control,
+        sort=sort,
+        rows=20,
+        track_total_hits=True,
+        as_obj=as_obj,
+    )
+    actual_ids = [item.key if as_obj else item["key"] for item in result["items"]]
+
+    assert result["total"] == total
+    assert actual_ids == expected_ids
+
+
+def test_search_paginates_across_equal_sort_values(search_contract_collection: ESCollection):
+    pages = [["a", "b", "c"], ["g", "d", "h"], ["e", "f"], []]
+    seen = []
+
+    for page_number, expected_ids in enumerate(pages):
+        offset = page_number * 3
+        result = search_contract_collection.search(
+            "*:*", sort=["severity desc", "key asc"], rows=3, offset=offset, track_total_hits=True, as_obj=False
+        )
+        actual_ids = [item["key"] for item in result["items"]]
+
+        assert result["offset"] == offset
+        assert result["rows"] == 3
+        assert result["total"] == 8
+        assert actual_ids == expected_ids
+        seen.extend(actual_ids)
+
+    assert seen == ["a", "b", "c", "g", "d", "h", "e", "f"]
+    assert len(set(seen)) == 8
+
+
+SEARCH_AGGREGATIONS = {
+    "statuses": {"terms": {"field": "status", "size": 10, "order": {"_key": "asc"}}},
+    "tags": {"terms": {"field": "tags", "size": 10, "order": {"_key": "asc"}}},
+    "severity": {"stats": {"field": "severity"}},
+    "missing_owner": {"missing": {"field": "owner"}},
+    "severity_buckets": {"histogram": {"field": "severity", "interval": 20, "min_doc_count": 0}},
+    "open_only": {
+        "filter": {"term": {"status": "open"}},
+        "aggs": {"severity": {"stats": {"field": "severity"}}},
+    },
+}
+
+
+EXPECTED_SEARCH_AGGREGATIONS = [
+    pytest.param(
+        "*:*",
+        [],
+        8,
+        {
+            "statuses": [("closed", 3), ("open", 5)],
+            "tags": [("email", 4), ("endpoint", 3), ("urgent", 3)],
+            "severity": {"count": 8, "min": 0.0, "max": 90.0, "avg": 50.0, "sum": 400.0},
+            "missing_owner": 1,
+            "severity_buckets": [(0.0, 1), (20.0, 1), (40.0, 2), (60.0, 3), (80.0, 1)],
+            "open_only": {
+                "doc_count": 5,
+                "severity": {"count": 5, "min": 0.0, "max": 90.0, "avg": 54.0, "sum": 270.0},
+            },
+        },
+        id="all-documents",
+    ),
+    pytest.param(
+        "*:*",
+        ["status:open"],
+        5,
+        {
+            "statuses": [("open", 5)],
+            "tags": [("email", 3), ("endpoint", 1), ("urgent", 2)],
+            "severity": {"count": 5, "min": 0.0, "max": 90.0, "avg": 54.0, "sum": 270.0},
+            "missing_owner": 1,
+            "severity_buckets": [(0.0, 1), (20.0, 0), (40.0, 1), (60.0, 2), (80.0, 1)],
+            "open_only": {
+                "doc_count": 5,
+                "severity": {"count": 5, "min": 0.0, "max": 90.0, "avg": 54.0, "sum": 270.0},
+            },
+        },
+        id="filtered-documents",
+    ),
+    pytest.param(
+        "key:does-not-exist",
+        [],
+        0,
+        {
+            "statuses": [],
+            "tags": [],
+            "severity": {"count": 0, "min": None, "max": None, "avg": None, "sum": 0.0},
+            "missing_owner": 0,
+            "severity_buckets": [],
+            "open_only": {
+                "doc_count": 0,
+                "severity": {"count": 0, "min": None, "max": None, "avg": None, "sum": 0.0},
+            },
+        },
+        id="empty-documents",
+    ),
+]
+
+
+@pytest.mark.parametrize(("query", "filters", "total", "expected"), EXPECTED_SEARCH_AGGREGATIONS)
+def test_search_returns_exact_aggregations(
+    search_contract_collection: ESCollection,
+    query: str,
+    filters: list[str],
+    total: int,
+    expected: dict,
+):
+    result = search_contract_collection.search(
+        query,
+        filters=deepcopy(filters),
+        aggregations=list(deepcopy(SEARCH_AGGREGATIONS).items()),
+        sort="key asc",
+        rows=0,
+        track_total_hits=True,
+        as_obj=False,
+    )
+
+    assert result["items"] == []
+    assert result["total"] == total
+    aggregations = result["aggregations"]
+    actual = {
+        "statuses": [(bucket["key"], bucket["doc_count"]) for bucket in aggregations["statuses"]["buckets"]],
+        "tags": [(bucket["key"], bucket["doc_count"]) for bucket in aggregations["tags"]["buckets"]],
+        "severity": aggregations["severity"],
+        "missing_owner": aggregations["missing_owner"]["doc_count"],
+        "severity_buckets": [
+            (bucket["key"], bucket["doc_count"]) for bucket in aggregations["severity_buckets"]["buckets"]
+        ],
+        "open_only": {
+            "doc_count": aggregations["open_only"]["doc_count"],
+            "severity": aggregations["open_only"]["severity"],
+        },
+    }
+    assert actual == expected

@@ -2,22 +2,10 @@ import { uri as parentUri } from 'api/search';
 import * as event from 'api/search/fields/event';
 import * as hit from 'api/search/fields/hit';
 import * as user from 'api/search/fields/user';
-// import urlJoin from 'url-join';
+import type { APIIndex } from 'models/entities/generated/ApiType';
 import { joinUri } from 'api';
 
-export type SearchField = {
-  key?: string;
-  default: boolean;
-  indexed: boolean;
-  list: boolean;
-  stored: boolean;
-  type: string;
-  description?: string;
-  deprecated?: boolean;
-  deprecated_description?: string;
-  regex?: string;
-  values?: string[];
-};
+export type SearchField = APIIndex & { key?: string };
 
 export const uri = () => {
   return joinUri(parentUri(), 'fields');

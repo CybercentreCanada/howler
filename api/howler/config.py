@@ -3,7 +3,7 @@ import os
 from flask_caching import Cache
 
 from howler.common import loader
-from howler.odm.models.config import config
+from howler.config_models import config
 from howler.remote.datatypes import get_client
 from howler.remote.datatypes.user_quota_tracker import UserQuotaTracker
 

@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 from howler.cronjobs.retention import _delete_matching_hits
-from howler.odm.models.case import CaseItemTypes
+from howler.models.case import CaseItemTypes
 
 
 @patch("howler.cronjobs.retention.case_service.remove_case_items")
