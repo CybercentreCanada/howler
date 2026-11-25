@@ -3,7 +3,7 @@
 
 # SharepointUser
 
-> None
+> A Sharepoint user reference.
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
