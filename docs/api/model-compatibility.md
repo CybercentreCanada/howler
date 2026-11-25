@@ -50,4 +50,5 @@ reports a successful synthetic Elasticsearch 8.19.11 → 9.5.2 same-volume upgra
 authenticated reads, write probes, and rollback to a fresh 8.19.11 restore. Its corpus
 covered 11 collections. The full inventory, `application-v2.json`, and Step 9 runners
 were archived; those checks are not a recurring CI gate. The offline comparisons above
-check generated data contracts.
+check generated data contracts. Deployment readiness still requires the representative
+production-snapshot rehearsal in the [cutover runbook](../../documentation/docs/installation/elasticsearch_9_cutover.md).
