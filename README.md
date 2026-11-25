@@ -8,7 +8,7 @@ Howler allows triage analysts and detection engineers to do more by refining and
 
 - **💨 Streamlined Alert Triage**: Utilize customizable alert card templates for quick and consistent evaluation.
 
-- **☑ Standardized Schema**: Review alerts conforming to the Elastic Common Schema for easier comparison and more accurate assessments.
+- **☑  Standardized Schema**: Review alerts conforming to the Elastic Common Schema for easier comparison and more accurate assessments.
 
 - **📁 Filter-based automation**: Implement filter-driven automation to eliminate routine tasks and focus on strategic analysis.
 
