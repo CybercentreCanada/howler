@@ -61,7 +61,7 @@ poetry run sigma
 Créer des utilisateurs par défaut pour les tests :
 
 ```shell
-poetry run python howler/odm/random_data.py users
+poetry run python -m howler.sample_data.random_data users
 ```
 
 Finalement, nous pouvons exécuter Howler !
