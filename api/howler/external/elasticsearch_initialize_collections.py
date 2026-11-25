@@ -1,8 +1,8 @@
 """Explicitly initialize all registered Howler collections before cutover verification.
 
-WARNING: this operator command is not read-only. Accessing a collection can
-create or reconcile its index, mappings, ILM policy, and index template exactly
-as normal application startup does.
+WARNING: this command is not read-only. Accessing a collection can create or
+reconcile its index, mappings, ILM policy, and index template exactly as normal
+application startup does.
 """
 
 from __future__ import annotations
@@ -25,7 +25,6 @@ class CollectionInitializationError(RuntimeError):
 
 
 def _registered_collection_names() -> tuple[str, ...]:
-    """Return Howler's registered collection names in application order."""
     from howler.datastore.howler_store import INDEXES
 
     return tuple(INDEXES)
@@ -33,14 +32,12 @@ def _registered_collection_names() -> tuple[str, ...]:
 
 def initialize_collections(storage: Any, collection_names: tuple[str, ...]) -> list[str]:
     """Touch only ``datastore.<collection>`` attributes to trigger normal initialization."""
-    initialized: list[str] = []
-    for collection_name in collection_names:
+    for name in collection_names:
         try:
-            getattr(storage, collection_name)
-        except Exception as error:  # noqa: BLE001 - add the collection context before reporting the failure
-            raise CollectionInitializationError(collection_name, error) from error
-        initialized.append(collection_name)
-    return initialized
+            getattr(storage, name)
+        except Exception as error:  # noqa: BLE001 - attach collection context before reporting
+            raise CollectionInitializationError(name, error) from error
+    return list(collection_names)
 
 
 def _safe_error_detail(error: Exception) -> str:
@@ -68,18 +65,17 @@ def main(argv: list[str] | None = None) -> int:
 
         storage = datastore()
         if storage is None:
-            raise HowlerRuntimeError("The datastore factory returned no storage object.")  # noqa: TRY301 - handled below
-        initialized = initialize_collections(storage, _registered_collection_names())
-        for name in initialized:
-            print(f"Initialized collection {name}.")  # noqa: T201
+            raise HowlerRuntimeError("The datastore factory returned no storage object.")  # noqa: TRY301
+        for name in initialize_collections(storage, _registered_collection_names()):
+            print(f"Initialized collection {name}.")
     except CollectionInitializationError as error:
         print(
             f"ERROR: collection {error.collection} initialization failed ({_safe_error_detail(error.cause)}).",
             file=sys.stderr,
-        )  # noqa: T201
+        )
         return 1
     except Exception as error:  # noqa: BLE001
-        print(f"ERROR: collection initialization failed ({_safe_error_detail(error)}).", file=sys.stderr)  # noqa: T201
+        print(f"ERROR: collection initialization failed ({_safe_error_detail(error)}).", file=sys.stderr)
         return 1
     finally:
         if storage is not None:

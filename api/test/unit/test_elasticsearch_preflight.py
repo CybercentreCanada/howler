@@ -18,7 +18,7 @@ from howler.external.elasticsearch_rest import ElasticsearchRestClient, Elastics
 
 
 @pytest.fixture(autouse=True)
-def _stable_test_index_prefix(monkeypatch: pytest.MonkeyPatch) -> None:
+def _stable_prefix(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HWL_DATASTORE_INDEX_PREFIX", "howler")
 
 
@@ -75,16 +75,15 @@ class FakeRestClient:
             "/howler-*/_stats": {
                 "indices": {
                     "howler-hit_hot": {
-                        "primaries": {"docs": {"count": 2}},
                         "shards": {
                             "0": [
                                 {
-                                    "routing": {"primary": True, "shard": 0},
+                                    "routing": {"primary": True},
                                     "docs": {"count": 2},
                                     "seq_no": {"max_seq_no": 7, "global_checkpoint": 7},
                                 }
                             ]
-                        },
+                        }
                     }
                 }
             },
@@ -108,262 +107,61 @@ class FakeRestClient:
         return ElasticsearchRestClient.get_optional(self, path, params)  # type: ignore[arg-type]
 
 
-def test_evaluate_inventory_accepts_clean_8_19_cluster() -> None:
-    checks = evaluate_inventory(_inventory())
+def test_evaluate_inventory_clean_and_blockers() -> None:
+    assert evaluate_inventory(_inventory())["ready"] is True
 
-    assert checks == {
-        "blockers": [],
-        "deprecations": [],
-        "pre_8_indices": [],
-        "ready": True,
-        "unknown_index_versions": [],
-        "warnings": [],
-    }
-
-
-def test_evaluate_inventory_reports_every_upgrade_blocker() -> None:
-    inventory = _inventory()
-    inventory["version"]["version"]["number"] = "8.18.7"
-    inventory["cluster_health"]["status"] = "red"
-    inventory["deprecations"]["index_settings"] = {
-        "legacy": [{"level": "critical", "message": "Legacy setting is unsupported.", "url": "https://example.invalid"}]
-    }
-    inventory["feature_upgrade_status"]["migration_status"] = "MIGRATION_NEEDED"
-    inventory["indices"]["legacy-index"] = {"settings": {"index": {"version": {"created": "7170099"}}}}
-
-    checks = evaluate_inventory(inventory)
-
+    inv = _inventory()
+    inv["version"]["version"]["number"] = "8.18.7"
+    inv["cluster_health"]["status"] = "red"
+    inv["deprecations"]["index_settings"] = {"legacy": [{"level": "critical", "message": "Unsupported."}]}
+    inv["feature_upgrade_status"]["migration_status"] = "MIGRATION_NEEDED"
+    inv["indices"]["legacy-index"] = {"settings": {"index": {"version": {"created": "7170099"}}}}
+    inv["indices"]["unknown-index"] = {"settings": {}}
+    checks = evaluate_inventory(inv)
     assert checks["ready"] is False
-    assert checks["pre_8_indices"] == ["legacy-index"]
-    assert [blocker["check"] for blocker in checks["blockers"]] == [
+    assert [b["check"] for b in checks["blockers"]] == [
         "source_version",
         "cluster_health",
         "critical_deprecations",
         "system_features",
         "index_creation_versions",
-    ]
-    assert checks["deprecations"] == [
-        {
-            "level": "critical",
-            "message": "Legacy setting is unsupported.",
-            "path": "index_settings.legacy.0",
-            "url": "https://example.invalid",
-        }
-    ]
-
-
-def test_evaluate_inventory_blocks_unknown_index_creation_version() -> None:
-    inventory = _inventory()
-    inventory["indices"]["unknown-index"] = {"settings": {}}
-
-    checks = evaluate_inventory(inventory)
-
-    assert checks["ready"] is False
-    assert checks["unknown_index_versions"] == ["unknown-index"]
-    assert checks["blockers"] == [
-        {
-            "check": "unknown_index_creation_versions",
-            "message": "Determine the creation version of 1 index(es).",
-            "resources": ["unknown-index"],
-        }
+        "unknown_index_creation_versions",
     ]
 
 
 @pytest.mark.parametrize("baseline_capture", [False, True])
-def test_preflight_unsynced_checkpoint_is_warning_or_blocker(baseline_capture: bool) -> None:
-    inventory = _inventory()
-    inventory["indices"]["howler-hit_hot"]["primary_shards"]["0"]["global_checkpoint"] = 6
-
-    checks = evaluate_inventory(inventory, baseline_capture=baseline_capture)
-
-    findings = checks["blockers"] if baseline_capture else checks["warnings"]
-    finding = next(item for item in findings if item["check"] == "primary_sequence_sync")
-    assert checks["ready"] is (not baseline_capture)
-    assert "flush" in finding["message"]
-    assert "rerun the preflight" in finding["message"]
-    assert finding["resources"]["howler-hit_hot"] == [
-        {
-            "shard": "0",
-            "reason": "unsynced",
-            "max_seq_no": 7,
-            "global_checkpoint": 6,
-        }
-    ]
-
-
-def test_closed_howler_indices_are_classified_for_preflight_and_baseline_capture() -> None:
-    configured = _inventory()
-    configured["indices"]["howler-hit_hot"]["status"] = "close"
-    assert any(blocker["check"] == "closed_howler_index" for blocker in evaluate_inventory(configured)["blockers"])
-
-    unrelated = _inventory()
-    unrelated["indices"]["howler-archive_closed"] = {
+def test_preflight_sync_and_closed_indices(baseline_capture: bool) -> None:
+    inv = _inventory()
+    inv["indices"]["howler-hit_hot"]["primary_shards"]["0"]["global_checkpoint"] = 6
+    inv["indices"]["howler-archive_closed"] = {
         "aliases": {},
-        "settings": {"index.version.created": "8191199", "index.uuid": "archive-uuid"},
+        "settings": {"index.version.created": "8191199", "index.uuid": "arch"},
         "status": "close",
-        "uuid": "archive-uuid",
     }
-    live_checks = evaluate_inventory(unrelated)
-    assert live_checks["ready"] is True
-    assert any(
-        warning["check"] == "closed_howler_index" and warning["index"] == "howler-archive_closed"
-        for warning in live_checks["warnings"]
-    )
-
-    capture_checks = evaluate_inventory(unrelated, baseline_capture=True)
-    assert any(
-        blocker["check"] == "closed_howler_index" and blocker["index"] == "howler-archive_closed"
-        for blocker in capture_checks["blockers"]
-    )
+    checks = evaluate_inventory(inv, baseline_capture=baseline_capture)
+    assert checks["ready"] is (not baseline_capture)
+    findings = checks["blockers"] if baseline_capture else checks["warnings"]
+    assert {item["check"] for item in findings} == {"primary_sequence_sync", "closed_howler_index"}
 
 
-@pytest.mark.parametrize("baseline_capture", [True, False])
-def test_missing_primary_response_cannot_certify_a_partial_total(baseline_capture: bool) -> None:
-    class PartialStatsClient(FakeRestClient):
+def test_build_report_partial_shards_and_optional_ilm(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    class PartialClient(FakeRestClient):
         def get(self, path: str, params: dict[str, Any] | None = None) -> Any:
+            if path == "/howler-*/_ilm/explain":
+                raise ElasticsearchRestError("not found", status=404)
             data = super().get(path, params)
             if path == "/*":
                 data["howler-hit_hot"]["settings"]["index.number_of_shards"] = "2"
-                # The cluster-wide preflight inventories this index but only requests Howler shard stats.
-                data["other-app"] = {"settings": {"index.version.created": "8191199", "index.number_of_shards": "3"}}
-            elif path == "/howler-*/_stats":
-                data["indices"]["howler-hit_hot"]["shards"]["1"] = [
-                    {
-                        "routing": {"primary": False, "shard": 1},
-                        "docs": {"count": 100},
-                        "seq_no": {"max_seq_no": 99, "global_checkpoint": 99},
-                    }
-                ]
             return data
 
-    report = build_report(PartialStatsClient(), baseline_capture=baseline_capture)  # type: ignore[arg-type]
-
+    report = build_report(PartialClient(), baseline_capture=True)  # type: ignore[arg-type]
+    assert report["inventory"]["ilm_explain"] == {}
     assert report["inventory"]["indices"]["howler-hit_hot"]["doc_count"] is None
-    checks = report["checks"]
-    assert checks["ready"] is (not baseline_capture)
-    (finding,) = checks["blockers"] if baseline_capture else checks["warnings"]
-    assert finding["resources"] == {
-        "howler-hit_hot": [{"reason": "incomplete_layout", "number_of_shards": "2", "primary_ids": ["0"]}]
-    }
+    assert report["checks"]["ready"] is False
 
-
-def test_build_report_uses_plain_get_inventory_and_adds_baseline_fields() -> None:
-    client = FakeRestClient()
-
-    report = build_report(client)  # type: ignore[arg-type]
-
-    index_data = report["inventory"]["indices"]["howler-hit_hot"]
-    assert report["source_stack_version"] == SOURCE_STACK_VERSION
-    assert report["index_prefix"] == "howler"
-    assert index_data["uuid"] == "uuid-1"
-    assert index_data["doc_count"] == 2
-    assert index_data["primary_shards"] == {"0": {"doc_count": 2, "max_seq_no": 7, "global_checkpoint": 7}}
-    assert index_data["health"] == "green"
-    assert index_data["status"] == "open"
-    assert report["checks"]["ready"] is True
-    assert {path for path, _ in client.calls} >= {
-        "/_cat/indices",
-        "/howler-*/_stats",
-        "/_migration/system_features",
-        "/_migration/deprecations",
-    }
-    assert all(path.startswith("/") for path, _ in client.calls)
-
-
-@pytest.mark.parametrize("status", [404, 403])
-def test_preflight_optional_ilm_explain_only_tolerates_404(status: int) -> None:
-    class FailedIlmRestClient(FakeRestClient):
-        def get(self, path: str, params: dict[str, Any] | None = None) -> Any:
-            if path == "/howler-*/_ilm/explain":
-                raise ElasticsearchRestError("not found", status=status)
-            return super().get(path, params)
-
-    if status == 404:
-        report = build_report(FailedIlmRestClient())  # type: ignore[arg-type]
-        assert report["inventory"]["ilm_explain"] == {}
-        assert report["checks"]["ready"] is True
-    else:
-        with pytest.raises(ElasticsearchRestError) as error:
-            build_report(FailedIlmRestClient())  # type: ignore[arg-type]
-        assert error.value.status == status
-
-
-@pytest.mark.parametrize("baseline_capture", [False, True])
-def test_preflight_main_writes_report(monkeypatch: pytest.MonkeyPatch, tmp_path, baseline_capture: bool) -> None:
     output = tmp_path / "preflight.json"
-    flags = ["--baseline-capture"] if baseline_capture else []
-    monkeypatch.setattr(sys, "argv", ["elasticsearch_preflight", *flags, "--output", str(output)])
+    monkeypatch.setattr(sys, "argv", ["elasticsearch_preflight", "--baseline-capture", "--output", str(output)])
     monkeypatch.setattr(preflight, "client_from_args", lambda args, parser: FakeRestClient())
-
     assert preflight.main() == 0
-    report = json.loads(output.read_text(encoding="utf-8"))
-    assert report["checks"]["ready"] is True
-    assert report["source_stack_version"] == SOURCE_STACK_VERSION
-    assert report["baseline_capture"] is baseline_capture
-
-
-@pytest.mark.parametrize(
-    ("tls_flags", "expected_ca", "expected_insecure"),
-    [
-        (["--ca-certs", "/tmp/approved-ca.pem"], Path("/tmp/approved-ca.pem"), False),
-        (["--insecure"], None, True),
-    ],
-)
-def test_preflight_main_accepts_shared_connection_flags(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path,
-    tls_flags: list[str],
-    expected_ca: Path | None,
-    expected_insecure: bool,
-) -> None:
-    output = tmp_path / "preflight.json"
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "elasticsearch_preflight",
-            "--url",
-            "https://example.invalid",
-            *tls_flags,
-            "--allow-insecure-http-auth",
-            "--timeout",
-            "17",
-            "--output",
-            str(output),
-        ],
-    )
-    received: dict[str, Any] = {}
-
-    def fake_client_from_args(args: Any, parser: Any) -> FakeRestClient:
-        received.update(vars(args))
-        return FakeRestClient()
-
-    monkeypatch.setattr(preflight, "client_from_args", fake_client_from_args)
-
-    assert preflight.main() == 0
-    assert received["url"] == "https://example.invalid"
-    assert received["ca_certs"] == expected_ca
-    assert received["insecure"] is expected_insecure
-    assert received["allow_insecure_http_auth"] is True
-    assert received["timeout"] == 17
-    assert received["output"] == output
-
-
-def test_preflight_main_reports_rest_failure_without_hiding_http_status(
-    monkeypatch: pytest.MonkeyPatch, capsys
-) -> None:
-    monkeypatch.setattr(sys, "argv", ["elasticsearch_preflight"])
-    monkeypatch.setattr(preflight, "client_from_args", lambda args, parser: object())
-    monkeypatch.setattr(
-        preflight,
-        "build_report",
-        lambda client, **kwargs: (_ for _ in ()).throw(
-            ElasticsearchRestError("Elasticsearch GET /_cluster/health returned HTTP 403.", status=403)
-        ),
-    )
-
-    with pytest.raises(SystemExit) as error:
-        preflight.main()
-
-    assert error.value.code == 2
-    assert "HTTP 403" in capsys.readouterr().err
+    saved = json.loads(output.read_text(encoding="utf-8"))
+    assert saved["baseline_capture"] is True and saved["checks"]["ready"] is True

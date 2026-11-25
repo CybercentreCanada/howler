@@ -4,40 +4,55 @@ from __future__ import annotations
 
 import argparse
 import os
-import re
 from typing import Any
 from urllib.parse import quote
 
 from howler.external.elasticsearch_rest import (
-    HOWLER_COLLECTION_NAMES,
     NO_MIGRATION_NEEDED,
     SOURCE_STACK_VERSION,
     ElasticsearchRestClient,
     ElasticsearchRestError,
     add_connection_arguments,
+    add_issue,
+    canonical_ilm_generation,
     client_from_args,
     collect_index_inventory,
+    index_setting,
     is_closed_index,
     primary_shard_sync_issues,
     walk_deprecations,
     write_json_report,
 )
 
+HOWLER_COLLECTION_NAMES = (
+    "hit",
+    "event",
+    "case",
+    "template",
+    "overview",
+    "analytic",
+    "action",
+    "migration",
+    "user",
+    "view",
+    "dossier",
+    "user_avatar",
+)
+
 
 def _index_prefix() -> str:
-    """Return the same index prefix selected by the Howler runtime."""
     return os.environ.get("HWL_DATASTORE_INDEX_PREFIX", os.environ.get("APP_NAME", "howler"))
 
 
 def _backs_configured_collection(index: str, index_data: dict[str, Any], prefix: str) -> bool:
-    aliases = index_data.get("aliases", {})
-    if not isinstance(aliases, dict):
-        aliases = {}
-    for collection in HOWLER_COLLECTION_NAMES:
-        alias = f"{prefix}-{collection}"
-        if alias in aliases or index == f"{alias}_hot" or re.fullmatch(rf"{re.escape(alias)}-\d{{6}}", index):
-            return True
-    return False
+    aliases = index_data.get("aliases")
+    alias_map = aliases if isinstance(aliases, dict) else {}
+    return any(
+        (alias := f"{prefix}-{collection}") in alias_map
+        or index == f"{alias}_hot"
+        or canonical_ilm_generation(alias, index) is not None
+        for collection in HOWLER_COLLECTION_NAMES
+    )
 
 
 def collect_inventory(client: ElasticsearchRestClient) -> dict[str, Any]:
@@ -49,21 +64,15 @@ def collect_inventory(client: ElasticsearchRestClient) -> dict[str, Any]:
     for name, index_data in indices.items():
         index_data["health"] = index_health.get(name, {}).get("status", index_data.get("health"))
 
-    ilm_explain = (
-        client.get_optional(
-            f"/{quote(prefix, safe='-_.')}-*/_ilm/explain",
-            {"only_managed": "false"},
-        )
-        or {}
-    )
-
     return {
         "cluster_health": health,
         "cluster_settings": client.get("/_cluster/settings", {"flat_settings": "true", "include_defaults": "true"}),
         "component_templates": client.get("/_component_template/*"),
         "deprecations": client.get("/_migration/deprecations"),
         "feature_upgrade_status": client.get("/_migration/system_features"),
-        "ilm_explain": ilm_explain,
+        "ilm_explain": (
+            client.get_optional(f"/{quote(prefix, safe='-_.')}-*/_ilm/explain", {"only_managed": "false"}) or {}
+        ),
         "ilm_policies": client.get("/_ilm/policy/*"),
         "index_templates": client.get("/_index_template/*"),
         "indices": indices,
@@ -83,143 +92,112 @@ def collect_inventory(client: ElasticsearchRestClient) -> dict[str, Any]:
     }
 
 
-def _deprecation_issues(value: Any, path: tuple[str, ...] = ()) -> list[dict[str, Any]]:
+def _deprecation_issues(value: Any) -> list[dict[str, Any]]:
     return [
-        {
-            "level": issue["level"],
-            "message": issue["message"],
-            "path": ".".join(issue_path),
-            "url": issue.get("url"),
-        }
-        for issue_path, issue in walk_deprecations(value, path)
+        {"level": issue["level"], "message": issue["message"], "path": ".".join(path), "url": issue.get("url")}
+        for path, issue in walk_deprecations(value)
         if isinstance(issue.get("message"), str)
     ]
 
 
 def _index_creation_major(index_data: dict[str, Any]) -> int | None:
-    settings = index_data.get("settings", {})
-    version = settings.get("index.version.created")
-    if version is None:
-        version = settings.get("index", {}).get("version", {}).get("created")
+    version = index_setting(index_data, "index.version.created")
     if version is None:
         return None
-
     version_string = str(version)
-    if "." in version_string:
-        major, _, _ = version_string.partition(".")
-        return int(major)
-    return int(version_string) // 1_000_000
+    return int(version_string.partition(".")[0]) if "." in version_string else int(version_string) // 1_000_000
 
 
-def evaluate_inventory(  # noqa: C901
-    inventory: dict[str, Any], *, baseline_capture: bool = False
-) -> dict[str, Any]:
-    """Return deterministic blockers and warnings for a collected inventory."""
-    blockers: list[dict[str, Any]] = []
-    warnings: list[dict[str, Any]] = []
-    version = inventory["version"].get("version", {}).get("number")
-    if version != SOURCE_STACK_VERSION:
-        blockers.append(
-            {
-                "check": "source_version",
-                "message": f"Expected Elasticsearch {SOURCE_STACK_VERSION}, found {version or 'unknown'}.",
-            }
-        )
-
-    health = inventory["cluster_health"].get("status")
-    if health not in {"green", "yellow"}:
-        blockers.append(
-            {
-                "check": "cluster_health",
-                "message": f"Cluster health must be green or yellow, found {health or 'unknown'}.",
-            }
-        )
-
-    deprecations = _deprecation_issues(inventory["deprecations"])
-    critical_deprecations = [issue for issue in deprecations if issue["level"] == "critical"]
-    if critical_deprecations:
-        blockers.append(
-            {
-                "check": "critical_deprecations",
-                "message": f"Resolve {len(critical_deprecations)} critical deprecation(s).",
-                "resources": [issue["path"] for issue in critical_deprecations],
-            }
-        )
-
-    feature_status = inventory["feature_upgrade_status"].get("migration_status")
-    if feature_status != NO_MIGRATION_NEEDED:
-        blockers.append(
-            {
-                "check": "system_features",
-                "message": f"System feature migration status is {feature_status or 'unknown'}.",
-            }
-        )
-
-    index_creation_majors = {
-        index: _index_creation_major(index_data) for index, index_data in inventory["indices"].items()
+def _check_closed_and_sync_indices(
+    inventory: dict[str, Any],
+    prefix: str,
+    baseline_capture: bool,
+    blockers: list[dict[str, Any]],
+    warnings: list[dict[str, Any]],
+) -> None:
+    sync_issues = {
+        index: issues
+        for index, data in inventory["indices"].items()
+        if index.startswith(f"{prefix}-") and not is_closed_index(data) and (issues := primary_shard_sync_issues(data))
     }
-    pre_8_indices = sorted(index for index, major in index_creation_majors.items() if major is not None and major < 8)
-    if pre_8_indices:
-        blockers.append(
-            {
-                "check": "index_creation_versions",
-                "message": f"Reindex, delete, or archive {len(pre_8_indices)} pre-8.0 index(es).",
-                "resources": pre_8_indices,
-            }
+    if sync_issues:
+        add_issue(
+            blockers if baseline_capture else warnings,
+            "primary_sequence_sync",
+            "Howler primary shard statistics are incomplete or unsynced. Quiesce writers, flush, wait for "
+            "global checkpoints to catch up, and rerun the preflight with --baseline-capture.",
+            resources=sync_issues,
         )
-    unknown_index_versions = sorted(index for index, major in index_creation_majors.items() if major is None)
-    if unknown_index_versions:
-        blockers.append(
-            {
-                "check": "unknown_index_creation_versions",
-                "message": f"Determine the creation version of {len(unknown_index_versions)} index(es).",
-                "resources": unknown_index_versions,
-            }
-        )
-
-    prefix = inventory.get("index_prefix", _index_prefix())
-    sequence_sync_issues = {
-        index: primary_shard_sync_issues(index_data)
-        for index, index_data in inventory["indices"].items()
-        if index.startswith(f"{prefix}-") and not is_closed_index(index_data)
-    }
-    sequence_sync_issues = {index: issues for index, issues in sequence_sync_issues.items() if issues}
-    if sequence_sync_issues:
-        finding = {
-            "check": "primary_sequence_sync",
-            "message": (
-                "Howler primary shard statistics are incomplete or unsynced. Quiesce writers, flush, wait for "
-                "global checkpoints to catch up, and rerun the preflight with --baseline-capture."
-            ),
-            "resources": sequence_sync_issues,
-        }
-        (blockers if baseline_capture else warnings).append(finding)
 
     for index, index_data in sorted(inventory["indices"].items()):
         if not index.startswith(f"{prefix}-") or not is_closed_index(index_data):
             continue
         if baseline_capture or _backs_configured_collection(index, index_data, prefix):
-            blockers.append(
-                {
-                    "check": "closed_howler_index",
-                    "index": index,
-                    "message": (
-                        "A closed Howler index backs a configured collection or is being included in the baseline; "
-                        "reopen or archive it before cutover."
-                    ),
-                }
+            add_issue(
+                blockers,
+                "closed_howler_index",
+                "A closed Howler index backs a configured collection or is being included in the baseline; "
+                "reopen or archive it before cutover.",
+                index=index,
             )
         else:
-            warnings.append(
-                {
-                    "check": "closed_howler_index",
-                    "index": index,
-                    "message": (
-                        "Closed Howler-prefixed index is not a configured collection; review and disposition it."
-                    ),
-                }
+            add_issue(
+                warnings,
+                "closed_howler_index",
+                "Closed Howler-prefixed index is not a configured collection; review and disposition it.",
+                index=index,
             )
 
+
+def evaluate_inventory(inventory: dict[str, Any], *, baseline_capture: bool = False) -> dict[str, Any]:
+    """Return deterministic blockers and warnings for a collected inventory."""
+    blockers: list[dict[str, Any]] = []
+    warnings: list[dict[str, Any]] = []
+
+    version = inventory["version"].get("version", {}).get("number")
+    if version != SOURCE_STACK_VERSION:
+        add_issue(
+            blockers, "source_version", f"Expected Elasticsearch {SOURCE_STACK_VERSION}, found {version or 'unknown'}."
+        )
+
+    health = inventory["cluster_health"].get("status")
+    if health not in {"green", "yellow"}:
+        add_issue(blockers, "cluster_health", f"Cluster health must be green or yellow, found {health or 'unknown'}.")
+
+    deprecations = _deprecation_issues(inventory["deprecations"])
+    if critical := [issue for issue in deprecations if issue["level"] == "critical"]:
+        add_issue(
+            blockers,
+            "critical_deprecations",
+            f"Resolve {len(critical)} critical deprecation(s).",
+            resources=[issue["path"] for issue in critical],
+        )
+
+    feature_status = inventory["feature_upgrade_status"].get("migration_status")
+    if feature_status != NO_MIGRATION_NEEDED:
+        add_issue(blockers, "system_features", f"System feature migration status is {feature_status or 'unknown'}.")
+
+    majors = {index: _index_creation_major(data) for index, data in inventory["indices"].items()}
+    pre_8_indices = sorted(index for index, major in majors.items() if major is not None and major < 8)
+    if pre_8_indices:
+        add_issue(
+            blockers,
+            "index_creation_versions",
+            f"Reindex, delete, or archive {len(pre_8_indices)} pre-8.0 index(es).",
+            resources=pre_8_indices,
+        )
+    unknown_index_versions = sorted(index for index, major in majors.items() if major is None)
+    if unknown_index_versions:
+        add_issue(
+            blockers,
+            "unknown_index_creation_versions",
+            f"Determine the creation version of {len(unknown_index_versions)} index(es).",
+            resources=unknown_index_versions,
+        )
+
+    _check_closed_and_sync_indices(
+        inventory, inventory.get("index_prefix", _index_prefix()), baseline_capture, blockers, warnings
+    )
     return {
         "blockers": blockers,
         "deprecations": deprecations,
@@ -259,7 +237,6 @@ def main() -> int:
     except ElasticsearchRestError as error:
         parser.error(str(error))
     write_json_report(report, args.output)
-
     return 0 if report["checks"]["ready"] else 1
 
 
