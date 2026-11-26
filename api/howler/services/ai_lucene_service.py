@@ -2,9 +2,10 @@
 
 import json
 import re
+import time
 from collections.abc import Iterable, Iterator
 from functools import lru_cache
-from threading import BoundedSemaphore
+from threading import BoundedSemaphore, Lock
 from typing import Any, cast
 
 from elasticsearch._sync.client.indices import IndicesClient
@@ -20,6 +21,7 @@ from howler.services.ai_service import AIUpdate
 logger = get_logger(__file__)
 
 _slots: BoundedSemaphore | None = None
+_slots_lock = Lock()
 
 
 class GenerationBusyError(Exception):
@@ -42,16 +44,23 @@ def is_available() -> bool:
     return config.core.ai.enabled
 
 
-def credential_error(token: str | None) -> str | None:
+def credential_error(token: str | None, impersonating: bool = False) -> str | None:
     """Check that the request can authenticate to the configured provider.
 
-    The agent provider delegates the user's identity, which requires an OAuth access token. The OpenAI provider
-    can use a configured API key or forward any bearer token.
+    The agent provider delegates the user's identity, which requires an OAuth access token. Impersonated requests
+    are rejected, because the bearer token belongs to the impersonator rather than the user the request runs as.
+    The OpenAI provider can use a configured API key or forward any bearer token.
+
+    Args:
+        token: The request's bearer token.
+        impersonating: Whether the request impersonates another user.
 
     Returns:
         A user-visible error, or ``None`` when the request has a usable credential.
     """
     if config.core.ai.lucene.provider == "agent":
+        if impersonating:
+            return "AI query generation with an AI agent is not available while impersonating another user."
         if not auth_service.is_oauth_token(token):
             return "AI query generation with an AI agent requires signing in with OAuth."
         return None
@@ -173,9 +182,10 @@ def _event(data: dict[str, str], event: str | None = None) -> str:
     return f"{prefix}data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
-def _openai_updates(messages: list[dict[str, str]], token: str | None) -> Iterator[AIUpdate]:
+def _openai_updates(messages: list[dict[str, str]], token: str | None, deadline: float) -> Iterator[AIUpdate]:
     text = ""
-    for delta in ai_service.stream_chat(config.core.ai, token, messages, model=config.core.ai.lucene.model):
+    lucene = config.core.ai.lucene
+    for delta in ai_service.stream_chat(config.core.ai, token, messages, model=lucene.model, deadline=deadline):
         text += delta
         yield ("text", text)
 
@@ -244,9 +254,11 @@ def stream_events(updates: Iterator[AIUpdate]) -> Iterator[str]:
 
 def _get_slots() -> BoundedSemaphore:
     global _slots
-    if _slots is None:
-        _slots = BoundedSemaphore(config.core.ai.lucene.max_concurrent)
-    return _slots
+    # The lock ensures concurrent first requests share a single semaphore
+    with _slots_lock:
+        if _slots is None:
+            _slots = BoundedSemaphore(config.core.ai.lucene.max_concurrent)
+        return _slots
 
 
 def start_generation(prompt: str, query: str | None, token: str | None) -> Iterable[str]:
@@ -274,11 +286,13 @@ def start_generation(prompt: str, query: str | None, token: str | None) -> Itera
 
     try:
         lucene = config.core.ai.lucene
+        deadline = time.monotonic() + lucene.max_duration_seconds
         if lucene.provider == "agent":
             agent_token = agent_service.get_agent_token(lucene.agent, token or "")
-            updates = agent_service.stream_message(lucene.agent, agent_token, build_agent_text(prompt, query))
+            text = build_agent_text(prompt, query)
+            updates = agent_service.stream_message(lucene.agent, agent_token, text, deadline)
         else:
-            updates = _openai_updates(build_messages(prompt, query), token)
+            updates = _openai_updates(build_messages(prompt, query), token, deadline)
     except BaseException:
         release()
         raise

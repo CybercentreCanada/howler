@@ -248,7 +248,7 @@ def _agent_updates(frames: Iterator[bytes], request_id: str, sent_text: str) -> 
     raise AITransportError("The AI agent stream ended before a final result.")
 
 
-def stream_message(settings: AIAgent, agent_token: str, text: str) -> Iterator[AIUpdate]:
+def stream_message(settings: AIAgent, agent_token: str, text: str, deadline: float | None = None) -> Iterator[AIUpdate]:
     """Send an A2A ``message/stream`` request and yield answer and progress updates.
 
     Args:
@@ -296,6 +296,12 @@ def stream_message(settings: AIAgent, agent_token: str, text: str) -> Iterator[A
                 if response.headers.get("Content-Type", "").split(";")[0].strip() != "text/event-stream":
                     raise AITransportError("The AI agent did not return an event stream.")
 
-                yield from _agent_updates(iter_sse_data(response, MAX_AGENT_RESPONSE_BYTES), request_id, text)
+                frames = iter_sse_data(
+                    response,
+                    MAX_AGENT_RESPONSE_BYTES,
+                    deadline,
+                    "The AI agent did not answer in time. Try again later.",
+                )
+                yield from _agent_updates(frames, request_id, text)
     except requests.exceptions.RequestException as exc:
         raise transport_error(exc, "The AI agent timed out.", "The AI agent is temporarily unavailable.") from None

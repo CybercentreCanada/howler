@@ -2,6 +2,7 @@
 
 import json
 import os
+import time
 from collections.abc import Iterator
 from typing import Any, Literal, cast
 
@@ -326,16 +327,31 @@ def _delta_content(chunk: Any) -> str | None:
     return content if isinstance(content, str) and content else None
 
 
-def iter_sse_data(response: requests.Response, max_response_bytes: int) -> Iterator[bytes]:
+def iter_sse_data(
+    response: requests.Response,
+    max_response_bytes: int,
+    deadline: float | None = None,
+    deadline_reason: str = "AI provider took too long to respond",
+) -> Iterator[bytes]:
     """Yield the joined ``data`` payload of each server-sent event in a streamed response.
 
+    Args:
+        response: The streamed response.
+        max_response_bytes: Maximum number of bytes to read.
+        deadline: Optional ``time.monotonic()`` value after which the stream is abandoned. It is checked on every
+            line, including keep-alive comments, which would otherwise keep a stalled stream open indefinitely.
+        deadline_reason: Safe, user-visible reason reported when the deadline passes.
+
     Raises:
-        AITransportError: If the stream exceeds ``max_response_bytes`` or ends mid-event.
+        AITransportError: If the stream exceeds ``max_response_bytes`` or ``deadline``.
     """
     received = 0
     data: list[bytes] = []
     # chunk_size=None yields each chunk as it arrives instead of waiting to fill a fixed-size buffer.
     for line in response.iter_lines(chunk_size=None):
+        if deadline is not None and time.monotonic() > deadline:
+            raise AITransportError(deadline_reason)
+
         received += len(line)
         if received > max_response_bytes:
             raise AITransportError("Provider response exceeded the size limit")
@@ -388,13 +404,13 @@ def _check_chunk(chunk: Any) -> None:
         raise AITransportError("AI provider stopped before completing its response")
 
 
-def _iter_stream(response: requests.Response, max_response_bytes: int) -> Iterator[str]:
+def _iter_stream(response: requests.Response, max_response_bytes: int, deadline: float | None) -> Iterator[str]:
     """Yield text deltas from a server-sent event chat-completion stream.
 
     Raises:
         AITransportError: If the stream is invalid, reports an error, or ends without the ``[DONE]`` marker.
     """
-    for data in iter_sse_data(response, max_response_bytes):
+    for data in iter_sse_data(response, max_response_bytes, deadline):
         if data.strip() == b"[DONE]":
             return
 
@@ -412,7 +428,12 @@ def _iter_stream(response: requests.Response, max_response_bytes: int) -> Iterat
 
 
 def stream_chat(
-    config: AIConfig, token: str | None, messages: list[dict[str, str]], *, model: str | None = None
+    config: AIConfig,
+    token: str | None,
+    messages: list[dict[str, str]],
+    *,
+    model: str | None = None,
+    deadline: float | None = None,
 ) -> Iterator[str]:
     """Stream generated text from the configured OpenAI-compatible provider.
 
@@ -421,6 +442,7 @@ def stream_chat(
         token: Fallback bearer token sent when no provider API key is configured.
         messages: Chat messages sent to the provider.
         model: Optional model overriding the configured model.
+        deadline: Optional ``time.monotonic()`` value after which the stream is abandoned.
 
     Yields:
         Generated text fragments in the order they are received.
@@ -466,7 +488,7 @@ def stream_chat(
                         yield content
                     return
 
-                yield from _iter_stream(response, config.max_response_bytes)
+                yield from _iter_stream(response, config.max_response_bytes, deadline)
 
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         raise AITransportError("Provider returned an invalid response") from exc

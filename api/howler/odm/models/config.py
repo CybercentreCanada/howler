@@ -677,6 +677,15 @@ class AILucene(BaseModel):
         ge=1,
         description="Maximum concurrent query generations per API process, bounding the load sent to the provider",
     )
+    max_duration_seconds: int = Field(
+        default=180,
+        ge=1,
+        le=3600,
+        description=(
+            "Maximum total duration of a generation. Unlike the read timeouts, keep-alive messages from the "
+            "provider don't extend it."
+        ),
+    )
 
     @model_validator(mode="after")
     def validate_enabled_configuration(self) -> "AILucene":

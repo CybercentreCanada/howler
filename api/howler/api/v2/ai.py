@@ -57,7 +57,7 @@ def generate_lucene(**kwargs):
         return bad_request(err=error)
 
     token = auth_service.get_token()
-    if error := ai_lucene_service.credential_error(token):
+    if error := ai_lucene_service.credential_error(token, impersonating="X-Impersonating" in request.headers):
         return bad_request(err=error)
 
     try:

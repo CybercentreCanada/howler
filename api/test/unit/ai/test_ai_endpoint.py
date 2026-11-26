@@ -1,4 +1,5 @@
 import json
+import time
 from unittest.mock import Mock, patch
 
 import pytest
@@ -34,6 +35,8 @@ def call_route(headers=None, body=None):
     ):
         login_auth.bearer_auth.return_value = (make_user(), ["R"])
         login_auth.basic_auth.return_value = (make_user(), ["R"])
+        login_auth.decode_b64.return_value = "target:apikey"
+        login_auth.validate_apikey.return_value = (make_user("target"), ["R"])
         login_quota.begin.return_value = True
         with app.test_request_context(
             method="POST",
@@ -135,6 +138,22 @@ def test_agent_route_is_available_without_core_ai_and_requires_oauth(monkeypatch
 
 
 @pytest.mark.usefixtures("agent_enabled")
+def test_agent_route_rejects_impersonated_requests(monkeypatch):
+    get_agent_token = Mock()
+    monkeypatch.setattr(agent_service, "get_agent_token", get_agent_token)
+
+    response, _ = call_route(
+        headers={"Authorization": "Bearer oauth.access.token", "X-Impersonating": "Basic dGFyZ2V0OmFwaWtleQ=="}
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()["api_error_message"] == (
+        "AI query generation with an AI agent is not available while impersonating another user."
+    )
+    get_agent_token.assert_not_called()
+
+
+@pytest.mark.usefixtures("agent_enabled")
 def test_agent_route_reports_access_failures_before_streaming(monkeypatch):
     monkeypatch.setattr(
         agent_service,
@@ -163,7 +182,8 @@ def test_agent_route_streams_agent_answer_without_field_list(monkeypatch):
     assert 'data: {"text": "howler.status:open"}' in body
     assert body.endswith(f"event: done\ndata: {json.dumps({'query': 'howler.status:open', 'response': answer})}\n\n")
     assert get_agent_token.call_args.args[1] == "oauth.access.token"
-    settings, token, text = stream_message.call_args.args
+    settings, token, text, deadline = stream_message.call_args.args
+    assert 179 < deadline - time.monotonic() <= 180
     assert (settings.agent_url, token) == ("https://agent.invalid/howler/", "agent-token")
     assert text.endswith("Request:\nopen hits")
     assert "Searchable hit fields" not in text

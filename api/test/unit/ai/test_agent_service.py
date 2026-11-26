@@ -1,4 +1,5 @@
 import json
+import time
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock
 
@@ -264,3 +265,12 @@ def test_agent_provider_requires_agent_and_broker_urls():
             provider="agent",
             agent={"agent_url": "https://agent.invalid", "broker_url": "http://broker.invalid"},
         )
+
+
+def test_stream_message_gives_up_on_an_agent_that_only_sends_keep_alives(session):
+    reply(session, lines=[b": ping", b"", b": ping", b""])
+
+    with pytest.raises(AITransportError) as error:
+        list(agent_service.stream_message(SETTINGS, "agent-token", "open hits", time.monotonic() - 1))
+
+    assert error.value.reason == "The AI agent did not answer in time. Try again later."

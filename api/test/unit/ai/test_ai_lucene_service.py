@@ -1,4 +1,6 @@
 import json
+import threading
+import time
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -195,3 +197,22 @@ def test_generation_slot_is_released_when_preparation_fails(monkeypatch):
     for _ in range(2):
         with pytest.raises(ai_service.AITransportError):
             ai_lucene_service.start_generation("open hits", None, "token")
+
+
+def test_concurrent_first_requests_share_one_semaphore(monkeypatch):
+    def slow_semaphore(value):
+        # Widen the window in which concurrent first requests could each create a semaphore
+        time.sleep(0.05)
+        return threading.BoundedSemaphore(value)
+
+    monkeypatch.setattr(ai_lucene_service, "_slots", None)
+    monkeypatch.setattr(ai_lucene_service, "BoundedSemaphore", slow_semaphore)
+    results = []
+    threads = [threading.Thread(target=lambda: results.append(ai_lucene_service._get_slots())) for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert len(results) == 8
+    assert len({id(slots) for slots in results}) == 1

@@ -1,4 +1,5 @@
 import json
+import time
 from unittest.mock import MagicMock, Mock
 
 import pytest
@@ -370,3 +371,17 @@ def test_stream_chat_rejects_non_streamed_errors(provider):
 
     with pytest.raises(transport.AITransportError, match="AI provider reported an error"):
         list(transport.stream_chat(stream_config(), "token", [{"role": "user", "content": "x"}]))
+
+
+def test_stream_chat_gives_up_after_the_deadline(provider):
+    session, _factory = provider
+    stream_reply(session, [b": keep-alive", b"", sse("howler."), b"", b"data: [DONE]"])
+    messages = [{"role": "user", "content": "x"}]
+
+    with pytest.raises(transport.AITransportError, match="AI provider took too long to respond"):
+        list(transport.stream_chat(stream_config(), "token", messages, deadline=time.monotonic() - 1))
+
+    stream_reply(session, [sse("howler."), b"", b"data: [DONE]"])
+    assert list(transport.stream_chat(stream_config(), "token", messages, deadline=time.monotonic() + 60)) == [
+        "howler."
+    ]
