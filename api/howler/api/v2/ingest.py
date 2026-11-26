@@ -21,7 +21,7 @@ from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
 from howler.security.login import api_login
 from howler.security.utils import is_classification_accessible, validate_bulk_operation_targets
-from howler.services import correlation_service, event_service, hit_service
+from howler.services import correlation_service, event_service, hit_service, ingest_service
 from howler.utils.dict_utils import flatten
 
 MAX_COMMENT_LEN = 5000
@@ -321,7 +321,8 @@ def overwrite(
         if has_access_control(index) and not is_classification_accessible(user, new_record.get("classification")):
             return bad_request(err=f"Cannot set classification to {new_record.get('classification')}")
 
-        ds[index].save(
+        ingest_service.overwrite_record(
+            index,
             id,
             odm(new_record) if odm else new_record,
             version=server_version,

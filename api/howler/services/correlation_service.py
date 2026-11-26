@@ -19,13 +19,14 @@ from howler.common.exceptions import HowlerRuntimeError, InvalidDataException, N
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.config import CORRELATION_QUEUE_NAME
+from howler.datastore.bulk import ElasticBulkPlan
 from howler.odm.models.case import Case, CaseItem, CaseRule, RuleIndexTypes
 from howler.odm.models.config import config
 from howler.odm.models.event import Event
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
 from howler.remote.datatypes.queues.named import NamedQueue
-from howler.services import case_service, comms_service, search_service
+from howler.services import case_service, comms_service, post_write_service, search_service
 from howler.utils.str_utils import sanitize_lucene_query
 
 logger = get_logger(__file__)
@@ -448,7 +449,9 @@ def process_batch(record_ids: list[str], rule_id: str | None = None) -> int:  # 
 
     # Update reverse links separately from case documents, batching writes per
     # collection so the number of datastore operations doesn't grow per match.
-    backing_bulk_plans = {item_type: ds[item_type].get_bulk_plan() for item_type, _ in dirty_backing_keys}
+    backing_bulk_plans: dict[Literal["hit", "event"], ElasticBulkPlan] = {
+        item_type: ds[item_type].get_bulk_plan() for item_type, _ in dirty_backing_keys
+    }
 
     for item_type, record_id in dirty_backing_keys:
         backing_obj, backing_version = backing_cache[(item_type, record_id)]
@@ -462,7 +465,18 @@ def process_batch(record_ids: list[str], rule_id: str | None = None) -> int:  # 
             )
 
     for item_type, bulk_plan in backing_bulk_plans.items():
-        if not ds[item_type].bulk(bulk_plan):
+        bulk_succeeded = ds[item_type].bulk(bulk_plan)
+
+        post_write_service.records_written(
+            item_type,
+            [
+                record_id
+                for dirty_type, record_id in dirty_backing_keys
+                if dirty_type == item_type and backing_cache[(dirty_type, record_id)][0]
+            ],
+        )
+
+        if not bulk_succeeded:
             raise HowlerRuntimeError("Bulk backing record update reported errors while flushing correlation batch")
 
     # Cases are only considered modified when an item was actually appended;

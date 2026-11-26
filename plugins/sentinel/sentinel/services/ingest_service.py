@@ -696,13 +696,13 @@ def _update_existing_incident(
     if new_status:
         status = incident_mapper.map_sentinel_status_to_howler(new_status)
         existing_hit.howler.status = status
-        ds.hit.save(existing_hit.howler.id, existing_hit)
+        existing_hit.save(refresh="false")
         updated_count = 1
         # Only Sentinel-owned descendants bearing this incident and tenant
         # metadata are managed. Analyst-added case hits are deliberately ignored.
         for descendant in descendants:
             descendant.howler.status = status
-            ds.hit.save(descendant.howler.id, descendant)
+            descendant.save(refresh="false")
             updated_count += 1
         _refresh_hit_alias()
 
