@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Annotated
 
 import pytest
 from pydantic import Field, ValidationError
@@ -15,7 +16,6 @@ from howler.models import (
     HowlerModelValidationError,
     any_field,
     classification,
-    compound,
     construct_partial,
     date,
     flat_to_nested,
@@ -27,6 +27,7 @@ from howler.models import (
     keyword,
     list_field,
     mapping,
+    metadata,
     model_registry,
     partial_primitives,
     register_model,
@@ -56,8 +57,8 @@ class FoundationDocument(HowlerESModel):
 
     document_id: uuid()
     from_: keyword(alias="from")
-    child: compound(FoundationChild)
-    children: list_field(compound(FoundationChild), default=[])
+    child: FoundationChild
+    children: list_field(FoundationChild, default=[])
     tags: list_field(keyword(), default=[])
     counters: mapping(integer(), default={}, index=True, store=True)
     unindexed: mapping(keyword(), default={}, index=False, store=False)
@@ -103,8 +104,8 @@ class IndexedChild(HowlerEmbeddedModel):
 class IndexedParent(HowlerESModel):
     """Document used to check compound-level mapping overrides."""
 
-    child: compound(IndexedChild)
-    unindexed_child: compound(IndexedChild, index=False)
+    child: IndexedChild
+    unindexed_child: Annotated[IndexedChild, metadata(index=False)]
 
 
 def _document_data() -> dict:
@@ -277,10 +278,10 @@ def test_extra_ignore_traverses_typed_containers_without_pruning_loose_data() ->
         count: integer(optional=True)
 
     class Containers(HowlerEmbeddedModel):
-        grouped: mapping(compound(Leaf), index=False)
-        listed: list_field(compound(Leaf))
-        nested: mapping(list_field(mapping(compound(Leaf), index=False)), index=False)
-        maybe_grouped: mapping(compound(Leaf, optional=True), index=False, optional=True)
+        grouped: mapping(Leaf, index=False)
+        listed: list_field(Leaf)
+        nested: mapping(list_field(mapping(Leaf, index=False)), index=False)
+        maybe_grouped: mapping(Leaf | None, index=False, optional=True)
         json_value: json_field()
         loose: dict[str, object]
         flat: flattened_object()
@@ -311,8 +312,8 @@ def test_extra_ignore_leaves_invalid_container_values_for_validation() -> None:
         count: integer()
 
     class Containers(HowlerEmbeddedModel):
-        grouped: mapping(compound(Leaf), index=False)
-        listed: list_field(compound(Leaf))
+        grouped: mapping(Leaf, index=False)
+        listed: list_field(Leaf)
 
     for data in (
         {"grouped": {"team": {"count": "invalid", "unknown": 1}}, "listed": []},
@@ -525,8 +526,8 @@ def test_partial_ignore_unknown_propagates_through_mapping_values() -> None:
         value: keyword(optional=True)
 
     class Root(HowlerESModel):
-        grouped: mapping(compound(Leaf), index=False)
-        nested: mapping(list_field(mapping(compound(Leaf), index=False)), index=False)
+        grouped: mapping(Leaf, index=False)
+        nested: mapping(list_field(mapping(Leaf, index=False)), index=False)
 
     partial = construct_partial(
         Root,

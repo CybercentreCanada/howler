@@ -248,6 +248,7 @@ class HowlerModelMixin:
         arbitrary_types_allowed=True,
         extra="forbid",
         populate_by_name=True,
+        use_attribute_docstrings=True,
         validate_assignment=True,
         validate_by_alias=True,
         validate_default=True,

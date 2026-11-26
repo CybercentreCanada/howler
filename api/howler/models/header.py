@@ -9,11 +9,11 @@ from howler.models import HowlerEmbeddedModel, keyword, list_field, register_mod
 class Header(HowlerEmbeddedModel):
     """Record outline header."""
 
-    threat: keyword(optional=True, description="The threat of the record.")
-    target: keyword(optional=True, description="The target of the record.")
-    indicators: list_field(
-        keyword(description="Indicators of the record."),
-        default=[],
-        description="Indicators of the record.",
-    )
-    summary: keyword(optional=True, description="Summary of the record.")
+    threat: keyword(optional=True)
+    """The threat of the record."""
+    target: keyword(optional=True)
+    """The target of the record."""
+    indicators: list_field(keyword(description="Indicators of the record."), default=[])
+    """Indicators of the record."""
+    summary: keyword(optional=True)
+    """Summary of the record."""

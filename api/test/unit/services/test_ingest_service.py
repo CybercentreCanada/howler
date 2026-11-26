@@ -7,7 +7,6 @@ from howler.common.exceptions import HowlerValueError
 from howler.models import (
     HowlerEmbeddedModel,
     HowlerModelValidationError,
-    compound,
     integer,
     json_field,
     keyword,
@@ -31,10 +30,10 @@ def convert(request, monkeypatch):
     index = request.param
     target, service = (Event, event_service) if index == "event" else (Hit, hit_service)
     with model_extensions.isolated():
-        model_extensions.declare(target, "plugin", compound(Entry), plugin="example")
-        model_extensions.declare(target, "grouped", mapping(compound(Entry), default={}, index=False), plugin="example")
+        model_extensions.declare(target, "plugin", Entry, plugin="example")
+        model_extensions.declare(target, "grouped", mapping(Entry, default={}, index=False), plugin="example")
         model_extensions.declare(
-            target, "grouped_lists", mapping(list_field(compound(Entry)), default={}, index=False), plugin="example"
+            target, "grouped_lists", mapping(list_field(Entry), default={}, index=False), plugin="example"
         )
         model_extensions.declare(target, "scalar_map", mapping(keyword(), default={}), plugin="example")
         model_extensions.declare(target, "payload", json_field(optional=True), plugin="example")
@@ -176,10 +175,10 @@ def test_ingest_opaque_json_still_validates_containers(convert, ignore_extra_val
 @pytest.mark.parametrize("replace", [False, True])
 def test_overwrite_retains_stored_and_supplied_empty_compounds(flatten_patch_mappings, replace):
     class ExtendedHit(Hit):
-        stored_plugin: compound(Entry, optional=True)
-        new_plugin: compound(Entry, optional=True)
-        absent_list: list_field(compound(Entry), optional=True)
-        populated: compound(Entry)
+        stored_plugin: Entry | None = None
+        new_plugin: Entry | None = None
+        absent_list: list_field(Entry, optional=True)
+        populated: Entry
 
     stored = ExtendedHit.model_validate(
         {"howler.analytic": "Old", "howler.hash": "ab", "stored_plugin": {}, "populated.value": "keep"}
@@ -205,7 +204,7 @@ def test_overwrite_empty_dynamic_mappings_follow_original_route_behavior(flatten
     class ExtendedHit(Hit):
         groups: mapping(list_field(keyword()))
         scalar_map: mapping(keyword())
-        compounds: mapping(compound(Entry), index=False)
+        compounds: mapping(Entry, index=False)
 
     stored = ExtendedHit.model_validate(
         {

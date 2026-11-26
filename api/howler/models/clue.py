@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, compound, keyword, list_field, model_extensions, register_model
+from typing import Annotated
+
+from pydantic import Field
+
+from howler.models import HowlerEmbeddedModel, keyword, list_field, model_extensions, register_model
 from howler.models.hit import Hit
 
 
@@ -12,19 +16,18 @@ from howler.models.hit import Hit
 class TypeMap(HowlerEmbeddedModel):
     """A mapping from a specific field in Howler to a clue type."""
 
-    field: keyword(description="The field whose clue type to override")
-    type: keyword(description="The clue type to override the field as")
+    field: keyword()
+    """The field whose clue type to override"""
+    type: keyword()
+    """The clue type to override the field as"""
 
 
 @register_model(index=True, store=True, description="Clue-specific overrides for this alert", embedded=True)
 class Clue(HowlerEmbeddedModel):
     """Clue-specific overrides for this alert."""
 
-    types: list_field(
-        compound(TypeMap),
-        default=[],
-        description="A mapping of howler fields to clue types to augment/override system configuration.",
-    )
+    types: list_field(TypeMap, default=[])
+    """A mapping of howler fields to clue types to augment/override system configuration."""
 
 
 PLUGIN_NAME = "clue"
@@ -40,6 +43,6 @@ def declare_hit_extension() -> None:
     model_extensions.declare(
         Hit,
         "clue",
-        compound(Clue, optional=True, description="Clue-specific overrides for this alert"),
+        Annotated[Clue | None, Field(default=None, description="Clue-specific overrides for this alert")],
         plugin=PLUGIN_NAME,
     )

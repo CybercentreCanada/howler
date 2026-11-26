@@ -14,11 +14,15 @@ from howler.models import HowlerESModel, date, enum, integer, keyword, register_
 class MigrationRecord(HowlerESModel):
     """Record of a datastore migration execution."""
 
-    migration_id: keyword(description="The stable identifier of the migration.")
-    status: enum(values=["running", "applied"], description="The current migration execution status.")
-    started_at: date(description="When execution of the migration started.")
-    claim_id: keyword(
-        optional=True, description="Opaque identifier for the execution that owns a running migration claim."
-    )
-    applied_at: date(optional=True, description="When the migration completed successfully.")
-    affected_documents: integer(min=0, optional=True, description="The number of documents changed by the migration.")
+    migration_id: keyword()
+    """The stable identifier of the migration."""
+    status: enum(values=["running", "applied"])
+    """The current migration execution status."""
+    started_at: date()
+    """When execution of the migration started."""
+    claim_id: keyword(optional=True)
+    """Opaque identifier for the execution that owns a running migration claim."""
+    applied_at: date(optional=True)
+    """When the migration completed successfully."""
+    affected_documents: integer(min=0, optional=True)
+    """The number of documents changed by the migration."""

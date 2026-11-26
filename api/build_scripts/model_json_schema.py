@@ -44,7 +44,8 @@ def _without_null(node: JsonSchemaValue) -> JsonSchemaValue:
 
 
 def _describe_kind(node: JsonSchemaValue, metadata: HowlerFieldMetadata) -> None:
-    node["x-howler-kind"] = metadata.kind
+    if metadata.kind is not None:
+        node["x-howler-kind"] = metadata.kind
     if metadata.kind == "Enum" and node.get("type") == "string":
         # enum() returns strings. Iterable declarations may be unordered sets.
         node["enum"] = sorted({str(v) for v in dict(metadata.options)["values"] if v})

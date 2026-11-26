@@ -185,8 +185,12 @@ def _resolve_metadata(
     metadata: HowlerFieldMetadata | None,
     defaults: ModelMetadata | HowlerFieldMetadata | None,
 ) -> HowlerFieldMetadata | None:
-    if metadata is None or defaults is None:
+    if defaults is None:
         return metadata
+    if metadata is None:
+        if defaults.index is None and defaults.store is None:
+            return None
+        return HowlerFieldMetadata(index=defaults.index, store=defaults.store)
     return replace(
         metadata,
         index=metadata.index if metadata.index is not None else defaults.index,

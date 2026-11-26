@@ -1,8 +1,10 @@
 """Live persistence and mapping checks for startup-declared model extensions."""
 
+from typing import Annotated
 from uuid import uuid4
 
 import pytest
+from pydantic import Field
 
 from howler.datastore.store import ESStore
 from howler.models import HowlerEmbeddedModel, ModelExtensionRegistry, fields, register_model
@@ -20,7 +22,7 @@ class ExtensionModel(HowlerEmbeddedModel):
 @pytest.fixture(scope="module")
 def collection():
     registry = ModelExtensionRegistry()
-    registry.declare(Hit, "example", fields.compound(ExtensionModel, optional=True), plugin="test")
+    registry.declare(Hit, "example", Annotated[ExtensionModel | None, Field(default=None)], plugin="test")
     model = registry.finalize(Hit)
     store = ESStore()
     name = f"extension-test-{uuid4().hex}"

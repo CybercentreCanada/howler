@@ -10,7 +10,6 @@ from howler.models import (
     HowlerEmbeddedModel,
     HowlerESModel,
     any_field,
-    compound,
     keyword,
     list_field,
     mapping,
@@ -210,9 +209,7 @@ def test_ilm_template_reuses_document_mapping() -> None:
 
 def test_mapping_of_compound_recurses_into_declared_children() -> None:
     """A compound dynamic value gets one leaf template for each declared child field."""
-    templates = schema._dynamic_templates(
-        "edge_case.*", compound(EdgeChild), inherited_index=True, nested_template=False
-    )
+    templates = schema._dynamic_templates("edge_case.*", EdgeChild, inherited_index=True, nested_template=False)
     assert templates == [
         {
             "edge_case.*.value_tpl": {

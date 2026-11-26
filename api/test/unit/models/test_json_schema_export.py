@@ -15,7 +15,6 @@ from howler.models import (
     HowlerEmbeddedModel,
     ModelExtensionRegistry,
     any_field,
-    compound,
     construct_partial,
     ip,
     list_field,
@@ -142,7 +141,7 @@ def test_parent_import_and_both_fixture_workers_run_with_sockets_blocked(tmp_pat
 
 def test_public_policy_follows_embedded_model_identity_without_its_root():
     registry = ModelExtensionRegistry()
-    registry.declare(Case, "investigator", compound(User), plugin="example")
+    registry.declare(Case, "investigator", User, plugin="example")
     schema = entity_schema({"case": registry.finalize(Case)})
     case = dereference(schema, schema["properties"]["case"])
     investigator = dereference(schema, case["properties"]["investigator"])
@@ -151,7 +150,7 @@ def test_public_policy_follows_embedded_model_identity_without_its_root():
     assert not any(node.get("title") == "ApiKey" for node in schema["$defs"].values())
     assert not Draft202012Validator(schema).is_valid({"case": {"__index": "case", "investigator": {"password": "x"}}})
 
-    registry.declare(Action, "source_case", compound(Case), plugin="example")
+    registry.declare(Action, "source_case", Case, plugin="example")
     extended_action = registry.finalize(Action)
     schema = entity_schema({"action": extended_action})
     action = dereference(schema, schema["properties"]["action"])
@@ -221,7 +220,7 @@ def test_supplied_models_keep_exact_plugin_profile_and_container_null_semantics(
         by_name: mapping(ip(), default={})
 
     extensions = ModelExtensionRegistry()
-    extensions.declare(Hit, "extra", list_field(compound(PluginData), default=[]), plugin="example")
+    extensions.declare(Hit, "extra", list_field(PluginData, default=[]), plugin="example")
     finalized = extensions.finalize(Hit)
     schema = entity_schema({"hit": finalized, "migration": User, "user_avatar": None})
     assert set(schema["properties"]) == {"hit"}

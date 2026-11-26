@@ -9,8 +9,13 @@ from howler.models import HowlerEmbeddedModel, keyword, register_model
 class GCP(HowlerEmbeddedModel):
     """Fields related to Google Cloud Platform."""
 
-    project_id: keyword(optional=True, description="The unique identifier for the GCP project.")
-    network_id: keyword(optional=True, description="The unique identifier for a Google Cloud Platform (GCP) network.")
-    zone: keyword(optional=True, description="The GCP zone of the instance.")
-    service_account_id: keyword(optional=True, description="Unique identifier for a GCP service account.")
-    resource_id: keyword(optional=True, description="Unique GCP resource identifier.")
+    project_id: keyword(optional=True)
+    """The unique identifier for the GCP project."""
+    network_id: keyword(optional=True)
+    """The unique identifier for a Google Cloud Platform (GCP) network."""
+    zone: keyword(optional=True)
+    """The GCP zone of the instance."""
+    service_account_id: keyword(optional=True)
+    """Unique identifier for a GCP service account."""
+    resource_id: keyword(optional=True)
+    """Unique GCP resource identifier."""

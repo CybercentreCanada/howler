@@ -10,7 +10,6 @@ from howler.models import (
     ModelExtensionRegistry,
     boolean,
     clue,
-    compound,
     date,
     float_field,
     integer,
@@ -59,7 +58,7 @@ class Nested(HowlerEmbeddedModel):
 @register_model(embedded=True)
 class Containers(HowlerEmbeddedModel):
     top_level_field: keyword(description="top level description")
-    compound_field: compound(Nested)
+    compound_field: Nested
     list_field: list_field(integer(description="internal description"))
     mapping_field: mapping(text(), description="parent level description")
     optional_items: list_field(integer(description="optional item description", optional=True))
@@ -78,7 +77,7 @@ class Defaults(HowlerEmbeddedModel):
     mapping_with_nullable_values: mapping(text(optional=True), default={})
     mapping_with_generated_values: mapping(uuid())
     mapping_of_lists: mapping(list_field(date(default="NOW")))
-    nullable_compound: compound(Nested, optional=True)
+    nullable_compound: Nested | None = None
 
 
 @register_model(embedded=True)

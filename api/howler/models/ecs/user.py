@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, compound, email, keyword, list_field, register_model
+from howler.models import HowlerEmbeddedModel, email, keyword, list_field, register_model
 from howler.models.ecs.group import Group
 
 
@@ -15,13 +15,20 @@ from howler.models.ecs.group import Group
 class UserNested(HowlerEmbeddedModel):
     """The user fields describe information about the user that is relevant to the event."""
 
-    domain: keyword(optional=True, description="Name of the directory the user is a member of.")
-    email: email(optional=True, description="User email address.")
-    full_name: keyword(optional=True, description="User's full name, if available.")
-    hash: keyword(optional=True, description="Unique user hash to correlate information for a user in anonymized form.")
-    id: keyword(optional=True, description="Unique identifier of the user.")
-    name: keyword(optional=True, description="Short name or login of the user.")
-    roles: list_field(keyword(), optional=True, default=[], description="Array of user roles at the time of the event.")
+    domain: keyword(optional=True)
+    """Name of the directory the user is a member of."""
+    email: email(optional=True)
+    """User email address."""
+    full_name: keyword(optional=True)
+    """User's full name, if available."""
+    hash: keyword(optional=True)
+    """Unique user hash to correlate information for a user in anonymized form."""
+    id: keyword(optional=True)
+    """Unique identifier of the user."""
+    name: keyword(optional=True)
+    """Short name or login of the user."""
+    roles: list_field(keyword(), optional=True, default=[])
+    """Array of user roles at the time of the event."""
 
 
 @register_model(
@@ -33,21 +40,33 @@ class UserNested(HowlerEmbeddedModel):
 class User(HowlerEmbeddedModel):
     """The user fields describe information about the user that is relevant to the event."""
 
-    domain: keyword(optional=True, description="Name of the directory the user is a member of.")
-    email: email(optional=True, description="User email address.")
-    full_name: keyword(optional=True, description="User's full name, if available.")
-    group: compound(Group, optional=True, description="User's group relevant to the event.")
-    hash: keyword(optional=True, description="Unique user hash to correlate information for a user in anonymized form.")
-    id: keyword(optional=True, description="Unique identifier of the user.")
-    name: keyword(optional=True, description="Short name or login of the user.")
-    roles: list_field(keyword(), optional=True, default=[], description="Array of user roles at the time of the event.")
+    domain: keyword(optional=True)
+    """Name of the directory the user is a member of."""
+    email: email(optional=True)
+    """User email address."""
+    full_name: keyword(optional=True)
+    """User's full name, if available."""
+    group: Group | None = None
+    """User's group relevant to the event."""
+    hash: keyword(optional=True)
+    """Unique user hash to correlate information for a user in anonymized form."""
+    id: keyword(optional=True)
+    """Unique identifier of the user."""
+    name: keyword(optional=True)
+    """Short name or login of the user."""
+    roles: list_field(keyword(), optional=True, default=[])
+    """Array of user roles at the time of the event."""
 
 
 @register_model(index=True, store=True, description="Shorter representation of a user.", embedded=True)
 class ShortUser(HowlerEmbeddedModel):
     """Shorter representation of a user."""
 
-    id: keyword(optional=True, description="Unique identifier of the user.")
-    name: keyword(optional=True, description="Short name or login of the user.")
-    domain: keyword(optional=True, description="Name of the directory the user is a member of.")
-    email: email(optional=True, description="User email address.")
+    id: keyword(optional=True)
+    """Unique identifier of the user."""
+    name: keyword(optional=True)
+    """Short name or login of the user."""
+    domain: keyword(optional=True)
+    """Name of the directory the user is a member of."""
+    email: email(optional=True)
+    """User email address."""

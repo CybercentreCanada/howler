@@ -146,7 +146,7 @@ def _classify_boosted_fields() -> dict[str, str]:
             if not field_def:
                 field_types[field_name] = "keyword"
                 continue
-            kind = field_def.metadata.kind if field_def.metadata is not None else "Keyword"
+            kind = field_def.metadata.kind if field_def.metadata and field_def.metadata.kind else "Keyword"
             field_types[field_name] = "ip" if kind == "IP" else "text" if kind == "Text" else "keyword"
 
     return field_types

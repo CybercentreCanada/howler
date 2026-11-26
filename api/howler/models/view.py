@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from typing import Annotated
+
+from pydantic import Field
+
 from howler.models import (
     HowlerEmbeddedModel,
     HowlerESModel,
     boolean,
     case_insensitive_keyword,
-    compound,
     enum,
     integer,
     keyword,
@@ -26,30 +29,40 @@ DEFAULT_INDEXES = ["hit"]
 class GridColumn(HowlerEmbeddedModel):
     """The field and width of a column to display in a grid view."""
 
-    field: keyword(description="The field key for this column.")
-    width: integer(optional=True, description="The width of this column in pixels.")
+    field: keyword()
+    """The field key for this column."""
+    width: integer(optional=True)
+    """The width of this column in pixels."""
 
 
 @register_model(index=True, store=True, description="Additional View Settings", embedded=True)
 class Settings(HowlerEmbeddedModel):
     """Additional View Settings."""
 
-    advance_on_triage: boolean(
-        default=False, description="Should the user advance to the next alert when triage is complete?"
-    )
-    display: enum(values=["list", "grid"], optional=True, description="The layout to use when opening this view")
-    columns: list_field(compound(GridColumn, description="The columns to display in this view."), optional=True)
+    advance_on_triage: boolean(default=False)
+    """Should the user advance to the next alert when triage is complete?"""
+    display: enum(values=["list", "grid"], optional=True)
+    """The layout to use when opening this view"""
+    columns: list_field(Annotated[GridColumn, Field(description="The columns to display in this view.")], optional=True)
 
 
 @register_model(index=True, store=True, description="Model of views")
 class View(Ownership, HowlerESModel):
     """Model of views."""
 
-    view_id: uuid(description="A UUID for this view")
-    indexes: list_field(keyword(), default=DEFAULT_INDEXES, description="What indexes this view applies to.")
-    title: case_insensitive_keyword(description="The name of this view.")
-    query: case_insensitive_keyword(description="The query to run in this view.")
-    sort: case_insensitive_keyword(optional=True, description="The sorting to use with this view.")
-    span: keyword(optional=True, description="The time span to use by default when opening this view")
-    type: enum(values=["personal", "global", "readonly"], description="The type of view")
-    settings: compound(Settings, default={"advance_on_triage": False}, description="Additional View Settings")
+    view_id: uuid()
+    """A UUID for this view"""
+    indexes: list_field(keyword(), default=DEFAULT_INDEXES)
+    """What indexes this view applies to."""
+    title: case_insensitive_keyword()
+    """The name of this view."""
+    query: case_insensitive_keyword()
+    """The query to run in this view."""
+    sort: case_insensitive_keyword(optional=True)
+    """The sorting to use with this view."""
+    span: keyword(optional=True)
+    """The time span to use by default when opening this view"""
+    type: enum(values=["personal", "global", "readonly"])
+    """The type of view"""
+    settings: Annotated[Settings, Field(default={"advance_on_triage": False})]
+    """Additional View Settings"""

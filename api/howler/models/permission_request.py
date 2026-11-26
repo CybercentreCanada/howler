@@ -14,8 +14,7 @@ from howler.models import HowlerEmbeddedModel, enum, keyword, register_model
 class PermissionRequest(HowlerEmbeddedModel):
     """A permission entry for ownership permission updates."""
 
-    privilege: enum(
-        values=["admins", "members", "owner"],
-        description="The permission level to update",
-    )
-    user_id: keyword(description="The user ID to grant or revoke for the selected privilege.")
+    privilege: enum(values=["admins", "members", "owner"])
+    """The permission level to update"""
+    user_id: keyword()
+    """The user ID to grant or revoke for the selected privilege."""

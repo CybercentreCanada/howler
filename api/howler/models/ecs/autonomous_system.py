@@ -17,5 +17,7 @@ from howler.models import HowlerEmbeddedModel, integer, keyword, register_model
 class AS(HowlerEmbeddedModel):
     """Fields describing an autonomous system (Internet routing prefix)."""
 
-    number: integer(optional=True, description="Unique number allocated to the autonomous system")
-    organization_name: keyword(optional=True, description="Organization name")
+    number: integer(optional=True)
+    """Unique number allocated to the autonomous system"""
+    organization_name: keyword(optional=True)
+    """Organization name"""

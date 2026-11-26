@@ -3,7 +3,7 @@
 from howler.datastore.collection import ESCollection
 from howler.datastore.operations import OdmHelper
 from howler.datastore.utils import expand_field_patterns, prune_to_paths
-from howler.models import HowlerEmbeddedModel, HowlerESModel, compound, keyword, list_field, register_model
+from howler.models import HowlerEmbeddedModel, HowlerESModel, keyword, list_field, register_model
 
 
 @register_model(embedded=True)
@@ -16,7 +16,7 @@ class DatastoreUtilityItem(HowlerEmbeddedModel):
 class DatastoreUtilityDocument(HowlerESModel):
     title: keyword()
     category: keyword()
-    items: list_field(compound(DatastoreUtilityItem))
+    items: list_field(DatastoreUtilityItem)
 
 
 def test_expand_field_patterns_expands_wildcards_and_keeps_exact_fields():

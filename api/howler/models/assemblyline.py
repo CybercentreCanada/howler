@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, compound, keyword, list_field, register_model
+from typing import Annotated
+
+from pydantic import Field
+
+from howler.models import HowlerEmbeddedModel, keyword, list_field, metadata, register_model
 
 DEFAULT_MITRE: dict[str, list] = {"tactic": [], "technique": []}
 
@@ -21,8 +25,8 @@ class ALRecord(HowlerEmbeddedModel):
 class Mitre(HowlerEmbeddedModel):
     """MITRE ATT&CK tactic/technique records extracted by AssemblyLine."""
 
-    tactic: list_field(compound(ALRecord), default=[])
-    technique: list_field(compound(ALRecord), default=[])
+    tactic: list_field(ALRecord, default=[])
+    technique: list_field(ALRecord, default=[])
 
 
 @register_model(
@@ -35,18 +39,18 @@ class AssemblyLine(HowlerEmbeddedModel):
     """The AssemblyLine fields contain any data obtained from AssemblyLine relating to the alert."""
 
     # al.detailed.av
-    antivirus: list_field(compound(ALRecord), default=[])
+    antivirus: list_field(ALRecord, default=[])
     # al.detailed.attrib
-    attribution: list_field(compound(ALRecord), default=[])
+    attribution: list_field(ALRecord, default=[])
     # al.detailed.behavior
-    behaviour: list_field(compound(ALRecord), default=[])
+    behaviour: list_field(ALRecord, default=[])
     # al.detailed.domain
-    domain: list_field(compound(ALRecord), default=[])
+    domain: list_field(ALRecord, default=[])
     # al detailed.heuristic
-    heuristic: list_field(compound(ALRecord), default=[])
+    heuristic: list_field(ALRecord, default=[])
     # al.detailed.[attack_category, attack_pattern]
-    mitre: compound(Mitre, optional=True, default=DEFAULT_MITRE)
+    mitre: Annotated[Mitre | None, metadata(optional=True), Field(default=DEFAULT_MITRE)]
     # al.detailed.uri
-    uri: list_field(compound(ALRecord), default=[])
+    uri: list_field(ALRecord, default=[])
     # al.detailed.yara
-    yara: list_field(compound(ALRecord), default=[])
+    yara: list_field(ALRecord, default=[])

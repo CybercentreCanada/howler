@@ -18,5 +18,7 @@ from howler.models import HowlerEmbeddedModel, integer, keyword, register_model
 class Interface(HowlerEmbeddedModel):
     """Interface fields record ingress and egress interface information reported by an observer."""
 
-    id: integer(optional=True, description="Interface ID as reported by an observer (typically SNMP interface ID).")
-    name: keyword(optional=True, description="Name of interface")
+    id: integer(optional=True)
+    """Interface ID as reported by an observer (typically SNMP interface ID)."""
+    name: keyword(optional=True)
+    """Name of interface"""

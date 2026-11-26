@@ -21,7 +21,7 @@ class _TestModel(HowlerESModel):
     id: fields.keyword()
     prefix_one: fields.keyword()
     prefix_two: fields.keyword()
-    nested: fields.compound(_Inner)
+    nested: _Inner
 
 
 def _make_collection():

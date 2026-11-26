@@ -18,7 +18,11 @@ class Agent(HowlerEmbeddedModel):
     If any, that collects, detects, or observes events on a host, or takes measurements on a host.
     """
 
-    id: keyword(optional=True, description="Unique identifier of this agent (if one exists).")
-    name: keyword(optional=True, description="Custom name of the agent.")
-    type: keyword(optional=True, description="Type of the agent.")
-    version: keyword(optional=True, description="Version of the agent.")
+    id: keyword(optional=True)
+    """Unique identifier of this agent (if one exists)."""
+    name: keyword(optional=True)
+    """Custom name of the agent."""
+    type: keyword(optional=True)
+    """Type of the agent."""
+    version: keyword(optional=True)
+    """Version of the agent."""

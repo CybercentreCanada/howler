@@ -3,9 +3,11 @@ import os
 import random
 import string
 import warnings
+from typing import Annotated
 
 import pytest
 from datemath import dm
+from pydantic import Field
 from retrying import retry
 
 from howler.datastore.collection import logger
@@ -42,13 +44,13 @@ class BaseTestModel(HowlerESModel):
     height: fields.integer()
     no_store: fields.keyword(store=False, optional=True)
     no_index: fields.keyword(index=False, store=False, optional=True)
-    dots: fields.mapping(fields.compound(Position), default={})
+    dots: fields.mapping(Position, default={})
     birthday: fields.date()
     tags: fields.list_field(fields.enum({"silly", "cats", "10"}), default=[], copyto="features")
-    size: fields.compound(MeasurementModel, default={"depth": 100, "width": 100})
+    size: Annotated[MeasurementModel, Field(default={"depth": 100, "width": 100})]
     features: fields.list_field(fields.text(), default=[])
     metadata: fields.mapping(fields.text(), default={})
-    things: fields.list_field(fields.compound(ThingsModel), default=[])
+    things: fields.list_field(ThingsModel, default=[])
 
 
 def safe_date(pattern):

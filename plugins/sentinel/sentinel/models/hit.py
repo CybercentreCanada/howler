@@ -5,8 +5,11 @@ This declaration is applied when the datastore finalizes ``Hit`` at startup.
 
 from __future__ import annotations
 
-from howler.models import compound, model_extensions
+from typing import Annotated
+
+from howler.models import model_extensions
 from howler.models.hit import Hit
+from pydantic import Field
 
 from sentinel.models.sentinel import Sentinel
 
@@ -18,6 +21,6 @@ def declare_hit_extension() -> None:
     model_extensions.declare(
         Hit,
         "sentinel",
-        compound(Sentinel, optional=True, description="Sentinel metadata associated with this alert"),
+        Annotated[Sentinel | None, Field(default=None, description="Sentinel metadata associated with this alert")],
         plugin=PLUGIN_NAME,
     )

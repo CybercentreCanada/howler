@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import field_validator, model_validator
 
 from howler.common.exceptions import HowlerValueError
-from howler.models import HowlerEmbeddedModel, compound, keyword, list_field, register_model, text
+from howler.models import HowlerEmbeddedModel, keyword, list_field, register_model, text
 from howler.models.localized_label import LocalizedLabel
 
 
@@ -15,14 +15,12 @@ from howler.models.localized_label import LocalizedLabel
 class Mapping(HowlerEmbeddedModel):
     """A single pivot mapping entry."""
 
-    key: keyword(
-        description="The key to inject the given field as. Exact behaviour depends on the implementation type."
-    )
-    field: keyword(description="The field in the hit to associate with the given key.")
-    custom_value: keyword(
-        optional=True,
-        description="An optional custom value to use if the value is not dependent on the alert we are pivoting on",
-    )
+    key: keyword()
+    """The key to inject the given field as. Exact behaviour depends on the implementation type."""
+    field: keyword()
+    """The field in the hit to associate with the given key."""
+    custom_value: keyword(optional=True)
+    """An optional custom value to use if the value is not dependent on the alert we are pivoting on"""
 
 
 def validate_group(group: Any) -> None:
@@ -49,23 +47,20 @@ def validate_group(group: Any) -> None:
 class Pivot(HowlerEmbeddedModel):
     """The dossier object stores individual tabs/fields for a given alert."""
 
-    icon: text(
-        default="material-symbols:link",
-        description="An optional icon to use in the tab display for this dossier.",
-    )
-    group: keyword(
-        coerce=False,
-        index=True,
-        optional=True,
-        description="The folder path this pivot should be presented in when viewed in the UI.",
-    )
-    description: text(optional=True, description="An optional description for the pivot.")
-    label: compound(LocalizedLabel, description="Labels for the pivot in the UI.")
-    value: keyword(description="The link/plugin information to pivot on.")
-    format: keyword(description="The format of the pivot.")
-    mappings: list_field(
-        compound(Mapping), default=[], description="A list of the mappings to use when activating a pivot."
-    )
+    icon: text(default="material-symbols:link")
+    """An optional icon to use in the tab display for this dossier."""
+    group: keyword(coerce=False, index=True, optional=True)
+    """The folder path this pivot should be presented in when viewed in the UI."""
+    description: text(optional=True)
+    """An optional description for the pivot."""
+    label: LocalizedLabel
+    """Labels for the pivot in the UI."""
+    value: keyword()
+    """The link/plugin information to pivot on."""
+    format: keyword()
+    """The format of the pivot."""
+    mappings: list_field(Mapping, default=[])
+    """A list of the mappings to use when activating a pivot."""
 
     @field_validator("group", mode="before")
     @classmethod

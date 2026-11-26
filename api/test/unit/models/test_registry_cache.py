@@ -7,16 +7,7 @@ import operator
 import pytest
 
 from howler.datastore.collection import _strip_lists
-from howler.models import (
-    HowlerEmbeddedModel,
-    HowlerESModel,
-    ModelExtensionRegistry,
-    compound,
-    enum,
-    keyword,
-    list_field,
-    mapping,
-)
+from howler.models import HowlerEmbeddedModel, HowlerESModel, ModelExtensionRegistry, enum, keyword, list_field, mapping
 from howler.models.fields import HowlerFieldMetadata
 from howler.models.registry import ModelRegistry, annotation_metadata, model_registry
 
@@ -26,7 +17,7 @@ class Child(HowlerEmbeddedModel):
 
 
 class Document(HowlerESModel):
-    child: compound(Child)
+    child: Child
     labels: mapping(keyword(), default={})
 
 

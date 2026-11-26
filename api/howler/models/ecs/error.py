@@ -17,5 +17,7 @@ from howler.models import HowlerEmbeddedModel, keyword, register_model
 class Error(HowlerEmbeddedModel):
     """These fields can represent errors of any kind."""
 
-    code: keyword(optional=True, description="Identifier specific to the error.")
-    message: keyword(optional=True, description="Error message provided.")
+    code: keyword(optional=True)
+    """Identifier specific to the error."""
+    message: keyword(optional=True)
+    """Error message provided."""

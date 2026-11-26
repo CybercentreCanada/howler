@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, boolean, compound, enum, keyword, register_model
+from howler.models import HowlerEmbeddedModel, boolean, enum, keyword, register_model
 
 TRIGGER_TYPES = ["http", "pubsub", "datasource", "timer", "other"]
 
@@ -11,8 +11,10 @@ TRIGGER_TYPES = ["http", "pubsub", "datasource", "timer", "other"]
 class Trigger(HowlerEmbeddedModel):
     """Details about the function trigger."""
 
-    request_id: keyword(optional=True, description="The ID of the trigger request , message, event, etc.")
-    type: enum(values=TRIGGER_TYPES, optional=True, description="The trigger for the function execution.")
+    request_id: keyword(optional=True)
+    """The ID of the trigger request , message, event, etc."""
+    type: enum(values=TRIGGER_TYPES, optional=True)
+    """The trigger for the function execution."""
 
 
 @register_model(
@@ -25,9 +27,15 @@ class Trigger(HowlerEmbeddedModel):
 class FAAS(HowlerEmbeddedModel):
     """Function-as-a-service (FaaS) fields."""
 
-    coldstart: boolean(optional=True, description="Boolean value indicating a cold start of a function.")
-    execution: keyword(optional=True, description="The execution ID of the current function execution.")
-    id: keyword(optional=True, description="The unique identifier of a serverless function.")
-    name: keyword(optional=True, description="The name of a serverless function.")
-    trigger: compound(Trigger, optional=True, description="Details about the function trigger.")
-    version: keyword(optional=True, description="The version of a serverless function.")
+    coldstart: boolean(optional=True)
+    """Boolean value indicating a cold start of a function."""
+    execution: keyword(optional=True)
+    """The execution ID of the current function execution."""
+    id: keyword(optional=True)
+    """The unique identifier of a serverless function."""
+    name: keyword(optional=True)
+    """The name of a serverless function."""
+    trigger: Trigger | None = None
+    """Details about the function trigger."""
+    version: keyword(optional=True)
+    """The version of a serverless function."""

@@ -18,5 +18,7 @@ class Organization(HowlerEmbeddedModel):
     The data is associated with.
     """
 
-    id: keyword(optional=True, description="Unique identifier for the organization.")
-    name: keyword(description="Organization name.")
+    id: keyword(optional=True)
+    """Unique identifier for the organization."""
+    name: keyword()
+    """Organization name."""

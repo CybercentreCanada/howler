@@ -14,5 +14,7 @@ from howler.models import HowlerEmbeddedModel, register_model, text
 class LocalizedLabel(HowlerEmbeddedModel):
     """A label localized to English and French."""
 
-    en: text(description="The english localization of a label")
-    fr: text(description="The french localization of a label")
+    en: text()
+    """The english localization of a label"""
+    fr: text()
+    """The french localization of a label"""

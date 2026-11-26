@@ -1,13 +1,15 @@
 from types import SimpleNamespace
+from typing import Annotated
 
 import pytest
 from howler.datastore import howler_store
-from howler.models import compound, model_extensions, model_registry, schema
+from howler.models import model_extensions, model_registry, schema
 from howler.models.azure import Azure
 from howler.models.ecs.file import File
 from howler.models.hit import Hit
 from howler.plugins.config import BasePluginConfig
 from howler.services import hit_service
+from pydantic import Field
 
 from sentinel.actions import azure_emit_hash
 from sentinel.models.hit import declare_hit_extension
@@ -62,7 +64,7 @@ def test_build_sentinel_alert(registered_hit):
 def test_hash_specification_includes_finalized_hit_extensions(monkeypatch, finalized, isolated_models):
     def declare_extensions():
         declare_hit_extension()
-        model_extensions.declare(Hit, "extra_file", compound(File, optional=True), plugin="test")
+        model_extensions.declare(Hit, "extra_file", Annotated[File | None, Field(default=None)], plugin="test")
 
     plugin = BasePluginConfig(name="test", modules={"models": {"declare_extensions": {"hit": declare_extensions}}})
     monkeypatch.setattr(howler_store, "get_plugins", lambda: [plugin])

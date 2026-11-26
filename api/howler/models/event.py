@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from howler.models import (
     HowlerEmbeddedModel,
-    compound,
     date,
     enum,
     float_field,
@@ -38,29 +37,29 @@ class Escalation(HowlerStrEnum):
 class EventData(HowlerEmbeddedModel):
     """Event metadata fields, howler specific."""
 
-    id: uuid(description="A UUID for this event.")
-    data: list_field(
-        keyword(), default=[], store=False, description="Raw telemetry records associated with this event."
+    id: uuid()
+    """A UUID for this event."""
+    data: list_field(keyword(), default=[], store=False)
+    """Raw telemetry records associated with this event."""
+    hash: howler_hash()
+    (
+        "A hash of the event used for deduplicating hits. Supports any hexadecimal string between 1 and 64 characters "
+        "long."
     )
-    hash: howler_hash(
-        description=(
-            "A hash of the event used for deduplicating hits. Supports any hexadecimal string between 1 "
-            "and 64 characters long."
-        )
-    )
-    related: list_field(keyword(), default=[], description="Related records.")
-    outline: compound(_Header, optional=True, description="The user specified header of the event.")
-    score: float_field(
-        optional=True, default=0, description="A score assigned by an enrichment to help prioritize triage."
-    )
-    escalation: enum(values=Escalation, default=Escalation.HIT, description="Level of escalation of this event.")
-    expiry: date(optional=True, description="User selected time for event expiry")
-    comment: list_field(
-        compound(Comment), default=[], description="A list of comments with timestamps and attribution."
-    )
-    log: list_field(
-        compound(_Log), default=[], description="A list of changes to the event with timestamps and attribution."
-    )
+    related: list_field(keyword(), default=[])
+    """Related records."""
+    outline: _Header | None = None
+    """The user specified header of the event."""
+    score: float_field(optional=True, default=0)
+    """A score assigned by an enrichment to help prioritize triage."""
+    escalation: enum(values=Escalation, default=Escalation.HIT)
+    """Level of escalation of this event."""
+    expiry: date(optional=True)
+    """User selected time for event expiry"""
+    comment: list_field(Comment, default=[])
+    """A list of comments with timestamps and attribution."""
+    log: list_field(_Log, default=[])
+    """A list of changes to the event with timestamps and attribution."""
 
 
 @register_model(
@@ -73,4 +72,5 @@ class Event(Record):
     """Event schema which is an extended version of Elastic Common Schema (ECS)."""
 
     # Howler extended fields. Deviates from ECS
-    howler: compound(EventData, description="Howler specific definition of the event")
+    howler: EventData
+    """Howler specific definition of the event"""

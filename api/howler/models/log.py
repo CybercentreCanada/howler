@@ -22,14 +22,22 @@ class LogOperationType(HowlerStrEnum):
 class Log(HowlerEmbeddedModel):
     """Log definition."""
 
-    timestamp: date(description="Timestamp at which the Log event took place.")
-    key: keyword(optional=True, description="The key whose value changed.")
-    explanation: text(optional=True, description="A manual description of the changes made.")
-    previous_version: keyword(optional=True, description="The version this action was applied to.")
-    new_value: keyword(optional=True, description="The value the key is changing to.")
-    type: enum(values=LogOperationType, optional=True, description="The operation performed on the value.")
-    previous_value: keyword(optional=True, description="The value the key is changing from.")
-    user: keyword(description="User ID who created the log event.")
+    timestamp: date()
+    """Timestamp at which the Log event took place."""
+    key: keyword(optional=True)
+    """The key whose value changed."""
+    explanation: text(optional=True)
+    """A manual description of the changes made."""
+    previous_version: keyword(optional=True)
+    """The version this action was applied to."""
+    new_value: keyword(optional=True)
+    """The value the key is changing to."""
+    type: enum(values=LogOperationType, optional=True)
+    """The operation performed on the value."""
+    previous_value: keyword(optional=True)
+    """The value the key is changing from."""
+    user: keyword()
+    """User ID who created the log event."""
 
     @model_validator(mode="before")
     @classmethod

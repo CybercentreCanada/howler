@@ -24,7 +24,6 @@ from howler.models import (
     case_insensitive_keyword,
     classification,
     classification_string,
-    compound,
     date,
     domain,
     email,
@@ -88,7 +87,7 @@ class SerializationProbe(HowlerESModel):
     created: date()
     created_by_key: mapping(date())
     timestamp_text: keyword()
-    child: compound(SerializationChild)
+    child: SerializationChild
 
 
 class NullableFieldModel(HowlerESModel):

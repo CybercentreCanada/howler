@@ -58,7 +58,7 @@ def _type_from_annotation(annotation: Any, field: FieldDefinition, allow_any_as_
         return build_schema(nested, allow_any_as_string=allow_any_as_string)
 
     metadata = field_metadata(annotation) or field.metadata
-    kind = metadata.kind if metadata else "Any"
+    kind = metadata.kind if metadata and metadata.kind else "Any"
     if kind == "Any" or unwrapped is Any:
         if not allow_any_as_string:
             raise HowlerValueError(f"``Any`` type is not supported for Spark schema: {field.name}")

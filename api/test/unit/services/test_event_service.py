@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from howler.common.exceptions import HowlerTypeError, HowlerValueError, ResourceExists
-from howler.models import HowlerEmbeddedModel, compound, keyword
+from howler.models import HowlerEmbeddedModel, keyword
 from howler.models.event import Event
 from howler.models.registry import model_registry
 from howler.services import event_service
@@ -36,7 +36,7 @@ def test_convert_event_uses_collection_extension(event_collection, ignore_extra_
         legacy: keyword(deprecated=True)
 
     class ExtendedEvent(Event):
-        plugin: compound(PluginData)
+        plugin: PluginData
 
     event_collection.model_class = ExtendedEvent
     plugin = {"legacy": "keep"}

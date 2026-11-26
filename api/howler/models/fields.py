@@ -73,7 +73,7 @@ PROCESSOR_REGEX = r"^x(64|86)$"
 class HowlerFieldMetadata:
     """Canonical Howler metadata attached to an annotated Pydantic field."""
 
-    kind: str
+    kind: str | None = None
     index: bool | None = None
     store: bool | None = None
     copy_to: tuple[str, ...] = ()
@@ -84,6 +84,34 @@ class HowlerFieldMetadata:
     options: tuple[tuple[str, TypingAny], ...] = field(default_factory=tuple)
     optional: bool = False
     es_name: str | None = None
+
+
+def metadata(
+    *,
+    index: bool | None = None,
+    store: bool | None = None,
+    copyto: str | Iterable[str] | None = None,
+    copy_to: str | Iterable[str] | None = None,
+    reference: str | None = None,
+    deprecated: bool = False,
+    deprecated_description: str | None = None,
+    sync: bool = True,
+    optional: bool = False,
+    es_name: str | None = None,
+) -> HowlerFieldMetadata:
+    """Attach Howler-specific schema and serialization metadata to an annotated field."""
+    resolved_copy_to = _copy_to(copy_to if copy_to is not None else copyto)
+    return HowlerFieldMetadata(
+        index=index,
+        store=store,
+        copy_to=resolved_copy_to,
+        reference=reference,
+        deprecated=deprecated,
+        deprecated_description=deprecated_description,
+        sync=sync,
+        optional=optional,
+        es_name=es_name,
+    )
 
 
 class ClassificationValue:
@@ -184,9 +212,9 @@ def _annotated(
             default = None
         field_options["optional"] = True
 
-    metadata: list[TypingAny] = []
+    annotations: list[TypingAny] = []
     if validator is not None:
-        metadata.append(
+        annotations.append(
             _build_validator(
                 validator,
                 kind,
@@ -195,12 +223,12 @@ def _annotated(
                 optional=optional,
             )
         )
-    metadata.extend(serializers)
+    annotations.extend(serializers)
 
     resolved_es_name = es_name if es_name is not None else alias
     if resolved_es_name is not None:
         field_options["es_name"] = resolved_es_name
-    metadata.append(_howler_metadata(kind, field_options))
+    annotations.append(_howler_metadata(kind, field_options))
 
     pydantic_options = {} if optional else dict(constraints or {})
     if description is not None:
@@ -211,8 +239,8 @@ def _annotated(
         pydantic_options["default_factory"] = default_factory
     elif default is not PydanticUndefined:
         pydantic_options["default"] = default
-    metadata.append(PydanticField(**pydantic_options))
-    return _make_annotated(annotation, *metadata)
+    annotations.append(PydanticField(**pydantic_options))
+    return _make_annotated(annotation, *annotations)
 
 
 def _make_annotated(annotation: TypingAny, *metadata: TypingAny) -> TypingAny:
@@ -771,11 +799,6 @@ def flattened_list_object(**kwargs: TypingAny) -> TypingAny:
         validator=_mapping_validator(FLATTENED_OBJECT_SANITIZER),
         **kwargs,
     )
-
-
-def compound(model_type: type[TypingAny], **kwargs: TypingAny) -> TypingAny:
-    """Create an embedded object field."""
-    return _annotated(model_type, "Compound", **kwargs)
 
 
 def ip_to_primitive(value: str, output_format: str | None) -> str | int:

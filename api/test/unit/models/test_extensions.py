@@ -13,7 +13,6 @@ from howler.models import (
     HowlerESModel,
     HowlerModelValidationError,
     ModelExtensionRegistry,
-    compound,
     keyword,
     list_field,
     model_extensions,
@@ -50,7 +49,7 @@ def test_finalize_without_extensions_returns_original_model() -> None:
 def test_single_plugin_extension_is_applied_and_mapped() -> None:
     """A declared extension field appears on the finalized model and its mapping."""
     registry = ModelExtensionRegistry()
-    registry.declare(ExtensionTarget, "evidence", list_field(compound(ExtensionChild), default=[]), plugin="evidence")
+    registry.declare(ExtensionTarget, "evidence", list_field(ExtensionChild, default=[]), plugin="evidence")
 
     finalized = registry.finalize(ExtensionTarget)
     assert finalized is not ExtensionTarget

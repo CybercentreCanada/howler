@@ -12,13 +12,15 @@ from howler.models import HowlerEmbeddedModel, keyword, register_model
 class Sentinel(HowlerEmbeddedModel):
     """The Sentinel fields contain any data relating to Sentinel."""
 
-    id: keyword(optional=True, description="The Microsoft Sentinel incident or alert identifier.")
-    tenant_id: keyword(optional=True, description="The tenant identifier that owns this Sentinel record.")
-    record_type: keyword(optional=True, description="The Sentinel record kind: incident, alert, or evidence.")
-    incident_id: keyword(optional=True, description="The parent Microsoft Sentinel incident identifier.")
-    alert_id: keyword(
-        optional=True, description="The source Microsoft Sentinel alert identifier for this alert or evidence record."
-    )
-    evidence_id: keyword(
-        optional=True, description="A stable key identifying a Sentinel evidence object within its source alert."
-    )
+    id: keyword(optional=True)
+    """The Microsoft Sentinel incident or alert identifier."""
+    tenant_id: keyword(optional=True)
+    """The tenant identifier that owns this Sentinel record."""
+    record_type: keyword(optional=True)
+    """The Sentinel record kind: incident, alert, or evidence."""
+    incident_id: keyword(optional=True)
+    """The parent Microsoft Sentinel incident identifier."""
+    alert_id: keyword(optional=True)
+    """The source Microsoft Sentinel alert identifier for this alert or evidence record."""
+    evidence_id: keyword(optional=True)
+    """A stable key identifying a Sentinel evidence object within its source alert."""
