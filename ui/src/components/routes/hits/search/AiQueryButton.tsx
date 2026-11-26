@@ -74,8 +74,7 @@ const AiQueryButton: FC<AiQueryButtonProps> = ({ query, setQuery, disabled = fal
     [generate]
   );
 
-  const features: Record<string, boolean> = config?.configuration?.features ?? {};
-  if (!features.ai_lucene) {
+  if (!config.configuration?.features.ai_lucene) {
     return null;
   }
 
