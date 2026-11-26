@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import keyword, list_field
+from howler.models import keyword
 
 
 class Ownership:
@@ -10,7 +10,7 @@ class Ownership:
 
     owner: keyword()
     """The person owning the object."""
-    admins: list_field(keyword(), default=[])
+    admins: list[keyword()] = []
     """The group administrator for this object."""
-    members: list_field(keyword(), default=[])
+    members: list[keyword()] = []
     """The group who can modify the object."""

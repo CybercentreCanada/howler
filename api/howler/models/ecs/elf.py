@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, integer, keyword, list_field, register_model
+from howler.models import HowlerEmbeddedModel, integer, keyword, register_model
 
 
 @register_model(index=True, store=True, description="Definition of an ELF file segment.", embedded=True)
@@ -78,17 +78,17 @@ class ELF(HowlerEmbeddedModel):
     """CPU type of the ELF file."""
     creation_date: keyword(optional=True)
     """Extracted when possible from the file's metadata."""
-    exports: list_field(keyword(), default=[])
+    exports: list[keyword()] = []
     """List of exported element names and types."""
     header: Header | None = None
     """Header information about the ELF file."""
-    imports: list_field(keyword(), optional=True)
+    imports: list[keyword()] | None = None
     """List of imported element names and types."""
-    sections: list_field(Section, optional=True)
+    sections: list[Section] | None = None
     """An array containing an object for each section of the ELF file."""
-    segments: list_field(Section, optional=True)
+    segments: list[Section] | None = None
     """An array containing an object for each segment of the ELF file."""
-    shared_libraries: list_field(keyword(), optional=True)
+    shared_libraries: list[keyword()] | None = None
     """List of shared libraries used by this ELF object."""
     telfhash: keyword(optional=True)
     """telfhash symbol hash for ELF file."""

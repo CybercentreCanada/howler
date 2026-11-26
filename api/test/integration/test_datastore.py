@@ -13,7 +13,7 @@ from retrying import retry
 from howler.datastore.collection import DATASTORE_INDEX_PREFIX, ESCollection
 from howler.datastore.exceptions import DataStoreException, VersionConflictException
 from howler.datastore.store import ESStore
-from howler.models import HowlerESModel, date, fields, integer, keyword, list_field, register_model, text
+from howler.models import HowlerESModel, date, fields, integer, keyword, register_model, text
 from howler.models.schema import document_mapping, index_settings
 
 with warnings.catch_warnings():
@@ -1199,7 +1199,7 @@ class DatastoreSearchDocument(HowlerESModel):
     status: keyword()
     owner: keyword(optional=True)
     severity: integer()
-    tags: list_field(keyword())
+    tags: list[keyword()]
     observed: date()
 
 

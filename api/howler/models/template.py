@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerESModel, case_insensitive_keyword, enum, keyword, list_field, register_model, uuid
+from howler.models import HowlerESModel, case_insensitive_keyword, enum, keyword, register_model, uuid
 
 
 @register_model(index=True, store=True, description="Model of templates")
@@ -19,5 +19,5 @@ class Template(HowlerESModel):
     """The type of template - personal or global?"""
     owner: keyword(optional=True)
     """The person to whom this template belongs. Applies to personal templates only."""
-    keys: list_field(keyword(), default=[])
+    keys: list[keyword()] = []
     """The list of fields to show when this template is used."""

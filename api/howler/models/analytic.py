@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import Field
-
 from howler.models import (
     HowlerEmbeddedModel,
     HowlerESModel,
@@ -14,8 +12,8 @@ from howler.models import (
     date,
     enum,
     keyword,
-    list_field,
     mapping,
+    metadata,
     register_model,
     text,
     uuid,
@@ -49,13 +47,13 @@ class Comment(HowlerEmbeddedModel):
 class TriageOptions(HowlerEmbeddedModel):
     """Settings for triaging this analytic."""
 
-    valid_assessments: list_field(keyword(), default=DEFAULT_TRIAGE["valid_assessments"])
+    valid_assessments: Annotated[list[keyword()], metadata(default=DEFAULT_TRIAGE["valid_assessments"])]
     """What list of assessments is valid for this analytic?"""
     skip_rationale: boolean(default=DEFAULT_TRIAGE["skip_rationale"])
     """Should traiging alerts under this analytic skip the rationale field?"""
-    dossiers: list_field(keyword(), default=[])
+    dossiers: list[keyword()] = []
     """A list of dossiers to present to the user when triaging alerts."""
-    rationales: list_field(keyword(), default=DEFAULT_TRIAGE["rationales"])
+    rationales: Annotated[list[keyword()], metadata(default=DEFAULT_TRIAGE["rationales"])]
     """A provided list of rationales that will be suggested when triaging alerts."""
 
 
@@ -81,19 +79,19 @@ class Analytic(HowlerESModel):
 
     analytic_id: uuid()
     """A UUID for this analytic"""
-    notebooks: list_field(Notebook, default=[])
+    notebooks: list[Notebook] = []
     """A list of useful notebooks for the analytic"""
     name: case_insensitive_keyword()
     """The name of the analytic."""
     owner: keyword(optional=True)
     """The username of the user who owns this analytic."""
-    contributors: list_field(keyword(), default=[])
+    contributors: list[keyword()] = []
     """A list of users who have contributed to this analytic."""
     description: text(optional=True)
     """A markdown description of the analytic"""
-    detections: list_field(case_insensitive_keyword(), default=[])
+    detections: list[case_insensitive_keyword()] = []
     """The detections which this analytic contains."""
-    comment: list_field(Comment, default=[])
+    comment: list[Comment] = []
     """A list of comments with timestamps and attribution."""
     rule: keyword(optional=True)
     """A rule query"""
@@ -101,5 +99,5 @@ class Analytic(HowlerESModel):
     """Type of rule"""
     rule_crontab: keyword(optional=True)
     """The interval for the rule to run at"""
-    triage_settings: Annotated[TriageOptions, Field(default=DEFAULT_TRIAGE)]
+    triage_settings: Annotated[TriageOptions, metadata(default=DEFAULT_TRIAGE)]
     """Settings for triaging this analytic."""

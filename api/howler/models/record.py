@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import Field
-
 from howler.config import CLASSIFICATION
 from howler.models import (
     HowlerEmbeddedModel,
@@ -14,7 +12,6 @@ from howler.models import (
     date,
     emptyable_keyword,
     keyword,
-    list_field,
     mapping,
     metadata,
     register_model,
@@ -76,7 +73,7 @@ class Record(HowlerESModel):
     """Maximum classification for the hit"""
     labels: mapping(keyword(), default={}, reference=ECS_REFERENCE)
     """Custom key/value pairs."""
-    tags: list_field(keyword(), default=[], reference=ECS_REFERENCE)
+    tags: Annotated[list[keyword()], metadata(reference=ECS_REFERENCE)] = []
     """List of keywords used to tag each event."""
     message: emptyable_keyword(default="", reference=ECS_REFERENCE)
     """Log message for log events, optimized for viewing in a log viewer"""
@@ -108,7 +105,7 @@ class Record(HowlerESModel):
     """Destination fields capture details about the receiver of a network exchange/packet."""
     dns: Annotated[DNS | None, metadata(reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-dns.html")] = None
     """Fields describing DNS queries and answers."""
-    ecs: Annotated[ECSVersion, metadata(reference=ECS_REFERENCE), Field(default={})]
+    ecs: Annotated[ECSVersion, metadata(reference=ECS_REFERENCE, default={})]
     """Meta-information specific to ECS."""
     error: Annotated[Error | None, metadata(reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-error.html")] = None
     """These fields can represent errors of any kind."""

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, date, integer, ip, keyword, list_field, register_model, text
+from howler.models import HowlerEmbeddedModel, date, integer, ip, keyword, register_model, text
 from howler.models.ecs.file import File
 
 
@@ -64,7 +64,7 @@ class Tactic(HowlerEmbeddedModel):
 class Software(HowlerEmbeddedModel):
     """Information about the software used by this threat."""
 
-    alias: list_field(keyword(), optional=True)
+    alias: list[keyword()] | None = None
     (
         "The alias(es) of the software for a set of related intrusion activity that are tracked by a common name in "
         "the security community."
@@ -73,7 +73,7 @@ class Software(HowlerEmbeddedModel):
     """The id of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®."""
     name: keyword(optional=True)
     """The name of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®."""
-    platform: list_field(keyword(), optional=True)
+    platform: list[keyword()] | None = None
     """The platforms of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®."""
     reference: keyword(optional=True)
     (
@@ -90,7 +90,7 @@ class Software(HowlerEmbeddedModel):
 class Group(HowlerEmbeddedModel):
     """Information about the group related to this threat."""
 
-    alias: list_field(keyword(), optional=True)
+    alias: list[keyword()] | None = None
     (
         "The alias(es) of the group for a set of related intrusion activity that are tracked by a common name in the "
         "security community."
@@ -193,7 +193,7 @@ class Enrichments(HowlerEmbeddedModel):
 class Threat(HowlerEmbeddedModel):
     """Fields to classify events and alerts according to a threat taxonomy."""
 
-    enrichments: list_field(Enrichments, optional=True)
+    enrichments: list[Enrichments] | None = None
     """List of enrichments marked threats from indicator."""
     feed: Feed | None = None
     """Threat feed information."""

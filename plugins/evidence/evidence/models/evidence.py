@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from howler.models import HowlerEmbeddedModel, date, emptyable_keyword, keyword, list_field, mapping, register_model
+from howler.models import HowlerEmbeddedModel, date, emptyable_keyword, keyword, mapping, metadata, register_model
 from howler.models.ecs.agent import Agent
 from howler.models.ecs.client import Client
 from howler.models.ecs.cloud import Cloud
@@ -34,7 +34,6 @@ from howler.models.ecs.user import User
 from howler.models.ecs.user_agent import UserAgent
 from howler.models.ecs.vulnerability import Vulnerability
 from howler.models.record import ECS_REFERENCE, ECSVersion
-from pydantic import Field
 
 
 @register_model(index=True, store=True, description="Evidence fields add a list of additional ECS objects.")
@@ -46,7 +45,7 @@ class Evidence(HowlerEmbeddedModel):
     """Date/time when the event originated."""
     labels: mapping(keyword(), default={}, reference=ECS_REFERENCE)
     """Custom key/value pairs."""
-    tags: list_field(keyword(), default=[], reference=ECS_REFERENCE)
+    tags: Annotated[list[keyword()], metadata(reference=ECS_REFERENCE)] = []
     """List of keywords used to tag each event."""
     message: emptyable_keyword(default="", reference=ECS_REFERENCE)
     """Log message for log events, optimized for viewing in a log viewer"""
@@ -62,7 +61,7 @@ class Evidence(HowlerEmbeddedModel):
     """Destination fields."""
     dns: DNS | None = None
     """Fields describing DNS queries and answers."""
-    ecs: Annotated[ECSVersion, Field(default={})]
+    ecs: Annotated[ECSVersion, metadata(default={})]
     """Meta-information specific to ECS."""
     error: Error | None = None
     """These fields can represent errors of any kind."""

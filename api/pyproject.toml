@@ -52,7 +52,7 @@ exclude = "test"
 
 [[tool.mypy.overrides]]
 module = ["howler.models", "howler.models.*"]
-# Field-builder functions (e.g. `keyword()`, `list_field(...)`) return `Annotated[...]` types and
+# Field-builder functions (e.g. `keyword()`, `mapping(...)`) return `Annotated[...]` types and
 # are used directly as field annotations, which mypy cannot statically verify.
 disable_error_code = ["valid-type", "var-annotated", "metaclass"]
 

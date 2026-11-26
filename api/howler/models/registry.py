@@ -141,7 +141,10 @@ def annotation_metadata(annotation: Any, extra: list[Any] | None = None) -> list
     origin = get_origin(annotation)
     if origin is Annotated:
         nested, *items = get_args(annotation)
-        metadata.extend(items)
+        for item in items:
+            metadata.append(item)
+            if isinstance(item, FieldInfo):
+                metadata.extend(item.metadata)
         metadata.extend(annotation_metadata(nested))
     elif origin is not None:
         for item in get_args(annotation):

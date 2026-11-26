@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerESModel, case_insensitive_keyword, enum, list_field, register_model, uuid
+from howler.models import HowlerESModel, case_insensitive_keyword, enum, register_model, uuid
 from howler.models.lead import Lead
 from howler.models.ownership import Ownership
 from howler.models.pivot import Pivot
@@ -18,9 +18,9 @@ class Dossier(Ownership, HowlerESModel):
 
     dossier_id: uuid()
     """A UUID for this dossier."""
-    leads: list_field(Lead, default=[])
+    leads: list[Lead] = []
     """A list of the leads to show when the query matches the given alert."""
-    pivots: list_field(Pivot, default=[])
+    pivots: list[Pivot] = []
     """A list of the pivots to show when the query matches the given alert."""
     title: case_insensitive_keyword()
     """The title of this dossier."""

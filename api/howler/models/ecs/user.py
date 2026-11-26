@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, email, keyword, list_field, register_model
+from typing import Annotated
+
+from howler.models import HowlerEmbeddedModel, email, keyword, metadata, register_model
 from howler.models.ecs.group import Group
 
 
@@ -27,7 +29,7 @@ class UserNested(HowlerEmbeddedModel):
     """Unique identifier of the user."""
     name: keyword(optional=True)
     """Short name or login of the user."""
-    roles: list_field(keyword(), optional=True, default=[])
+    roles: Annotated[list[keyword()] | None, metadata(optional=True)] = []
     """Array of user roles at the time of the event."""
 
 
@@ -54,7 +56,7 @@ class User(HowlerEmbeddedModel):
     """Unique identifier of the user."""
     name: keyword(optional=True)
     """Short name or login of the user."""
-    roles: list_field(keyword(), optional=True, default=[])
+    roles: Annotated[list[keyword()] | None, metadata(optional=True)] = []
     """Array of user roles at the time of the event."""
 
 

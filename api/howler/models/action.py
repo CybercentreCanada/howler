@@ -8,7 +8,6 @@ from howler.models import (
     case_insensitive_keyword,
     enum,
     keyword,
-    list_field,
     register_model,
     uuid,
 )
@@ -37,7 +36,7 @@ class Action(Ownership, HowlerESModel):
     """The name of the action."""
     query: case_insensitive_keyword()
     """The query this action is run against."""
-    triggers: list_field(enum(values=VALID_TRIGGERS), default=[])
+    triggers: list[enum(values=VALID_TRIGGERS)] = []
     """A list of events for which trigger this action"""
-    operations: list_field(Operation, default=[])
+    operations: list[Operation] = []
     """A list of the operations this action consists of."""

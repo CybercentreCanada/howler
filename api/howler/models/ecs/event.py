@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, date, enum, float_field, integer, keyword, list_field, register_model
+from howler.models import HowlerEmbeddedModel, date, enum, float_field, integer, keyword, register_model
 
 EVENT_CATEGORIES = [
     "authentication",
@@ -65,7 +65,7 @@ class ECSEvent(HowlerEmbeddedModel):
 
     action: keyword(optional=True)
     """The action captured by the event."""
-    category: list_field(enum(values=EVENT_CATEGORIES), optional=True)
+    category: list[enum(values=EVENT_CATEGORIES)] | None = None
     (
         'Represents the "big buckets" of ECS categories. For example, filtering on event.category:process yields all '
         "events relating to process activity. This field is closely related to event.type, which is used as a "
@@ -127,7 +127,7 @@ class ECSEvent(HowlerEmbeddedModel):
         "This field should be populated when the event's timestamp does not include timezone information already (e.g. "
         "default Syslog timestamps)."
     )
-    type: list_field(enum(values=EVENT_TYPE), optional=True)
+    type: list[enum(values=EVENT_TYPE)] | None = None
     (
         'Represents a categorization "sub-bucket" that, when used along with the event.category field values, enables '
         "filtering events down to a level appropriate for single visualization."

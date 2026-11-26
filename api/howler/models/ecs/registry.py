@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, keyword, list_field, register_model
+from howler.models import HowlerEmbeddedModel, keyword, register_model
 
 
 @register_model(
@@ -16,7 +16,7 @@ class RegistryData(HowlerEmbeddedModel):
 
     bytes: keyword(optional=True)
     """Original bytes written with base64 encoding."""
-    strings: list_field(keyword(), optional=True)
+    strings: list[keyword()] | None = None
     """Content when writing string types."""
     type: keyword(optional=True)
     """Standard registry type for encoding contents."""

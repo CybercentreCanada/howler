@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Annotated
+
 from howler.models import (
     HowlerEmbeddedModel,
     date,
@@ -9,7 +11,7 @@ from howler.models import (
     float_field,
     howler_hash,
     keyword,
-    list_field,
+    metadata,
     register_model,
     uuid,
 )
@@ -39,14 +41,14 @@ class EventData(HowlerEmbeddedModel):
 
     id: uuid()
     """A UUID for this event."""
-    data: list_field(keyword(), default=[], store=False)
+    data: Annotated[list[keyword()], metadata(store=False)] = []
     """Raw telemetry records associated with this event."""
     hash: howler_hash()
     (
         "A hash of the event used for deduplicating hits. Supports any hexadecimal string between 1 and 64 characters "
         "long."
     )
-    related: list_field(keyword(), default=[])
+    related: list[keyword()] = []
     """Related records."""
     outline: _Header | None = None
     """The user specified header of the event."""
@@ -56,9 +58,9 @@ class EventData(HowlerEmbeddedModel):
     """Level of escalation of this event."""
     expiry: date(optional=True)
     """User selected time for event expiry"""
-    comment: list_field(Comment, default=[])
+    comment: list[Comment] = []
     """A list of comments with timestamps and attribution."""
-    log: list_field(_Log, default=[])
+    log: list[_Log] = []
     """A list of changes to the event with timestamps and attribution."""
 
 

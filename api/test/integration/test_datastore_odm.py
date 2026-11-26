@@ -46,11 +46,11 @@ class BaseTestModel(HowlerESModel):
     no_index: fields.keyword(index=False, store=False, optional=True)
     dots: fields.mapping(Position, default={})
     birthday: fields.date()
-    tags: fields.list_field(fields.enum({"silly", "cats", "10"}), default=[], copyto="features")
+    tags: Annotated[list[fields.enum({"silly", "cats", "10"})], fields.metadata(copyto="features")] = []
     size: Annotated[MeasurementModel, Field(default={"depth": 100, "width": 100})]
-    features: fields.list_field(fields.text(), default=[])
+    features: list[fields.text()] = []
     metadata: fields.mapping(fields.text(), default={})
-    things: fields.list_field(ThingsModel, default=[])
+    things: list[ThingsModel] = []
 
 
 def safe_date(pattern):

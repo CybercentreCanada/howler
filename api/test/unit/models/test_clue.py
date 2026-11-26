@@ -5,9 +5,8 @@ from __future__ import annotations
 from typing import Annotated
 
 import pytest
-from pydantic import Field
 
-from howler.models import HowlerModelValidationError, ModelExtensionRegistry, model_registry
+from howler.models import HowlerModelValidationError, ModelExtensionRegistry, metadata, model_registry
 from howler.models.clue import Clue, TypeMap
 from howler.models.hit import Hit
 
@@ -89,7 +88,7 @@ class TestHitClueExtension:
 
     def test_optional_extension_validates_serializes_and_maps(self) -> None:
         registry = ModelExtensionRegistry()
-        registry.declare(Hit, "clue", Annotated[Clue | None, Field(default=None)], plugin="clue")
+        registry.declare(Hit, "clue", Annotated[Clue | None, metadata(default=None)], plugin="clue")
         hit_model = registry.finalize(Hit)
         hit_data = {"howler": {"id": "hit-1", "analytic": "test", "hash": "a"}}
 

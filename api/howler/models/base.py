@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Mapping
+import types
 from datetime import datetime
-from typing import Any, ClassVar, Literal, TypeVar, cast, get_args, get_origin
+from typing import Annotated, Any, ClassVar, Literal, TypeVar, Union, cast, get_args, get_origin
 
 from pydantic import (
     AliasGenerator,
@@ -29,7 +29,7 @@ from howler.models.fields import (
     _make_annotated,
     format_datetime,
 )
-from howler.models.registry import field_metadata, model_annotation, serialized_field_name, unwrap_annotation
+from howler.models.registry import field_metadata, model_annotation, unwrap_annotation
 
 ModelType = TypeVar("ModelType", bound=BaseModel)
 IPFormat = Literal["str", "int", "encoded_bytes"]
@@ -71,9 +71,45 @@ def flat_to_nested(data: dict[str, Any]) -> dict[str, Any]:
     return nested
 
 
-def _list_item_annotation(annotation: Any) -> Any | None:
+def _is_nullable_annotation(annotation: Any) -> bool:
+    metadata = field_metadata(annotation)
+    if metadata is not None and metadata.optional:
+        return True
+    current = annotation
+    while get_origin(current) is Annotated:
+        current = get_args(current)[0]
+    origin = get_origin(current)
+    return origin in (Union, types.UnionType) and type(None) in get_args(current)
+
+
+def _contains_list_container(annotation: Any) -> bool:
     unwrapped = unwrap_annotation(annotation)
-    return get_args(unwrapped)[0] if get_origin(unwrapped) is list else None
+    origin = get_origin(unwrapped)
+    if origin is list:
+        return True
+    if origin is dict:
+        args = get_args(unwrapped)
+        return len(args) == 2 and _contains_list_container(args[1])
+    return False
+
+
+def _normalize_list_inputs(annotation: Any, value: Any) -> Any:
+    unwrapped = unwrap_annotation(annotation)
+    origin = get_origin(unwrapped)
+    if value is None:
+        return [] if origin is list and not _is_nullable_annotation(annotation) else None
+    if origin is list:
+        child_annotation = get_args(unwrapped)[0]
+        if isinstance(value, dict) and model_annotation(child_annotation) is not None:
+            value = _expand_compound_list(value)
+        if isinstance(value, list) and _contains_list_container(child_annotation):
+            return [_normalize_list_inputs(child_annotation, item) for item in value]
+        return value
+    if origin is dict and isinstance(value, dict):
+        args = get_args(unwrapped)
+        if len(args) == 2 and _contains_list_container(args[1]):
+            return {k: _normalize_list_inputs(args[1], item) for k, item in value.items()}
+    return value
 
 
 def _finalize_primitives(
@@ -127,117 +163,11 @@ def _expand_compound_list(value: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 class HowlerModelValidationError(HowlerValueError):
-    """Stable Howler error wrapping Pydantic's implementation-specific error."""
+    """Howler error wrapping a Pydantic validation error."""
 
-    def __init__(self, error: ValidationError, model_type: type[BaseModel] | None = None):
+    def __init__(self, error: ValidationError):
         self.errors = error.errors(include_url=False)
-        root_name = model_type.__name__ if model_type is not None else error.title
-        messages: list[str] = []
-        for item in self.errors:
-            try:
-                location = _public_error_location(model_type, root_name, item.get("loc", ()))
-            except Exception:
-                location = root_name.lower()
-            try:
-                detail = _public_error_message(item)
-            except Exception:
-                detail = "Invalid value"
-            messages.append(f"[{location}] {detail}")
-        message = "\n".join(messages)
-        super().__init__(message, cause=error)
-
-
-def _public_error_location(
-    model_type: type[BaseModel] | None,
-    root_name: str,
-    location: tuple[Any, ...] | list[Any],
-) -> str:
-    """Translate Pydantic locations to stable Howler serialized field paths."""
-    components = [root_name.lower()]
-    current: Any = model_type
-    position = 0
-
-    while position < len(location):
-        token = location[position]
-        unwrapped = unwrap_annotation(current) if current is not None else None
-        origin = get_origin(unwrapped)
-        arguments = get_args(unwrapped)
-
-        if isinstance(unwrapped, type) and issubclass(unwrapped, BaseModel) and isinstance(token, str):
-            field_entry = _field_input_map(unwrapped).get(token)
-            if field_entry is not None:
-                python_name, info = field_entry
-                components.append(serialized_field_name(python_name, info))
-                current = info.annotation
-                position += 1
-                continue
-
-        if origin is list and isinstance(token, int) and arguments:
-            components.append(str(token))
-            current = arguments[0]
-            position += 1
-            continue
-
-        if origin is dict and len(arguments) == 2:
-            components.append(str(token))
-            current = arguments[1]
-            position += 1
-            continue
-
-        components.append(str(token))
-        position += 1
-
-    return ".".join(components)
-
-
-def _public_error_message(error: Mapping[str, Any]) -> str:
-    """Return an input-free, stable explanation selected by Pydantic's error type."""
-    error_type = error.get("type")
-    if not isinstance(error_type, str):
-        return "Invalid value"
-
-    if error_type == "value_error":
-        message = error.get("msg")
-        static_domain_messages = {
-            "Rule timeframe must be a positive integer or None",
-            "Rule cannot expire after resolved when no timeframe is set",
-            "Case items must be root-level (parent must be null)",
-            "Group cannot be an empty string",
-            'Data "group" should be a slash-separated string.',
-            "A group must consist of a relative path with no empty segments (e.g. a/b/c)",
-            "One of your pivots has duplicate keys set.",
-        }
-        for safe_message in static_domain_messages:
-            if message == f"Value error, {safe_message}":
-                return safe_message
-        if message == "Value error, Empty strings are not allowed without defaults":
-            return "Empty strings are not allowed without defaults"
-        if isinstance(message, str) and message.startswith(
-            "Value error, If no explanation provided, you must provide the following values: "
-        ):
-            return "An explanation or complete change details are required"
-        return "Invalid value"
-
-    messages: dict[str, str] = {
-        "missing": "Field required",
-        "extra_forbidden": "Extra inputs are not permitted",
-        "int_type": "Input should be a valid integer",
-        "int_parsing": "Input should be a valid integer",
-        "int_from_float": "Input should be a valid integer",
-        "float_type": "Input should be a valid number",
-        "float_parsing": "Input should be a valid number",
-        "finite_number": "Input should be a finite number",
-        "string_type": "Input should be a valid string",
-        "bool_type": "Input should be a valid boolean",
-        "bool_parsing": "Input should be a valid boolean",
-        "list_type": "Input should be a valid list",
-        "tuple_type": "Input should be a valid tuple",
-        "dict_type": "Input should be a valid dictionary",
-        "set_type": "Input should be a valid set",
-        "model_type": "Input should be a valid object",
-        "model_attributes_type": "Input should be a valid object",
-    }
-    return messages.get(error_type, "Invalid value")
+        super().__init__(str(error), cause=error)
 
 
 class HowlerModelMixin:
@@ -271,11 +201,10 @@ class HowlerModelMixin:
                 (candidate for candidate in input_names if isinstance(candidate, str) and candidate in nested),
                 None,
             )
-            if key is None or not isinstance(nested[key], dict):
+            if key is None:
                 continue
-            item_annotation = _list_item_annotation(info.annotation)
-            if item_annotation is not None and model_annotation(item_annotation) is not None:
-                nested[key] = _expand_compound_list(nested[key])
+            full_annotation = _make_annotated(info.annotation, *info.metadata) if info.metadata else info.annotation
+            nested[key] = _normalize_list_inputs(full_annotation, nested[key])
         return nested
 
     @model_serializer(mode="wrap")
@@ -306,7 +235,7 @@ class HowlerModelMixin:
         try:
             super().__init__(**data)
         except ValidationError as error:
-            raise HowlerModelValidationError(error, cast(type[BaseModel], type(self))) from error
+            raise HowlerModelValidationError(error) from error
 
     # Keep Pydantic's native schema validation path for nested models; only translate errors at the outer boundary.
     __init__.__pydantic_base_init__ = True  # type: ignore[attr-defined]
@@ -315,7 +244,7 @@ class HowlerModelMixin:
         try:
             super().__setattr__(name, value)
         except ValidationError as error:
-            raise HowlerModelValidationError(error, cast(type[BaseModel], type(self))) from error
+            raise HowlerModelValidationError(error) from error
 
     @classmethod
     def model_validate(
@@ -329,8 +258,7 @@ class HowlerModelMixin:
         by_alias: bool | None = None,
         by_name: bool | None = None,
     ) -> Self:
-        """Validate data while exposing the stable Howler exception hierarchy."""
-        model_type = cast(type[BaseModel], cls)
+        """Validate data while exposing the Howler exception hierarchy."""
         try:
             validated = cast(Any, super()).model_validate(
                 obj,
@@ -343,7 +271,7 @@ class HowlerModelMixin:
             )
             return cast(Self, validated)
         except ValidationError as error:
-            raise HowlerModelValidationError(error, model_type) from error
+            raise HowlerModelValidationError(error) from error
 
     @classmethod
     def model_validate_json(
@@ -356,8 +284,7 @@ class HowlerModelMixin:
         by_alias: bool | None = None,
         by_name: bool | None = None,
     ) -> Self:
-        """Validate JSON data while exposing the stable Howler exception hierarchy."""
-        model_type = cast(type[BaseModel], cls)
+        """Validate JSON data while exposing the Howler exception hierarchy."""
         try:
             validated = cast(Any, super()).model_validate_json(
                 json_data,
@@ -369,7 +296,7 @@ class HowlerModelMixin:
             )
             return cast(Self, validated)
         except ValidationError as error:
-            raise HowlerModelValidationError(error, model_type) from error
+            raise HowlerModelValidationError(error) from error
 
     @classmethod
     def model_validate_strings(
@@ -382,8 +309,7 @@ class HowlerModelMixin:
         by_alias: bool | None = None,
         by_name: bool | None = None,
     ) -> Self:
-        """Validate string-encoded data while exposing the stable Howler exception hierarchy."""
-        model_type = cast(type[BaseModel], cls)
+        """Validate string-encoded data while exposing the Howler exception hierarchy."""
         try:
             validated = cast(Any, super()).model_validate_strings(
                 obj,
@@ -395,7 +321,7 @@ class HowlerModelMixin:
             )
             return cast(Self, validated)
         except ValidationError as error:
-            raise HowlerModelValidationError(error, model_type) from error
+            raise HowlerModelValidationError(error) from error
 
     def as_primitives(
         self,
@@ -549,7 +475,7 @@ def construct_partial(
     try:
         values = _partial_values(model_type, nested, ignore_unknown=ignore_unknown)
     except ValidationError as error:
-        raise HowlerModelValidationError(error, model_type) from error
+        raise HowlerModelValidationError(error) from error
 
     if "meta" in model_type.model_fields:
         meta_info = model_type.model_fields["meta"]
@@ -649,11 +575,12 @@ def validate_field_value(
     if isinstance(resolved, type) and issubclass(resolved, BaseModel):
         return resolved.model_validate(value).model_dump(by_alias=True, exclude_none=True)
 
+    value = _normalize_list_inputs(full_annotation, value)
     adapter = TypeAdapter(full_annotation, config=ADAPTER_CONFIG)
     try:
         validated = adapter.validate_python(value)
     except ValidationError as error:
-        raise HowlerModelValidationError(error, model_type) from error
+        raise HowlerModelValidationError(error) from error
     if isinstance(validated, datetime):
         return validated.isoformat()
     return _finalize_primitives(

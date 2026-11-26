@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import Field
-
 from howler.models import (
     HowlerEmbeddedModel,
     case_insensitive_keyword,
@@ -14,7 +12,6 @@ from howler.models import (
     float_field,
     howler_hash,
     keyword,
-    list_field,
     mapping,
     metadata,
     register_model,
@@ -153,23 +150,23 @@ class Incident(HowlerEmbeddedModel):
 class Label(HowlerEmbeddedModel):
     """Labels for the hit."""
 
-    assignments: list_field(keyword(), default=[])
+    assignments: list[keyword()] = []
     """List of assignments for the hit."""
-    generic: list_field(keyword(), default=[])
+    generic: list[keyword()] = []
     """List of generic labels for the hit."""
-    insight: list_field(keyword(), default=[])
+    insight: list[keyword()] = []
     """List of insight labels for the hit."""
-    mitigation: list_field(keyword(), default=[])
+    mitigation: list[keyword()] = []
     """List of mitigation labels for the hit."""
-    victim: list_field(keyword(), default=[])
+    victim: list[keyword()] = []
     """List of victim labels for the hit."""
-    campaign: list_field(keyword(), default=[])
+    campaign: list[keyword()] = []
     """List of campaign labels for the hit."""
-    threat: list_field(keyword(), default=[])
+    threat: list[keyword()] = []
     """List of threat labels for the hit."""
-    tuning: list_field(keyword(), default=[])
+    tuning: list[keyword()] = []
     """List of tuning labels for the hit."""
-    operation: list_field(keyword(), default=[])
+    operation: list[keyword()] = []
     """List of operation labels for the hit."""
 
 
@@ -177,11 +174,11 @@ class Label(HowlerEmbeddedModel):
 class Votes(HowlerEmbeddedModel):
     """Votes for the hit."""
 
-    benign: list_field(keyword(), default=[])
+    benign: list[keyword()] = []
     """List of users who voted benign."""
-    obscure: list_field(keyword(), default=[])
+    obscure: list[keyword()] = []
     """List of users who voted obscure."""
-    malicious: list_field(keyword(), default=[])
+    malicious: list[keyword()] = []
     """List of users who voted malicious."""
 
 
@@ -205,9 +202,9 @@ class HowlerData(HowlerEmbeddedModel):
     """Title of the analytic."""
     assignment: keyword(default=DEFAULT_ASSIGNMENT)
     """Unique identifier of the assigned user."""
-    data: list_field(keyword(), default=[], store=False, sync=False)
+    data: Annotated[list[keyword()], metadata(store=False, sync=False)] = []
     """Raw telemetry records associated with this hit."""
-    links: list_field(Link, default=[], sync=False)
+    links: Annotated[list[Link], metadata(sync=False)] = []
     """A list of links associated with this hit."""
     detection: case_insensitive_keyword(optional=True)
     """The detection that produced this hit."""
@@ -216,7 +213,7 @@ class HowlerData(HowlerEmbeddedModel):
         "A hash of the event used for deduplicating hits. Supports any hexadecimal string between 1 and 64 characters "
         "long."
     )
-    related: list_field(keyword(), default=[])
+    related: list[keyword()] = []
     """Related records."""
     reliability: float_field(optional=True)
     """Metric decoupled from the value in the detection information."""
@@ -242,9 +239,9 @@ class HowlerData(HowlerEmbeddedModel):
     """The rationale behind the hit assessment. Allows it to be understood and verified by other analysts."""
     triaged: date(optional=True)
     """Timestamp at which the hit was triaged."""
-    comment: list_field(Comment, default=[], sync=False)
+    comment: Annotated[list[Comment], metadata(sync=False)] = []
     """A list of comments with timestamps and attribution."""
-    log: list_field(_Log, default=[], sync=False)
+    log: Annotated[list[_Log], metadata(sync=False)] = []
     """A list of changes to the hit with timestamps and attribution."""
     monitored: keyword(optional=True)
     """Link to the incident monitoring dashboard."""
@@ -254,11 +251,11 @@ class HowlerData(HowlerEmbeddedModel):
     """Link to the mitigation record (tool dependent)."""
     outline: _Header | None = None
     """The user specified header of the hit"""
-    incidents: list_field(Incident, default=[])
+    incidents: list[Incident] = []
     """Fields describing an incident associated with this alert."""
-    labels: Annotated[Label | None, metadata(optional=True), Field(default=DEFAULT_LABELS)]
+    labels: Annotated[Label | None, metadata(optional=True, default=DEFAULT_LABELS)]
     """List of labels relating to the hit"""
-    votes: Annotated[Votes | None, metadata(optional=True), Field(default=DEFAULT_VOTES)]
+    votes: Annotated[Votes | None, metadata(optional=True, default=DEFAULT_VOTES)]
     """Votes relating to the hit"""
-    dossier: list_field(Lead, default=[], sync=False)
+    dossier: Annotated[list[Lead], metadata(sync=False)] = []
     """A list of leads forming the dossier associated with this hit"""

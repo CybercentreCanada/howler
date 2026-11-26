@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, ip, keyword, list_field, register_model
+from typing import Annotated
+
+from howler.models import HowlerEmbeddedModel, keyword, metadata, register_model
+from howler.models import ip as ip_field
 from howler.models.ecs.egress import Egress
 from howler.models.ecs.ingress import Ingress
 from howler.models.ecs.interface import Interface
@@ -28,9 +31,9 @@ class Observer(HowlerEmbeddedModel):
     """Holds information like interface number, name, vlan, and zone to classify ingress traffic"""
     interface: Interface | None = None
     """Interface being observed"""
-    ip: list_field(ip(), default=[])
+    ip: Annotated[list[ip_field()], metadata(default=[])]
     """IP addresses of the observer."""
-    mac: list_field(keyword(), default=[])
+    mac: list[keyword()] = []
     """Mac addresses of the observer."""
     name: keyword(optional=True)
     """Custom name of the observer"""

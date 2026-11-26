@@ -1,7 +1,9 @@
 import json
 from types import SimpleNamespace
+from typing import Annotated
 
 import pytest
+from pydantic import Field
 
 from howler.common.exceptions import HowlerValueError
 from howler.models import (
@@ -10,7 +12,6 @@ from howler.models import (
     integer,
     json_field,
     keyword,
-    list_field,
     mapping,
     model_extensions,
 )
@@ -33,15 +34,15 @@ def convert(request, monkeypatch):
         model_extensions.declare(target, "plugin", Entry, plugin="example")
         model_extensions.declare(target, "grouped", mapping(Entry, default={}, index=False), plugin="example")
         model_extensions.declare(
-            target, "grouped_lists", mapping(list_field(Entry), default={}, index=False), plugin="example"
+            target, "grouped_lists", mapping(list[Entry], default={}, index=False), plugin="example"
         )
         model_extensions.declare(target, "scalar_map", mapping(keyword(), default={}), plugin="example")
         model_extensions.declare(target, "payload", json_field(optional=True), plugin="example")
-        model_extensions.declare(target, "json_list", list_field(json_field(), default=[]), plugin="example")
-        model_extensions.declare(target, "json_map", mapping(json_field(), default={}), plugin="example")
         model_extensions.declare(
-            target, "json_map_list", mapping(list_field(json_field()), default={}), plugin="example"
+            target, "json_list", Annotated[list[json_field()], Field(default=[])], plugin="example"
         )
+        model_extensions.declare(target, "json_map", mapping(json_field(), default={}), plugin="example")
+        model_extensions.declare(target, "json_map_list", mapping(list[json_field()], default={}), plugin="example")
         collection = SimpleNamespace(model_class=model_extensions.finalize(target))
         monkeypatch.setattr(service, "datastore", lambda: SimpleNamespace(**{index: collection}))
         convert_record = getattr(service, f"convert_{index}")
@@ -177,7 +178,7 @@ def test_overwrite_retains_stored_and_supplied_empty_compounds(flatten_patch_map
     class ExtendedHit(Hit):
         stored_plugin: Entry | None = None
         new_plugin: Entry | None = None
-        absent_list: list_field(Entry, optional=True)
+        absent_list: list[Entry] | None = None
         populated: Entry
 
     stored = ExtendedHit.model_validate(
@@ -202,7 +203,7 @@ def test_overwrite_retains_stored_and_supplied_empty_compounds(flatten_patch_map
 @pytest.mark.parametrize("replace", [False, True])
 def test_overwrite_empty_dynamic_mappings_follow_original_route_behavior(flatten_patch_mappings, replace):
     class ExtendedHit(Hit):
-        groups: mapping(list_field(keyword()))
+        groups: mapping(list[keyword()])
         scalar_map: mapping(keyword())
         compounds: mapping(Entry, index=False)
 

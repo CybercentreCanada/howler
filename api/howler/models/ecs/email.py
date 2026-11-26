@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import Field
-
-from howler.models import HowlerEmbeddedModel, date, email, integer, ip, keyword, list_field, register_model
+from howler.models import HowlerEmbeddedModel, date, email, integer, ip, keyword, metadata, register_model
 from howler.models.ecs.hash import Hashes
 
 
@@ -55,7 +53,7 @@ class ParentEmail(HowlerEmbeddedModel):
     """The email address of BCC recipient."""
     cc: Address | None = None
     """The email address of CC recipient."""
-    from_: Annotated[Address | None, Field(alias="from")] = None
+    from_: Annotated[Address | None, metadata(alias="from")] = None
     """The email address of the sender, typically from the RFC 5322 From: header field."""
     message_id: keyword(optional=True)
     """Identifier from the RFC 5322 Message-ID: email header that refers to a particular email message."""
@@ -80,7 +78,7 @@ class ParentEmail(HowlerEmbeddedModel):
 class Email(HowlerEmbeddedModel):
     """Event details relating to an email transaction."""
 
-    attachments: list_field(Attachment, optional=True)
+    attachments: list[Attachment] | None = None
     """A list of objects describing the attachment files sent along with an email message."""
     bcc: Address | None = None
     """The email address of BCC recipient."""
@@ -92,7 +90,7 @@ class Email(HowlerEmbeddedModel):
     """The date and time when the email message was received by the service or client."""
     direction: keyword(optional=True)
     """The direction of the message based on the sending and receiving domains."""
-    from_: Annotated[Address | None, Field(alias="from")] = None
+    from_: Annotated[Address | None, metadata(alias="from")] = None
     """The email address of the sender, typically from the RFC 5322 From: header field."""
     local_id: keyword(optional=True)
     """Unique identifier given to the email by the source that created the event."""

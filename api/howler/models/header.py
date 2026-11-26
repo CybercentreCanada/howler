@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, keyword, list_field, register_model
+from howler.models import HowlerEmbeddedModel, keyword, register_model
 
 
 @register_model(index=True, store=True, description="Record outline header.", embedded=True)
@@ -13,7 +13,7 @@ class Header(HowlerEmbeddedModel):
     """The threat of the record."""
     target: keyword(optional=True)
     """The target of the record."""
-    indicators: list_field(keyword(description="Indicators of the record."), default=[])
+    indicators: list[keyword(description="Indicators of the record.")] = []
     """Indicators of the record."""
     summary: keyword(optional=True)
     """Summary of the record."""

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from contextvars import Context
+from typing import Annotated
 
 import pytest
 
@@ -14,7 +15,7 @@ from howler.models import (
     HowlerModelValidationError,
     ModelExtensionRegistry,
     keyword,
-    list_field,
+    metadata,
     model_extensions,
     model_registry,
     register_model,
@@ -49,7 +50,9 @@ def test_finalize_without_extensions_returns_original_model() -> None:
 def test_single_plugin_extension_is_applied_and_mapped() -> None:
     """A declared extension field appears on the finalized model and its mapping."""
     registry = ModelExtensionRegistry()
-    registry.declare(ExtensionTarget, "evidence", list_field(ExtensionChild, default=[]), plugin="evidence")
+    registry.declare(
+        ExtensionTarget, "evidence", Annotated[list[ExtensionChild], metadata(default=[])], plugin="evidence"
+    )
 
     finalized = registry.finalize(ExtensionTarget)
     assert finalized is not ExtensionTarget

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, domain, integer, ip, keyword, list_field, register_model
+from howler.models import HowlerEmbeddedModel, domain, integer, ip, keyword, register_model
 
 
 @register_model(index=True, store=True, description="An answer section returned by the server.", embedded=True)
@@ -48,9 +48,9 @@ class DNSQuestion(HowlerEmbeddedModel):
 class DNS(HowlerEmbeddedModel):
     """Fields describing DNS queries and answers."""
 
-    answers: list_field(DNSAnswer, optional=True)
+    answers: list[DNSAnswer] | None = None
     """An array containing an object for each answer section returned by the server."""
-    header_flags: list_field(keyword(), optional=True)
+    header_flags: list[keyword()] | None = None
     """Array of 2 letter DNS header flags."""
     id: keyword(optional=True)
     """The DNS packet identifier assigned by the program that generated the query."""
@@ -58,7 +58,7 @@ class DNS(HowlerEmbeddedModel):
     """The DNS operation code that specifies the kind of query in the message."""
     question: DNSQuestion | None = None
     """An object encapsulating the question asked to the server."""
-    resolved_ip: list_field(ip(), optional=True)
+    resolved_ip: list[ip()] | None = None
     """Array containing all IPs seen in answers.data."""
     response_code: keyword(optional=True)
     """The DNS response code."""

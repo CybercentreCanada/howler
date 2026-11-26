@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import Field
-
 from howler.models import (
     HowlerEmbeddedModel,
     HowlerESModel,
@@ -14,7 +12,7 @@ from howler.models import (
     enum,
     integer,
     keyword,
-    list_field,
+    metadata,
     register_model,
     uuid,
 )
@@ -43,7 +41,7 @@ class Settings(HowlerEmbeddedModel):
     """Should the user advance to the next alert when triage is complete?"""
     display: enum(values=["list", "grid"], optional=True)
     """The layout to use when opening this view"""
-    columns: list_field(Annotated[GridColumn, Field(description="The columns to display in this view.")], optional=True)
+    columns: list[Annotated[GridColumn, metadata(description="The columns to display in this view.")]] | None = None
 
 
 @register_model(index=True, store=True, description="Model of views")
@@ -52,7 +50,7 @@ class View(Ownership, HowlerESModel):
 
     view_id: uuid()
     """A UUID for this view"""
-    indexes: list_field(keyword(), default=DEFAULT_INDEXES)
+    indexes: list[keyword()] = DEFAULT_INDEXES
     """What indexes this view applies to."""
     title: case_insensitive_keyword()
     """The name of this view."""
@@ -64,5 +62,5 @@ class View(Ownership, HowlerESModel):
     """The time span to use by default when opening this view"""
     type: enum(values=["personal", "global", "readonly"])
     """The type of view"""
-    settings: Annotated[Settings, Field(default={"advance_on_triage": False})]
+    settings: Annotated[Settings, metadata(default={"advance_on_triage": False})]
     """Additional View Settings"""

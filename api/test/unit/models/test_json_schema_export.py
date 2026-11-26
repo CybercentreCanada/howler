@@ -5,7 +5,7 @@ import os
 import subprocess
 import sys
 from textwrap import dedent
-from typing import Literal
+from typing import Annotated, Literal
 
 import pytest
 from jsonschema import Draft202012Validator
@@ -17,8 +17,8 @@ from howler.models import (
     any_field,
     construct_partial,
     ip,
-    list_field,
     mapping,
+    metadata,
     model_extensions,
 )
 from howler.models.action import Action
@@ -167,7 +167,7 @@ def test_any_output_omits_null_properties_and_mapping_values_but_retains_null_ar
     registry = ModelExtensionRegistry()
     registry.declare(Case, "payload", any_field(optional=True), plugin="example")
     registry.declare(Case, "values", mapping(any_field()), plugin="example")
-    registry.declare(Case, "items_by_key", mapping(list_field(any_field())), plugin="example")
+    registry.declare(Case, "items_by_key", mapping(list[any_field()]), plugin="example")
     model = registry.finalize(Case)
     schema = entity_schema({"case": model})
     Draft202012Validator.check_schema(schema)
@@ -201,7 +201,7 @@ def test_any_output_omits_null_properties_and_mapping_values_but_retains_null_ar
 def test_literal_mapping_values_drop_only_null():
     registry = ModelExtensionRegistry()
     registry.declare(Case, "choices", mapping(Literal["yes", None]), plugin="example")
-    registry.declare(Case, "sequences", mapping(list_field(Literal["yes", None])), plugin="example")
+    registry.declare(Case, "sequences", mapping(list[Literal["yes", None]]), plugin="example")
     model = registry.finalize(Case)
     schema = entity_schema({"case": model})
     validator = Draft202012Validator(schema)
@@ -216,11 +216,11 @@ def test_literal_mapping_values_drop_only_null():
 
 def test_supplied_models_keep_exact_plugin_profile_and_container_null_semantics():
     class PluginData(HowlerEmbeddedModel):
-        addresses: list_field(ip(), optional=True)
+        addresses: list[ip()] | None = None
         by_name: mapping(ip(), default={})
 
     extensions = ModelExtensionRegistry()
-    extensions.declare(Hit, "extra", list_field(PluginData, default=[]), plugin="example")
+    extensions.declare(Hit, "extra", Annotated[list[PluginData], metadata(default=[])], plugin="example")
     finalized = extensions.finalize(Hit)
     schema = entity_schema({"hit": finalized, "migration": User, "user_avatar": None})
     assert set(schema["properties"]) == {"hit"}

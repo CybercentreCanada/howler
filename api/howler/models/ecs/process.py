@@ -2,17 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import (
-    HowlerEmbeddedModel,
-    boolean,
-    date,
-    integer,
-    keyword,
-    list_field,
-    long,
-    mapping,
-    register_model,
-)
+from howler.models import HowlerEmbeddedModel, boolean, date, integer, keyword, long, mapping, register_model
 from howler.models.ecs.code_signature import CodeSignature
 from howler.models.ecs.hash import Hashes
 from howler.models.ecs.pe import PE
@@ -62,7 +52,7 @@ class EntryMeta(HowlerEmbeddedModel):
 class ParentParentProcess(HowlerEmbeddedModel):
     """These fields contain information about a process."""
 
-    args: list_field(keyword(), optional=True)
+    args: list[keyword()] | None = None
     """Array of process arguments, starting with the absolute path to the executable."""
     args_count: integer(optional=True)
     """Length of the process.args array."""
@@ -110,7 +100,7 @@ class ParentParentProcess(HowlerEmbeddedModel):
 class ParentProcess(HowlerEmbeddedModel):
     """These fields contain information about a process."""
 
-    args: list_field(keyword(), optional=True)
+    args: list[keyword()] | None = None
     """Array of process arguments, starting with the absolute path to the executable."""
     args_count: integer(optional=True)
     """Length of the process.args array."""
@@ -160,7 +150,7 @@ class ParentProcess(HowlerEmbeddedModel):
 class Process(HowlerEmbeddedModel):
     """These fields contain information about a process."""
 
-    args: list_field(keyword(), optional=True)
+    args: list[keyword()] | None = None
     """Array of process arguments, starting with the absolute path to the executable."""
     args_count: integer(optional=True)
     """Length of the process.args array."""

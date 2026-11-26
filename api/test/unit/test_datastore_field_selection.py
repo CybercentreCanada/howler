@@ -6,7 +6,7 @@ import pytest
 
 from howler.datastore.exceptions import SearchException
 from howler.datastore.utils import project_stored_fields, select_stored_fields
-from howler.models import HowlerEmbeddedModel, HowlerESModel, keyword, list_field, mapping, register_model
+from howler.models import HowlerEmbeddedModel, HowlerESModel, keyword, mapping, register_model
 from howler.models.registry import model_registry
 
 
@@ -27,7 +27,7 @@ class _SelectionModel(HowlerESModel):
     not_stored: keyword(store=False)
     labels: mapping(keyword())
     container: _Container | None = None
-    entries: list_field(_Entry, default=[])
+    entries: list[_Entry] = []
 
 
 def _collection():

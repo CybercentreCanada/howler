@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Annotated
 
 import pytest
 from howler.common.exceptions import HowlerValueError
@@ -14,8 +15,8 @@ from howler.models import (
     float_field,
     integer,
     keyword,
-    list_field,
     mapping,
+    metadata,
     register_model,
     text,
     uuid,
@@ -59,9 +60,9 @@ class Nested(HowlerEmbeddedModel):
 class Containers(HowlerEmbeddedModel):
     top_level_field: keyword(description="top level description")
     compound_field: Nested
-    list_field: list_field(integer(description="internal description"))
+    list_field: list[integer(description="internal description")]
     mapping_field: mapping(text(), description="parent level description")
-    optional_items: list_field(integer(description="optional item description", optional=True))
+    optional_items: list[integer(description="optional item description", optional=True)]
 
 
 @register_model(embedded=True)
@@ -70,13 +71,13 @@ class Defaults(HowlerEmbeddedModel):
     optional_field: integer(optional=True)
     default_value_field: date(default="NOW")
     nullable_default_field: text(optional=True, default="value")
-    nullable_list: list_field(text(), optional=True)
-    list_with_nullable_elements: list_field(text(optional=True, default="value"), default=[])
-    list_with_defaulted_elements: list_field(integer(default=0))
+    nullable_list: list[text()] | None = None
+    list_with_nullable_elements: list[text(optional=True, default="value")] = []
+    list_with_defaulted_elements: list[integer(default=0)]
     nullable_mapping: mapping(text(), optional=True)
     mapping_with_nullable_values: mapping(text(optional=True), default={})
     mapping_with_generated_values: mapping(uuid())
-    mapping_of_lists: mapping(list_field(date(default="NOW")))
+    mapping_of_lists: mapping(list[date(default="NOW")])
     nullable_compound: Nested | None = None
 
 
@@ -201,9 +202,9 @@ def test_finalized_hit_extension_schema(monkeypatch):
 
 def test_spark_accepts_null_batches_from_finalized_hit():
     registry = ModelExtensionRegistry()
-    batch = list_field(keyword(), optional=True, default=[])
+    batch = Annotated[list[keyword()] | None, metadata(optional=True, default=[])]
     registry.declare(Hit, "batch", batch, plugin="test")
-    registry.declare(Hit, "batches", list_field(batch, default=[]), plugin="test")
+    registry.declare(Hit, "batches", Annotated[list[list[keyword()] | None], metadata(default=[])], plugin="test")
     model = registry.finalize(Hit)
 
     hit = model.model_validate(

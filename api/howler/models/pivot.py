@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import field_validator, model_validator
 
 from howler.common.exceptions import HowlerValueError
-from howler.models import HowlerEmbeddedModel, keyword, list_field, register_model, text
+from howler.models import HowlerEmbeddedModel, keyword, register_model, text
 from howler.models.localized_label import LocalizedLabel
 
 
@@ -59,7 +59,7 @@ class Pivot(HowlerEmbeddedModel):
     """The link/plugin information to pivot on."""
     format: keyword()
     """The format of the pivot."""
-    mappings: list_field(Mapping, default=[])
+    mappings: list[Mapping] = []
     """A list of the mappings to use when activating a pivot."""
 
     @field_validator("group", mode="before")

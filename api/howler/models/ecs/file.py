@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, date, enum, keyword, list_field, long, register_model
+from howler.models import HowlerEmbeddedModel, date, enum, keyword, long, register_model
 from howler.models.ecs.code_signature import CodeSignature
 from howler.models.ecs.elf import ELF
 from howler.models.ecs.hash import Hashes
@@ -22,7 +22,7 @@ class File(HowlerEmbeddedModel):
 
     accessed: date(optional=True)
     """Last time the file was accessed."""
-    attributes: list_field(keyword(), optional=True)
+    attributes: list[keyword()] | None = None
     """Array of file attributes."""
     created: date(optional=True)
     """File creation time."""

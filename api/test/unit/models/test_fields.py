@@ -36,12 +36,12 @@ from howler.models import (
     ip,
     json_field,
     keyword,
-    list_field,
     long,
     lower_keyword,
     mac,
     mapping,
     md5,
+    metadata,
     model_registry,
     phone_number,
     platform,
@@ -79,10 +79,10 @@ class SerializationProbe(HowlerESModel):
     """Scalar and container fields used in primitive output checks."""
 
     address: ip()
-    addresses: list_field(ip())
+    addresses: list[ip()]
     optional_address: ip(optional=True)
     ip_text: keyword()
-    ip_texts: list_field(keyword())
+    ip_texts: list[keyword()]
     optional_ip_text: keyword(optional=True)
     created: date()
     created_by_key: mapping(date())
@@ -96,7 +96,7 @@ class NullableFieldModel(HowlerESModel):
     maybe: keyword(optional=True, alias="external_value")  # pyright: ignore[reportInvalidTypeForm]
     disabled: keyword(optional=True, index=False, store=False)  # pyright: ignore[reportInvalidTypeForm]
     with_default: keyword(optional=True, default="fallback")  # pyright: ignore[reportInvalidTypeForm]
-    items: list_field(keyword(), optional=True)  # pyright: ignore[reportInvalidTypeForm]
+    items: list[keyword()] | None = None  # pyright: ignore[reportInvalidTypeForm]
     values: mapping(integer(), optional=True, index=True, store=True)  # pyright: ignore[reportInvalidTypeForm]
 
 
@@ -251,7 +251,10 @@ def test_legacy_empty_hit_fields_are_normalized_during_ingest(monkeypatch: pytes
     document = hit.as_primitives()
     assert document["tags"] == [] and "detection" not in document["howler"]
 
-    assert TypeAdapter(list_field(keyword(), optional=True, default=[])).validate_python(None) is None
+    assert (
+        TypeAdapter(Annotated[list[keyword()] | None, metadata(optional=True, default=[])]).validate_python(None)
+        is None
+    )
     assert TypeAdapter(emptyable_keyword(optional=True)).validate_python("") == ""
     assert TypeAdapter(boolean(optional=True)).validate_python(None) is None
     assert TypeAdapter(integer(optional=True)).validate_python(None) is None
@@ -261,7 +264,26 @@ def test_legacy_empty_hit_fields_are_normalized_during_ingest(monkeypatch: pytes
     with pytest.raises(ValidationError):
         TypeAdapter(keyword()).validate_python("")
     with pytest.raises(ValidationError):
-        TypeAdapter(list_field(keyword(), optional=True)).validate_python([""])
+        TypeAdapter(list[keyword()] | None).validate_python([""])
+
+    class ListNullProbe(HowlerEmbeddedModel):
+        required_items: list[keyword()]
+        optional_items: list[keyword()] | None = None
+        nested_items: list[list[keyword()]] = []
+        mapped_items: mapping(list[keyword()]) = {}
+
+    probe = ListNullProbe.model_validate(
+        {
+            "required_items": None,
+            "optional_items": None,
+            "nested_items": [None, ["a"]],
+            "mapped_items": {"k": None},
+        }
+    )
+    assert probe.required_items == []
+    assert probe.optional_items is None
+    assert probe.nested_items == [[], ["a"]]
+    assert probe.mapped_items == {"k": []}
 
 
 def test_optional_metadata_preserves_mapping_and_validation() -> None:
@@ -316,7 +338,12 @@ def test_optional_index_reaches_the_storage_field(builder, indexed, array):
     names = {"alias": "wire", "es_name": "stored"}
     options = {"index": indexed, "copyto": "__text__"}
     annotation = (
-        list_field(builder(**options), optional=True, **names) if array else builder(optional=True, **options, **names)
+        Annotated[
+            list[builder(**options)] | None,
+            metadata(es_name=names["es_name"], optional=True, alias=names["alias"]),
+        ]
+        if array
+        else builder(optional=True, **options, **names)
     )
     probe = type("Probe", (HowlerESModel,), {"__annotations__": {"value": annotation}})
     leaf = model_registry.flat_fields(probe)["wire"]
@@ -461,23 +488,26 @@ def test_make_annotated_preserves_generic_base_and_metadata_order() -> None:
     assert get_args(annotation) == (base_annotation, first_metadata, second_metadata)
 
 
-def test_list_field_keeps_child_and_container_metadata_separate() -> None:
+def test_list_annotation_keeps_child_and_container_metadata_separate() -> None:
     """List metadata stays on the container while child field metadata stays nested."""
-    annotation = list_field(keyword(copyto="search", deprecated=True), alias="items", description="Searchable items")
+    annotation = Annotated[
+        list[keyword(copyto="search", deprecated=True)],
+        metadata(store=False, alias="items", description="Searchable items"),
+    ]
 
-    container_type, *container_metadata = get_args(annotation)
+    container_type, container_field = get_args(annotation)
     child_type, *child_metadata = get_args(get_args(container_type)[0])
-    container_metadata_value = next(item for item in container_metadata if isinstance(item, HowlerFieldMetadata))
+    container_metadata_value = next(item for item in container_field.metadata if isinstance(item, HowlerFieldMetadata))
     child_metadata_value = next(item for item in child_metadata if isinstance(item, HowlerFieldMetadata))
-    container_field = next(item for item in container_metadata if isinstance(item, FieldInfo))
 
     assert get_origin(annotation) is Annotated
     assert get_origin(container_type) is list
     assert child_type is str
-    assert container_metadata_value.kind == "List"
+    assert isinstance(container_field, FieldInfo)
+    assert container_metadata_value.store is False
+    assert field_metadata(annotation) == container_metadata_value
     assert child_metadata_value.kind == "Keyword"
     assert child_metadata_value.copy_to == ("search",)
-    assert container_metadata.index(container_metadata_value) < container_metadata.index(container_field)
     assert container_field.alias == "items"
     assert container_field.description == "Searchable items"
 

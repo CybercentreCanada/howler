@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, ip, keyword, list_field, register_model
+from typing import Annotated
+
+from howler.models import HowlerEmbeddedModel, keyword, metadata, register_model
+from howler.models import ip as ip_field
 
 
 @register_model(index=True, store=True, description="A host is defined as a general computing instance.", embedded=True)
@@ -11,9 +14,9 @@ class Host(HowlerEmbeddedModel):
 
     id: keyword(optional=True)
     """Unique host id. Use Agent ID for HBS."""
-    ip: list_field(ip(), default=[])
+    ip: Annotated[list[ip_field()], metadata(default=[])]
     """Host ip addresses."""
-    mac: list_field(keyword(), default=[])
+    mac: list[keyword()] = []
     """Host MAC addresses."""
     name: keyword(optional=True)
     """Name of the host."""

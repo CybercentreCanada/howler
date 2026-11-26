@@ -1,4 +1,4 @@
-"""Public formatting for Howler model validation errors."""
+"""Howler wrappers for Pydantic model validation errors."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ from typing import Any
 import pytest
 from pydantic import BaseModel, Field, ValidationError
 
-import howler.models.base as model_base
 from howler.models import HowlerEmbeddedModel, HowlerModelValidationError
 from howler.models.case import CaseItem, CaseRule
 from howler.models.event import Event
@@ -37,37 +36,39 @@ class DeepInputModel(BaseModel):
     value: int
 
 
-def test_hit_missing_analytic_keeps_structured_error_and_public_root_path() -> None:
-    """The wrapper retains Pydantic details but exposes the stable Howler field path."""
+def test_hit_missing_analytic_keeps_structured_error_and_original_message() -> None:
+    """The wrapper retains Pydantic details and its original message."""
     with pytest.raises(HowlerModelValidationError) as raised:
         Hit.model_validate({"howler": {"hash": VALID_HASH}})
 
     public_error = raised.value
-    assert str(public_error).startswith("[hit.howler.analytic] Field required")
     assert isinstance(public_error.cause, ValidationError)
+    assert str(public_error) == str(public_error.cause)
+    assert "howler.analytic" in str(public_error)
+    assert "Field required" in str(public_error)
     assert public_error.__cause__ is public_error.cause
     assert public_error.errors == public_error.cause.errors(include_url=False)
 
 
 @pytest.mark.parametrize(
-    "secret_input",
-    ["DO_NOT_LEAK_SCORE_VALUE", "SECRET  TOKEN", f"{'3141592653' * 500}x"],
+    "invalid_input",
+    ["INVALID_SCORE_VALUE", "INVALID  TOKEN"],
 )
-def test_hit_invalid_score_does_not_echo_original_input(secret_input: str) -> None:
-    """Invalid scalar messages stay meaningful without disclosing submitted values."""
+def test_hit_invalid_score_passes_through_original_input(invalid_input: str) -> None:
+    """The original validator message and submitted value are preserved."""
     with pytest.raises(HowlerModelValidationError) as raised:
-        Hit.model_validate({"howler": {"analytic": "test", "hash": VALID_HASH, "score": secret_input}})
+        Hit.model_validate({"howler": {"analytic": "test", "hash": VALID_HASH, "score": invalid_input}})
 
     message = str(raised.value)
-    assert message.startswith("[hit.howler.score] ")
-    assert message == "[hit.howler.score] Invalid value"
-    assert secret_input not in message
-    assert secret_input.replace("  ", " ") not in message
-    assert secret_input == raised.value.errors[0]["input"]
+    assert isinstance(raised.value.cause, ValidationError)
+    assert message == str(raised.value.cause)
+    assert "howler.score" in message
+    assert invalid_input in message
+    assert invalid_input == raised.value.errors[0]["input"]
 
 
-def test_hit_nested_destination_bytes_path_is_rooted_at_hit() -> None:
-    """Nested ECS fields use the public root and dotted serialized path."""
+def test_hit_nested_destination_bytes_path_is_preserved() -> None:
+    """Nested ECS fields retain Pydantic's dotted validation path."""
     with pytest.raises(HowlerModelValidationError) as raised:
         Hit.model_validate(
             {
@@ -76,38 +77,40 @@ def test_hit_nested_destination_bytes_path_is_rooted_at_hit() -> None:
             }
         )
 
-    assert str(raised.value).startswith("[hit.destination.bytes] ")
+    assert "destination.bytes" in str(raised.value)
 
 
-def test_hit_empty_hash_uses_known_safe_static_rejection_message() -> None:
-    """A whitelisted static validator message can retain its useful rejection reason."""
+def test_hit_empty_hash_preserves_validator_message() -> None:
+    """The original rejection reason remains available."""
     with pytest.raises(HowlerModelValidationError) as raised:
         Hit.model_validate({"howler": {"analytic": "test", "hash": ""}})
 
-    assert str(raised.value) == "[hit.howler.hash] Empty strings are not allowed without defaults"
+    assert "howler.hash" in str(raised.value)
+    assert "Empty strings are not allowed without defaults" in str(raised.value)
 
 
-def test_event_model_validator_has_a_stable_container_path() -> None:
+def test_event_model_validator_has_a_container_path() -> None:
     """A nested before-model validator reports its enclosing event list location."""
     with pytest.raises(HowlerModelValidationError) as raised:
         Event.model_validate({"howler": {"hash": VALID_HASH, "log": [{"user": "analyst", "key": "field"}]}})
 
     message = str(raised.value)
-    assert message == "[event.howler.log.0] An explanation or complete change details are required"
+    assert "howler.log.0" in message
+    assert "If no explanation provided" in message
 
 
-def test_template_errors_use_the_template_root_not_the_validation_title_dump() -> None:
-    """Non-Hit models use the same public formatter and root naming convention."""
+def test_template_errors_keep_the_validation_title() -> None:
+    """Non-Hit models retain Pydantic's title and message."""
     with pytest.raises(HowlerModelValidationError) as raised:
         Template.model_validate({"template_id": VALID_UUID, "type": "global", "keys": []})
 
-    assert str(raised.value).startswith("[template.analytic] Field required")
-    assert "1 validation error for Template" not in str(raised.value)
-    assert "errors.pydantic.dev" not in str(raised.value)
+    assert "1 validation error for Template" in str(raised.value)
+    assert "analytic" in str(raised.value)
+    assert "Field required" in str(raised.value)
 
 
-def test_validation_title_is_a_fallback_when_model_type_is_not_supplied() -> None:
-    """Direct wrapper use still gets a safe root from Pydantic's model title."""
+def test_direct_wrapper_preserves_pydantic_message() -> None:
+    """Direct wrapper use preserves the original Pydantic error."""
 
     class Template(BaseModel):  # noqa: D106
         analytic: str
@@ -116,11 +119,12 @@ def test_validation_title_is_a_fallback_when_model_type_is_not_supplied() -> Non
         Template.model_validate({})
 
     public_error = HowlerModelValidationError(raised.value)
-    assert str(public_error).startswith("[template.analytic] Field required")
+    assert str(public_error) == str(raised.value)
+    assert public_error.cause is raised.value
 
 
-def test_aliases_list_indexes_and_mapping_keys_use_serialized_paths() -> None:
-    """Container paths translate both field aliases and nested list/mapping locations."""
+def test_aliases_list_indexes_and_mapping_keys_use_validation_paths() -> None:
+    """Container paths retain Pydantic's input aliases and nested locations."""
     with pytest.raises(HowlerModelValidationError) as raised:
         AliasedValidationRoot.model_validate(
             {
@@ -133,14 +137,14 @@ def test_aliases_list_indexes_and_mapping_keys_use_serialized_paths() -> None:
             }
         )
 
-    messages = str(raised.value).splitlines()
-    assert messages[0].startswith("[aliasedvalidationroot.records.0.value] ")
-    assert messages[1].startswith("[aliasedvalidationroot.records.0.metadata.customer] ")
-    assert "not-an-integer" not in str(raised.value)
+    message = str(raised.value)
+    assert "wire_entries.0.wire_value" in message
+    assert "wire_entries.0.wire_metadata.customer" in message
+    assert "not-an-integer" in message
 
 
-def test_unknown_field_remains_forbidden_with_a_public_path() -> None:
-    """Stable formatting does not loosen Howler's strict extra-field rejection."""
+def test_unknown_field_remains_forbidden() -> None:
+    """Passing the original error through does not loosen extra-field rejection."""
     with pytest.raises(HowlerModelValidationError) as raised:
         Hit.model_validate(
             {
@@ -149,11 +153,13 @@ def test_unknown_field_remains_forbidden_with_a_public_path() -> None:
             }
         )
 
-    assert str(raised.value).startswith("[hit.unexpected] Extra inputs are not permitted")
+    assert "unexpected" in str(raised.value)
+    assert "Extra inputs are not permitted" in str(raised.value)
+    assert "UNKNOWN_FIELD_VALUE" in str(raised.value)
 
 
-def test_deep_error_input_is_never_traversed_or_stringified() -> None:
-    """A deeply nested rejected value cannot break public exception construction."""
+def test_deep_error_input_preserves_original_error() -> None:
+    """A deeply nested rejected value retains the original error."""
     deep_value: list[Any] = []
     cursor = deep_value
     for _ in range(1600):
@@ -164,25 +170,9 @@ def test_deep_error_input_is_never_traversed_or_stringified() -> None:
     with pytest.raises(ValidationError) as raised:
         DeepInputModel.model_validate({"value": deep_value})
 
-    public_error = HowlerModelValidationError(raised.value, DeepInputModel)
-    assert str(public_error) == "[deepinputmodel.value] Input should be a valid integer"
+    public_error = HowlerModelValidationError(raised.value)
+    assert str(public_error) == str(raised.value)
     assert public_error.cause is raised.value
-
-
-def test_formatter_failure_falls_back_without_losing_howler_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A broken path or message formatter still produces a safe wrapper."""
-
-    def fail_formatter(*_args: Any, **_kwargs: Any) -> str:
-        raise RuntimeError("formatter failure")
-
-    monkeypatch.setattr(model_base, "_public_error_location", fail_formatter)
-    monkeypatch.setattr(model_base, "_public_error_message", fail_formatter)
-
-    with pytest.raises(HowlerModelValidationError) as raised:
-        Hit.model_validate({"howler": {"hash": VALID_HASH}})
-
-    assert str(raised.value) == "[hit] Invalid value"
-    assert isinstance(raised.value.cause, ValidationError)
 
 
 @pytest.mark.parametrize(
@@ -208,23 +198,12 @@ def test_formatter_failure_falls_back_without_losing_howler_error(monkeypatch: p
         (CaseItem, {"type": "case", "parent": "folder", "value": "case-1"}, "root-level"),
     ],
 )
-def test_domain_validation_errors_use_safe_messages(
+def test_domain_validation_errors_preserve_messages(
     model_type: type[HowlerEmbeddedModel], data: dict[str, Any], message: str
 ) -> None:
     with pytest.raises(HowlerModelValidationError, match=message) as raised:
         model_type.model_validate(data)
 
-    assert str(raised.value).startswith(f"[{model_type.__name__.lower()}")
+    assert isinstance(raised.value.cause, ValidationError)
+    assert str(raised.value) == str(raised.value.cause)
     assert raised.value.errors and raised.value.cause is not None
-
-
-def test_domain_message_filter_rejects_untrusted_suffixes() -> None:
-    assert (
-        model_base._public_error_message(
-            {
-                "type": "value_error",
-                "msg": "Value error, Rule cannot expire after resolved when no timeframe is set SECRET",
-            }
-        )
-        == "Invalid value"
-    )

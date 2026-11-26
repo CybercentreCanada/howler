@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
 from pydantic import model_validator
 
@@ -16,7 +16,7 @@ from howler.models import (
     enum,
     integer,
     keyword,
-    list_field,
+    metadata,
     register_model,
     text,
     uuid,
@@ -140,7 +140,7 @@ class CaseRule(HowlerEmbeddedModel):
     """Number of days the rule stays active. Null means no expiry."""
     expire_after_resolved: boolean(default=False)
     """When true, the timeframe countdown starts from the case's last resolution time instead of from rule creation."""
-    indexes: list_field(enum(values=RuleIndexTypes), default=[RuleIndexTypes.HIT.value])
+    indexes: list[enum(values=RuleIndexTypes)] = [RuleIndexTypes.HIT.value]
     """Indexes to run this rule against (hit, event, or both)."""
 
     @model_validator(mode="before")
@@ -181,7 +181,7 @@ class CaseEnrichment(HowlerEmbeddedModel):
 
     item: keyword()
     """Case item id associated with these annotations."""
-    annotations: list_field(keyword(), default=[])
+    annotations: list[keyword()] = []
     """Annotation IDs associated with the case item id."""
 
 
@@ -215,21 +215,21 @@ class Case(HowlerESModel):
     """Date/time when telemetry/alerts in this case started."""
     end: date(optional=True, default=None)
     """Date/time when telemetry/alerts in this case ended."""
-    targets: list_field(keyword(), optional=True, default=[])
+    targets: Annotated[list[keyword()] | None, metadata(optional=True)] = []
     """A list of target entities related to this case."""
-    threats: list_field(keyword(), optional=True, default=[])
+    threats: Annotated[list[keyword()] | None, metadata(optional=True)] = []
     """A list of known or suspected threat entities related to this case."""
-    indicators: list_field(keyword(), optional=True, default=[])
+    indicators: Annotated[list[keyword()] | None, metadata(optional=True)] = []
     """A list of indicators relevant to this case."""
-    participants: list_field(keyword(), optional=True, default=[])
+    participants: Annotated[list[keyword()] | None, metadata(optional=True)] = []
     """A list of users participating in this case."""
-    items: list_field(CaseItem, optional=True, default=[])
+    items: Annotated[list[CaseItem] | None, metadata(optional=True)] = []
     """Path-scoped case items referencing external object IDs or links."""
-    enrichments: list_field(CaseEnrichment, optional=True, default=[])
+    enrichments: Annotated[list[CaseEnrichment] | None, metadata(optional=True)] = []
     """Path-scoped enrichment annotations."""
-    rules: list_field(CaseRule, optional=True, default=[])
+    rules: Annotated[list[CaseRule] | None, metadata(optional=True)] = []
     """Rules for routing matched data into case paths."""
-    tasks: list_field(CaseTask, optional=True, default=[])
+    tasks: Annotated[list[CaseTask] | None, metadata(optional=True)] = []
     """Tasks associated with this case."""
-    log: list_field(CaseLog, optional=True, default=[])
+    log: Annotated[list[CaseLog] | None, metadata(optional=True)] = []
     """A list of changes to the case with timestamps and attribution."""

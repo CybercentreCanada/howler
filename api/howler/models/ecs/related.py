@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
 from pydantic import model_validator
 
-from howler.models import HowlerEmbeddedModel, ip, keyword, list_field, register_model, uri
+from howler.models import HowlerEmbeddedModel, keyword, metadata, register_model
+from howler.models import ip as ip_field
+from howler.models import uri as uri_field
 
 
 @register_model(
@@ -18,21 +20,21 @@ from howler.models import HowlerEmbeddedModel, ip, keyword, list_field, register
 class Related(HowlerEmbeddedModel):
     """This field set is meant to facilitate pivoting around a piece of data."""
 
-    hash: list_field(keyword(), default=[])
+    hash: list[keyword()] = []
     (
         "All the hashes seen on your event. Populating this field, then using it to search for hashes can help in "
         "situations where you're unsure what the hash algorithm is (and therefore which key name to search)."
     )
-    hosts: list_field(keyword(), default=[])
+    hosts: list[keyword()] = []
     (
         "All hostnames or other host identifiers seen on your event. Example identifiers include FQDNs, domain names, "
         "workstation names, or aliases."
     )
-    ip: list_field(ip(), default=[])
+    ip: Annotated[list[ip_field()], metadata(default=[])]
     """All of the IPs seen on your event."""
-    user: list_field(keyword(), default=[])
+    user: list[keyword()] = []
     """All the user names or other user identifiers seen on the event."""
-    ids: list_field(keyword(), default=[])
+    ids: list[keyword()] = []
     """Any identifier that doesn't fit in other related fields like a GUID."""
 
     # Extra fields not defined in ECS but added for outline purposes
@@ -40,9 +42,9 @@ class Related(HowlerEmbeddedModel):
         optional=True, deprecated=True, deprecated_description="related.ids should be used instead of related.id."
     )
     """The id related to the event."""
-    uri: list_field(uri(), optional=True)
+    uri: Annotated[list[uri_field()] | None, metadata(default=None)]
     """All of the URIs related to the event."""
-    signature: list_field(keyword(), optional=True)
+    signature: list[keyword()] | None = None
     """All the signatures/rules that were triggered by the event."""
 
     @model_validator(mode="before")

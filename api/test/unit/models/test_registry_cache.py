@@ -7,7 +7,7 @@ import operator
 import pytest
 
 from howler.datastore.collection import _strip_lists
-from howler.models import HowlerEmbeddedModel, HowlerESModel, ModelExtensionRegistry, enum, keyword, list_field, mapping
+from howler.models import HowlerEmbeddedModel, HowlerESModel, ModelExtensionRegistry, enum, keyword, mapping
 from howler.models.fields import HowlerFieldMetadata
 from howler.models.registry import ModelRegistry, annotation_metadata, model_registry
 
@@ -24,7 +24,7 @@ class Document(HowlerESModel):
 @pytest.fixture(scope="module")
 def derived():
     extensions = ModelExtensionRegistry()
-    extensions.declare(Document, "names", list_field(keyword()), plugin="names")
+    extensions.declare(Document, "names", list[keyword()], plugin="names")
     return extensions.finalize(Document)
 
 

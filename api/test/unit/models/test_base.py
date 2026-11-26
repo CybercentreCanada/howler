@@ -25,7 +25,6 @@ from howler.models import (
     ip,
     json_field,
     keyword,
-    list_field,
     mapping,
     metadata,
     model_registry,
@@ -58,8 +57,8 @@ class FoundationDocument(HowlerESModel):
     document_id: uuid()
     from_: keyword(alias="from")
     child: FoundationChild
-    children: list_field(FoundationChild, default=[])
-    tags: list_field(keyword(), default=[])
+    children: list[FoundationChild] = []
+    tags: list[keyword()] = []
     counters: mapping(integer(), default={}, index=True, store=True)
     unindexed: mapping(keyword(), default={}, index=False, store=False)
     flattened: flattened_object(default={})
@@ -279,8 +278,8 @@ def test_extra_ignore_traverses_typed_containers_without_pruning_loose_data() ->
 
     class Containers(HowlerEmbeddedModel):
         grouped: mapping(Leaf, index=False)
-        listed: list_field(Leaf)
-        nested: mapping(list_field(mapping(Leaf, index=False)), index=False)
+        listed: list[Leaf]
+        nested: mapping(list[mapping(Leaf, index=False)], index=False)
         maybe_grouped: mapping(Leaf | None, index=False, optional=True)
         json_value: json_field()
         loose: dict[str, object]
@@ -313,7 +312,7 @@ def test_extra_ignore_leaves_invalid_container_values_for_validation() -> None:
 
     class Containers(HowlerEmbeddedModel):
         grouped: mapping(Leaf, index=False)
-        listed: list_field(Leaf)
+        listed: list[Leaf]
 
     for data in (
         {"grouped": {"team": {"count": "invalid", "unknown": 1}}, "listed": []},
@@ -411,7 +410,9 @@ def test_stable_validation_error_translation() -> None:
 
     with pytest.raises(HowlerModelValidationError) as init_raised:
         FoundationDocument(**{**_document_data(), "child": {"name": "child", "count": "invalid"}})
-    assert str(init_raised.value).startswith("[foundationdocument.child.count] ")
+    assert isinstance(init_raised.value.cause, ValidationError)
+    assert str(init_raised.value) == str(init_raised.value.cause)
+    assert "child.count" in str(init_raised.value)
 
     with pytest.raises(HowlerModelValidationError):
         FoundationDocument.model_validate_json('{"from": "missing required fields"}')
@@ -425,6 +426,8 @@ def test_stable_validation_error_translation() -> None:
 
     with pytest.raises(HowlerModelValidationError):
         validate_field_value(FoundationDocument, "child.count", "invalid")
+
+    assert validate_field_value(FoundationDocument, "tags", None) == []
 
 
 def test_dotted_input_helper_builds_nested_objects() -> None:
@@ -527,7 +530,7 @@ def test_partial_ignore_unknown_propagates_through_mapping_values() -> None:
 
     class Root(HowlerESModel):
         grouped: mapping(Leaf, index=False)
-        nested: mapping(list_field(mapping(Leaf, index=False)), index=False)
+        nested: mapping(list[mapping(Leaf, index=False)], index=False)
 
     partial = construct_partial(
         Root,

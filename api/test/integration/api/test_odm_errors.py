@@ -27,7 +27,7 @@ def test_odm_errors(datastore_connection: HowlerDatastore, login_session):
     res = excinfo.value.json["api_response"]
 
     assert len(res["invalid"]) == 1
-    assert res["invalid"][0]["error"].startswith("[hit.howler.analytic]")
+    assert "howler.analytic" in res["invalid"][0]["error"]
 
     invalid_hit["howler"]["analytic"] = "odm-error-test"
 
@@ -44,7 +44,8 @@ def test_odm_errors(datastore_connection: HowlerDatastore, login_session):
     res = excinfo.value.json["api_response"]
 
     assert len(res["invalid"]) == 1
-    assert res["invalid"][0]["error"].startswith("[hit.howler.score]")
+    assert "howler.score" in res["invalid"][0]["error"]
+    assert "shouldnt be a string" in res["invalid"][0]["error"]
 
     invalid_hit["howler"]["score"] = 1234.5678
 
@@ -70,7 +71,7 @@ def test_odm_errors(datastore_connection: HowlerDatastore, login_session):
     res = excinfo.value.json["api_response"]
 
     assert len(res["invalid"]) == 1
-    assert res["invalid"][0]["error"].startswith("[hit.destination.bytes]")
+    assert "destination.bytes" in res["invalid"][0]["error"]
 
     invalid_hit.pop("destination")
     invalid_hit["howler"]["hash"] = ""
@@ -86,7 +87,7 @@ def test_odm_errors(datastore_connection: HowlerDatastore, login_session):
     res = excinfo.value.json["api_response"]
 
     assert len(res["invalid"]) == 1
-    assert res["invalid"][0]["error"].startswith("[hit.howler.hash]")
+    assert "howler.hash" in res["invalid"][0]["error"]
 
     invalid_hit["howler"]["hash"] = "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bc"
 

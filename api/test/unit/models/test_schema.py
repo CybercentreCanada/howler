@@ -6,16 +6,7 @@ from typing import Any
 
 import pytest
 
-from howler.models import (
-    HowlerEmbeddedModel,
-    HowlerESModel,
-    any_field,
-    keyword,
-    list_field,
-    mapping,
-    register_model,
-    schema,
-)
+from howler.models import HowlerEmbeddedModel, HowlerESModel, any_field, keyword, mapping, register_model, schema
 from howler.models.action import Action
 from howler.models.analytic import Analytic
 from howler.models.case import Case
@@ -228,7 +219,7 @@ def test_mapping_of_compound_recurses_into_declared_children() -> None:
 
 @pytest.mark.parametrize(
     "annotation",
-    [list_field(keyword()), mapping(keyword())],
+    [list[keyword()], mapping(keyword())],
 )
 def test_nested_dynamic_containers_use_nested_templates(annotation: Any) -> None:
     """List and mapping values are represented by a nested template at their dynamic path."""

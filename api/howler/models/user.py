@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Annotated
+
 from howler.common import loader
 from howler.config import CLASSIFICATION
 from howler.models import (
@@ -14,8 +16,8 @@ from howler.models import (
     enum,
     integer,
     keyword,
-    list_field,
     mapping,
+    metadata,
     register_model,
 )
 
@@ -27,9 +29,9 @@ DASHBOARD_TYPES = {"view", "analytic", "case", "tasks"}
 class ApiKey(HowlerEmbeddedModel):
     """Model for API keys."""
 
-    acl: list_field(enum(values=ACL))
+    acl: list[enum(values=ACL)]
     """Access Control List for the API key"""
-    agents: list_field(keyword(), default=[])
+    agents: list[keyword()] = []
     """List of user ids permitted to use this api key for impersonation"""
     password: keyword()
     """BCrypt hash of the password for the apikey"""
@@ -61,7 +63,7 @@ class User(HowlerESModel):
     """Maximum classification for the user"""
     email: email(copyto="__text__", optional=True)
     """User's email address"""
-    groups: list_field(keyword(), copyto="__text__", default=["USERS"])
+    groups: Annotated[list[keyword()], metadata(copyto="__text__")] = ["USERS"]
     """List of groups the user submits to"""
     is_active: boolean(default=True)
     """Is the user active?"""
@@ -71,15 +73,15 @@ class User(HowlerESModel):
     """BCrypt hash of the user's password"""
     access_control: keyword(index=False, store=False, optional=True)
     """Access control filter"""
-    type: list_field(enum(values=loader.USER_TYPES), default=["user", "actionrunner_basic"])
+    type: list[enum(values=loader.USER_TYPES)] = ["user", "actionrunner_basic"]
     """Type of user"""
     uname: keyword(copyto="__text__")
     """Username"""
-    favourite_views: list_field(keyword(), default=[])
+    favourite_views: list[keyword()] = []
     """List of favourite views of the user"""
-    favourite_analytics: list_field(keyword(), default=[])
+    favourite_analytics: list[keyword()] = []
     """List of favourite analytics of the user"""
-    dashboard: list_field(DashboardEntry, default=[])
+    dashboard: list[DashboardEntry] = []
     """A list of dashboard entries to render on the UI."""
     refresh_rate: integer(default=15)
     """The refresh rate in seconds for the dashboard."""

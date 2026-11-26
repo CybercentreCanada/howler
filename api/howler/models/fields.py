@@ -98,20 +98,50 @@ def metadata(
     sync: bool = True,
     optional: bool = False,
     es_name: str | None = None,
-) -> HowlerFieldMetadata:
-    """Attach Howler-specific schema and serialization metadata to an annotated field."""
+    default: TypingAny = PydanticUndefined,
+    default_factory: Callable[[], TypingAny] | None = None,
+    alias: str | None = None,
+    description: str | None = None,
+) -> TypingAny:
+    """Attach Howler metadata and optional Pydantic field settings to an annotated field."""
+    pydantic_options: dict[str, TypingAny] = {}
+    if description is not None:
+        pydantic_options["description"] = description
+    if alias is not None:
+        pydantic_options["alias"] = alias
+    if default_factory is not None:
+        pydantic_options["default_factory"] = default_factory
+    elif default is not PydanticUndefined:
+        pydantic_options["default"] = default
+
+    field_info = PydanticField(**pydantic_options)
     resolved_copy_to = _copy_to(copy_to if copy_to is not None else copyto)
-    return HowlerFieldMetadata(
-        index=index,
-        store=store,
-        copy_to=resolved_copy_to,
-        reference=reference,
-        deprecated=deprecated,
-        deprecated_description=deprecated_description,
-        sync=sync,
-        optional=optional,
-        es_name=es_name,
+    has_howler_metadata = (
+        index is not None
+        or store is not None
+        or bool(resolved_copy_to)
+        or reference is not None
+        or deprecated
+        or deprecated_description is not None
+        or not sync
+        or optional
+        or es_name is not None
     )
+    if has_howler_metadata:
+        field_info.metadata.append(
+            HowlerFieldMetadata(
+                index=index,
+                store=store,
+                copy_to=resolved_copy_to,
+                reference=reference,
+                deprecated=deprecated,
+                deprecated_description=deprecated_description,
+                sync=sync,
+                optional=optional,
+                es_name=es_name,
+            )
+        )
+    return field_info
 
 
 class ClassificationValue:
@@ -752,16 +782,6 @@ def classification_string(*, yml_config: str | None = None, **kwargs: TypingAny)
         "ClassificationString",
         validator=validate,
         default_when=_falsy,
-        **kwargs,
-    )
-
-
-def list_field(child_type: TypingAny, **kwargs: TypingAny) -> TypingAny:
-    """Create a typed array field."""
-    return _annotated(
-        types.GenericAlias(list, (child_type,)),
-        "List",
-        validator=lambda value: [] if value is None else value,
         **kwargs,
     )
 

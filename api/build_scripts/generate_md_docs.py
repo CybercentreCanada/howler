@@ -153,7 +153,7 @@ def _field_type(prop: JsonSchemaValue, definitions: JsonSchemaValue) -> str:
     if "anyOf" in prop:
         return _field_type(next(branch for branch in prop["anyOf"] if branch.get("type") != "null"), definitions)
     kind = prop.get("x-howler-kind", "Any")
-    if kind == "List":
+    if prop.get("type") == "array" or kind == "List":
         return f"List [{_field_type(prop['items'], definitions)}]"
     if kind == "Mapping":
         return f"Mapping [{_field_type(prop['additionalProperties'], definitions)}]"

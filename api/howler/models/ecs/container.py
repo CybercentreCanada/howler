@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, keyword, list_field, mapping, register_model
+from howler.models import HowlerEmbeddedModel, keyword, mapping, register_model
 
 
 @register_model(index=True, store=True, description="Container hashes information.", embedded=True)
 class Hash(HowlerEmbeddedModel):
     """Container hashes information."""
 
-    all: list_field(keyword(), default=[])
+    all: list[keyword()] = []
     """An array of digests of the image the container was built on."""
 
 
@@ -21,7 +21,7 @@ class Image(HowlerEmbeddedModel):
     """Container hashes information."""
     name: keyword(optional=True)
     """Name of the image the container was built on."""
-    tag: list_field(keyword(), default=[])
+    tag: list[keyword()] = []
     """Container image tags."""
 
 
