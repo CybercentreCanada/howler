@@ -27,6 +27,7 @@ class GenerationBusyError(Exception):
 
 
 CODE_FENCE = re.compile(r"```[\w-]*[ \t]*\n?(?P<body>.*?)\n?```", re.DOTALL)
+OPENING_FENCE = re.compile(r"```[\w-]*[ \t]*\n")
 
 
 def is_available() -> bool:
@@ -137,6 +138,21 @@ def clean_query(text: str) -> str:
     return text
 
 
+def partial_query(text: str) -> str:
+    """Extract the query from a response that is still being generated.
+
+    Only the fenced code block is placed in the search bar, so nothing is returned until it opens, and the
+    explanation that follows it is excluded.
+    """
+    match = OPENING_FENCE.search(text)
+    if not match:
+        return ""
+
+    body = text[match.end() :]
+    end = body.find("```")
+    return (body[:end] if end != -1 else body).rstrip("`").strip()
+
+
 def _event(data: dict[str, str], event: str | None = None) -> str:
     """Format a server-sent event."""
     prefix = f"event: {event}\n" if event else ""
@@ -168,9 +184,10 @@ def _query_warning(query: str) -> str | None:
 def stream_events(updates: Iterator[AIUpdate]) -> Iterator[str]:
     """Convert provider updates into server-sent events.
 
-    Emits ``data`` events with the full ``text`` generated so far and ``status`` events with agent
-    progress, then a single ``done`` event with the cleaned query and an optional ``warning`` when
-    it is not valid Lucene, or an ``error`` event with a safe reason.
+    Emits ``data`` events with the query ``text`` generated so far and ``status`` events with agent
+    progress, then a single ``done`` event with the cleaned query, the provider's full markdown
+    ``response`` including its explanation, and an optional ``warning`` when the query is not valid
+    Lucene. Failures end the stream with an ``error`` event with a safe reason.
 
     Args:
         updates: Provider text and status updates.
@@ -179,13 +196,17 @@ def stream_events(updates: Iterator[AIUpdate]) -> Iterator[str]:
         Encoded server-sent events.
     """
     text = ""
+    streamed = ""
     try:
         for kind, value in updates:
             if kind == "status":
                 yield _event({"status": value}, "status")
-            elif value != text:
-                text = value
-                yield _event({"text": text})
+                continue
+
+            text = value
+            if (query_so_far := partial_query(text)) and query_so_far != streamed:
+                streamed = query_so_far
+                yield _event({"text": streamed})
     except ai_service.AITransportError as exc:
         yield _event({"error": exc.reason}, "error")
         return
@@ -200,7 +221,7 @@ def stream_events(updates: Iterator[AIUpdate]) -> Iterator[str]:
         yield _event({"error": "AI provider returned an empty query."}, "error")
         return
 
-    done = {"query": query}
+    done = {"query": query, "response": text.strip()}
     if warning := _query_warning(query):
         done["warning"] = warning
 

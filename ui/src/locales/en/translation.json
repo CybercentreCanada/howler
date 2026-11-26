@@ -268,6 +268,8 @@
   "hit.related.tab.links": "Links",
   "hit.search.aggregate.button": "Create Summary",
   "hit.search.ai.button": "Generate a query with AI",
+  "hit.search.ai.explanation": "Why this query?",
+  "hit.search.ai.explanation.title": "AI explanation",
   "hit.search.ai.generate": "Generate",
   "hit.search.ai.help": "Press Enter to generate and Shift + Enter for a new line. The current query is refined when one is set. Review the generated query before searching.",
   "hit.search.ai.placeholder": "e.g. open hits escalated to alert in the last 24 hours",

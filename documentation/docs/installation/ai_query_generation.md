@@ -8,6 +8,14 @@ sent so the model can refine it. A progress bar runs along the search bar while
 the query is generated, and agent progress messages, such as tool calls, appear
 in the stop button's tooltip.
 
+The provider is asked to return the query in a fenced `lucene` code block,
+followed by an explanation of the fields, values, and time ranges it chose. Only
+the code block is placed in the search bar. While the search bar still contains
+the generated query, a "Why this query?" button opens the provider's full
+response, rendered as untrusted markdown, so analysts can review and rework the
+query. Responses without a code block are used as the query as a whole. A
+custom `core.ai.lucene.system_prompt` should keep asking for this format.
+
 Query generation does not require `system.encryption_key`, because tokens are
 used immediately and never queued. Generation runs within a Howler API request,
 so each active generation keeps the request and a connection to the provider

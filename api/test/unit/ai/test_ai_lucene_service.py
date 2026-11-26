@@ -52,21 +52,40 @@ def events(stream):
     return parsed
 
 
-def test_stream_events_emits_text_status_then_cleaned_query():
+def test_stream_events_streams_only_the_query_and_returns_the_explanation():
+    response = "```lucene\nhowler.status:open\n```\nI used howler.status because the request asks for open hits."
     updates = iter(
         [
             ("status", "Looking up fields"),
-            ("text", "Here it is: ```lucene\n"),
-            ("text", "Here it is: ```lucene\na:b\n```"),
+            ("text", "```lu"),
+            ("text", "```lucene\nhowler.sta"),
+            ("text", "```lucene\nhowler.status:open\n`"),
+            ("text", "```lucene\nhowler.status:open\n```\nI used"),
+            ("text", response),
         ]
     )
 
     assert events(ai_lucene_service.stream_events(updates)) == [
         ("status", {"status": "Looking up fields"}),
-        ("message", {"text": "Here it is: ```lucene\n"}),
-        ("message", {"text": "Here it is: ```lucene\na:b\n```"}),
-        ("done", {"query": "a:b"}),
+        ("message", {"text": "howler.sta"}),
+        ("message", {"text": "howler.status:open"}),
+        ("done", {"query": "howler.status:open", "response": response}),
     ]
+
+
+@pytest.mark.parametrize(
+    ("text", "query"),
+    [
+        ("Here it is: ```lucene\na:b\n``` because", "a:b"),
+        ("`a:b`", "a:b"),
+        ("a:b", "a:b"),
+    ],
+)
+def test_stream_events_accepts_answers_without_the_requested_format(text, query):
+    assert events(ai_lucene_service.stream_events(iter([("text", text)])))[-1] == (
+        "done",
+        {"query": query, "response": text},
+    )
 
 
 @pytest.mark.parametrize(
@@ -91,7 +110,7 @@ def test_stream_events_warns_about_invalid_queries(monkeypatch):
 
     assert events(ai_lucene_service.stream_events(iter([("text", "a:(")])))[-1] == (
         "done",
-        {"query": "a:(", "warning": "bad a:("},
+        {"query": "a:(", "response": "a:(", "warning": "bad a:("},
     )
 
 

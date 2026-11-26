@@ -16,6 +16,8 @@ export type AiLuceneOptions = {
 
 export type AiLuceneResult = {
   query: string;
+  /** The provider's full markdown response, including its explanation of the query. */
+  response?: string;
   /** Set when the generated query is not valid Lucene. */
   warning?: string;
 };
@@ -24,6 +26,7 @@ type AiLuceneEventData = {
   text?: string;
   status?: string;
   query?: string;
+  response?: string;
   warning?: string;
   error?: string;
 };
@@ -54,7 +57,7 @@ export const post = async (
       }
 
       if (event === 'done') {
-        result = { query: payload.query ?? '', warning: payload.warning };
+        result = { query: payload.query ?? '', response: payload.response, warning: payload.warning };
       } else if (event === 'status') {
         onStatus?.(payload.status ?? '');
       } else if (typeof payload.text === 'string') {

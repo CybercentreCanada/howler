@@ -43,7 +43,7 @@ describe('v2 AI lucene API', () => {
       streamResponse([
         'event: status\ndata: {"status": "Checking fields"}\n\ndata: {"text": "howler.sta',
         'tus:open"}\n\ndata: {"text": "howler.status:open AND x"}\r\n\r\n',
-        'event: done\ndata: {"query": "howler.status:open AND x", "warning": "Check it"}\n\n'
+        'event: done\ndata: {"query": "howler.status:open AND x", "response": "Because", "warning": "Check it"}\n\n'
       ]).response
     );
     const onText = vi.fn();
@@ -51,6 +51,7 @@ describe('v2 AI lucene API', () => {
 
     await expect(post({ prompt: 'open hits', query: 'a:b' }, { onText, onStatus })).resolves.toEqual({
       query: 'howler.status:open AND x',
+      response: 'Because',
       warning: 'Check it'
     });
 

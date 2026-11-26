@@ -17,9 +17,9 @@ ai_api._doc = "Use the configured AI provider to assist analysts"  # type: ignor
 def generate_lucene(**kwargs):
     """Stream a Lucene hit query generated from a natural-language request.
 
-    The response is a text/event-stream. Each default event contains the full text generated so
-    far, "status" events report agent progress, and a single "done" event with the cleaned query
-    or an "error" event ends the stream.
+    The response is a text/event-stream. Each default event contains the query generated so far,
+    "status" events report agent progress, and a single "done" event with the cleaned query and the
+    provider's full markdown response, including its explanation, or an "error" event ends the stream.
 
     Variables:
     None
@@ -40,7 +40,7 @@ def generate_lucene(**kwargs):
     data: {"text": "howler.status:open AND "}
 
     event: done
-    data: {"query": "howler.status:open AND howler.escalation:alert"}
+    data: {"query": "howler.status:open AND howler.escalation:alert", "response": "```lucene\\n...```\\nI used..."}
 
     The "done" event also contains a "warning" when the query is not valid Lucene.
     """

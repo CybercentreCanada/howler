@@ -1,8 +1,20 @@
-import { AutoAwesome, Stop } from '@mui/icons-material';
-import { Button, LinearProgress, Popover, Stack, TextField, Typography } from '@mui/material';
+import { AutoAwesome, HelpOutline, Stop } from '@mui/icons-material';
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  LinearProgress,
+  Popover,
+  Stack,
+  TextField,
+  Typography
+} from '@mui/material';
 import api from 'api';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import TuiIconButton from 'components/elements/addons/buttons/CustomIconButton';
+import Markdown from 'components/elements/display/Markdown';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import type { Dispatch, FC, KeyboardEvent, SetStateAction } from 'react';
 import { memo, useCallback, useContext, useEffect, useRef, useState } from 'react';
@@ -26,6 +38,8 @@ const AiQueryButton: FC<AiQueryButtonProps> = ({ query, setQuery, disabled = fal
   const [prompt, setPrompt] = useState('');
   const [generating, setGenerating] = useState(false);
   const [status, setStatus] = useState('');
+  const [explanation, setExplanation] = useState<{ query: string; response: string } | null>(null);
+  const [showExplanation, setShowExplanation] = useState(false);
 
   useEffect(() => () => controller.current?.abort(), []);
 
@@ -41,6 +55,7 @@ const AiQueryButton: FC<AiQueryButtonProps> = ({ query, setQuery, disabled = fal
     setAnchorEl(null);
     setGenerating(true);
     setStatus('');
+    setExplanation(null);
     setQuery('');
 
     try {
@@ -49,6 +64,9 @@ const AiQueryButton: FC<AiQueryButtonProps> = ({ query, setQuery, disabled = fal
         { onText: setQuery, onStatus: setStatus, signal: abort.signal }
       );
       setQuery(result.query);
+      if (result.response && result.response.trim() !== result.query) {
+        setExplanation({ query: result.query, response: result.response });
+      }
       if (result.warning) {
         showWarningMessage(result.warning);
       }
@@ -94,6 +112,27 @@ const AiQueryButton: FC<AiQueryButtonProps> = ({ query, setQuery, disabled = fal
       >
         {generating ? <Stop sx={{ fontSize: '20px' }} /> : <AutoAwesome sx={{ fontSize: '20px' }} />}
       </TuiIconButton>
+      {!generating && explanation?.query === query && (
+        <TuiIconButton
+          id="ai-query-explanation-button"
+          tooltip={t('hit.search.ai.explanation')}
+          onClick={() => setShowExplanation(true)}
+          transparent
+          sx={{ ml: 1, alignSelf: 'start', flexShrink: 0 }}
+          size={size}
+        >
+          <HelpOutline sx={{ fontSize: '20px' }} />
+        </TuiIconButton>
+      )}
+      <Dialog open={showExplanation && !!explanation} onClose={() => setShowExplanation(false)} maxWidth="md" fullWidth>
+        <DialogTitle>{t('hit.search.ai.explanation.title')}</DialogTitle>
+        <DialogContent id="ai-query-explanation">
+          <Markdown md={explanation?.response ?? ''} disableLinks untrusted />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowExplanation(false)}>{t('close')}</Button>
+        </DialogActions>
+      </Dialog>
       {generating && (
         <LinearProgress
           id="ai-query-progress"

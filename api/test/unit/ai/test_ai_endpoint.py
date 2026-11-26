@@ -1,3 +1,4 @@
+import json
 from unittest.mock import Mock, patch
 
 import pytest
@@ -72,7 +73,7 @@ def test_route_rejects_invalid_requests(headers, body, error):
 
 @pytest.mark.usefixtures("lucene_enabled")
 def test_route_streams_with_forwarded_token(monkeypatch):
-    stream_chat = Mock(return_value=iter(["howler.status", ":open"]))
+    stream_chat = Mock(return_value=iter(["```lucene\nhowler.status", ":open\n```", "\nBecause."]))
     monkeypatch.setattr(ai_service, "stream_chat", stream_chat)
 
     response, body = call_route(body={"prompt": "open hits", "query": "a:b"})
@@ -80,8 +81,10 @@ def test_route_streams_with_forwarded_token(monkeypatch):
     assert response.status_code == 200
     assert response.mimetype == "text/event-stream"
     assert response.headers["X-Accel-Buffering"] == "no"
+    assert 'data: {"text": "howler.status"}' in body
     assert 'data: {"text": "howler.status:open"}' in body
-    assert body.endswith('event: done\ndata: {"query": "howler.status:open"}\n\n')
+    done = {"query": "howler.status:open", "response": "```lucene\nhowler.status:open\n```\nBecause."}
+    assert body.endswith(f"event: done\ndata: {json.dumps(done)}\n\n")
     assert stream_chat.call_args.args[1] == "request-token"
     assert stream_chat.call_args.args[2][1]["content"] == "Request:\nopen hits\n\nCurrent query:\na:b"
 
@@ -142,7 +145,8 @@ def test_agent_route_reports_access_failures_before_streaming(monkeypatch):
 @pytest.mark.usefixtures("agent_enabled")
 def test_agent_route_streams_agent_answer_without_field_list(monkeypatch):
     get_agent_token = Mock(return_value="agent-token")
-    stream_message = Mock(return_value=iter([("status", "Checking fields"), ("text", "howler.status:open")]))
+    answer = "```lucene\nhowler.status:open\n```\nOpen hits use howler.status."
+    stream_message = Mock(return_value=iter([("status", "Checking fields"), ("text", answer)]))
     monkeypatch.setattr(agent_service, "get_agent_token", get_agent_token)
     monkeypatch.setattr(agent_service, "stream_message", stream_message)
 
@@ -150,7 +154,8 @@ def test_agent_route_streams_agent_answer_without_field_list(monkeypatch):
 
     assert response.status_code == 200
     assert 'event: status\ndata: {"status": "Checking fields"}' in body
-    assert body.endswith('event: done\ndata: {"query": "howler.status:open"}\n\n')
+    assert 'data: {"text": "howler.status:open"}' in body
+    assert body.endswith(f"event: done\ndata: {json.dumps({'query': 'howler.status:open', 'response': answer})}\n\n")
     assert get_agent_token.call_args.args[1] == "request-token"
     settings, token, text = stream_message.call_args.args
     assert (settings.agent_url, token) == ("https://agent.invalid/howler/", "agent-token")

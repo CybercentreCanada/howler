@@ -17,6 +17,14 @@ vi.mock('components/hooks/useMySnackbar', () => ({
   default: () => ({ showErrorMessage: mockShowErrorMessage, showWarningMessage: mockShowWarningMessage })
 }));
 
+vi.mock('components/elements/display/Markdown', () => ({
+  default: ({ md, untrusted }: any) => (
+    <div id="explanation-markdown" data-untrusted={String(!!untrusted)}>
+      {md}
+    </div>
+  )
+}));
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key })
 }));
@@ -35,6 +43,9 @@ const Harness: FC<{ enabled?: boolean }> = ({ enabled = true }) => {
       }}
     >
       <div id="current-query">{query}</div>
+      <button id="edit-query" onClick={() => setQuery('edited:query')}>
+        edit
+      </button>
       <AiQueryButton query={query} setQuery={setQuery} />
     </ApiConfigContext.Provider>
   );
@@ -87,6 +98,32 @@ describe('AiQueryButton', () => {
     );
     expect(mockShowWarningMessage).toHaveBeenCalledWith('Check it');
     expect(screen.queryByTestId('ai-query-progress')).not.toBeInTheDocument();
+  });
+
+  it('shows the explanation for the generated query until the query is edited', async () => {
+    const response = '```lucene\nhowler.status:open\n```\nOpen hits use howler.status.';
+    mockLucenePost.mockResolvedValue({ query: 'howler.status:open', response });
+
+    render(<Harness />);
+    submitPrompt('open hits');
+
+    fireEvent.click(await screen.findByTestId('ai-query-explanation-button'));
+    expect(await screen.findByTestId('explanation-markdown')).toHaveTextContent('Open hits use howler.status.');
+    expect(screen.getByTestId('explanation-markdown')).toHaveAttribute('data-untrusted', 'true');
+
+    fireEvent.click(screen.getByTestId('edit-query'));
+    expect(screen.queryByTestId('ai-query-explanation-button')).not.toBeInTheDocument();
+  });
+
+  it('has no explanation when the response is only the query', async () => {
+    mockLucenePost.mockResolvedValue({ query: 'howler.status:open', response: 'howler.status:open' });
+
+    render(<Harness />);
+    submitPrompt('open hits');
+
+    await waitFor(() => expect(mockLucenePost).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByTestId('ai-query-button')).not.toBeDisabled());
+    expect(screen.queryByTestId('ai-query-explanation-button')).not.toBeInTheDocument();
   });
 
   it('restores the original query and reports generation errors', async () => {
