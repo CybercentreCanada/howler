@@ -1,0 +1,25 @@
+.agents/agents/implementer/agent.md
+  s_d472ad1c8e1da5::t_479fcf040e9bfb 8
+.agents/agents/qa/agent.md
+  s_d472ad1c8e1da5::t_479fcf040e9bfb 8
+.agents/agents/frontend/agent.md
+  s_d472ad1c8e1da5::t_479fcf040e9bfb 8
+.agents/agents/architect/agent.md
+  s_d472ad1c8e1da5::t_479fcf040e9bfb 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "56cbeb0abd8396bce21b905e39fcca6a83c70cb2",
+  "prompts": {},
+  "sessions": {
+    "s_d472ad1c8e1da5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_deb67984dffeVnWX7NBYYPLi71",
+        "model": "gemini-4-hydrogen"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

@@ -1,0 +1,77 @@
+api/howler/models/fields.py
+  s_d472ad1c8e1da5::t_586867af7eb6fd 703
+  s_d472ad1c8e1da5::t_bfc8ad1a81a2b1 87
+  s_d472ad1c8e1da5::t_ccf774011d5cf1 22
+  s_d472ad1c8e1da5::t_6ee230d57e4df8 18-21,23,160-167,189-190,193-198,201-202,204-211
+  s_d472ad1c8e1da5::t_3255fd4cdb304e 212
+  s_d472ad1c8e1da5::t_dcacc305d46ae0 393-402,414
+  s_d472ad1c8e1da5::t_824bb73d377c35 134
+  s_d472ad1c8e1da5::t_44eb5d41fd192f 492
+  s_d472ad1c8e1da5::t_c210f5ca451ab4 403,410,671,673-677
+  s_d472ad1c8e1da5::t_9dd27cb628ceec 159
+  s_d472ad1c8e1da5::t_3b509fe3286344 404-409,411-413,415-420,424,435,450,459,464,477,487,494,502,513,518,538,550,555,560,565,583,596,613,618,623,628,633,644,657,662,667,684,699,720,776,784,796-799
+  s_d472ad1c8e1da5::t_4008c1c855283f 491
+  s_d472ad1c8e1da5::t_5589a0492d8985 493
+  s_d472ad1c8e1da5::t_22ad31afea5f54 672
+api/test/integration/service/test_lucene_service.py
+  s_d472ad1c8e1da5::t_9b94357a0c201a 32
+  s_d472ad1c8e1da5::t_eeedbed58ade62 183
+api/howler/models/__init__.py
+  s_d472ad1c8e1da5::t_6a01a76760941b 61
+  s_d472ad1c8e1da5::t_baf1fb04a2d327 4
+api/pyproject.toml
+  s_d472ad1c8e1da5::t_1521211c579fb8 300
+api/howler/models/base.py
+  s_d472ad1c8e1da5::t_3233fc25a5f5a8 243
+  s_d472ad1c8e1da5::t_3163ef4cb071e0 296,310-313,331
+  s_d472ad1c8e1da5::t_d7e52e69127b49 410,416,423,425
+  s_d472ad1c8e1da5::t_1067e1836087b5 79-83,85-88,90-93
+  s_d472ad1c8e1da5::t_518b1c784453db 573-574
+  s_d472ad1c8e1da5::t_dc1893b94103bb 96,280-288
+  s_d472ad1c8e1da5::t_3c1705a54b255f 1,7-10,12-21,30,32,47-57,89,95,97,170,276,278-279,290-295,297-299,301-306,322-323,326-330,332-335,382,385-386,399-405,417,422,443,567-570
+  s_d472ad1c8e1da5::t_43cef9f1002ed6 11
+  s_d472ad1c8e1da5::t_893a2787100161 277
+  s_d472ad1c8e1da5::t_e16f81a9e1c786 289
+api/howler/services/fuzzy_service.py
+  s_d472ad1c8e1da5::t_218d8f0ec14ec4 129
+  s_d472ad1c8e1da5::t_85e2a354432002 15
+api/howler/datastore/collection.py
+  s_d472ad1c8e1da5::t_f159431e66467b 1510-1513
+api/howler/models/schema.py
+  s_d472ad1c8e1da5::t_ec6e76b175f9fb 42
+  s_d472ad1c8e1da5::t_c9b3e3954c4819 23,41
+api/howler/services/hit_service.py
+  s_d472ad1c8e1da5::t_ba306e81c87423 297
+api/howler/services/event_service.py
+  s_d472ad1c8e1da5::t_db521a55b7b39e 165
+api/howler/models/registry.py
+  s_d472ad1c8e1da5::t_aa2c6b0489db3b 348
+  s_d472ad1c8e1da5::t_93b2541abbabda 8,308-309,311,316-317,339-347,349-382,384-395
+  s_d472ad1c8e1da5::t_234a0702ac9c3d 383
+  s_d472ad1c8e1da5::t_3668f425fc7cb3 31-74
+api/test/unit/models/test_base.py
+  s_d472ad1c8e1da5::t_a979e12e906b71 5,16
+  s_d472ad1c8e1da5::t_5e1734d262fff0 551-564
+  s_d472ad1c8e1da5::t_9344e4a8e5c17c 548-550
+  s_d472ad1c8e1da5::t_29fb85dd75161b 266-267,269-270,274,297-298,303-305,309,323,499-547
+api/test/unit/models/test_fields.py
+  s_d472ad1c8e1da5::t_c9e36d3c28865c 484-485
+api/poetry.lock
+  s_d472ad1c8e1da5::t_b8a32d598d1ed9 3991
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "79e2a92f59bb1b50f255c6d3a5d77c7d8e685742",
+  "prompts": {},
+  "sessions": {
+    "s_d472ad1c8e1da5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_deb67984dffeVnWX7NBYYPLi71",
+        "model": "gemini-4-hydrogen"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
