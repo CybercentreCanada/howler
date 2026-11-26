@@ -10,7 +10,9 @@ Availability checks never contact the provider.
 ## Configuration
 
 Configure the integration in `/etc/howler/conf/config.yml` or with nested
-`HWL_CORE__AI__...` environment variables. Without a provider API key,
+`HWL_CORE__AI__...` environment variables. The same `core.ai` provider settings
+are also used by [AI query generation](ai_query_generation.md) with the `openai`
+provider. Without a provider API key,
 `system.encryption_key` must be a shared 32-byte key so queued Bearer tokens can
 be encrypted at rest. Other Howler features may also require this encryption key.
 The endpoint must use HTTPS; HTTP is accepted only for `localhost`, `127.0.0.1`,

@@ -45,6 +45,9 @@ nav:
   - Configuring Howler:
     - installation/default_configuration.md
     - installation/configuration.md
+  - AI Integrations:
+    - installation/ai_triage.md
+    - installation/ai_query_generation.md
 - Ingestion:
   - ingestion/key_generation.md
   - ingestion/client.md
@@ -185,6 +188,7 @@ plugins:
       locale: fr
       name: Français
       nav_translations:
+        AI Integrations: Intégrations IA
         Data Ontology: Ontologie des données
         Developer's guide: Guide du développeur
         Home: Accueil

@@ -8,7 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from howler.odm.models.config import AITriage
+from howler.odm.models.config import AIConfig
 from howler.services import ai_service as transport
 
 BODY = json.dumps({"choices": [{"message": {"content": "opinion"}}]}).encode()
@@ -74,7 +74,7 @@ def endpoint(request):
 
 
 def generate(url):
-    config = AITriage(enabled=True, endpoint=url, model="m", timeout_seconds=1)
+    config = AIConfig(enabled=True, endpoint=url, model="m", timeout_seconds=1)
     return transport.generate(config, "local-test-token", "prompt", {})
 
 

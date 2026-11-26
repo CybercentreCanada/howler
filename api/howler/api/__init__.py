@@ -273,3 +273,18 @@ def stream_binary_response(reader, status_code=200):
             yield data
 
     return Response(generate(), status=status_code, mimetype="application/octet-stream")
+
+
+def stream_event_response(events, status_code=200):
+    """Returns a server-sent event stream with buffering disabled"""
+    quota_user = flsk_session.pop("quota_user", None)
+    quota_set = flsk_session.pop("quota_set", False)
+    if quota_user and quota_set:
+        QUOTA_TRACKER.end(quota_user)
+
+    return Response(
+        events,
+        status=status_code,
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

@@ -1,8 +1,9 @@
-"""Small shared helpers for the asynchronous AI triage action."""
+"""Shared AI provider helpers for AI triage and query generation."""
 
 import json
 import os
-from typing import Any, cast
+from collections.abc import Iterator
+from typing import Any, Literal, cast
 
 import requests
 from pydantic import BaseModel
@@ -11,7 +12,7 @@ from urllib3.exceptions import ReadTimeoutError
 from howler.common.loader import datastore
 from howler.config import config
 from howler.datastore.exceptions import VersionConflictException
-from howler.odm.models.config import AITriage
+from howler.odm.models.config import AIConfig
 from howler.odm.models.hit import Hit
 from howler.odm.models.lead import Lead
 from howler.odm.models.user import User
@@ -23,6 +24,9 @@ LEAD_OWNER = "howler.ai_triage"
 AI_TRIAGE_QUEUE_NAME = "howler.ai_triage.alerts"
 AI_LEAD_RETRIES = int(os.getenv("AI_LEAD_RETRIES", "3"))
 AI_RESPONSE_CHUNK_SIZE = 64 * 1024
+
+AIUpdate = tuple[Literal["text", "status"], str]
+"""A streamed provider update: the full answer text so far, or a progress message."""
 
 
 class AITransportError(Exception):
@@ -206,7 +210,7 @@ def _check_status(response: requests.Response, *args: Any, **kwargs: Any) -> req
     return response
 
 
-def _provider_credential(config: AITriage, token: str | None) -> str:
+def _provider_credential(config: AIConfig, token: str | None) -> str:
     """Select the configured API key or the initiating request's bearer token."""
     credential = config.api_key or token
     if not credential:
@@ -226,7 +230,7 @@ def _read_response_body(response: requests.Response, max_response_bytes: int) ->
     return response_body
 
 
-def generate(config: AITriage, token: str | None, system_prompt: str, alert_data: dict[str, Any]) -> str:
+def generate(config: AIConfig, token: str | None, system_prompt: str, alert_data: dict[str, Any]) -> str:
     """Generate a response from the configured AI provider.
 
     Args:
@@ -303,6 +307,144 @@ def generate(config: AITriage, token: str | None, system_prompt: str, alert_data
         raise AITransportError("AI provider returned an invalid format.")
 
     return content.strip()
+
+
+def _delta_content(chunk: Any) -> str | None:
+    """Extract streamed text from an OpenAI-compatible chat-completion chunk."""
+    try:
+        choice = chunk["choices"][0]
+    except (KeyError, IndexError, TypeError):
+        # Some providers send metadata-only chunks with no choices.
+        return None
+
+    if not isinstance(choice, dict):
+        return None
+
+    message = choice.get("delta") or choice.get("message") or {}
+    content = message.get("content") if isinstance(message, dict) else None
+    return content if isinstance(content, str) and content else None
+
+
+def iter_sse_data(response: requests.Response, max_response_bytes: int) -> Iterator[bytes]:
+    """Yield the joined ``data`` payload of each server-sent event in a streamed response.
+
+    Raises:
+        AITransportError: If the stream exceeds ``max_response_bytes`` or ends mid-event.
+    """
+    received = 0
+    data: list[bytes] = []
+    # chunk_size=None yields each chunk as it arrives instead of waiting to fill a fixed-size buffer.
+    for line in response.iter_lines(chunk_size=None):
+        received += len(line)
+        if received > max_response_bytes:
+            raise AITransportError("Provider response exceeded the size limit")
+
+        if not line:
+            if data:
+                yield b"\n".join(data)
+                data = []
+        elif line.startswith(b"data:"):
+            payload = line[5:]
+            data.append(payload[1:] if payload.startswith(b" ") else payload)
+
+    if data:
+        yield b"\n".join(data)
+
+
+def transport_error(
+    exc: requests.exceptions.RequestException,
+    timeout_reason: str = "Provider response timed out",
+    unavailable_reason: str = "AI provider is temporarily unavailable",
+) -> AITransportError:
+    """Map a requests failure to a safe, user-visible transport error."""
+    if isinstance(exc, requests.exceptions.Timeout):
+        return AITransportError(timeout_reason)
+
+    # requests wraps urllib3 read timeouts as ConnectionError while streaming.
+    if isinstance(exc, requests.exceptions.ConnectionError) and (
+        isinstance(exc.__context__, ReadTimeoutError) or any(isinstance(arg, ReadTimeoutError) for arg in exc.args)
+    ):
+        return AITransportError(timeout_reason)
+
+    return AITransportError(unavailable_reason)
+
+
+def _iter_stream(response: requests.Response, max_response_bytes: int) -> Iterator[str]:
+    """Yield text deltas from a server-sent event chat-completion stream."""
+    for data in iter_sse_data(response, max_response_bytes):
+        if data.strip() == b"[DONE]":
+            return
+
+        try:
+            chunk = json.loads(data)
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise AITransportError("Provider returned an invalid response") from exc
+
+        content = _delta_content(chunk)
+        if content:
+            yield content
+
+
+def stream_chat(
+    config: AIConfig, token: str | None, messages: list[dict[str, str]], *, model: str | None = None
+) -> Iterator[str]:
+    """Stream generated text from the configured OpenAI-compatible provider.
+
+    Args:
+        config: Provider endpoint, model, headers, and limit settings.
+        token: Fallback bearer token sent when no provider API key is configured.
+        messages: Chat messages sent to the provider.
+        model: Optional model overriding the configured model.
+
+    Yields:
+        Generated text fragments in the order they are received.
+
+    Raises:
+        AITransportError: If configuration, input size, transport, status, or response
+            content is invalid.
+    """
+    if not config.endpoint:
+        raise AITransportError("AI provider is not configured")
+
+    credential = _provider_credential(config, token)
+
+    if sum(len(message["content"].encode("utf-8")) for message in messages) > config.max_input_bytes:
+        raise AITransportError("AI input exceeded the size limit")
+
+    body = {"model": model or config.model, "messages": messages, "stream": True}
+    try:
+        with requests.Session() as session:
+            # Do not inherit proxy, CA bundle, or .netrc settings from the environment.
+            session.trust_env = False
+            with session.post(
+                config.endpoint,
+                json=body,
+                headers={
+                    **config.headers,
+                    "Authorization": f"Bearer {credential}",
+                    "Content-Type": "application/json",
+                    "Accept": "text/event-stream",
+                },
+                timeout=(min(10, config.timeout_seconds), config.timeout_seconds),
+                allow_redirects=False,
+                stream=True,
+                hooks={"response": _check_status},
+            ) as response:
+                content_type = str(response.headers.get("Content-Type", ""))
+                if content_type.startswith("application/json"):
+                    # The provider ignored the stream request and returned one complete response.
+                    content = _delta_content(json.loads(_read_response_body(response, config.max_response_bytes)))
+                    if content:
+                        yield content
+                    return
+
+                yield from _iter_stream(response, config.max_response_bytes)
+
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise AITransportError("Provider returned an invalid response") from exc
+
+    except requests.exceptions.RequestException as exc:
+        raise transport_error(exc) from exc
 
 
 def _lead_owner(lead: Lead) -> str | None:

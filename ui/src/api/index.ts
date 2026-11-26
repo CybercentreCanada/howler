@@ -149,6 +149,58 @@ const getEtagUrl = (_uri: string): string => {
 };
 
 /**
+ * Build the XSRF and authorization headers shared by Howler API requests.
+ */
+const getAuthHeaders = (): Record<string, string> => {
+  const authToken = getLocalStored<string>(StorageKey.APP_TOKEN);
+  const xsrfToken = getXSRFCookie();
+
+  return {
+    ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+  };
+};
+
+/**
+ * Handle a 401 response by refreshing the access token and retrying the request, or by sending the user to the
+ * login page when the token cannot be refreshed.
+ *
+ * @param _uri - the uri that was rejected.
+ * @param retry - re-executes the rejected request once the token is refreshed.
+ * @returns the result of the retried request, or `undefined` when redirecting to the login page.
+ */
+const handleUnauthorized = async <T>(_uri: string, retry: () => Promise<T>): Promise<T | undefined> => {
+  if (!getLocalStored(StorageKey.NEXT_LOCATION)) {
+    setLocalStored(StorageKey.NEXT_LOCATION, window.location.pathname);
+    setLocalStored(StorageKey.NEXT_SEARCH, window.location.search);
+  }
+
+  const refreshToken = getLocalStored<string>(StorageKey.REFRESH_TOKEN);
+  const provider = getLocalStored<string>(StorageKey.PROVIDER);
+  if (!_uri.includes('/auth/login') && refreshToken && provider) {
+    //Refresh access token if possible
+    //And re-execute the previous api call (seamless)
+    const refreshResponse = await api.auth.login.post({ refresh_token: refreshToken, provider: provider });
+
+    if (refreshResponse) {
+      saveLoginCredential(refreshResponse);
+      const result = await retry();
+
+      removeLocalStored(StorageKey.NEXT_LOCATION);
+      removeLocalStored(StorageKey.NEXT_SEARCH);
+
+      return result;
+    }
+  }
+
+  saveLoginCredential({});
+
+  if (window.location.pathname !== '/login') {
+    window.location.pathname = '/login';
+  }
+};
+
+/**
  * Generic FETCH implementation for HOWLER API.
  *
  * This function will format the specified `url` with {@link format} before issuing the fetch.
@@ -166,8 +218,6 @@ export const hfetch = async <R>(
   requestHeaders?: HeadersInit,
   signal?: AbortSignal
 ): Promise<R | undefined> => {
-  const authToken = getLocalStored<string>(StorageKey.APP_TOKEN);
-  const xsrfToken = getXSRFCookie();
   const etags = getSessionStored<Record<string, string>>(StorageKey.ETAG) || {};
   const currentObject = etags[getEtagUrl(_uri)] || null;
 
@@ -175,12 +225,8 @@ export const hfetch = async <R>(
     ...requestHeaders,
     ...(currentObject && setHeaders(currentObject)),
     'Content-Type': 'application/json',
-    ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {})
+    ...getAuthHeaders()
   };
-
-  if (authToken) {
-    requestHeaders = { ...requestHeaders, Authorization: `Bearer ${authToken}` };
-  }
 
   // Wait for it ....
   const [json, statusCode, responseHeader] = await client.fetch<R>(
@@ -206,35 +252,7 @@ export const hfetch = async <R>(
   }
 
   if (statusCode === 401) {
-    if (!getLocalStored(StorageKey.NEXT_LOCATION)) {
-      setLocalStored(StorageKey.NEXT_LOCATION, window.location.pathname);
-      setLocalStored(StorageKey.NEXT_SEARCH, window.location.search);
-    }
-
-    const refreshToken = getLocalStored<string>(StorageKey.REFRESH_TOKEN);
-    const provider = getLocalStored<string>(StorageKey.PROVIDER);
-    if (!_uri.includes('/auth/login') && refreshToken && provider) {
-      //Refresh access token if possible
-      //And re-execute the previous api call (seamless)
-      const refreshResponse = await api.auth.login.post({ refresh_token: refreshToken, provider: provider });
-
-      if (refreshResponse) {
-        saveLoginCredential(refreshResponse);
-        const result = await hfetch<R>(_uri, method, body, searchParams, undefined, signal);
-
-        removeLocalStored(StorageKey.NEXT_LOCATION);
-        removeLocalStored(StorageKey.NEXT_SEARCH);
-
-        return result;
-      }
-    }
-
-    saveLoginCredential({});
-
-    if (window.location.pathname !== '/login') {
-      window.location.pathname = '/login';
-    }
-    return;
+    return handleUnauthorized(_uri, () => hfetch<R>(_uri, method, body, searchParams, undefined, signal));
   }
 
   // Throw it back.
@@ -244,6 +262,93 @@ export const hfetch = async <R>(
       cause: json
     }
   );
+};
+
+/**
+ * A single server-sent event received from a Howler streaming endpoint.
+ */
+export type HowlerStreamEvent = {
+  event: string;
+  data: unknown;
+};
+
+const parseStreamEvent = (frame: string): HowlerStreamEvent | null => {
+  let event = 'message';
+  const data: string[] = [];
+
+  for (const line of frame.split(/\r?\n/)) {
+    if (line.startsWith('event:')) {
+      event = line.slice(6).trim();
+    } else if (line.startsWith('data:')) {
+      data.push(line.slice(5).trimStart());
+    }
+  }
+
+  return data.length ? { event, data: JSON.parse(data.join('\n')) } : null;
+};
+
+/**
+ * POST to a Howler endpoint that responds with server-sent events, invoking `onEvent` for each event received.
+ *
+ * Errors thrown by `onEvent` cancel the stream and are rethrown. Expired access tokens are refreshed and the
+ * request retried, as with {@link hfetch}.
+ *
+ * @param _uri - the uri to post to.
+ * @param body - the JSON body of the request.
+ * @param onEvent - handler called for each parsed event.
+ * @param signal - optional signal used to abort the request.
+ */
+export const hstream = async (
+  _uri: string,
+  body: unknown,
+  onEvent: (event: HowlerStreamEvent) => void,
+  signal?: AbortSignal
+): Promise<void> => {
+  const response = await fetch(format(_uri), {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+    body: JSON.stringify(body),
+    signal
+  });
+
+  if (response.status === 401) {
+    await handleUnauthorized(_uri, () => hstream(_uri, body, onEvent, signal));
+    return;
+  }
+
+  if (!response.ok || !response.body) {
+    const json = (await response.json().catch(() => null)) as HowlerResponse<unknown> | null;
+    throw new Error(json?.api_error_message || `Error while streaming ${_uri} - ${response.status}`, { cause: json });
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      buffer += decoder.decode(value, { stream: !done });
+
+      const frames = buffer.split(/\r?\n\r?\n/);
+      buffer = done ? '' : (frames.pop() ?? '');
+
+      for (const frame of frames) {
+        const parsed = parseStreamEvent(frame);
+        if (parsed) {
+          onEvent(parsed);
+        }
+      }
+
+      if (done) {
+        break;
+      }
+    }
+  } catch (error) {
+    await reader.cancel().catch(() => undefined);
+    throw error;
+  }
 };
 
 /**

@@ -62,6 +62,14 @@ vi.mock('components/elements/addons/buttons/CustomIconButton', () => ({
   )
 }));
 
+vi.mock('./AiQueryButton', () => ({
+  default: ({ setQuery, disabled }: any) => (
+    <button onClick={() => setQuery('ai:query')} disabled={disabled}>
+      ai-query
+    </button>
+  )
+}));
+
 vi.mock('components/routes/advanced/QueryEditor', () => ({
   default: ({ query, setQuery, onMount }: any) => {
     return (
@@ -130,6 +138,9 @@ describe('RecordQuery', () => {
 
     fireEvent.click(screen.getByText('clear-icon'));
     await waitFor(() => expect(mockOnChange).toHaveBeenLastCalledWith('*:*', true));
+
+    fireEvent.click(screen.getByText('ai-query'));
+    await waitFor(() => expect(mockOnChange).toHaveBeenLastCalledWith('ai:query', true));
   });
 
   it('disables actions and updates when the saved query changes', async () => {

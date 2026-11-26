@@ -48,6 +48,7 @@ from howler.api.v1.tool import tool_api
 from howler.api.v1.user import user_api
 from howler.api.v1.view import view_api
 from howler.api.v2 import apiv2
+from howler.api.v2.ai import ai_api
 from howler.api.v2.case import case_api
 from howler.api.v2.fuzzy import fuzzy_api
 from howler.api.v2.ingest import ingest_api
@@ -67,6 +68,7 @@ from howler.config import (
 from howler.cronjobs import setup_jobs
 from howler.error import errors
 from howler.healthz import healthz
+from howler.services import ai_lucene_service
 from howler.telemetry import setup_telemetry
 
 logger = get_logger(__file__)
@@ -160,6 +162,7 @@ if HWL_USE_REST_API or DEBUG:
 
     # v2
     app.register_blueprint(apiv2)
+    app.register_blueprint(ai_api)
     app.register_blueprint(case_api)
     app.register_blueprint(fuzzy_api)
     app.register_blueprint(ingest_api)
@@ -171,6 +174,13 @@ if HWL_USE_REST_API or DEBUG:
 
         logger.debug("Enabled Notebook Integration")
         app.register_blueprint(notebook_api)
+
+    if config.core.ai.lucene.enabled and not ai_lucene_service.is_available():
+        logger.warning(
+            "AI query generation is enabled but its provider cannot be used; the feature is hidden. "
+            "Enable core.ai for the openai provider, or set core.ai.lucene.agent.scope or install a plugin "
+            "providing an ai_agent token function for the agent provider."
+        )
 
     if config.core.clue.enabled:
         from howler.api.v1.clue import clue_api

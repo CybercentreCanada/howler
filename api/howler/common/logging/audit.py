@@ -14,6 +14,7 @@ AUDIT_KW_TARGET = [
     "sha256",
     "copy_sid",
     "filter",
+    "prompt",
     "query",
     "username",
     "group",
