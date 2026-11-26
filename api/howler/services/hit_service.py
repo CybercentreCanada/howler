@@ -502,9 +502,7 @@ def create_hits(
         else:
             bulk_plan.add_insert_operation(hit.howler.id, hit)
 
-    result = storage.hit.bulk(bulk_plan, refresh=refresh)
-    post_write_service.records_written("hit", [hit.howler.id for hit in hits])
-    return result
+    return post_write_service.bulk_write("hit", storage.hit, bulk_plan, refresh=refresh)
 
 
 @tracer.start_as_current_span(f"{__name__}.update_hit")
@@ -553,9 +551,7 @@ def overwrite_hits(hits: list[Hit], refresh: str | None = None) -> bool:
     for hit in hits:
         bulk_plan.add_index_operation(hit.howler.id, hit)
 
-    result = storage.hit.bulk(bulk_plan, refresh=refresh)
-    post_write_service.records_written("hit", [hit.howler.id for hit in hits])
-    return result
+    return post_write_service.bulk_write("hit", storage.hit, bulk_plan, refresh=refresh)
 
 
 @typing.no_type_check

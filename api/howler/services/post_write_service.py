@@ -13,13 +13,17 @@ Writes not covered:
   cover these.
 - Deletes don't call the hook.
 
-For bulk writes, the hook is called for every record in the plan once the bulk
-request returns, even when the datastore reports errors for some of them, because
-the bulk result doesn't say which records failed. Consumers must therefore
-tolerate being called for a record whose write failed.
+For bulk writes, the hook is called once for each record the datastore reports as
+created or changed, including records from earlier requests when a later request
+in the same plan fails. Records whose items failed, or that were left unchanged,
+don't reach the hook.
 """
 
-from typing import Iterable, Literal, TypedDict, cast
+from typing import TYPE_CHECKING, Iterable, Literal, TypedDict, cast
+
+if TYPE_CHECKING:
+    from howler.datastore.bulk import ElasticBulkPlan
+    from howler.datastore.collection import ESCollection
 
 RecordType = Literal["hit", "event"]
 
@@ -63,3 +67,29 @@ def record_saved(index: str, record_id: str) -> None:
     """
     if index in RECORD_TYPES:
         record_written({"type": cast(RecordType, index), "id": record_id})
+
+
+def bulk_write(
+    record_type: RecordType,
+    collection: "ESCollection",
+    plan: "ElasticBulkPlan",
+    refresh: str | None = None,
+) -> bool:
+    """Run a bulk plan, then call :func:`record_written` for each record it created or changed.
+
+    The hook fires even if the bulk call raises partway through, for the records written
+    before the failure, and the exception is then re-raised.
+
+    Args:
+        record_type: The type of every record in the plan.
+        collection: The hit or event collection to write to.
+        plan: The bulk plan to run.
+        refresh: Optional datastore refresh strategy.
+
+    Returns:
+        bool: True if every item in the plan succeeded.
+    """
+    try:
+        return collection.bulk(plan) if refresh is None else collection.bulk(plan, refresh=refresh)
+    finally:
+        records_written(record_type, plan.written_ids)

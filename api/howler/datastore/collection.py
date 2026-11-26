@@ -167,6 +167,8 @@ class ESCollection(Generic[ModelType]):
     MAX_GROUP_LIMIT = 10
     MAX_FACET_LIMIT = 100
     MAX_RETRY_BACKOFF = 10
+    # Bulk item results that mean the document was created or changed ("noop" and "deleted" don't count).
+    BULK_WRITE_RESULTS = frozenset({"created", "updated"})
     MAX_SEARCH_ROWS = 500
     RETRY_NORMAL = 1
     RETRY_NONE = 0
@@ -657,19 +659,20 @@ class ESCollection(Generic[ModelType]):
         """
         Execute a bulk plan.
 
+        The plan's ``written_ids`` is reset, then filled with the ID of every document that a
+        successful item created, replaced or updated (each ID once, in order). Failed, deleted
+        and no-op items aren't included. The plan is split into several requests; if one of them
+        raises, ``written_ids`` still holds the records the earlier requests wrote.
+
         :return: True if the operation completed without errors
         """
-        responses = []
-        for operation_batch in operations.get_plan_batches():
-            response = self.with_retries(self.datastore.client.bulk, operations=operation_batch, refresh=refresh)
-            responses.append(response)
+        operations.written_ids = []
+        written: set[str] = set()
 
         has_errors = False
-        for response in responses:
-            if not response["errors"]:
-                continue
+        for operation_batch in operations.get_plan_batches():
+            response = self.with_retries(self.datastore.client.bulk, operations=operation_batch, refresh=refresh)
 
-            has_errors = True
             for item in response.get("items", []):
                 for action, result in item.items():
                     error = result.get("error")
@@ -682,6 +685,12 @@ class ESCollection(Generic[ModelType]):
                             result.get("status"),
                             error,
                         )
+                    elif result.get("result") in self.BULK_WRITE_RESULTS and result.get("_id") not in written:
+                        written.add(result["_id"])
+                        operations.written_ids.append(result["_id"])
+
+            if response["errors"]:
+                has_errors = True
 
         return not has_errors
 

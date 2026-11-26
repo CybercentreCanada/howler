@@ -258,6 +258,4 @@ def create_events(
         else:
             bulk_plan.add_insert_operation(event.howler.id, event)
 
-    result = storage.event.bulk(bulk_plan, refresh=refresh)
-    post_write_service.records_written("event", [event.howler.id for event in events])
-    return result
+    return post_write_service.bulk_write("event", storage.event, bulk_plan, refresh=refresh)

@@ -465,18 +465,7 @@ def process_batch(record_ids: list[str], rule_id: str | None = None) -> int:  # 
             )
 
     for item_type, bulk_plan in backing_bulk_plans.items():
-        bulk_succeeded = ds[item_type].bulk(bulk_plan)
-
-        post_write_service.records_written(
-            item_type,
-            [
-                record_id
-                for dirty_type, record_id in dirty_backing_keys
-                if dirty_type == item_type and backing_cache[(dirty_type, record_id)][0]
-            ],
-        )
-
-        if not bulk_succeeded:
+        if not post_write_service.bulk_write(item_type, ds[item_type], bulk_plan):
             raise HowlerRuntimeError("Bulk backing record update reported errors while flushing correlation batch")
 
     # Cases are only considered modified when an item was actually appended;

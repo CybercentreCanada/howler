@@ -31,6 +31,47 @@ def _event(event_id: str) -> Event:
     return event
 
 
+def _real_bulk(collection_mock: MagicMock, *responses, model: type | None = None) -> MagicMock:
+    """Run the real ``ESCollection.bulk`` for ``collection_mock`` against a client that returns ``responses``.
+
+    Each response is a list of ``(id, result)`` pairs, where ``result`` is an Elasticsearch item result
+    such as ``"created"`` or ``"error"``, or an exception to raise for that request. The plan is split so
+    each response answers one request.
+    """
+    from howler.datastore.bulk import ElasticBulkPlan
+    from howler.datastore.collection import ESCollection
+
+    collection = object.__new__(ESCollection)
+    collection.max_attempts = 1
+    collection.datastore = MagicMock()
+    collection.datastore.client.bulk.side_effect = [
+        response
+        if isinstance(response, Exception)
+        else {
+            "errors": any(result == "error" for _, result in response),
+            "items": [
+                {"index": {"_id": doc_id, "status": 400, "error": {"type": "x"}}}
+                if result == "error"
+                else {"index": {"_id": doc_id, "status": 201, "result": result}}
+                for doc_id, result in response
+            ],
+        }
+        for response in responses
+    ]
+
+    plan = ElasticBulkPlan(indexes=["test_index"], model=model)
+    # One request per response, however many operations the plan holds.
+    chunks = [f"chunk-{index}" for index in range(len(responses))]
+    collection_mock.get_bulk_plan.return_value = plan
+
+    def run_bulk(bulk_plan, **kwargs):
+        with patch.object(bulk_plan, "get_plan_batches", return_value=iter(chunks)):
+            return ESCollection.bulk(collection, bulk_plan, **kwargs)
+
+    collection_mock.bulk.side_effect = run_bulk
+    return collection_mock
+
+
 class TestHitService:
     @patch("howler.services.hit_service.datastore")
     def test_create_hit(self, mock_ds, hook):
@@ -48,10 +89,35 @@ class TestHitService:
         from howler.services import hit_service
 
         mock_ds.return_value.hit.exists.return_value = False
+        _real_bulk(mock_ds.return_value.hit, [("hit-1", "created"), ("hit-2", "created")], model=Hit)
 
         hit_service.create_hits([_hit("hit-1"), _hit("hit-2")], overwrite=overwrite)
 
         assert hook.call_args_list == [call({"type": "hit", "id": "hit-1"}), call({"type": "hit", "id": "hit-2"})]
+
+    @patch("howler.services.hit_service.datastore")
+    def test_create_hits_failed_records_do_not_reach_hook(self, mock_ds, hook):
+        from howler.services import hit_service
+
+        mock_ds.return_value.hit.exists.return_value = False
+        _real_bulk(mock_ds.return_value.hit, [("hit-1", "error"), ("hit-2", "created")], model=Hit)
+
+        assert hit_service.create_hits([_hit("hit-1"), _hit("hit-2")]) is False
+
+        hook.assert_called_once_with({"type": "hit", "id": "hit-2"})
+
+    @patch("howler.services.hit_service.datastore")
+    def test_create_hits_earlier_chunks_reach_hook_when_a_later_chunk_raises(self, mock_ds, hook):
+        from howler.common.exceptions import HowlerRuntimeError
+        from howler.services import hit_service
+
+        mock_ds.return_value.hit.exists.return_value = False
+        _real_bulk(mock_ds.return_value.hit, [("hit-1", "created")], HowlerRuntimeError("connection lost"), model=Hit)
+
+        with pytest.raises(HowlerRuntimeError):
+            hit_service.create_hits([_hit("hit-1"), _hit("hit-2")])
+
+        hook.assert_called_once_with({"type": "hit", "id": "hit-1"})
 
     @patch("howler.services.hit_service.datastore")
     def test_create_hits_rejected_batch_does_not_reach_hook(self, mock_ds, hook):
@@ -67,11 +133,20 @@ class TestHitService:
 
     @patch("howler.services.hit_service.datastore")
     def test_overwrite_hits(self, mock_ds, hook):
+        from howler.common.exceptions import HowlerRuntimeError
         from howler.services import hit_service
 
-        hit_service.overwrite_hits([_hit("hit-1"), _hit("hit-2")])
+        _real_bulk(
+            mock_ds.return_value.hit,
+            [("hit-1", "updated"), ("hit-2", "error")],
+            HowlerRuntimeError("connection lost"),
+            model=Hit,
+        )
 
-        assert hook.call_args_list == [call({"type": "hit", "id": "hit-1"}), call({"type": "hit", "id": "hit-2"})]
+        with pytest.raises(HowlerRuntimeError):
+            hit_service.overwrite_hits([_hit("hit-1"), _hit("hit-2"), _hit("hit-3")])
+
+        hook.assert_called_once_with({"type": "hit", "id": "hit-1"})
 
     @patch("howler.services.hit_service.comms_service")
     @patch("howler.services.hit_service.datastore")
@@ -171,6 +246,7 @@ class TestEventService:
         from howler.services import event_service
 
         mock_ds.return_value.event.exists.return_value = False
+        _real_bulk(mock_ds.return_value.event, [("event-1", "created"), ("event-2", "created")], model=Event)
 
         event_service.create_events([_event("event-1"), _event("event-2")], overwrite=overwrite)
 
@@ -178,6 +254,24 @@ class TestEventService:
             call({"type": "event", "id": "event-1"}),
             call({"type": "event", "id": "event-2"}),
         ]
+
+    @patch("howler.services.event_service.datastore")
+    def test_create_events_only_written_records_reach_hook(self, mock_ds, hook):
+        from howler.common.exceptions import HowlerRuntimeError
+        from howler.services import event_service
+
+        mock_ds.return_value.event.exists.return_value = False
+        _real_bulk(
+            mock_ds.return_value.event,
+            [("event-1", "error"), ("event-2", "created")],
+            HowlerRuntimeError("connection lost"),
+            model=Event,
+        )
+
+        with pytest.raises(HowlerRuntimeError):
+            event_service.create_events([_event("event-1"), _event("event-2"), _event("event-3")])
+
+        hook.assert_called_once_with({"type": "event", "id": "event-2"})
 
 
 class TestIngestOverwrite:
@@ -263,8 +357,10 @@ class TestCorrelation:
         mock_ds.event.get.return_value = (backing["event"], "1---1")
         for kind in ("hit", "event"):
             getattr(mock_ds, kind).get_version_write_target.return_value = (f"howler-{kind}", 1, 1)
-        mock_ds.hit.bulk.return_value = hit_bulk_succeeds
-        mock_ds.event.bulk.return_value = True
+        _real_bulk(mock_ds.hit, [("hit-1", "updated" if hit_bulk_succeeds else "error")])
+        _real_bulk(mock_ds.event, [("event-1", "updated")])
+        for kind in ("hit", "event"):
+            getattr(mock_ds, kind).get_bulk_plan.return_value.add_update_operation = MagicMock()
 
         rule = CaseRule(
             {
@@ -289,9 +385,12 @@ class TestCorrelation:
             with pytest.raises(HowlerRuntimeError):
                 correlation_service.process_batch(["hit-1", "event-1"])
 
-        hook.assert_any_call({"type": "hit", "id": "hit-1"})
-        event_written = mock_ds.event.bulk.called
-        assert ({"type": "event", "id": "event-1"} in [c.args[0] for c in hook.call_args_list]) == event_written
-        assert hook.call_count == (2 if event_written else 1)
+        # The hit and event plans are flushed in an arbitrary order, and a failed flush raises before the next.
+        written = [c.args[0] for c in hook.call_args_list]
+        event_flushed = mock_ds.event.bulk.called
+        expected = ([{"type": "hit", "id": "hit-1"}] if hit_bulk_succeeds else []) + (
+            [{"type": "event", "id": "event-1"}] if event_flushed else []
+        )
+        assert sorted(written, key=lambda r: r["type"]) == sorted(expected, key=lambda r: r["type"])
         if hit_bulk_succeeds:
-            assert event_written
+            assert event_flushed
