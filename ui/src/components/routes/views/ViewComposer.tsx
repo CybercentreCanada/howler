@@ -79,7 +79,7 @@ const ViewComposer: FC = () => {
 
   // view state
   const [title, setTitle] = useState('');
-  const [type, setType] = useState('global');
+  const [type, setType] = useState<View['type']>('global');
   const [advanceOnTriage, setAdvanceOnTriage] = useState(false);
   const { columns, setColumns, columnWidths, isReady } = useContext(GridColumnsContext);
 
@@ -248,7 +248,7 @@ const ViewComposer: FC = () => {
       setTitle(_view.title ?? '');
       setAdvanceOnTriage(_view.settings?.advance_on_triage ?? false);
       setDisplayType(_view.settings?.display ?? 'list');
-      setType(_view.type!);
+      setType(_view.type);
 
       const loadedQuery = _view.query || DEFAULT_QUERY;
       const loadedIndexes = (_view.indexes as SearchIndex[] | undefined) || indexes || ['hit'];
@@ -302,7 +302,7 @@ const ViewComposer: FC = () => {
                     exclusive
                     value={type}
                     onChange={(__, _type) => {
-                      if (_type) {
+                      if (_type === 'personal' || _type === 'global') {
                         setType(_type);
                       }
                     }}

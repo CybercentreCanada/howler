@@ -15,6 +15,7 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import api from 'api';
 import type { SearchField } from 'api/search/fields';
+import { fieldOptionLabel } from 'utils/stringUtils';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import useMyApi from 'components/hooks/useMyApi';
 import type { Dayjs } from 'dayjs';
@@ -50,9 +51,6 @@ type AddEventModalProps = {
   parentId?: string;
   onUpdated?: (updatedCase: Case) => void;
 };
-
-type FieldValue = string | number | boolean | string[] | number[];
-type CaseWithClassification = Case & { classification?: string };
 
 const isBlank = (value: unknown) => {
   if (Array.isArray(value)) {
@@ -103,8 +101,8 @@ const searchFields = (fields: SearchField[], query: string): SearchField[] => {
 
 const FieldInput: FC<{
   field: SearchField;
-  value: FieldValue | undefined;
-  onChange: (value: FieldValue | undefined) => void;
+  value: unknown;
+  onChange: (value: unknown) => void;
 }> = ({ field, value, onChange }) => {
   const label = field.key ?? '';
   const values = field.values ?? [];
@@ -115,7 +113,9 @@ const FieldInput: FC<{
         <Autocomplete
           multiple
           options={values}
-          value={Array.isArray(value) ? value.map(String) : []}
+          getOptionLabel={fieldOptionLabel}
+          getOptionKey={option => JSON.stringify(option)}
+          value={Array.isArray(value) ? value : []}
           onChange={(_, nextValue) => onChange(nextValue)}
           renderInput={params => <TextField {...params} size="small" label={label} helperText={field.description} />}
         />
@@ -125,7 +125,9 @@ const FieldInput: FC<{
     return (
       <Autocomplete
         options={values}
-        value={typeof value === 'string' ? value : null}
+        getOptionLabel={fieldOptionLabel}
+        getOptionKey={option => JSON.stringify(option)}
+        value={value ?? null}
         onChange={(_, nextValue) => onChange(nextValue ?? undefined)}
         renderInput={params => <TextField {...params} size="small" label={label} helperText={field.description} />}
       />
@@ -164,7 +166,7 @@ const FieldInput: FC<{
       label={label}
       type={numeric ? 'number' : 'text'}
       helperText={field.description}
-      value={value === undefined ? '' : String(value)}
+      value={value === undefined ? '' : fieldOptionLabel(value)}
       onChange={event => {
         const nextValue = event.target.value;
         if (!nextValue) {
@@ -188,7 +190,7 @@ const AddEventModal: FC<AddEventModalProps> = ({ case: _case, parentId, onUpdate
 
   const [fields, setFields] = useState<SearchField[]>([]);
   const [selectedFields, setSelectedFields] = useState<SearchField[]>([]);
-  const [fieldValues, setFieldValues] = useState<Record<string, FieldValue | undefined>>({});
+  const [fieldValues, setFieldValues] = useState<Record<string, unknown>>({});
   const [fieldSearch, setFieldSearch] = useState('');
   const [title, setTitle] = useState('');
   const [created, setCreated] = useState<Dayjs | null>(null);
@@ -235,7 +237,7 @@ const AddEventModal: FC<AddEventModalProps> = ({ case: _case, parentId, onUpdate
 
   const buildPayload = () => {
     const payload: Record<string, unknown> = {
-      classification: (_case as CaseWithClassification).classification,
+      classification: _case.classification,
       message: title.trim(),
       'event.created': created!.toISOString(),
       'event.kind': 'event',

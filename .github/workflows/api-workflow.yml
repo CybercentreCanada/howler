@@ -9,7 +9,7 @@ on:
       - "!api/LICENSE"
       - "!api/README.md"
       - "!api/doc/**"
-      - "!api/build_scripts/generate_classes.py"
+      - "ui/src/models/entities/generated/*.d.ts"
       - .github/workflows/api-workflow.yml
       - .github/actions/compose/**
       - .github/workflows/release-validation.yml
@@ -24,7 +24,7 @@ on:
       - "!api/LICENSE"
       - "!api/README.md"
       - "!api/doc/**"
-      - "!api/build_scripts/generate_classes.py"
+      - "ui/src/models/entities/generated/*.d.ts"
       - .github/workflows/api-workflow.yml
       - .github/actions/compose/**
       - .github/workflows/release-validation.yml
@@ -93,6 +93,9 @@ jobs:
 
       - name: Run ruff linter checks
         run: poetry run ruff check howler --output-format=github
+
+      - name: Check generated entity types
+        run: poetry run python build_scripts/generate_classes.py --check
 
       - name: Run mypy type checking
         run: poetry run type_check

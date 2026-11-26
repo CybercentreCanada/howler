@@ -41,7 +41,7 @@ poetry run test <specific_test_file_paths>
 - Start local dependencies with `docker compose -f api/dev/docker-compose.yml up --build -d`; Elasticsearch, Redis, Kibana, and Keycloak are defined there. `poetry run python build_scripts/docker_health.py` checks their health.
 - Run the backend with `poetry run server`.
 - The test wrapper starts a temporary test API and forwards pytest arguments, so a focused test can use `poetry run test test/unit/services/test_case_service.py -k rule`.
-- `api/build_scripts/generate_classes.py` generates `ui/src/models/entities/generated/`; do not edit those files manually. Generation requires a running API at `localhost:5000` with suitable randomized data.
+- From `api/`, run `poetry run python build_scripts/generate_classes.py` to regenerate UI entity types from the public model schema, or add `--check` to verify them offline. `ApiType.d.ts` describes the deployment's `/configs` response and has a separate generator; see [development infrastructure](docs/api/codebase.md#development-infrastructure).
 
 ## UI Development And Validation
 
