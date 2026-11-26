@@ -1,0 +1,44 @@
+api/test/unit/models/test_schema.py
+  s_fe4c195468dc3e::t_6b98fa0d2e8568 5,11,14,17-22,24-30,33-34,40-44
+api/test/unit/models/test_validation_errors.py
+  s_fe4c195468dc3e::t_6bd80e9eb678f0 6,37-38
+api/test/unit/models/test_json_schema_export.py
+  s_fe4c195468dc3e::t_d1e30bb249ec65 37,40,53,57,64-67,70-72,74,76-77,80,110,115-116,118,123-124,126-127,132-133,135-136,143-145,147,152,159,163-179
+api/test/unit/models/test_fields.py
+  s_fe4c195468dc3e::t_d5655b56e66330 233,240-244
+  s_fe4c195468dc3e::t_972486e07fbe07 293,300-301,305,318-321
+  s_fe4c195468dc3e::t_4df1f94ef06227 307-312
+  s_fe4c195468dc3e::t_baceccd91a38a7 100-102
+  s_fe4c195468dc3e::t_5a7cc2b34602fe 156,159,172-173,190-192
+  s_fe4c195468dc3e::t_4307048cc15d04 7,56-57,94-95,98-99,138,141,143,146-147,153,161,163-168,176-189,193-215,218,224-225,235-237,239,245-247,249,252,254,259,262,273-276,279-282,284-291,294,299,302,306,313-317,322-325
+  s_fe4c195468dc3e::t_c3937b979c6937 10
+  s_a794dcbdad087a::t_51f3ec81c49711 292
+api/test/unit/models/test_base.py
+  s_fe4c195468dc3e::t_86601a13498c4b 31-32,39-40,43-44,48,50,52,57-59,65,68,70,74-81,84,87-89,91,97,99-103,105-107,109,112,114-126,130-131,134-135,138,142-148,150,153,156,159,166-167
+api/test/unit/models/test_extensions.py
+  s_fe4c195468dc3e::t_fb54dd2e5eb61c 25,30,32-43,46-47,50,53-67,72,78,80,83-84,87,90,92-93,96,98-99,101,103-105,107-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "72544d94d1288161801663b15d8850f6efdd9695",
+  "prompts": {},
+  "sessions": {
+    "s_a794dcbdad087a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de652931effe3kR5lRC6vFvCi7",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_fe4c195468dc3e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de652c82fffepXvalY4n4WxQY9",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
