@@ -1,0 +1,66 @@
+api/howler/services/hit_service.py
+  s_d23b66056b5799::t_004ff3f29470a0 475-477,507,558
+  s_d23b66056b5799::t_8f49a07e717e4c 578
+  s_d23b66056b5799::t_3df0b25e09607d 585-590
+  s_d23b66056b5799::t_fb1492edc5bdc7 677
+  s_d23b66056b5799::t_81c143c06737b7 505-506
+  s_d23b66056b5799::t_865fc0887ed046 556-557
+  s_d23b66056b5799::t_4340d7e900a484 678
+  s_d23b66056b5799::t_ca2ae4afd08ca7 36-43
+api/howler/api/v2/ingest.py
+  s_d23b66056b5799::t_023147a75b74c5 24,324-325
+api/howler/services/post_write_service.py
+  s_d23b66056b5799::t_f2a9abfb26ba9d 55-65
+  s_d23b66056b5799::t_edf2fa98d6db63 1-16,20-21,23-54
+  s_d23b66056b5799::t_c5193a244b1a37 17-19
+  s_d23b66056b5799::t_9efd18b5f5427b 22
+api/test/unit/services/test_post_write_hook.py
+  s_d23b66056b5799::t_27cbea14fc9ce7 245-290
+  s_d23b66056b5799::t_0e3b8c8ce5f36a 46,48,56,59,68,70,75-92,94-105,118-127,129-151,154
+  s_d23b66056b5799::t_3b3876754d49d4 1-6,10-27,34-43,50
+  s_d23b66056b5799::t_4eab95516d3558 28-33
+  s_d23b66056b5799::t_54b1d8b52bced2 7
+  s_d23b66056b5799::t_4068ccf1b27208 93,128
+  s_d23b66056b5799::t_98383c376bbe92 106-117
+  s_d23b66056b5799::t_a727e341032ef6 152-153
+  s_d23b66056b5799::t_4c4175247e5d58 66,215-233,235-237
+  s_d23b66056b5799::t_f7d6603759057f 45,155-180
+  s_d23b66056b5799::t_947032cc36a306 293-297
+  s_d23b66056b5799::t_86231b94e0fb65 181-214
+  s_d23b66056b5799::t_5b2b56a273e217 8-9,44,47,49,51-55,57-58,60-65,67,69,71-74,234,238-244,291-292
+api/howler/services/ingest_service.py
+  s_d23b66056b5799::t_1d2188ee53e1c8 1,30
+  s_d23b66056b5799::t_a2ac7b90fad7b1 2-29,31-32
+api/howler/services/event_service.py
+  s_d23b66056b5799::t_de59e4c925a399 233,261-263
+  s_d23b66056b5799::t_b5fae38f826fe2 17
+  s_d23b66056b5799::t_e5885d90e5e9f6 231-232
+api/howler/odm/mixins.py
+  s_d23b66056b5799::t_5c69ead5f1cc67 110-114,116-117
+  s_d23b66056b5799::t_c66f2819b3c904 115
+api/howler/services/correlation_service.py
+  s_d23b66056b5799::t_2bcf1c8b39e3c7 478
+  s_d23b66056b5799::t_a095daceec7a9a 468-477,479
+  s_d23b66056b5799::t_8e3e49318c6fa7 22
+  s_d23b66056b5799::t_4008ae3cb14036 29,452-454
+api/test/unit/endpoints/test_ingest_endpoint.py
+  s_d23b66056b5799::t_089b62c99ef32d 693,696,700
+plugins/sentinel/sentinel/services/ingest_service.py
+  s_d23b66056b5799::t_8d6c74d7033de3 699,705
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9b1189e2983b27ada54734d32d9941f8f83388d1",
+  "prompts": {},
+  "sessions": {
+    "s_d23b66056b5799": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de6ec1ca4ffebl534zONTamFNZ",
+        "model": "us.anthropic.claude-opus-5-5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
