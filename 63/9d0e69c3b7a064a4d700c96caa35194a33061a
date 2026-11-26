@@ -1,0 +1,38 @@
+GLOSSARY.md
+  s_95acb78bcb16f5::t_444ea84b46a0d6 1-8,62-63,65
+  s_95acb78bcb16f5::t_fd97ae91151955 64,66-69
+  s_973a805c31e3db::t_bf628e657c1e42 9-22,47-61
+  s_376ff83d68ede6::t_90a8c15193258b 23-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "639d0e69c3b7a064a4d700c96caa35194a33061a",
+  "prompts": {},
+  "sessions": {
+    "s_376ff83d68ede6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de781a59affeohV3r0vuhfeYx5",
+        "model": "us.anthropic.claude-opus-5-5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_95acb78bcb16f5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de7d77185ffeKob8oMg5RgtgWk",
+        "model": "us.anthropic.claude-opus-5-5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_973a805c31e3db": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de7bab1a0ffeqzBxg3dk7f3W0j",
+        "model": "us.anthropic.claude-opus-5-5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
