@@ -1,0 +1,43 @@
+docs/adr/0005-replace-bundles-with-cases-and-compat-shims.md
+  s_e38d54b9e817f0::t_ef3862937b454b 1-12
+docs/adr/0003-in-process-workers-and-split-redis-topology.md
+  s_e38d54b9e817f0::t_2455ce26c464b7 1-16
+docs/adr/0011-pydantic-models-and-schema-driven-es-contracts.md
+  s_e38d54b9e817f0::t_d7882ae4ab52e7 1-12
+docs/adr/0006-coexisting-v1-v2-apis-and-etag-concurrency.md
+  s_e38d54b9e817f0::t_b1aaf52a2b407b 1-12
+docs/adr/0010-mcp-outer-lifespan-client-and-jwt-passthrough.md
+  s_e38d54b9e817f0::t_f356f029a33843 1-16
+docs/adr/0012-startup-subclass-model-extensions.md
+  s_e38d54b9e817f0::t_c54754ac838489 1-12
+docs/adr/0001-elasticsearch-as-primary-operational-store.md
+  s_e38d54b9e817f0::t_33cbe8ca22c54d 1-12
+docs/adr/0008-independent-package-versioning-in-monorepo.md
+  s_e38d54b9e817f0::t_86beabbef67ad3 1-12
+docs/adr/0002-explicit-claim-protected-datastore-migrations.md
+  s_e38d54b9e817f0::t_6da71112902915 1-12
+GLOSSARY.md
+  s_e38d54b9e817f0::t_44c78276c86d8e 1-29
+docs/adr/0009-build-time-ui-plugins-via-react-pluggable.md
+  s_e38d54b9e817f0::t_c5a7520dd2eb07 1-11
+docs/adr/0007-live-api-typescript-model-generation.md
+  s_e38d54b9e817f0::t_89acbe65c710be 1-15
+docs/adr/0004-gevent-wsgi-for-unified-rest-and-websockets.md
+  s_e38d54b9e817f0::t_348fbe11fcdf6d 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "101051ccb3db517b08496870d893945009063d7c",
+  "prompts": {},
+  "sessions": {
+    "s_e38d54b9e817f0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de7906f86ffe7pTTH0rxs3ybJn",
+        "model": "gemini-4-hydrogen"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
