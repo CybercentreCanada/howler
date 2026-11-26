@@ -1,11 +1,12 @@
 import json
+import time
 from unittest.mock import MagicMock, Mock
 
 import pytest
 import requests
 from urllib3.exceptions import ReadTimeoutError
 
-from howler.odm.models.config import AITriage
+from howler.odm.models.config import AIConfig
 from howler.services import ai_service as transport
 
 OK = {"choices": [{"message": {"content": "opinion"}}]}
@@ -37,7 +38,7 @@ def reply(session, payload, status=200, *, chunks=None):
 
 
 def generate(*, prompt="Conservative system prompt", alert=None, token="qa-access-token", timeout=30, **settings):
-    config = AITriage(
+    config = AIConfig(
         enabled=True,
         endpoint="https://ai.invalid/chat",
         model="qa-model",
@@ -108,7 +109,7 @@ def test_unconfigured_provider_or_credential_never_contacts_provider(provider):
     with pytest.raises(transport.AITransportError, match="provider credential"):
         generate(token=None)
     with pytest.raises(transport.AITransportError, match="not configured"):
-        transport.generate(AITriage(model="m"), "token", "prompt", {})
+        transport.generate(AIConfig(model="m"), "token", "prompt", {})
 
     factory.assert_not_called()
 
@@ -264,3 +265,123 @@ def test_input_limit_counts_utf8_bytes_of_prompt_and_alert_content(provider, pro
         with pytest.raises(transport.AITransportError, match="input exceeded the size limit"):
             generate(prompt=prompt, alert=alert, max_input_bytes=limit)
         factory.assert_not_called()
+
+
+def stream_reply(session, lines, content_type="text/event-stream", body=b""):
+    session.reply = MagicMock(status_code=200, headers={"Content-Type": content_type})
+    session.reply.__enter__.return_value = session.reply
+    session.reply.iter_lines.return_value = iter(lines)
+    session.reply.iter_content.return_value = iter([body])
+    return session.reply
+
+
+def stream_config(**settings):
+    return AIConfig(enabled=True, endpoint="https://ai.invalid/chat", model="qa-model", **settings)
+
+
+def sse(content):
+    return b"data: " + json.dumps({"choices": [{"delta": {"content": content}}]}).encode()
+
+
+def test_stream_chat_yields_deltas_until_done(provider):
+    session, _factory = provider
+    stream_reply(
+        session,
+        [
+            b": keep-alive",
+            b"",
+            b'data: {"choices": []}',
+            b"",
+            sse("howler."),
+            b"",
+            sse("status:open"),
+            b"",
+            b"data: [DONE]",
+            b"",
+            sse("x"),
+        ],
+    )
+    messages = [{"role": "user", "content": "open hits"}]
+
+    assert list(transport.stream_chat(stream_config(), "token", messages, model="override")) == [
+        "howler.",
+        "status:open",
+    ]
+
+    kwargs = session.post.call_args.kwargs
+    assert kwargs["json"] == {"model": "override", "messages": messages, "stream": True}
+    assert kwargs["headers"]["Accept"] == "text/event-stream"
+    assert kwargs["headers"]["Authorization"] == "Bearer token"
+    assert session.trust_env is False
+    # A fixed chunk size buffers deltas until it fills, which defeats streaming.
+    session.reply.iter_lines.assert_called_once_with(chunk_size=None)
+
+
+def test_stream_chat_accepts_non_streamed_json(provider):
+    session, _factory = provider
+    body = json.dumps({"choices": [{"message": {"content": "howler.status:open"}}]}).encode()
+    stream_reply(session, [], content_type="application/json", body=body)
+
+    assert list(transport.stream_chat(stream_config(), "token", [{"role": "user", "content": "x"}])) == [
+        "howler.status:open"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("lines", "settings", "reason"),
+    [
+        ([b"data: {not-json"], {}, "Provider returned an invalid response"),
+        ([sse("a" * 50)], {"max_response_bytes": 10}, "Provider response exceeded the size limit"),
+    ],
+)
+def test_stream_chat_rejects_invalid_streams(provider, lines, settings, reason):
+    session, _factory = provider
+    stream_reply(session, lines)
+
+    with pytest.raises(transport.AITransportError) as error:
+        list(transport.stream_chat(stream_config(**settings), "token", [{"role": "user", "content": "x"}]))
+
+    assert error.value.reason == reason
+
+
+@pytest.mark.parametrize(
+    ("lines", "reason"),
+    [
+        ([sse("howler."), b"", sse("status")], "AI provider stream ended before completing its response"),
+        ([sse("howler."), b"", b'data: {"error": {"message": "secret detail"}}'], "AI provider reported an error"),
+        (
+            [b'data: {"choices": [{"delta": {"content": "a:"}, "finish_reason": "length"}]}', b"", b"data: [DONE]"],
+            "AI provider stopped before completing its response",
+        ),
+    ],
+)
+def test_stream_chat_rejects_incomplete_streams(provider, lines, reason):
+    session, _factory = provider
+    stream_reply(session, lines)
+
+    with pytest.raises(transport.AITransportError) as error:
+        list(transport.stream_chat(stream_config(), "token", [{"role": "user", "content": "x"}]))
+
+    assert error.value.reason == reason
+
+
+def test_stream_chat_rejects_non_streamed_errors(provider):
+    session, _factory = provider
+    stream_reply(session, [], content_type="application/json", body=b'{"error": {"message": "secret detail"}}')
+
+    with pytest.raises(transport.AITransportError, match="AI provider reported an error"):
+        list(transport.stream_chat(stream_config(), "token", [{"role": "user", "content": "x"}]))
+
+
+def test_stream_chat_gives_up_after_the_deadline(provider):
+    session, _factory = provider
+    stream_reply(session, [b": keep-alive", b"", sse("howler."), b"", b"data: [DONE]"])
+    messages = [{"role": "user", "content": "x"}]
+
+    with pytest.raises(transport.AITransportError, match="AI provider took too long to respond"):
+        list(transport.stream_chat(stream_config(), "token", messages, deadline=time.monotonic() - 1))
+
+    stream_reply(session, [sse("howler."), b"", b"data: [DONE]"])
+    assert list(transport.stream_chat(stream_config(), "token", messages, deadline=time.monotonic() + 60)) == [
+        "howler."
+    ]

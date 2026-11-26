@@ -8,11 +8,12 @@ from howler.utils.str_utils import default_string_value
 logger = get_logger(__file__)
 
 
-def azure_obo(token: str) -> str:
-    """OBO an azure access token to MS Graph
+def azure_obo(token: str, scope: str = "https://graph.microsoft.com/user.read") -> str:
+    """OBO an azure access token to another application, MS Graph by default
 
     Args:
         token (str): The azure access token
+        scope (str): The scope requested for the new token
 
     Raises:
         HowlerException: OBO failed
@@ -27,14 +28,13 @@ def azure_obo(token: str) -> str:
     else:
         raise HowlerAttributeError("No azure/entraid-based provider configured!")
 
-    logger.debug("OBOing to MS Graph")
-    # Azure is a special case here, as we need to OBO to MS Graph
+    logger.debug("OBOing to %s", scope)
     data = {
         "client_id": default_string_value(
             azure_provider_config.client_id,
             env_name="AZURE_CLIENT_ID",
         ),
-        "scope": "https://graph.microsoft.com/user.read",
+        "scope": scope,
         "assertion": token,
         "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
         "client_secret": default_string_value(

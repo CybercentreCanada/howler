@@ -273,6 +273,15 @@ def get_token() -> str | None:
     return parts[1] or None
 
 
+def is_oauth_token(token: str | None) -> bool:
+    """Return whether a bearer credential is an OAuth access token rather than an internal Howler token.
+
+    Bearer authentication accepts JWTs issued by the configured OAuth providers and internal ``username:token``
+    credentials, which can't be delegated to other services.
+    """
+    return token is not None and "." in token
+
+
 @tracer.start_as_current_span("bearer_auth")
 def bearer_auth(
     data: str, skip_jwt: bool = False, skip_internal: bool = False

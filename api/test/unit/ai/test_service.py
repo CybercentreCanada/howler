@@ -8,7 +8,7 @@ from howler import actions
 from howler.actions import ai_triage
 from howler.config import CLASSIFICATION
 from howler.datastore.exceptions import VersionConflictException
-from howler.odm.models.config import AITriage, config
+from howler.odm.models.config import AIConfig, config
 from howler.services import ai_service as service
 from howler.utils.dict_utils import remove_path
 
@@ -20,7 +20,7 @@ ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef"
 
 @pytest.fixture
 def settings(monkeypatch):
-    ai = AITriage(enabled=True, endpoint=ENDPOINT, model="qa-model")
+    ai = AIConfig(enabled=True, endpoint=ENDPOINT, model="qa-model")
     monkeypatch.setattr(config.core, "ai", ai)
     monkeypatch.setattr(config.system, "encryption_key", ENCRYPTION_KEY)
     monkeypatch.setattr(CLASSIFICATION, "enforce", False)
@@ -76,18 +76,18 @@ def test_operation_spec_does_not_leak_provider_configuration(settings):
 )
 def test_config_rejects_invalid_values(overrides, match):
     with pytest.raises(ValidationError, match=match):
-        AITriage(**{"enabled": True, "endpoint": ENDPOINT, "model": "model", **overrides})
+        AIConfig(**{"enabled": True, "endpoint": ENDPOINT, "model": "model", **overrides})
 
 
 def test_config_accepts_localhost_http_and_many_concurrent_jobs():
-    assert AITriage(enabled=True, endpoint="http://localhost:8080/chat", model="m", max_concurrent_jobs=20).enabled
+    assert AIConfig(enabled=True, endpoint="http://localhost:8080/chat", model="m", max_concurrent_jobs=20).enabled
 
 
 def test_response_size_limit_defaults_to_one_megabyte_and_must_be_positive():
-    assert AITriage().max_response_bytes == 1_000_000
+    assert AIConfig().max_response_bytes == 1_000_000
 
     with pytest.raises(ValidationError):
-        AITriage(max_response_bytes=0)
+        AIConfig(max_response_bytes=0)
 
 
 @pytest.mark.parametrize(("enforce", "outcome"), [(False, "success"), (True, "error")])

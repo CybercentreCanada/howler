@@ -17,11 +17,11 @@ from howler import actions
 from howler.actions import ai_triage
 from howler.config import CLASSIFICATION, config
 from howler.cronjobs import ai_triage_worker
-from howler.odm.models.config import AITriage
+from howler.odm.models.config import AIConfig
 from howler.remote.datatypes import get_client
 from howler.services import action_service, ai_service, auth_service, hit_service, user_service
 from howler.utils.uid import get_random_id
-from test.unit.ai_triage.support import make_hit, make_user
+from test.unit.ai.support import make_hit, make_user
 
 ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef"
 JWT = jwt.encode({"sub": "analyst"}, "test-secret-which-is-at-least-32-bytes", algorithm="HS256")
@@ -43,7 +43,7 @@ def queue(monkeypatch):
 
 
 def configure(monkeypatch, api_key=None):
-    ai = AITriage(enabled=True, endpoint="https://ai.invalid/chat", model="m", api_key=api_key)
+    ai = AIConfig(enabled=True, endpoint="https://ai.invalid/chat", model="m", api_key=api_key)
     monkeypatch.setattr(config.core, "ai", ai)
     monkeypatch.setattr(config.system, "encryption_key", ENCRYPTION_KEY)
     monkeypatch.setattr(CLASSIFICATION, "enforce", False)

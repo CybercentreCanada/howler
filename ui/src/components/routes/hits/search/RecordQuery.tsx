@@ -14,6 +14,7 @@ import { useLocation } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY } from 'utils/constants';
 import { sanitizeMultilineLucene } from 'utils/stringUtils';
+import AiQueryButton from './AiQueryButton';
 
 const DEFAULT_MULTILINE_HEIGHT = 250;
 const PROMPT_CONTEXT =
@@ -207,6 +208,12 @@ const RecordQuery: FC<RecordQueryProps> = ({
           <History />
         </Tooltip>
       )}
+      <AiQueryButton
+        query={query}
+        setQuery={setQuery}
+        disabled={searching || disabled}
+        size={compact ? 'small' : 'medium'}
+      />
       <TuiIconButton
         disabled={searching || disabled}
         onClick={() => setQuery(DEFAULT_QUERY)}

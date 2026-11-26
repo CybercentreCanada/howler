@@ -56,6 +56,7 @@ import api, {
   hpatch,
   hpost,
   hput,
+  hstream,
   joinAllUri,
   joinParams,
   joinUri,
@@ -154,6 +155,49 @@ describe('api root module', () => {
     await expect(hfetch('/auth/login')).resolves.toBeUndefined();
 
     expect(mockSaveLoginCredential).toHaveBeenCalledWith({});
+  });
+
+  it('refreshes credentials and retries a stream after a 401', async () => {
+    let token = 'expired-token';
+    mockGetLocalStored.mockImplementation((key: string) => {
+      if (key === 'app_token') return token;
+      if (key === 'refresh_token') return 'refresh-token';
+      if (key === 'provider') return 'oidc';
+      return undefined;
+    });
+    mockRefreshLogin.mockResolvedValue({ app_token: 'new-token' });
+    mockSaveLoginCredential.mockImplementation(() => {
+      token = 'new-token';
+    });
+    const chunks = [new TextEncoder().encode('data: {"text": "a:b"}\n\n')];
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({ status: 401, ok: false, body: null })
+      .mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        body: {
+          getReader: () => ({
+            read: () => Promise.resolve(chunks.length ? { done: false, value: chunks.shift() } : { done: true }),
+            cancel: () => Promise.resolve()
+          })
+        }
+      });
+    vi.stubGlobal('fetch', mockFetch);
+    const onEvent = vi.fn();
+
+    try {
+      await hstream('/api/v2/ai/lucene', { prompt: 'x' }, onEvent);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    expect(mockRefreshLogin).toHaveBeenCalledWith({ refresh_token: 'refresh-token', provider: 'oidc' });
+    expect(mockFetch.mock.calls.map(([, init]) => init.headers.Authorization)).toEqual([
+      'Bearer expired-token',
+      'Bearer new-token'
+    ]);
+    expect(onEvent).toHaveBeenCalledWith({ event: 'message', data: { text: 'a:b' } });
   });
 
   it('throws the API error message for non-401 failures', async () => {

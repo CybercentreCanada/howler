@@ -16,7 +16,7 @@ from howler.odm.constants import CaseEscalation
 from howler.odm.models.howler_data import Assessment, Escalation, Scrutiny, Status
 from howler.odm.models.user import User
 from howler.plugins import get_plugins
-from howler.services import jwt_service
+from howler.services import ai_lucene_service, jwt_service
 from howler.utils.str_utils import default_string_value
 
 classification_definition = CLASSIFICATION.get_parsed_classification_definition()
@@ -125,6 +125,7 @@ def get_configuration(user: User | None, **kwargs):
             "features": {
                 "clue": config.core.clue.enabled,
                 "notebook": config.core.notebook.enabled,
+                "ai_lucene": ai_lucene_service.is_available(),
                 **plugin_features,
             },
             "clue": {"status_checks": config.core.clue.status_checks},

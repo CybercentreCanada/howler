@@ -1,5 +1,5 @@
+import argparse
 import base64
-import json
 import logging as log
 import os
 import re
@@ -105,7 +105,7 @@ TYPE_PYTHON_MAPPING = {
     "long": int,
 }
 
-PYTHON_TS_MAPPING = {"str": "string", "bool": "boolean"}
+PYTHON_TS_MAPPING = {"str": "string", "bool": "boolean", "list": "string[]"}
 
 BASE_TS_TEMPLATE = """/**
  * NOTE: This is an auto-generated file. Don't edit this manually.
@@ -397,33 +397,149 @@ def generate_class(name, structure):
         return generate_class_member_and_field(name, structure)
 
 
+def _lookup_member(lookup_name: str, lookup_data: Any) -> str | None:
+    """Render the type of one lookup. Lookups can be a list of strings, a dict of lists, or a dict of dicts."""
+    name = f"'{lookup_name}'" if "." in lookup_name else lookup_name
+
+    # "simple" list format (i.e. ["one", "two"])
+    if isinstance(lookup_data, list):
+        # Empty lookups (e.g. no icons configured) can't be inspected, so assume a list of strings
+        if not lookup_data:
+            return TS_MEMBER_LIST_TEMPLATE_NOTNULL.format(name, "string")
+
+        sub_type = type(lookup_data[0]).__name__
+
+        # If there's only a few values in the lookup, we create an enum style list instead
+        if len(lookup_data) < 12 and sub_type == "str":
+            short = len(lookup_data) <= 5
+            return TS_MEMBER_TEMPLATE_NOTNULL.format(
+                name,
+                "["
+                + ("" if short else "\n    ")
+                + (", " if short else ",\n    ").join(f"'{val}'" for val in lookup_data)
+                + ("" if short else "\n  ")
+                + "]",
+            )
+
+        return TS_MEMBER_LIST_TEMPLATE_NOTNULL.format(name, PYTHON_TS_MAPPING[sub_type])
+
+    if isinstance(lookup_data, dict):
+        entry = lookup_data[next(key for key in lookup_data.keys())]
+
+        # Dict of lists
+        if isinstance(entry, list):
+            return TS_MEMBER_TEMPLATE_NOTNULL.format(
+                name, f"{{ [index: string]: {PYTHON_TS_MAPPING[type(entry[0]).__name__]}[] }}"
+            )
+
+        # Dict of dicts (we reuse the logic from the indexes, basically)
+        if isinstance(entry, dict):
+            fields = [f"{k}: {PYTHON_TS_MAPPING[type(v).__name__]};" for k, v in entry.items()]
+            return TS_MEMBER_TEMPLATE_NOTNULL.format(name, f"{{ [index: string]: {{ {' '.join(fields)[:-1]} }} }}")
+
+    # We've missed some logic! This is just a check in case we change the formatting of the config in an
+    # unexpected way in the future.
+    log.warning("Missing logic for key %s: %s", lookup_name, lookup_data)
+    return None
+
+
+# Configuration keys whose types are hardcoded. These are optional regardless of the local configuration's values.
+CONFIGURATION_TYPE_OVERRIDES = {
+    "max_apikey_duration_amount": "?: number",
+    "max_apikey_duration_unit": "?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months' | 'years'",
+    "apps": ": { alt: string; name: string; img_d: string; img_l: string; route: string; classification: string }[]",
+}
+
+
+def _ts_key(key: str) -> str:
+    """Quote keys that aren't valid TS identifiers."""
+    return key if key.isidentifier() else f"'{key}'"
+
+
+def _ts_type(value: Any, depth: int, path: tuple[str, ...]) -> str:
+    """Infer the TS type of a configuration value from its JSON value."""
+    if isinstance(value, bool):
+        return "boolean"
+
+    if isinstance(value, (int, float)):
+        return "number"
+
+    if isinstance(value, str):
+        return "string"
+
+    if isinstance(value, dict):
+        return _ts_object(value, depth, path)
+
+    if isinstance(value, list):
+        # Empty lists can't be inspected, so assume a list of strings
+        if not value:
+            return "string[]"
+
+        # Lists of objects are assumed to share the keys of their last entry, and are written on a single line
+        if isinstance(value[-1], dict):
+            members = " ".join(f"{_ts_key(k)}: {_ts_type(v, 0, ())};" for k, v in value[-1].items())
+            return f"{{ {members[:-1]} }}[]"
+
+        return f"{_ts_type(value[0], depth, path)}[]"
+
+    return "unknown"
+
+
+def _ts_object(obj: dict[str, Any], depth: int, path: tuple[str, ...]) -> str:
+    """Render a configuration object as a multiline TS object type."""
+    indent = "  " * (depth + 1)
+    lines = []
+    for key, value in obj.items():
+        if key in CONFIGURATION_TYPE_OVERRIDES:
+            lines.append(f"{indent}{key}{CONFIGURATION_TYPE_OVERRIDES[key]};")
+        elif value is None:
+            lines.append(f"{indent}{_ts_key(key)}?: unknown;")
+        else:
+            lines.append(f"{indent}{_ts_key(key)}: {_ts_type(value, depth + 1, (*path, key))};")
+
+    # Plugins can register additional feature flags at runtime
+    if path == ("features",):
+        lines.append(f"{indent}[feature: string]: boolean;")
+
+    return "{\n" + "\n".join(lines) + "\n" + "  " * depth + "}"
+
+
+def _configuration_type(configuration: dict[str, Any]) -> str:
+    """Convert the configuration section into a TS interface, inferring types from its values."""
+    return "export interface APIConfiguration extends APIMappings " + _ts_object(configuration, 0, ())
+
+
 def generate_api_config_types():
+    """Step 4: Generate ApiType.d.ts from the /configs response"""
     headers = {"Authorization": f"Basic {base64.b64encode(b'user:devkey:user').decode('utf-8')}"}
     config_req = requests.get(API_PATH + "configs", headers=headers).json()["api_response"]
 
     ts_file_name = TS_GENERATED_PATH / "ApiType.d.ts"
     with open(ts_file_name, "w") as file:
+        file.write("import type { ClassificationDefinition } from 'utils/classificationParser';\n\n")
+
         # We handle each field slightly differently. First up is the indexes!
-        # This is quite trivial as it is simply a dict of dicts of the same object, repeated.
-        # We simply drill down two levels to the dicts for the first entry in the index, and replicate it for all
-        # the known indexes
+        # This is quite trivial as it is simply a dict of dicts of the same object, repeated. We infer the type of each
+        # property from the first hit field where it is set, and replicate it for all the known indexes.
         log.info("Step 4.1: Handling 'indexes' key")
         indexes = config_req.pop("indexes")
-
+        hit_fields = list(indexes["hit"].values())
         index_fields = "\n".join(
-            [
-                TS_MEMBER_TEMPLATE_NOTNULL.format(k, PYTHON_TS_MAPPING.get(type(v).__name__, "string"))
-                for k, v in indexes["hit"][next(key for key in indexes["hit"].keys())].items()
-            ]
+            TS_MEMBER_TEMPLATE_NOTNULL.format(
+                k,
+                PYTHON_TS_MAPPING.get(
+                    type(next((field[k] for field in hit_fields if field.get(k) is not None), None)).__name__, "string"
+                ),
+            )
+            for k in hit_fields[0].keys()
         )
 
         # First we write the reused type
-        file.write(BASE_TS_TEMPLATE.format(imports="", name="APIIndex", members=index_fields) + "\n")
+        file.write(BASE_TS_TEMPLATE.format(name="APIIndex", members=index_fields) + "\n")
 
         # Then we write the overarching dict containing a key for each index
         file.write(
             BASE_TS_TEMPLATE.format(
-                imports="",
                 name="APIIndexes",
                 members="\n".join(
                     TS_MEMBER_TEMPLATE_NOTNULL.format(key, "{ [index: string]: APIIndex }") for key in indexes.keys()
@@ -432,140 +548,22 @@ def generate_api_config_types():
             + "\n"
         )
 
-        # Lookups is next. This requires some slightly more touch and go formatting as there's no unified format for our
-        # lookups. They can be a list of strings, a dict of lists of strings, or a dict of dicts with the same keys.
-        # We handle each of these cases
         log.info("Step 4.2: Handling 'lookups' key")
-        lookups = config_req.pop("lookups")
-        lookup_members = []
-        for lookup_name, lookup_data in lookups.items():
-            # "simple" list format (i.e. ["one", "two"])
-            if isinstance(lookup_data, list):
-                sub_type = type(lookup_data[0]).__name__
+        lookup_members = [
+            member
+            for lookup_name, lookup_data in config_req.pop("lookups").items()
+            if (member := _lookup_member(lookup_name, lookup_data))
+        ]
+        file.write(BASE_TS_TEMPLATE.format(name="APILookups", members="\n".join(lookup_members)).strip())
 
-                # If there's only a few values in the lookup, we create an enum style list instead
-                if len(lookup_data) < 12 and sub_type == "str":
-                    lookup_members.append(
-                        TS_MEMBER_TEMPLATE_NOTNULL.format(
-                            f"'{lookup_name}'" if "." in lookup_name else lookup_name,
-                            "["
-                            + ("" if len(lookup_data) <= 5 else "\n    ")
-                            + (", " if len(lookup_data) <= 5 else ",\n    ").join(f"'{val}'" for val in lookup_data)
-                            + ("" if len(lookup_data) <= 5 else "\n  ")
-                            + "]",
-                        )
-                    )
-                    continue
-                else:
-                    lookup_members.append(
-                        TS_MEMBER_LIST_TEMPLATE_NOTNULL.format(
-                            f"'{lookup_name}'" if "." in lookup_name else lookup_name,
-                            PYTHON_TS_MAPPING[sub_type],
-                        )
-                    )
-                    continue
+        # Mappings vary by deployment, so they're typed as a generic string dictionary the configuration extends
+        log.info("Step 4.3: Handling 'configuration' key")
+        configuration = config_req.pop("configuration")
+        configuration.pop("mapping", None)
+        file.write("\n\n" + _configuration_type(configuration))
 
-            # Dict is next
-            elif isinstance(lookup_data, dict):
-                entry = lookup_data[next(key for key in lookup_data.keys())]
-
-                # Dict of lists
-                if isinstance(entry, list):
-                    sub_type = type(entry[0]).__name__
-                    lookup_members.append(
-                        TS_MEMBER_TEMPLATE_NOTNULL.format(
-                            f"'{lookup_name}'" if "." in lookup_name else lookup_name,
-                            f"{{ [index: string]: {PYTHON_TS_MAPPING[sub_type]}[] }}",
-                        )
-                    )
-                    continue
-
-                # Dict of dicts (we reuse the logic from the indexes, basically)
-                elif isinstance(entry, dict):
-                    fields = [f"{k}: {PYTHON_TS_MAPPING[type(v).__name__]};" for k, v in entry.items()]
-
-                    lookup_members.append(
-                        TS_MEMBER_TEMPLATE_NOTNULL.format(
-                            f"'{lookup_name}'" if "." in lookup_name else lookup_name,
-                            f"{{ [index: string]: {{ {' '.join(fields)[:-1]} }} }}",
-                        )
-                    )
-                    continue
-
-            # We've missed some logic! This is just a check in case we change the formatting of the config in an
-            # unexpected way in the future.
-            log.warning("Missing logic for key %s: %s", lookup_name, lookup_data)
-
-        file.write(BASE_TS_TEMPLATE.format(imports="", name="APILookups", members="\n".join(lookup_members)).strip())
-
-        # The last two are hilariously complex objects, so instead of doing it in a logical way, we just
-        # #CHEESEIT instead. We use a bunch of regexes to convert a JSON version of the entry into a TS type.
-        step = 3
-        for key in ["configuration", "c12nDef"]:
-            log.info("Step 4.%s: Handling '%s' key", step, key)
-            step += 1
-
-            # Setting up the basic interface format
-            config_type = f"export interface API{to_pascal_case(key)} " + json.dumps(config_req.pop(key), indent=2)
-
-            # |    "key":| -> |    key:|
-            config_type = re.sub(r'^( +)"(\w+)":', r"\1\2:", config_type, flags=re.MULTILINE)
-
-            # true or false -> boolean;
-            config_type = re.sub(r"(true|false),?", "boolean;", config_type, flags=re.MULTILINE)
-
-            # array of strings -> string[];
-            config_type = re.sub(r'\[(\s+".+",?\s+)+],?', "string[];", config_type, flags=re.MULTILINE)
-
-            # |    key: "value"| -> |    key: string;|
-            config_type = re.sub(r': ".+?",?', ": string;", config_type)
-            config_type = re.sub(r": \d+,?", ": number;", config_type)
-
-            # In order to handle cases where there's a list of complex objects, we make the assumption that all children
-            # have the same keys. We then do two things:
-            # 1. We remove every entry in the array except the last one
-            # 2. We convert the entry from a formatted dict into a single line of key: type entries. Example:
-            #
-            # | [{              |
-            # |   key: string;  |
-            # |   key2: string; | -> | { key: string; key2: string; key3: string }[] |
-            # |   key3: string; |
-            # | }]              |
-            def fix_whitespace(match_obj):
-                lines = match_obj.group(2).split("\n")
-                return f"{{{' '.join(line.strip() for line in lines)}}}[]"
-
-            config_type = re.sub(r"\[\s+({([\s\S]+?)},?\s+)+]", fix_whitespace, config_type)
-
-            # We can hardcode a few types here:
-            config_type = re.sub(
-                r"max_apikey_duration_amount: null.+",
-                r"max_apikey_duration_amount?: number;",
-                config_type,
-            )
-            config_type = re.sub(
-                r"max_apikey_duration_unit: null.+",
-                r"max_apikey_duration_unit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months' | 'years';",
-                config_type,
-            )
-
-            config_type = config_type.replace(
-                "apps: [],",
-                "apps: { alt: string; name: string; img_d: string; img_l: string; route: "
-                "string; classification: string }[];",
-            )
-
-            # Finally, we convert any null values into unknown types.
-            config_type = re.sub(r"(.+): null.+", r"\1?: unknown;", config_type)
-
-            # We clean up a few remaining awkward bits
-            config_type = config_type.replace('"', "'")
-            config_type = config_type.replace("},", "};")
-            config_type = config_type.replace("}\n", "};\n")
-            config_type = config_type.replace("[],", "[];")
-
-            # All done!
-            file.write("\n\n" + config_type)
+        # The UI types the classification definition by hand, as it depends on the deployment's classification.yml
+        config_req.pop("c12nDef")
 
         # We'll check for any keys we missed and throw a warning so we know what the problem is in the future
         leftover_keys = list(config_req.keys())
@@ -574,21 +572,31 @@ def generate_api_config_types():
 
         # Write the final section of the new type
         file.write(
-            "\n"
-            + textwrap.dedent(
+            "\n\n"
+            + BASE_TS_TEMPLATE.format(
+                name="APIMappings", members=TS_MEMBER_TEMPLATE_NOTNULL.format("mapping", "{ [index: string]: string }")
+            )
+        )
+        file.write(
+            textwrap.dedent(
                 f"""
                 export interface ApiType {{
                   indexes: API{to_pascal_case("indexes")};
                   lookups: API{to_pascal_case("lookups")};
                   configuration: API{to_pascal_case("configuration")};
-                  c12nDef: API{to_pascal_case("c12nDef")};
+                  c12nDef: ClassificationDefinition;
                 }}
                 """
             )
         )
 
 
-def run():
+def run(config_only: bool = False):
+    if config_only:
+        log.info("Step 4: Generate API configs")
+        generate_api_config_types()
+        return
+
     log.info("Step 1: Generate and validate type structure")
     structure = generate_structure()
 
@@ -613,4 +621,10 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    parser = argparse.ArgumentParser(description="Generate the UI's TypeScript entity types from a running Howler API")
+    parser.add_argument(
+        "--config-only",
+        action="store_true",
+        help="Only regenerate ApiType.d.ts from /configs, leaving the entity classes untouched",
+    )
+    run(config_only=parser.parse_args().config_only)
