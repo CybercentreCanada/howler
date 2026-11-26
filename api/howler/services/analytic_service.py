@@ -178,7 +178,7 @@ def _get_analytic_updates_from_hit_group(analytic_name: str, hit_group: list[Hit
 
     else:
         save = True
-        analytic = Analytic.validate_howler(
+        analytic = Analytic.model_validate(
             {
                 "name": analytic_name,
                 "owner": user.uname,

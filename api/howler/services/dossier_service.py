@@ -160,7 +160,7 @@ def create_dossier(  # noqa: C901
             dossier_data["owner"] = username
 
         dossier_type: type[Dossier] = storage.dossier.model_class or Dossier
-        dossier = dossier_type.validate_howler(dossier_data)
+        dossier = dossier_type.model_validate(dossier_data)
 
         # Ensure the owner is set to the current user.
         dossier.owner = username
@@ -235,7 +235,7 @@ def update_dossier(  # noqa: C901
             storage.hit.search(dossier_data["query"])
 
         # Merge the new data with existing dossier data
-        new_data = type(existing_dossier).validate_howler(
+        new_data = type(existing_dossier).model_validate(
             cast(dict, merge({}, existing_dossier.as_primitives(), dossier_data))
         )
 

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from pydantic import field_validator, model_validator
+
 from howler.common.exceptions import HowlerValueError
 from howler.models import (
     HowlerEmbeddedModel,
@@ -71,9 +73,14 @@ class Pivot(HowlerEmbeddedModel):
         compound(Mapping), default=[], description="A list of the mappings to use when activating a pivot."
     )
 
-    def __init__(self, **data: Any) -> None:
-        """Validate group syntax and unique mapping keys on construction."""
-        validate_group(data.get("group"))
-        super().__init__(**data)
+    @field_validator("group", mode="before")
+    @classmethod
+    def _validate_group(cls, value: Any) -> Any:
+        validate_group(value)
+        return value
+
+    @model_validator(mode="after")
+    def _validate_unique_mapping_keys(self) -> Pivot:
         if len(self.mappings) != len({mapping.key for mapping in self.mappings}):
-            raise HowlerValueError("One of your pivots has duplicate keys set.")
+            raise ValueError("One of your pivots has duplicate keys set.")
+        return self

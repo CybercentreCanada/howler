@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
 
-from howler.models import model_registry
+from howler.models import HowlerModelValidationError, model_registry
 from howler.models.event import Event
 from howler.models.hit import Hit
 
@@ -37,7 +36,7 @@ def test_event_identifier_and_primitives() -> None:
 
 def test_hit_rejects_unknown_top_level_fields() -> None:
     """The strict Hit model rejects undeclared fields."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(HowlerModelValidationError):
         Hit.model_validate({**HIT_DATA, "not_a_real_field": True})
 
 

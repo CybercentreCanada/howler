@@ -179,7 +179,7 @@ class TestParseUserDataAccessControl:
 
 
 def test_convert_user_preserves_public_apikey_expiry_shape():
-    user = User.validate_howler(
+    user = User.model_validate(
         {
             "uname": "alice",
             "name": "Alice",
@@ -201,7 +201,7 @@ def test_convert_user_preserves_public_apikey_expiry_shape():
 
 
 def _make_account_user() -> dict:
-    return User.validate_howler(
+    return User.model_validate(
         {
             "uname": "alice",
             "name": "Alice",
@@ -290,7 +290,7 @@ def test_set_user_account_roundtrips_get_payload_without_role_escalation():
 
     app = Flask("test_user_account_roundtrip")
     app.config["SECRET_KEY"] = "test-secret"
-    auth_user = User.validate_howler(current)
+    auth_user = User.model_validate(current)
     config_mock = MagicMock()
 
     with (

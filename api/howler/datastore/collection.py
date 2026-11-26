@@ -1478,7 +1478,7 @@ class ESCollection(Generic[ModelType]):
                     for key, value in raw_data.items()
                     if key not in MODEL_BANNED_FIELDS and key not in {"id", "__index"}
                 }
-                model = self.model_class.validate_howler({"meta": resolved_metadata, **model_input})
+                model = self.model_class.model_validate({"meta": resolved_metadata, **model_input})
         else:
             if isinstance(data, BaseModel):
                 raw_data = data.model_dump(by_alias=True)
@@ -1507,7 +1507,7 @@ class ESCollection(Generic[ModelType]):
                     ignore_unknown=read,
                 )
                 if partial
-                else self.model_class.validate_howler(
+                else self.model_class.model_validate(
                     {"meta": resolved_metadata, **model_input},
                     extra="ignore" if read else None,
                 )

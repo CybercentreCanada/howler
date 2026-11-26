@@ -98,7 +98,7 @@ def create_template(**kwargs):
     storage = datastore()
 
     try:
-        template = Template.validate_howler(template_data)
+        template = Template.model_validate(template_data)
 
         if template.type == "personal":
             template.owner = kwargs["user"]["uname"]

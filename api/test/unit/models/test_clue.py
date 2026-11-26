@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
 
-from howler.models import ModelExtensionRegistry, compound, model_registry, optional
+from howler.models import (
+    HowlerModelValidationError,
+    ModelExtensionRegistry,
+    compound,
+    model_registry,
+    optional,
+)
 from howler.models.clue import Clue, TypeMap
 from howler.models.hit import Hit
 
@@ -58,9 +63,9 @@ class TestClue:
         assert clue.types[0].type == "ipv4"
 
     def test_clue_rejects_missing_or_empty_type_values(self) -> None:
-        with pytest.raises(ValidationError):
+        with pytest.raises(HowlerModelValidationError):
             TypeMap.model_validate({"field": "source.ip"})
-        with pytest.raises(ValidationError):
+        with pytest.raises(HowlerModelValidationError):
             Clue.model_validate({"types": [{"field": "source.ip", "type": ""}]})
 
     def test_clue_json_round_trip_and_equality(self) -> None:
@@ -113,5 +118,5 @@ class TestHitClueExtension:
         assert "clue.types.field" in flat_fields
         assert "clue.types.type" in flat_fields
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(HowlerModelValidationError):
             hit_model.model_validate({**hit_data, "clue": {"unknown": True}})

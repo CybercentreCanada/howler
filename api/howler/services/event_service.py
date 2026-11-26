@@ -162,7 +162,7 @@ def convert_event(  # noqa: C901
     if unused_keys and not ignore_extra_values:
         raise HowlerValueError(f"Event was created with invalid parameters: {', '.join(unused_keys)}")
 
-    odm = event_type.validate_howler(data, extra="ignore" if ignore_extra_values else None)
+    odm = event_type.model_validate(data, extra="ignore" if ignore_extra_values else None)
 
     odm_flatten = model_registry.flat_fields(event_type, show_compound=True)
     deprecated_keys = {
@@ -179,7 +179,7 @@ def convert_event(  # noqa: C901
         if not odm.event.created:
             odm.event.created = "NOW"
     else:
-        odm.event = ECSEvent.validate_howler({"created": "NOW", "id": odm.howler.id})
+        odm.event = ECSEvent.model_validate({"created": "NOW", "id": odm.howler.id})
 
     if user and not is_classification_accessible(user, odm.classification):
         raise HowlerValueError(f"User {user.uname} cannot create hits at classification {odm.classification}")
@@ -225,7 +225,7 @@ def create_event(
         raise ResourceExists(f"Event {id} already exists in datastore")
 
     if user:
-        event.howler.log = [Log.validate_howler({"timestamp": "NOW", "explanation": "Created event", "user": user})]
+        event.howler.log = [Log.model_validate({"timestamp": "NOW", "explanation": "Created event", "user": user})]
 
     CREATED_EVENTS.inc()
     return datastore().event.save(id, event, refresh=refresh)
@@ -248,7 +248,7 @@ def create_events(
             raise ResourceExists("Event %s already exists in datastore" % event.howler.id)
 
         if user:
-            event.howler.log = [Log.validate_howler({"timestamp": "NOW", "explanation": "Created event", "user": user})]
+            event.howler.log = [Log.model_validate({"timestamp": "NOW", "explanation": "Created event", "user": user})]
 
         CREATED_EVENTS.inc()
         if overwrite:

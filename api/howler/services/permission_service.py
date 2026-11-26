@@ -45,7 +45,7 @@ def _build_permissions_request() -> list[PermissionRequest]:
         raise InvalidDataException("Request body must contain at least one permission.")
 
     try:
-        permission_requests = [PermissionRequest.validate_howler(entry) for entry in payload]
+        permission_requests = [PermissionRequest.model_validate(entry) for entry in payload]
     except (TypeError, ValueError, HowlerTypeError) as e:
         raise InvalidDataException(message=str(e))
 

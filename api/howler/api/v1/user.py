@@ -144,7 +144,7 @@ def add_user_account(username, **kwargs):
         storage.user_avatar.save(username, avatar)
 
     try:
-        return ok({"success": storage.user.save(username, User.validate_howler(data), refresh=refresh)})
+        return ok({"success": storage.user.save(username, User.model_validate(data), refresh=refresh)})
     except ValueError as e:
         return bad_request(err=str(e))
 

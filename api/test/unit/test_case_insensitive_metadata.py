@@ -165,7 +165,7 @@ def test_metadata_fields_use_case_insensitive_mappings_without_changing_serializ
     ]
 
     for model_class, values, expected in data:
-        model = model_class.validate_howler(values)
+        model = model_class.model_validate(values)
         serialized = model.as_primitives()
         assert {name: serialized[name] for name in expected} == expected
         assert serialized["owner"] == "OwnerMiXeD"
@@ -175,7 +175,7 @@ def test_metadata_fields_use_case_insensitive_mappings_without_changing_serializ
 
 
 def test_optional_metadata_fields_allow_absence_and_view_dossier_values_keep_case():
-    view = View.validate_howler(
+    view = View.model_validate(
         {
             "view_id": str(uuid4()),
             "indexes": ["hit"],
@@ -185,7 +185,7 @@ def test_optional_metadata_fields_allow_absence_and_view_dossier_values_keep_cas
             "owner": "OwnerMiXeD",
         }
     )
-    dossier = Dossier.validate_howler(
+    dossier = Dossier.model_validate(
         {
             "dossier_id": str(uuid4()),
             "title": "Dossier MiXeD Case",
@@ -195,8 +195,8 @@ def test_optional_metadata_fields_allow_absence_and_view_dossier_values_keep_cas
             "pivots": [],
         }
     )
-    template = Template.validate_howler({"template_id": str(uuid4()), "analytic": "Analytic MiXeD", "type": "personal"})
-    overview = Overview.validate_howler(
+    template = Template.model_validate({"template_id": str(uuid4()), "analytic": "Analytic MiXeD", "type": "personal"})
+    overview = Overview.model_validate(
         {"overview_id": str(uuid4()), "analytic": "Analytic MiXeD", "content": "Markdown"}
     )
 

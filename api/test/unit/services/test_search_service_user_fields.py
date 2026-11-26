@@ -565,7 +565,7 @@ def test_admin_only_search_helpers_use_user_roles():
     def admin_collection():
         return "admin-index"
 
-    admin_user = User.validate_howler({"uname": "admin", "name": "Admin", "password": "hash", "type": ["admin"]})
+    admin_user = User.model_validate({"uname": "admin", "name": "Admin", "password": "hash", "type": ["admin"]})
     admin_mapping = {"type": ["admin"]}
 
     with (

@@ -182,7 +182,7 @@ def test_overwrite_retains_stored_and_supplied_empty_compounds(flatten_patch_map
         absent_list: optional(list_field(compound(Entry)))
         populated: compound(Entry)
 
-    stored = ExtendedHit.validate_howler(
+    stored = ExtendedHit.model_validate(
         {"howler.analytic": "Old", "howler.hash": "ab", "stored_plugin": {}, "populated.value": "keep"}
     )
     updated = ingest_service.prepare_overwrite(
@@ -208,7 +208,7 @@ def test_overwrite_empty_dynamic_mappings_follow_original_route_behavior(flatten
         scalar_map: mapping(keyword())
         compounds: mapping(compound(Entry), index=False)
 
-    stored = ExtendedHit.validate_howler(
+    stored = ExtendedHit.model_validate(
         {
             "howler.analytic": "Original",
             "howler.hash": "ab",
@@ -257,7 +257,7 @@ def test_overwrite_empty_dynamic_mappings_follow_original_route_behavior(flatten
 @pytest.mark.parametrize("replace", [False, True])
 @pytest.mark.parametrize("updates", [{"unknown": {}}, {"howler": {"unknown": {}}}])
 def test_overwrite_empty_unknowns_follow_original_route_behavior(flatten_patch_mappings, replace, updates):
-    stored = Hit.validate_howler({"howler.analytic": "Original", "howler.hash": "ab"}).as_primitives()
+    stored = Hit.model_validate({"howler.analytic": "Original", "howler.hash": "ab"}).as_primitives()
     if flatten_patch_mappings:
         updated = ingest_service.prepare_overwrite(
             stored, updates, Hit, user=None, replace=replace, flatten_patch_mappings=True
@@ -275,7 +275,7 @@ def test_overwrite_other_empty_scalars_follow_original_route_behavior(flatten_pa
         count: integer()
         raw: json_field()
 
-    stored = ExtendedHit.validate_howler(
+    stored = ExtendedHit.model_validate(
         {"howler.analytic": "Original", "howler.hash": "ab", "count": 2, "raw": {"old": True}}
     ).as_primitives()
     if flatten_patch_mappings:

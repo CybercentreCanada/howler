@@ -94,7 +94,7 @@ def create_overview(**kwargs):
     storage = datastore()
 
     try:
-        overview = Overview.validate_howler(overview_data)
+        overview = Overview.model_validate(overview_data)
 
         overview.owner = kwargs["user"]["uname"]
 

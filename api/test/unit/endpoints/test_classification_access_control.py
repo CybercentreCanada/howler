@@ -125,7 +125,7 @@ def _mock_auth(mock_auth_service, user: User, priv=None):
 
 
 def _build_case(case_id: str = "case-001", classification: str = "UNRESTRICTED") -> Case:
-    return Case.validate_howler(
+    return Case.model_validate(
         {"case_id": case_id, "title": "Test Case", "summary": "S", "classification": classification}
     )
 
@@ -167,7 +167,7 @@ class TestIsClassificationAccessible:
     def test_admin_bypasses_access_control(self, stub_classification):
         from howler.security.utils import is_classification_accessible
 
-        admin = User.validate_howler(
+        admin = User.model_validate(
             {
                 "name": "admin",
                 "uname": "admin",
@@ -181,7 +181,7 @@ class TestIsClassificationAccessible:
     def test_user_can_access_at_own_level(self, stub_classification):
         from howler.security.utils import is_classification_accessible
 
-        user = User.validate_howler(
+        user = User.model_validate(
             {
                 "name": "user",
                 "uname": "user",
@@ -195,7 +195,7 @@ class TestIsClassificationAccessible:
     def test_user_can_access_below_own_level(self, stub_classification):
         from howler.security.utils import is_classification_accessible
 
-        user = User.validate_howler(
+        user = User.model_validate(
             {
                 "name": "user",
                 "uname": "user",
@@ -209,7 +209,7 @@ class TestIsClassificationAccessible:
     def test_denied_above_own_level(self, stub_classification):
         from howler.security.utils import is_classification_accessible
 
-        user = User.validate_howler(
+        user = User.model_validate(
             {
                 "name": "user",
                 "uname": "user",
@@ -223,7 +223,7 @@ class TestIsClassificationAccessible:
     def test_unclassified_document_is_accessible(self, stub_classification):
         from howler.security.utils import is_classification_accessible
 
-        user = User.validate_howler(
+        user = User.model_validate(
             {
                 "name": "user",
                 "uname": "user",
@@ -237,7 +237,7 @@ class TestIsClassificationAccessible:
     def test_rejects_non_string_document_classification(self, stub_classification):
         from howler.security.utils import is_classification_accessible
 
-        user = User.validate_howler(
+        user = User.model_validate(
             {
                 "name": "user",
                 "uname": "user",
@@ -252,7 +252,7 @@ class TestIsClassificationAccessible:
     def test_missing_user_classification_defaults_to_unrestricted(self, stub_classification):
         from howler.security.utils import is_classification_accessible
 
-        user = User.validate_howler({"name": "user", "uname": "user", "password": "__NO_PASSWORD__", "type": ["user"]})
+        user = User.model_validate({"name": "user", "uname": "user", "password": "__NO_PASSWORD__", "type": ["user"]})
         assert is_classification_accessible(user, "UNRESTRICTED") is True
         assert is_classification_accessible(user, "RESTRICTED") is False
 
@@ -278,7 +278,7 @@ class TestIsClassificationAccessible:
         from howler.security.utils import is_classification_accessible
 
         stub_classification.is_accessible = MagicMock(side_effect=InvalidClassification("invalid"))
-        user = User.validate_howler(
+        user = User.model_validate(
             {
                 "name": "user",
                 "uname": "user",
@@ -477,7 +477,7 @@ class TestCaseMutationClassification:
         mock_datastore.return_value.__getitem__.return_value.get.return_value = {
             "classification": "RESTRICTED",
         }
-        mock_case_service.append_case_item.return_value = Case.validate_howler(
+        mock_case_service.append_case_item.return_value = Case.model_validate(
             {"case_id": "case-001", "title": "T", "summary": "S"}
         )
 

@@ -8,7 +8,7 @@ from howler.services import analytic_service
 
 def test_save_from_hits_builds_an_analytic_from_detection_metadata():
     hit = construct_partial(Hit, {"howler": {"analytic": "New Analytic", "detection": "New Detection"}})
-    user = User.validate_howler({"uname": "analyst", "name": "Analyst", "password": "hash"})
+    user = User.model_validate({"uname": "analyst", "name": "Analyst", "password": "hash"})
     storage = MagicMock()
     storage.analytic.search.return_value = {"items": []}
 

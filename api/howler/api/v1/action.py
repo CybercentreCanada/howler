@@ -125,7 +125,7 @@ def add_action(user: User, **kwargs) -> Response:
     try:
         new_action["owner"] = user.uname
 
-        action_obj = Action.validate_howler(new_action)
+        action_obj = Action.model_validate(new_action)
 
         ds = datastore()
         ds.action.save(action_obj.action_id, action_obj, refresh=refresh)
@@ -207,7 +207,7 @@ def update_action(id: str, user: User, **kwargs) -> Response:
         return error
 
     try:
-        action_obj = Action.validate_howler(updated_action)
+        action_obj = Action.model_validate(updated_action)
         action_obj.action_id = id
 
         ds.action.save(action_obj.action_id, action_obj, version=server_version, refresh=refresh)

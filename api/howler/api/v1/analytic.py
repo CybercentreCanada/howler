@@ -125,7 +125,7 @@ def update_analytic(id: str, user: User, **kwargs):
             existing_triage_data = {}
 
         triage_data = {**existing_triage_data, **new_data.get("triage_settings", {})}
-        existing_analytic.triage_settings = TriageOptions.validate_howler(triage_data)
+        existing_analytic.triage_settings = TriageOptions.model_validate(triage_data)
 
         storage.analytic.save(existing_analytic.analytic_id, existing_analytic, refresh=refresh)
 
@@ -179,10 +179,10 @@ def add_comment(id: str, user: dict[str, Any], **kwargs):
             "value": comment_data,
             "detection": comment.get("detection", None),
         }
-        analytic.comment.append(Comment.validate_howler(comment_value))
+        analytic.comment.append(Comment.model_validate(comment_value))
 
         datastore().analytic.save(analytic.analytic_id, analytic)
-    except DataStoreException as e:
+    except (DataStoreException, HowlerException) as e:
         return bad_request(err=str(e))
 
     return ok(analytic)
@@ -548,10 +548,10 @@ def add_notebook(id: str, user: dict[str, Any], **kwargs):
             "value": link,
             "detection": detection if detection else None,
         }
-        analytic.notebooks.append(Notebook.validate_howler(notebook_value))
+        analytic.notebooks.append(Notebook.model_validate(notebook_value))
 
         datastore().analytic.save(analytic.analytic_id, analytic)
-    except DataStoreException as e:
+    except (DataStoreException, HowlerException) as e:
         return bad_request(err=str(e))
 
     return ok(analytic)

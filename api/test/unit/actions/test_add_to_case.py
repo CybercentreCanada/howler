@@ -13,7 +13,7 @@ from howler.services import case_service
 
 
 def _make_case(data: dict) -> Case:
-    return Case.validate_howler(data)
+    return Case.model_validate(data)
 
 
 def _make_hit(lookups, users) -> Hit:

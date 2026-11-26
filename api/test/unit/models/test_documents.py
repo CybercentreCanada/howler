@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
 
-from howler.models import model_registry
+from howler.models import HowlerModelValidationError, model_registry
 from howler.models.action import Action
 from howler.models.analytic import Analytic
 from howler.models.dossier import Dossier
@@ -40,7 +39,7 @@ class TestAction:
         assert action.operations[0].operation_id == "operation-1"
 
     def test_action_rejects_unsupported_trigger(self) -> None:
-        with pytest.raises(ValidationError):
+        with pytest.raises(HowlerModelValidationError):
             Action.model_validate(
                 {
                     "action_id": "action-2",
@@ -52,7 +51,7 @@ class TestAction:
             )
 
     def test_action_name_is_required(self) -> None:
-        with pytest.raises(ValidationError):
+        with pytest.raises(HowlerModelValidationError):
             Action.model_validate({"action_id": "action-3", "query": "howler.id:*"})
 
 
@@ -93,7 +92,7 @@ class TestOverviewAndTemplate:
         assert template.analytic == "analytic-1"
         assert template.keys == ["howler.id"]
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(HowlerModelValidationError):
             Template.model_validate({"template_id": "template-2", "type": "global", "keys": []})
 
 

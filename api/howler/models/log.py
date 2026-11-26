@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from howler.common.exceptions import HowlerValueError
+from pydantic import model_validator
+
 from howler.models import HowlerEmbeddedModel, date, enum, keyword, optional, register_model, text
 from howler.models.constants import HowlerStrEnum
 
@@ -30,12 +31,14 @@ class Log(HowlerEmbeddedModel):
     previous_value: optional(keyword(), description="The value the key is changing from.")
     user: keyword(description="User ID who created the log event.")
 
-    def __init__(self, **data: Any) -> None:
-        """Require complete change details without relying on Pydantic error wrapping."""
-        if "explanation" not in data:
+    @model_validator(mode="before")
+    @classmethod
+    def _require_explanation_or_details(cls, data: Any) -> Any:
+        """Require complete change details when no explanation is provided."""
+        if isinstance(data, dict) and "explanation" not in data:
             required_keys = {"key", "new_value", "type", "previous_value"}
             if required_keys.intersection(data) != required_keys:
-                raise HowlerValueError(
+                raise ValueError(
                     f"If no explanation provided, you must provide the following values: {','.join(required_keys)}"
                 )
-        super().__init__(**data)
+        return data

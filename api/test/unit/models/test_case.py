@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import pytest
-from pydantic import ValidationError
 
+from howler.models import HowlerModelValidationError
 from howler.models.case import Case, CaseEnrichment, CaseItem, CaseItemTypes, CaseLog, CaseRule, CaseTask
 from howler.models.registry import model_registry
 from howler.sample_data.randomizer import random_model_obj
@@ -46,7 +46,7 @@ class TestCaseLog:
         assert primitives["key"] == "escalation"
 
         for incomplete in ({"timestamp": "NOW", "user": "analyst"}, {"timestamp": "NOW", "new_value": "crisis"}):
-            with pytest.raises(ValidationError):
+            with pytest.raises(HowlerModelValidationError):
                 CaseLog.model_validate(incomplete)
 
 
@@ -78,7 +78,7 @@ class TestCaseItem:
             )
             assert CaseItem.model_validate(data).type == item_type.value
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(HowlerModelValidationError):
             CaseItem.model_validate({"type": "unknown", "value": "value"})
 
     def test_folder_value_uses_its_name_and_can_have_a_parent(self) -> None:
@@ -87,7 +87,7 @@ class TestCaseItem:
         assert item.parent == "parent-id"
 
     def test_case_item_must_be_root_level(self) -> None:
-        with pytest.raises(ValidationError, match="root-level"):
+        with pytest.raises(HowlerModelValidationError, match="root-level"):
             CaseItem.model_validate({"type": "case", "parent": "folder-id", "value": "case-1"})
 
         item = CaseItem.model_validate({"type": "case", "value": "case-1"})
@@ -95,7 +95,7 @@ class TestCaseItem:
 
     def test_item_requires_type_and_value(self) -> None:
         for data in ({"type": "hit"}, {"value": "hit-1"}):
-            with pytest.raises(ValidationError):
+            with pytest.raises(HowlerModelValidationError):
                 CaseItem.model_validate(data)
 
     def test_visibility_can_be_disabled(self) -> None:
@@ -128,11 +128,11 @@ class TestCaseRule:
 
     @pytest.mark.parametrize("timeframe", [0, -1, "7", 1.5, True, False])
     def test_timeframe_must_be_a_positive_integer(self, timeframe: object) -> None:
-        with pytest.raises(ValidationError):
+        with pytest.raises(HowlerModelValidationError):
             CaseRule.model_validate({**self.BASE_RULE, "timeframe": timeframe})
 
     def test_expiry_after_resolution_requires_a_timeframe(self) -> None:
-        with pytest.raises(ValidationError, match="expire after resolved"):
+        with pytest.raises(HowlerModelValidationError, match="expire after resolved"):
             CaseRule.model_validate({**self.BASE_RULE, "timeframe": None, "expire_after_resolved": True})
 
         rule = CaseRule.model_validate({**self.BASE_RULE, "timeframe": 30, "expire_after_resolved": True})
@@ -141,14 +141,14 @@ class TestCaseRule:
 
     def test_rule_requires_destination_query_and_author(self) -> None:
         for data in ({"destination": "/dest"}, {"query": "*:*"}, {"destination": "/dest", "query": "*:*"}):
-            with pytest.raises(ValidationError):
+            with pytest.raises(HowlerModelValidationError):
                 CaseRule.model_validate(data)
 
     def test_random_rule_model_has_required_fields(self) -> None:
         for _ in range(10):
             try:
                 rule = random_model_obj(CaseRule)
-            except ValidationError:
+            except HowlerModelValidationError:
                 continue
             assert rule.destination
             assert rule.query
@@ -176,7 +176,7 @@ class TestCaseTask:
         assert complete.complete is True
 
     def test_task_requires_summary(self) -> None:
-        with pytest.raises(ValidationError):
+        with pytest.raises(HowlerModelValidationError):
             CaseTask.model_validate({"assignment": "soc"})
 
 
@@ -215,7 +215,7 @@ class TestCase:
         assert case.tasks == []
 
         for missing in ({"summary": "Summary"}, {"title": "Incident"}):
-            with pytest.raises(ValidationError):
+            with pytest.raises(HowlerModelValidationError):
                 Case.model_validate(missing)
 
     @pytest.mark.parametrize("escalation", ["normal", "focus", "crisis"])
@@ -225,7 +225,7 @@ class TestCase:
         assert case.as_primitives()["escalation"] == escalation
 
     def test_invalid_escalation_is_rejected(self) -> None:
-        with pytest.raises(ValidationError, match="escalation"):
+        with pytest.raises(HowlerModelValidationError, match="escalation"):
             Case.model_validate({**CASE_DATA, "escalation": "urgent"})
 
     def test_case_accepts_lists_and_nested_models(self) -> None:
@@ -295,7 +295,7 @@ class TestCase:
         assert case.start is not None and (case.start.year, case.start.month, case.start.day) == (2025, 1, 1)
         assert case.end is not None and (case.end.year, case.end.month, case.end.day) == (2025, 12, 31)
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(HowlerModelValidationError):
             Case.model_validate({**CASE_DATA, "start": "not-a-date"})
 
     def test_case_can_contain_log_entries(self) -> None:
@@ -311,7 +311,7 @@ class TestCase:
         for _ in range(10):
             try:
                 case = random_model_obj(Case)
-            except ValidationError:
+            except HowlerModelValidationError:
                 continue
             assert case.case_id
             assert case.title

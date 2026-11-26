@@ -51,7 +51,7 @@ def _make_rule(
     if indexes is not None:
         data["indexes"] = indexes
 
-    return cast(Any, CaseRule).validate_howler(data)
+    return cast(Any, CaseRule).model_validate(data)
 
 
 def _make_case_obj(case_id: str, rules: list[Any]) -> MagicMock:
@@ -501,11 +501,11 @@ def _uuid(value: int) -> str:
 
 
 def _make_real_case(case_id: str) -> Case:
-    return Case.validate_howler({"case_id": case_id, "title": f"case {case_id}", "summary": "keep this summary"})
+    return Case.model_validate({"case_id": case_id, "title": f"case {case_id}", "summary": "keep this summary"})
 
 
 def _make_real_hit(record_id: str) -> Hit:
-    return Hit.validate_howler(
+    return Hit.model_validate(
         {
             "howler": {"id": record_id, "analytic": "Correlation test", "hash": "0123456789abcdef"},
             "message": "keep this hit message",
@@ -514,7 +514,7 @@ def _make_real_hit(record_id: str) -> Hit:
 
 
 def _make_real_event(record_id: str) -> Event:
-    return Event.validate_howler(
+    return Event.model_validate(
         {"howler": {"id": record_id, "hash": "abcdef0123456789"}, "message": "keep this event message"}
     )
 
@@ -629,7 +629,7 @@ class TestProcessBatch:
     @patch("howler.services.correlation_service.datastore")
     def test_skips_duplicates(self, mock_ds_fn, mock_get_rules, mock_search_svc, mock_comms):
         """Records that would conflict with an existing item are silently skipped."""
-        existing = cast(Any, CaseItem).validate_howler({"type": "hit", "value": "hit-0", "name": "related"})
+        existing = cast(Any, CaseItem).model_validate({"type": "hit", "value": "hit-0", "name": "related"})
         case = _make_case("case-1", items=[existing])
         mock_ds = _setup_ds(mock_ds_fn, {"case-1": case})
 
@@ -1204,7 +1204,7 @@ class TestCorrelationUnreachableBranches:
         rule = _make_rule(destination="related")
 
         with (
-            patch.object(correlation_service.CaseItem, "validate_howler", return_value=item),
+            patch.object(correlation_service.CaseItem, "model_validate", return_value=item),
             patch.object(
                 correlation_service,
                 "_resolve_backing_object",

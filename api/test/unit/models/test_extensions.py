@@ -6,12 +6,12 @@ from concurrent.futures import ThreadPoolExecutor
 from contextvars import Context
 
 import pytest
-from pydantic import ValidationError
 
 from howler.common.exceptions import HowlerValueError
 from howler.models import (
     HowlerEmbeddedModel,
     HowlerESModel,
+    HowlerModelValidationError,
     ModelExtensionRegistry,
     compound,
     keyword,
@@ -259,7 +259,7 @@ def test_extension_field_still_forbids_unknown_input() -> None:
     registry.declare(ExtensionTarget, "evidence", optional(keyword()), plugin="evidence")
     finalized = registry.finalize(ExtensionTarget)
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(HowlerModelValidationError):
         finalized.model_validate({"target_id": "t1", "name": "n", "unknown_field": "value"})
 
 

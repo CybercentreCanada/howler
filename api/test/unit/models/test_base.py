@@ -33,6 +33,7 @@ from howler.models import (
     register_model,
     text,
     uuid,
+    validate_field_value,
 )
 from howler.models.registry import ModelRegistry
 
@@ -138,9 +139,9 @@ def test_model_validation_aliases_and_defaults() -> None:
 
     model.child.count = "3"
     assert model.child.count == 3
-    with pytest.raises(ValidationError):
+    with pytest.raises(HowlerModelValidationError):
         model.child.count = "invalid"
-    with pytest.raises(ValidationError):
+    with pytest.raises(HowlerModelValidationError):
         FoundationDocument.model_validate({**_document_data(), "unknown": True})
 
     model["from"] = "updated"  # pyright: ignore[reportIndexIssue]
@@ -171,7 +172,7 @@ def test_flattened_compound_list_input() -> None:
     assert [item.count for item in model.children] == [1, 2]
 
     data["children.count"] = [1]
-    with pytest.raises(ValidationError):
+    with pytest.raises(HowlerModelValidationError):
         FoundationDocument.model_validate(data)
 
 
@@ -263,7 +264,7 @@ def test_read_normalization_drops_unknown_fields_but_preserves_mapping_keys() ->
     data["child"]["removed_child_field"] = "unrecognized"
     data["counters"]["dynamic_key"] = "2"
 
-    model = FoundationDocument.validate_howler(data, extra="ignore")
+    model = FoundationDocument.model_validate(data, extra="ignore")
     primitives = model.as_primitives()
 
     assert "removed_plugin_field" not in primitives
@@ -294,7 +295,7 @@ def test_extra_ignore_traverses_typed_containers_without_pruning_loose_data() ->
         "loose": {"arbitrary": {"unknown": [1, {"other": True}]}},
         "flat": {"arbitrary": {"unknown": "keep"}},
     }
-    model = Containers.validate_howler(data, extra="ignore")
+    model = Containers.model_validate(data, extra="ignore")
     clean = model.as_primitives()
 
     assert clean["grouped"] == {"team": {"value": "keep"}}
@@ -320,7 +321,7 @@ def test_extra_ignore_leaves_invalid_container_values_for_validation() -> None:
         {"grouped": {}, "listed": ["not an object"]},
     ):
         with pytest.raises(HowlerModelValidationError):
-            Containers.validate_howler(data, extra="ignore")
+            Containers.model_validate(data, extra="ignore")
 
 
 def test_registry_fields_flattening_and_mapping() -> None:
@@ -388,7 +389,7 @@ def test_mapping_key_validation() -> None:
     """Indexed mappings reject illegal keys while unindexed mappings retain them."""
     data = _document_data()
     data["counters"] = {"Bad Key": 1}
-    with pytest.raises(ValidationError):
+    with pytest.raises(HowlerModelValidationError):
         FoundationDocument.model_validate(data)
 
     data["counters"] = {"good": 1}
@@ -398,12 +399,32 @@ def test_mapping_key_validation() -> None:
 
 
 def test_stable_validation_error_translation() -> None:
-    """Pydantic validation errors translate to the Howler exception hierarchy."""
+    """Pydantic validation errors translate to the Howler exception hierarchy across every validation entry point."""
+    assert not FoundationDocument.__pydantic_custom_init__
+    assert not FoundationChild.__pydantic_custom_init__
+
     with pytest.raises(HowlerModelValidationError) as raised:
-        FoundationDocument.validate_howler({"from": "missing required fields"})
+        FoundationDocument.model_validate({"from": "missing required fields"})
 
     assert raised.value.errors
     assert isinstance(raised.value.cause, ValidationError)
+
+    with pytest.raises(HowlerModelValidationError) as init_raised:
+        FoundationDocument(**{**_document_data(), "child": {"name": "child", "count": "invalid"}})
+    assert str(init_raised.value).startswith("[foundationdocument.child.count] ")
+
+    with pytest.raises(HowlerModelValidationError):
+        FoundationDocument.model_validate_json('{"from": "missing required fields"}')
+
+    with pytest.raises(HowlerModelValidationError):
+        FoundationDocument.model_validate_strings({"from": "missing required fields"})
+
+    model = FoundationDocument.model_validate(_document_data())
+    with pytest.raises(HowlerModelValidationError):
+        model["child.count"] = "invalid"  # pyright: ignore[reportIndexIssue]
+
+    with pytest.raises(HowlerModelValidationError):
+        validate_field_value(FoundationDocument, "child.count", "invalid")
 
 
 def test_dotted_input_helper_builds_nested_objects() -> None:

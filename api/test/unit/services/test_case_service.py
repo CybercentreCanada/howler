@@ -24,7 +24,7 @@ from howler.services import case_service
 
 
 def Case(data):  # noqa: N802
-    return SchemaCase.validate_howler(data)
+    return SchemaCase.model_validate(data)
 
 
 def CaseItem(data):  # noqa: N802

@@ -55,7 +55,7 @@ def test_send_to_sentinel(datastore_connection: HowlerDatastore):
         from sentinel.actions.send_to_sentinel import execute
         from sentinel.config import config
 
-        hit = datastore_connection.hit.model_class.validate_howler(
+        hit = datastore_connection.hit.model_class.model_validate(
             {
                 "howler": {"analytic": "Configured Sentinel tenant", "hash": "a" * 64},
                 "azure": {"tenant_id": config.ingestors[0].tenant_id},
@@ -75,7 +75,7 @@ def test_send_to_sentinel(datastore_connection: HowlerDatastore):
             "message": "Howler has successfully propagated changes to this alert to Sentinel.",
         }
 
-        broken_hit = datastore_connection.hit.model_class.validate_howler(
+        broken_hit = datastore_connection.hit.model_class.model_validate(
             {
                 "howler": {"analytic": "Unconfigured Sentinel tenant", "hash": "b" * 64},
                 "azure": {"tenant_id": "unconfigured-tenant"},

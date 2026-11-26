@@ -52,7 +52,7 @@ def test_convert_hit_keeps_each_evidence_records_lists(registered_hit, ignore_ex
 @pytest.mark.parametrize("route", ["v1", "v2"])
 @pytest.mark.parametrize("replace", ["false", "true"])
 def test_empty_overwrite_keeps_evidence_and_logs(registered_hit, monkeypatch, route, replace):
-    hit = registered_hit.validate_howler(
+    hit = registered_hit.model_validate(
         {
             "howler.analytic": "Original",
             "howler.hash": "ab",

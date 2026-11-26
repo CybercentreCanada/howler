@@ -140,7 +140,7 @@ def add_apikey(**kwargs):  # noqa: C901
         if expiry:
             new_key["expiry_date"] = expiry.isoformat()
 
-        user_data.apikeys[key_name] = ApiKey.validate_howler(new_key)
+        user_data.apikeys[key_name] = ApiKey.model_validate(new_key)
     except HowlerException as e:
         return bad_request(err=e.message)
 

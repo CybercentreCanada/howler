@@ -40,7 +40,7 @@ class DeepInputModel(BaseModel):
 def test_hit_missing_analytic_keeps_structured_error_and_public_root_path() -> None:
     """The wrapper retains Pydantic details but exposes the stable Howler field path."""
     with pytest.raises(HowlerModelValidationError) as raised:
-        Hit.validate_howler({"howler": {"hash": VALID_HASH}})
+        Hit.model_validate({"howler": {"hash": VALID_HASH}})
 
     public_error = raised.value
     assert str(public_error).startswith("[hit.howler.analytic] Field required")
@@ -56,7 +56,7 @@ def test_hit_missing_analytic_keeps_structured_error_and_public_root_path() -> N
 def test_hit_invalid_score_does_not_echo_original_input(secret_input: str) -> None:
     """Invalid scalar messages stay meaningful without disclosing submitted values."""
     with pytest.raises(HowlerModelValidationError) as raised:
-        Hit.validate_howler({"howler": {"analytic": "test", "hash": VALID_HASH, "score": secret_input}})
+        Hit.model_validate({"howler": {"analytic": "test", "hash": VALID_HASH, "score": secret_input}})
 
     message = str(raised.value)
     assert message.startswith("[hit.howler.score] ")
@@ -69,7 +69,7 @@ def test_hit_invalid_score_does_not_echo_original_input(secret_input: str) -> No
 def test_hit_nested_destination_bytes_path_is_rooted_at_hit() -> None:
     """Nested ECS fields use the public root and dotted serialized path."""
     with pytest.raises(HowlerModelValidationError) as raised:
-        Hit.validate_howler(
+        Hit.model_validate(
             {
                 "howler": {"analytic": "test", "hash": VALID_HASH},
                 "destination": {"bytes": "not-an-integer"},
@@ -82,7 +82,7 @@ def test_hit_nested_destination_bytes_path_is_rooted_at_hit() -> None:
 def test_hit_empty_hash_uses_known_safe_static_rejection_message() -> None:
     """A whitelisted static validator message can retain its useful rejection reason."""
     with pytest.raises(HowlerModelValidationError) as raised:
-        Hit.validate_howler({"howler": {"analytic": "test", "hash": ""}})
+        Hit.model_validate({"howler": {"analytic": "test", "hash": ""}})
 
     assert str(raised.value) == "[hit.howler.hash] Empty strings are not allowed without defaults"
 
@@ -90,7 +90,7 @@ def test_hit_empty_hash_uses_known_safe_static_rejection_message() -> None:
 def test_event_model_validator_has_a_stable_container_path() -> None:
     """A nested before-model validator reports its enclosing event list location."""
     with pytest.raises(HowlerModelValidationError) as raised:
-        Event.validate_howler({"howler": {"hash": VALID_HASH, "log": [{"user": "analyst", "key": "field"}]}})
+        Event.model_validate({"howler": {"hash": VALID_HASH, "log": [{"user": "analyst", "key": "field"}]}})
 
     message = str(raised.value)
     assert message == "[event.howler.log.0] An explanation or complete change details are required"
@@ -99,7 +99,7 @@ def test_event_model_validator_has_a_stable_container_path() -> None:
 def test_template_errors_use_the_template_root_not_the_validation_title_dump() -> None:
     """Non-Hit models use the same public formatter and root naming convention."""
     with pytest.raises(HowlerModelValidationError) as raised:
-        Template.validate_howler({"template_id": VALID_UUID, "type": "global", "keys": []})
+        Template.model_validate({"template_id": VALID_UUID, "type": "global", "keys": []})
 
     assert str(raised.value).startswith("[template.analytic] Field required")
     assert "1 validation error for Template" not in str(raised.value)
@@ -108,8 +108,12 @@ def test_template_errors_use_the_template_root_not_the_validation_title_dump() -
 
 def test_validation_title_is_a_fallback_when_model_type_is_not_supplied() -> None:
     """Direct wrapper use still gets a safe root from Pydantic's model title."""
+
+    class Template(BaseModel):  # noqa: D106
+        analytic: str
+
     with pytest.raises(ValidationError) as raised:
-        Template.model_validate({"template_id": VALID_UUID, "type": "global", "keys": []})
+        Template.model_validate({})
 
     public_error = HowlerModelValidationError(raised.value)
     assert str(public_error).startswith("[template.analytic] Field required")
@@ -118,7 +122,7 @@ def test_validation_title_is_a_fallback_when_model_type_is_not_supplied() -> Non
 def test_aliases_list_indexes_and_mapping_keys_use_serialized_paths() -> None:
     """Container paths translate both field aliases and nested list/mapping locations."""
     with pytest.raises(HowlerModelValidationError) as raised:
-        AliasedValidationRoot.validate_howler(
+        AliasedValidationRoot.model_validate(
             {
                 "wire_entries": [
                     {
@@ -138,7 +142,7 @@ def test_aliases_list_indexes_and_mapping_keys_use_serialized_paths() -> None:
 def test_unknown_field_remains_forbidden_with_a_public_path() -> None:
     """Stable formatting does not loosen Howler's strict extra-field rejection."""
     with pytest.raises(HowlerModelValidationError) as raised:
-        Hit.validate_howler(
+        Hit.model_validate(
             {
                 "howler": {"analytic": "test", "hash": VALID_HASH},
                 "unexpected": "UNKNOWN_FIELD_VALUE",
@@ -175,7 +179,7 @@ def test_formatter_failure_falls_back_without_losing_howler_error(monkeypatch: p
     monkeypatch.setattr(model_base, "_public_error_message", fail_formatter)
 
     with pytest.raises(HowlerModelValidationError) as raised:
-        Hit.validate_howler({"howler": {"hash": VALID_HASH}})
+        Hit.model_validate({"howler": {"hash": VALID_HASH}})
 
     assert str(raised.value) == "[hit] Invalid value"
     assert isinstance(raised.value.cause, ValidationError)
@@ -208,7 +212,7 @@ def test_domain_validation_errors_use_safe_messages(
     model_type: type[HowlerEmbeddedModel], data: dict[str, Any], message: str
 ) -> None:
     with pytest.raises(HowlerModelValidationError, match=message) as raised:
-        model_type.validate_howler(data)
+        model_type.model_validate(data)
 
     assert str(raised.value).startswith(f"[{model_type.__name__.lower()}")
     assert raised.value.errors and raised.value.cause is not None

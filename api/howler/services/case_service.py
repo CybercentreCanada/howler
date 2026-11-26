@@ -46,7 +46,7 @@ def _apply_case_rule_patch(rule: CaseRule, patch: dict[str, Any]) -> tuple[CaseR
         changes.append(f"{key}: '{getattr(rule, key, None)}' → '{value}'")
 
     try:
-        return CaseRule.validate_howler({**rule.as_primitives(), **patch}), changes
+        return CaseRule.model_validate({**rule.as_primitives(), **patch}), changes
     except HowlerValueError as ex:
         raise InvalidDataException(str(ex)) from ex
 
@@ -192,9 +192,9 @@ def create_case(
     items = case_data.pop("items", [])
 
     case_type: type[Case] = datastore().case.model_class or Case
-    case = case_type.validate_howler(case_data)
+    case = case_type.model_validate(case_data)
     case.log = [
-        CaseLog.validate_howler(
+        CaseLog.model_validate(
             {"timestamp": "NOW", "explanation": "Case created", "user": user.uname if user else "system"}
         )
     ]
@@ -204,7 +204,7 @@ def create_case(
 
     # Accumulate initial case items in memory and write the case once after validation.
     for item in items:
-        append_case_item(case, item=CaseItem.validate_howler(item), user=user)
+        append_case_item(case, item=CaseItem.model_validate(item), user=user)
 
     save_case(case, refresh=refresh, version=CREATE_TOKEN)
 
@@ -243,7 +243,7 @@ def hide_cases(case_ids: set[str], user: User, refresh: Literal["true", "false",
         # Only persist the related case if we actually changed something.
         if hidden_ids:
             related_case.log.append(
-                CaseLog.validate_howler(
+                CaseLog.model_validate(
                     {
                         "timestamp": "NOW",
                         "user": user.uname,
@@ -262,7 +262,7 @@ def hide_cases(case_ids: set[str], user: User, refresh: Literal["true", "false",
 
         case.visible = False
         case.log.append(
-            CaseLog.validate_howler(
+            CaseLog.model_validate(
                 {
                     "timestamp": "NOW",
                     "user": user.uname,
@@ -466,7 +466,7 @@ def update_case(
         explanation, prev_str, new_str = _describe_field_change(key, previous_value, new_value, compound_fields)
 
         case.log.append(
-            CaseLog.validate_howler(
+            CaseLog.model_validate(
                 {
                     "timestamp": "NOW",
                     "key": key,
@@ -537,7 +537,7 @@ def get_parent_from_path(
             if not create_if_missing:
                 return None
             # Create the folder
-            folder_item = CaseItem.validate_howler(
+            folder_item = CaseItem.model_validate(
                 {"type": CaseItemTypes.FOLDER, "name": part, "parent": current_parent, "value": ""},
             )
             case.items.append(folder_item)
@@ -625,7 +625,7 @@ def append_case_item(  # noqa: C901
             data["name"] = item_name
         elif item_type == CaseItemTypes.FOLDER:
             data["name"] = item_value
-        item = CaseItem.validate_howler(data)
+        item = CaseItem.model_validate(data)
 
     if item.name is None:
         item.name = item.value
@@ -1134,7 +1134,7 @@ def add_backreference(
 
     backing_obj.howler.related.append(case_id)
     backing_obj.howler.log.append(
-        Log.validate_howler(
+        Log.model_validate(
             {
                 "timestamp": "NOW",
                 "explanation": f"Added to case {case_id}",
@@ -1174,7 +1174,7 @@ def remove_backreference(
         backing_obj.howler.related.remove(case_id)
 
         backing_obj.howler.log.append(
-            Log.validate_howler(
+            Log.model_validate(
                 {
                     "timestamp": "NOW",
                     "explanation": f"Removed from case {case_id}",
@@ -1271,14 +1271,14 @@ def add_case_rule(
     rule_data.setdefault("expire_after_resolved", False)
 
     try:
-        rule = CaseRule.validate_howler(rule_data)
+        rule = CaseRule.model_validate(rule_data)
     except HowlerValueError as ex:
         raise InvalidDataException(str(ex)) from ex
 
     case.rules.append(rule)
 
     case.log.append(
-        CaseLog.validate_howler(
+        CaseLog.model_validate(
             {
                 "timestamp": "NOW",
                 "user": user.uname,
@@ -1321,7 +1321,7 @@ def remove_case_rule(
         raise NotFoundException(f"Rule {rule_id} not found in case {case_id}")
 
     case.log.append(
-        CaseLog.validate_howler(
+        CaseLog.model_validate(
             {
                 "timestamp": "NOW",
                 "user": user.uname,
@@ -1381,7 +1381,7 @@ def update_case_rule(
     case.rules[case.rules.index(rule)] = updated_rule
 
     case.log.append(
-        CaseLog.validate_howler(
+        CaseLog.model_validate(
             {
                 "timestamp": "NOW",
                 "user": user.uname,

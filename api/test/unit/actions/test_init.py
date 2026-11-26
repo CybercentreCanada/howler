@@ -16,7 +16,7 @@ from howler.sample_data.randomizer import random_model_obj
 
 
 def _user(*roles: str) -> User:
-    return User.validate_howler({"uname": "test", "name": "Test User", "password": "hash", "type": list(roles)})
+    return User.model_validate({"uname": "test", "name": "Test User", "password": "hash", "type": list(roles)})
 
 
 PLUGIN_PATH = Path(os.environ.get("HWL_PLUGIN_DIRECTORY", "/etc/howler/plugins"))

@@ -17,7 +17,7 @@ def group_dossiers(datastore: HowlerDatastore):
     created_ids = []
 
     def create(groups: list[str], owner: str = "admin", dossier_type: str = "global") -> Dossier:
-        dossier = Dossier.validate_howler(
+        dossier = Dossier.model_validate(
             {
                 "title": f"Pivot group integration test {uuid.uuid4().hex}",
                 "query": "howler.id:*",

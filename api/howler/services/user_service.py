@@ -241,7 +241,7 @@ def parse_user_data(  # noqa: C901
 
                 view_query = f"owner:{current_user['uname']} AND title:view.assigned_to_me AND type:readonly"
                 if len(storage.view.search(view_query)["items"]) == 0:
-                    new_assigned_view = View.validate_howler(
+                    new_assigned_view = View.model_validate(
                         {
                             "title": "view.assigned_to_me",
                             "query": f"howler.assignment:{current_user['uname']}",
@@ -264,7 +264,7 @@ def parse_user_data(  # noqa: C901
     else:
         raise AccessDeniedException("This user is not allowed access to the system")
 
-    return User.validate_howler(
+    return User.model_validate(
         {
             key: value
             for key, value in current_user.items()
@@ -343,7 +343,7 @@ def save_user_account(
     data.pop("roles", None)
     data.pop("username", None)
 
-    data = User.validate_howler(data).as_primitives()
+    data = User.model_validate(data).as_primitives()
 
     if username != data["uname"]:
         raise AccessDeniedException("You are not allowed to change the username.")

@@ -85,4 +85,4 @@ def prepare_overwrite(
     )
     if not is_classification_accessible(user, merged.get("classification")):
         raise HowlerValueError(f"Cannot set classification to {merged.get('classification')}")
-    return model.validate_howler(merged) if model is not None else merged
+    return model.model_validate(merged) if model is not None else merged

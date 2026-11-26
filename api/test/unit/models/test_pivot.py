@@ -1,6 +1,8 @@
 import pytest
 
 from howler.common.exceptions import HowlerValueError
+from howler.models import HowlerModelValidationError
+from howler.models.dossier import Dossier
 from howler.models.pivot import Pivot, validate_group
 
 
@@ -50,3 +52,34 @@ def test_pivot_icon_uses_the_link_default():
 
 def test_validate_group_accepts_none():
     validate_group(None)
+
+
+def test_pivot_validators_run_via_model_validate_and_nested_dossier():
+    with pytest.raises(HowlerModelValidationError, match="empty segments"):
+        Dossier.model_validate(
+            {
+                "dossier_id": "dossier-1",
+                "title": "Dossier",
+                "type": "global",
+                "owner": "analyst",
+                "pivots": [pivot_data(group="bad//group")],
+            }
+        )
+
+    with pytest.raises(HowlerModelValidationError, match="duplicate keys"):
+        Dossier.model_validate(
+            {
+                "dossier_id": "dossier-1",
+                "title": "Dossier",
+                "type": "global",
+                "owner": "analyst",
+                "pivots": [
+                    pivot_data(
+                        mappings=[
+                            {"key": "hostname", "field": "host.name"},
+                            {"key": "hostname", "field": "host.hostname"},
+                        ]
+                    )
+                ],
+            }
+        )

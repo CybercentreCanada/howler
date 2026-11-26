@@ -192,7 +192,7 @@ def _add_record_to_case(
             "parent": parent.id if parent else None,
             "name": name,
         }
-        item = CaseItem.validate_howler(item_data)
+        item = CaseItem.model_validate(item_data)
         if item.name is None:
             item.name = item.value
 

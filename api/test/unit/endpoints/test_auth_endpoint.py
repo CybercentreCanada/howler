@@ -197,7 +197,7 @@ def test_add_apikey_no_exp(mock_auth_service, request_context: Flask):
 def test_add_apikey_saves_the_generated_key_on_the_user(request_context: Flask):
     from howler.api.v1 import auth as auth_api
 
-    user = User.validate_howler({"uname": "user-1", "name": "User One", "password": "hash", "apikeys": {}})
+    user = User.model_validate({"uname": "user-1", "name": "User One", "password": "hash", "apikeys": {}})
     storage = MagicMock()
     storage.user.get_if_exists.return_value = user
 

@@ -202,6 +202,10 @@ def _public_error_message(error: Mapping[str, Any]) -> str:
             "Rule timeframe must be a positive integer or None",
             "Rule cannot expire after resolved when no timeframe is set",
             "Case items must be root-level (parent must be null)",
+            "Group cannot be an empty string",
+            'Data "group" should be a slash-separated string.',
+            "A group must consist of a relative path with no empty segments (e.g. a/b/c)",
+            "One of your pivots has duplicate keys set.",
         }
         for safe_message in static_domain_messages:
             if message == f"Value error, {safe_message}":
@@ -297,18 +301,96 @@ class HowlerModelMixin:
             output["__index"] = type(self).__name__.lower()
         return output
 
+    def __init__(self, /, **data: Any) -> None:
+        try:
+            super().__init__(**data)
+        except ValidationError as error:
+            raise HowlerModelValidationError(error, cast(type[BaseModel], type(self))) from error
+
+    # Keep Pydantic's native schema validation path for nested models; only translate errors at the outer boundary.
+    __init__.__pydantic_base_init__ = True  # type: ignore[attr-defined]
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        try:
+            super().__setattr__(name, value)
+        except ValidationError as error:
+            raise HowlerModelValidationError(error, cast(type[BaseModel], type(self))) from error
+
     @classmethod
-    def validate_howler(
+    def model_validate(
         cls,
-        data: Any,
+        obj: Any,
         *,
+        strict: bool | None = None,
         extra: Literal["allow", "ignore", "forbid"] | None = None,
+        from_attributes: bool | None = None,
+        context: Any | None = None,
+        by_alias: bool | None = None,
+        by_name: bool | None = None,
     ) -> Self:
         """Validate data while exposing the stable Howler exception hierarchy."""
         model_type = cast(type[BaseModel], cls)
         try:
-            validated = (
-                model_type.model_validate(data) if extra is None else model_type.model_validate(data, extra=extra)
+            validated = cast(Any, super()).model_validate(
+                obj,
+                strict=strict,
+                extra=extra,
+                from_attributes=from_attributes,
+                context=context,
+                by_alias=by_alias,
+                by_name=by_name,
+            )
+            return cast(Self, validated)
+        except ValidationError as error:
+            raise HowlerModelValidationError(error, model_type) from error
+
+    @classmethod
+    def model_validate_json(
+        cls,
+        json_data: str | bytes | bytearray,
+        *,
+        strict: bool | None = None,
+        extra: Literal["allow", "ignore", "forbid"] | None = None,
+        context: Any | None = None,
+        by_alias: bool | None = None,
+        by_name: bool | None = None,
+    ) -> Self:
+        """Validate JSON data while exposing the stable Howler exception hierarchy."""
+        model_type = cast(type[BaseModel], cls)
+        try:
+            validated = cast(Any, super()).model_validate_json(
+                json_data,
+                strict=strict,
+                extra=extra,
+                context=context,
+                by_alias=by_alias,
+                by_name=by_name,
+            )
+            return cast(Self, validated)
+        except ValidationError as error:
+            raise HowlerModelValidationError(error, model_type) from error
+
+    @classmethod
+    def model_validate_strings(
+        cls,
+        obj: Any,
+        *,
+        strict: bool | None = None,
+        extra: Literal["allow", "ignore", "forbid"] | None = None,
+        context: Any | None = None,
+        by_alias: bool | None = None,
+        by_name: bool | None = None,
+    ) -> Self:
+        """Validate string-encoded data while exposing the stable Howler exception hierarchy."""
+        model_type = cast(type[BaseModel], cls)
+        try:
+            validated = cast(Any, super()).model_validate_strings(
+                obj,
+                strict=strict,
+                extra=extra,
+                context=context,
+                by_alias=by_alias,
+                by_name=by_name,
             )
             return cast(Self, validated)
         except ValidationError as error:
@@ -567,7 +649,10 @@ def validate_field_value(
         return resolved.model_validate(value).model_dump(by_alias=True, exclude_none=True)
 
     adapter = TypeAdapter(full_annotation, config=ADAPTER_CONFIG)
-    validated = adapter.validate_python(value)
+    try:
+        validated = adapter.validate_python(value)
+    except ValidationError as error:
+        raise HowlerModelValidationError(error, model_type) from error
     if isinstance(validated, datetime):
         return validated.isoformat()
     return _finalize_primitives(

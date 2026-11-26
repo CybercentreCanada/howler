@@ -78,7 +78,7 @@ def test_overwrite_merges_lists_within_hit_extension(monkeypatch, request_contex
         plugin: compound(Related)
         groups: mapping(list_field(keyword()))
 
-    cached = ExtendedHit.validate_howler(
+    cached = ExtendedHit.model_validate(
         {"howler.analytic": "Example", "howler.hash": "ab", "plugin.ids": ["old"], "groups": {"team": ["old"]}}
     )
     endpoint, save_hit = _setup_overwrite(monkeypatch, cached, {})
@@ -98,7 +98,7 @@ def test_overwrite_merges_lists_within_hit_extension(monkeypatch, request_contex
 
 @pytest.mark.parametrize("replace", ["false", "true"])
 def test_overwrite_empty_scalar_is_not_stringified(monkeypatch, request_context, replace):
-    cached = Hit.validate_howler({"howler.analytic": "Original", "howler.hash": "ab"})
+    cached = Hit.model_validate({"howler.analytic": "Original", "howler.hash": "ab"})
     endpoint, save_hit = _setup_overwrite(monkeypatch, cached, {})
     with request_context.test_request_context(
         method="PUT", query_string={"replace": replace}, json={"howler.analytic": {}}
@@ -110,9 +110,9 @@ def test_overwrite_empty_scalar_is_not_stringified(monkeypatch, request_context,
 
 
 def test_overwrite_denies_classification_before_validating_other_fields(monkeypatch, request_context):
-    cached = Hit.validate_howler({"howler.analytic": "Example", "howler.hash": "ab"})
+    cached = Hit.model_validate({"howler.analytic": "Example", "howler.hash": "ab"})
     endpoint, save_hit = _setup_overwrite(monkeypatch, cached, {})
-    user = User.validate_howler({"uname": "analyst", "name": "Analyst", "password": "hash", "type": ["user"]})
+    user = User.model_validate({"uname": "analyst", "name": "Analyst", "password": "hash", "type": ["user"]})
     with request_context.test_request_context(method="PUT", json={"classification": "", "unknown": 1}):
         response = endpoint(id=cached.howler.id, user=user)
 

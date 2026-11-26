@@ -950,7 +950,7 @@ def test_initial_case_save_conflict_preserves_concurrent_analyst_edits(client, t
             conflict_pending = False
             concurrent, version = datastore().case.get(case.case_id, as_obj=True, version=True)
             concurrent.title = "Analyst-edited title"
-            concurrent.items.append(CaseItem.validate_howler({"type": "folder", "name": "Analyst notes"}))
+            concurrent.items.append(CaseItem.model_validate({"type": "folder", "name": "Analyst notes"}))
             original_save_case(concurrent, version=version)
             raise VersionConflictException("simulated overlapping analyst update")
         return original_save_case(case, *args, **kwargs)
@@ -1001,7 +1001,7 @@ def test_zero_alert_incident_reconciles_alerts_after_case_conflict(
             concurrent, version = datastore().case.get(case.case_id, as_obj=True, version=True)
             if concurrent_replay:
                 concurrent.items = case.items
-            concurrent.items.append(CaseItem.validate_howler({"type": "folder", "name": "Analyst notes"}))
+            concurrent.items.append(CaseItem.model_validate({"type": "folder", "name": "Analyst notes"}))
             original_save_case(concurrent, version=version)
             raise VersionConflictException("simulated overlapping update")
         return original_save_case(case, *args, **kwargs)

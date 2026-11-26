@@ -701,7 +701,7 @@ class TestOverwrite:
     def test_overwrite_empty_scalar_is_not_stringified(self, mock_auth, mock_ds, request_context, replace):
         user = _build_user()
         mock_auth.bearer_auth.return_value = (user, ["W"])
-        existing = Hit.validate_howler({"howler.analytic": "Original", "howler.hash": "ab"}).as_primitives()
+        existing = Hit.model_validate({"howler.analytic": "Original", "howler.hash": "ab"}).as_primitives()
         index = mock_ds.return_value.__getitem__.return_value
         index.get.side_effect = [(existing, "v1"), (existing, "v2")]
         index.model_class = Hit
@@ -731,7 +731,7 @@ class TestOverwrite:
         class ExtendedHit(Hit):
             groups: mapping(list_field(keyword()))
 
-        existing = ExtendedHit.validate_howler(
+        existing = ExtendedHit.model_validate(
             {"howler.analytic": "Original", "howler.hash": "ab", "groups": {"team": ["old"]}}
         ).as_primitives()
         existing["__index"] = "howler-hit-index"

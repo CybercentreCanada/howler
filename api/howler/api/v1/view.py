@@ -102,7 +102,7 @@ def create_view(user: User, **kwargs):
 
         view_data["owner"] = user.uname
 
-        view = View.validate_howler(view_data)
+        view = View.model_validate(view_data)
 
         if view.type == "personal":
             current_user = storage.user.get_if_exists(user.uname)
@@ -213,12 +213,13 @@ def update_view(view_id: str, user: User, **kwargs):  # noqa: C901
     try:
         if "query" in new_data:
             storage.hit.search(new_data["query"])
+
+        new_view = View.model_validate(cast(dict, merge({}, existing_view.as_primitives(), new_data)))
     except SearchException:
         return bad_request(err="You must use a valid query when updating a view.")
     except HowlerException as e:
         return bad_request(err=str(e))
 
-    new_view = View.validate_howler(cast(dict, merge({}, existing_view.as_primitives(), new_data)))
     storage.view.save(new_view.view_id, new_view, refresh=refresh)
 
     return ok(new_view.as_primitives())

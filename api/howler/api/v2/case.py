@@ -267,7 +267,7 @@ def append_item(  # noqa: C901
 
             body["parent"] = parent.id if parent else None
 
-        case_service.append_case_item(record, CaseItem.validate_howler(body), user=user)
+        case_service.append_case_item(record, CaseItem.model_validate(body), user=user)
 
         case_service.save_case(record, refresh=refresh, version=server_version)
         comms_service.emit("cases", {"case": record.as_primitives()})
@@ -283,6 +283,8 @@ def append_item(  # noqa: C901
     except NotFoundException as e:  # pragma: no cover
         return not_found(err=str(e))
     except InvalidDataException as e:
+        return bad_request(err=str(e))
+    except HowlerException as e:
         return bad_request(err=str(e))
 
 

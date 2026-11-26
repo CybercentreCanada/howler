@@ -16,7 +16,7 @@ def request_context():
 
 
 def _user(access_control: str | None = "classification:UNRESTRICTED") -> User:
-    return User.validate_howler(
+    return User.model_validate(
         {
             "uname": "authenticated-user",
             "name": "Authenticated User",

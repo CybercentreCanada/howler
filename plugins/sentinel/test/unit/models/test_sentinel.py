@@ -76,7 +76,7 @@ def test_hash_specification_includes_finalized_hit_extensions(monkeypatch, final
     assert "extra_file.hash.sha256" in fields
 
 
-@pytest.mark.parametrize("azure", [None, Azure.validate_howler({"tenant_id": "old-tenant-id"})])
+@pytest.mark.parametrize("azure", [None, Azure.model_validate({"tenant_id": "old-tenant-id"})])
 def test_generate_populates_finalized_hit(registered_hit, azure):
     hit = registered_hit.model_construct(azure=azure)
 

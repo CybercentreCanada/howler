@@ -406,7 +406,7 @@ def _queue_case_hit(case: Case, pending: list[CaseItem], hit_id: str, name: str,
         item.type == "hit" and item.value == hit_id for item in pending
     ):
         return
-    pending.append(CaseItem.validate_howler({"type": "hit", "value": hit_id, "parent": parent_id, "name": name}))
+    pending.append(CaseItem.model_validate({"type": "hit", "value": hit_id, "parent": parent_id, "name": name}))
 
 
 def _record_matches_incident(hit: Any, tenant_id: str, incident_identity: str) -> bool:

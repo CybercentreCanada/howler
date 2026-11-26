@@ -294,7 +294,7 @@ def convert_hit(  # noqa: C901
     if unused_keys and not ignore_extra_values:
         raise HowlerValueError(f"Hit was created with invalid parameters: {', '.join(sorted(unused_keys))}")
 
-    odm = hit_type.validate_howler(data, extra="ignore" if ignore_extra_values else None)
+    odm = hit_type.model_validate(data, extra="ignore" if ignore_extra_values else None)
 
     # Check for deprecated field and unused fields
     odm_flatten = model_registry.flat_fields(hit_type, show_compound=True)
@@ -339,7 +339,7 @@ def convert_hit(  # noqa: C901
         if not odm.event.created:
             odm.event.created = "NOW"
     else:
-        odm.event = ECSEvent.validate_howler({"created": "NOW", "id": odm.howler.id})
+        odm.event = ECSEvent.model_validate({"created": "NOW", "id": odm.howler.id})
 
     if user and not is_classification_accessible(user, odm.classification):
         raise HowlerValueError(f"User {user.uname} cannot create hits at classification {odm.classification}")
@@ -466,7 +466,7 @@ def create_hit(
 
     hit_data = hit
     if user:
-        hit_data.howler.log = [Log.validate_howler({"timestamp": "NOW", "explanation": "Created hit", "user": user})]
+        hit_data.howler.log = [Log.model_validate({"timestamp": "NOW", "explanation": "Created hit", "user": user})]
 
     CREATED_HITS.labels(hit_data.howler.analytic).inc()
     return datastore().hit.save(id, hit, refresh=refresh)
@@ -490,9 +490,7 @@ def create_hits(
             raise ResourceExists("Hit %s already exists in datastore" % hit_data.howler.id)
 
         if user:
-            hit_data.howler.log = [
-                Log.validate_howler({"timestamp": "NOW", "explanation": "Created hit", "user": user})
-            ]
+            hit_data.howler.log = [Log.model_validate({"timestamp": "NOW", "explanation": "Created hit", "user": user})]
 
         CREATED_HITS.labels(hit_data.howler.analytic).inc()
         if overwrite:

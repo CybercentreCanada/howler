@@ -35,7 +35,7 @@ def _make_rule(
     if indexes is not None:
         data["indexes"] = indexes
 
-    return cast(Any, CaseRule).validate_howler(data)
+    return cast(Any, CaseRule).model_validate(data)
 
 
 def _make_case(case_id: str, items: list | None = None) -> MagicMock:
@@ -243,7 +243,7 @@ class TestIngestedAlertsCorrelation:
     @patch("howler.services.correlation_service.datastore")
     def test_duplicate_alert_skipped(self, mock_ds_fn, mock_get_rules, mock_search_svc, mock_comms):
         """An alert already present in the case is skipped."""
-        existing = cast(Any, CaseItem).validate_howler({"type": "hit", "value": "hit-dup", "name": "related"})
+        existing = cast(Any, CaseItem).model_validate({"type": "hit", "value": "hit-dup", "name": "related"})
         case = _make_case("case-1", items=[existing])
         _setup_ds(mock_ds_fn, {"case-1": case}, hits={"hit-dup": _make_backing_obj()})
 

@@ -18,6 +18,7 @@ from howler.models import (
     ClassificationValue,
     HowlerEmbeddedModel,
     HowlerESModel,
+    HowlerModelValidationError,
     any_field,
     boolean,
     case_insensitive_keyword,
@@ -280,7 +281,7 @@ def test_optional_metadata_overrides_preserve_wrapped_mapping_and_validation() -
     assert Probe.model_validate({"ip_address": "192.0.2.1"}).as_primitives(ip_format="int") == {
         "ip_address": int(ip_address("192.0.2.1"))
     }
-    with pytest.raises(ValidationError):
+    with pytest.raises(HowlerModelValidationError):
         Probe.model_validate({"ip_address": "invalid"})
 
 
@@ -521,11 +522,11 @@ def test_nullable_fields_preserve_validation_defaults_aliases_and_mapping_metada
     assert model.values == {"valid_key": 2}
     assert model.model_dump(by_alias=True)["external_value"] == "123"
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(HowlerModelValidationError):
         NullableFieldModel.model_validate({"external_value": b"bytes"})
-    with pytest.raises(ValidationError):
+    with pytest.raises(HowlerModelValidationError):
         NullableFieldModel.model_validate({"items": [b"bytes"]})
-    with pytest.raises(ValidationError):
+    with pytest.raises(HowlerModelValidationError):
         NullableFieldModel.model_validate({"values": {"Invalid-Key": "2"}})
 
     fields = model_registry.fields(NullableFieldModel)

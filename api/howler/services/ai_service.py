@@ -339,7 +339,7 @@ def _managed_lead(content: str) -> Lead:
     Returns:
         A lead with the AI triage label and ownership metadata.
     """
-    return Lead(
+    return Lead.model_validate(
         {
             "label": {"en": "AI Triage", "fr": "Triage IA"},
             "format": "markdown",

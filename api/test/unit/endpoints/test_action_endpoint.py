@@ -18,7 +18,7 @@ def request_context():
 
 
 def _build_action() -> Action:
-    return Action.validate_howler(
+    return Action.model_validate(
         {
             "action_id": "11111111-1111-4111-8111-111111111111",
             "owner": "test",
@@ -32,7 +32,7 @@ def _build_action() -> Action:
 
 def _configure_auth(mock_auth_service, mock_quota_tracker):
     mock_auth_service.bearer_auth.return_value = (
-        User.validate_howler(
+        User.model_validate(
             {
                 "uname": "test",
                 "name": "Test user",

@@ -97,7 +97,7 @@ def test_build_permissions_request_maps_model_validation_errors(app, monkeypatch
     monkeypatch.setattr(
         permission_service,
         "PermissionRequest",
-        SimpleNamespace(validate_howler=raise_value_error),
+        SimpleNamespace(model_validate=raise_value_error),
     )
 
     with app.test_request_context(json=[{"privilege": "members", "user_id": "analyst"}]):

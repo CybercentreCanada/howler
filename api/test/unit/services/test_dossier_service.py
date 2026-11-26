@@ -16,7 +16,7 @@ def test_dossier_extension_survives_permitted_update(monkeypatch):
     ds = MagicMock()
     ds.dossier.model_class = ExtendedDossier
     monkeypatch.setattr(dossier_service, "datastore", lambda: ds)
-    owner = User.validate_howler({"uname": "analyst", "name": "Analyst", "password": "hash"})
+    owner = User.model_validate({"uname": "analyst", "name": "Analyst", "password": "hash"})
     created = dossier_service.create_dossier(
         {"title": "Investigation", "query": "howler.id:*", "type": "personal", "plugin": "keep"}, owner.uname
     )

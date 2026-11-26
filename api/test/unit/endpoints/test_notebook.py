@@ -32,7 +32,7 @@ def mock_auth_service():
     with patch("howler.security.login.auth_service") as auth_service:
         auth_service.bearer_auth = MagicMock(
             return_value=(
-                User.validate_howler(
+                User.model_validate(
                     {
                         "uname": "test",
                         "name": "Test user",

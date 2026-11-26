@@ -251,7 +251,7 @@ class ElasticBulkPlan(object):
             raw = self._input_primitives(doc)
             if isinstance(raw, dict):
                 raw = {key: value for key, value in raw.items() if key not in _MODEL_HELPER_FIELDS}
-            model = model_type.validate_howler(raw)
+            model = model_type.model_validate(raw)
             return model.as_primitives(hidden_fields=True)
         if not isinstance(doc, dict):
             return {"__non_doc_raw__": doc}

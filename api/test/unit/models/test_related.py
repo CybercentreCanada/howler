@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
 
-from howler.models import model_registry
+from howler.models import HowlerModelValidationError, model_registry
 from howler.models.ecs.agent import Agent
 from howler.models.ecs.dns import DNS, DNSAnswer
 from howler.models.ecs.hash import Hashes
@@ -103,7 +102,7 @@ class TestECSModels:
         assert hashes.sha1 == "da39a3ee5e6b4b0d3255bfef95601890afd80709"
         assert hashes.sha256 == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(HowlerModelValidationError):
             Hashes.model_validate({"md5": "not-a-valid-md5-hash"})
 
     def test_threat_technique_keeps_its_tactic_fields(self) -> None:

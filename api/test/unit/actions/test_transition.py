@@ -16,7 +16,7 @@ def test_execute_reports_concurrent_update_as_error(mock_action_datastore, mock_
         {"items": [SimpleNamespace(howler=SimpleNamespace(id=hit_id))], "total": 1},
         {"total": 0},
     ]
-    user = User.validate_howler({"uname": "admin", "name": "Administrator", "password": "password", "type": ["admin"]})
+    user = User.model_validate({"uname": "admin", "name": "Administrator", "password": "password", "type": ["admin"]})
 
     report = transition.execute(
         query="howler.id:*",
@@ -47,7 +47,7 @@ def test_execute_retries_concurrent_update(mock_action_datastore, mock_datastore
         {"items": [SimpleNamespace(howler=SimpleNamespace(id=hit_id))], "total": 1},
         {"total": 0},
     ]
-    user = User.validate_howler({"uname": "admin", "name": "Administrator", "password": "password", "type": ["admin"]})
+    user = User.model_validate({"uname": "admin", "name": "Administrator", "password": "password", "type": ["admin"]})
 
     report = transition.execute(
         query="howler.id:*",

@@ -852,7 +852,7 @@ def add_comment(id: str, user: User, record: Hit | None, server_version: str | N
             [
                 hit_helper.list_add(
                     "howler.comment",
-                    Comment.validate_howler({"user": user.uname, "value": comment_value}),
+                    Comment.model_validate({"user": user.uname, "value": comment_value}),
                     explanation=f"Added a comment:\n\n{comment_value}",
                     if_missing=True,
                 ),
@@ -860,7 +860,7 @@ def add_comment(id: str, user: User, record: Hit | None, server_version: str | N
             user.uname,
             version=server_version,
         )
-    except DataStoreException as e:
+    except (DataStoreException, HowlerException) as e:
         return bad_request(err=str(e))
 
     hit, version = hit_service.get_hit(id, as_odm=True, version=True)

@@ -360,8 +360,8 @@ class TestBulkExecuteOnQuery:
     @patch.object(action_service, "datastore")
     def test_all_operations_receive_dispatcher_auth_token(self, mock_datastore, mock_execute, mock_audit):
         """Built-in and plugin actions use the same dispatcher token parameter."""
-        built_in_operation = Operation.validate_howler({"operation_id": "add_label"})
-        plugin_operation = Operation.validate_howler({"operation_id": "plugin_action", "data_json": "{}"})
+        built_in_operation = Operation.model_validate({"operation_id": "add_label"})
+        plugin_operation = Operation.model_validate({"operation_id": "plugin_action", "data_json": "{}"})
         action = random_model_obj(Action)
         action.query = "howler.id:*"
         action.operations = [built_in_operation, plugin_operation]
@@ -437,7 +437,7 @@ class TestBulkExecuteOnQuery:
     @patch.object(action_service.actions, "execute", return_value=[])
     @patch.object(action_service, "datastore")
     def test_execution_decodes_operation_arguments(self, mock_datastore, mock_execute, _mock_audit):
-        action = Action.validate_howler(
+        action = Action.model_validate(
             {
                 "action_id": "action-1",
                 "owner": "user-1",
@@ -447,7 +447,7 @@ class TestBulkExecuteOnQuery:
                 "operations": [{"operation_id": "add_label", "data_json": '{"label": "triage"}'}],
             }
         )
-        user = User.validate_howler({"uname": "user-1", "name": "User", "password": "hash"})
+        user = User.model_validate({"uname": "user-1", "name": "User", "password": "hash"})
         storage = mock_datastore.return_value
         storage.action.search.return_value = {"items": [action]}
         storage.hit.search.return_value = {"total": 1}
