@@ -7,19 +7,19 @@ from typing import Annotated
 import pytest
 from howler.common.exceptions import HowlerValueError
 from howler.models import (
+    UUID,
+    Boolean,
+    Date,
+    Float,
     HowlerEmbeddedModel,
+    Integer,
+    Keyword,
     ModelExtensionRegistry,
-    boolean,
+    Text,
     clue,
-    date,
-    float_field,
-    integer,
-    keyword,
     mapping,
     metadata,
     register_model,
-    text,
-    uuid,
 )
 from howler.models.hit import Hit
 from pyspark.sql.types import (
@@ -40,51 +40,51 @@ from sync.services import sync_service
 
 @register_model(embedded=True)
 class Simple(HowlerEmbeddedModel):
-    keyword_field: keyword()
-    boolean_field: boolean()
-    integer_field: integer()
-    float_field: float_field()
-    text_field: text()
-    date_field: date()
+    keyword_field: Keyword
+    boolean_field: Boolean
+    integer_field: Integer
+    float_field: Float
+    text_field: Text
+    date_field: Date
 
 
 @register_model(embedded=True)
 class Nested(HowlerEmbeddedModel):
-    nested_keyword: keyword()
-    nested_integer: integer()
-    nested_date: date()
-    nested_complex_type: mapping(text())
+    nested_keyword: Keyword
+    nested_integer: Integer
+    nested_date: Date
+    nested_complex_type: mapping(Text)
 
 
 @register_model(embedded=True)
 class Containers(HowlerEmbeddedModel):
-    top_level_field: keyword(description="top level description")
+    top_level_field: Annotated[Keyword, metadata(description="top level description")]
     compound_field: Nested
-    list_field: list[integer(description="internal description")]
-    mapping_field: mapping(text(), description="parent level description")
-    optional_items: list[integer(description="optional item description", optional=True)]
+    list_field: list[Annotated[Integer, metadata(description="internal description")]]
+    mapping_field: mapping(Text, description="parent level description")
+    optional_items: list[Annotated[Integer | None, metadata(description="optional item description", optional=True)]]
 
 
 @register_model(embedded=True)
 class Defaults(HowlerEmbeddedModel):
-    required_field: keyword()
-    optional_field: integer(optional=True)
-    default_value_field: date(default="NOW")
-    nullable_default_field: text(optional=True, default="value")
-    nullable_list: list[text()] | None = None
-    list_with_nullable_elements: list[text(optional=True, default="value")] = []
-    list_with_defaulted_elements: list[integer(default=0)]
-    nullable_mapping: mapping(text(), optional=True)
-    mapping_with_nullable_values: mapping(text(optional=True), default={})
-    mapping_with_generated_values: mapping(uuid())
-    mapping_of_lists: mapping(list[date(default="NOW")])
+    required_field: Keyword
+    optional_field: Integer | None = None
+    default_value_field: Date = "NOW"
+    nullable_default_field: Annotated[Text | None, metadata(optional=True)] = "value"
+    nullable_list: list[Text] | None = None
+    list_with_nullable_elements: list[Annotated[Text | None, metadata(optional=True, default="value")]] = []
+    list_with_defaulted_elements: list[Annotated[Integer, metadata(default=0)]]
+    nullable_mapping: mapping(Text, optional=True)
+    mapping_with_nullable_values: mapping(Text | None, default={})
+    mapping_with_generated_values: mapping(UUID)
+    mapping_of_lists: mapping(list[Annotated[Date, metadata(default="NOW")]])
     nullable_compound: Nested | None = None
 
 
 @register_model(embedded=True)
 class SyncFalse(HowlerEmbeddedModel):
-    included: keyword()
-    excluded: keyword(sync=False)
+    included: Keyword
+    excluded: Annotated[Keyword, metadata(sync=False)]
 
 
 @register_model(embedded=True)
@@ -94,7 +94,7 @@ class AnyField(HowlerEmbeddedModel):
 
 @register_model()
 class ExtendedHit(Hit):
-    plugin_field: keyword(optional=True)
+    plugin_field: Keyword | None = None
 
 
 def test_basic_types_and_instance():
@@ -202,9 +202,9 @@ def test_finalized_hit_extension_schema(monkeypatch):
 
 def test_spark_accepts_null_batches_from_finalized_hit():
     registry = ModelExtensionRegistry()
-    batch = Annotated[list[keyword()] | None, metadata(optional=True, default=[])]
+    batch = Annotated[list[Keyword] | None, metadata(optional=True, default=[])]
     registry.declare(Hit, "batch", batch, plugin="test")
-    registry.declare(Hit, "batches", Annotated[list[list[keyword()] | None], metadata(default=[])], plugin="test")
+    registry.declare(Hit, "batches", Annotated[list[list[Keyword] | None], metadata(default=[])], plugin="test")
     model = registry.finalize(Hit)
 
     hit = model.model_validate(

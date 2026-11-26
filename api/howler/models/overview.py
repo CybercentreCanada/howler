@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerESModel, case_insensitive_keyword, keyword, register_model, text, uuid
+from howler.models import UUID, CaseInsensitiveKeyword, HowlerESModel, Keyword, Text, register_model
 
 
 @register_model(index=True, store=True, description="Model of overviews")
 class Overview(HowlerESModel):
     """Model of overviews."""
 
-    overview_id: uuid()
+    overview_id: UUID
     """A UUID for this overview"""
-    analytic: case_insensitive_keyword()
+    analytic: CaseInsensitiveKeyword
     """The analytic which this overview applies to."""
-    detection: case_insensitive_keyword(optional=True)
+    detection: CaseInsensitiveKeyword | None = None
     """The detection which this overview applies to."""
-    owner: keyword(optional=True)
+    owner: Keyword | None = None
     """The person to whom this overview belongs."""
-    content: text()
+    content: Text
     """The markdown to show when this overview is used."""

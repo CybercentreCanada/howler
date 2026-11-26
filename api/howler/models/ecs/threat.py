@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, date, integer, ip, keyword, register_model, text
+from howler.models import IP, Date, HowlerEmbeddedModel, Integer, Keyword, Text, register_model
 from howler.models.ecs.file import File
 
 
@@ -12,7 +12,7 @@ from howler.models.ecs.file import File
 class Email(HowlerEmbeddedModel):
     """Email indicator information."""
 
-    address: keyword(optional=True)
+    address: Keyword | None = None
     """Identifies a threat indicator as an email address (irrespective of direction)."""
 
 
@@ -22,11 +22,11 @@ class Email(HowlerEmbeddedModel):
 class SubTechnique(HowlerEmbeddedModel):
     """Information about the subtechnique used by this threat."""
 
-    id: keyword(optional=True)
+    id: Keyword | None = None
     """The id of subtechnique used by this threat."""
-    name: keyword(optional=True)
+    name: Keyword | None = None
     """Name of the type of subtechnique used by this threat."""
-    reference: keyword(optional=True)
+    reference: Keyword | None = None
     """The reference url of subtechnique used by this threat."""
 
 
@@ -36,11 +36,11 @@ class SubTechnique(HowlerEmbeddedModel):
 class Technique(HowlerEmbeddedModel):
     """Information about the technique used by this threat."""
 
-    id: keyword(optional=True)
+    id: Keyword | None = None
     """The id of technique  used by this threat."""
-    name: keyword(optional=True)
+    name: Keyword | None = None
     """Name of the type of technique used by this threat."""
-    reference: keyword(optional=True)
+    reference: Keyword | None = None
     """The reference url of technique used by this threat."""
     subtechnique: SubTechnique | None = None
     """Information about the subtechnique used by this threat."""
@@ -50,11 +50,11 @@ class Technique(HowlerEmbeddedModel):
 class Tactic(HowlerEmbeddedModel):
     """Information about the tactic used by this threat."""
 
-    id: keyword(optional=True)
+    id: Keyword | None = None
     """The id of tactic used by this threat."""
-    name: keyword(optional=True)
+    name: Keyword | None = None
     """Name of the type of tactic used by this threat."""
-    reference: keyword(optional=True)
+    reference: Keyword | None = None
     """The reference url of tactic used by this threat."""
 
 
@@ -64,23 +64,23 @@ class Tactic(HowlerEmbeddedModel):
 class Software(HowlerEmbeddedModel):
     """Information about the software used by this threat."""
 
-    alias: list[keyword()] | None = None
+    alias: list[Keyword] | None = None
     (
         "The alias(es) of the software for a set of related intrusion activity that are tracked by a common name in "
         "the security community."
     )
-    id: keyword(optional=True)
+    id: Keyword | None = None
     """The id of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®."""
-    name: keyword(optional=True)
+    name: Keyword | None = None
     """The name of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®."""
-    platform: list[keyword()] | None = None
+    platform: list[Keyword] | None = None
     """The platforms of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®."""
-    reference: keyword(optional=True)
+    reference: Keyword | None = None
     (
         "The reference URL of the software used by this threat to conduct behavior commonly modeled using MITRE "
         "ATT&CK\u00ae."
     )
-    type: keyword(optional=True)
+    type: Keyword | None = None
     """The type of software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®."""
 
 
@@ -90,22 +90,22 @@ class Software(HowlerEmbeddedModel):
 class Group(HowlerEmbeddedModel):
     """Information about the group related to this threat."""
 
-    alias: list[keyword()] | None = None
+    alias: list[Keyword] | None = None
     (
         "The alias(es) of the group for a set of related intrusion activity that are tracked by a common name in the "
         "security community."
     )
-    id: keyword(optional=True)
+    id: Keyword | None = None
     (
         "The id of the group for a set of related intrusion activity that are tracked by a common name in the security "
         "community."
     )
-    name: keyword(optional=True)
+    name: Keyword | None = None
     (
         "The name of the group for a set of related intrusion activity that are tracked by a common name in the "
         "security community."
     )
-    reference: keyword(optional=True)
+    reference: Keyword | None = None
     (
         "The reference URL of the group for a set of related intrusion activity that are tracked by a common name in "
         "the security community."
@@ -116,16 +116,16 @@ class Group(HowlerEmbeddedModel):
 class Feed(HowlerEmbeddedModel):
     """Threat feed information."""
 
-    dashboard_id: keyword(optional=True)
+    dashboard_id: Keyword | None = None
     (
         "The saved object ID of the dashboard belonging to the threat feed for displaying dashboard links to threat "
         "feeds in Kibana."
     )
-    description: keyword(optional=True)
+    description: Keyword | None = None
     """Description of the threat feed in a UI friendly format."""
-    name: keyword(optional=True)
+    name: Keyword | None = None
     """The name of the threat feed in UI friendly format."""
-    reference: keyword(optional=True)
+    reference: Keyword | None = None
     """Reference information for the threat feed in a UI friendly format."""
 
 
@@ -138,32 +138,32 @@ class Feed(HowlerEmbeddedModel):
 class Indicator(HowlerEmbeddedModel):
     """Object containing associated indicators enriching the event."""
 
-    confidence: keyword(optional=True)
+    confidence: Keyword | None = None
     (
         "Identifies the vendor-neutral confidence rating using the None/Low/Medium/High scale defined in Appendix A of "
         "the STIX 2.1 framework. Vendor-specific confidence scales may be added as custom fields."
     )
-    description: text(optional=True)
+    description: Text | None = None
     """Describes the type of action conducted by the threat."""
     email: Email | None = None
     file: File | None = None
-    provider: keyword(optional=True)
+    provider: Keyword | None = None
     """The name of the indicator's provider."""
-    reference: keyword(optional=True)
+    reference: Keyword | None = None
     """Reference URL linking to additional information about this indicator."""
-    scanner_stats: integer(optional=True)
+    scanner_stats: Integer | None = None
     """Count of AV/EDR vendors that successfully detected malicious file or URL."""
-    sightings: integer(optional=True)
+    sightings: Integer | None = None
     """Number of times this indicator was observed conducting threat activity."""
-    ip: ip(optional=True)
+    ip: IP | None = None
     """Identifies a threat indicator as an IP address (irrespective of direction)."""
-    type: keyword(optional=True)
+    type: Keyword | None = None
     """Type of indicator as represented by Cyber Observable in STIX 2.0."""
-    first_seen: date(optional=True)
+    first_seen: Date | None = None
     """The date and time when intelligence source first reported sighting this indicator."""
-    last_seen: date(optional=True)
+    last_seen: Date | None = None
     """The date and time when intelligence source last reported sighting this indicator."""
-    port: integer(optional=True)
+    port: Integer | None = None
     """Identifies a threat indicator as a port number"""
 
 
@@ -171,7 +171,7 @@ class Indicator(HowlerEmbeddedModel):
 class Matched(HowlerEmbeddedModel):
     """Threat matched-indicator information."""
 
-    atomic: keyword(optional=True)
+    atomic: Keyword | None = None
     """Identifies the atomic indicator value that matched a extended local envirnment endpoint or network event"""
 
 
@@ -197,7 +197,7 @@ class Threat(HowlerEmbeddedModel):
     """List of enrichments marked threats from indicator."""
     feed: Feed | None = None
     """Threat feed information."""
-    framework: keyword(optional=True)
+    framework: Keyword | None = None
     (
         "Name of the threat framework used to further categorize and classify the tactic and technique of the reported "
         "threat."

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from howler.models import HowlerEmbeddedModel, keyword, metadata, register_model
+from howler.models import HowlerEmbeddedModel, Keyword, metadata, register_model
 
 DEFAULT_MITRE: dict[str, list] = {"tactic": [], "technique": []}
 
@@ -13,10 +13,10 @@ DEFAULT_MITRE: dict[str, list] = {"tactic": [], "technique": []}
 class ALRecord(HowlerEmbeddedModel):
     """A single AssemblyLine detail record."""
 
-    type: keyword(optional=True)
-    subtype: keyword(optional=True)
-    value: keyword(optional=True)
-    verdict: keyword(optional=True)
+    type: Keyword | None = None
+    subtype: Keyword | None = None
+    value: Keyword | None = None
+    verdict: Keyword | None = None
 
 
 @register_model(index=True, store=True, embedded=True)

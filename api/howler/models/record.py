@@ -6,12 +6,12 @@ from typing import Annotated
 
 from howler.config import CLASSIFICATION
 from howler.models import (
+    Classification,
+    Date,
+    EmptyableKeyword,
     HowlerEmbeddedModel,
     HowlerESModel,
-    classification,
-    date,
-    emptyable_keyword,
-    keyword,
+    Keyword,
     mapping,
     metadata,
     register_model,
@@ -57,7 +57,7 @@ ECS_REFERENCE = "https://www.elastic.co/guide/en/ecs/8.5/ecs-base.html"
 class ECSVersion(HowlerEmbeddedModel):
     """ECS model version."""
 
-    version: keyword(default="8.3.0")
+    version: Keyword = "8.3.0"
     """Additional information about the certificate status."""
 
 
@@ -67,15 +67,15 @@ class Record(HowlerESModel):
     _include_index = True
 
     # Base Fields
-    timestamp: date(default="NOW", reference=ECS_REFERENCE)
+    timestamp: Annotated[Date, metadata(default="NOW", reference=ECS_REFERENCE)]
     """Date/time when the event originated."""
-    classification: classification(is_user_classification=False, copyto="__text__", default=CLASSIFICATION.UNRESTRICTED)
+    classification: Annotated[Classification, metadata(copyto="__text__", default=CLASSIFICATION.UNRESTRICTED)]
     """Maximum classification for the hit"""
-    labels: mapping(keyword(), default={}, reference=ECS_REFERENCE)
+    labels: mapping(Keyword, default={}, reference=ECS_REFERENCE)
     """Custom key/value pairs."""
-    tags: Annotated[list[keyword()], metadata(reference=ECS_REFERENCE)] = []
+    tags: Annotated[list[Keyword], metadata(reference=ECS_REFERENCE)] = []
     """List of keywords used to tag each event."""
-    message: emptyable_keyword(default="", reference=ECS_REFERENCE)
+    message: Annotated[EmptyableKeyword, metadata(reference=ECS_REFERENCE)] = ""
     """Log message for log events, optimized for viewing in a log viewer"""
 
     assemblyline: AssemblyLine | None = None

@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
 from pydantic import field_validator, model_validator
 
 from howler.common.exceptions import HowlerValueError
-from howler.models import HowlerEmbeddedModel, keyword, register_model, text
+from howler.models import HowlerEmbeddedModel, Keyword, StrictKeyword, Text, metadata, register_model
 from howler.models.localized_label import LocalizedLabel
 
 
@@ -15,11 +15,11 @@ from howler.models.localized_label import LocalizedLabel
 class Mapping(HowlerEmbeddedModel):
     """A single pivot mapping entry."""
 
-    key: keyword()
+    key: Keyword
     """The key to inject the given field as. Exact behaviour depends on the implementation type."""
-    field: keyword()
+    field: Keyword
     """The field in the hit to associate with the given key."""
-    custom_value: keyword(optional=True)
+    custom_value: Keyword | None = None
     """An optional custom value to use if the value is not dependent on the alert we are pivoting on"""
 
 
@@ -47,17 +47,17 @@ def validate_group(group: Any) -> None:
 class Pivot(HowlerEmbeddedModel):
     """The dossier object stores individual tabs/fields for a given alert."""
 
-    icon: text(default="material-symbols:link")
+    icon: Text = "material-symbols:link"
     """An optional icon to use in the tab display for this dossier."""
-    group: keyword(coerce=False, index=True, optional=True)
+    group: Annotated[StrictKeyword | None, metadata(index=True)] = None
     """The folder path this pivot should be presented in when viewed in the UI."""
-    description: text(optional=True)
+    description: Text | None = None
     """An optional description for the pivot."""
     label: LocalizedLabel
     """Labels for the pivot in the UI."""
-    value: keyword()
+    value: Keyword
     """The link/plugin information to pivot on."""
-    format: keyword()
+    format: Keyword
     """The format of the pivot."""
     mappings: list[Mapping] = []
     """A list of the mappings to use when activating a pivot."""

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import types
+from collections.abc import Iterable
 from copy import deepcopy
 from dataclasses import dataclass, replace
 from datetime import datetime
@@ -153,14 +154,62 @@ def annotation_metadata(annotation: Any, extra: list[Any] | None = None) -> list
     return metadata
 
 
-def field_metadata(annotation: Any, extra: list[Any] | None = None) -> HowlerFieldMetadata | None:
-    """Find the outermost Howler field metadata for an annotation."""
-    return _snapshot(
-        next(
-            (item for item in annotation_metadata(annotation, extra) if isinstance(item, HowlerFieldMetadata)),
-            None,
+def _append_metadata_items(collected: list[HowlerFieldMetadata], items: Iterable[Any]) -> None:
+    for item in items:
+        if isinstance(item, HowlerFieldMetadata):
+            collected.append(item)
+        elif isinstance(item, FieldInfo):
+            collected.extend(meta for meta in item.metadata if isinstance(meta, HowlerFieldMetadata))
+
+
+def _layer_metadata(annotation: Any, extra: list[Any] | None = None) -> list[HowlerFieldMetadata]:
+    """Collect HowlerFieldMetadata from innermost annotation layer to outermost."""
+    collected: list[HowlerFieldMetadata] = []
+    origin = get_origin(annotation)
+    if origin is Annotated:
+        nested, *items = get_args(annotation)
+        collected.extend(_layer_metadata(nested))
+        _append_metadata_items(collected, items)
+    elif origin in (Union, types.UnionType):
+        members = [item for item in get_args(annotation) if item is not type(None)]
+        if len(members) == 1:
+            collected.extend(_layer_metadata(members[0]))
+    if extra:
+        _append_metadata_items(collected, extra)
+    return collected
+
+
+def _merge_howler_metadata(layers: list[HowlerFieldMetadata]) -> HowlerFieldMetadata | None:
+    if not layers:
+        return None
+    merged = layers[0]
+    for outer in layers[1:]:
+        explicit = outer._explicit
+        merged = replace(
+            merged,
+            kind=outer.kind if outer.kind is not None else merged.kind,
+            index=outer.index if outer.index is not None or "index" in explicit else merged.index,
+            store=outer.store if outer.store is not None or "store" in explicit else merged.store,
+            copy_to=outer.copy_to if outer.copy_to or "copy_to" in explicit else merged.copy_to,
+            reference=outer.reference if outer.reference is not None or "reference" in explicit else merged.reference,
+            deprecated=outer.deprecated if outer.deprecated or "deprecated" in explicit else merged.deprecated,
+            deprecated_description=(
+                outer.deprecated_description
+                if outer.deprecated_description is not None or "deprecated_description" in explicit
+                else merged.deprecated_description
+            ),
+            sync=outer.sync if (not outer.sync) or "sync" in explicit else merged.sync,
+            options=outer.options if outer.options or "options" in explicit else merged.options,
+            optional=outer.optional if outer.optional or "optional" in explicit else merged.optional,
+            es_name=outer.es_name if outer.es_name is not None or "es_name" in explicit else merged.es_name,
+            _explicit=merged._explicit | explicit,
         )
-    )
+    return merged
+
+
+def field_metadata(annotation: Any, extra: list[Any] | None = None) -> HowlerFieldMetadata | None:
+    """Find and merge Howler field metadata across nested Annotated/Optional wrappers."""
+    return _snapshot(_merge_howler_metadata(_layer_metadata(annotation, extra)))
 
 
 def unwrap_annotation(annotation: Any) -> Any:

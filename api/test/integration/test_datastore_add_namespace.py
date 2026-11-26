@@ -13,10 +13,10 @@ from howler.models.hit import Hit
 
 @register_model(index=True, store=True, embedded=True)
 class ExtensionModel(HowlerEmbeddedModel):
-    integer: fields.integer(default=1)
-    keyword: fields.keyword(default="keyword")
-    boolean: fields.boolean(default=True)
-    date: fields.date(default="NOW")
+    integer: fields.Integer = 1
+    keyword: fields.Keyword = "keyword"
+    boolean: fields.Boolean = True
+    date: fields.Date = "NOW"
 
 
 @pytest.fixture(scope="module")

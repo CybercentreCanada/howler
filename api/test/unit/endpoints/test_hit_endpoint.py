@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 from flask import Flask, Response
 
-from howler.models import keyword, mapping
+from howler.models import Keyword, mapping
 from howler.models.ecs.related import Related
 from howler.models.hit import Hit
 from howler.models.user import User
@@ -76,7 +76,7 @@ def test_overwrite_strips_stored_index_and_preserves_etag_and_refresh(monkeypatc
 def test_overwrite_merges_lists_within_hit_extension(monkeypatch, request_context, replace, expected):
     class ExtendedHit(Hit):
         plugin: Related
-        groups: mapping(list[keyword()])
+        groups: mapping(list[Keyword])
 
     cached = ExtendedHit.model_validate(
         {"howler.analytic": "Example", "howler.hash": "ab", "plugin.ids": ["old"], "groups": {"team": ["old"]}}

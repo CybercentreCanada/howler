@@ -7,7 +7,7 @@ import pytest
 from flask import Flask, Response
 
 from howler.common.loader import datastore
-from howler.models import keyword, mapping
+from howler.models import Keyword, mapping
 from howler.models.hit import Hit
 from howler.models.user import User
 from howler.sample_data.randomizer import random_model_obj
@@ -729,7 +729,7 @@ class TestOverwrite:
         mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
 
         class ExtendedHit(Hit):
-            groups: mapping(list[keyword()])
+            groups: mapping(list[Keyword])
 
         existing = ExtendedHit.model_validate(
             {"howler.analytic": "Original", "howler.hash": "ab", "groups": {"team": ["old"]}}

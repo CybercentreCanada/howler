@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, keyword, register_model
+from howler.models import HowlerEmbeddedModel, Keyword, register_model
 
 
 @register_model(
@@ -14,11 +14,11 @@ from howler.models import HowlerEmbeddedModel, keyword, register_model
 class Group(HowlerEmbeddedModel):
     """The group fields are meant to represent groups that are relevant to the event."""
 
-    domain: keyword(optional=True)
+    domain: Keyword | None = None
     """Name of the directory the group is a member of."""
-    id: keyword(optional=True)
+    id: Keyword | None = None
     """Unique identifier for the group on the system/platform."""
-    name: keyword(optional=True)
+    name: Keyword | None = None
     """Name of the group."""
 
 
@@ -26,7 +26,7 @@ class Group(HowlerEmbeddedModel):
 class ShortGroup(HowlerEmbeddedModel):
     """Shorter representation of a group."""
 
-    id: keyword(optional=True)
+    id: Keyword | None = None
     """Unique identifier for the group on the system/platform."""
-    name: keyword(optional=True)
+    name: Keyword | None = None
     """Name of the group."""

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, date, enum, float_field, integer, keyword, register_model
+from typing import Annotated
+
+from howler.models import Date, Float, HowlerEmbeddedModel, Integer, Keyword, enum, metadata, register_model
 
 EVENT_CATEGORIES = [
     "authentication",
@@ -63,7 +65,7 @@ EVENT_OUTCOME = ["failure", "success", "unknown"]
 class ECSEvent(HowlerEmbeddedModel):
     """The event fields are used for context information about the log or metric event itself."""
 
-    action: keyword(optional=True)
+    action: Keyword | None = None
     """The action captured by the event."""
     category: list[enum(values=EVENT_CATEGORIES)] | None = None
     (
@@ -71,32 +73,32 @@ class ECSEvent(HowlerEmbeddedModel):
         "events relating to process activity. This field is closely related to event.type, which is used as a "
         "subcategory."
     )
-    code: keyword(optional=True)
+    code: Keyword | None = None
     """Identification code for this event, if one exists."""
-    count: integer(optional=True)
+    count: Integer | None = None
     """Count of events"""
-    created: date(optional=True)
+    created: Date | None = None
     """Contains the date/time when the event was first read by an agent, or by your pipeline."""
-    dataset: keyword(optional=True)
+    dataset: Keyword | None = None
     """Name of the dataset."""
-    duration: integer(optional=True)
+    duration: Integer | None = None
     """Duration of the event in nanoseconds."""
-    end: date(optional=True)
+    end: Date | None = None
     """Contains the date when the event ended or when the activity was last observed."""
-    hash: keyword(optional=True)
+    hash: Keyword | None = None
     """Hash (perhaps logstash fingerprint) of raw field to be able to demonstrate log integrity."""
-    id: keyword(optional=True)
+    id: Keyword | None = None
     """Unique ID to describe the event."""
-    ingested: date(default="NOW")
+    ingested: Annotated[Date, metadata(default="NOW")]
     """Timestamp when an event arrived in the central data store."""
     kind: enum(values=EVENT_KIND, optional=True)
     (
         "Gives high-level information about what type of information the event contains, without being specific to the "
         "contents of the event. "
     )
-    module: keyword(optional=True)
+    module: Keyword | None = None
     """Name of the module this data is coming from."""
-    original: keyword(optional=True)
+    original: Keyword | None = None
     (
         "Raw text message of entire event. Used to demonstrate log integrity or where the full log message (before "
         "splitting it up in multiple parts) may be required, e.g. for reindex."
@@ -106,23 +108,23 @@ class ECSEvent(HowlerEmbeddedModel):
         "Simply denotes whether the event represents a success or a failure from the perspective of the entity that "
         "produced the event."
     )
-    provider: keyword(optional=True)
+    provider: Keyword | None = None
     """Source of the event."""
-    reason: keyword(optional=True)
+    reason: Keyword | None = None
     """Reason why this event happened, according to the source."""
-    reference: keyword(optional=True)
+    reference: Keyword | None = None
     """Reference URL linking to additional information about this event."""
-    risk_score: float_field(optional=True)
+    risk_score: Float | None = None
     """Risk score or priority of the event (e.g. security solutions)."""
-    risk_score_norm: float_field(optional=True)
+    risk_score_norm: Float | None = None
     """Normalized risk score or priority of the event, on a scale of 0 to 100."""
-    sequence: integer(optional=True)
+    sequence: Integer | None = None
     """Sequence number of the event."""
-    severity: integer(optional=True)
+    severity: Integer | None = None
     """The numeric severity of the event according to your event source."""
-    start: date(optional=True)
+    start: Date | None = None
     """Contains the date when the event started or when the activity was first observed."""
-    timezone: keyword(optional=True)
+    timezone: Keyword | None = None
     (
         "This field should be populated when the event's timestamp does not include timezone information already (e.g. "
         "default Syslog timestamps)."
@@ -132,5 +134,5 @@ class ECSEvent(HowlerEmbeddedModel):
         'Represents a categorization "sub-bucket" that, when used along with the event.category field values, enables '
         "filtering events down to a level appropriate for single visualization."
     )
-    url: keyword(optional=True)
+    url: Keyword | None = None
     """URL linking to an external system to continue investigation of this event."""

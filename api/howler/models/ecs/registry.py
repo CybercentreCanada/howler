@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, keyword, register_model
+from howler.models import HowlerEmbeddedModel, Keyword, register_model
 
 
 @register_model(
@@ -14,11 +14,11 @@ from howler.models import HowlerEmbeddedModel, keyword, register_model
 class RegistryData(HowlerEmbeddedModel):
     """Fields related to data written to Windows Registry."""
 
-    bytes: keyword(optional=True)
+    bytes: Keyword | None = None
     """Original bytes written with base64 encoding."""
-    strings: list[keyword()] | None = None
+    strings: list[Keyword] | None = None
     """Content when writing string types."""
-    type: keyword(optional=True)
+    type: Keyword | None = None
     """Standard registry type for encoding contents."""
 
 
@@ -28,11 +28,11 @@ class Registry(HowlerEmbeddedModel):
 
     data: RegistryData | None = None
     """Fields related to data written to Windows Registry."""
-    hive: keyword(optional=True)
+    hive: Keyword | None = None
     """Abbreviated name for the hive."""
-    key: keyword(optional=True)
+    key: Keyword | None = None
     """Hive-relative path of keys."""
-    path: keyword(optional=True)
+    path: Keyword | None = None
     """Full path, including hive, key and value."""
-    value: keyword(optional=True)
+    value: Keyword | None = None
     """Name of the value written."""

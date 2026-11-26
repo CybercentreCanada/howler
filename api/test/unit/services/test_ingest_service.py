@@ -9,10 +9,11 @@ from howler.common.exceptions import HowlerValueError
 from howler.models import (
     HowlerEmbeddedModel,
     HowlerModelValidationError,
-    integer,
-    json_field,
-    keyword,
+    Integer,
+    Json,
+    Keyword,
     mapping,
+    metadata,
     model_extensions,
 )
 from howler.models.event import Event
@@ -21,9 +22,9 @@ from howler.services import event_service, hit_service, ingest_service
 
 
 class Entry(HowlerEmbeddedModel):
-    value: keyword(optional=True)
-    count: integer(optional=True)
-    payload: json_field(optional=True)
+    value: Keyword | None = None
+    count: Integer | None = None
+    payload: Json | None = None
 
 
 @pytest.fixture(params=["event", "hit"])
@@ -36,13 +37,11 @@ def convert(request, monkeypatch):
         model_extensions.declare(
             target, "grouped_lists", mapping(list[Entry], default={}, index=False), plugin="example"
         )
-        model_extensions.declare(target, "scalar_map", mapping(keyword(), default={}), plugin="example")
-        model_extensions.declare(target, "payload", json_field(optional=True), plugin="example")
-        model_extensions.declare(
-            target, "json_list", Annotated[list[json_field()], Field(default=[])], plugin="example"
-        )
-        model_extensions.declare(target, "json_map", mapping(json_field(), default={}), plugin="example")
-        model_extensions.declare(target, "json_map_list", mapping(list[json_field()], default={}), plugin="example")
+        model_extensions.declare(target, "scalar_map", mapping(Keyword, default={}), plugin="example")
+        model_extensions.declare(target, "payload", Annotated[Json | None, metadata(default=None)], plugin="example")
+        model_extensions.declare(target, "json_list", Annotated[list[Json], Field(default=[])], plugin="example")
+        model_extensions.declare(target, "json_map", mapping(Json, default={}), plugin="example")
+        model_extensions.declare(target, "json_map_list", mapping(list[Json], default={}), plugin="example")
         collection = SimpleNamespace(model_class=model_extensions.finalize(target))
         monkeypatch.setattr(service, "datastore", lambda: SimpleNamespace(**{index: collection}))
         convert_record = getattr(service, f"convert_{index}")
@@ -203,8 +202,8 @@ def test_overwrite_retains_stored_and_supplied_empty_compounds(flatten_patch_map
 @pytest.mark.parametrize("replace", [False, True])
 def test_overwrite_empty_dynamic_mappings_follow_original_route_behavior(flatten_patch_mappings, replace):
     class ExtendedHit(Hit):
-        groups: mapping(list[keyword()])
-        scalar_map: mapping(keyword())
+        groups: mapping(list[Keyword])
+        scalar_map: mapping(Keyword)
         compounds: mapping(Entry, index=False)
 
     stored = ExtendedHit.model_validate(
@@ -271,8 +270,8 @@ def test_overwrite_empty_unknowns_follow_original_route_behavior(flatten_patch_m
 @pytest.mark.parametrize("replace", [False, True])
 def test_overwrite_other_empty_scalars_follow_original_route_behavior(flatten_patch_mappings, replace):
     class ExtendedHit(Hit):
-        count: integer()
-        raw: json_field()
+        count: Integer
+        raw: Json
 
     stored = ExtendedHit.model_validate(
         {"howler.analytic": "Original", "howler.hash": "ab", "count": 2, "raw": {"old": True}}

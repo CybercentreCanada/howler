@@ -16,15 +16,20 @@ from pydantic import (
     SerializerFunctionWrapHandler,
     TypeAdapter,
     ValidationError,
+    ValidationInfo,
+    field_validator,
     model_serializer,
     model_validator,
 )
+from pydantic_core import PydanticUndefined
 from typing_extensions import Self
 
 from howler.common.exceptions import HowlerValueError
 from howler.models.fields import (
+    DEFAULT_WHEN_BY_KIND,
     FIELD_SANITIZER,
     NOT_INDEXED_SANITIZER,
+    NULL_EMPTY_KEYWORD_KINDS,
     ClassificationValue,
     _make_annotated,
     format_datetime,
@@ -110,6 +115,41 @@ def _normalize_list_inputs(annotation: Any, value: Any) -> Any:
         if len(args) == 2 and _contains_list_container(args[1]):
             return {k: _normalize_list_inputs(args[1], item) for k, item in value.items()}
     return value
+
+
+def _normalize_scalar_input(
+    annotation: Any,
+    value: Any,
+    *,
+    default: Any = PydanticUndefined,
+    default_factory: Any = None,
+) -> Any:
+    metadata = field_metadata(annotation)
+    kind = metadata.kind if metadata else None
+    is_nullable = _is_nullable_annotation(annotation)
+    has_non_null_default = default_factory is not None or (default is not PydanticUndefined and default is not None)
+
+    if is_nullable:
+        if value is None:
+            return None
+        if not has_non_null_default and kind in NULL_EMPTY_KEYWORD_KINDS and value == "":
+            return None
+
+    if has_non_null_default and kind in DEFAULT_WHEN_BY_KIND and DEFAULT_WHEN_BY_KIND[kind](value):
+        return default_factory() if default_factory is not None else copy.deepcopy(default)
+
+    return value
+
+
+def _normalize_field_input(
+    annotation: Any,
+    value: Any,
+    *,
+    default: Any = PydanticUndefined,
+    default_factory: Any = None,
+) -> Any:
+    value = _normalize_list_inputs(annotation, value)
+    return _normalize_scalar_input(annotation, value, default=default, default_factory=default_factory)
 
 
 def _finalize_primitives(
@@ -206,6 +246,27 @@ class HowlerModelMixin:
             full_annotation = _make_annotated(info.annotation, *info.metadata) if info.metadata else info.annotation
             nested[key] = _normalize_list_inputs(full_annotation, nested[key])
         return nested
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def _normalize_scalar_fields(cls, value: Any, info: ValidationInfo) -> Any:
+        if not info.field_name or info.field_name == "meta":
+            return value
+        model_type = cast(type[BaseModel], cls)
+        field_info = model_type.model_fields.get(info.field_name)
+        if field_info is None:
+            return value
+        full_annotation = (
+            _make_annotated(field_info.annotation, *field_info.metadata)
+            if field_info.metadata
+            else field_info.annotation
+        )
+        return _normalize_scalar_input(
+            full_annotation,
+            value,
+            default=field_info.default,
+            default_factory=field_info.default_factory,
+        )
 
     @model_serializer(mode="wrap")
     def _serialize_model(self, handler: SerializerFunctionWrapHandler, info: SerializationInfo):  # noqa: ANN202
@@ -449,7 +510,16 @@ def _partial_values(
                 continue
             raise ValueError(f"Unknown field for {model_type.__name__}: {input_name}")
         python_name, info = entry
-        values[python_name] = _partial_value(info.annotation, list(info.metadata), value, ignore_unknown=ignore_unknown)
+        full_annotation = _make_annotated(info.annotation, *info.metadata) if info.metadata else info.annotation
+        normalized = _normalize_scalar_input(
+            full_annotation,
+            value,
+            default=info.default,
+            default_factory=info.default_factory,
+        )
+        values[python_name] = _partial_value(
+            info.annotation, list(info.metadata), normalized, ignore_unknown=ignore_unknown
+        )
     return values
 
 
@@ -517,12 +587,13 @@ def _mapping_value_annotation(annotation: Any, component: str, path: str) -> Any
     return args[1]
 
 
-def _field_annotation_for_path(model_type: type[BaseModel], path: str) -> Any:
+def _field_annotation_for_path(model_type: type[BaseModel], path: str) -> tuple[Any, Any]:
     components = path.split(".")
     if not path or any(not component for component in components):
         raise ValueError(f"Invalid field for model: {path}")
 
     current: Any = model_type
+    current_info: Any = None
     position = 0
     while position < len(components):
         full_annotation = current
@@ -530,6 +601,7 @@ def _field_annotation_for_path(model_type: type[BaseModel], path: str) -> Any:
         if get_origin(current) is list:
             full_annotation = get_args(current)[0]
             current = unwrap_annotation(full_annotation)
+            current_info = None
 
         if isinstance(current, type) and issubclass(current, BaseModel):
             entry = _field_input_map(current).get(components[position])
@@ -537,16 +609,18 @@ def _field_annotation_for_path(model_type: type[BaseModel], path: str) -> Any:
                 raise ValueError(f"Invalid field for model: {path}")
             _, info = entry
             current = _make_annotated(info.annotation, *info.metadata) if info.metadata else info.annotation
+            current_info = info
             position += 1
             if position == len(components):
-                return current
+                return current, current_info
             continue
 
         if get_origin(current) is dict:
             current = _mapping_value_annotation(full_annotation, components[position], path)
+            current_info = None
             position += 1
             if position == len(components):
-                return current
+                return current, current_info
             continue
 
         break
@@ -565,17 +639,23 @@ def validate_field_value(
     if isinstance(value, BaseModel):
         value = value.model_dump(by_alias=True)
 
-    full_annotation = _field_annotation_for_path(model_type, path)
+    full_annotation, field_info = _field_annotation_for_path(model_type, path)
 
     unwrapped = unwrap_annotation(full_annotation)
     if list_item and get_origin(unwrapped) is list:
         full_annotation = get_args(unwrapped)[0]
+        field_info = None
 
     resolved = unwrap_annotation(full_annotation)
     if isinstance(resolved, type) and issubclass(resolved, BaseModel):
         return resolved.model_validate(value).model_dump(by_alias=True, exclude_none=True)
 
-    value = _normalize_list_inputs(full_annotation, value)
+    value = _normalize_field_input(
+        full_annotation,
+        value,
+        default=field_info.default if field_info is not None else PydanticUndefined,
+        default_factory=field_info.default_factory if field_info is not None else None,
+    )
     adapter = TypeAdapter(full_annotation, config=ADAPTER_CONFIG)
     try:
         validated = adapter.validate_python(value)

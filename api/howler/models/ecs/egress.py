@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, keyword, register_model
+from howler.models import HowlerEmbeddedModel, Keyword, register_model
 
 
 @register_model(
@@ -14,5 +14,5 @@ from howler.models import HowlerEmbeddedModel, keyword, register_model
 class Egress(HowlerEmbeddedModel):
     """Holds information like interface number, name, vlan, and zone to classify egress traffic."""
 
-    zone: keyword(optional=True)
+    zone: Keyword | None = None
     """Network zone of outbound traffic"""

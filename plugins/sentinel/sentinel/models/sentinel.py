@@ -5,22 +5,22 @@ Mirrors the stored Sentinel fields using the ``howler.models`` Pydantic/DSL foun
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, keyword, register_model
+from howler.models import HowlerEmbeddedModel, Keyword, register_model
 
 
 @register_model(index=True, store=True, description="The Sentinel fields contain any data relating to Sentinel.")
 class Sentinel(HowlerEmbeddedModel):
     """The Sentinel fields contain any data relating to Sentinel."""
 
-    id: keyword(optional=True)
+    id: Keyword | None = None
     """The Microsoft Sentinel incident or alert identifier."""
-    tenant_id: keyword(optional=True)
+    tenant_id: Keyword | None = None
     """The tenant identifier that owns this Sentinel record."""
-    record_type: keyword(optional=True)
+    record_type: Keyword | None = None
     """The Sentinel record kind: incident, alert, or evidence."""
-    incident_id: keyword(optional=True)
+    incident_id: Keyword | None = None
     """The parent Microsoft Sentinel incident identifier."""
-    alert_id: keyword(optional=True)
+    alert_id: Keyword | None = None
     """The source Microsoft Sentinel alert identifier for this alert or evidence record."""
-    evidence_id: keyword(optional=True)
+    evidence_id: Keyword | None = None
     """A stable key identifying a Sentinel evidence object within its source alert."""

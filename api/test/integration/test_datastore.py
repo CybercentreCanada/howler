@@ -5,6 +5,7 @@ import time
 import uuid
 import warnings
 from copy import deepcopy
+from typing import Annotated
 
 import pytest
 from datemath import dm
@@ -13,7 +14,7 @@ from retrying import retry
 from howler.datastore.collection import DATASTORE_INDEX_PREFIX, ESCollection
 from howler.datastore.exceptions import DataStoreException, VersionConflictException
 from howler.datastore.store import ESStore
-from howler.models import HowlerESModel, date, fields, integer, keyword, register_model, text
+from howler.models import Date, HowlerESModel, Integer, Keyword, Text, fields, metadata, register_model
 from howler.models.schema import document_mapping, index_settings
 
 with warnings.catch_warnings():
@@ -941,15 +942,15 @@ def test_fix_replicas(es_connection: ESCollection, replicas: int):
 
 @register_model(index=True)
 class ReindexModel1(HowlerESModel):
-    field_1: fields.keyword(default="default")
-    field_2: fields.keyword()
-    field_3: fields.keyword(optional=True)
+    field_1: fields.Keyword = "default"
+    field_2: fields.Keyword
+    field_3: fields.Keyword | None = None
 
 
 @register_model(index=True)
 class ReindexModel2(HowlerESModel):
-    field_2: fields.keyword()
-    field_3: fields.integer(default=1)
+    field_2: fields.Keyword
+    field_3: fields.Integer = 1
 
 
 def _register_model(
@@ -1194,13 +1195,13 @@ def test_reindex_allow_failures(es_connection: ESCollection):
 
 @register_model(index=True, store=True, id_field="key")
 class DatastoreSearchDocument(HowlerESModel):
-    key: keyword()
-    message: text(copyto=["__text__"])
-    status: keyword()
-    owner: keyword(optional=True)
-    severity: integer()
-    tags: list[keyword()]
-    observed: date()
+    key: Keyword
+    message: Annotated[Text, metadata(copyto=["__text__"])]
+    status: Keyword
+    owner: Keyword | None = None
+    severity: Integer
+    tags: list[Keyword]
+    observed: Date
 
 
 def _doc(key, message, status, owner, severity, tags, observed):

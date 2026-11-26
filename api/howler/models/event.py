@@ -5,15 +5,15 @@ from __future__ import annotations
 from typing import Annotated
 
 from howler.models import (
+    UUID,
+    Date,
+    Float,
     HowlerEmbeddedModel,
-    date,
+    HowlerHash,
+    Keyword,
     enum,
-    float_field,
-    howler_hash,
-    keyword,
     metadata,
     register_model,
-    uuid,
 )
 from howler.models.constants import HowlerStrEnum
 from howler.models.header import Header as _Header
@@ -39,24 +39,24 @@ class Escalation(HowlerStrEnum):
 class EventData(HowlerEmbeddedModel):
     """Event metadata fields, howler specific."""
 
-    id: uuid()
+    id: UUID
     """A UUID for this event."""
-    data: Annotated[list[keyword()], metadata(store=False)] = []
+    data: Annotated[list[Keyword], metadata(store=False)] = []
     """Raw telemetry records associated with this event."""
-    hash: howler_hash()
+    hash: HowlerHash
     (
         "A hash of the event used for deduplicating hits. Supports any hexadecimal string between 1 and 64 characters "
         "long."
     )
-    related: list[keyword()] = []
+    related: list[Keyword] = []
     """Related records."""
     outline: _Header | None = None
     """The user specified header of the event."""
-    score: float_field(optional=True, default=0)
+    score: Annotated[Float | None, metadata(optional=True)] = 0
     """A score assigned by an enrichment to help prioritize triage."""
     escalation: enum(values=Escalation, default=Escalation.HIT)
     """Level of escalation of this event."""
-    expiry: date(optional=True)
+    expiry: Date | None = None
     """User selected time for event expiry"""
     comment: list[Comment] = []
     """A list of comments with timestamps and attribution."""

@@ -12,7 +12,16 @@ from retrying import retry
 
 from howler.datastore.collection import logger
 from howler.datastore.exceptions import SearchException
-from howler.models import HowlerEmbeddedModel, HowlerESModel, fields, keyword, mapping, model_registry, register_model
+from howler.models import (
+    HowlerEmbeddedModel,
+    HowlerESModel,
+    Keyword,
+    fields,
+    mapping,
+    metadata,
+    model_registry,
+    register_model,
+)
 from howler.models.schema import document_mapping, index_settings
 
 logger.setLevel(logging.INFO)
@@ -21,35 +30,35 @@ yml_config = os.path.join(os.path.dirname(os.path.dirname(__file__)), "classific
 
 @register_model(index=True, store=True, embedded=True)
 class ThingsModel(HowlerEmbeddedModel):
-    count: fields.integer()
-    thing: fields.text()
+    count: fields.Integer
+    thing: fields.Text
 
 
 @register_model(index=True, store=True, embedded=True)
 class MeasurementModel(HowlerEmbeddedModel):
-    depth: fields.integer()
-    width: fields.integer()
+    depth: fields.Integer
+    width: fields.Integer
 
 
 @register_model(index=True, store=True, embedded=True)
 class Position(HowlerEmbeddedModel):
-    x: fields.integer()
-    y: fields.integer()
+    x: fields.Integer
+    y: fields.Integer
 
 
 @register_model(index=True, store=True)
 class BaseTestModel(HowlerESModel):
     classification: fields.classification(default="UNRESTRICTED", yml_config=yml_config)
-    flavour: fields.text(copyto="features", default="EMPTY")
-    height: fields.integer()
-    no_store: fields.keyword(store=False, optional=True)
-    no_index: fields.keyword(index=False, store=False, optional=True)
+    flavour: Annotated[fields.Text, metadata(copyto="features")] = "EMPTY"
+    height: fields.Integer
+    no_store: Annotated[fields.Keyword | None, metadata(store=False)] = None
+    no_index: Annotated[fields.Keyword | None, metadata(index=False, store=False)] = None
     dots: fields.mapping(Position, default={})
-    birthday: fields.date()
+    birthday: fields.Date
     tags: Annotated[list[fields.enum({"silly", "cats", "10"})], fields.metadata(copyto="features")] = []
     size: Annotated[MeasurementModel, Field(default={"depth": 100, "width": 100})]
-    features: list[fields.text()] = []
-    metadata: fields.mapping(fields.text(), default={})
+    features: list[fields.Text] = []
+    metadata: fields.mapping(fields.Text, default={})
     things: list[ThingsModel] = []
 
 
@@ -493,8 +502,8 @@ def test_es(es_connection, function, as_obj):
 def test_dynamic_fields(es_store, request):
     @register_model(index=True, store=True)
     class Test(HowlerESModel):
-        number: fields.integer()
-        other: fields.any_field(index=False)
+        number: fields.Integer
+        other: Annotated[fields.AnyField, metadata(index=False)]
 
     collection_name = "".join(random.choices(string.ascii_lowercase, k=10))
     es_store.register(collection_name, Test)
@@ -522,9 +531,9 @@ def test_dynamic_fields(es_store, request):
 class LiveReconcileDoc(HowlerESModel):
     """A compact schema used to verify live index field discovery and reconciliation."""
 
-    key: keyword()
-    name: keyword(description="A plain, statically typed field.")
-    tags: mapping(keyword(), default={}, description="A dynamic-key mapping field.")
+    key: Keyword
+    name: Annotated[Keyword, metadata(description="A plain, statically typed field.")]
+    tags: mapping(Keyword, default={}, description="A dynamic-key mapping field.")
 
 
 def _random_schema_collection_name() -> str:

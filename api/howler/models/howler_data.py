@@ -5,18 +5,18 @@ from __future__ import annotations
 from typing import Annotated
 
 from howler.models import (
+    UUID,
+    CaseInsensitiveKeyword,
+    Date,
+    Float,
     HowlerEmbeddedModel,
-    case_insensitive_keyword,
-    date,
+    HowlerHash,
+    Keyword,
+    Text,
     enum,
-    float_field,
-    howler_hash,
-    keyword,
     mapping,
     metadata,
     register_model,
-    text,
-    uuid,
 )
 from howler.models.constants import HowlerStrEnum, Status
 from howler.models.header import Header as _Header
@@ -103,11 +103,11 @@ class AssessmentEscalationMap(HowlerStrEnum):
 class Link(HowlerEmbeddedModel):
     """Howler Link definition."""
 
-    href: keyword()
+    href: Keyword
     """Timestamp at which the comment was last edited."""
-    title: keyword(optional=True)
+    title: Keyword | None = None
     """The title to use for the link."""
-    icon: keyword(optional=True)
+    icon: Keyword | None = None
     """The icon to show. Either an ID corresponding to an analytical platform application, or an external link."""
 
 
@@ -115,17 +115,17 @@ class Link(HowlerEmbeddedModel):
 class Comment(HowlerEmbeddedModel):
     """Comment definition."""
 
-    id: uuid()
+    id: UUID
     """A unique ID for the comment."""
-    timestamp: date(default="NOW")
+    timestamp: Annotated[Date, metadata(default="NOW")]
     """Timestamp at which the comment took place."""
-    modified: date(default="NOW")
+    modified: Annotated[Date, metadata(default="NOW")]
     """Timestamp at which the comment was last edited."""
-    value: text()
+    value: Text
     """The comment itself."""
-    user: keyword()
+    user: Keyword
     """User ID who created the comment."""
-    reactions: mapping(keyword(), default={})
+    reactions: mapping(Keyword, default={})
     """A list of reactions to the comment."""
 
 
@@ -138,11 +138,11 @@ class Comment(HowlerEmbeddedModel):
 class Incident(HowlerEmbeddedModel):
     """Fields describing the location where this alert has been retained."""
 
-    platform: keyword()
+    platform: Keyword
     """The name of the platform for this incident."""
-    incident_id: keyword(optional=True)
+    incident_id: Keyword | None = None
     """The ID of the incident."""
-    url: keyword(optional=True)
+    url: Keyword | None = None
     """The url where the incident can be found."""
 
 
@@ -150,23 +150,23 @@ class Incident(HowlerEmbeddedModel):
 class Label(HowlerEmbeddedModel):
     """Labels for the hit."""
 
-    assignments: list[keyword()] = []
+    assignments: list[Keyword] = []
     """List of assignments for the hit."""
-    generic: list[keyword()] = []
+    generic: list[Keyword] = []
     """List of generic labels for the hit."""
-    insight: list[keyword()] = []
+    insight: list[Keyword] = []
     """List of insight labels for the hit."""
-    mitigation: list[keyword()] = []
+    mitigation: list[Keyword] = []
     """List of mitigation labels for the hit."""
-    victim: list[keyword()] = []
+    victim: list[Keyword] = []
     """List of victim labels for the hit."""
-    campaign: list[keyword()] = []
+    campaign: list[Keyword] = []
     """List of campaign labels for the hit."""
-    threat: list[keyword()] = []
+    threat: list[Keyword] = []
     """List of threat labels for the hit."""
-    tuning: list[keyword()] = []
+    tuning: list[Keyword] = []
     """List of tuning labels for the hit."""
-    operation: list[keyword()] = []
+    operation: list[Keyword] = []
     """List of operation labels for the hit."""
 
 
@@ -174,11 +174,11 @@ class Label(HowlerEmbeddedModel):
 class Votes(HowlerEmbeddedModel):
     """Votes for the hit."""
 
-    benign: list[keyword()] = []
+    benign: list[Keyword] = []
     """List of users who voted benign."""
-    obscure: list[keyword()] = []
+    obscure: list[Keyword] = []
     """List of users who voted obscure."""
-    malicious: list[keyword()] = []
+    malicious: list[Keyword] = []
     """List of users who voted malicious."""
 
 
@@ -196,34 +196,34 @@ DEFAULT_ASSIGNMENT = "unassigned"
 class HowlerData(HowlerEmbeddedModel):
     """Howler specific definition of the hit that matches the outline."""
 
-    id: uuid()
+    id: UUID
     """A UUID for this hit."""
-    analytic: case_insensitive_keyword()
+    analytic: CaseInsensitiveKeyword
     """Title of the analytic."""
-    assignment: keyword(default=DEFAULT_ASSIGNMENT)
+    assignment: Keyword = DEFAULT_ASSIGNMENT
     """Unique identifier of the assigned user."""
-    data: Annotated[list[keyword()], metadata(store=False, sync=False)] = []
+    data: Annotated[list[Keyword], metadata(store=False, sync=False)] = []
     """Raw telemetry records associated with this hit."""
     links: Annotated[list[Link], metadata(sync=False)] = []
     """A list of links associated with this hit."""
-    detection: case_insensitive_keyword(optional=True)
+    detection: CaseInsensitiveKeyword | None = None
     """The detection that produced this hit."""
-    hash: howler_hash()
+    hash: HowlerHash
     (
         "A hash of the event used for deduplicating hits. Supports any hexadecimal string between 1 and 64 characters "
         "long."
     )
-    related: list[keyword()] = []
+    related: list[Keyword] = []
     """Related records."""
-    reliability: float_field(optional=True)
+    reliability: Float | None = None
     """Metric decoupled from the value in the detection information."""
-    severity: float_field(optional=True)
+    severity: Float | None = None
     """Metric decoupled from the value in the detection information."""
-    volume: float_field(optional=True)
+    volume: Float | None = None
     """Metric decoupled from the value in the detection information."""
-    confidence: float_field(optional=True)
+    confidence: Float | None = None
     """Metric decoupled from the value in the detection information."""
-    score: float_field(optional=True, default=0)
+    score: Annotated[Float | None, metadata(optional=True)] = 0
     """A score assigned by an enrichment to help prioritize triage."""
     status: enum(values=Status, default=Status.OPEN)
     """Status of the hit."""
@@ -231,23 +231,23 @@ class HowlerData(HowlerEmbeddedModel):
     """Level of scrutiny done to this hit."""
     escalation: enum(values=Escalation, default=Escalation.HIT)
     """Level of escalation of this hit."""
-    expiry: date(optional=True)
+    expiry: Date | None = None
     """User selected time for hit expiry"""
     assessment: enum(values=Assessment, optional=True)
     """Assessment of the hit."""
-    rationale: keyword(optional=True)
+    rationale: Keyword | None = None
     """The rationale behind the hit assessment. Allows it to be understood and verified by other analysts."""
-    triaged: date(optional=True)
+    triaged: Date | None = None
     """Timestamp at which the hit was triaged."""
     comment: Annotated[list[Comment], metadata(sync=False)] = []
     """A list of comments with timestamps and attribution."""
     log: Annotated[list[_Log], metadata(sync=False)] = []
     """A list of changes to the hit with timestamps and attribution."""
-    monitored: keyword(optional=True)
+    monitored: Keyword | None = None
     """Link to the incident monitoring dashboard."""
-    reported: keyword(optional=True)
+    reported: Keyword | None = None
     """Link to the incident report."""
-    mitigated: keyword(optional=True)
+    mitigated: Keyword | None = None
     """Link to the mitigation record (tool dependent)."""
     outline: _Header | None = None
     """The user specified header of the hit"""

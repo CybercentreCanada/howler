@@ -3,19 +3,19 @@
 from howler.datastore.collection import ESCollection
 from howler.datastore.operations import OdmHelper
 from howler.datastore.utils import expand_field_patterns, prune_to_paths
-from howler.models import HowlerEmbeddedModel, HowlerESModel, keyword, register_model
+from howler.models import HowlerEmbeddedModel, HowlerESModel, Keyword, register_model
 
 
 @register_model(embedded=True)
 class DatastoreUtilityItem(HowlerEmbeddedModel):
-    item_type: keyword()
-    value: keyword()
+    item_type: Keyword
+    value: Keyword
 
 
 @register_model(id_field="title")
 class DatastoreUtilityDocument(HowlerESModel):
-    title: keyword()
-    category: keyword()
+    title: Keyword
+    category: Keyword
     items: list[DatastoreUtilityItem]
 
 

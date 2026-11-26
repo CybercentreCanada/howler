@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from howler.models import HowlerEmbeddedModel, keyword, metadata, register_model
-from howler.models import ip as ip_field
+from howler.models import IP, HowlerEmbeddedModel, Keyword, metadata, register_model
 from howler.models.ecs.egress import Egress
 from howler.models.ecs.ingress import Ingress
 from howler.models.ecs.interface import Interface
@@ -25,25 +24,25 @@ class Observer(HowlerEmbeddedModel):
 
     egress: Egress | None = None
     """Holds information like interface number, name, vlan, and zone to classify ingress traffic"""
-    hostname: keyword(optional=True)
+    hostname: Keyword | None = None
     """Hostname of the observer"""
     ingress: Ingress | None = None
     """Holds information like interface number, name, vlan, and zone to classify ingress traffic"""
     interface: Interface | None = None
     """Interface being observed"""
-    ip: Annotated[list[ip_field()], metadata(default=[])]
+    ip: Annotated[list[IP], metadata(default=[])]
     """IP addresses of the observer."""
-    mac: list[keyword()] = []
+    mac: list[Keyword] = []
     """Mac addresses of the observer."""
-    name: keyword(optional=True)
+    name: Keyword | None = None
     """Custom name of the observer"""
-    product: keyword(optional=True)
+    product: Keyword | None = None
     """Product name of the observer"""
-    serial_number: keyword(optional=True)
+    serial_number: Keyword | None = None
     """Observer serial number"""
-    type: keyword(optional=True)
+    type: Keyword | None = None
     """Type of the observer the data is coming from"""
-    vendor: keyword(optional=True)
+    vendor: Keyword | None = None
     """Vendor name of the observer"""
-    version: keyword(optional=True)
+    version: Keyword | None = None
     """Observer version"""

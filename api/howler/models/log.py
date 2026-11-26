@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import model_validator
 
-from howler.models import HowlerEmbeddedModel, date, enum, keyword, register_model, text
+from howler.models import Date, HowlerEmbeddedModel, Keyword, Text, enum, register_model
 from howler.models.constants import HowlerStrEnum
 
 
@@ -22,21 +22,21 @@ class LogOperationType(HowlerStrEnum):
 class Log(HowlerEmbeddedModel):
     """Log definition."""
 
-    timestamp: date()
+    timestamp: Date
     """Timestamp at which the Log event took place."""
-    key: keyword(optional=True)
+    key: Keyword | None = None
     """The key whose value changed."""
-    explanation: text(optional=True)
+    explanation: Text | None = None
     """A manual description of the changes made."""
-    previous_version: keyword(optional=True)
+    previous_version: Keyword | None = None
     """The version this action was applied to."""
-    new_value: keyword(optional=True)
+    new_value: Keyword | None = None
     """The value the key is changing to."""
     type: enum(values=LogOperationType, optional=True)
     """The operation performed on the value."""
-    previous_value: keyword(optional=True)
+    previous_value: Keyword | None = None
     """The value the key is changing from."""
-    user: keyword()
+    user: Keyword
     """User ID who created the log event."""
 
     @model_validator(mode="before")

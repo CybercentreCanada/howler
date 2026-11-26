@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, keyword, register_model
+from howler.models import HowlerEmbeddedModel, Keyword, register_model
 
 
 @register_model(index=True, store=True, description="Cloud account information.", embedded=True)
 class Account(HowlerEmbeddedModel):
     """Cloud account information."""
 
-    id: keyword(optional=True)
+    id: Keyword | None = None
     """The ID of the AWS Account."""
-    name: keyword(optional=True)
+    name: Keyword | None = None
     """The name of the AWS Account."""
 
 
@@ -19,9 +19,9 @@ class Account(HowlerEmbeddedModel):
 class Organization(HowlerEmbeddedModel):
     """Organization information."""
 
-    id: keyword(optional=True)
+    id: Keyword | None = None
     """The ID of the AWS Organization."""
-    organizational_unit: keyword(optional=True)
+    organizational_unit: Keyword | None = None
     """The Organizational Unit the Account belongs to."""
 
 

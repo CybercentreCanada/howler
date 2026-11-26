@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, keyword, register_model
+from howler.models import HowlerEmbeddedModel, Keyword, register_model
 
 
 @register_model(
@@ -17,7 +17,7 @@ from howler.models import HowlerEmbeddedModel, keyword, register_model
 class Server(HowlerEmbeddedModel):
     """TLS server fields."""
 
-    ja3s: keyword(optional=True)
+    ja3s: Keyword | None = None
     """A hash that identifies servers based on how they perform an SSL/TLS handshake."""
 
 
@@ -33,12 +33,12 @@ class Server(HowlerEmbeddedModel):
 class Client(HowlerEmbeddedModel):
     """TLS client fields."""
 
-    server_name: keyword(optional=True)
+    server_name: Keyword | None = None
     (
         "Also called an SNI, this tells the server which hostname to which the client is attempting to connect to. "
         "When this value is available, it should get copied to destination.domain."
     )
-    ja3: keyword(optional=True)
+    ja3: Keyword | None = None
     """A hash that identifies clients based on how they perform an SSL/TLS handshake."""
 
 
@@ -54,9 +54,9 @@ class Client(HowlerEmbeddedModel):
 class TLS(HowlerEmbeddedModel):
     """Fields related to a TLS connection."""
 
-    version: keyword(optional=True)
+    version: Keyword | None = None
     """Numeric part of the version parsed from the original string."""
-    version_protocol: keyword(optional=True)
+    version_protocol: Keyword | None = None
     """Normalized lowercase protocol name parsed from original string."""
     client: Client | None = None
     server: Server | None = None

@@ -12,11 +12,11 @@ from jsonschema import Draft202012Validator
 
 from build_scripts.model_json_schema import API_DIR, entity_schema
 from howler.models import (
+    IP,
+    AnyField,
     HowlerEmbeddedModel,
     ModelExtensionRegistry,
-    any_field,
     construct_partial,
-    ip,
     mapping,
     metadata,
     model_extensions,
@@ -165,9 +165,9 @@ def test_public_policy_follows_embedded_model_identity_without_its_root():
 
 def test_any_output_omits_null_properties_and_mapping_values_but_retains_null_array_items():
     registry = ModelExtensionRegistry()
-    registry.declare(Case, "payload", any_field(optional=True), plugin="example")
-    registry.declare(Case, "values", mapping(any_field()), plugin="example")
-    registry.declare(Case, "items_by_key", mapping(list[any_field()]), plugin="example")
+    registry.declare(Case, "payload", Annotated[AnyField | None, metadata(default=None)], plugin="example")
+    registry.declare(Case, "values", mapping(AnyField), plugin="example")
+    registry.declare(Case, "items_by_key", mapping(list[AnyField]), plugin="example")
     model = registry.finalize(Case)
     schema = entity_schema({"case": model})
     Draft202012Validator.check_schema(schema)
@@ -216,8 +216,8 @@ def test_literal_mapping_values_drop_only_null():
 
 def test_supplied_models_keep_exact_plugin_profile_and_container_null_semantics():
     class PluginData(HowlerEmbeddedModel):
-        addresses: list[ip()] | None = None
-        by_name: mapping(ip(), default={})
+        addresses: list[IP] | None = None
+        by_name: mapping(IP, default={})
 
     extensions = ModelExtensionRegistry()
     extensions.declare(Hit, "extra", Annotated[list[PluginData], metadata(default=[])], plugin="example")

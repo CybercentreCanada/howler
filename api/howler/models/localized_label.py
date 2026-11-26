@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, register_model, text
+from howler.models import HowlerEmbeddedModel, Text, register_model
 
 
 @register_model(
@@ -14,7 +14,7 @@ from howler.models import HowlerEmbeddedModel, register_model, text
 class LocalizedLabel(HowlerEmbeddedModel):
     """A label localized to English and French."""
 
-    en: text()
+    en: Text
     """The english localization of a label"""
-    fr: text()
+    fr: Text
     """The french localization of a label"""

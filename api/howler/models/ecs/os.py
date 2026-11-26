@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, keyword, register_model
+from howler.models import HowlerEmbeddedModel, Keyword, register_model
 
 
 @register_model(
@@ -14,17 +14,17 @@ from howler.models import HowlerEmbeddedModel, keyword, register_model
 class OS(HowlerEmbeddedModel):
     """The OS fields contain information about the operating system."""
 
-    family: keyword(optional=True)
+    family: Keyword | None = None
     """OS family (such as redhat, debian, freebsd, windows)."""
-    full: keyword(optional=True)
+    full: Keyword | None = None
     """Operating system name, including the version or code name."""
-    kernel: keyword(optional=True)
+    kernel: Keyword | None = None
     """Operating system kernel version as a raw string."""
-    name: keyword(optional=True)
+    name: Keyword | None = None
     """Operating system name, without the version."""
-    platform: keyword(optional=True)
+    platform: Keyword | None = None
     """Operating system platform (such centos, ubuntu, windows)."""
-    type: keyword(optional=True)
+    type: Keyword | None = None
     """Use the os.type field to categorize the operating system into one of the broad commercial families."""
-    version: keyword(optional=True)
+    version: Keyword | None = None
     """Operating system version as a raw string."""

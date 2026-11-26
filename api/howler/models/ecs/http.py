@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, integer, keyword, register_model
+from howler.models import HowlerEmbeddedModel, Integer, Keyword, register_model
 
 
 @register_model(index=True, store=True, description="Defines the body of a request/response.", embedded=True)
 class Body(HowlerEmbeddedModel):
     """Defines the body of a request/response."""
 
-    bytes: integer(optional=True)
+    bytes: Integer | None = None
     """Size in bytes of the body."""
-    content: keyword(optional=True)
+    content: Keyword | None = None
     """The full HTTP body."""
 
 
@@ -21,15 +21,15 @@ class Request(HowlerEmbeddedModel):
 
     body: Body | None = None
     """Defines the body of a request"""
-    bytes: integer(optional=True)
+    bytes: Integer | None = None
     """Total size in bytes of the request (body and headers)."""
-    id: keyword(optional=True)
+    id: Keyword | None = None
     """A unique identifier for each HTTP request to correlate logs between clients and servers in transactions."""
-    method: keyword(optional=True)
+    method: Keyword | None = None
     """HTTP request method."""
-    mime_type: keyword(optional=True)
+    mime_type: Keyword | None = None
     """Mime type of the body of the request."""
-    referrer: keyword(optional=True)
+    referrer: Keyword | None = None
     """Referrer for this HTTP request."""
 
 
@@ -39,11 +39,11 @@ class Response(HowlerEmbeddedModel):
 
     body: Body | None = None
     """Defines the body of a response"""
-    bytes: integer(optional=True)
+    bytes: Integer | None = None
     """Total size in bytes of the request (body and headers)."""
-    mime_type: keyword(optional=True)
+    mime_type: Keyword | None = None
     """Mime type of the body of the request."""
-    status_code: integer(optional=True)
+    status_code: Integer | None = None
     """HTTP response status code."""
 
 
@@ -55,5 +55,5 @@ class HTTP(HowlerEmbeddedModel):
     """Request data."""
     response: Response | None = None
     """Response data."""
-    version: keyword(optional=True)
+    version: Keyword | None = None
     """HTTP version."""

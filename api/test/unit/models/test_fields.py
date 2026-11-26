@@ -15,46 +15,51 @@ from pydantic.fields import FieldInfo
 
 from howler.common.classification import InvalidClassification
 from howler.models import (
+    IP,
+    MAC,
+    MD5,
+    SHA1,
+    SHA256,
+    URI,
+    UUID,
+    AnyField,
+    Boolean,
+    CaseInsensitiveKeyword,
+    Classification,
+    ClassificationString,
     ClassificationValue,
+    Date,
+    Domain,
+    Email,
+    EmptyableKeyword,
+    Float,
     HowlerEmbeddedModel,
     HowlerESModel,
+    HowlerHash,
     HowlerModelValidationError,
-    any_field,
-    boolean,
-    case_insensitive_keyword,
+    IndexText,
+    Integer,
+    Json,
+    Keyword,
+    Long,
+    LowerKeyword,
+    PhoneNumber,
+    Platform,
+    Processor,
+    SSDeepHash,
+    StrictKeyword,
+    Text,
+    UpperKeyword,
+    URIPath,
+    UserClassification,
     classification,
     classification_string,
-    date,
     domain,
-    email,
-    emptyable_keyword,
     enum,
-    float_field,
-    howler_hash,
-    index_text,
-    integer,
-    ip,
-    json_field,
-    keyword,
-    long,
-    lower_keyword,
-    mac,
     mapping,
-    md5,
     metadata,
     model_registry,
-    phone_number,
-    platform,
-    processor,
     register_model,
-    sha1,
-    sha256,
-    ssdeep_hash,
-    text,
-    upper_keyword,
-    uri,
-    uri_path,
-    uuid,
     validated_keyword,
 )
 from howler.models.fields import HowlerFieldMetadata, _make_annotated
@@ -68,76 +73,79 @@ TYPE_ADAPTER_CONFIG = ConfigDict(arbitrary_types_allowed=True)
 class SerializationChild(HowlerEmbeddedModel):
     """Nested IP and timestamp values used in primitive output checks."""
 
-    address: ip()
-    created: date()
-    address_text: keyword()
-    timestamp_text: keyword()
+    address: IP
+    created: Date
+    address_text: Keyword
+    timestamp_text: Keyword
 
 
 @register_model(index=True, store=True)
 class SerializationProbe(HowlerESModel):
     """Scalar and container fields used in primitive output checks."""
 
-    address: ip()
-    addresses: list[ip()]
-    optional_address: ip(optional=True)
-    ip_text: keyword()
-    ip_texts: list[keyword()]
-    optional_ip_text: keyword(optional=True)
-    created: date()
-    created_by_key: mapping(date())
-    timestamp_text: keyword()
+    address: IP
+    addresses: list[IP]
+    optional_address: IP | None = None
+    ip_text: Keyword
+    ip_texts: list[Keyword]
+    optional_ip_text: Keyword | None = None
+    created: Date
+    created_by_key: mapping(Date)
+    timestamp_text: Keyword
     child: SerializationChild
 
 
 class NullableFieldModel(HowlerESModel):
     """Optional scalar and container fields keep their wrapped validation behavior."""
 
-    maybe: keyword(optional=True, alias="external_value")  # pyright: ignore[reportInvalidTypeForm]
-    disabled: keyword(optional=True, index=False, store=False)  # pyright: ignore[reportInvalidTypeForm]
-    with_default: keyword(optional=True, default="fallback")  # pyright: ignore[reportInvalidTypeForm]
-    items: list[keyword()] | None = None  # pyright: ignore[reportInvalidTypeForm]
-    values: mapping(integer(), optional=True, index=True, store=True)  # pyright: ignore[reportInvalidTypeForm]
+    maybe: Annotated[Keyword | None, metadata(alias="external_value")] = None
+    disabled: Annotated[Keyword | None, metadata(index=False, store=False)] = None
+    with_default: Keyword | None = "fallback"
+    items: list[Keyword] | None = None
+    values: mapping(Integer, optional=True, index=True, store=True)
 
 
 class GeneratedIdentifierModel(HowlerEmbeddedModel):
     """Model used to check generated and explicit identifiers."""
 
-    identifier: uuid()
+    identifier: UUID
+    optional_identifier: UUID | None = None
 
 
 @pytest.mark.parametrize(
     ("annotation", "value", "expected"),
     [
-        (boolean(), "value", True),
-        (keyword(), 123, "123"),
-        (emptyable_keyword(), "", ""),
-        (upper_keyword(), "MiXeD", "MIXED"),
-        (lower_keyword(), "MiXeD", "mixed"),
-        (case_insensitive_keyword(), "MiXeD", "MiXeD"),
+        (Boolean, "value", True),
+        (Keyword, 123, "123"),
+        (StrictKeyword, "value", "value"),
+        (EmptyableKeyword, "", ""),
+        (UpperKeyword, "MiXeD", "MIXED"),
+        (LowerKeyword, "MiXeD", "mixed"),
+        (CaseInsensitiveKeyword, "MiXeD", "MiXeD"),
         (validated_keyword(r"^[a-z]+$"), "valid", "valid"),
-        (ip(), "127.0.0.1", "127.0.0.1"),
+        (IP, "127.0.0.1", "127.0.0.1"),
+        (Domain, "EXAMPLE.com", "example.com"),
         (domain(strict=False), "EXAMPLE.com", "example.com"),
-        (email(), "Example@example.com", "example@example.com"),
-        (uri(), "HTTPS://Example.com/path", "https://example.com/path"),
-        (uri_path(), "/path?q=1", "/path?q=1"),
-        (mac(), "aa:bb:cc:dd:ee:ff", "aa:bb:cc:dd:ee:ff"),
-        (phone_number(), "613-555-0123", "613-555-0123"),
-        (ssdeep_hash(), "3:abc:def", "3:abc:def"),
-        (sha1(), "a" * 40, "a" * 40),
-        (sha256(), "a" * 64, "a" * 64),
-        (howler_hash(), "a" * 32, "a" * 32),
-        (md5(), "a" * 32, "a" * 32),
-        (platform(), "Linux", "Linux"),
-        (processor(), "x64", "x64"),
+        (Email, "Example@example.com", "example@example.com"),
+        (URI, "HTTPS://Example.com/path", "https://example.com/path"),
+        (URIPath, "/path?q=1", "/path?q=1"),
+        (MAC, "aa:bb:cc:dd:ee:ff", "aa:bb:cc:dd:ee:ff"),
+        (PhoneNumber, "613-555-0123", "613-555-0123"),
+        (SSDeepHash, "3:abc:def", "3:abc:def"),
+        (SHA1, "a" * 40, "a" * 40),
+        (SHA256, "a" * 64, "a" * 64),
+        (HowlerHash, "a" * 32, "a" * 32),
+        (MD5, "a" * 32, "a" * 32),
+        (Platform, "Linux", "Linux"),
+        (Processor, "x64", "x64"),
         (enum(["one", "two"]), "one", "one"),
-        (text(), "some text", "some text"),
-        (index_text(), 123, "123"),
-        (integer(min=1, max=3), "2", 2),
-        (long(min=1, max=3), "2", 2),
-        (float_field(), "1.5", 1.5),
-        (date(), "2024-01-02T03:04:05.000000Z", datetime.fromisoformat("2024-01-02T03:04:05+00:00")),
-        (json_field(), {"key": "value"}, '{"key": "value"}'),
+        (Text, "some text", "some text"),
+        (IndexText, 123, "123"),
+        (Annotated[Integer, metadata(ge=1, le=3)], "2", 2),
+        (Annotated[Long, metadata(ge=1, le=3)], "2", 2),
+        (Float, "1.5", 1.5),
+        (Date, "2024-01-02T03:04:05.000000Z", datetime.fromisoformat("2024-01-02T03:04:05+00:00")),
+        (Json, {"key": "value"}, '{"key": "value"}'),
         (classification(yml_config=CLASSIFICATION_CONFIG), "U", "UNRESTRICTED"),
         (classification_string(yml_config=CLASSIFICATION_CONFIG), "UNRESTRICTED", "UNRESTRICTED"),
     ],
@@ -154,35 +162,36 @@ def test_primitive_fields_validate_and_normalize(annotation: Any, value: Any, ex
 @pytest.mark.parametrize(
     ("annotation", "value"),
     [
-        (keyword(), b"bytes"),
-        (emptyable_keyword(), b"bytes"),
-        (upper_keyword(), b"bytes"),
-        (lower_keyword(), b"bytes"),
-        (case_insensitive_keyword(), b"bytes"),
+        (Keyword, b"bytes"),
+        (StrictKeyword, 123),
+        (EmptyableKeyword, b"bytes"),
+        (UpperKeyword, b"bytes"),
+        (LowerKeyword, b"bytes"),
+        (CaseInsensitiveKeyword, b"bytes"),
         (validated_keyword(r"^[a-z]+$"), "INVALID"),
-        (ip(), "999.0.0.1"),
-        (domain(), "invalid!domain"),
-        (email(), "not-an-email"),
-        (uri(), "not a uri"),
-        (uri_path(), "path"),
-        (mac(), "not-a-mac"),
-        (phone_number(), "not-a-phone"),
-        (ssdeep_hash(), "invalid"),
-        (sha1(), "a" * 39),
-        (sha256(), "a" * 63),
-        (howler_hash(), "G"),
-        (md5(), "a" * 31),
-        (platform(), "BSD"),
-        (processor(), "arm64"),
+        (IP, "999.0.0.1"),
+        (Domain, "invalid!domain"),
+        (Email, "not-an-email"),
+        (URI, "not a uri"),
+        (URIPath, "path"),
+        (MAC, "not-a-mac"),
+        (PhoneNumber, "not-a-phone"),
+        (SSDeepHash, "invalid"),
+        (SHA1, "a" * 39),
+        (SHA256, "a" * 63),
+        (HowlerHash, "G"),
+        (MD5, "a" * 31),
+        (Platform, "BSD"),
+        (Processor, "arm64"),
         (enum(["one", "two"]), "three"),
-        (text(), ""),
-        (integer(min=1, max=3), 0),
-        (integer(min=1, max=3), 4),
-        (long(min=1, max=3), 0),
-        (long(min=1, max=3), 4),
-        (float_field(), "not-a-float"),
-        (date(), "not-a-date"),
-        (json_field(), {"not-json"}),
+        (Text, ""),
+        (Annotated[Integer, metadata(ge=1, le=3)], 0),
+        (Annotated[Integer, metadata(ge=1, le=3)], 4),
+        (Annotated[Long, metadata(ge=1, le=3)], 0),
+        (Annotated[Long, metadata(ge=1, le=3)], 4),
+        (Float, "not-a-float"),
+        (Date, "not-a-date"),
+        (Json, {"not-json"}),
         (classification_string(yml_config=CLASSIFICATION_CONFIG), "D//BOB//REL TO SOUP"),
     ],
 )
@@ -194,7 +203,7 @@ def test_primitive_fields_reject_invalid_values(annotation: Any, value: Any) -> 
 
 def test_howler_hash_accepts_lengths_from_one_through_sixty_four() -> None:
     """Howler hashes accept every supported non-empty hexadecimal length."""
-    adapter = TypeAdapter(howler_hash())
+    adapter = TypeAdapter(HowlerHash)
     for length in range(1, 65):
         value = "a" * length
         assert adapter.validate_python(value) == value
@@ -214,27 +223,38 @@ def test_classification_field_rejects_unknown_levels() -> None:
 
 def test_field_defaults_and_nullable_values() -> None:
     """Configured defaults handle empty input while nullable fields accept explicit nulls."""
-    assert TypeAdapter(keyword(default="fallback")).validate_python("") == "fallback"
-    assert TypeAdapter(text(default="fallback")).validate_python(None) == "fallback"
-    assert TypeAdapter(integer(default=7)).validate_python("") == 7
-    assert TypeAdapter(float_field(default=1.5)).validate_python(0) == 1.5
-    assert TypeAdapter(boolean()).validate_python(None) is False
-    assert TypeAdapter(index_text()).validate_python(None) == "None"
-    assert TypeAdapter(enum(["one", "two"], default="one")).validate_python(None) == "one"
-    assert (
-        TypeAdapter(classification_string(default="UNRESTRICTED", yml_config=CLASSIFICATION_CONFIG)).validate_python("")
-        == "UNRESTRICTED"
+
+    class DefaultModel(HowlerEmbeddedModel):
+        kw: Keyword = "fallback"
+        txt: Text = "fallback"
+        num: Integer = 7
+        flt: Float = 1.5
+        empty_kw: EmptyableKeyword = ""
+        cls_str: classification_string(default="UNRESTRICTED", yml_config=CLASSIFICATION_CONFIG)
+
+    populated = DefaultModel.model_validate(
+        {"kw": "", "txt": None, "num": "", "flt": 0, "empty_kw": None, "cls_str": ""}
     )
-    assert TypeAdapter(date()).validate_python(None) is None
-    assert TypeAdapter(ip()).validate_python(None) is None
-    assert TypeAdapter(domain()).validate_python("") is None
-    assert TypeAdapter(email()).validate_python("") is None
-    assert TypeAdapter(uri()).validate_python("") is None
+    assert populated.kw == "fallback"
+    assert populated.txt == "fallback"
+    assert populated.num == 7
+    assert populated.flt == 1.5
+    assert populated.empty_kw == ""
+    assert populated.cls_str == "UNRESTRICTED"
+
+    assert TypeAdapter(Boolean).validate_python(None) is False
+    assert TypeAdapter(IndexText).validate_python(None) == "None"
+    assert TypeAdapter(enum(["one", "two"], default="one")).validate_python(None) == "one"
+    assert TypeAdapter(Date).validate_python(None) is None
+    assert TypeAdapter(IP).validate_python(None) is None
+    assert TypeAdapter(Domain).validate_python("") is None
+    assert TypeAdapter(Email).validate_python("") is None
+    assert TypeAdapter(URI).validate_python("") is None
 
 
 def test_keyword_can_disable_string_coercion() -> None:
-    """Keyword fields optionally require string input instead of coercing values."""
-    adapter = TypeAdapter(keyword(coerce=False))
+    """StrictKeyword fields require string input instead of coercing values."""
+    adapter = TypeAdapter(StrictKeyword)
     assert adapter.validate_python("value") == "value"
     with pytest.raises(ValidationError):
         adapter.validate_python(123)
@@ -252,25 +272,24 @@ def test_legacy_empty_hit_fields_are_normalized_during_ingest(monkeypatch: pytes
     assert document["tags"] == [] and "detection" not in document["howler"]
 
     assert (
-        TypeAdapter(Annotated[list[keyword()] | None, metadata(optional=True, default=[])]).validate_python(None)
-        is None
+        TypeAdapter(Annotated[list[Keyword] | None, metadata(optional=True, default=[])]).validate_python(None) is None
     )
-    assert TypeAdapter(emptyable_keyword(optional=True)).validate_python("") == ""
-    assert TypeAdapter(boolean(optional=True)).validate_python(None) is None
-    assert TypeAdapter(integer(optional=True)).validate_python(None) is None
-    assert TypeAdapter(float_field(optional=True, default=0)).validate_python(None) is None
-    assert TypeAdapter(json_field(optional=True)).validate_python(None) is None
-    assert TypeAdapter(uuid(optional=True)).validate_python(None) is None
+    assert TypeAdapter(EmptyableKeyword | None).validate_python("") == ""
+    assert TypeAdapter(Boolean | None).validate_python(None) is None
+    assert TypeAdapter(Integer | None).validate_python(None) is None
+    assert TypeAdapter(Float | None).validate_python(None) is None
+    assert TypeAdapter(Json | None).validate_python(None) is None
+    assert TypeAdapter(UUID | None).validate_python(None) is None
     with pytest.raises(ValidationError):
-        TypeAdapter(keyword()).validate_python("")
+        TypeAdapter(Keyword).validate_python("")
     with pytest.raises(ValidationError):
-        TypeAdapter(list[keyword()] | None).validate_python([""])
+        TypeAdapter(list[Keyword] | None).validate_python([""])
 
     class ListNullProbe(HowlerEmbeddedModel):
-        required_items: list[keyword()]
-        optional_items: list[keyword()] | None = None
-        nested_items: list[list[keyword()]] = []
-        mapped_items: mapping(list[keyword()]) = {}
+        required_items: list[Keyword]
+        optional_items: list[Keyword] | None = None
+        nested_items: list[list[Keyword]] = []
+        mapped_items: mapping(list[Keyword]) = {}
 
     probe = ListNullProbe.model_validate(
         {
@@ -288,16 +307,19 @@ def test_legacy_empty_hit_fields_are_normalized_during_ingest(monkeypatch: pytes
 
 def test_optional_metadata_preserves_mapping_and_validation() -> None:
     class Probe(HowlerESModel):
-        address: ip(
-            optional=True,
-            alias="ip_address",
-            index=False,
-            store=False,
-            copyto="__text__",
-            deprecated=False,
-            reference="new",
-            sync=False,
-        )
+        address: Annotated[
+            IP | None,
+            metadata(
+                optional=True,
+                alias="ip_address",
+                index=False,
+                store=False,
+                copyto="__text__",
+                deprecated=False,
+                reference="new",
+                sync=False,
+            ),
+        ] = None
 
     details = model_registry.fields(Probe)["ip_address"].metadata
     assert details is not None and details.kind == "IP" and details.optional
@@ -323,8 +345,8 @@ def test_optional_metadata_preserves_mapping_and_validation() -> None:
     ],
 )
 def test_optional_wire_alias_and_storage_name(options, wire, stored):
-    annotation = ip(optional=True, index=False, **options)
-    probe = type("Probe", (HowlerESModel,), {"__annotations__": {"address": annotation}})
+    annotation = Annotated[IP | None, metadata(optional=True, index=False, **options)]
+    probe = type("Probe", (HowlerESModel,), {"__annotations__": {"address": annotation}, "address": None})
     assert set(model_registry.fields(probe)) == {wire}
     assert probe.model_validate({wire: "192.0.2.1"}).as_primitives() == {wire: "192.0.2.1"}
     properties = model_registry.mapping(probe)["properties"]
@@ -333,50 +355,54 @@ def test_optional_wire_alias_and_storage_name(options, wire, stored):
 
 
 @pytest.mark.parametrize("array", [False, True], ids=["scalar", "list"])
-@pytest.mark.parametrize("builder, indexed", [(ip, None), (ip, False), (ip, True), (text, False)])
+@pytest.mark.parametrize("builder, indexed", [(IP, None), (IP, False), (IP, True), (Text, False)])
 def test_optional_index_reaches_the_storage_field(builder, indexed, array):
     names = {"alias": "wire", "es_name": "stored"}
     options = {"index": indexed, "copyto": "__text__"}
     annotation = (
         Annotated[
-            list[builder(**options)] | None,
+            list[Annotated[builder, metadata(**options)]] | None,
             metadata(es_name=names["es_name"], optional=True, alias=names["alias"]),
         ]
         if array
-        else builder(optional=True, **options, **names)
+        else Annotated[builder | None, metadata(optional=True, **options, **names)]
     )
-    probe = type("Probe", (HowlerESModel,), {"__annotations__": {"value": annotation}})
+    probe = type("Probe", (HowlerESModel,), {"__annotations__": {"value": annotation}, "value": None})
     leaf = model_registry.flat_fields(probe)["wire"]
     assert leaf.multivalued is array and leaf.metadata.index is indexed
-    storage = {"type": "ip" if builder is ip else "text", "copy_to": "__text__"}
+    storage = {"type": "ip" if builder is IP else "text", "copy_to": "__text__"}
     if indexed is not None:
         storage["index"] = indexed
-        if builder is ip:
+        if builder is IP:
             storage["doc_values"] = indexed
     assert model_registry.mapping(probe)["properties"] == {"stored": storage}
 
     address = "192.0.2.1"
     model = probe.model_validate({"wire": [address] if array else address})
-    output = int(ip_address(address)) if builder is ip else address
+    output = int(ip_address(address)) if builder is IP else address
     assert model.as_primitives(ip_format="int") == {"wire": [output] if array else output}
 
 
 def test_any_field_accepts_arbitrary_python_values() -> None:
     """An arbitrary field leaves its input value unchanged for the application."""
     marker = object()
-    assert TypeAdapter(any_field(), config=TYPE_ADAPTER_CONFIG).validate_python(marker) is marker
+    assert TypeAdapter(AnyField, config=TYPE_ADAPTER_CONFIG).validate_python(marker) is marker
 
 
 def test_uuid_field_generates_distinct_defaults_and_accepts_explicit_values() -> None:
-    """Identifier fields generate independent defaults and preserve caller-provided values."""
+    """Identifier fields generate independent defaults, override non-optional None, and preserve explicit values."""
     first = GeneratedIdentifierModel.model_validate({})
     second = GeneratedIdentifierModel.model_validate({})
     explicit = GeneratedIdentifierModel.model_validate({"identifier": "given-id"})
+    null_non_optional = GeneratedIdentifierModel.model_validate({"identifier": None, "optional_identifier": None})
 
     assert first.identifier
     assert second.identifier
     assert first.identifier != second.identifier
     assert explicit.identifier == "given-id"
+    assert first.optional_identifier is None
+    assert null_non_optional.identifier
+    assert null_non_optional.optional_identifier is None
 
 
 def test_classification_values_normalize_and_expose_access_parts() -> None:
@@ -491,14 +517,14 @@ def test_make_annotated_preserves_generic_base_and_metadata_order() -> None:
 def test_list_annotation_keeps_child_and_container_metadata_separate() -> None:
     """List metadata stays on the container while child field metadata stays nested."""
     annotation = Annotated[
-        list[keyword(copyto="search", deprecated=True)],
+        list[Annotated[Keyword, metadata(copyto="search", deprecated=True)]],
         metadata(store=False, alias="items", description="Searchable items"),
     ]
 
     container_type, container_field = get_args(annotation)
     child_type, *child_metadata = get_args(get_args(container_type)[0])
     container_metadata_value = next(item for item in container_field.metadata if isinstance(item, HowlerFieldMetadata))
-    child_metadata_value = next(item for item in child_metadata if isinstance(item, HowlerFieldMetadata))
+    child_metadata_value = field_metadata(get_args(container_type)[0])
 
     assert get_origin(annotation) is Annotated
     assert get_origin(container_type) is list
@@ -506,8 +532,10 @@ def test_list_annotation_keeps_child_and_container_metadata_separate() -> None:
     assert isinstance(container_field, FieldInfo)
     assert container_metadata_value.store is False
     assert field_metadata(annotation) == container_metadata_value
+    assert child_metadata_value is not None
     assert child_metadata_value.kind == "Keyword"
     assert child_metadata_value.copy_to == ("search",)
+    assert child_metadata_value.deprecated is True
     assert container_field.alias == "items"
     assert container_field.description == "Searchable items"
 
@@ -577,46 +605,48 @@ def test_nullable_fields_preserve_validation_defaults_aliases_and_mapping_metada
 
 def test_ip_validation_metadata_is_available_to_registry() -> None:
     """IP fields retain their validation metadata when inspected by the registry."""
-    metadata = field_metadata(ip())
-    assert metadata is not None
-    assert "validation_regex" in dict(metadata.options)
+    metadata_value = field_metadata(IP)
+    assert metadata_value is not None
+    assert "validation_regex" in dict(metadata_value.options)
 
 
 @pytest.mark.parametrize(
     ("annotation", "expected_mapping"),
     [
-        (any_field(), {"type": "keyword", "index": False, "doc_values": False}),
-        (boolean(), {"type": "boolean"}),
-        (case_insensitive_keyword(), {"type": "keyword", "normalizer": "lowercase_normalizer"}),
-        (classification(yml_config=CLASSIFICATION_CONFIG), {"type": "keyword"}),
-        (classification_string(yml_config=CLASSIFICATION_CONFIG), {"type": "keyword"}),
-        (date(), {"type": "date", "format": "date_optional_time||epoch_millis"}),
-        (domain(), {"type": "keyword"}),
-        (email(), {"type": "keyword"}),
-        (emptyable_keyword(), {"type": "keyword"}),
+        (AnyField, {"type": "keyword", "index": False, "doc_values": False}),
+        (Boolean, {"type": "boolean"}),
+        (CaseInsensitiveKeyword, {"type": "keyword", "normalizer": "lowercase_normalizer"}),
+        (Classification, {"type": "keyword"}),
+        (UserClassification, {"type": "keyword"}),
+        (ClassificationString, {"type": "keyword"}),
+        (Date, {"type": "date", "format": "date_optional_time||epoch_millis"}),
+        (Domain, {"type": "keyword"}),
+        (Email, {"type": "keyword"}),
+        (EmptyableKeyword, {"type": "keyword"}),
         (enum(["one"]), {"type": "keyword"}),
-        (float_field(), {"type": "float"}),
-        (howler_hash(), {"type": "keyword", "normalizer": "lowercase_normalizer"}),
-        (index_text(), {"type": "text"}),
-        (integer(), {"type": "integer"}),
-        (ip(), {"type": "ip"}),
-        (json_field(), {"type": "keyword"}),
-        (keyword(), {"type": "keyword"}),
-        (long(), {"type": "long"}),
-        (lower_keyword(), {"type": "keyword"}),
-        (mac(), {"type": "keyword"}),
-        (md5(), {"type": "keyword", "normalizer": "lowercase_normalizer"}),
-        (phone_number(), {"type": "keyword"}),
-        (platform(), {"type": "keyword"}),
-        (processor(), {"type": "keyword"}),
-        (sha1(), {"type": "keyword", "normalizer": "lowercase_normalizer"}),
-        (sha256(), {"type": "keyword", "normalizer": "lowercase_normalizer"}),
-        (ssdeep_hash(), {"type": "text", "analyzer": "text_fuzzy"}),
-        (text(), {"type": "text"}),
-        (upper_keyword(), {"type": "keyword"}),
-        (uri(), {"type": "keyword"}),
-        (uri_path(), {"type": "keyword"}),
-        (uuid(), {"type": "keyword"}),
+        (Float, {"type": "float"}),
+        (HowlerHash, {"type": "keyword", "normalizer": "lowercase_normalizer"}),
+        (IndexText, {"type": "text"}),
+        (Integer, {"type": "integer"}),
+        (IP, {"type": "ip"}),
+        (Json, {"type": "keyword"}),
+        (Keyword, {"type": "keyword"}),
+        (StrictKeyword, {"type": "keyword"}),
+        (Long, {"type": "long"}),
+        (LowerKeyword, {"type": "keyword"}),
+        (MAC, {"type": "keyword"}),
+        (MD5, {"type": "keyword", "normalizer": "lowercase_normalizer"}),
+        (PhoneNumber, {"type": "keyword"}),
+        (Platform, {"type": "keyword"}),
+        (Processor, {"type": "keyword"}),
+        (SHA1, {"type": "keyword", "normalizer": "lowercase_normalizer"}),
+        (SHA256, {"type": "keyword", "normalizer": "lowercase_normalizer"}),
+        (SSDeepHash, {"type": "text", "analyzer": "text_fuzzy"}),
+        (Text, {"type": "text"}),
+        (UpperKeyword, {"type": "keyword"}),
+        (URI, {"type": "keyword"}),
+        (URIPath, {"type": "keyword"}),
+        (UUID, {"type": "keyword"}),
         (validated_keyword(r"^[a-z]+$"), {"type": "keyword"}),
     ],
 )
@@ -629,3 +659,41 @@ def test_primitive_fields_expose_elasticsearch_mappings(annotation: Any, expecte
     )
     actual = model_registry.mapping(model_type)["properties"]["value"]
     assert actual.items() >= expected_mapping.items()
+
+
+def test_annotated_metadata_merges_with_type_alias_metadata() -> None:
+    """Outer metadata(...) layers merge with the inner type alias's kind and options."""
+
+    class StackedProbe(HowlerESModel):
+        copied: Annotated[Keyword, metadata(copyto="__text__", index=False)]
+        raw: Annotated[AnyField, metadata(sync=False)] = None
+
+    fields = model_registry.fields(StackedProbe)
+    copied_meta = fields["copied"].metadata
+    raw_meta = fields["raw"].metadata
+    assert copied_meta is not None
+    assert copied_meta.kind == "Keyword"
+    assert copied_meta.copy_to == ("__text__",)
+    assert copied_meta.index is False
+    assert raw_meta is not None
+    assert raw_meta.kind == "Any"
+    assert raw_meta.index is False and raw_meta.store is False and raw_meta.sync is False
+
+    es_props = model_registry.mapping(StackedProbe)["properties"]
+    assert es_props["copied"]["type"] == "keyword"
+    assert es_props["copied"]["copy_to"] == "__text__"
+    assert es_props["copied"]["index"] is False
+
+
+def test_nullable_keyword_assignment_and_field_validation() -> None:
+    """Nullable Keyword fields normalize empty strings via init, assignment, and validate_field_value."""
+    from howler.models import validate_field_value
+
+    model = NullableFieldModel.model_validate({"maybe": "", "with_default": ""})
+    assert model.maybe is None
+    assert model.with_default == "fallback"
+
+    model.maybe = ""
+    assert model.maybe is None
+    assert validate_field_value(NullableFieldModel, "external_value", "") is None
+    assert validate_field_value(NullableFieldModel, "with_default", "") == "fallback"

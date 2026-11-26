@@ -7,6 +7,7 @@ index template, and _ensure_collection_ilm logic without requiring a running ES.
 import json
 from copy import deepcopy
 from types import SimpleNamespace
+from typing import Annotated
 from unittest.mock import MagicMock, call, patch
 
 import elasticsearch
@@ -21,9 +22,10 @@ from howler.datastore.ilm_contract import shadowed_dynamic_templates
 from howler.models import (
     HowlerESModel,
     HowlerModelValidationError,
+    Keyword,
     enum,
-    keyword,
     mapping,
+    metadata,
     register_model,
     schema,
     validated_keyword,
@@ -87,9 +89,9 @@ def _make_collection(mock_datastore, ilm_config=None, model_class=None):
 class ReconcileDoc(HowlerESModel):
     """Small model used to exercise field discovery and reconciliation."""
 
-    key: keyword()
-    name: keyword(description="A plain, statically typed field.")
-    tags: mapping(keyword(), default={}, description="A dynamic-key mapping field.")
+    key: Keyword
+    name: Annotated[Keyword, metadata(description="A plain, statically typed field.")]
+    tags: mapping(Keyword, default={}, description="A dynamic-key mapping field.")
 
 
 class TestAsyncTaskOperations:

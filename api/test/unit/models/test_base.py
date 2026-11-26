@@ -11,27 +11,27 @@ from pydantic import Field, ValidationError
 
 from howler.common.exceptions import HowlerTypeError, HowlerValueError
 from howler.models import (
+    IP,
+    UUID,
+    AnyField,
+    Date,
+    FlattenedListObject,
+    FlattenedObject,
     HowlerEmbeddedModel,
     HowlerESModel,
     HowlerModelValidationError,
-    any_field,
+    Integer,
+    Json,
+    Keyword,
+    Text,
     classification,
     construct_partial,
-    date,
     flat_to_nested,
-    flattened_list_object,
-    flattened_object,
-    integer,
-    ip,
-    json_field,
-    keyword,
     mapping,
     metadata,
     model_registry,
     partial_primitives,
     register_model,
-    text,
-    uuid,
     validate_field_value,
 )
 from howler.models.registry import ModelRegistry
@@ -44,59 +44,59 @@ TIMESTAMP = "2024-01-02T03:04:05.000000Z"
 class FoundationChild(HowlerEmbeddedModel):
     """Embedded model used by foundation tests."""
 
-    name: keyword()
-    count: integer(default=1)
-    address: ip()
-    created: date()
+    name: Keyword
+    count: Integer = 1
+    address: IP
+    created: Date
 
 
 @register_model(description="Foundation document", id_field="document_id", index=True, store=True)
 class FoundationDocument(HowlerESModel):
     """Top-level document used by foundation tests."""
 
-    document_id: uuid()
-    from_: keyword(alias="from")
+    document_id: UUID
+    from_: Annotated[Keyword, metadata(alias="from")]
     child: FoundationChild
     children: list[FoundationChild] = []
-    tags: list[keyword()] = []
-    counters: mapping(integer(), default={}, index=True, store=True)
-    unindexed: mapping(keyword(), default={}, index=False, store=False)
-    flattened: flattened_object(default={})
-    flattened_lists: flattened_list_object(default={})
-    maybe: keyword(optional=True)
-    maybe_ip: ip(optional=True)
-    maybe_unindexed: keyword(index=False, store=False, optional=True)
-    class_: keyword(optional=True, alias="class")
+    tags: list[Keyword] = []
+    counters: mapping(Integer, default={}, index=True, store=True)
+    unindexed: mapping(Keyword, default={}, index=False, store=False)
+    flattened: FlattenedObject = {}
+    flattened_lists: FlattenedListObject = {}
+    maybe: Keyword | None = None
+    maybe_ip: IP | None = None
+    maybe_unindexed: Annotated[Keyword | None, metadata(index=False, store=False)] = None
+    class_: Annotated[Keyword | None, metadata(alias="class")] = None
     classification: classification(default="UNRESTRICTED", yml_config=CLASSIFICATION_CONFIG)
 
 
 class FoundationBaseDocument(HowlerESModel):
     """Base document used to verify inherited mapping fields."""
 
-    inherited: keyword()
+    inherited: Keyword
 
 
 class FoundationDerivedDocument(FoundationBaseDocument):
     """Derived document used to verify inherited mapping fields."""
 
-    own: integer()
+    own: Integer
 
 
 @register_model(index=False, store=False)
 class FoundationUnindexedDocument(HowlerESModel):
     """Document used to verify model-wide field defaults."""
 
-    value: keyword()
-    body: text()
+    value: Keyword
+    body: Text
 
 
 @register_model(embedded=True)
 class IndexedChild(HowlerEmbeddedModel):
     """Embedded fields used to verify inherited mapping defaults."""
 
-    inherited: keyword()
-    explicitly_indexed: keyword(index=True)
-    explicitly_unindexed: keyword(index=False)
+    inherited: Keyword
+    explicitly_indexed: Annotated[Keyword, metadata(index=True)]
+    explicitly_unindexed: Annotated[Keyword, metadata(index=False)]
 
 
 @register_model(index=True, store=True)
@@ -273,17 +273,17 @@ def test_read_normalization_drops_unknown_fields_but_preserves_mapping_keys() ->
 
 def test_extra_ignore_traverses_typed_containers_without_pruning_loose_data() -> None:
     class Leaf(HowlerEmbeddedModel):
-        value: keyword(optional=True)
-        count: integer(optional=True)
+        value: Keyword | None = None
+        count: Integer | None = None
 
     class Containers(HowlerEmbeddedModel):
         grouped: mapping(Leaf, index=False)
         listed: list[Leaf]
         nested: mapping(list[mapping(Leaf, index=False)], index=False)
         maybe_grouped: mapping(Leaf | None, index=False, optional=True)
-        json_value: json_field()
+        json_value: Json
         loose: dict[str, object]
-        flat: flattened_object()
+        flat: FlattenedObject
 
     data = {
         "grouped": {"team": {"value": "keep", "unknown": "drop"}},
@@ -308,7 +308,7 @@ def test_extra_ignore_traverses_typed_containers_without_pruning_loose_data() ->
 
 def test_extra_ignore_leaves_invalid_container_values_for_validation() -> None:
     class Leaf(HowlerEmbeddedModel):
-        count: integer()
+        count: Integer
 
     class Containers(HowlerEmbeddedModel):
         grouped: mapping(Leaf, index=False)
@@ -440,11 +440,11 @@ def test_model_registry_resolves_identifiers_and_validates_explicit_fields() -> 
     """Model metadata derives identifiers and rejects invalid explicit declarations."""
 
     class IdentifierDocument(HowlerESModel):
-        title: keyword()
+        title: Keyword
 
     class ExplicitIdentifierDocument(HowlerESModel):
-        document_key: keyword()
-        title: keyword()
+        document_key: Keyword
+        title: Keyword
 
     registry = ModelRegistry()
     registry.register(IdentifierDocument)
@@ -462,7 +462,7 @@ def test_model_registry_resolves_identifiers_and_validates_explicit_fields() -> 
     with pytest.raises(HowlerValueError):
 
         class InvalidFieldDocument(HowlerESModel):
-            InvalidName: keyword()
+            InvalidName: Keyword
 
         registry.register(InvalidFieldDocument)
 
@@ -471,10 +471,10 @@ def test_model_registry_inherits_field_metadata_without_sharing_field_views() ->
     """Derived models include inherited fields while keeping each field view independent."""
 
     class BaseDocument(HowlerESModel):
-        inherited: keyword()
+        inherited: Keyword
 
     class DerivedDocument(BaseDocument):
-        own: integer()
+        own: Integer
 
     registry = ModelRegistry()
     registry.register(BaseDocument, index=True, store=True)
@@ -493,10 +493,10 @@ def test_derived_model_can_override_an_inherited_field() -> None:
     """A derived Pydantic model uses its own definition for an overridden field."""
 
     class BaseDocument(HowlerESModel):
-        shared: keyword(default="base")
+        shared: Keyword = "base"
 
     class DerivedDocument(BaseDocument):
-        shared: keyword(default="derived")
+        shared: Keyword = "derived"
 
     registry = ModelRegistry()
     registry.register(BaseDocument)
@@ -526,7 +526,7 @@ def test_partial_ignore_unknown_propagates_through_mapping_values() -> None:
     """Partial read normalization ignores stale plugin fields nested inside typed mappings."""
 
     class Leaf(HowlerEmbeddedModel):
-        value: keyword(optional=True)
+        value: Keyword | None = None
 
     class Root(HowlerESModel):
         grouped: mapping(Leaf, index=False)
@@ -550,7 +550,7 @@ def test_unaliased_trailing_underscore_fields_serialize_consistently_with_regist
     """Fields ending in '_' without an explicit alias still serialize without the trailing '_'."""
 
     class TrailingProbe(HowlerESModel):
-        from_: keyword()
+        from_: Keyword
 
     model = TrailingProbe.model_validate({"from_": "value"})
     assert "from" in model_registry.fields(TrailingProbe)
@@ -562,7 +562,7 @@ def test_any_field_converts_nested_datetimes_to_primitive_formats() -> None:
     """Arbitrary values containing datetimes still serialize to JSON-compatible primitives."""
 
     class ArbitraryDoc(HowlerESModel):
-        raw: any_field()
+        raw: AnyField
 
     dt = datetime(2024, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
     doc = ArbitraryDoc.model_validate({"raw": {"when": dt, "items": [dt, None], "drop": None}})
@@ -579,7 +579,7 @@ def test_model_dump_omits_synthetic_index_and_round_trips() -> None:
 
     class IndexedDoc(HowlerESModel):
         _include_index = True
-        name: keyword()
+        name: Keyword
 
     doc = IndexedDoc.model_validate({"name": "alpha"})
     dumped = doc.model_dump(by_alias=True)

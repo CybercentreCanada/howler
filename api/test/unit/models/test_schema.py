@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from howler.models import HowlerEmbeddedModel, HowlerESModel, any_field, keyword, mapping, register_model, schema
+from howler.models import AnyField, HowlerEmbeddedModel, HowlerESModel, Keyword, mapping, register_model, schema
 from howler.models.action import Action
 from howler.models.analytic import Analytic
 from howler.models.case import Case
@@ -79,25 +79,25 @@ COLLECTION_TEMPLATE_ORDER = [
 class EdgeChild(HowlerEmbeddedModel):
     """Embedded child for recursive template construction."""
 
-    value: keyword()
-    label: keyword()
+    value: Keyword
+    label: Keyword
 
 
 @register_model(index=True, store=True, id_field="key")
 class EdgeAnyHost(HowlerESModel):
     """Document containing an arbitrary-value mapping."""
 
-    key: keyword()
-    values: mapping(any_field(), index=True, default={})
-    plain: keyword()
+    key: Keyword
+    values: mapping(AnyField, index=True, default={})
+    plain: Keyword
 
 
 @register_model(index=True, store=True)
 class OrderedSchemaProbe(HowlerESModel):
     """Document with ordered dynamic sources for precedence checks."""
 
-    first: mapping(keyword(), index=True, default={})
-    second: mapping(keyword(), index=True, default={})
+    first: mapping(Keyword, index=True, default={})
+    second: mapping(Keyword, index=True, default={})
 
 
 def test_field_count_and_total_fields_limit() -> None:
@@ -219,7 +219,7 @@ def test_mapping_of_compound_recurses_into_declared_children() -> None:
 
 @pytest.mark.parametrize(
     "annotation",
-    [list[keyword()], mapping(keyword())],
+    [list[Keyword], mapping(Keyword)],
 )
 def test_nested_dynamic_containers_use_nested_templates(annotation: Any) -> None:
     """List and mapping values are represented by a nested template at their dynamic path."""

@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from howler.models import keyword
+from howler.models import Keyword
 
 
 class Ownership:
     """Mixin for documents with an owner and delegated permissions."""
 
-    owner: keyword()
+    owner: Keyword
     """The person owning the object."""
-    admins: list[keyword()] = []
+    admins: list[Keyword] = []
     """The group administrator for this object."""
-    members: list[keyword()] = []
+    members: list[Keyword] = []
     """The group who can modify the object."""

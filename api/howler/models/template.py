@@ -2,22 +2,22 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerESModel, case_insensitive_keyword, enum, keyword, register_model, uuid
+from howler.models import UUID, CaseInsensitiveKeyword, HowlerESModel, Keyword, enum, register_model
 
 
 @register_model(index=True, store=True, description="Model of templates")
 class Template(HowlerESModel):
     """Model of templates."""
 
-    template_id: uuid()
+    template_id: UUID
     """A UUID for this template"""
-    analytic: case_insensitive_keyword()
+    analytic: CaseInsensitiveKeyword
     """The analytic which this template applies to."""
-    detection: case_insensitive_keyword(optional=True)
+    detection: CaseInsensitiveKeyword | None = None
     """The detection which this template applies to."""
     type: enum(values=["personal", "global"])
     """The type of template - personal or global?"""
-    owner: keyword(optional=True)
+    owner: Keyword | None = None
     """The person to whom this template belongs. Applies to personal templates only."""
-    keys: list[keyword()] = []
+    keys: list[Keyword] = []
     """The list of fields to show when this template is used."""

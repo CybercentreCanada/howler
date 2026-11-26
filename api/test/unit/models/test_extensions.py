@@ -13,8 +13,8 @@ from howler.models import (
     HowlerEmbeddedModel,
     HowlerESModel,
     HowlerModelValidationError,
+    Keyword,
     ModelExtensionRegistry,
-    keyword,
     metadata,
     model_extensions,
     model_registry,
@@ -29,15 +29,15 @@ from howler.models.user import User
 class ExtensionChild(HowlerEmbeddedModel):
     """Embedded model used as a plugin extension payload."""
 
-    value: keyword()
+    value: Keyword
 
 
 @register_model(index=True, store=True, id_field="target_id")
 class ExtensionTarget(HowlerESModel):
     """Top-level document used as an extension target in tests."""
 
-    target_id: keyword()
-    name: keyword()
+    target_id: Keyword
+    name: Keyword
 
 
 def test_finalize_without_extensions_returns_original_model() -> None:
@@ -69,13 +69,13 @@ def test_single_plugin_extension_is_applied_and_mapped() -> None:
 def test_multiple_plugin_extensions_apply_deterministically() -> None:
     """Multiple plugin extensions apply in a deterministic (plugin, name) order."""
     registry_a = ModelExtensionRegistry()
-    registry_a.declare(ExtensionTarget, "zeta", keyword(optional=True), plugin="plugin_z")
-    registry_a.declare(ExtensionTarget, "alpha", keyword(optional=True), plugin="plugin_a")
+    registry_a.declare(ExtensionTarget, "zeta", Annotated[Keyword | None, metadata(default=None)], plugin="plugin_z")
+    registry_a.declare(ExtensionTarget, "alpha", Annotated[Keyword | None, metadata(default=None)], plugin="plugin_a")
     finalized_a = registry_a.finalize(ExtensionTarget)
 
     registry_b = ModelExtensionRegistry()
-    registry_b.declare(ExtensionTarget, "alpha", keyword(optional=True), plugin="plugin_a")
-    registry_b.declare(ExtensionTarget, "zeta", keyword(optional=True), plugin="plugin_z")
+    registry_b.declare(ExtensionTarget, "alpha", Annotated[Keyword | None, metadata(default=None)], plugin="plugin_a")
+    registry_b.declare(ExtensionTarget, "zeta", Annotated[Keyword | None, metadata(default=None)], plugin="plugin_z")
     finalized_b = registry_b.finalize(ExtensionTarget)
 
     # Field order is deterministic regardless of declaration order.
@@ -87,31 +87,31 @@ def test_multiple_plugin_extensions_apply_deterministically() -> None:
 def test_conflicting_extension_names_are_rejected() -> None:
     """Two plugins declaring the same field name against the same target conflict."""
     registry = ModelExtensionRegistry()
-    registry.declare(ExtensionTarget, "shared", keyword(optional=True), plugin="plugin_one")
+    registry.declare(ExtensionTarget, "shared", Keyword | None, plugin="plugin_one")
 
     with pytest.raises(HowlerValueError, match="already declared"):
-        registry.declare(ExtensionTarget, "shared", keyword(optional=True), plugin="plugin_two")
+        registry.declare(ExtensionTarget, "shared", Keyword | None, plugin="plugin_two")
 
 
 def test_extension_colliding_with_existing_field_is_rejected() -> None:
     """An extension cannot reuse a field name that already exists on the target."""
     registry = ModelExtensionRegistry()
     with pytest.raises(HowlerValueError, match="conflicts with an existing field"):
-        registry.declare(ExtensionTarget, "name", keyword(optional=True), plugin="plugin_one")
+        registry.declare(ExtensionTarget, "name", Keyword | None, plugin="plugin_one")
 
 
 def test_extension_alias_cannot_shadow_serialized_base_or_pending_field() -> None:
     class AliasedTarget(ExtensionTarget):
-        internal_name: keyword(alias="public_name")
+        internal_name: Annotated[Keyword, metadata(alias="public_name")]
 
     registry = ModelExtensionRegistry()
     with pytest.raises(HowlerValueError, match="conflicts with an existing field"):
-        registry.declare(AliasedTarget, "plugin_name", keyword(alias="public_name"), plugin="one")
-    registry.declare(AliasedTarget, "first", keyword(alias="shared"), plugin="one")
+        registry.declare(AliasedTarget, "plugin_name", Annotated[Keyword, metadata(alias="public_name")], plugin="one")
+    registry.declare(AliasedTarget, "first", Annotated[Keyword, metadata(alias="shared")], plugin="one")
     with pytest.raises(HowlerValueError, match="Duplicate serialized field name 'shared'"):
-        registry.declare(AliasedTarget, "second", keyword(alias="shared"), plugin="two")
+        registry.declare(AliasedTarget, "second", Annotated[Keyword, metadata(alias="shared")], plugin="two")
     with pytest.raises(HowlerValueError, match="Illegal extension field name: id"):
-        registry.declare(ExtensionTarget, "looks_valid", keyword(alias="id"), plugin="two")
+        registry.declare(ExtensionTarget, "looks_valid", Annotated[Keyword, metadata(alias="id")], plugin="two")
 
     assert list(registry.pending(AliasedTarget)) == ["first"]
     assert not registry.is_finalized(AliasedTarget)
@@ -119,7 +119,7 @@ def test_extension_alias_cannot_shadow_serialized_base_or_pending_field() -> Non
 
 def test_registration_rejects_duplicate_final_serialization_names() -> None:
     class DuplicateTarget(ExtensionTarget):
-        different_name: keyword(alias="name")
+        different_name: Annotated[Keyword, metadata(alias="name")]
 
     with pytest.raises(HowlerValueError, match="Duplicate serialized field name 'name'"):
         model_registry.register_derived(DuplicateTarget, ExtensionTarget)
@@ -128,14 +128,16 @@ def test_registration_rejects_duplicate_final_serialization_names() -> None:
 @pytest.mark.parametrize("name,storage", [("public_name", "other_storage"), ("other_name", "internal_name")])
 def test_python_and_storage_names_cannot_cross_between_fields(name, storage):
     class BaseTarget(ExtensionTarget):
-        internal_name: keyword(alias="public_name")
+        internal_name: Annotated[Keyword, metadata(alias="public_name")]
 
     registry = ModelExtensionRegistry()
     with pytest.raises(HowlerValueError, match="conflicts"):
-        registry.declare(BaseTarget, name, keyword(alias=storage), plugin="second")
-    registry.declare(ExtensionTarget, "internal_name", keyword(alias="public_name"), plugin="first")
+        registry.declare(BaseTarget, name, Annotated[Keyword, metadata(alias=storage)], plugin="second")
+    registry.declare(
+        ExtensionTarget, "internal_name", Annotated[Keyword, metadata(alias="public_name")], plugin="first"
+    )
     with pytest.raises(HowlerValueError, match="conflicts"):
-        registry.declare(ExtensionTarget, name, keyword(alias=storage), plugin="second")
+        registry.declare(ExtensionTarget, name, Annotated[Keyword, metadata(alias=storage)], plugin="second")
     assert set(registry.pending(ExtensionTarget)) == {"internal_name"}
 
 
@@ -143,29 +145,29 @@ def test_invalid_extension_field_name_is_rejected() -> None:
     """Extension field names must pass the same sanitizer as regular model fields."""
     registry = ModelExtensionRegistry()
     with pytest.raises(HowlerValueError, match="Illegal extension field name"):
-        registry.declare(ExtensionTarget, "Bad-Name!", keyword(optional=True), plugin="plugin_one")
+        registry.declare(ExtensionTarget, "Bad-Name!", Keyword | None, plugin="plugin_one")
 
     with pytest.raises(HowlerValueError, match="Illegal extension field name"):
-        registry.declare(ExtensionTarget, "__access_lvl__", keyword(optional=True), plugin="plugin_one")
+        registry.declare(ExtensionTarget, "__access_lvl__", Keyword | None, plugin="plugin_one")
 
     with pytest.raises(HowlerValueError, match="Illegal extension field name"):
-        registry.declare(ExtensionTarget, "id", keyword(optional=True), plugin="plugin_one")
+        registry.declare(ExtensionTarget, "id", Keyword | None, plugin="plugin_one")
 
 
 def test_declaration_after_finalization_is_rejected() -> None:
     """Once a target has been finalized, no further extensions may be declared for it."""
     registry = ModelExtensionRegistry()
-    registry.declare(ExtensionTarget, "evidence", keyword(optional=True), plugin="evidence")
+    registry.declare(ExtensionTarget, "evidence", Keyword | None, plugin="evidence")
     registry.finalize(ExtensionTarget)
 
     with pytest.raises(HowlerValueError, match="already been finalized"):
-        registry.declare(ExtensionTarget, "late", keyword(optional=True), plugin="late_plugin")
+        registry.declare(ExtensionTarget, "late", Keyword | None, plugin="late_plugin")
 
 
 def test_finalize_is_idempotent() -> None:
     """Calling finalize twice for the same target returns the same cached derived model."""
     registry = ModelExtensionRegistry()
-    registry.declare(ExtensionTarget, "evidence", keyword(optional=True), plugin="evidence")
+    registry.declare(ExtensionTarget, "evidence", Keyword | None, plugin="evidence")
     first = registry.finalize(ExtensionTarget)
     second = registry.finalize(ExtensionTarget)
     assert first is second
@@ -176,7 +178,7 @@ def test_registry_instances_are_isolated() -> None:
     registry_one = ModelExtensionRegistry()
     registry_two = ModelExtensionRegistry()
 
-    registry_one.declare(ExtensionTarget, "only_in_one", keyword(optional=True), plugin="p1")
+    registry_one.declare(ExtensionTarget, "only_in_one", Keyword | None, plugin="p1")
 
     assert "only_in_one" in registry_one.pending(ExtensionTarget)
     assert registry_two.pending(ExtensionTarget) == {}
@@ -194,7 +196,7 @@ def test_imported_hook_uses_nested_scope_and_restores_outer_model_on_error() -> 
     previous_pending = model_extensions.pending(Hit)
     previously_finalized = model_extensions.is_finalized(Hit)
     with model_extensions.isolated():
-        model_extensions.declare(Hit, "outer_only", keyword(), plugin="outer")
+        model_extensions.declare(Hit, "outer_only", Keyword, plugin="outer")
         outer_model = model_extensions.finalize(Hit)
         with pytest.raises(HowlerValueError, match="already been finalized"), model_extensions.isolated():
             assert model_extensions.pending(Hit) == {}
@@ -215,18 +217,18 @@ def test_imported_hook_uses_nested_scope_and_restores_outer_model_on_error() -> 
 
 def test_concurrent_scopes_preserve_unscoped_startup_changes() -> None:
     registry = ModelExtensionRegistry()
-    registry.declare(ExtensionTarget, "startup", keyword(), plugin="startup")
+    registry.declare(ExtensionTarget, "startup", Keyword, plugin="startup")
     original = registry.finalize(ExtensionTarget)
 
     def recompose_in_worker():
         assert registry.finalize(ExtensionTarget) is original
         with registry.isolated():
             assert not registry.is_finalized(ExtensionTarget)
-            registry.declare(ExtensionTarget, "worker", keyword(), plugin="worker")
+            registry.declare(ExtensionTarget, "worker", Keyword, plugin="worker")
             assert "worker" in registry.finalize(ExtensionTarget).model_fields
         assert registry.finalize(ExtensionTarget) is original
         registry.clear()
-        registry.declare(ExtensionTarget, "replacement", keyword(), plugin="startup")
+        registry.declare(ExtensionTarget, "replacement", Keyword, plugin="startup")
         return registry.finalize(ExtensionTarget)
 
     with ThreadPoolExecutor(max_workers=1) as pool:
@@ -234,7 +236,7 @@ def test_concurrent_scopes_preserve_unscoped_startup_changes() -> None:
         assert pool.submit(registry.finalize, ExtensionTarget).result(timeout=10) is original
         with registry.isolated():
             registry.clear()
-            registry.declare(ExtensionTarget, "local", keyword(), plugin="local")
+            registry.declare(ExtensionTarget, "local", Keyword, plugin="local")
             local = registry.finalize(ExtensionTarget)
             assert Context().run(registry.finalize, ExtensionTarget) is original
             replacement = pool.submit(recompose_in_worker).result(timeout=10)
@@ -257,7 +259,7 @@ def test_disabled_extension_leaves_target_unmodified() -> None:
 def test_extension_field_still_forbids_unknown_input() -> None:
     """Extra and unknown fields remain rejected on the finalized model."""
     registry = ModelExtensionRegistry()
-    registry.declare(ExtensionTarget, "evidence", keyword(optional=True), plugin="evidence")
+    registry.declare(ExtensionTarget, "evidence", Keyword | None, plugin="evidence")
     finalized = registry.finalize(ExtensionTarget)
 
     with pytest.raises(HowlerModelValidationError):
@@ -267,7 +269,7 @@ def test_extension_field_still_forbids_unknown_input() -> None:
 def test_mapping_only_reflects_finalized_extensions() -> None:
     """The unfinalized target's mapping never includes pending, un-finalized extension fields."""
     registry = ModelExtensionRegistry()
-    registry.declare(ExtensionTarget, "pending_field", keyword(optional=True), plugin="plugin_one")
+    registry.declare(ExtensionTarget, "pending_field", Keyword | None, plugin="plugin_one")
 
     # Mapping generated from the original target must not see the pending declaration.
     original_mapping = model_registry.mapping(ExtensionTarget)
@@ -281,7 +283,7 @@ def test_mapping_only_reflects_finalized_extensions() -> None:
 def test_extension_preserves_auto_derived_id_field() -> None:
     """Extending a model keeps an inherited auto-derived ID that is not a declared field."""
     registry = ModelExtensionRegistry()
-    registry.declare(User, "plugin_data", keyword(optional=True), plugin="plugin_one")
+    registry.declare(User, "plugin_data", Keyword | None, plugin="plugin_one")
 
     finalized = registry.finalize(User)
 

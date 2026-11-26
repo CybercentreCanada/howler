@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, keyword, register_model
+from howler.models import HowlerEmbeddedModel, Keyword, register_model
 
 
 @register_model(
@@ -14,19 +14,19 @@ from howler.models import HowlerEmbeddedModel, keyword, register_model
 class PE(HowlerEmbeddedModel):
     """These fields contain Windows Portable Executable (PE) metadata."""
 
-    architecture: keyword(optional=True)
+    architecture: Keyword | None = None
     """CPU architecture target for the file."""
-    company: keyword(optional=True)
+    company: Keyword | None = None
     """Internal company name of the file, provided at compile-time."""
-    description: keyword(optional=True)
+    description: Keyword | None = None
     """Internal description of the file, provided at compile-time."""
-    file_version: keyword(optional=True)
+    file_version: Keyword | None = None
     """Internal version of the file, provided at compile-time."""
-    imphash: keyword(optional=True)
+    imphash: Keyword | None = None
     """A hash of the imports in a PE file."""
-    original_file_name: keyword(optional=True)
+    original_file_name: Keyword | None = None
     """Internal name of the file, provided at compile-time."""
-    pehash: keyword(optional=True)
+    pehash: Keyword | None = None
     """A hash of the PE header and data from one or more PE sections."""
-    product: keyword(optional=True)
+    product: Keyword | None = None
     """Internal product name of the file, provided at compile-time."""

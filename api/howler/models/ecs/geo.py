@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, float_field, keyword, register_model
+from howler.models import Float, HowlerEmbeddedModel, Keyword, register_model
 
 
 @register_model(index=True, store=True, description="Longitude and latitude.", embedded=True)
 class GeoPoint(HowlerEmbeddedModel):
     """Longitude and latitude."""
 
-    lon: float_field()
+    lon: Float
     """Longitude"""
-    lat: float_field()
+    lat: Float
     """Latitude"""
 
 
@@ -24,25 +24,25 @@ class GeoPoint(HowlerEmbeddedModel):
 class Geo(HowlerEmbeddedModel):
     """Geo fields can carry data about a specific location related to an event."""
 
-    city_name: keyword(optional=True)
+    city_name: Keyword | None = None
     """City name."""
-    continent_code: keyword(optional=True)
+    continent_code: Keyword | None = None
     """Two-letter code representing continent's name."""
-    continent_name: keyword(optional=True)
+    continent_name: Keyword | None = None
     """Name of the continent."""
-    country_iso_code: keyword(optional=True)
+    country_iso_code: Keyword | None = None
     """Country ISO code."""
-    country_name: keyword(optional=True)
+    country_name: Keyword | None = None
     """Country name."""
     location: GeoPoint | None = None
     """Longitude and latitude."""
-    name: keyword(optional=True)
+    name: Keyword | None = None
     """User-defined description of a location, at the level of granularity they care about."""
-    postal_code: keyword(optional=True)
+    postal_code: Keyword | None = None
     """Postal code associated with the location."""
-    region_iso_code: keyword(optional=True)
+    region_iso_code: Keyword | None = None
     """Region ISO code."""
-    region_name: keyword(optional=True)
+    region_name: Keyword | None = None
     """Region name."""
-    timezone: keyword(optional=True)
+    timezone: Keyword | None = None
     """The time zone of the location, such as IANA time zone name."""

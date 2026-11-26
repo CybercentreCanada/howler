@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerESModel, date, enum, integer, keyword, register_model
+from typing import Annotated
+
+from howler.models import Date, HowlerESModel, Integer, Keyword, enum, metadata, register_model
 
 
 @register_model(
@@ -14,15 +16,15 @@ from howler.models import HowlerESModel, date, enum, integer, keyword, register_
 class MigrationRecord(HowlerESModel):
     """Record of a datastore migration execution."""
 
-    migration_id: keyword()
+    migration_id: Keyword
     """The stable identifier of the migration."""
     status: enum(values=["running", "applied"])
     """The current migration execution status."""
-    started_at: date()
+    started_at: Date
     """When execution of the migration started."""
-    claim_id: keyword(optional=True)
+    claim_id: Keyword | None = None
     """Opaque identifier for the execution that owns a running migration claim."""
-    applied_at: date(optional=True)
+    applied_at: Date | None = None
     """When the migration completed successfully."""
-    affected_documents: integer(min=0, optional=True)
+    affected_documents: Annotated[Integer | None, metadata(ge=0)] = None
     """The number of documents changed by the migration."""

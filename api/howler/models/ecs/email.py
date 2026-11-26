@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from howler.models import HowlerEmbeddedModel, date, email, integer, ip, keyword, metadata, register_model
+from howler.models import IP, Date, HowlerEmbeddedModel, Integer, Keyword, metadata, register_model
+from howler.models import Email as EmailField
 from howler.models.ecs.hash import Hashes
 
 
@@ -12,7 +13,7 @@ from howler.models.ecs.hash import Hashes
 class Address(HowlerEmbeddedModel):
     """The email Address."""
 
-    address: email()
+    address: EmailField
     """The email address."""
 
 
@@ -20,15 +21,15 @@ class Address(HowlerEmbeddedModel):
 class File(HowlerEmbeddedModel):
     """Information about the file sent."""
 
-    extension: keyword(optional=True)
+    extension: Keyword | None = None
     """Attachment file extension, excluding the leading dot."""
     hash: Hashes | None = None
     """Hashes, usually file hashes."""
-    mime_type: keyword(optional=True)
+    mime_type: Keyword | None = None
     """The MIME media type of the attachment."""
-    name: keyword(optional=True)
+    name: Keyword | None = None
     """Name of the attachment file including the file extension."""
-    size: integer(optional=True)
+    size: Integer | None = None
     """Attachment file size in bytes."""
 
 
@@ -55,17 +56,17 @@ class ParentEmail(HowlerEmbeddedModel):
     """The email address of CC recipient."""
     from_: Annotated[Address | None, metadata(alias="from")] = None
     """The email address of the sender, typically from the RFC 5322 From: header field."""
-    message_id: keyword(optional=True)
+    message_id: Keyword | None = None
     """Identifier from the RFC 5322 Message-ID: email header that refers to a particular email message."""
-    origination_timestamp: date(optional=True)
+    origination_timestamp: Date | None = None
     """The date and time the email message was composed."""
-    subject: keyword(optional=True)
+    subject: Keyword | None = None
     """A brief summary of the topic of the message."""
     to: Address | None = None
     """The email address of recipient."""
-    source: ip(optional=True)
+    source: IP | None = None
     """The ip the email originated from."""
-    destination: ip(optional=True)
+    destination: IP | None = None
     """The ip the email was sent to."""
 
 
@@ -84,29 +85,29 @@ class Email(HowlerEmbeddedModel):
     """The email address of BCC recipient."""
     cc: Address | None = None
     """The email address of CC recipient."""
-    content_type: keyword(optional=True)
+    content_type: Keyword | None = None
     """Information about how the message is to be displayed."""
-    delivery_timestamp: date(optional=True)
+    delivery_timestamp: Date | None = None
     """The date and time when the email message was received by the service or client."""
-    direction: keyword(optional=True)
+    direction: Keyword | None = None
     """The direction of the message based on the sending and receiving domains."""
     from_: Annotated[Address | None, metadata(alias="from")] = None
     """The email address of the sender, typically from the RFC 5322 From: header field."""
-    local_id: keyword(optional=True)
+    local_id: Keyword | None = None
     """Unique identifier given to the email by the source that created the event."""
-    message_id: keyword(optional=True)
+    message_id: Keyword | None = None
     """Identifier from the RFC 5322 Message-ID: email header that refers to a particular email message."""
-    origination_timestamp: date(optional=True)
+    origination_timestamp: Date | None = None
     """The date and time the email message was composed."""
     reply_to: Address | None = None
     """The address that replies should be delivered to based on the value in the RFC 5322 Reply-To: header."""
     sender: Address | None = None
     """Per RFC 5322, specifies the address responsible for the actual transmission of the message."""
-    subject: keyword(optional=True)
+    subject: Keyword | None = None
     """A brief summary of the topic of the message."""
     to: Address | None = None
     """The email address of recipient."""
-    x_mailer: keyword(optional=True)
+    x_mailer: Keyword | None = None
     """The name of the application that was used to draft and send the original email message."""
 
     # Extra fields not defined in ECS but added for outline purposes

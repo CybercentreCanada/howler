@@ -5,18 +5,18 @@ from __future__ import annotations
 from typing import Annotated
 
 from howler.models import (
+    UUID,
+    Boolean,
+    CaseInsensitiveKeyword,
+    Date,
     HowlerEmbeddedModel,
     HowlerESModel,
-    boolean,
-    case_insensitive_keyword,
-    date,
+    Keyword,
+    Text,
     enum,
-    keyword,
     mapping,
     metadata,
     register_model,
-    text,
-    uuid,
 )
 from howler.models.howler_data import Assessment
 
@@ -27,19 +27,19 @@ DEFAULT_TRIAGE = {"skip_rationale": False, "valid_assessments": Assessment.list(
 class Comment(HowlerEmbeddedModel):
     """Comment definition."""
 
-    id: uuid()
+    id: UUID
     """A unique ID for the comment"""
-    timestamp: date(default="NOW")
+    timestamp: Annotated[Date, metadata(default="NOW")]
     """Timestamp at which the comment took place."""
-    modified: date(default="NOW")
+    modified: Annotated[Date, metadata(default="NOW")]
     """Timestamp at which the comment was last edited."""
-    detection: keyword(optional=True)
+    detection: Keyword | None = None
     """The detection the comment applies to, if it applies to a particular detection"""
-    value: text()
+    value: Text
     """The comment itself."""
-    user: keyword()
+    user: Keyword
     """User ID who created the comment."""
-    reactions: mapping(keyword(), default={})
+    reactions: mapping(Keyword, default={})
     """A list of reactions to the comment"""
 
 
@@ -47,13 +47,13 @@ class Comment(HowlerEmbeddedModel):
 class TriageOptions(HowlerEmbeddedModel):
     """Settings for triaging this analytic."""
 
-    valid_assessments: Annotated[list[keyword()], metadata(default=DEFAULT_TRIAGE["valid_assessments"])]
+    valid_assessments: Annotated[list[Keyword], metadata(default=DEFAULT_TRIAGE["valid_assessments"])]
     """What list of assessments is valid for this analytic?"""
-    skip_rationale: boolean(default=DEFAULT_TRIAGE["skip_rationale"])
+    skip_rationale: Annotated[Boolean, metadata(default=DEFAULT_TRIAGE["skip_rationale"])]
     """Should traiging alerts under this analytic skip the rationale field?"""
-    dossiers: list[keyword()] = []
+    dossiers: list[Keyword] = []
     """A list of dossiers to present to the user when triaging alerts."""
-    rationales: Annotated[list[keyword()], metadata(default=DEFAULT_TRIAGE["rationales"])]
+    rationales: Annotated[list[Keyword], metadata(default=DEFAULT_TRIAGE["rationales"])]
     """A provided list of rationales that will be suggested when triaging alerts."""
 
 
@@ -61,15 +61,15 @@ class TriageOptions(HowlerEmbeddedModel):
 class Notebook(HowlerEmbeddedModel):
     """Notebook data."""
 
-    id: uuid()
+    id: UUID
     """A unique ID for the notebook"""
-    detection: keyword(optional=True)
+    detection: Keyword | None = None
     """The detection the notebook applies to, if it applies to a particular detection"""
-    value: keyword()
+    value: Keyword
     """The link to the notebook"""
-    name: keyword()
+    name: Keyword
     """Name for the analytic"""
-    user: keyword()
+    user: Keyword
     """User ID who added the notebook."""
 
 
@@ -77,27 +77,27 @@ class Notebook(HowlerEmbeddedModel):
 class Analytic(HowlerESModel):
     """Metadata concerning a howler analytic, including configuration."""
 
-    analytic_id: uuid()
+    analytic_id: UUID
     """A UUID for this analytic"""
     notebooks: list[Notebook] = []
     """A list of useful notebooks for the analytic"""
-    name: case_insensitive_keyword()
+    name: CaseInsensitiveKeyword
     """The name of the analytic."""
-    owner: keyword(optional=True)
+    owner: Keyword | None = None
     """The username of the user who owns this analytic."""
-    contributors: list[keyword()] = []
+    contributors: list[Keyword] = []
     """A list of users who have contributed to this analytic."""
-    description: text(optional=True)
+    description: Text | None = None
     """A markdown description of the analytic"""
-    detections: list[case_insensitive_keyword()] = []
+    detections: list[CaseInsensitiveKeyword] = []
     """The detections which this analytic contains."""
     comment: list[Comment] = []
     """A list of comments with timestamps and attribution."""
-    rule: keyword(optional=True)
+    rule: Keyword | None = None
     """A rule query"""
     rule_type: enum(values=["lucene", "eql", "sigma"], optional=True)
     """Type of rule"""
-    rule_crontab: keyword(optional=True)
+    rule_crontab: Keyword | None = None
     """The interval for the rule to run at"""
     triage_settings: Annotated[TriageOptions, metadata(default=DEFAULT_TRIAGE)]
     """Settings for triaging this analytic."""

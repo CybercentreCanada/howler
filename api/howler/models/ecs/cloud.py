@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from howler.models import HowlerEmbeddedModel, keyword, metadata, register_model
+from howler.models import HowlerEmbeddedModel, Keyword, metadata, register_model
 
 _CLOUD_ONTOLOGY_NOTE = (
     "Instead of using this more general field, use a platform-specific field. "
@@ -17,9 +17,9 @@ _CLOUD_ONTOLOGY_NOTE = (
 class Account(HowlerEmbeddedModel):
     """Cloud account information."""
 
-    id: keyword(optional=True, deprecated=True, deprecated_description=_CLOUD_ONTOLOGY_NOTE)
+    id: Annotated[Keyword | None, metadata(deprecated=True, deprecated_description=_CLOUD_ONTOLOGY_NOTE)] = None
     """The cloud account or organization id used to identify different entities in a multi-tenant environment."""
-    name: keyword(optional=True, deprecated=True, deprecated_description=_CLOUD_ONTOLOGY_NOTE)
+    name: Annotated[Keyword | None, metadata(deprecated=True, deprecated_description=_CLOUD_ONTOLOGY_NOTE)] = None
     """The cloud account name or alias used to identify different entities in a multi-tenant environment."""
 
 
@@ -27,9 +27,9 @@ class Account(HowlerEmbeddedModel):
 class Instance(HowlerEmbeddedModel):
     """Instance information."""
 
-    id: keyword(optional=True)
+    id: Keyword | None = None
     """Instance ID of the host machine."""
-    name: keyword(optional=True)
+    name: Keyword | None = None
     """Instance name of the host machine."""
 
 
@@ -37,9 +37,9 @@ class Instance(HowlerEmbeddedModel):
 class Project(HowlerEmbeddedModel):
     """Project information."""
 
-    id: keyword(optional=True, deprecated=True, deprecated_description=_CLOUD_ONTOLOGY_NOTE)
+    id: Annotated[Keyword | None, metadata(deprecated=True, deprecated_description=_CLOUD_ONTOLOGY_NOTE)] = None
     """The cloud project identifier."""
-    name: keyword(optional=True, deprecated=True, deprecated_description=_CLOUD_ONTOLOGY_NOTE)
+    name: Annotated[Keyword | None, metadata(deprecated=True, deprecated_description=_CLOUD_ONTOLOGY_NOTE)] = None
     """The cloud project name."""
 
 
@@ -47,7 +47,7 @@ class Project(HowlerEmbeddedModel):
 class Machine(HowlerEmbeddedModel):
     """Machine information."""
 
-    type: keyword(optional=True)
+    type: Keyword | None = None
     """Machine type of the host machine."""
 
 
@@ -55,7 +55,7 @@ class Machine(HowlerEmbeddedModel):
 class Service(HowlerEmbeddedModel):
     """Service information."""
 
-    name: keyword(optional=True)
+    name: Keyword | None = None
     (
         "The cloud service name is intended to distinguish services running on different platforms within a provider, "
         "eg AWS EC2 vs Lambda, GCP GCE vs App Engine, Azure VM vs App Server."
@@ -73,7 +73,9 @@ class Cloud(HowlerEmbeddedModel):
 
     account: Annotated[Account | None, metadata(deprecated=True, deprecated_description=_CLOUD_ONTOLOGY_NOTE)] = None
     """Cloud account information."""
-    availability_zone: keyword(optional=True, deprecated=True, deprecated_description=_CLOUD_ONTOLOGY_NOTE)
+    availability_zone: Annotated[
+        Keyword | None, metadata(deprecated=True, deprecated_description=_CLOUD_ONTOLOGY_NOTE)
+    ] = None
     """Availability zone in which this host, resource, or service is located."""
     instance: Instance | None = None
     """Instance information."""
@@ -81,13 +83,13 @@ class Cloud(HowlerEmbeddedModel):
     """Machine information."""
     project: Annotated[Project | None, metadata(deprecated=True, deprecated_description=_CLOUD_ONTOLOGY_NOTE)] = None
     """Project information."""
-    provider: keyword(optional=True)
+    provider: Keyword | None = None
     """Name of the cloud provider. Example values are aws, azure, gcp, or digitalocean."""
-    region: keyword(optional=True)
+    region: Keyword | None = None
     """Region in which this host, resource, or service is located."""
     service: Service | None = None
     """Service information."""
 
     # Extra fields not defined in ECS but added for outline purposes
-    tenant_id: keyword(optional=True, deprecated=True, deprecated_description=_CLOUD_ONTOLOGY_NOTE)
+    tenant_id: Annotated[Keyword | None, metadata(deprecated=True, deprecated_description=_CLOUD_ONTOLOGY_NOTE)] = None
     """The tenant id associated with this alert."""

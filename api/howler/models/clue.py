@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from howler.models import HowlerEmbeddedModel, keyword, metadata, model_extensions, register_model
+from howler.models import HowlerEmbeddedModel, Keyword, metadata, model_extensions, register_model
 from howler.models.hit import Hit
 
 
@@ -14,9 +14,9 @@ from howler.models.hit import Hit
 class TypeMap(HowlerEmbeddedModel):
     """A mapping from a specific field in Howler to a clue type."""
 
-    field: keyword()
+    field: Keyword
     """The field whose clue type to override"""
-    type: keyword()
+    type: Keyword
     """The clue type to override the field as"""
 
 

@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from howler.common.exceptions import InvalidDataException
-from howler.models import keyword
+from howler.models import Keyword
 from howler.models.dossier import Dossier
 from howler.models.user import User
 from howler.services import dossier_service
@@ -11,7 +11,7 @@ from howler.services import dossier_service
 
 def test_dossier_extension_survives_permitted_update(monkeypatch):
     class ExtendedDossier(Dossier):
-        plugin: keyword()
+        plugin: Keyword
 
     ds = MagicMock()
     ds.dossier.model_class = ExtendedDossier

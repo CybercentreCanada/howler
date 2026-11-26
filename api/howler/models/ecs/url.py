@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, domain, integer, keyword, register_model
+from howler.models import Domain, HowlerEmbeddedModel, Integer, Keyword, register_model
 
 
 @register_model(
@@ -15,37 +15,37 @@ from howler.models import HowlerEmbeddedModel, domain, integer, keyword, registe
 class URL(HowlerEmbeddedModel):
     """URL fields provide support for complete or partial URLs."""
 
-    domain: domain(optional=True)
+    domain: Domain | None = None
     """Domain of the url, such as "www.elastic.co"."""
-    extension: keyword(optional=True)
+    extension: Keyword | None = None
     """The field contains the file extension from the original request url, excluding the leading dot."""
-    fragment: keyword(optional=True)
+    fragment: Keyword | None = None
     """Portion of the url after the #, such as "top"."""
-    full: keyword(optional=True)
+    full: Keyword | None = None
     (
         "If full URLs are important to your use case, they should be stored in url.full, whether this field is "
         "reconstructed or present in the event source."
     )
-    original: keyword(optional=True)
+    original: Keyword | None = None
     """Unmodified original url as seen in the event source."""
-    password: keyword(optional=True)
+    password: Keyword | None = None
     """Password of the request."""
-    path: keyword(optional=True)
+    path: Keyword | None = None
     """Path of the request, such as "/search"."""
-    port: integer(optional=True)
+    port: Integer | None = None
     """Port of the request, such as 443."""
-    query: keyword(optional=True)
+    query: Keyword | None = None
     """The query field describes the query string of the request, such as "q=elasticsearch"."""
-    registered_domain: keyword(optional=True)
+    registered_domain: Keyword | None = None
     """The highest registered url domain, stripped of the subdomain."""
-    scheme: keyword(optional=True)
+    scheme: Keyword | None = None
     """Scheme of the request, such as "https"."""
-    subdomain: keyword(optional=True)
+    subdomain: Keyword | None = None
     (
         "The subdomain portion of a fully qualified domain name includes all of the names except the host name under "
         "the registered_domain."
     )
-    top_level_domain: keyword(optional=True)
+    top_level_domain: Keyword | None = None
     """The effective top level domain (eTLD), also known as the domain suffix, is the last part of the domain name."""
-    username: keyword(optional=True)
+    username: Keyword | None = None
     """Username of the request."""

@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, keyword, mapping, register_model
+from howler.models import HowlerEmbeddedModel, Keyword, mapping, register_model
 
 
 @register_model(index=True, store=True, description="Container hashes information.", embedded=True)
 class Hash(HowlerEmbeddedModel):
     """Container hashes information."""
 
-    all: list[keyword()] = []
+    all: list[Keyword] = []
     """An array of digests of the image the container was built on."""
 
 
@@ -19,9 +19,9 @@ class Image(HowlerEmbeddedModel):
 
     hash: Hash | None = None
     """Container hashes information."""
-    name: keyword(optional=True)
+    name: Keyword | None = None
     """Name of the image the container was built on."""
-    tag: list[keyword()] = []
+    tag: list[Keyword] = []
     """Container image tags."""
 
 
@@ -34,13 +34,13 @@ class Image(HowlerEmbeddedModel):
 class Container(HowlerEmbeddedModel):
     """Container metadata."""
 
-    id: keyword(optional=True)
+    id: Keyword | None = None
     """Unique container id."""
     image: Image | None = None
     """Cloud account information."""
-    labels: mapping(keyword(), optional=True)
+    labels: mapping(Keyword, optional=True)
     """Image labels."""
-    name: keyword(optional=True)
+    name: Keyword | None = None
     """Container name."""
-    runtime: keyword(optional=True)
+    runtime: Keyword | None = None
     """Runtime managing this container."""

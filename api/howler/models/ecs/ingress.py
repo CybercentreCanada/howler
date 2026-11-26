@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, keyword, register_model
+from howler.models import HowlerEmbeddedModel, Keyword, register_model
 from howler.models.ecs.interface import Interface
 
 
@@ -15,7 +15,7 @@ from howler.models.ecs.interface import Interface
 class Ingress(HowlerEmbeddedModel):
     """Holds information like interface number, name, vlan, and zone to classify ingress traffic."""
 
-    zone: keyword(optional=True)
+    zone: Keyword | None = None
     """Network zone of incoming traffic as reported by observer"""
     interface: Interface | None = None
     """Ingress Interface"""

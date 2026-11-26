@@ -7,15 +7,15 @@ from typing import Annotated
 from howler.common import loader
 from howler.config import CLASSIFICATION
 from howler.models import (
+    Boolean,
+    Date,
+    Email,
     HowlerEmbeddedModel,
     HowlerESModel,
-    boolean,
-    classification,
-    date,
-    email,
+    Integer,
+    Keyword,
+    UserClassification,
     enum,
-    integer,
-    keyword,
     mapping,
     metadata,
     register_model,
@@ -31,11 +31,11 @@ class ApiKey(HowlerEmbeddedModel):
 
     acl: list[enum(values=ACL)]
     """Access Control List for the API key"""
-    agents: list[keyword()] = []
+    agents: list[Keyword] = []
     """List of user ids permitted to use this api key for impersonation"""
-    password: keyword()
+    password: Keyword
     """BCrypt hash of the password for the apikey"""
-    expiry_date: date(optional=True)
+    expiry_date: Date | None = None
     """Expiry date for the apikey"""
 
 
@@ -43,11 +43,11 @@ class ApiKey(HowlerEmbeddedModel):
 class DashboardEntry(HowlerEmbeddedModel):
     """Model for user dashboard settings."""
 
-    entry_id: keyword()
+    entry_id: Keyword
     """A unique id for this entry"""
     type: enum(values=DASHBOARD_TYPES)
     """The type of dashboard entry to render."""
-    config: keyword()
+    config: Keyword
     """A stringified JSON object containing additional configuration data"""
 
 
@@ -55,33 +55,33 @@ class DashboardEntry(HowlerEmbeddedModel):
 class User(HowlerESModel):
     """Model of User."""
 
-    api_quota: integer(default=25, store=False)
+    api_quota: Annotated[Integer, metadata(store=False)] = 25
     """Maximum number of concurrent API requests"""
     apikeys: mapping(ApiKey, default={}, index=False, store=False)
     """Mapping of API keys"""
-    classification: classification(is_user_classification=True, copyto="__text__", default=CLASSIFICATION.UNRESTRICTED)
+    classification: Annotated[UserClassification, metadata(copyto="__text__", default=CLASSIFICATION.UNRESTRICTED)]
     """Maximum classification for the user"""
-    email: email(copyto="__text__", optional=True)
+    email: Annotated[Email | None, metadata(copyto="__text__")] = None
     """User's email address"""
-    groups: Annotated[list[keyword()], metadata(copyto="__text__")] = ["USERS"]
+    groups: Annotated[list[Keyword], metadata(copyto="__text__")] = ["USERS"]
     """List of groups the user submits to"""
-    is_active: boolean(default=True)
+    is_active: Boolean = True
     """Is the user active?"""
-    name: keyword(copyto="__text__")
+    name: Annotated[Keyword, metadata(copyto="__text__")]
     """Full name of the user"""
-    password: keyword(index=False, store=False)
+    password: Annotated[Keyword, metadata(index=False, store=False)]
     """BCrypt hash of the user's password"""
-    access_control: keyword(index=False, store=False, optional=True)
+    access_control: Annotated[Keyword | None, metadata(index=False, store=False)] = None
     """Access control filter"""
     type: list[enum(values=loader.USER_TYPES)] = ["user", "actionrunner_basic"]
     """Type of user"""
-    uname: keyword(copyto="__text__")
+    uname: Annotated[Keyword, metadata(copyto="__text__")]
     """Username"""
-    favourite_views: list[keyword()] = []
+    favourite_views: list[Keyword] = []
     """List of favourite views of the user"""
-    favourite_analytics: list[keyword()] = []
+    favourite_analytics: list[Keyword] = []
     """List of favourite analytics of the user"""
     dashboard: list[DashboardEntry] = []
     """A list of dashboard entries to render on the UI."""
-    refresh_rate: integer(default=15)
+    refresh_rate: Integer = 15
     """The refresh rate in seconds for the dashboard."""

@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, integer, keyword, register_model
+from typing import Annotated
+
+from howler.models import HowlerEmbeddedModel, Integer, Keyword, metadata, register_model
 
 
 @register_model(index=True, store=True, description="Definition of an ELF file segment.", embedded=True)
 class Segment(HowlerEmbeddedModel):
     """Definition of an ELF file segment."""
 
-    sections: keyword(optional=True)
+    sections: Keyword | None = None
     """ELF object segment sections."""
-    type: keyword(optional=True)
+    type: Keyword | None = None
     """ELF object segment type."""
 
 
@@ -19,23 +21,23 @@ class Segment(HowlerEmbeddedModel):
 class Section(HowlerEmbeddedModel):
     """Definition of an ELF file section."""
 
-    chi2: integer(optional=True)
+    chi2: Integer | None = None
     """Chi-square probability distribution of the section."""
-    entropy: integer(optional=True)
+    entropy: Integer | None = None
     """Shannon entropy calculation from the section."""
-    flags: keyword(optional=True)
+    flags: Keyword | None = None
     """ELF Section List flags."""
-    name: keyword(optional=True)
+    name: Keyword | None = None
     """ELF Section List name."""
-    physical_offset: keyword(optional=True)
+    physical_offset: Keyword | None = None
     """ELF Section List offset."""
-    physical_size: integer(optional=True)
+    physical_size: Integer | None = None
     """ELF Section List physical size."""
-    type: keyword(optional=True)
+    type: Keyword | None = None
     """ELF Section List type."""
-    virtual_address: integer(optional=True)
+    virtual_address: Integer | None = None
     """ELF Section List virtual address."""
-    virtual_size: integer(optional=True)
+    virtual_size: Integer | None = None
     """ELF Section List virtual size."""
 
 
@@ -43,21 +45,21 @@ class Section(HowlerEmbeddedModel):
 class Header(HowlerEmbeddedModel):
     """Header information about the ELF file."""
 
-    abi_version: keyword(optional=True)
+    abi_version: Keyword | None = None
     """Version of the ELF Application Binary Interface (ABI)."""
-    class_: keyword(optional=True, alias="class")
+    class_: Annotated[Keyword | None, metadata(alias="class")] = None
     """Header class of the ELF file."""
-    data: keyword(optional=True)
+    data: Keyword | None = None
     """Data table of the ELF header."""
-    entrypoint: integer(optional=True)
+    entrypoint: Integer | None = None
     """Header entrypoint of the ELF file."""
-    object_version: keyword(optional=True)
+    object_version: Keyword | None = None
     """'0x1' for original ELF files."""
-    os_abi: keyword(optional=True)
+    os_abi: Keyword | None = None
     """Application Binary Interface (ABI) of the Linux OS."""
-    type: keyword(optional=True)
+    type: Keyword | None = None
     """Header type of the ELF file."""
-    version: keyword(optional=True)
+    version: Keyword | None = None
     """Version of the ELF header."""
 
 
@@ -70,25 +72,25 @@ class Header(HowlerEmbeddedModel):
 class ELF(HowlerEmbeddedModel):
     """These fields contain Linux Executable Linkable Format (ELF) metadata."""
 
-    architecture: keyword(optional=True)
+    architecture: Keyword | None = None
     """Machine architecture of the ELF file."""
-    byte_order: keyword(optional=True)
+    byte_order: Keyword | None = None
     """Byte sequence of ELF file."""
-    cpu_type: keyword(optional=True)
+    cpu_type: Keyword | None = None
     """CPU type of the ELF file."""
-    creation_date: keyword(optional=True)
+    creation_date: Keyword | None = None
     """Extracted when possible from the file's metadata."""
-    exports: list[keyword()] = []
+    exports: list[Keyword] = []
     """List of exported element names and types."""
     header: Header | None = None
     """Header information about the ELF file."""
-    imports: list[keyword()] | None = None
+    imports: list[Keyword] | None = None
     """List of imported element names and types."""
     sections: list[Section] | None = None
     """An array containing an object for each section of the ELF file."""
     segments: list[Section] | None = None
     """An array containing an object for each segment of the ELF file."""
-    shared_libraries: list[keyword()] | None = None
+    shared_libraries: list[Keyword] | None = None
     """List of shared libraries used by this ELF object."""
-    telfhash: keyword(optional=True)
+    telfhash: Keyword | None = None
     """telfhash symbol hash for ELF file."""

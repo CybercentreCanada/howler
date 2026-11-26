@@ -13,7 +13,7 @@ from howler.common.exceptions import (
 from howler.config import CLASSIFICATION
 from howler.datastore.collection import CREATE_TOKEN
 from howler.datastore.exceptions import DataStoreException, VersionConflictException
-from howler.models import keyword
+from howler.models import Keyword
 from howler.models.case import Case as SchemaCase
 from howler.models.case import CaseItem as SchemaCaseItem
 from howler.models.case import CaseLog as SchemaCaseLog
@@ -195,7 +195,7 @@ class TestCreateCase:
         """The create-only write includes fields declared on the collection model."""
 
         class ExtendedCase(SchemaCase):
-            plugin: keyword()
+            plugin: Keyword
 
         case_collection.model_class = ExtendedCase
         result = case_service.create_case(

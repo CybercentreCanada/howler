@@ -5,16 +5,16 @@ from __future__ import annotations
 from typing import Annotated
 
 from howler.models import (
+    UUID,
+    Boolean,
+    CaseInsensitiveKeyword,
     HowlerEmbeddedModel,
     HowlerESModel,
-    boolean,
-    case_insensitive_keyword,
+    Integer,
+    Keyword,
     enum,
-    integer,
-    keyword,
     metadata,
     register_model,
-    uuid,
 )
 from howler.models.ownership import Ownership
 
@@ -27,9 +27,9 @@ DEFAULT_INDEXES = ["hit"]
 class GridColumn(HowlerEmbeddedModel):
     """The field and width of a column to display in a grid view."""
 
-    field: keyword()
+    field: Keyword
     """The field key for this column."""
-    width: integer(optional=True)
+    width: Integer | None = None
     """The width of this column in pixels."""
 
 
@@ -37,7 +37,7 @@ class GridColumn(HowlerEmbeddedModel):
 class Settings(HowlerEmbeddedModel):
     """Additional View Settings."""
 
-    advance_on_triage: boolean(default=False)
+    advance_on_triage: Boolean = False
     """Should the user advance to the next alert when triage is complete?"""
     display: enum(values=["list", "grid"], optional=True)
     """The layout to use when opening this view"""
@@ -48,17 +48,17 @@ class Settings(HowlerEmbeddedModel):
 class View(Ownership, HowlerESModel):
     """Model of views."""
 
-    view_id: uuid()
+    view_id: UUID
     """A UUID for this view"""
-    indexes: list[keyword()] = DEFAULT_INDEXES
+    indexes: list[Keyword] = DEFAULT_INDEXES
     """What indexes this view applies to."""
-    title: case_insensitive_keyword()
+    title: CaseInsensitiveKeyword
     """The name of this view."""
-    query: case_insensitive_keyword()
+    query: CaseInsensitiveKeyword
     """The query to run in this view."""
-    sort: case_insensitive_keyword(optional=True)
+    sort: CaseInsensitiveKeyword | None = None
     """The sorting to use with this view."""
-    span: keyword(optional=True)
+    span: Keyword | None = None
     """The time span to use by default when opening this view"""
     type: enum(values=["personal", "global", "readonly"])
     """The type of view"""

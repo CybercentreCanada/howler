@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from howler.models import HowlerEmbeddedModel, email, keyword, metadata, register_model
+from howler.models import Email, HowlerEmbeddedModel, Keyword, metadata, register_model
 from howler.models.ecs.group import Group
 
 
@@ -17,19 +17,19 @@ from howler.models.ecs.group import Group
 class UserNested(HowlerEmbeddedModel):
     """The user fields describe information about the user that is relevant to the event."""
 
-    domain: keyword(optional=True)
+    domain: Keyword | None = None
     """Name of the directory the user is a member of."""
-    email: email(optional=True)
+    email: Email | None = None
     """User email address."""
-    full_name: keyword(optional=True)
+    full_name: Keyword | None = None
     """User's full name, if available."""
-    hash: keyword(optional=True)
+    hash: Keyword | None = None
     """Unique user hash to correlate information for a user in anonymized form."""
-    id: keyword(optional=True)
+    id: Keyword | None = None
     """Unique identifier of the user."""
-    name: keyword(optional=True)
+    name: Keyword | None = None
     """Short name or login of the user."""
-    roles: Annotated[list[keyword()] | None, metadata(optional=True)] = []
+    roles: Annotated[list[Keyword] | None, metadata(optional=True)] = []
     """Array of user roles at the time of the event."""
 
 
@@ -42,21 +42,21 @@ class UserNested(HowlerEmbeddedModel):
 class User(HowlerEmbeddedModel):
     """The user fields describe information about the user that is relevant to the event."""
 
-    domain: keyword(optional=True)
+    domain: Keyword | None = None
     """Name of the directory the user is a member of."""
-    email: email(optional=True)
+    email: Email | None = None
     """User email address."""
-    full_name: keyword(optional=True)
+    full_name: Keyword | None = None
     """User's full name, if available."""
     group: Group | None = None
     """User's group relevant to the event."""
-    hash: keyword(optional=True)
+    hash: Keyword | None = None
     """Unique user hash to correlate information for a user in anonymized form."""
-    id: keyword(optional=True)
+    id: Keyword | None = None
     """Unique identifier of the user."""
-    name: keyword(optional=True)
+    name: Keyword | None = None
     """Short name or login of the user."""
-    roles: Annotated[list[keyword()] | None, metadata(optional=True)] = []
+    roles: Annotated[list[Keyword] | None, metadata(optional=True)] = []
     """Array of user roles at the time of the event."""
 
 
@@ -64,11 +64,11 @@ class User(HowlerEmbeddedModel):
 class ShortUser(HowlerEmbeddedModel):
     """Shorter representation of a user."""
 
-    id: keyword(optional=True)
+    id: Keyword | None = None
     """Unique identifier of the user."""
-    name: keyword(optional=True)
+    name: Keyword | None = None
     """Short name or login of the user."""
-    domain: keyword(optional=True)
+    domain: Keyword | None = None
     """Name of the directory the user is a member of."""
-    email: email(optional=True)
+    email: Email | None = None
     """User email address."""

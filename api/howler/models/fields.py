@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
 from ipaddress import ip_address
-from typing import Annotated, Callable, Iterable, cast
+from typing import Annotated, Callable, Iterable, TypeAlias, cast
 from typing import Any as TypingAny
 
 import arrow
@@ -84,6 +84,47 @@ class HowlerFieldMetadata:
     options: tuple[tuple[str, TypingAny], ...] = field(default_factory=tuple)
     optional: bool = False
     es_name: str | None = None
+    _explicit: frozenset[str] = field(default_factory=frozenset, compare=False, repr=False)
+
+
+def _explicit_metadata(
+    *,
+    index: bool | None,
+    store: bool | None,
+    resolved_copy_to: tuple[str, ...],
+    reference: str | None,
+    deprecated: bool | None,
+    deprecated_description: str | None,
+    sync: bool | None,
+    optional: bool | None,
+    es_name: str | None,
+) -> HowlerFieldMetadata | None:
+    values: dict[str, TypingAny] = {
+        "index": index,
+        "store": store,
+        "copy_to": resolved_copy_to,
+        "reference": reference,
+        "deprecated": deprecated,
+        "deprecated_description": deprecated_description,
+        "sync": sync,
+        "optional": optional,
+        "es_name": es_name,
+    }
+    explicit = {key for key, value in values.items() if (bool(value) if key == "copy_to" else value is not None)}
+    if not explicit:
+        return None
+    return HowlerFieldMetadata(
+        index=index,
+        store=store,
+        copy_to=resolved_copy_to,
+        reference=reference,
+        deprecated=bool(deprecated) if deprecated is not None else False,
+        deprecated_description=deprecated_description,
+        sync=sync if sync is not None else True,
+        optional=bool(optional) if optional is not None else False,
+        es_name=es_name,
+        _explicit=frozenset(explicit),
+    )
 
 
 def metadata(
@@ -93,54 +134,42 @@ def metadata(
     copyto: str | Iterable[str] | None = None,
     copy_to: str | Iterable[str] | None = None,
     reference: str | None = None,
-    deprecated: bool = False,
+    deprecated: bool | None = None,
     deprecated_description: str | None = None,
-    sync: bool = True,
-    optional: bool = False,
+    sync: bool | None = None,
+    optional: bool | None = None,
     es_name: str | None = None,
     default: TypingAny = PydanticUndefined,
     default_factory: Callable[[], TypingAny] | None = None,
     alias: str | None = None,
     description: str | None = None,
+    ge: int | float | None = None,
+    le: int | float | None = None,
 ) -> TypingAny:
     """Attach Howler metadata and optional Pydantic field settings to an annotated field."""
     pydantic_options: dict[str, TypingAny] = {}
-    if description is not None:
-        pydantic_options["description"] = description
-    if alias is not None:
-        pydantic_options["alias"] = alias
+    for key, value in (("description", description), ("alias", alias), ("ge", ge), ("le", le)):
+        if value is not None:
+            pydantic_options[key] = value
     if default_factory is not None:
         pydantic_options["default_factory"] = default_factory
     elif default is not PydanticUndefined:
         pydantic_options["default"] = default
 
     field_info = PydanticField(**pydantic_options)
-    resolved_copy_to = _copy_to(copy_to if copy_to is not None else copyto)
-    has_howler_metadata = (
-        index is not None
-        or store is not None
-        or bool(resolved_copy_to)
-        or reference is not None
-        or deprecated
-        or deprecated_description is not None
-        or not sync
-        or optional
-        or es_name is not None
+    howler_meta = _explicit_metadata(
+        index=index,
+        store=store,
+        resolved_copy_to=_copy_to(copy_to if copy_to is not None else copyto),
+        reference=reference,
+        deprecated=deprecated,
+        deprecated_description=deprecated_description,
+        sync=sync,
+        optional=optional,
+        es_name=es_name,
     )
-    if has_howler_metadata:
-        field_info.metadata.append(
-            HowlerFieldMetadata(
-                index=index,
-                store=store,
-                copy_to=resolved_copy_to,
-                reference=reference,
-                deprecated=deprecated,
-                deprecated_description=deprecated_description,
-                sync=sync,
-                optional=optional,
-                es_name=es_name,
-            )
-        )
+    if howler_meta is not None:
+        field_info.metadata.append(howler_meta)
     return field_info
 
 
@@ -300,10 +329,83 @@ def _falsy(value: TypingAny) -> bool:
     return not value
 
 
-def _emptyable_keyword_validator(value: TypingAny) -> str | None:
+def _emptyable_keyword_validator(value: TypingAny) -> str:
     if isinstance(value, bytes):
         raise ValueError("EmptyableKeyword doesn't accept bytes values")  # noqa: TRY004
-    return None if value is None else str(value)
+    if value is None:
+        raise ValueError("EmptyableKeyword doesn't accept None without optional or default")
+    return str(value)
+
+
+def _upper_keyword_validator(value: TypingAny) -> str:
+    return _keyword_validator()(value).upper()
+
+
+def _lower_keyword_validator(value: TypingAny) -> str:
+    return _keyword_validator()(value).lower()
+
+
+def _uuid_validator(value: TypingAny) -> str:
+    return str(get_random_id() if value is None else value)
+
+
+def _classification_validator(
+    *,
+    is_user_classification: bool = False,
+    yml_config: str | None = None,
+) -> Callable[[TypingAny], ClassificationValue]:
+    def validate(value: TypingAny) -> ClassificationValue:
+        engine = loader.get_classification(yml_config=yml_config)
+        return ClassificationValue(engine, value, is_user_classification)
+
+    return validate
+
+
+def _classification_string_validator(*, yml_config: str | None = None) -> Callable[[TypingAny], str]:
+    def validate(value: TypingAny) -> str:
+        if not value:
+            raise ValueError("Empty classification is not allowed without defaults")
+        engine = loader.get_classification(yml_config=yml_config)
+        if not engine.is_valid(value):
+            raise ValueError(f"Invalid classification: {value}")
+        return str(value)
+
+    return validate
+
+
+NULL_EMPTY_KEYWORD_KINDS = frozenset(
+    {
+        "Keyword",
+        "LowerKeyword",
+        "UpperKeyword",
+        "CaseInsensitiveKeyword",
+    }
+)
+
+DEFAULT_WHEN_BY_KIND: dict[str, Callable[[TypingAny], bool]] = {
+    "Keyword": _empty_or_none,
+    "LowerKeyword": _empty_or_none,
+    "UpperKeyword": _empty_or_none,
+    "CaseInsensitiveKeyword": _empty_or_none,
+    "EmptyableKeyword": lambda value: value is None,
+    "Integer": _empty_or_none,
+    "Long": _empty_or_none,
+    "SSDeepHash": _falsy,
+    "ValidatedKeyword": _falsy,
+    "URIPath": _falsy,
+    "MAC": _falsy,
+    "PhoneNumber": _falsy,
+    "SHA1": _falsy,
+    "SHA256": _falsy,
+    "HowlerHash": _falsy,
+    "MD5": _falsy,
+    "Platform": _falsy,
+    "Processor": _falsy,
+    "Enum": _falsy,
+    "Text": _falsy,
+    "Float": _falsy,
+    "ClassificationString": _falsy,
+}
 
 
 def _text_validator(value: TypingAny) -> str:
@@ -472,83 +574,195 @@ def _classification_serializer(value: ClassificationValue | None) -> str | None:
     return None if value is None else str(value)
 
 
-def keyword(**kwargs: TypingAny) -> TypingAny:
-    """Create a non-empty string stored as an Elasticsearch keyword."""
-    coerce = kwargs.pop("coerce", True)
-    return _annotated(
-        str,
-        "Keyword",
-        validator=_keyword_validator(coerce=coerce),
-        default_when=_empty_or_none,
-        **kwargs,
-    )
-
-
-def emptyable_keyword(**kwargs: TypingAny) -> TypingAny:
-    """Create a keyword that distinguishes empty strings from null."""
-    return _annotated(
-        str | None,
-        "EmptyableKeyword",
-        validator=_emptyable_keyword_validator,
-        default_when=lambda value: value is None,
-        **kwargs,
-    )
-
-
-def upper_keyword(**kwargs: TypingAny) -> TypingAny:
-    """Create a keyword normalized to uppercase."""
-
-    def validate(value: TypingAny) -> str:
-        return _keyword_validator()(value).upper()
-
-    return _annotated(str, "UpperKeyword", validator=validate, default_when=_empty_or_none, **kwargs)
-
-
-def lower_keyword(**kwargs: TypingAny) -> TypingAny:
-    """Create a keyword normalized to lowercase."""
-
-    def validate(value: TypingAny) -> str:
-        return _keyword_validator()(value).lower()
-
-    return _annotated(str, "LowerKeyword", validator=validate, default_when=_empty_or_none, **kwargs)
-
-
-def case_insensitive_keyword(**kwargs: TypingAny) -> TypingAny:
-    """Create a keyword using the lowercase Elasticsearch normalizer."""
-    return _annotated(
-        str,
-        "CaseInsensitiveKeyword",
-        validator=_keyword_validator(),
-        default_when=_empty_or_none,
-        **kwargs,
-    )
-
-
-def any_field(**kwargs: TypingAny) -> TypingAny:
-    """Create an arbitrary, non-indexed value."""
-    kwargs["index"] = False
-    kwargs["store"] = False
-    return _annotated(TypingAny, "Any", **kwargs)
+Keyword: TypeAlias = Annotated[
+    str,
+    BeforeValidator(_keyword_validator(coerce=True)),
+    HowlerFieldMetadata(kind="Keyword"),
+]
+StrictKeyword: TypeAlias = Annotated[
+    str,
+    BeforeValidator(_keyword_validator(coerce=False)),
+    HowlerFieldMetadata(kind="Keyword"),
+]
+EmptyableKeyword: TypeAlias = Annotated[
+    str,
+    BeforeValidator(_emptyable_keyword_validator),
+    HowlerFieldMetadata(kind="EmptyableKeyword"),
+]
+UpperKeyword: TypeAlias = Annotated[
+    str,
+    BeforeValidator(_upper_keyword_validator),
+    HowlerFieldMetadata(kind="UpperKeyword"),
+]
+LowerKeyword: TypeAlias = Annotated[
+    str,
+    BeforeValidator(_lower_keyword_validator),
+    HowlerFieldMetadata(kind="LowerKeyword"),
+]
+CaseInsensitiveKeyword: TypeAlias = Annotated[
+    str,
+    BeforeValidator(_keyword_validator(coerce=True)),
+    HowlerFieldMetadata(kind="CaseInsensitiveKeyword"),
+]
+AnyField: TypeAlias = Annotated[
+    TypingAny,
+    HowlerFieldMetadata(kind="Any", index=False, store=False),
+]
+IP: TypeAlias = Annotated[
+    str | None,
+    BeforeValidator(_ip_validator),
+    PlainSerializer(_ip_serializer, return_type=TypingAny),
+    WithJsonSchema({"anyOf": [{"type": "string"}, {"type": "null"}]}, mode="serialization"),
+    HowlerFieldMetadata(kind="IP", options=(("validation_regex", IP_ONLY_REGEX.pattern),)),
+]
+Domain: TypeAlias = Annotated[
+    str | None,
+    BeforeValidator(_domain_validator(True)),
+    HowlerFieldMetadata(kind="Domain", options=(("strict", True),)),
+]
+Email: TypeAlias = Annotated[
+    str | None,
+    BeforeValidator(_email_validator),
+    HowlerFieldMetadata(kind="Email"),
+]
+URI: TypeAlias = Annotated[
+    str | None,
+    BeforeValidator(_uri_validator),
+    HowlerFieldMetadata(kind="URI"),
+]
+URIPath: TypeAlias = Annotated[
+    str,
+    BeforeValidator(_validated_keyword_validator(URI_PATH_REGEX)),
+    HowlerFieldMetadata(kind="URIPath", options=(("validation_regex", URI_PATH_REGEX),)),
+]
+MAC: TypeAlias = Annotated[
+    str,
+    BeforeValidator(_validated_keyword_validator(MAC_REGEX)),
+    HowlerFieldMetadata(kind="MAC", options=(("validation_regex", MAC_REGEX),)),
+]
+PhoneNumber: TypeAlias = Annotated[
+    str,
+    BeforeValidator(_validated_keyword_validator(PHONE_REGEX)),
+    HowlerFieldMetadata(kind="PhoneNumber", options=(("validation_regex", PHONE_REGEX),)),
+]
+SSDeepHash: TypeAlias = Annotated[
+    str,
+    BeforeValidator(_validated_keyword_validator(SSDEEP_REGEX)),
+    HowlerFieldMetadata(kind="SSDeepHash", options=(("validation_regex", SSDEEP_REGEX),)),
+]
+SHA1: TypeAlias = Annotated[
+    str,
+    BeforeValidator(_validated_keyword_validator(SHA1_REGEX)),
+    HowlerFieldMetadata(kind="SHA1", options=(("validation_regex", SHA1_REGEX),)),
+]
+SHA256: TypeAlias = Annotated[
+    str,
+    BeforeValidator(_validated_keyword_validator(SHA256_REGEX)),
+    HowlerFieldMetadata(kind="SHA256", options=(("validation_regex", SHA256_REGEX),)),
+]
+HowlerHash: TypeAlias = Annotated[
+    str,
+    BeforeValidator(_validated_keyword_validator(HOWLER_HASH_REGEX)),
+    HowlerFieldMetadata(kind="HowlerHash", options=(("validation_regex", HOWLER_HASH_REGEX),)),
+]
+MD5: TypeAlias = Annotated[
+    str,
+    BeforeValidator(_validated_keyword_validator(MD5_REGEX)),
+    HowlerFieldMetadata(kind="MD5", options=(("validation_regex", MD5_REGEX),)),
+]
+Platform: TypeAlias = Annotated[
+    str,
+    BeforeValidator(_validated_keyword_validator(PLATFORM_REGEX)),
+    HowlerFieldMetadata(kind="Platform", options=(("validation_regex", PLATFORM_REGEX),)),
+]
+Processor: TypeAlias = Annotated[
+    str,
+    BeforeValidator(_validated_keyword_validator(PROCESSOR_REGEX)),
+    HowlerFieldMetadata(kind="Processor", options=(("validation_regex", PROCESSOR_REGEX),)),
+]
+UUID: TypeAlias = Annotated[
+    str,
+    BeforeValidator(_uuid_validator),
+    HowlerFieldMetadata(kind="UUID"),
+    PydanticField(default_factory=get_random_id),
+]
+Text: TypeAlias = Annotated[
+    str,
+    BeforeValidator(_text_validator),
+    HowlerFieldMetadata(kind="Text"),
+]
+IndexText: TypeAlias = Annotated[
+    str,
+    BeforeValidator(str),
+    HowlerFieldMetadata(kind="IndexText"),
+]
+Integer: TypeAlias = Annotated[
+    int,
+    BeforeValidator(_integer_validator),
+    HowlerFieldMetadata(kind="Integer"),
+]
+Long: TypeAlias = Annotated[
+    int,
+    BeforeValidator(_integer_validator),
+    HowlerFieldMetadata(kind="Long"),
+]
+Float: TypeAlias = Annotated[
+    float,
+    BeforeValidator(_float_validator),
+    HowlerFieldMetadata(kind="Float"),
+]
+Boolean: TypeAlias = Annotated[
+    bool,
+    BeforeValidator(_boolean_validator),
+    HowlerFieldMetadata(kind="Boolean"),
+]
+Date: TypeAlias = Annotated[
+    datetime | None,
+    BeforeValidator(_date_validator),
+    PlainSerializer(_date_serializer, return_type=TypingAny),
+    WithJsonSchema(
+        {"anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]},
+        mode="serialization",
+    ),
+    HowlerFieldMetadata(kind="Date"),
+]
+Json: TypeAlias = Annotated[
+    str,
+    BeforeValidator(_json_validator),
+    HowlerFieldMetadata(kind="Json"),
+]
+Classification: TypeAlias = Annotated[
+    ClassificationValue,
+    BeforeValidator(_classification_validator(is_user_classification=False)),
+    PlainSerializer(_classification_serializer, return_type=str),
+    HowlerFieldMetadata(kind="Classification", options=(("is_user_classification", False),)),
+]
+UserClassification: TypeAlias = Annotated[
+    ClassificationValue,
+    BeforeValidator(_classification_validator(is_user_classification=True)),
+    PlainSerializer(_classification_serializer, return_type=str),
+    HowlerFieldMetadata(kind="Classification", options=(("is_user_classification", True),)),
+]
+ClassificationString: TypeAlias = Annotated[
+    str,
+    BeforeValidator(_classification_string_validator()),
+    HowlerFieldMetadata(kind="ClassificationString"),
+]
+FlattenedObject: TypeAlias = Annotated[
+    dict[str, Json],
+    BeforeValidator(_mapping_validator(FLATTENED_OBJECT_SANITIZER)),
+    HowlerFieldMetadata(kind="FlattenedObject"),
+]
+FlattenedListObject: TypeAlias = Annotated[
+    dict[str, list[Json]],
+    BeforeValidator(_mapping_validator(FLATTENED_OBJECT_SANITIZER)),
+    HowlerFieldMetadata(kind="FlattenedListObject"),
+]
 
 
 def validated_keyword(pattern: str | re.Pattern[str], **kwargs: TypingAny) -> TypingAny:
     """Create a keyword validated by a regular expression."""
     return _special_validated("ValidatedKeyword", re.compile(pattern).pattern, **kwargs)
-
-
-def ip(**kwargs: TypingAny) -> TypingAny:
-    """Create an IP-address field."""
-    return _annotated(
-        str | None,
-        "IP",
-        validator=_ip_validator,
-        serializers=(
-            PlainSerializer(_ip_serializer, return_type=TypingAny),
-            WithJsonSchema({"anyOf": [{"type": "string"}, {"type": "null"}]}, mode="serialization"),
-        ),
-        options={"validation_regex": IP_ONLY_REGEX.pattern},
-        **kwargs,
-    )
 
 
 def domain(*, strict: bool = True, **kwargs: TypingAny) -> TypingAny:
@@ -560,73 +774,6 @@ def domain(*, strict: bool = True, **kwargs: TypingAny) -> TypingAny:
         options={"strict": strict},
         **kwargs,
     )
-
-
-def email(**kwargs: TypingAny) -> TypingAny:
-    """Create a normalized email-address field."""
-    return _annotated(str | None, "Email", validator=_email_validator, **kwargs)
-
-
-def uri(**kwargs: TypingAny) -> TypingAny:
-    """Create a normalized URI field."""
-    return _annotated(str | None, "URI", validator=_uri_validator, **kwargs)
-
-
-def uri_path(**kwargs: TypingAny) -> TypingAny:
-    """Create a URI path field."""
-    return _special_validated("URIPath", URI_PATH_REGEX, **kwargs)
-
-
-def mac(**kwargs: TypingAny) -> TypingAny:
-    """Create a MAC-address field."""
-    return _special_validated("MAC", MAC_REGEX, **kwargs)
-
-
-def phone_number(**kwargs: TypingAny) -> TypingAny:
-    """Create a phone-number field."""
-    return _special_validated("PhoneNumber", PHONE_REGEX, **kwargs)
-
-
-def ssdeep_hash(**kwargs: TypingAny) -> TypingAny:
-    """Create an ssdeep fuzzy-hash field."""
-    return _annotated(
-        str,
-        "SSDeepHash",
-        validator=_validated_keyword_validator(SSDEEP_REGEX),
-        default_when=_falsy,
-        options={"validation_regex": SSDEEP_REGEX},
-        **kwargs,
-    )
-
-
-def sha1(**kwargs: TypingAny) -> TypingAny:
-    """Create a SHA-1 hash field."""
-    return _special_validated("SHA1", SHA1_REGEX, **kwargs)
-
-
-def sha256(**kwargs: TypingAny) -> TypingAny:
-    """Create a SHA-256 hash field."""
-    return _special_validated("SHA256", SHA256_REGEX, **kwargs)
-
-
-def howler_hash(**kwargs: TypingAny) -> TypingAny:
-    """Create a variable-length Howler hash field."""
-    return _special_validated("HowlerHash", HOWLER_HASH_REGEX, **kwargs)
-
-
-def md5(**kwargs: TypingAny) -> TypingAny:
-    """Create an MD5 hash field."""
-    return _special_validated("MD5", MD5_REGEX, **kwargs)
-
-
-def platform(**kwargs: TypingAny) -> TypingAny:
-    """Create a supported-platform field."""
-    return _special_validated("Platform", PLATFORM_REGEX, **kwargs)
-
-
-def processor(**kwargs: TypingAny) -> TypingAny:
-    """Create a supported-processor field."""
-    return _special_validated("Processor", PROCESSOR_REGEX, **kwargs)
 
 
 def _special_validated(
@@ -657,88 +804,6 @@ def enum(values: Iterable[TypingAny] | type[PyEnum], **kwargs: TypingAny) -> Typ
     )
 
 
-def uuid(**kwargs: TypingAny) -> TypingAny:
-    """Create a string identifier with a generated default."""
-
-    def validate(value: TypingAny) -> str:
-        return str(get_random_id() if value is None else value)
-
-    if not kwargs.get("optional") and "default" not in kwargs:
-        kwargs.setdefault("default_factory", get_random_id)
-    return _annotated(str, "UUID", validator=validate, **kwargs)
-
-
-def text(**kwargs: TypingAny) -> TypingAny:
-    """Create non-empty analyzed text."""
-    return _annotated(str, "Text", validator=_text_validator, default_when=_falsy, **kwargs)
-
-
-def index_text(**kwargs: TypingAny) -> TypingAny:
-    """Create analyzed text without non-empty validation."""
-    return _annotated(str, "IndexText", validator=str, **kwargs)
-
-
-def integer(*, min: int | None = None, max: int | None = None, **kwargs: TypingAny) -> TypingAny:
-    """Create a bounded 32-bit Elasticsearch integer."""
-    return _bounded_integer("Integer", min=min, max=max, **kwargs)
-
-
-def long(*, min: int | None = None, max: int | None = None, **kwargs: TypingAny) -> TypingAny:
-    """Create a bounded 64-bit Elasticsearch integer."""
-    return _bounded_integer("Long", min=min, max=max, **kwargs)
-
-
-def _bounded_integer(
-    kind: str,
-    *,
-    min: int | None,
-    max: int | None,
-    **kwargs: TypingAny,
-) -> TypingAny:
-    constraints = {key: value for key, value in {"ge": min, "le": max}.items() if value is not None}
-    return _annotated(
-        int,
-        kind,
-        validator=_integer_validator,
-        default_when=_empty_or_none,
-        constraints=constraints,
-        options={"min": min, "max": max},
-        **kwargs,
-    )
-
-
-def float_field(**kwargs: TypingAny) -> TypingAny:
-    """Create a floating-point field."""
-    return _annotated(float, "Float", validator=_float_validator, default_when=_falsy, **kwargs)
-
-
-def boolean(**kwargs: TypingAny) -> TypingAny:
-    """Create a boolean field using legacy truthiness coercion."""
-    return _annotated(bool, "Boolean", validator=_boolean_validator, **kwargs)
-
-
-def date(**kwargs: TypingAny) -> TypingAny:
-    """Create a UTC-aware Elasticsearch date field."""
-    return _annotated(
-        datetime | None,
-        "Date",
-        validator=_date_validator,
-        serializers=(
-            PlainSerializer(_date_serializer, return_type=TypingAny),
-            WithJsonSchema(
-                {"anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]},
-                mode="serialization",
-            ),
-        ),
-        **kwargs,
-    )
-
-
-def json_field(**kwargs: TypingAny) -> TypingAny:
-    """Create a JSON-encoded keyword field."""
-    return _annotated(str, "Json", validator=_json_validator, **kwargs)
-
-
 def classification(
     *,
     is_user_classification: bool = False,
@@ -746,15 +811,13 @@ def classification(
     **kwargs: TypingAny,
 ) -> TypingAny:
     """Create a normalized classification value."""
-    engine = loader.get_classification(yml_config=yml_config)
-
-    def validate(value: TypingAny) -> ClassificationValue:
-        return ClassificationValue(engine, value, is_user_classification)
-
     return _annotated(
         ClassificationValue,
         "Classification",
-        validator=validate,
+        validator=_classification_validator(
+            is_user_classification=is_user_classification,
+            yml_config=yml_config,
+        ),
         serializers=(
             PlainSerializer(
                 _classification_serializer,
@@ -768,19 +831,10 @@ def classification(
 
 def classification_string(*, yml_config: str | None = None, **kwargs: TypingAny) -> TypingAny:
     """Create a validated classification stored as a plain string."""
-    engine = loader.get_classification(yml_config=yml_config)
-
-    def validate(value: TypingAny) -> str:
-        if not value:
-            raise ValueError("Empty classification is not allowed without defaults")
-        if not engine.is_valid(value):
-            raise ValueError(f"Invalid classification: {value}")
-        return str(value)
-
     return _annotated(
         str,
         "ClassificationString",
-        validator=validate,
+        validator=_classification_string_validator(yml_config=yml_config),
         default_when=_falsy,
         **kwargs,
     )
@@ -797,26 +851,6 @@ def mapping(child_type: TypingAny, **kwargs: TypingAny) -> TypingAny:
         types.GenericAlias(dict, (str, child_type)),
         "Mapping",
         validator=_mapping_validator(sanitizer),
-        **kwargs,
-    )
-
-
-def flattened_object(**kwargs: TypingAny) -> TypingAny:
-    """Create a dotted-key object whose values are JSON encoded."""
-    return _annotated(
-        types.GenericAlias(dict, (str, json_field())),
-        "FlattenedObject",
-        validator=_mapping_validator(FLATTENED_OBJECT_SANITIZER),
-        **kwargs,
-    )
-
-
-def flattened_list_object(**kwargs: TypingAny) -> TypingAny:
-    """Create a dotted-key object containing lists of JSON values."""
-    return _annotated(
-        types.GenericAlias(dict, (str, types.GenericAlias(list, (json_field(),)))),
-        "FlattenedListObject",
-        validator=_mapping_validator(FLATTENED_OBJECT_SANITIZER),
         **kwargs,
     )
 

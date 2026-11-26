@@ -7,7 +7,7 @@ from elastic_transport import ApiResponseMeta
 from flask import Flask
 
 from howler.datastore.exceptions import SearchException, SearchRetryException
-from howler.models.fields import text
+from howler.models.fields import Text
 from howler.models.registry import field_metadata
 from howler.models.user import User
 from howler.services import fuzzy_service
@@ -37,7 +37,7 @@ class TestClassifyBoostedFields:
 
         _classify_boosted_fields.cache_clear()
         monkeypatch.setattr(fuzzy_service, "FIELD_BOOSTS", {"hit": {"fake.text": 2}})
-        metadata = field_metadata(text())
+        metadata = field_metadata(Text)
         monkeypatch.setattr(
             fuzzy_service.model_registry,
             "flat_fields",

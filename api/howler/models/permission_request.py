@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, enum, keyword, register_model
+from howler.models import HowlerEmbeddedModel, Keyword, enum, register_model
 
 
 @register_model(
@@ -16,5 +16,5 @@ class PermissionRequest(HowlerEmbeddedModel):
 
     privilege: enum(values=["admins", "members", "owner"])
     """The permission level to update"""
-    user_id: keyword()
+    user_id: Keyword
     """The user ID to grant or revoke for the selected privilege."""

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, integer, keyword, register_model
+from howler.models import HowlerEmbeddedModel, Integer, Keyword, register_model
 
 
 @register_model(
@@ -17,7 +17,7 @@ from howler.models import HowlerEmbeddedModel, integer, keyword, register_model
 class AS(HowlerEmbeddedModel):
     """Fields describing an autonomous system (Internet routing prefix)."""
 
-    number: integer(optional=True)
+    number: Integer | None = None
     """Unique number allocated to the autonomous system"""
-    organization_name: keyword(optional=True)
+    organization_name: Keyword | None = None
     """Organization name"""

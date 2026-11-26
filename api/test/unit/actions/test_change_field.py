@@ -9,7 +9,7 @@ from howler.actions import change_field
 from howler.datastore import howler_store
 from howler.models import ModelExtensionRegistry, model_extensions
 from howler.models.event import Event
-from howler.models.fields import keyword
+from howler.models.fields import Keyword
 from howler.models.hit import Hit
 from howler.plugins.config import BasePluginConfig
 
@@ -22,7 +22,7 @@ def isolated_models():
 
 def test_change_field_accepts_finalized_hit_extension(monkeypatch, isolated_models):
     field = "plugin_extension"
-    model_extensions.declare(Hit, field, keyword(), plugin="test-plugin")
+    model_extensions.declare(Hit, field, Keyword, plugin="test-plugin")
     hit_model = model_extensions.finalize(Hit)
 
     hit_collection = SimpleNamespace(model_class=hit_model, update_by_query=MagicMock())
@@ -44,13 +44,13 @@ def test_change_field_accepts_finalized_hit_extension(monkeypatch, isolated_mode
 
 def test_cold_action_model_uses_configured_hooks_without_touching_pending_declarations(monkeypatch, isolated_models):
     def declare_hit():
-        model_extensions.declare(Hit, "action_field", keyword(), plugin="action-plugin")
+        model_extensions.declare(Hit, "action_field", Keyword, plugin="action-plugin")
 
     plugin = BasePluginConfig(name="action-plugin", modules={"models": {"declare_extensions": {"hit": declare_hit}}})
     monkeypatch.setattr(howler_store, "get_plugins", lambda: [plugin])
     declare_hit()  # Startup has already declared this hook's field, but not finalized Hit.
-    model_extensions.declare(Hit, "not_configured", keyword(), plugin="other")
-    model_extensions.declare(Event, "other_field", keyword(), plugin="other")
+    model_extensions.declare(Hit, "not_configured", Keyword, plugin="other")
+    model_extensions.declare(Event, "other_field", Keyword, plugin="other")
     pending = {target: model_extensions.pending(target) for target in (Hit, Event)}
 
     for _ in range(2):
@@ -69,7 +69,7 @@ def test_cold_discovery_preserves_another_threads_startup_model(monkeypatch):
     declared, resume = ThreadEvent(), ThreadEvent()
 
     def declare_hit():
-        registry.declare(Hit, "discovery_field", keyword(), plugin="action-plugin")
+        registry.declare(Hit, "discovery_field", Keyword, plugin="action-plugin")
         declared.set()
         assert resume.wait(timeout=10)
 
@@ -80,7 +80,7 @@ def test_cold_discovery_preserves_another_threads_startup_model(monkeypatch):
         try:
             assert declared.wait(timeout=10)
             assert not registry.pending(Hit)
-            registry.declare(Hit, "startup_field", keyword(), plugin="startup")
+            registry.declare(Hit, "startup_field", Keyword, plugin="startup")
             installed = registry.finalize(Hit)
         finally:
             resume.set()

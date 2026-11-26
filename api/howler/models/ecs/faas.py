@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, boolean, enum, keyword, register_model
+from howler.models import Boolean, HowlerEmbeddedModel, Keyword, enum, register_model
 
 TRIGGER_TYPES = ["http", "pubsub", "datasource", "timer", "other"]
 
@@ -11,7 +11,7 @@ TRIGGER_TYPES = ["http", "pubsub", "datasource", "timer", "other"]
 class Trigger(HowlerEmbeddedModel):
     """Details about the function trigger."""
 
-    request_id: keyword(optional=True)
+    request_id: Keyword | None = None
     """The ID of the trigger request , message, event, etc."""
     type: enum(values=TRIGGER_TYPES, optional=True)
     """The trigger for the function execution."""
@@ -27,15 +27,15 @@ class Trigger(HowlerEmbeddedModel):
 class FAAS(HowlerEmbeddedModel):
     """Function-as-a-service (FaaS) fields."""
 
-    coldstart: boolean(optional=True)
+    coldstart: Boolean | None = None
     """Boolean value indicating a cold start of a function."""
-    execution: keyword(optional=True)
+    execution: Keyword | None = None
     """The execution ID of the current function execution."""
-    id: keyword(optional=True)
+    id: Keyword | None = None
     """The unique identifier of a serverless function."""
-    name: keyword(optional=True)
+    name: Keyword | None = None
     """The name of a serverless function."""
     trigger: Trigger | None = None
     """Details about the function trigger."""
-    version: keyword(optional=True)
+    version: Keyword | None = None
     """The version of a serverless function."""

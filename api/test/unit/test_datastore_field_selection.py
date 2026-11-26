@@ -1,31 +1,32 @@
 """Tests for schema-aware stored source selection and projection."""
 
 from types import SimpleNamespace
+from typing import Annotated
 
 import pytest
 
 from howler.datastore.exceptions import SearchException
 from howler.datastore.utils import project_stored_fields, select_stored_fields
-from howler.models import HowlerEmbeddedModel, HowlerESModel, keyword, mapping, register_model
+from howler.models import HowlerEmbeddedModel, HowlerESModel, Keyword, mapping, metadata, register_model
 from howler.models.registry import model_registry
 
 
 @register_model(index=True, store=True, embedded=True, id_field="name")
 class _Entry(HowlerEmbeddedModel):
-    name: keyword()
-    secret: keyword(store=False)
+    name: Keyword
+    secret: Annotated[Keyword, metadata(store=False)]
 
 
 @register_model(index=True, store=True, embedded=True, id_field="labels")
 class _Container(HowlerEmbeddedModel):
-    labels: mapping(keyword())
+    labels: mapping(Keyword)
 
 
 @register_model(index=True, store=True, id_field="name")
 class _SelectionModel(HowlerESModel):
-    name: keyword()
-    not_stored: keyword(store=False)
-    labels: mapping(keyword())
+    name: Keyword
+    not_stored: Annotated[Keyword, metadata(store=False)]
+    labels: mapping(Keyword)
     container: _Container | None = None
     entries: list[_Entry] = []
 

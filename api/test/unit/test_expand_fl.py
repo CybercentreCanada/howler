@@ -3,24 +3,24 @@
 from unittest.mock import MagicMock, patch
 
 from howler.datastore.collection import ESCollection
-from howler.models import HowlerEmbeddedModel, HowlerESModel, fields, register_model
+from howler.models import HowlerEmbeddedModel, HowlerESModel, Keyword, register_model
 
 
 @register_model(index=True, store=True, embedded=True, id_field="field_a")
 class _Inner(HowlerEmbeddedModel):
     """Simple nested model used for wildcard expansion tests."""
 
-    field_a: fields.keyword()
-    field_b: fields.keyword()
+    field_a: Keyword
+    field_b: Keyword
 
 
 @register_model(index=True, store=True, id_field="id")
 class _TestModel(HowlerESModel):
     """Top-level model used for wildcard expansion tests."""
 
-    id: fields.keyword()
-    prefix_one: fields.keyword()
-    prefix_two: fields.keyword()
+    id: Keyword
+    prefix_one: Keyword
+    prefix_two: Keyword
     nested: _Inner
 
 

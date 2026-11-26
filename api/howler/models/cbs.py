@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, email, keyword, register_model
+from howler.models import Email, HowlerEmbeddedModel, Keyword, register_model
 
 
 @register_model(index=True, store=True, embedded=True)
 class SharepointUser(HowlerEmbeddedModel):
     """A Sharepoint user reference."""
 
-    email: email(optional=True)
+    email: Email | None = None
     """The email of the sharepoint user associated with this item."""
-    full_name: keyword(optional=True)
+    full_name: Keyword | None = None
     """The full name of the sharepoint user associated with this item."""
-    id: keyword(optional=True)
+    id: Keyword | None = None
     """The id of the sharepoint user associated with this item."""
 
 
@@ -21,9 +21,9 @@ class SharepointUser(HowlerEmbeddedModel):
 class SharepointData(HowlerEmbeddedModel):
     """Sharepoint application/user metadata."""
 
-    application: keyword(optional=True)
+    application: Keyword | None = None
     """The associated application."""
-    user: keyword(optional=True)
+    user: Keyword | None = None
     """The associated application."""
 
 

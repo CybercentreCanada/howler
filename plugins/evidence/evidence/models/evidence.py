@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from howler.models import HowlerEmbeddedModel, date, emptyable_keyword, keyword, mapping, metadata, register_model
+from howler.models import Date, EmptyableKeyword, HowlerEmbeddedModel, Keyword, mapping, metadata, register_model
 from howler.models.ecs.agent import Agent
 from howler.models.ecs.client import Client
 from howler.models.ecs.cloud import Cloud
@@ -41,13 +41,13 @@ class Evidence(HowlerEmbeddedModel):
     """Evidence fields add a list of additional ECS objects."""
 
     # Base Fields
-    timestamp: date(default="NOW", reference=ECS_REFERENCE)
+    timestamp: Annotated[Date, metadata(default="NOW", reference=ECS_REFERENCE)]
     """Date/time when the event originated."""
-    labels: mapping(keyword(), default={}, reference=ECS_REFERENCE)
+    labels: mapping(Keyword, default={}, reference=ECS_REFERENCE)
     """Custom key/value pairs."""
-    tags: Annotated[list[keyword()], metadata(reference=ECS_REFERENCE)] = []
+    tags: Annotated[list[Keyword], metadata(reference=ECS_REFERENCE)] = []
     """List of keywords used to tag each event."""
-    message: emptyable_keyword(default="", reference=ECS_REFERENCE)
+    message: Annotated[EmptyableKeyword, metadata(reference=ECS_REFERENCE)] = ""
     """Log message for log events, optimized for viewing in a log viewer"""
 
     # Field Sets
