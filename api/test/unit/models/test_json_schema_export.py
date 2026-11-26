@@ -21,7 +21,6 @@ from howler.models import (
     list_field,
     mapping,
     model_extensions,
-    optional,
 )
 from howler.models.action import Action
 from howler.models.case import Case
@@ -167,7 +166,7 @@ def test_public_policy_follows_embedded_model_identity_without_its_root():
 
 def test_any_output_omits_null_properties_and_mapping_values_but_retains_null_array_items():
     registry = ModelExtensionRegistry()
-    registry.declare(Case, "payload", optional(any_field()), plugin="example")
+    registry.declare(Case, "payload", any_field(optional=True), plugin="example")
     registry.declare(Case, "values", mapping(any_field()), plugin="example")
     registry.declare(Case, "items_by_key", mapping(list_field(any_field())), plugin="example")
     model = registry.finalize(Case)
@@ -218,7 +217,7 @@ def test_literal_mapping_values_drop_only_null():
 
 def test_supplied_models_keep_exact_plugin_profile_and_container_null_semantics():
     class PluginData(HowlerEmbeddedModel):
-        addresses: optional(list_field(ip()))
+        addresses: list_field(ip(), optional=True)
         by_name: mapping(ip(), default={})
 
     extensions = ModelExtensionRegistry()

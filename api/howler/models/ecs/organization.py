@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, keyword, optional, register_model
+from howler.models import HowlerEmbeddedModel, keyword, register_model
 
 
 @register_model(
@@ -18,5 +18,5 @@ class Organization(HowlerEmbeddedModel):
     The data is associated with.
     """
 
-    id: optional(keyword(), description="Unique identifier for the organization.")
+    id: keyword(optional=True, description="Unique identifier for the organization.")
     name: keyword(description="Organization name.")

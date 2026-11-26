@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, compound, keyword, list_field, mapping, optional, register_model
+from howler.models import HowlerEmbeddedModel, compound, keyword, list_field, mapping, register_model
 
 
 @register_model(index=True, store=True, description="Container hashes information.", embedded=True)
@@ -16,8 +16,8 @@ class Hash(HowlerEmbeddedModel):
 class Image(HowlerEmbeddedModel):
     """Information about the container Image."""
 
-    hash: optional(compound(Hash), description="Container hashes information.")
-    name: optional(keyword(), description="Name of the image the container was built on.")
+    hash: compound(Hash, optional=True, description="Container hashes information.")
+    name: keyword(optional=True, description="Name of the image the container was built on.")
     tag: list_field(keyword(), default=[], description="Container image tags.")
 
 
@@ -30,8 +30,8 @@ class Image(HowlerEmbeddedModel):
 class Container(HowlerEmbeddedModel):
     """Container metadata."""
 
-    id: optional(keyword(), description="Unique container id.")
-    image: optional(compound(Image), description="Cloud account information.")
-    labels: optional(mapping(keyword()), description="Image labels.")
-    name: optional(keyword(), description="Container name.")
-    runtime: optional(keyword(), description="Runtime managing this container.")
+    id: keyword(optional=True, description="Unique container id.")
+    image: compound(Image, optional=True, description="Cloud account information.")
+    labels: mapping(keyword(), optional=True, description="Image labels.")
+    name: keyword(optional=True, description="Container name.")
+    runtime: keyword(optional=True, description="Runtime managing this container.")

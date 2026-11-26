@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, integer, keyword, optional, register_model
+from howler.models import HowlerEmbeddedModel, integer, keyword, register_model
 
 
 @register_model(
@@ -18,5 +18,5 @@ from howler.models import HowlerEmbeddedModel, integer, keyword, optional, regis
 class Interface(HowlerEmbeddedModel):
     """Interface fields record ingress and egress interface information reported by an observer."""
 
-    id: optional(integer(), description="Interface ID as reported by an observer (typically SNMP interface ID).")
-    name: optional(keyword(), description="Name of interface")
+    id: integer(optional=True, description="Interface ID as reported by an observer (typically SNMP interface ID).")
+    name: keyword(optional=True, description="Name of interface")

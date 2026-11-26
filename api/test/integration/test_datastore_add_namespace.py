@@ -20,7 +20,7 @@ class ExtensionModel(HowlerEmbeddedModel):
 @pytest.fixture(scope="module")
 def collection():
     registry = ModelExtensionRegistry()
-    registry.declare(Hit, "example", fields.optional(fields.compound(ExtensionModel)), plugin="test")
+    registry.declare(Hit, "example", fields.compound(ExtensionModel, optional=True), plugin="test")
     model = registry.finalize(Hit)
     store = ESStore()
     name = f"extension-test-{uuid4().hex}"

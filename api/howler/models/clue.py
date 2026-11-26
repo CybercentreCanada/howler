@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, compound, keyword, list_field, model_extensions, optional, register_model
+from howler.models import HowlerEmbeddedModel, compound, keyword, list_field, model_extensions, register_model
 from howler.models.hit import Hit
 
 
@@ -40,6 +40,6 @@ def declare_hit_extension() -> None:
     model_extensions.declare(
         Hit,
         "clue",
-        optional(compound(Clue), description="Clue-specific overrides for this alert"),
+        compound(Clue, optional=True, description="Clue-specific overrides for this alert"),
         plugin=PLUGIN_NAME,
     )

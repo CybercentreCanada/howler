@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, keyword, optional, register_model
+from howler.models import HowlerEmbeddedModel, keyword, register_model
 
 
 @register_model(
@@ -18,7 +18,7 @@ class Agent(HowlerEmbeddedModel):
     If any, that collects, detects, or observes events on a host, or takes measurements on a host.
     """
 
-    id: optional(keyword(), description="Unique identifier of this agent (if one exists).")
-    name: optional(keyword(), description="Custom name of the agent.")
-    type: optional(keyword(), description="Type of the agent.")
-    version: optional(keyword(), description="Version of the agent.")
+    id: keyword(optional=True, description="Unique identifier of this agent (if one exists).")
+    name: keyword(optional=True, description="Custom name of the agent.")
+    type: keyword(optional=True, description="Type of the agent.")
+    version: keyword(optional=True, description="Version of the agent.")

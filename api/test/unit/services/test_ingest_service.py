@@ -14,7 +14,6 @@ from howler.models import (
     list_field,
     mapping,
     model_extensions,
-    optional,
 )
 from howler.models.event import Event
 from howler.models.hit import Hit
@@ -22,9 +21,9 @@ from howler.services import event_service, hit_service, ingest_service
 
 
 class Entry(HowlerEmbeddedModel):
-    value: optional(keyword())
-    count: optional(integer())
-    payload: optional(json_field())
+    value: keyword(optional=True)
+    count: integer(optional=True)
+    payload: json_field(optional=True)
 
 
 @pytest.fixture(params=["event", "hit"])
@@ -38,7 +37,7 @@ def convert(request, monkeypatch):
             target, "grouped_lists", mapping(list_field(compound(Entry)), default={}, index=False), plugin="example"
         )
         model_extensions.declare(target, "scalar_map", mapping(keyword(), default={}), plugin="example")
-        model_extensions.declare(target, "payload", optional(json_field()), plugin="example")
+        model_extensions.declare(target, "payload", json_field(optional=True), plugin="example")
         model_extensions.declare(target, "json_list", list_field(json_field(), default=[]), plugin="example")
         model_extensions.declare(target, "json_map", mapping(json_field(), default={}), plugin="example")
         model_extensions.declare(
@@ -177,9 +176,9 @@ def test_ingest_opaque_json_still_validates_containers(convert, ignore_extra_val
 @pytest.mark.parametrize("replace", [False, True])
 def test_overwrite_retains_stored_and_supplied_empty_compounds(flatten_patch_mappings, replace):
     class ExtendedHit(Hit):
-        stored_plugin: optional(compound(Entry))
-        new_plugin: optional(compound(Entry))
-        absent_list: optional(list_field(compound(Entry)))
+        stored_plugin: compound(Entry, optional=True)
+        new_plugin: compound(Entry, optional=True)
+        absent_list: list_field(compound(Entry), optional=True)
         populated: compound(Entry)
 
     stored = ExtendedHit.model_validate(

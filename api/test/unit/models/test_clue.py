@@ -4,13 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from howler.models import (
-    HowlerModelValidationError,
-    ModelExtensionRegistry,
-    compound,
-    model_registry,
-    optional,
-)
+from howler.models import HowlerModelValidationError, ModelExtensionRegistry, compound, model_registry
 from howler.models.clue import Clue, TypeMap
 from howler.models.hit import Hit
 
@@ -92,7 +86,7 @@ class TestHitClueExtension:
 
     def test_optional_extension_validates_serializes_and_maps(self) -> None:
         registry = ModelExtensionRegistry()
-        registry.declare(Hit, "clue", optional(compound(Clue)), plugin="clue")
+        registry.declare(Hit, "clue", compound(Clue, optional=True), plugin="clue")
         hit_model = registry.finalize(Hit)
         hit_data = {"howler": {"id": "hit-1", "analytic": "test", "hash": "a"}}
 

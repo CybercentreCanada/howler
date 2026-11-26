@@ -12,7 +12,6 @@ from howler.models import (
     list_field,
     long,
     mapping,
-    optional,
     register_model,
 )
 from howler.models.ecs.code_signature import CodeSignature
@@ -25,9 +24,9 @@ from howler.models.ecs.user import ShortUser
 class CharDevice(HowlerEmbeddedModel):
     """Information about the char device."""
 
-    major: optional(integer(), description="The major number identifies the driver associated with the device.")
-    minor: optional(
-        integer(),
+    major: integer(optional=True, description="The major number identifies the driver associated with the device.")
+    minor: integer(
+        optional=True,
         description="The minor number is used only by the driver specified by the major number; other parts of "
         "the kernel don't use it, and merely pass it along to the driver.",
     )
@@ -37,144 +36,150 @@ class CharDevice(HowlerEmbeddedModel):
 class TTY(HowlerEmbeddedModel):
     """Information about the controlling TTY device."""
 
-    char_device: optional(compound(CharDevice), description="Information about the char device.")
+    char_device: compound(CharDevice, optional=True, description="Information about the char device.")
 
 
 @register_model(index=True, store=True, description="Thread Information.", embedded=True)
 class Thread(HowlerEmbeddedModel):
     """Thread Information."""
 
-    id: optional(integer(), description="Thread ID.")
-    name: optional(keyword(), description="Thread name.")
+    id: integer(optional=True, description="Thread ID.")
+    name: keyword(optional=True, description="Thread name.")
 
 
 @register_model(index=True, store=True, description="Entry Meta-Information.", embedded=True)
 class EntryMeta(HowlerEmbeddedModel):
     """Entry Meta-Information."""
 
-    type: optional(keyword(), description="SESSIONNAME from Process Environment Variable")
+    type: keyword(optional=True, description="SESSIONNAME from Process Environment Variable")
 
 
 @register_model(index=True, store=True, description="These fields contain information about a process.", embedded=True)
 class ParentParentProcess(HowlerEmbeddedModel):
     """These fields contain information about a process."""
 
-    args: optional(
-        list_field(keyword()),
+    args: list_field(
+        keyword(),
+        optional=True,
         description="Array of process arguments, starting with the absolute path to the executable.",
     )
-    args_count: optional(integer(), description="Length of the process.args array.")
-    code_signature: optional(compound(CodeSignature), description="Information about binary code signatures.")
-    command_line: optional(
-        keyword(),
+    args_count: integer(optional=True, description="Length of the process.args array.")
+    code_signature: compound(CodeSignature, optional=True, description="Information about binary code signatures.")
+    command_line: keyword(
+        optional=True,
         description="Full command line that started the process, including the absolute path to the "
         "executable, and all arguments.",
     )
-    end: optional(date(), description="The time the process ended.")
-    entity_id: optional(keyword(), description="OID Hash of the process.")
-    entry_meta: optional(compound(EntryMeta), description="Process Meta Information.")
-    env_vars: optional(
-        mapping(keyword()),
+    end: date(optional=True, description="The time the process ended.")
+    entity_id: keyword(optional=True, description="OID Hash of the process.")
+    entry_meta: compound(EntryMeta, optional=True, description="Process Meta Information.")
+    env_vars: mapping(
+        keyword(),
+        optional=True,
         description="Environment variables (env_vars) set at the time of the event. May be filtered to "
         "protect sensitive information.",
     )
-    executable: optional(keyword(), description="Absolute path to the process executable.")
-    exit_code: optional(integer(), description="The exit code of the process, if this is a termination event.")
-    hash: optional(compound(Hashes), description="Hashes, usually file hashes")
-    interactive: optional(boolean(), description="Whether the process is connected to an interactive shell.")
-    name: optional(keyword(), description="Process name.")
-    pe: optional(compound(PE), description="Windows Portable Executable (PE) metadata.")
-    pid: optional(long(), description="Process id.")
-    same_as_process: optional(
-        boolean(),
+    executable: keyword(optional=True, description="Absolute path to the process executable.")
+    exit_code: integer(optional=True, description="The exit code of the process, if this is a termination event.")
+    hash: compound(Hashes, optional=True, description="Hashes, usually file hashes")
+    interactive: boolean(optional=True, description="Whether the process is connected to an interactive shell.")
+    name: keyword(optional=True, description="Process name.")
+    pe: compound(PE, optional=True, description="Windows Portable Executable (PE) metadata.")
+    pid: long(optional=True, description="Process id.")
+    same_as_process: boolean(
+        optional=True,
         description="This boolean is used to identify if a leader process is the same as the top level process.",
     )
-    start: optional(date(), description="The time the process started.")
-    title: optional(keyword(), description="Process title.")
-    uptime: optional(integer(), description="Seconds the process has been up.")
-    user: optional(compound(ShortUser), description="The effective user (euid).")
-    working_directory: optional(keyword(), description="The working directory of the process.")
+    start: date(optional=True, description="The time the process started.")
+    title: keyword(optional=True, description="Process title.")
+    uptime: integer(optional=True, description="Seconds the process has been up.")
+    user: compound(ShortUser, optional=True, description="The effective user (euid).")
+    working_directory: keyword(optional=True, description="The working directory of the process.")
 
 
 @register_model(index=True, store=True, description="These fields contain information about a process.", embedded=True)
 class ParentProcess(HowlerEmbeddedModel):
     """These fields contain information about a process."""
 
-    args: optional(
-        list_field(keyword()),
+    args: list_field(
+        keyword(),
+        optional=True,
         description="Array of process arguments, starting with the absolute path to the executable.",
     )
-    args_count: optional(integer(), description="Length of the process.args array.")
-    code_signature: optional(compound(CodeSignature), description="Information about binary code signatures.")
-    command_line: optional(
-        keyword(),
+    args_count: integer(optional=True, description="Length of the process.args array.")
+    code_signature: compound(CodeSignature, optional=True, description="Information about binary code signatures.")
+    command_line: keyword(
+        optional=True,
         description="Full command line that started the process, including the absolute path to the "
         "executable, and all arguments.",
     )
-    end: optional(date(), description="The time the process ended.")
-    entity_id: optional(keyword(), description="OID Hash of the process.")
-    entry_meta: optional(compound(EntryMeta), description="Process Meta Information.")
-    env_vars: optional(
-        mapping(keyword()),
+    end: date(optional=True, description="The time the process ended.")
+    entity_id: keyword(optional=True, description="OID Hash of the process.")
+    entry_meta: compound(EntryMeta, optional=True, description="Process Meta Information.")
+    env_vars: mapping(
+        keyword(),
+        optional=True,
         description="Environment variables (env_vars) set at the time of the event. May be filtered to "
         "protect sensitive information.",
     )
-    executable: optional(keyword(), description="Absolute path to the process executable.")
-    exit_code: optional(integer(), description="The exit code of the process, if this is a termination event.")
-    hash: optional(compound(Hashes), description="Hashes, usually file hashes")
-    interactive: optional(boolean(), description="Whether the process is connected to an interactive shell.")
-    name: optional(keyword(), description="Process name.")
-    parent: optional(compound(ParentParentProcess), description="Information about the parent process.")
-    pe: optional(compound(PE), description="Windows Portable Executable (PE) metadata.")
-    pid: optional(long(), description="Process id.")
-    same_as_process: optional(
-        boolean(),
+    executable: keyword(optional=True, description="Absolute path to the process executable.")
+    exit_code: integer(optional=True, description="The exit code of the process, if this is a termination event.")
+    hash: compound(Hashes, optional=True, description="Hashes, usually file hashes")
+    interactive: boolean(optional=True, description="Whether the process is connected to an interactive shell.")
+    name: keyword(optional=True, description="Process name.")
+    parent: compound(ParentParentProcess, optional=True, description="Information about the parent process.")
+    pe: compound(PE, optional=True, description="Windows Portable Executable (PE) metadata.")
+    pid: long(optional=True, description="Process id.")
+    same_as_process: boolean(
+        optional=True,
         description="This boolean is used to identify if a leader process is the same as the top level process.",
     )
-    start: optional(date(), description="The time the process started.")
-    title: optional(keyword(), description="Process title.")
-    uptime: optional(integer(), description="Seconds the process has been up.")
-    user: optional(compound(ShortUser), description="The effective user (euid).")
-    working_directory: optional(keyword(), description="The working directory of the process.")
+    start: date(optional=True, description="The time the process started.")
+    title: keyword(optional=True, description="Process title.")
+    uptime: integer(optional=True, description="Seconds the process has been up.")
+    user: compound(ShortUser, optional=True, description="The effective user (euid).")
+    working_directory: keyword(optional=True, description="The working directory of the process.")
 
 
 @register_model(index=True, store=True, description="These fields contain information about a process.", embedded=True)
 class Process(HowlerEmbeddedModel):
     """These fields contain information about a process."""
 
-    args: optional(
-        list_field(keyword()),
+    args: list_field(
+        keyword(),
+        optional=True,
         description="Array of process arguments, starting with the absolute path to the executable.",
     )
-    args_count: optional(integer(), description="Length of the process.args array.")
-    code_signature: optional(compound(CodeSignature), description="Information about binary code signatures.")
-    command_line: optional(
-        keyword(),
+    args_count: integer(optional=True, description="Length of the process.args array.")
+    code_signature: compound(CodeSignature, optional=True, description="Information about binary code signatures.")
+    command_line: keyword(
+        optional=True,
         description="Full command line that started the process, including the absolute path to the "
         "executable, and all arguments.",
     )
-    end: optional(date(), description="The time the process ended.")
-    entity_id: optional(keyword(), description="OID Hash of the process.")
-    entry_meta: optional(compound(EntryMeta), description="Process Meta Information.")
-    env_vars: optional(
-        mapping(keyword()),
+    end: date(optional=True, description="The time the process ended.")
+    entity_id: keyword(optional=True, description="OID Hash of the process.")
+    entry_meta: compound(EntryMeta, optional=True, description="Process Meta Information.")
+    env_vars: mapping(
+        keyword(),
+        optional=True,
         description="Environment variables (env_vars) set at the time of the event. May be filtered to "
         "protect sensitive information.",
     )
-    executable: optional(keyword(), description="Absolute path to the process executable.")
-    exit_code: optional(integer(), description="The exit code of the process, if this is a termination event.")
-    hash: optional(compound(Hashes), description="Hashes, usually file hashes")
-    interactive: optional(boolean(), description="Whether the process is connected to an interactive shell.")
-    name: optional(keyword(), description="Process name.")
-    parent: optional(compound(ParentProcess), description="Information about the parent process.")
-    pe: optional(compound(PE), description="Windows Portable Executable (PE) metadata.")
-    pid: optional(long(), description="Process id.")
-    same_as_process: optional(
-        boolean(),
+    executable: keyword(optional=True, description="Absolute path to the process executable.")
+    exit_code: integer(optional=True, description="The exit code of the process, if this is a termination event.")
+    hash: compound(Hashes, optional=True, description="Hashes, usually file hashes")
+    interactive: boolean(optional=True, description="Whether the process is connected to an interactive shell.")
+    name: keyword(optional=True, description="Process name.")
+    parent: compound(ParentProcess, optional=True, description="Information about the parent process.")
+    pe: compound(PE, optional=True, description="Windows Portable Executable (PE) metadata.")
+    pid: long(optional=True, description="Process id.")
+    same_as_process: boolean(
+        optional=True,
         description="This boolean is used to identify if a leader process is the same as the top level process.",
     )
-    start: optional(date(), description="The time the process started.")
-    title: optional(keyword(), description="Process title.")
-    uptime: optional(integer(), description="Seconds the process has been up.")
-    user: optional(compound(ShortUser), description="The effective user (euid).")
-    working_directory: optional(keyword(), description="The working directory of the process.")
+    start: date(optional=True, description="The time the process started.")
+    title: keyword(optional=True, description="Process title.")
+    uptime: integer(optional=True, description="Seconds the process has been up.")
+    user: compound(ShortUser, optional=True, description="The effective user (euid).")
+    working_directory: keyword(optional=True, description="The working directory of the process.")

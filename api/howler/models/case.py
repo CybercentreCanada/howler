@@ -18,7 +18,6 @@ from howler.models import (
     integer,
     keyword,
     list_field,
-    optional,
     register_model,
     text,
     uuid,
@@ -57,11 +56,11 @@ class CaseLog(HowlerEmbeddedModel):
     """Log definition."""
 
     timestamp: date(description="Timestamp at which the Log event took place.")
-    key: optional(keyword(), description="The key whose value changed.")
-    previous_value: optional(keyword(), description="The value the key is changing from.")
-    new_value: optional(keyword(), description="The value the key is changing to.")
+    key: keyword(optional=True, description="The key whose value changed.")
+    previous_value: keyword(optional=True, description="The value the key is changing from.")
+    new_value: keyword(optional=True, description="The value the key is changing to.")
     user: keyword(description="User ID who created the log event.")
-    explanation: optional(text(), description="A manual description of the changes made.")
+    explanation: text(optional=True, description="A manual description of the changes made.")
 
     @model_validator(mode="before")
     @classmethod
@@ -81,20 +80,21 @@ class CaseItem(HowlerEmbeddedModel):
     """An item included in a case."""
 
     id: uuid(description="Unique identifier for this item.")
-    parent: optional(keyword(), default=None, description="ID of the parent folder item, or null for root-level items.")
-    name: optional(
-        text(),
+    parent: keyword(
+        optional=True, default=None, description="ID of the parent folder item, or null for root-level items."
+    )
+    name: text(
+        optional=True,
         default=None,
         description="Display name for the item. Optional; the UI falls back to value when absent.",
     )
     type: enum(values=CaseItemTypes, description="Type of case item.")
     value: text(description="String reference value for the item (ID, URL, or token), or markdown.")
     visible: boolean(default=True, description="Whether the item is visible/accessible in the frontend.")
-    classification: optional(
-        classification(
-            is_user_classification=False,
-            copyto="__text__",
-        ),
+    classification: classification(
+        is_user_classification=False,
+        copyto="__text__",
+        optional=True,
         default=CLASSIFICATION.UNRESTRICTED,
         description="Classification of the related record. Automatically populated for hit and event items.",
     )
@@ -128,8 +128,8 @@ class CaseRule(HowlerEmbeddedModel):
     author: keyword(description="Username who created the rule.")
     enabled: boolean(default=True, description="Whether the rule is currently active.")
     created_at: date(default="NOW", description="Timestamp when the rule was created.")
-    timeframe: optional(
-        integer(min=1), default=None, description="Number of days the rule stays active. Null means no expiry."
+    timeframe: integer(
+        min=1, optional=True, default=None, description="Number of days the rule stays active. Null means no expiry."
     )
     expire_after_resolved: boolean(
         default=False,
@@ -162,9 +162,9 @@ class CaseTask(HowlerEmbeddedModel):
 
     id: uuid(description="Task identifier.")
     complete: boolean(default=False, description="Whether the task is complete.")
-    assignment: optional(keyword(), description="Assigned discipline or user ID.")
+    assignment: keyword(optional=True, description="Assigned discipline or user ID.")
     summary: text(description="Task summary.")
-    item: optional(keyword(), description="Associated case item id.")
+    item: keyword(optional=True, description="Associated case item id.")
 
 
 @register_model(
@@ -192,36 +192,45 @@ class Case(HowlerESModel):
     )
     title: text(description="Case title.")
     summary: text(description="Short case summary.")
-    overview: optional(text(), description="Markdown overview of the case.")
+    overview: text(optional=True, description="Markdown overview of the case.")
     escalation: enum(values=CaseEscalation, default=CaseEscalation.NORMAL, description="Escalation of the case.")
     status: enum(values=Status, default=Status.OPEN, description="Status of the case.")
-    created: optional(date(), default="NOW", description="Date/time when the case was created.")
+    created: date(optional=True, default="NOW", description="Date/time when the case was created.")
     visible: boolean(default=True, description="Whether the case is visible/accessible in the frontend.")
-    updated: optional(date(), default=None, description="Date/time when the case was last updated.")
-    start: optional(date(), default=None, description="Date/time when telemetry/alerts in this case started.")
-    end: optional(date(), default=None, description="Date/time when telemetry/alerts in this case ended.")
-    targets: optional(list_field(keyword()), default=[], description="A list of target entities related to this case.")
-    threats: optional(
-        list_field(keyword()),
+    updated: date(optional=True, default=None, description="Date/time when the case was last updated.")
+    start: date(optional=True, default=None, description="Date/time when telemetry/alerts in this case started.")
+    end: date(optional=True, default=None, description="Date/time when telemetry/alerts in this case ended.")
+    targets: list_field(
+        keyword(), optional=True, default=[], description="A list of target entities related to this case."
+    )
+    threats: list_field(
+        keyword(),
+        optional=True,
         default=[],
         description="A list of known or suspected threat entities related to this case.",
     )
-    indicators: optional(list_field(keyword()), default=[], description="A list of indicators relevant to this case.")
-    participants: optional(list_field(keyword()), default=[], description="A list of users participating in this case.")
-    items: optional(
-        list_field(compound(CaseItem)),
+    indicators: list_field(
+        keyword(), optional=True, default=[], description="A list of indicators relevant to this case."
+    )
+    participants: list_field(
+        keyword(), optional=True, default=[], description="A list of users participating in this case."
+    )
+    items: list_field(
+        compound(CaseItem),
+        optional=True,
         default=[],
         description="Path-scoped case items referencing external object IDs or links.",
     )
-    enrichments: optional(
-        list_field(compound(CaseEnrichment)), default=[], description="Path-scoped enrichment annotations."
+    enrichments: list_field(
+        compound(CaseEnrichment), optional=True, default=[], description="Path-scoped enrichment annotations."
     )
-    rules: optional(
-        list_field(compound(CaseRule)), default=[], description="Rules for routing matched data into case paths."
+    rules: list_field(
+        compound(CaseRule), optional=True, default=[], description="Rules for routing matched data into case paths."
     )
-    tasks: optional(list_field(compound(CaseTask)), default=[], description="Tasks associated with this case.")
-    log: optional(
-        list_field(compound(CaseLog)),
+    tasks: list_field(compound(CaseTask), optional=True, default=[], description="Tasks associated with this case.")
+    log: list_field(
+        compound(CaseLog),
+        optional=True,
         default=[],
         description="A list of changes to the case with timestamps and attribution.",
     )

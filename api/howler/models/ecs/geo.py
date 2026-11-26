@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, compound, float_field, keyword, optional, register_model
+from howler.models import HowlerEmbeddedModel, compound, float_field, keyword, register_model
 
 
 @register_model(index=True, store=True, description="Longitude and latitude.", embedded=True)
@@ -22,17 +22,17 @@ class GeoPoint(HowlerEmbeddedModel):
 class Geo(HowlerEmbeddedModel):
     """Geo fields can carry data about a specific location related to an event."""
 
-    city_name: optional(keyword(), description="City name.")
-    continent_code: optional(keyword(), description="Two-letter code representing continent's name.")
-    continent_name: optional(keyword(), description="Name of the continent.")
-    country_iso_code: optional(keyword(), description="Country ISO code.")
-    country_name: optional(keyword(), description="Country name.")
-    location: optional(compound(GeoPoint), description="Longitude and latitude.")
-    name: optional(
-        keyword(),
+    city_name: keyword(optional=True, description="City name.")
+    continent_code: keyword(optional=True, description="Two-letter code representing continent's name.")
+    continent_name: keyword(optional=True, description="Name of the continent.")
+    country_iso_code: keyword(optional=True, description="Country ISO code.")
+    country_name: keyword(optional=True, description="Country name.")
+    location: compound(GeoPoint, optional=True, description="Longitude and latitude.")
+    name: keyword(
+        optional=True,
         description="User-defined description of a location, at the level of granularity they care about.",
     )
-    postal_code: optional(keyword(), description="Postal code associated with the location.")
-    region_iso_code: optional(keyword(), description="Region ISO code.")
-    region_name: optional(keyword(), description="Region name.")
-    timezone: optional(keyword(), description="The time zone of the location, such as IANA time zone name.")
+    postal_code: keyword(optional=True, description="Postal code associated with the location.")
+    region_iso_code: keyword(optional=True, description="Region ISO code.")
+    region_name: keyword(optional=True, description="Region name.")
+    timezone: keyword(optional=True, description="The time zone of the location, such as IANA time zone name.")

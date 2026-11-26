@@ -13,7 +13,6 @@ from howler.models import (
     keyword,
     list_field,
     mapping,
-    optional,
     register_model,
     text,
     uuid,
@@ -104,9 +103,9 @@ class Link(HowlerEmbeddedModel):
     """Howler Link definition."""
 
     href: keyword(description="Timestamp at which the comment was last edited.")
-    title: optional(keyword(), description="The title to use for the link.")
-    icon: optional(
-        keyword(),
+    title: keyword(optional=True, description="The title to use for the link.")
+    icon: keyword(
+        optional=True,
         description=(
             "The icon to show. Either an ID corresponding to an analytical platform application, or an external link."
         ),
@@ -135,8 +134,8 @@ class Incident(HowlerEmbeddedModel):
     """Fields describing the location where this alert has been retained."""
 
     platform: keyword(description="The name of the platform for this incident.")
-    incident_id: optional(keyword(), description="The ID of the incident.")
-    url: optional(keyword(), description="The url where the incident can be found.")
+    incident_id: keyword(optional=True, description="The ID of the incident.")
+    url: keyword(optional=True, description="The url where the incident can be found.")
 
 
 @register_model(index=True, store=True, description="Labels for the hit", embedded=True)
@@ -188,7 +187,7 @@ class HowlerData(HowlerEmbeddedModel):
         description="Raw telemetry records associated with this hit.",
     )
     links: list_field(compound(Link), default=[], description="A list of links associated with this hit.", sync=False)
-    detection: optional(case_insensitive_keyword(), description="The detection that produced this hit.")
+    detection: case_insensitive_keyword(optional=True, description="The detection that produced this hit.")
     hash: howler_hash(
         description=(
             "A hash of the event used for deduplicating hits. Supports any hexadecimal string between 1 "
@@ -196,25 +195,25 @@ class HowlerData(HowlerEmbeddedModel):
         )
     )
     related: list_field(keyword(), default=[], description="Related records.")
-    reliability: optional(float_field(), description="Metric decoupled from the value in the detection information.")
-    severity: optional(float_field(), description="Metric decoupled from the value in the detection information.")
-    volume: optional(float_field(), description="Metric decoupled from the value in the detection information.")
-    confidence: optional(float_field(), description="Metric decoupled from the value in the detection information.")
-    score: optional(
-        float_field(), default=0, description="A score assigned by an enrichment to help prioritize triage."
+    reliability: float_field(optional=True, description="Metric decoupled from the value in the detection information.")
+    severity: float_field(optional=True, description="Metric decoupled from the value in the detection information.")
+    volume: float_field(optional=True, description="Metric decoupled from the value in the detection information.")
+    confidence: float_field(optional=True, description="Metric decoupled from the value in the detection information.")
+    score: float_field(
+        optional=True, default=0, description="A score assigned by an enrichment to help prioritize triage."
     )
     status: enum(values=Status, default=Status.OPEN, description="Status of the hit.")
     scrutiny: enum(values=Scrutiny, default=Scrutiny.UNSEEN, description="Level of scrutiny done to this hit.")
     escalation: enum(values=Escalation, default=Escalation.HIT, description="Level of escalation of this hit.")
-    expiry: optional(date(), description="User selected time for hit expiry")
-    assessment: optional(enum(values=Assessment), description="Assessment of the hit.")
-    rationale: optional(
-        keyword(),
+    expiry: date(optional=True, description="User selected time for hit expiry")
+    assessment: enum(values=Assessment, optional=True, description="Assessment of the hit.")
+    rationale: keyword(
+        optional=True,
         description=(
             "The rationale behind the hit assessment. Allows it to be understood and verified by other analysts."
         ),
     )
-    triaged: optional(date(), description="Timestamp at which the hit was triaged.")
+    triaged: date(optional=True, description="Timestamp at which the hit was triaged.")
     comment: list_field(
         compound(Comment),
         default=[],
@@ -227,17 +226,17 @@ class HowlerData(HowlerEmbeddedModel):
         description="A list of changes to the hit with timestamps and attribution.",
         sync=False,
     )
-    monitored: optional(keyword(), description="Link to the incident monitoring dashboard.")
-    reported: optional(keyword(), description="Link to the incident report.")
-    mitigated: optional(keyword(), description="Link to the mitigation record (tool dependent).")
-    outline: optional(compound(_Header), description="The user specified header of the hit")
+    monitored: keyword(optional=True, description="Link to the incident monitoring dashboard.")
+    reported: keyword(optional=True, description="Link to the incident report.")
+    mitigated: keyword(optional=True, description="Link to the mitigation record (tool dependent).")
+    outline: compound(_Header, optional=True, description="The user specified header of the hit")
     incidents: list_field(
         compound(Incident),
         default=[],
         description="Fields describing an incident associated with this alert.",
     )
-    labels: optional(compound(Label), default=DEFAULT_LABELS, description="List of labels relating to the hit")
-    votes: optional(compound(Votes), default=DEFAULT_VOTES, description="Votes relating to the hit")
+    labels: compound(Label, optional=True, default=DEFAULT_LABELS, description="List of labels relating to the hit")
+    votes: compound(Votes, optional=True, default=DEFAULT_VOTES, description="Votes relating to the hit")
     dossier: list_field(
         compound(Lead),
         default=[],

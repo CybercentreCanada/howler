@@ -13,7 +13,6 @@ from howler.models import (
     keyword,
     list_field,
     mapping,
-    optional,
     register_model,
     text,
     uuid,
@@ -30,8 +29,8 @@ class Comment(HowlerEmbeddedModel):
     id: uuid(description="A unique ID for the comment")
     timestamp: date(default="NOW", description="Timestamp at which the comment took place.")
     modified: date(default="NOW", description="Timestamp at which the comment was last edited.")
-    detection: optional(
-        keyword(), description="The detection the comment applies to, if it applies to a particular detection"
+    detection: keyword(
+        optional=True, description="The detection the comment applies to, if it applies to a particular detection"
     )
     value: text(description="The comment itself.")
     user: keyword(description="User ID who created the comment.")
@@ -66,8 +65,8 @@ class Notebook(HowlerEmbeddedModel):
     """Notebook data."""
 
     id: uuid(description="A unique ID for the notebook")
-    detection: optional(
-        keyword(), description="The detection the notebook applies to, if it applies to a particular detection"
+    detection: keyword(
+        optional=True, description="The detection the notebook applies to, if it applies to a particular detection"
     )
     value: keyword(description="The link to the notebook")
     name: keyword(description="Name for the analytic")
@@ -81,18 +80,18 @@ class Analytic(HowlerESModel):
     analytic_id: uuid(description="A UUID for this analytic")
     notebooks: list_field(compound(Notebook), default=[], description="A list of useful notebooks for the analytic")
     name: case_insensitive_keyword(description="The name of the analytic.")
-    owner: optional(keyword(), description="The username of the user who owns this analytic.")
+    owner: keyword(optional=True, description="The username of the user who owns this analytic.")
     contributors: list_field(
         keyword(), description="A list of users who have contributed to this analytic.", default=[]
     )
-    description: optional(text(), description="A markdown description of the analytic")
+    description: text(optional=True, description="A markdown description of the analytic")
     detections: list_field(
         case_insensitive_keyword(), description="The detections which this analytic contains.", default=[]
     )
     comment: list_field(
         compound(Comment), default=[], description="A list of comments with timestamps and attribution."
     )
-    rule: optional(keyword(), description="A rule query")
-    rule_type: optional(enum(values=["lucene", "eql", "sigma"]), description="Type of rule")
-    rule_crontab: optional(keyword(), description="The interval for the rule to run at")
+    rule: keyword(optional=True, description="A rule query")
+    rule_type: enum(values=["lucene", "eql", "sigma"], optional=True, description="Type of rule")
+    rule_crontab: keyword(optional=True, description="The interval for the rule to run at")
     triage_settings: compound(TriageOptions, description="Settings for triaging this analytic.", default=DEFAULT_TRIAGE)

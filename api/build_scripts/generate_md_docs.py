@@ -70,7 +70,6 @@ for class_name, description in sorted(
         "Long": "A field storing a long value. Equivalent to Integer in python, but sets the ES datatype to long.",
         "LowerKeyword": "A field storing a short lowercase string with a technical interpretation.",
         "Mapping": "A field storing a sequence of typed elements.",
-        "Optional": "A wrapper field to allow simple types (int, float, bool) to take None values.",
         "Text": "A field storing human readable text data.",
         "UUID": "A field storing an auto-generated unique ID if None is provided",
         "UpperKeyword": "A field storing a short uppercase string with a technical interpretation.",

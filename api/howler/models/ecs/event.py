@@ -2,17 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import (
-    HowlerEmbeddedModel,
-    date,
-    enum,
-    float_field,
-    integer,
-    keyword,
-    list_field,
-    optional,
-    register_model,
-)
+from howler.models import HowlerEmbeddedModel, date, enum, float_field, integer, keyword, list_field, register_model
 
 EVENT_CATEGORIES = [
     "authentication",
@@ -73,63 +63,72 @@ EVENT_OUTCOME = ["failure", "success", "unknown"]
 class ECSEvent(HowlerEmbeddedModel):
     """The event fields are used for context information about the log or metric event itself."""
 
-    action: optional(keyword(), description="The action captured by the event.")
-    category: optional(
-        list_field(enum(values=EVENT_CATEGORIES)),
+    action: keyword(optional=True, description="The action captured by the event.")
+    category: list_field(
+        enum(values=EVENT_CATEGORIES),
+        optional=True,
         description='Represents the "big buckets" of ECS categories. For example, filtering on '
         "event.category:process yields all events relating to process activity. This field is closely "
         "related to event.type, which is used as a subcategory.",
     )
-    code: optional(keyword(), description="Identification code for this event, if one exists.")
-    count: optional(integer(), description="Count of events")
-    created: optional(
-        date(), description="Contains the date/time when the event was first read by an agent, or by your pipeline."
+    code: keyword(optional=True, description="Identification code for this event, if one exists.")
+    count: integer(optional=True, description="Count of events")
+    created: date(
+        optional=True,
+        description="Contains the date/time when the event was first read by an agent, or by your pipeline.",
     )
-    dataset: optional(keyword(), description="Name of the dataset.")
-    duration: optional(integer(), description="Duration of the event in nanoseconds.")
-    end: optional(date(), description="Contains the date when the event ended or when the activity was last observed.")
-    hash: optional(
-        keyword(),
+    dataset: keyword(optional=True, description="Name of the dataset.")
+    duration: integer(optional=True, description="Duration of the event in nanoseconds.")
+    end: date(
+        optional=True, description="Contains the date when the event ended or when the activity was last observed."
+    )
+    hash: keyword(
+        optional=True,
         description="Hash (perhaps logstash fingerprint) of raw field to be able to demonstrate log integrity.",
     )
-    id: optional(keyword(), description="Unique ID to describe the event.")
+    id: keyword(optional=True, description="Unique ID to describe the event.")
     ingested: date(default="NOW", description="Timestamp when an event arrived in the central data store.")
-    kind: optional(
-        enum(values=EVENT_KIND),
+    kind: enum(
+        values=EVENT_KIND,
+        optional=True,
         description="Gives high-level information about what type of information the event "
         "contains, without being specific to the contents of the event. ",
     )
-    module: optional(keyword(), description="Name of the module this data is coming from.")
-    original: optional(
-        keyword(),
+    module: keyword(optional=True, description="Name of the module this data is coming from.")
+    original: keyword(
+        optional=True,
         description="Raw text message of entire event. Used to demonstrate log integrity or where the "
         "full log message (before splitting it up in multiple parts) may be required, e.g. for reindex.",
     )
-    outcome: optional(
-        enum(values=EVENT_OUTCOME),
+    outcome: enum(
+        values=EVENT_OUTCOME,
+        optional=True,
         description="Simply denotes whether the event represents a success or "
         "a failure from the perspective of the entity that produced the event.",
     )
-    provider: optional(keyword(), description="Source of the event.")
-    reason: optional(keyword(), description="Reason why this event happened, according to the source.")
-    reference: optional(keyword(), description="Reference URL linking to additional information about this event.")
-    risk_score: optional(float_field(), description="Risk score or priority of the event (e.g. security solutions).")
-    risk_score_norm: optional(
-        float_field(), description="Normalized risk score or priority of the event, on a scale of 0 to 100."
+    provider: keyword(optional=True, description="Source of the event.")
+    reason: keyword(optional=True, description="Reason why this event happened, according to the source.")
+    reference: keyword(optional=True, description="Reference URL linking to additional information about this event.")
+    risk_score: float_field(optional=True, description="Risk score or priority of the event (e.g. security solutions).")
+    risk_score_norm: float_field(
+        optional=True, description="Normalized risk score or priority of the event, on a scale of 0 to 100."
     )
-    sequence: optional(integer(), description="Sequence number of the event.")
-    severity: optional(integer(), description="The numeric severity of the event according to your event source.")
-    start: optional(
-        date(), description="Contains the date when the event started or when the activity was first observed."
+    sequence: integer(optional=True, description="Sequence number of the event.")
+    severity: integer(optional=True, description="The numeric severity of the event according to your event source.")
+    start: date(
+        optional=True, description="Contains the date when the event started or when the activity was first observed."
     )
-    timezone: optional(
-        keyword(),
+    timezone: keyword(
+        optional=True,
         description="This field should be populated when the event's timestamp does not include timezone "
         "information already (e.g. default Syslog timestamps).",
     )
-    type: optional(
-        list_field(enum(values=EVENT_TYPE)),
+    type: list_field(
+        enum(values=EVENT_TYPE),
+        optional=True,
         description='Represents a categorization "sub-bucket" that, when used along with the event.category '
         "field values, enables filtering events down to a level appropriate for single visualization.",
     )
-    url: optional(keyword(), description="URL linking to an external system to continue investigation of this event.")
+    url: keyword(
+        optional=True, description="URL linking to an external system to continue investigation of this event."
+    )

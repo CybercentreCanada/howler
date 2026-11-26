@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, compound, keyword, list_field, optional, register_model
+from howler.models import HowlerEmbeddedModel, compound, keyword, list_field, register_model
 
 DEFAULT_MITRE: dict[str, list] = {"tactic": [], "technique": []}
 
@@ -11,10 +11,10 @@ DEFAULT_MITRE: dict[str, list] = {"tactic": [], "technique": []}
 class ALRecord(HowlerEmbeddedModel):
     """A single AssemblyLine detail record."""
 
-    type: optional(keyword())
-    subtype: optional(keyword())
-    value: optional(keyword())
-    verdict: optional(keyword())
+    type: keyword(optional=True)
+    subtype: keyword(optional=True)
+    value: keyword(optional=True)
+    verdict: keyword(optional=True)
 
 
 @register_model(index=True, store=True, embedded=True)
@@ -45,7 +45,7 @@ class AssemblyLine(HowlerEmbeddedModel):
     # al detailed.heuristic
     heuristic: list_field(compound(ALRecord), default=[])
     # al.detailed.[attack_category, attack_pattern]
-    mitre: optional(compound(Mitre), default=DEFAULT_MITRE)
+    mitre: compound(Mitre, optional=True, default=DEFAULT_MITRE)
     # al.detailed.uri
     uri: list_field(compound(ALRecord), default=[])
     # al.detailed.yara

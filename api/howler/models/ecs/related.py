@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import model_validator
 
-from howler.models import HowlerEmbeddedModel, ip, keyword, list_field, optional, register_model, uri
+from howler.models import HowlerEmbeddedModel, ip, keyword, list_field, register_model, uri
 
 
 @register_model(
@@ -40,14 +40,16 @@ class Related(HowlerEmbeddedModel):
     )
 
     # Extra fields not defined in ECS but added for outline purposes
-    id: optional(
-        keyword(),
+    id: keyword(
+        optional=True,
         description="The id related to the event.",
         deprecated=True,
         deprecated_description="related.ids should be used instead of related.id.",
     )
-    uri: optional(list_field(uri()), description="All of the URIs related to the event.")
-    signature: optional(list_field(keyword()), description="All the signatures/rules that were triggered by the event.")
+    uri: list_field(uri(), optional=True, description="All of the URIs related to the event.")
+    signature: list_field(
+        keyword(), optional=True, description="All the signatures/rules that were triggered by the event."
+    )
 
     @model_validator(mode="before")
     @classmethod

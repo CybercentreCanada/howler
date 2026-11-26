@@ -7,15 +7,7 @@ from typing import Any
 from pydantic import field_validator, model_validator
 
 from howler.common.exceptions import HowlerValueError
-from howler.models import (
-    HowlerEmbeddedModel,
-    compound,
-    keyword,
-    list_field,
-    optional,
-    register_model,
-    text,
-)
+from howler.models import HowlerEmbeddedModel, compound, keyword, list_field, register_model, text
 from howler.models.localized_label import LocalizedLabel
 
 
@@ -27,8 +19,8 @@ class Mapping(HowlerEmbeddedModel):
         description="The key to inject the given field as. Exact behaviour depends on the implementation type."
     )
     field: keyword(description="The field in the hit to associate with the given key.")
-    custom_value: optional(
-        keyword(),
+    custom_value: keyword(
+        optional=True,
         description="An optional custom value to use if the value is not dependent on the alert we are pivoting on",
     )
 
@@ -61,11 +53,13 @@ class Pivot(HowlerEmbeddedModel):
         default="material-symbols:link",
         description="An optional icon to use in the tab display for this dossier.",
     )
-    group: optional(
-        keyword(coerce=False, index=True),
+    group: keyword(
+        coerce=False,
+        index=True,
+        optional=True,
         description="The folder path this pivot should be presented in when viewed in the UI.",
     )
-    description: optional(text(), description="An optional description for the pivot.")
+    description: text(optional=True, description="An optional description for the pivot.")
     label: compound(LocalizedLabel, description="Labels for the pivot in the UI.")
     value: keyword(description="The link/plugin information to pivot on.")
     format: keyword(description="The format of the pivot.")

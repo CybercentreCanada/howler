@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, keyword, optional, register_model
+from howler.models import HowlerEmbeddedModel, keyword, register_model
 
 
 @register_model(
@@ -17,5 +17,5 @@ from howler.models import HowlerEmbeddedModel, keyword, optional, register_model
 class Error(HowlerEmbeddedModel):
     """These fields can represent errors of any kind."""
 
-    code: optional(keyword(), description="Identifier specific to the error.")
-    message: optional(keyword(), description="Error message provided.")
+    code: keyword(optional=True, description="Identifier specific to the error.")
+    message: keyword(optional=True, description="Error message provided.")

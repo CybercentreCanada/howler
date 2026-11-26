@@ -10,7 +10,6 @@ from howler.models import (
     enum,
     keyword,
     list_field,
-    optional,
     register_model,
     uuid,
 )
@@ -24,7 +23,7 @@ class Operation(HowlerEmbeddedModel):
     """Model of action operations."""
 
     operation_id: keyword(description="The ID of the action.")
-    data_json: optional(keyword(), description="The data necessary to execute the action, in raw JSON format.")
+    data_json: keyword(optional=True, description="The data necessary to execute the action, in raw JSON format.")
 
 
 @register_model(index=True, store=True, description="Model of actions")

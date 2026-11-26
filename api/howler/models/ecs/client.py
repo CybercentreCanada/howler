@@ -2,18 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import (
-    HowlerEmbeddedModel,
-    compound,
-    domain,
-    integer,
-    ip,
-    keyword,
-    long,
-    mac,
-    optional,
-    register_model,
-)
+from howler.models import HowlerEmbeddedModel, compound, domain, integer, ip, keyword, long, mac, register_model
 from howler.models.ecs.autonomous_system import AS
 from howler.models.ecs.geo import Geo
 from howler.models.ecs.user import User
@@ -28,8 +17,8 @@ from howler.models.ecs.user import User
 class Nat(HowlerEmbeddedModel):
     """Translated NAT sessions (e.g. internal client to internet)."""
 
-    ip: optional(ip(), description="Translated IP of source based NAT sessions.")
-    port: optional(integer(), description="Translated port of source based NAT sessions.")
+    ip: ip(optional=True, description="Translated IP of source based NAT sessions.")
+    port: integer(optional=True, description="Translated port of source based NAT sessions.")
 
 
 @register_model(
@@ -42,66 +31,69 @@ class Nat(HowlerEmbeddedModel):
 class OriginalClient(HowlerEmbeddedModel):
     """The original client in a session that has changed clients."""
 
-    address: optional(
-        keyword(),
+    address: keyword(
+        optional=True,
         description=(
             "The original client in a session that has changed clients. Some event client addresses "
             "are defined ambiguously. The event will sometimes list an IP, a domain or a unix socket. You should"
             " always store the raw address in the .address field."
         ),
     )
-    autonomous_systems: optional(
-        compound(AS),
+    autonomous_systems: compound(
+        AS,
+        optional=True,
         description=(
             "The original client in a session that has changed clients. "
             "Collection of connected Internal Protocol routing prefixes"
         ),
     )
-    bytes: optional(
-        integer(),
+    bytes: integer(
+        optional=True,
         description=(
             "The original client in a session that has changed clients. Bytes sent from the client to the server."
         ),
     )
-    domain: optional(
-        domain(),
+    domain: domain(
+        optional=True,
         description=(
             "The original client in a session that has changed clients. The domain name of the client system."
         ),
     )
-    geo: optional(
-        compound(Geo),
+    geo: compound(
+        Geo,
+        optional=True,
         description=(
             "The original client in a session that has changed clients. Geo fields can carry "
             "data about a specific location related to an event."
         ),
     )
-    ip: optional(
-        ip(),
+    ip: ip(
+        optional=True,
         description=(
             "The original client in a session that has changed clients. IP address of the client (IPv4 or IPv6)."
         ),
     )
-    mac: optional(
-        mac(),
+    mac: mac(
+        optional=True,
         description=("The original client in a session that has changed clients. MAC address of the client."),
     )
-    nat: optional(
-        compound(Nat),
+    nat: compound(
+        Nat,
+        optional=True,
         description=(
             "The original client in a session that has changed clients. Translated NAT sessions (e.g. "
             "internal client to internet)."
         ),
     )
-    packets: optional(
-        integer(),
+    packets: integer(
+        optional=True,
         description=(
             "The original client in a session that has changed clients. Packets sent from the "
             "destination to the source."
         ),
     )
-    port: optional(
-        integer(), description="The original client in a session that has changed clients. Port of the client."
+    port: integer(
+        optional=True, description="The original client in a session that has changed clients. Port of the client."
     )
 
 
@@ -115,22 +107,27 @@ class OriginalClient(HowlerEmbeddedModel):
 class Client(HowlerEmbeddedModel):
     """A client is defined as the initiator of a network connection."""
 
-    address: optional(
-        keyword(),
+    address: keyword(
+        optional=True,
         description="Some event client addresses are defined ambiguously. The event will sometimes list an IP, "
         "a domain or a unix socket. You should always store the raw address in the .address field.",
     )
-    autonomous_systems: optional(compound(AS), description="Collection of connected Internal Protocol routing prefixes")
-    bytes: optional(long(), description="Bytes sent from the client to the server.")
-    domain: optional(keyword(), description="The domain name of the client system.")
-    geo: optional(compound(Geo), description="Geo fields can carry data about a specific location related to an event.")
-    ip: optional(ip(), description="IP address of the client (IPv4 or IPv6).")
-    mac: optional(mac(), description="MAC address of the client.")
-    nat: optional(compound(Nat), description="Translated NAT sessions (e.g. internal client to internet).")
-    packets: optional(integer(), description="Packets sent from the destination to the source.")
-    port: optional(integer(), description="Port of the client.")
-    user: optional(
-        compound(User),
+    autonomous_systems: compound(
+        AS, optional=True, description="Collection of connected Internal Protocol routing prefixes"
+    )
+    bytes: long(optional=True, description="Bytes sent from the client to the server.")
+    domain: keyword(optional=True, description="The domain name of the client system.")
+    geo: compound(
+        Geo, optional=True, description="Geo fields can carry data about a specific location related to an event."
+    )
+    ip: ip(optional=True, description="IP address of the client (IPv4 or IPv6).")
+    mac: mac(optional=True, description="MAC address of the client.")
+    nat: compound(Nat, optional=True, description="Translated NAT sessions (e.g. internal client to internet).")
+    packets: integer(optional=True, description="Packets sent from the destination to the source.")
+    port: integer(optional=True, description="Port of the client.")
+    user: compound(
+        User,
+        optional=True,
         description="The user fields describe information about the user that is relevant to the event.",
     )
-    original: optional(compound(OriginalClient), description="Original Client Data.")
+    original: compound(OriginalClient, optional=True, description="Original Client Data.")

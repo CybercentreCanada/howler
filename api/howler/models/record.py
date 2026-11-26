@@ -13,7 +13,6 @@ from howler.models import (
     keyword,
     list_field,
     mapping,
-    optional,
     register_model,
 )
 from howler.models.assemblyline import AssemblyLine
@@ -83,74 +82,86 @@ class Record(HowlerESModel):
         reference=ECS_REFERENCE,
     )
 
-    assemblyline: optional(compound(AssemblyLine), description="AssemblyLine metadata associated with this alert.")
+    assemblyline: compound(AssemblyLine, optional=True, description="AssemblyLine metadata associated with this alert.")
 
     # Field Sets
-    agent: optional(
-        compound(Agent),
+    agent: compound(
+        Agent,
+        optional=True,
         description="The agent fields contain the data about the software entity, "
         "if any, that collects, detects, or observes events on a host, or takes measurements on a host.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-agent.html",
     )
-    aws: optional(compound(AWS), description="Fields related to AWS.")
-    azure: optional(compound(Azure), description="Fields related to Azure.")
-    cbs: optional(compound(CBS), description="CBS metadata associated with this alert.")
-    cloud: optional(
-        compound(Cloud),
+    aws: compound(AWS, optional=True, description="Fields related to AWS.")
+    azure: compound(Azure, optional=True, description="Fields related to Azure.")
+    cbs: compound(CBS, optional=True, description="CBS metadata associated with this alert.")
+    cloud: compound(
+        Cloud,
+        optional=True,
         description="Fields related to the cloud or infrastructure the events are coming from.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-cloud.html",
     )
-    container: optional(
-        compound(Container),
+    container: compound(
+        Container,
+        optional=True,
         description="Container fields are used for meta information about the specific container "
         "that is the source of information.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-container.html",
     )
-    destination: optional(
-        compound(Client),
+    destination: compound(
+        Client,
+        optional=True,
         description="Destination fields capture details about the receiver of a network exchange/packet.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-destination.html",
     )
-    dns: optional(
-        compound(DNS),
+    dns: compound(
+        DNS,
+        optional=True,
         description="Fields describing DNS queries and answers.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-dns.html",
     )
     ecs: compound(ECSVersion, default={}, description="Meta-information specific to ECS.", reference=ECS_REFERENCE)
-    error: optional(
-        compound(Error),
+    error: compound(
+        Error,
+        optional=True,
         description="These fields can represent errors of any kind.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-error.html",
     )
-    event: optional(
-        compound(ECSEvent),
+    event: compound(
+        ECSEvent,
+        optional=True,
         description="The event fields are used for context information about the log or metric event itself.",
     )
-    email: optional(
-        compound(Email),
+    email: compound(
+        Email,
+        optional=True,
         description="Event details relating to an email transaction.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-event.html",
     )
-    faas: optional(
-        compound(FAAS),
+    faas: compound(
+        FAAS,
+        optional=True,
         description="The user fields describe information about the function as a service "
         "(FaaS) that is relevant to the event.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-faas.html",
     )
-    file: optional(
-        compound(File),
+    file: compound(
+        File,
+        optional=True,
         description="A file is defined as a set of information that has been "
         "created on, or has existed on a filesystem.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-file.html",
     )
-    gcp: optional(compound(GCP), description="Fields related to Google Cloud Platform.")
-    group: optional(
-        compound(Group),
+    gcp: compound(GCP, optional=True, description="Fields related to Google Cloud Platform.")
+    group: compound(
+        Group,
+        optional=True,
         description="The group fields are meant to represent groups that are relevant to the event.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-group.html",
     )
-    host: optional(
-        compound(Host),
+    host: compound(
+        Host,
+        optional=True,
         description=(
             "A host is defined as a general computing instance. ECS host.* fields should be populated with details "
             "about the host on which the event happened, or from which the measurement was taken. Host types "
@@ -158,20 +169,23 @@ class Record(HowlerESModel):
         ),
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-host.html",
     )
-    http: optional(
-        compound(HTTP),
+    http: compound(
+        HTTP,
+        optional=True,
         description="Fields related to HTTP activity. Use the url field set to store the url of the request.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-http.html",
     )
-    observer: optional(
-        compound(Observer),
+    observer: compound(
+        Observer,
+        optional=True,
         description=(
             "Observer is defined as a special network, security, or application device used to detect, obs"
             "erve, or create network, sercurity, or application event metrics"
         ),
     )
-    interface: optional(
-        compound(Interface),
+    interface: compound(
+        Interface,
+        optional=True,
         description=(
             "The interface fields are used to record ingress and egress interface information when reported "
             "by an observer (e.g. firewall, router, load balancer) in the context of the observer handling a "
@@ -179,78 +193,91 @@ class Record(HowlerESModel):
         ),
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-interface.html",
     )
-    network: optional(
-        compound(Network),
+    network: compound(
+        Network,
+        optional=True,
         description=("The network is defined as the communication path over which a host or network event happens."),
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-network.html",
     )
-    organization: optional(
-        compound(Organization),
+    organization: compound(
+        Organization,
+        optional=True,
         description="The organization fields enrich data with information "
         "about the company or entity the data is associated with.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-organization.html",
     )
-    process: optional(
-        compound(Process),
+    process: compound(
+        Process,
+        optional=True,
         description="These fields contain information about a process.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-process.html",
     )
-    registry: optional(
-        compound(Registry),
+    registry: compound(
+        Registry,
+        optional=True,
         description="Fields related to Windows Registry operations.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-registry.html",
     )
-    related: optional(
-        compound(Related),
+    related: compound(
+        Related,
+        optional=True,
         description="Fields related to Windows Registry operations.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-related.html",
     )
-    rule: optional(compound(Rule), description="Capture the specifics of any observer or agent rules")
-    server: optional(
-        compound(Server),
+    rule: compound(Rule, optional=True, description="Capture the specifics of any observer or agent rules")
+    server: compound(
+        Server,
+        optional=True,
         description=(
             "A Server is defined as the responder in a network connection for events regarding sessions, "
             "connections, or bidirectional flow records."
         ),
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-server.html",
     )
-    source: optional(
-        compound(Client),
+    source: compound(
+        Client,
+        optional=True,
         description="Source fields capture details about the sender of a network exchange/packet.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-source.html",
     )
-    threat: optional(
-        compound(Threat),
+    threat: compound(
+        Threat,
+        optional=True,
         description="Fields to classify events and alerts according to a threat taxonomy such as the "
         "MITRE ATT&CK® framework.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-threat.html",
     )
-    tls: optional(
-        compound(TLS),
+    tls: compound(
+        TLS,
+        optional=True,
         description=(
             "Fields related to a TLS connection. These fields focus on the TLS protocol itself and "
             "intentionally avoids in-depth analysis of the related x.509 certificate files."
         ),
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-tls.html",
     )
-    url: optional(
-        compound(URL),
+    url: compound(
+        URL,
+        optional=True,
         description="URL fields provide support for complete or partial URLs, and "
         "supports the breaking down into scheme, domain, path, and so on.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-url.html",
     )
-    user: optional(
-        compound(User),
+    user: compound(
+        User,
+        optional=True,
         description="The user fields describe information about the user that is relevant to the event.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-user.html",
     )
-    user_agent: optional(
-        compound(UserAgent),
+    user_agent: compound(
+        UserAgent,
+        optional=True,
         description="The user_agent fields normally come from a browser request.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-user_agent.html",
     )
-    vulnerability: optional(
-        compound(Vulnerability),
+    vulnerability: compound(
+        Vulnerability,
+        optional=True,
         description="The vulnerability fields describe information about a vulnerability that is relevant to an event.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-vulnerability.html",
     )

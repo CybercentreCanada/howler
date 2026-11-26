@@ -11,7 +11,6 @@ from howler.models import (
     howler_hash,
     keyword,
     list_field,
-    optional,
     register_model,
     uuid,
 )
@@ -50,12 +49,12 @@ class EventData(HowlerEmbeddedModel):
         )
     )
     related: list_field(keyword(), default=[], description="Related records.")
-    outline: optional(compound(_Header), description="The user specified header of the event.")
-    score: optional(
-        float_field(), default=0, description="A score assigned by an enrichment to help prioritize triage."
+    outline: compound(_Header, optional=True, description="The user specified header of the event.")
+    score: float_field(
+        optional=True, default=0, description="A score assigned by an enrichment to help prioritize triage."
     )
     escalation: enum(values=Escalation, default=Escalation.HIT, description="Level of escalation of this event.")
-    expiry: optional(date(), description="User selected time for event expiry")
+    expiry: date(optional=True, description="User selected time for event expiry")
     comment: list_field(
         compound(Comment), default=[], description="A list of comments with timestamps and attribution."
     )

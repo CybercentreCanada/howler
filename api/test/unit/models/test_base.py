@@ -28,7 +28,6 @@ from howler.models import (
     list_field,
     mapping,
     model_registry,
-    optional,
     partial_primitives,
     register_model,
     text,
@@ -64,10 +63,10 @@ class FoundationDocument(HowlerESModel):
     unindexed: mapping(keyword(), default={}, index=False, store=False)
     flattened: flattened_object(default={})
     flattened_lists: flattened_list_object(default={})
-    maybe: optional(keyword())
-    maybe_ip: optional(ip())
-    maybe_unindexed: optional(keyword(index=False, store=False))
-    class_: optional(keyword(), alias="class")
+    maybe: keyword(optional=True)
+    maybe_ip: ip(optional=True)
+    maybe_unindexed: keyword(index=False, store=False, optional=True)
+    class_: keyword(optional=True, alias="class")
     classification: classification(default="UNRESTRICTED", yml_config=CLASSIFICATION_CONFIG)
 
 
@@ -274,14 +273,14 @@ def test_read_normalization_drops_unknown_fields_but_preserves_mapping_keys() ->
 
 def test_extra_ignore_traverses_typed_containers_without_pruning_loose_data() -> None:
     class Leaf(HowlerEmbeddedModel):
-        value: optional(keyword())
-        count: optional(integer())
+        value: keyword(optional=True)
+        count: integer(optional=True)
 
     class Containers(HowlerEmbeddedModel):
         grouped: mapping(compound(Leaf), index=False)
         listed: list_field(compound(Leaf))
         nested: mapping(list_field(mapping(compound(Leaf), index=False)), index=False)
-        maybe_grouped: optional(mapping(optional(compound(Leaf)), index=False))
+        maybe_grouped: mapping(compound(Leaf, optional=True), index=False, optional=True)
         json_value: json_field()
         loose: dict[str, object]
         flat: flattened_object()
@@ -523,7 +522,7 @@ def test_partial_ignore_unknown_propagates_through_mapping_values() -> None:
     """Partial read normalization ignores stale plugin fields nested inside typed mappings."""
 
     class Leaf(HowlerEmbeddedModel):
-        value: optional(keyword())
+        value: keyword(optional=True)
 
     class Root(HowlerESModel):
         grouped: mapping(compound(Leaf), index=False)

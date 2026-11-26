@@ -6,16 +6,7 @@ import pytest
 
 from howler.datastore.exceptions import SearchException
 from howler.datastore.utils import project_stored_fields, select_stored_fields
-from howler.models import (
-    HowlerEmbeddedModel,
-    HowlerESModel,
-    compound,
-    keyword,
-    list_field,
-    mapping,
-    optional,
-    register_model,
-)
+from howler.models import HowlerEmbeddedModel, HowlerESModel, compound, keyword, list_field, mapping, register_model
 from howler.models.registry import model_registry
 
 
@@ -35,7 +26,7 @@ class _SelectionModel(HowlerESModel):
     name: keyword()
     not_stored: keyword(store=False)
     labels: mapping(keyword())
-    container: optional(compound(_Container))
+    container: compound(_Container, optional=True)
     entries: list_field(compound(_Entry), default=[])
 
 

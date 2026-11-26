@@ -5,12 +5,12 @@ from __future__ import annotations
 import json
 import re
 import types
-from copy import copy, deepcopy
-from dataclasses import dataclass, field, replace
+from copy import deepcopy
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
 from ipaddress import ip_address
-from typing import Annotated, Callable, Iterable, Union, get_args, get_origin
+from typing import Annotated, Callable, Iterable, cast
 from typing import Any as TypingAny
 
 import arrow
@@ -22,7 +22,6 @@ from pydantic import (
     WithJsonSchema,
 )
 from pydantic import Field as PydanticField
-from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefined
 
 from howler.common import loader
@@ -115,15 +114,51 @@ def _copy_to(value: str | Iterable[str] | None) -> tuple[str, ...]:
     return tuple(value)
 
 
-def _howler_metadata(
-    kind: str, inherit: HowlerFieldMetadata | None, overrides: dict[str, TypingAny]
-) -> HowlerFieldMetadata:
-    """Normalize builder spellings once, preserving child options unless explicitly overridden."""
+def _howler_metadata(kind: str, overrides: dict[str, TypingAny]) -> HowlerFieldMetadata:
+    """Normalize builder spellings once into canonical field metadata."""
     if "copyto" in overrides:
         overrides["copy_to"] = _copy_to(overrides.pop("copyto"))
     if "options" in overrides:
         overrides["options"] = tuple(sorted((overrides["options"] or {}).items()))
-    return replace(inherit, **overrides) if inherit else HowlerFieldMetadata(kind=kind, **overrides)
+    return HowlerFieldMetadata(kind=kind, **overrides)
+
+
+def _build_validator(
+    validator: Callable[[TypingAny], TypingAny],
+    kind: str,
+    *,
+    default: TypingAny,
+    default_when: Callable[[TypingAny], bool] | None,
+    optional: bool,
+) -> BeforeValidator:
+    effective_validator = validator
+    if default is not PydanticUndefined and default is not None and default_when is not None:
+        configured_default = default
+        default_selector = default_when
+
+        def apply_default(value: TypingAny) -> TypingAny:
+            selected = deepcopy(configured_default) if default_selector(value) else value
+            return validator(selected)
+
+        effective_validator = apply_default
+
+    if optional:
+        null_empty_keyword = kind in {
+            "Keyword",
+            "LowerKeyword",
+            "UpperKeyword",
+            "CaseInsensitiveKeyword",
+        } and default in (None, PydanticUndefined)
+        inner_validator = effective_validator
+
+        def guard_optional(value: TypingAny) -> TypingAny:
+            if value is None or (null_empty_keyword and value == ""):
+                return None
+            return inner_validator(value)
+
+        effective_validator = guard_optional
+
+    return BeforeValidator(effective_validator)
 
 
 def _annotated(
@@ -139,39 +174,39 @@ def _annotated(
     alias: str | None = None,
     es_name: str | None = None,
     constraints: dict[str, TypingAny] | None = None,
-    inherit: HowlerFieldMetadata | None = None,
-    inherited_alias: str | None = None,
+    optional: bool = False,
     **field_options: TypingAny,
 ) -> TypingAny:
+    if optional:
+        non_null = _make_annotated(annotation, PydanticField(**constraints)) if constraints else annotation
+        annotation = non_null | None
+        if default is PydanticUndefined and default_factory is None:
+            default = None
+        field_options["optional"] = True
+
     metadata: list[TypingAny] = []
     if validator is not None:
-        effective_validator = validator
-        if default is not PydanticUndefined and default is not None and default_when is not None:
-            configured_default = default
-            default_selector = default_when
-
-            def apply_default(value: TypingAny) -> TypingAny:
-                selected = deepcopy(configured_default) if default_selector(value) else value
-                return validator(selected)
-
-            effective_validator = apply_default
-        metadata.append(BeforeValidator(effective_validator))
+        metadata.append(
+            _build_validator(
+                validator,
+                kind,
+                default=default,
+                default_when=default_when,
+                optional=optional,
+            )
+        )
     metadata.extend(serializers)
 
-    resolved_es_name = (
-        es_name
-        if es_name is not None
-        else (alias if alias is not None else (inherit.es_name if inherit is not None else None))
-    )
+    resolved_es_name = es_name if es_name is not None else alias
     if resolved_es_name is not None:
         field_options["es_name"] = resolved_es_name
-    metadata.append(_howler_metadata(kind, inherit, field_options))
+    metadata.append(_howler_metadata(kind, field_options))
 
-    pydantic_options = dict(constraints or {})
+    pydantic_options = {} if optional else dict(constraints or {})
     if description is not None:
         pydantic_options["description"] = description
-    if (wire_alias := alias if alias is not None else inherited_alias) is not None:
-        pydantic_options["alias"] = wire_alias
+    if alias is not None:
+        pydantic_options["alias"] = alias
     if default_factory is not None:
         pydantic_options["default_factory"] = default_factory
     elif default is not PydanticUndefined:
@@ -184,45 +219,6 @@ def _make_annotated(annotation: TypingAny, *metadata: TypingAny) -> TypingAny:
     if not metadata:
         return annotation
     return Annotated[(annotation, *metadata)]
-
-
-def _override_index(annotation: TypingAny, index: bool) -> TypingAny:
-    """Override Howler index metadata through lists/unions without mutating reusable annotations."""
-    origin = get_origin(annotation)
-    if origin is Annotated:
-        nested, *items = get_args(annotation)
-        updated_nested = _override_index(nested, index)
-        updated_items = [
-            replace(item, index=index) if isinstance(item, HowlerFieldMetadata) else item for item in items
-        ]
-        return _make_annotated(updated_nested, *updated_items)
-
-    arguments = get_args(annotation)
-    if not arguments or origin not in (list, Union, types.UnionType):
-        return annotation
-
-    updated_args = [_override_index(arg, index) for arg in arguments]
-    if origin is types.UnionType:
-        rebuilt = updated_args[0]
-        for arg in updated_args[1:]:
-            rebuilt = rebuilt | arg
-        return rebuilt
-    if origin is Union:
-        return Union[tuple(updated_args)]
-    return types.GenericAlias(list, (updated_args[0],))
-
-
-def _field_metadata(annotation: TypingAny) -> HowlerFieldMetadata | None:
-    origin = get_origin(annotation)
-    if origin is Annotated:
-        nested, *items = get_args(annotation)
-        metadata = next((item for item in items if isinstance(item, HowlerFieldMetadata)), None)
-        return metadata or _field_metadata(nested)
-    if origin in (Union, types.UnionType):
-        for item in get_args(annotation):
-            if item is not type(None) and (metadata := _field_metadata(item)) is not None:
-                return metadata
-    return None
 
 
 def _keyword_validator(*, coerce: bool = True) -> Callable[[TypingAny], str]:
@@ -609,7 +605,8 @@ def uuid(**kwargs: TypingAny) -> TypingAny:
     def validate(value: TypingAny) -> str:
         return str(get_random_id() if value is None else value)
 
-    kwargs.setdefault("default_factory", get_random_id)
+    if not kwargs.get("optional") and "default" not in kwargs:
+        kwargs.setdefault("default_factory", get_random_id)
     return _annotated(str, "UUID", validator=validate, **kwargs)
 
 
@@ -700,7 +697,12 @@ def classification(
         ClassificationValue,
         "Classification",
         validator=validate,
-        serializers=(PlainSerializer(_classification_serializer, return_type=str),),
+        serializers=(
+            PlainSerializer(
+                _classification_serializer,
+                return_type=cast(type[TypingAny], str | None) if kwargs.get("optional") else str,
+            ),
+        ),
         options={"is_user_classification": is_user_classification},
         **kwargs,
     )
@@ -774,35 +776,6 @@ def flattened_list_object(**kwargs: TypingAny) -> TypingAny:
 def compound(model_type: type[TypingAny], **kwargs: TypingAny) -> TypingAny:
     """Create an embedded object field."""
     return _annotated(model_type, "Compound", **kwargs)
-
-
-def optional(child_type: TypingAny, **kwargs: TypingAny) -> TypingAny:
-    """Create a nullable field with a null default."""
-    child_metadata = _field_metadata(child_type)
-    child_info = next((item for item in get_args(child_type)[1:] if isinstance(item, FieldInfo)), None)
-    if child_info and child_info.alias is not None:
-        # A wire alias belongs to the field, not to one branch of its nullable union.
-        base, *metadata = get_args(child_type)
-        branch_info = copy(child_info)
-        branch_info.alias = branch_info.validation_alias = branch_info.serialization_alias = None
-        branch_info.alias_priority = None
-        child_type = _make_annotated(base, *(branch_info if item is child_info else item for item in metadata))
-    # Legacy Optional let Keyword.check use the child's default on "", but passed
-    # explicit null through. EmptyableKeyword, in particular, retains the empty string.
-    if child_metadata and child_metadata.kind in {"Keyword", "LowerKeyword", "UpperKeyword", "CaseInsensitiveKeyword"}:
-        if child_info is None or child_info.default in (None, PydanticUndefined):
-            kwargs["validator"] = lambda value: None if value == "" else value
-    kwargs.setdefault("default", None)
-    if kwargs.get("index") is not None:
-        child_type = _override_index(child_type, kwargs["index"])
-    return _annotated(
-        child_type | None,
-        "Optional",
-        inherit=child_metadata,
-        inherited_alias=child_info.alias if child_info else None,
-        optional=True,
-        **kwargs,
-    )
 
 
 def ip_to_primitive(value: str, output_format: str | None) -> str | int:

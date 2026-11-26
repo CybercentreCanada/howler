@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, compound, keyword, optional, register_model
+from howler.models import HowlerEmbeddedModel, compound, keyword, register_model
 
 _CLOUD_ONTOLOGY_NOTE = (
     "Instead of using this more general field, use a platform-specific field. "
@@ -15,15 +15,15 @@ _CLOUD_ONTOLOGY_NOTE = (
 class Account(HowlerEmbeddedModel):
     """Cloud account information."""
 
-    id: optional(
-        keyword(),
+    id: keyword(
+        optional=True,
         description="The cloud account or organization id used to identify different entities in a "
         "multi-tenant environment.",
         deprecated=True,
         deprecated_description=_CLOUD_ONTOLOGY_NOTE,
     )
-    name: optional(
-        keyword(),
+    name: keyword(
+        optional=True,
         description="The cloud account name or alias used to identify different entities in a "
         "multi-tenant environment.",
         deprecated=True,
@@ -35,22 +35,22 @@ class Account(HowlerEmbeddedModel):
 class Instance(HowlerEmbeddedModel):
     """Instance information."""
 
-    id: optional(keyword(), description="Instance ID of the host machine.")
-    name: optional(keyword(), description="Instance name of the host machine.")
+    id: keyword(optional=True, description="Instance ID of the host machine.")
+    name: keyword(optional=True, description="Instance name of the host machine.")
 
 
 @register_model(index=True, store=True, description="Project information.", embedded=True)
 class Project(HowlerEmbeddedModel):
     """Project information."""
 
-    id: optional(
-        keyword(),
+    id: keyword(
+        optional=True,
         description="The cloud project identifier.",
         deprecated=True,
         deprecated_description=_CLOUD_ONTOLOGY_NOTE,
     )
-    name: optional(
-        keyword(),
+    name: keyword(
+        optional=True,
         description="The cloud project name.",
         deprecated=True,
         deprecated_description=_CLOUD_ONTOLOGY_NOTE,
@@ -61,15 +61,15 @@ class Project(HowlerEmbeddedModel):
 class Machine(HowlerEmbeddedModel):
     """Machine information."""
 
-    type: optional(keyword(), description="Machine type of the host machine.")
+    type: keyword(optional=True, description="Machine type of the host machine.")
 
 
 @register_model(index=True, store=True, description="Service information.", embedded=True)
 class Service(HowlerEmbeddedModel):
     """Service information."""
 
-    name: optional(
-        keyword(),
+    name: keyword(
+        optional=True,
         description="The cloud service name is intended to distinguish services running on different platforms "
         "within a provider, eg AWS EC2 vs Lambda, GCP GCE vs App Engine, Azure VM vs App Server.",
     )
@@ -84,35 +84,37 @@ class Service(HowlerEmbeddedModel):
 class Cloud(HowlerEmbeddedModel):
     """Fields related to the cloud or infrastructure the events are coming from."""
 
-    account: optional(
-        compound(Account),
+    account: compound(
+        Account,
+        optional=True,
         description="Cloud account information.",
         deprecated=True,
         deprecated_description=_CLOUD_ONTOLOGY_NOTE,
     )
-    availability_zone: optional(
-        keyword(),
+    availability_zone: keyword(
+        optional=True,
         description="Availability zone in which this host, resource, or service is located.",
         deprecated=True,
         deprecated_description=_CLOUD_ONTOLOGY_NOTE,
     )
-    instance: optional(compound(Instance), description="Instance information.")
-    machine: optional(compound(Machine), description="Machine information.")
-    project: optional(
-        compound(Project),
+    instance: compound(Instance, optional=True, description="Instance information.")
+    machine: compound(Machine, optional=True, description="Machine information.")
+    project: compound(
+        Project,
+        optional=True,
         description="Project information.",
         deprecated=True,
         deprecated_description=_CLOUD_ONTOLOGY_NOTE,
     )
-    provider: optional(
-        keyword(), description="Name of the cloud provider. Example values are aws, azure, gcp, or digitalocean."
+    provider: keyword(
+        optional=True, description="Name of the cloud provider. Example values are aws, azure, gcp, or digitalocean."
     )
-    region: optional(keyword(), description="Region in which this host, resource, or service is located.")
-    service: optional(compound(Service), description="Service information.")
+    region: keyword(optional=True, description="Region in which this host, resource, or service is located.")
+    service: compound(Service, optional=True, description="Service information.")
 
     # Extra fields not defined in ECS but added for outline purposes
-    tenant_id: optional(
-        keyword(),
+    tenant_id: keyword(
+        optional=True,
         description="The tenant id associated with this alert.",
         deprecated=True,
         deprecated_description=_CLOUD_ONTOLOGY_NOTE,

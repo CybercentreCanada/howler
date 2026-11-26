@@ -13,7 +13,7 @@ from retrying import retry
 from howler.datastore.collection import DATASTORE_INDEX_PREFIX, ESCollection
 from howler.datastore.exceptions import DataStoreException, VersionConflictException
 from howler.datastore.store import ESStore
-from howler.models import HowlerESModel, date, fields, integer, keyword, list_field, optional, register_model, text
+from howler.models import HowlerESModel, date, fields, integer, keyword, list_field, register_model, text
 from howler.models.schema import document_mapping, index_settings
 
 with warnings.catch_warnings():
@@ -943,7 +943,7 @@ def test_fix_replicas(es_connection: ESCollection, replicas: int):
 class ReindexModel1(HowlerESModel):
     field_1: fields.keyword(default="default")
     field_2: fields.keyword()
-    field_3: fields.optional(fields.keyword())
+    field_3: fields.keyword(optional=True)
 
 
 @register_model(index=True)
@@ -1197,7 +1197,7 @@ class DatastoreSearchDocument(HowlerESModel):
     key: keyword()
     message: text(copyto=["__text__"])
     status: keyword()
-    owner: optional(keyword())
+    owner: keyword(optional=True)
     severity: integer()
     tags: list_field(keyword())
     observed: date()

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from howler.models import HowlerEmbeddedModel, ip, keyword, optional, register_model
+from howler.models import HowlerEmbeddedModel, ip, keyword, register_model
 
 
 @register_model(
@@ -17,12 +17,12 @@ from howler.models import HowlerEmbeddedModel, ip, keyword, optional, register_m
 class Server(HowlerEmbeddedModel):
     """A Server is defined as the responder in a network connection."""
 
-    ip: optional(ip(), description="IP address of the server (IPv4 or IPv6).")
-    address: optional(
-        keyword(),
+    ip: ip(optional=True, description="IP address of the server (IPv4 or IPv6).")
+    address: keyword(
+        optional=True,
         description=(
             "Some event server addresses are defined ambiguously. The event will sometimes list an IP, a "
             "domain or a unix socket. You should always store the raw address in the .address field."
         ),
     )
-    domain: optional(keyword(), description="The domain name of the server system.")
+    domain: keyword(optional=True, description="The domain name of the server system.")

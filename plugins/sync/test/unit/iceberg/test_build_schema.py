@@ -17,7 +17,6 @@ from howler.models import (
     keyword,
     list_field,
     mapping,
-    optional,
     register_model,
     text,
     uuid,
@@ -63,23 +62,23 @@ class Containers(HowlerEmbeddedModel):
     compound_field: compound(Nested)
     list_field: list_field(integer(description="internal description"))
     mapping_field: mapping(text(), description="parent level description")
-    optional_items: list_field(optional(integer(description="optional item description")))
+    optional_items: list_field(integer(description="optional item description", optional=True))
 
 
 @register_model(embedded=True)
 class Defaults(HowlerEmbeddedModel):
     required_field: keyword()
-    optional_field: optional(integer())
+    optional_field: integer(optional=True)
     default_value_field: date(default="NOW")
-    nullable_default_field: optional(text(), default="value")
-    nullable_list: optional(list_field(text()))
-    list_with_nullable_elements: list_field(optional(text(), default="value"), default=[])
+    nullable_default_field: text(optional=True, default="value")
+    nullable_list: list_field(text(), optional=True)
+    list_with_nullable_elements: list_field(text(optional=True, default="value"), default=[])
     list_with_defaulted_elements: list_field(integer(default=0))
-    nullable_mapping: optional(mapping(text()))
-    mapping_with_nullable_values: mapping(optional(text()), default={})
+    nullable_mapping: mapping(text(), optional=True)
+    mapping_with_nullable_values: mapping(text(optional=True), default={})
     mapping_with_generated_values: mapping(uuid())
     mapping_of_lists: mapping(list_field(date(default="NOW")))
-    nullable_compound: optional(compound(Nested))
+    nullable_compound: compound(Nested, optional=True)
 
 
 @register_model(embedded=True)
@@ -95,7 +94,7 @@ class AnyField(HowlerEmbeddedModel):
 
 @register_model()
 class ExtendedHit(Hit):
-    plugin_field: optional(keyword())
+    plugin_field: keyword(optional=True)
 
 
 def test_basic_types_and_instance():
@@ -203,7 +202,7 @@ def test_finalized_hit_extension_schema(monkeypatch):
 
 def test_spark_accepts_null_batches_from_finalized_hit():
     registry = ModelExtensionRegistry()
-    batch = optional(list[keyword()], default=[])
+    batch = list_field(keyword(), optional=True, default=[])
     registry.declare(Hit, "batch", batch, plugin="test")
     registry.declare(Hit, "batches", list_field(batch, default=[]), plugin="test")
     model = registry.finalize(Hit)

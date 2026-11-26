@@ -24,7 +24,7 @@ logger = get_logger(__file__)
 
 
 def _nullable(field: FieldDefinition | FieldInfo) -> bool:
-    """Sync permits null unless this field has a default and is not wrapped in optional()."""
+    """Sync permits null unless this field has a non-null default without optional=True."""
     if field.default_factory is None and (field.default is None or field.default is PydanticUndefined):
         return True
 
@@ -32,11 +32,10 @@ def _nullable(field: FieldDefinition | FieldInfo) -> bool:
     if get_origin(annotation) not in (Union, types.UnionType) or type(None) not in get_args(annotation):
         return False
 
-    # optional() wraps a Howler field inside the union, or sets the outer kind to
-    # "Optional" for a bare type such as list[keyword()]. A scalar builder like
-    # date(default="NOW") puts its kind only *outside* its datetime | None union.
+    # Scalar builders like date(default="NOW") keep datetime | None as their annotation
+    # without setting optional=True on HowlerFieldMetadata.
     metadata = field.metadata if isinstance(field, FieldDefinition) else field_metadata(annotation, field.metadata)
-    return metadata is None or metadata.kind == "Optional" or field_metadata(annotation) is not None
+    return metadata is None or metadata.optional
 
 
 def _type_from_annotation(annotation: Any, field: FieldDefinition, allow_any_as_string: bool) -> DataType:

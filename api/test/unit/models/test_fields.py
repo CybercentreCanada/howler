@@ -44,7 +44,6 @@ from howler.models import (
     mapping,
     md5,
     model_registry,
-    optional,
     phone_number,
     platform,
     processor,
@@ -82,10 +81,10 @@ class SerializationProbe(HowlerESModel):
 
     address: ip()
     addresses: list_field(ip())
-    optional_address: optional(ip())
+    optional_address: ip(optional=True)
     ip_text: keyword()
     ip_texts: list_field(keyword())
-    optional_ip_text: optional(keyword())
+    optional_ip_text: keyword(optional=True)
     created: date()
     created_by_key: mapping(date())
     timestamp_text: keyword()
@@ -95,11 +94,11 @@ class SerializationProbe(HowlerESModel):
 class NullableFieldModel(HowlerESModel):
     """Optional scalar and container fields keep their wrapped validation behavior."""
 
-    maybe: optional(keyword(), alias="external_value")  # pyright: ignore[reportInvalidTypeForm]
-    disabled: optional(keyword(index=False, store=False))  # pyright: ignore[reportInvalidTypeForm]
-    with_default: optional(keyword(), default="fallback")  # pyright: ignore[reportInvalidTypeForm]
-    items: optional(list_field(keyword()))  # pyright: ignore[reportInvalidTypeForm]
-    values: optional(mapping(integer(), index=True, store=True))  # pyright: ignore[reportInvalidTypeForm]
+    maybe: keyword(optional=True, alias="external_value")  # pyright: ignore[reportInvalidTypeForm]
+    disabled: keyword(optional=True, index=False, store=False)  # pyright: ignore[reportInvalidTypeForm]
+    with_default: keyword(optional=True, default="fallback")  # pyright: ignore[reportInvalidTypeForm]
+    items: list_field(keyword(), optional=True)  # pyright: ignore[reportInvalidTypeForm]
+    values: mapping(integer(), optional=True, index=True, store=True)  # pyright: ignore[reportInvalidTypeForm]
 
 
 class GeneratedIdentifierModel(HowlerEmbeddedModel):
@@ -253,22 +252,30 @@ def test_legacy_empty_hit_fields_are_normalized_during_ingest(monkeypatch: pytes
     document = hit.as_primitives()
     assert document["tags"] == [] and "detection" not in document["howler"]
 
-    assert TypeAdapter(optional(list_field(keyword()), default=[])).validate_python(None) is None
-    assert TypeAdapter(optional(emptyable_keyword())).validate_python("") == ""
+    assert TypeAdapter(list_field(keyword(), optional=True, default=[])).validate_python(None) is None
+    assert TypeAdapter(emptyable_keyword(optional=True)).validate_python("") == ""
+    assert TypeAdapter(boolean(optional=True)).validate_python(None) is None
+    assert TypeAdapter(integer(optional=True)).validate_python(None) is None
+    assert TypeAdapter(float_field(optional=True, default=0)).validate_python(None) is None
+    assert TypeAdapter(json_field(optional=True)).validate_python(None) is None
+    assert TypeAdapter(uuid(optional=True)).validate_python(None) is None
     with pytest.raises(ValidationError):
         TypeAdapter(keyword()).validate_python("")
     with pytest.raises(ValidationError):
-        TypeAdapter(optional(list_field(keyword()))).validate_python([""])
+        TypeAdapter(list_field(keyword(), optional=True)).validate_python([""])
 
 
-def test_optional_metadata_overrides_preserve_wrapped_mapping_and_validation() -> None:
+def test_optional_metadata_preserves_mapping_and_validation() -> None:
     class Probe(HowlerESModel):
-        address: optional(
-            ip(index=False, store=True, copyto="__text__", deprecated=True, reference="old", sync=False),
+        address: ip(
+            optional=True,
             alias="ip_address",
+            index=False,
             store=False,
-            reference="new",
+            copyto="__text__",
             deprecated=False,
+            reference="new",
+            sync=False,
         )
 
     details = model_registry.fields(Probe)["ip_address"].metadata
@@ -286,16 +293,16 @@ def test_optional_metadata_overrides_preserve_wrapped_mapping_and_validation() -
 
 
 @pytest.mark.parametrize(
-    ("outer", "wire", "stored"),
+    ("options", "wire", "stored"),
     [
-        ({}, "wire", "stored"),
-        ({"es_name": "outer_stored"}, "wire", "outer_stored"),
+        ({"alias": "wire", "es_name": "stored"}, "wire", "stored"),
+        ({"alias": "wire", "es_name": "outer_stored"}, "wire", "outer_stored"),
         ({"alias": "outer_wire"}, "outer_wire", "outer_wire"),
         ({"alias": "outer_wire", "es_name": "outer_stored"}, "outer_wire", "outer_stored"),
     ],
 )
-def test_optional_wire_alias_and_storage_name(outer, wire, stored):
-    annotation = optional(ip(alias="wire", es_name="stored", index=False), **outer)
+def test_optional_wire_alias_and_storage_name(options, wire, stored):
+    annotation = ip(optional=True, index=False, **options)
     probe = type("Probe", (HowlerESModel,), {"__annotations__": {"address": annotation}})
     assert set(model_registry.fields(probe)) == {wire}
     assert probe.model_validate({wire: "192.0.2.1"}).as_primitives() == {wire: "192.0.2.1"}
@@ -305,31 +312,27 @@ def test_optional_wire_alias_and_storage_name(outer, wire, stored):
 
 
 @pytest.mark.parametrize("array", [False, True], ids=["scalar", "list"])
-@pytest.mark.parametrize(
-    "builder, child_index, indexed", [(ip, None, False), (ip, True, False), (ip, False, True), (text, True, False)]
-)
-def test_optional_index_override_reaches_the_storage_field_without_mutating_the_child(
-    builder, child_index, indexed, array
-):
+@pytest.mark.parametrize("builder, indexed", [(ip, None), (ip, False), (ip, True), (text, False)])
+def test_optional_index_reaches_the_storage_field(builder, indexed, array):
     names = {"alias": "wire", "es_name": "stored"}
-    options = {"index": child_index, "copyto": "__text__"}
-    child = list_field(builder(**options), **names) if array else builder(**options, **names)
-    wrapped = optional(child, index=indexed)
-    for annotation, expected in ((wrapped, indexed), (child, child_index)):
-        probe = type("Probe", (HowlerESModel,), {"__annotations__": {"value": annotation}})
-        leaf = model_registry.flat_fields(probe)["wire"]
-        assert leaf.multivalued is array and leaf.metadata.index is expected
-        storage = {"type": "ip" if builder is ip else "text", "copy_to": "__text__"}
-        if expected is not None:
-            storage["index"] = expected
-            if builder is ip:
-                storage["doc_values"] = expected
-        assert model_registry.mapping(probe)["properties"] == {"stored": storage}
+    options = {"index": indexed, "copyto": "__text__"}
+    annotation = (
+        list_field(builder(**options), optional=True, **names) if array else builder(optional=True, **options, **names)
+    )
+    probe = type("Probe", (HowlerESModel,), {"__annotations__": {"value": annotation}})
+    leaf = model_registry.flat_fields(probe)["wire"]
+    assert leaf.multivalued is array and leaf.metadata.index is indexed
+    storage = {"type": "ip" if builder is ip else "text", "copy_to": "__text__"}
+    if indexed is not None:
+        storage["index"] = indexed
+        if builder is ip:
+            storage["doc_values"] = indexed
+    assert model_registry.mapping(probe)["properties"] == {"stored": storage}
 
-        address = "192.0.2.1"
-        model = probe.model_validate({"wire": [address] if array else address})
-        output = int(ip_address(address)) if builder is ip else address
-        assert model.as_primitives(ip_format="int") == {"wire": [output] if array else output}
+    address = "192.0.2.1"
+    model = probe.model_validate({"wire": [address] if array else address})
+    output = int(ip_address(address)) if builder is ip else address
+    assert model.as_primitives(ip_format="int") == {"wire": [output] if array else output}
 
 
 def test_any_field_accepts_arbitrary_python_values() -> None:
@@ -485,8 +488,8 @@ def test_nullable_annotations_preserve_ordered_unions() -> None:
     first = Annotated[int | str, HowlerFieldMetadata(kind="Keyword"), Field(union_mode="left_to_right")]
     second = Annotated[str | int, HowlerFieldMetadata(kind="Keyword"), Field(union_mode="left_to_right")]
 
-    value = TypeAdapter(optional(tuple[first, second])).validate_python(("12", "12"))
-    adapter = TypeAdapter(optional(first))
+    value = TypeAdapter(tuple[first, second] | None).validate_python(("12", "12"))
+    adapter = TypeAdapter(first | None)
     zero = adapter.validate_python("0")
     text_value = adapter.validate_python("not-a-number")
 
