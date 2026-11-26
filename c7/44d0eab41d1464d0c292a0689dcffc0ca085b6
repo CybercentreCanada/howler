@@ -1,0 +1,219 @@
+api/test/unit/models/test_fields.py
+  s_8c6c3296979786::t_7d2f1cfe9395f5 491-492
+  s_8c6c3296979786::t_f9f9a2d8192267 84,87,97-101,320
+  s_8c6c3296979786::t_961584a1044217 255-261,265,268,270-271,273,275,277-278,296,298-299,304-305,315-316,318-319,321-335
+api/howler/models/cbs.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,12-14,21-22,29-30,42
+api/howler/models/ecs/faas.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,14-15,28-33
+api/howler/models/ecs/event.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,66,74-75,80-81,89,97,109-112,116-117
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 67-69,76-79,82-83,85-86,91-93,98-99,103-105,113-114,118-119,121-122,126-128,132-134
+api/howler/models/ecs/container.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,19-20,33-37
+plugins/sync/sync/iceberg/build.py
+  s_8c6c3296979786::t_542025a0c5819a 27,35-36,38
+api/howler/models/log.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 9,26-31
+api/howler/models/overview.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,14-15
+api/howler/models/ecs/registry.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,17-19,26-30
+api/howler/models/ecs/network.py
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 17-18,23-24
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,22
+api/howler/models/pivot.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 10,62
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 22-23,56-59
+api/howler/models/ecs/related.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 9,49
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 43-44,50-52
+api/howler/models/howler_data.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 106,137-138,190,198-201,208-209,216,229-232,238-239
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 107-108,202-203,210-211
+api/howler/models/view.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 30,40-41,52-53
+api/howler/models/ecs/hash.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 26-32
+api/test/integration/test_datastore.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 16,946,1200
+api/test/unit/models/test_base.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 66-69,276-277,283,525
+api/test/unit/services/test_ingest_service.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 24-26,40,179-181
+api/test/unit/test_datastore_field_selection.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 9,29
+plugins/sentinel/test/unit/models/test_sentinel.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,65
+api/test/unit/models/test_extensions.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 70-71,75-76,88,91,98,144,147,150,156,160,166,177,258,268,282
+api/howler/models/aws.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,12-13,20-21,28-29
+api/howler/models/ecs/elf.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,12-13,20-28,35-42,54-57,59-60,70
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 61-62,64-65,67-69
+api/howler/models/ecs/vulnerability.py
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 17-19,23-24,27-28,32-33,37-38
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,31,42
+api/howler/models/event.py
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 53-54
+  s_8c6c3296979786::t_5ac4759d4f84d8 52,57
+api/howler/models/ecs/process.py
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 28-29,61-63,68-69,76-78,89-90,104-106,111-112,119-121,133-134,148-150,155-156,163-165,177-178
+  s_8c6c3296979786::t_5ac4759d4f84d8 27,39,46-47,54,66-67,73-75,82-88,93-97,109-110,116-118,125-132,137-141,153-154,160-162,169-176,181-185
+api/test/integration/test_datastore_add_namespace.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 23
+api/howler/models/ecs/server.py
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 21-22
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,20,28
+api/howler/models/record.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 85,95-97,155,227
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 88-90,98-100,104-106,111-113,117-119,124-126,130-132,135-137,141-143,148-150,156-158,162-164,172-174,178-180,186-188,196-198,202-204,209-211,215-217,221-223,228-230,237-239,243-245,250-252,259-261,266-268,272-274,278-280
+api/howler/models/ecs/observer.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,28,34,37-42
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 23-25,29-31
+plugins/sync/test/unit/iceberg/test_build_schema.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 65,71,73-75,77-78,81,97
+  s_8c6c3296979786::t_01db123225b0e2 205
+api/howler/models/fields.py
+  s_8c6c3296979786::t_989b2e3a6704bb 13,181-182,205
+  s_8c6c3296979786::t_70212792d21bd3 126-161,189-197
+  s_8c6c3296979786::t_9936efbd2b413d 8,117-118,123,177,180,183-186,200,203,208-209
+  s_8c6c3296979786::t_9e5c88d4425709 608-609,700,705
+  s_8c6c3296979786::t_d40e0d14b878b9 701-704
+  s_d23b66056b5799::t_1fc40488ba110b 9,124-125
+api/howler/models/lead.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,18
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 24-26
+plugins/sentinel/sentinel/models/hit.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 8,21
+api/howler/models/ecs/host.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,12,15,20-21
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 16-17
+api/howler/models/ecs/autonomous_system.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,20-21
+api/howler/models/ecs/email.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,20-24,36,43-44,55-59,76-78,98,110-111,118
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 45-47,51-52,71-73,79-80,82-83,85-87,91-92,94-95,99-101,105-107,112-113
+api/howler/models/gcp.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,12-16
+api/howler/models/ecs/pe.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,17-24
+api/test/integration/test_datastore_odm.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 43-44
+api/howler/models/dossier.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 29-30
+api/howler/models/template.py
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 16-17
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,14
+api/howler/models/ecs/cloud.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,38-39,64,100-101,112-113
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 18-19,25-26,46-47,52-53,71-72,87-89,94-95,102-104,109-110,116-117
+api/howler/models/ecs/agent.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,21-24
+api/howler/models/user.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 36,60,67
+api/test/unit/models/test_clue.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 7,89
+api/howler/models/ecs/ingress.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,18-19
+api/test/unit/models/test_json_schema_export.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 169,220
+api/howler/models/migration.py
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 20-21
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,23-24
+api/howler/models/ecs/user.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,18-24,36-43,50-53
+api/howler/models/ecs/http.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,12-13,20-21,27-29,36-39,46-48
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 22-23
+api/howler/models/ecs/error.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,20-21
+api/howler/models/assemblyline.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,14-17,48
+api/howler/models/ecs/egress.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,17
+api/howler/models/ecs/organization.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,21
+plugins/evidence/evidence/models/evidence.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 63-67,69-92
+api/howler/models/ecs/threat.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,26-28,37-39,49-51,132-134,151-154,164-165,172,190-191,207,213,217-219
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 15-16,40-41,60-62,66-67,71-72,76-78,82-83,87-88,100-102,106-107,111-112,116-117,127-128,146-147,155-156,158-159,161-162,166-167,169-171,179-180,204-205,208-209,214-216
+plugins/sentinel/sentinel/models/sentinel.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 8,15-18
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 19-20,22-23
+api/howler/models/ecs/user_agent.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,13,25-29
+api/howler/models/azure.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,12-14,19
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 15-16
+api/howler/models/ecs/rule.py
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 18-19,23-24,28-29,33-34,38-39,41-42,46-47
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,27,37,51
+api/howler/models/ecs/client.py
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 34-35,42-44,50-51,56-57,62-64,70-71,76-77,80-82,88-89,95-96,110-111,115-117,120-122,128-130
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,20-21,118-119,123-127,133
+api/howler/models/ecs/geo.py
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 31-32
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,25-30,35-38
+api/howler/models/clue.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,43
+api/howler/models/ecs/file.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,23-27,35-39,45-48,54-57,65-66
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 28-29,32-33,40-41,49-50,59-63
+api/howler/models/action.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 26
+api/howler/models/ecs/tls.py
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 20-21,37-38,44-45,62-64
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,61,65-66
+api/howler/models/ecs/group.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,17-19,26-27
+api/howler/models/analytic.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 83,87,94-96
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 32-33,68-69
+api/howler/models/case.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 59-61,63,94,165,167,195,198,200-202,230
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 83-87,95-97,131-132,203-208,212-220,224-225,227-228,231-233
+api/howler/models/ecs/dns.py
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 12-14,17-18,38-39,50-52,56-64
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,15-16,22,34-37,43,55,65-67
+api/howler/models/header.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,12-13,19
+api/howler/models/ecs/interface.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,21-22
+api/howler/models/ecs/code_signature.py
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 17-19,29-30
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,22-28
+api/howler/models/ecs/url.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,18,23,29-32,40,51
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 19-20,24-25,33-34,37-39,41-42,46-47
+api/howler/models/ecs/os.py
+  s_8c6c3296979786::t_5ac4759d4f84d8 5,17-21,27
+  s_8c6c3296979786::t_b1e0a9bb04dcb8 22-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c744d0eab41d1464d0c292a0689dcffc0ca085b6",
+  "prompts": {},
+  "sessions": {
+    "s_8c6c3296979786": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de6c3b21fffeyCi5mGHl8rKfq1",
+        "model": "gemini-4-hydrogen"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_d23b66056b5799": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de6ec1ca4ffebl534zONTamFNZ",
+        "model": "us.anthropic.claude-opus-5-5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
