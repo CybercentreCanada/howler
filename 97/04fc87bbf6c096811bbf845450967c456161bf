@@ -1,0 +1,168 @@
+api/howler/api/v1/overview.py
+  s_ab11e778bcb438::t_64a12c56515e55 97
+api/test/integration/service/test_dossier_service.py
+  s_ab11e778bcb438::t_64a12c56515e55 126
+api/howler/services/case_service.py
+  s_ab11e778bcb438::t_64a12c56515e55 49,195,197,207,246,265,469,540,628,1137,1177,1274,1281,1324,1384
+api/howler/api/v1/auth.py
+  s_ab11e778bcb438::t_64a12c56515e55 143
+api/test/unit/endpoints/test_notebook.py
+  s_ab11e778bcb438::t_64a12c56515e55 35
+api/test/unit/models/test_base.py
+  s_ab11e778bcb438::t_fbce89559cc141 142,144
+  s_ab11e778bcb438::t_ed65cb19807c10 392
+  s_ab11e778bcb438::t_7307bcdf4dd024 36,175,402-405,412-427
+  s_ab11e778bcb438::t_64a12c56515e55 267,298,324,407
+  s_ab11e778bcb438::t_9fe20c9afaa5b6 428
+api/test/integration/api/test_dossier.py
+  s_ab11e778bcb438::t_64a12c56515e55 29,135,152
+api/howler/services/dossier_service.py
+  s_ab11e778bcb438::t_64a12c56515e55 163,238
+plugins/evidence/test/unit/models/test_evidence.py
+  s_ab11e778bcb438::t_64a12c56515e55 55
+plugins/sentinel/test/unit/models/test_sentinel.py
+  s_ab11e778bcb438::t_64a12c56515e55 79
+api/test/unit/endpoints/test_action_endpoint.py
+  s_ab11e778bcb438::t_64a12c56515e55 21,35
+plugins/sentinel/test/unit/test_actions.py
+  s_ab11e778bcb438::t_64a12c56515e55 58,78
+api/test/unit/endpoints/test_ingest_endpoint.py
+  s_ab11e778bcb438::t_64a12c56515e55 704,734
+api/test/unit/models/test_pivot.py
+  s_ab11e778bcb438::t_b79ee18928dfcc 4-5,55-85
+api/howler/api/v1/hit.py
+  s_ab11e778bcb438::t_64a12c56515e55 855
+  s_ab11e778bcb438::t_266cc1585fa04a 863
+api/test/unit/actions/test_add_to_case.py
+  s_ab11e778bcb438::t_64a12c56515e55 16
+api/howler/api/v2/case.py
+  s_ab11e778bcb438::t_f314c929d1e3c6 287-288
+  s_ab11e778bcb438::t_64a12c56515e55 270
+api/test/unit/services/test_analytic_service.py
+  s_ab11e778bcb438::t_64a12c56515e55 11
+api/test/unit/models/test_case.py
+  s_ab11e778bcb438::t_f61e7b22e2bc7b 9
+  s_ab11e778bcb438::t_52f4e6077a6a07 49,81,90,98,131,135,144,151,179,218,228,298,314
+api/howler/services/permission_service.py
+  s_ab11e778bcb438::t_64a12c56515e55 48
+api/test/unit/actions/test_transition.py
+  s_ab11e778bcb438::t_64a12c56515e55 19,50
+api/test/unit/test_case_insensitive_metadata.py
+  s_ab11e778bcb438::t_64a12c56515e55 168,178,188,198-199
+plugins/sentinel/sentinel/services/ingest_service.py
+  s_ab11e778bcb438::t_64a12c56515e55 409
+api/test/unit/endpoints/test_task_endpoint.py
+  s_ab11e778bcb438::t_64a12c56515e55 19
+api/test/unit/models/test_related.py
+  s_ab11e778bcb438::t_cbfba641636e46 7
+  s_ab11e778bcb438::t_4da5463f8ca50a 105
+api/howler/services/hit_service.py
+  s_ab11e778bcb438::t_64a12c56515e55 297,342,469
+  s_ab11e778bcb438::t_723e6e2a1ca12e 493
+api/test/integration/service/test_dossier_group.py
+  s_ab11e778bcb438::t_64a12c56515e55 20
+plugins/sentinel/test/unit/test_ingest.py
+  s_ab11e778bcb438::t_64a12c56515e55 953,1004
+api/test/unit/models/test_fields.py
+  s_ab11e778bcb438::t_ed6bf89e7b7b39 21,525,527,529
+  s_ab11e778bcb438::t_774fbfb32b4378 284
+api/howler/services/ai_service.py
+  s_ab11e778bcb438::t_b2e4c698ed2bdd 342
+api/test/unit/services/test_search_service_user_fields.py
+  s_ab11e778bcb438::t_64a12c56515e55 568
+api/test/unit/endpoints/test_hit_endpoint.py
+  s_ab11e778bcb438::t_64a12c56515e55 81,101,113,115
+api/howler/services/correlation_service.py
+  s_ab11e778bcb438::t_64a12c56515e55 195
+api/test/unit/services/test_enqueue_action.py
+  s_ab11e778bcb438::t_64a12c56515e55 363-364,440,450
+api/test/unit/actions/test_init.py
+  s_ab11e778bcb438::t_64a12c56515e55 19
+api/howler/services/event_service.py
+  s_ab11e778bcb438::t_64a12c56515e55 165,182,228,251
+api/test/unit/models/test_documents.py
+  s_ab11e778bcb438::t_0e917f1936e740 42,54,95
+api/howler/services/ingest_service.py
+  s_ab11e778bcb438::t_64a12c56515e55 88
+api/test/unit/services/test_permission_service.py
+  s_ab11e778bcb438::t_64a12c56515e55 100
+api/test/unit/services/test_event_service.py
+  s_ab11e778bcb438::t_64a12c56515e55 286,300,316,336,354,371,387
+api/howler/models/log.py
+  s_ab11e778bcb438::t_da739e3f581471 7-8
+  s_ab11e778bcb438::t_73a0ffa145d76c 34-38,41,44
+api/howler/api/v1/user.py
+  s_ab11e778bcb438::t_64a12c56515e55 147
+api/test/unit/endpoints/test_auth_endpoint.py
+  s_ab11e778bcb438::t_64a12c56515e55 200
+api/howler/api/v1/analytic.py
+  s_ab11e778bcb438::t_64a12c56515e55 128,182,185,551
+  s_ab11e778bcb438::t_36a25b6dbe869b 554
+api/howler/services/analytic_service.py
+  s_ab11e778bcb438::t_64a12c56515e55 181
+api/test/unit/models/test_extensions.py
+  s_ab11e778bcb438::t_65b04b21edbde6 14,262
+api/howler/datastore/bulk.py
+  s_ab11e778bcb438::t_64a12c56515e55 254
+api/howler/services/user_service.py
+  s_ab11e778bcb438::t_64a12c56515e55 244,267,346
+api/test/unit/models/test_hit_event.py
+  s_ab11e778bcb438::t_78cc05d9ba7b62 7
+  s_ab11e778bcb438::t_a17381e9e4188f 39
+api/howler/datastore/collection.py
+  s_ab11e778bcb438::t_64a12c56515e55 1481,1510
+api/test/unit/models/test_clue.py
+  s_ab11e778bcb438::t_c8675f0f512fe6 66,68,121
+  s_ab11e778bcb438::t_6fd6073876d16a 8
+  s_ab11e778bcb438::t_a87ae7192929d6 7,9-13
+api/howler/api/v1/action.py
+  s_ab11e778bcb438::t_64a12c56515e55 128,210
+api/test/unit/endpoints/test_classification_access_control.py
+  s_ab11e778bcb438::t_64a12c56515e55 128,170,184,198,212,226,240,255,281,480
+api/test/unit/services/test_correlation_service.py
+  s_ab11e778bcb438::t_64a12c56515e55 54,504,508,517,632,1207
+api/test/integration/test_ilm.py
+  s_ab11e778bcb438::t_64a12c56515e55 377,380,390,405,408,414
+api/howler/api/v1/view.py
+  s_ab11e778bcb438::t_64a12c56515e55 105
+  s_ab11e778bcb438::t_4dad88cf245998 216-217
+api/test/unit/services/test_dossier_service.py
+  s_ab11e778bcb438::t_64a12c56515e55 19
+api/test/unit/services/test_user_service.py
+  s_ab11e778bcb438::t_64a12c56515e55 182,204,293
+api/howler/models/pivot.py
+  s_ab11e778bcb438::t_ce5318f74caf3a 7-8,76-83,85-86
+api/test/unit/models/test_validation_errors.py
+  s_ab11e778bcb438::t_8b073ab0e67244 111-114,116
+  s_ab11e778bcb438::t_64a12c56515e55 43,59,72,85,93,102,125,145,182,215
+api/test/unit/services/test_ingest_service.py
+  s_ab11e778bcb438::t_64a12c56515e55 185,211,260,278
+api/test/unit/services/test_dossier_group_service.py
+  s_ab11e778bcb438::t_64a12c56515e55 174
+api/test/unit/services/test_ingest_correlation.py
+  s_ab11e778bcb438::t_64a12c56515e55 38,246
+api/test/unit/services/test_case_service.py
+  s_ab11e778bcb438::t_64a12c56515e55 27
+api/howler/models/base.py
+  s_ab11e778bcb438::t_9d72d9c408ebc3 308,317
+  s_ab11e778bcb438::t_2e0fd16a009eee 652-655
+  s_ab11e778bcb438::t_aab8fb495a8442 205-208,304-307,309-316,318,320,322,324,326-329,334-393
+api/howler/api/v1/template.py
+  s_ab11e778bcb438::t_64a12c56515e55 101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9704fc87bbf6c096811bbf845450967c456161bf",
+  "prompts": {},
+  "sessions": {
+    "s_ab11e778bcb438": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de702ae28ffepNERGl3pjg5MXd",
+        "model": "gemini-4-hydrogen"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
