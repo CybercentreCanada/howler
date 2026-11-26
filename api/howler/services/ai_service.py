@@ -24,6 +24,7 @@ LEAD_OWNER = "howler.ai_triage"
 AI_TRIAGE_QUEUE_NAME = "howler.ai_triage.alerts"
 AI_LEAD_RETRIES = int(os.getenv("AI_LEAD_RETRIES", "3"))
 AI_RESPONSE_CHUNK_SIZE = 64 * 1024
+INCOMPLETE_FINISH_REASONS = {"length", "content_filter"}
 
 AIUpdate = tuple[Literal["text", "status"], str]
 """A streamed provider update: the full answer text so far, or a progress message."""
@@ -369,8 +370,30 @@ def transport_error(
     return AITransportError(unavailable_reason)
 
 
+def _check_chunk(chunk: Any) -> None:
+    """Reject provider error envelopes and generations that stopped before completing.
+
+    Raises:
+        AITransportError: If the chunk reports an error, or a finish reason other than a normal stop.
+    """
+    if not isinstance(chunk, dict):
+        return
+
+    if "error" in chunk:
+        raise AITransportError("AI provider reported an error")
+
+    choices = chunk.get("choices")
+    choice = choices[0] if isinstance(choices, list) and choices and isinstance(choices[0], dict) else {}
+    if choice.get("finish_reason") in INCOMPLETE_FINISH_REASONS:
+        raise AITransportError("AI provider stopped before completing its response")
+
+
 def _iter_stream(response: requests.Response, max_response_bytes: int) -> Iterator[str]:
-    """Yield text deltas from a server-sent event chat-completion stream."""
+    """Yield text deltas from a server-sent event chat-completion stream.
+
+    Raises:
+        AITransportError: If the stream is invalid, reports an error, or ends without the ``[DONE]`` marker.
+    """
     for data in iter_sse_data(response, max_response_bytes):
         if data.strip() == b"[DONE]":
             return
@@ -380,9 +403,12 @@ def _iter_stream(response: requests.Response, max_response_bytes: int) -> Iterat
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
             raise AITransportError("Provider returned an invalid response") from exc
 
+        _check_chunk(chunk)
         content = _delta_content(chunk)
         if content:
             yield content
+
+    raise AITransportError("AI provider stream ended before completing its response")
 
 
 def stream_chat(
@@ -433,7 +459,9 @@ def stream_chat(
                 content_type = str(response.headers.get("Content-Type", ""))
                 if content_type.startswith("application/json"):
                     # The provider ignored the stream request and returned one complete response.
-                    content = _delta_content(json.loads(_read_response_body(response, config.max_response_bytes)))
+                    payload = json.loads(_read_response_body(response, config.max_response_bytes))
+                    _check_chunk(payload)
+                    content = _delta_content(payload)
                     if content:
                         yield content
                     return

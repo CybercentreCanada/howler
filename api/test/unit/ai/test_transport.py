@@ -341,3 +341,32 @@ def test_stream_chat_rejects_invalid_streams(provider, lines, settings, reason):
         list(transport.stream_chat(stream_config(**settings), "token", [{"role": "user", "content": "x"}]))
 
     assert error.value.reason == reason
+
+
+@pytest.mark.parametrize(
+    ("lines", "reason"),
+    [
+        ([sse("howler."), b"", sse("status")], "AI provider stream ended before completing its response"),
+        ([sse("howler."), b"", b'data: {"error": {"message": "secret detail"}}'], "AI provider reported an error"),
+        (
+            [b'data: {"choices": [{"delta": {"content": "a:"}, "finish_reason": "length"}]}', b"", b"data: [DONE]"],
+            "AI provider stopped before completing its response",
+        ),
+    ],
+)
+def test_stream_chat_rejects_incomplete_streams(provider, lines, reason):
+    session, _factory = provider
+    stream_reply(session, lines)
+
+    with pytest.raises(transport.AITransportError) as error:
+        list(transport.stream_chat(stream_config(), "token", [{"role": "user", "content": "x"}]))
+
+    assert error.value.reason == reason
+
+
+def test_stream_chat_rejects_non_streamed_errors(provider):
+    session, _factory = provider
+    stream_reply(session, [], content_type="application/json", body=b'{"error": {"message": "secret detail"}}')
+
+    with pytest.raises(transport.AITransportError, match="AI provider reported an error"):
+        list(transport.stream_chat(stream_config(), "token", [{"role": "user", "content": "x"}]))

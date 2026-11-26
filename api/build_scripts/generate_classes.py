@@ -1,6 +1,5 @@
 import argparse
 import base64
-import json
 import logging as log
 import os
 import re
@@ -444,80 +443,70 @@ def _lookup_member(lookup_name: str, lookup_data: Any) -> str | None:
     return None
 
 
-def _configuration_type(configuration: dict[str, Any]) -> str:
-    """Convert the configuration section into a TS interface.
+# Configuration keys whose types are hardcoded. These are optional regardless of the local configuration's values.
+CONFIGURATION_TYPE_OVERRIDES = {
+    "max_apikey_duration_amount": "?: number",
+    "max_apikey_duration_unit": "?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months' | 'years'",
+    "apps": ": { alt: string; name: string; img_d: string; img_l: string; route: string; classification: string }[]",
+}
 
-    The configuration is a hilariously complex object, so instead of doing it in a logical way, we just #CHEESEIT
-    instead. We use a bunch of regexes to convert a JSON version of the entry into a TS type.
-    """
-    config_type = "export interface APIConfiguration extends APIMappings " + json.dumps(configuration, indent=2)
 
-    # |    "key":| -> |    key:|
-    config_type = re.sub(r'^( +)"(\w+)":', r"\1\2:", config_type, flags=re.MULTILINE)
+def _ts_key(key: str) -> str:
+    """Quote keys that aren't valid TS identifiers."""
+    return key if key.isidentifier() else f"'{key}'"
 
-    # true or false -> boolean;
-    config_type = re.sub(r"(true|false),?", "boolean;", config_type, flags=re.MULTILINE)
 
-    # array of strings -> string[];
-    config_type = re.sub(r'\[(\s+".+",?\s+)+],?', "string[];", config_type, flags=re.MULTILINE)
+def _ts_type(value: Any, depth: int, path: tuple[str, ...]) -> str:
+    """Infer the TS type of a configuration value from its JSON value."""
+    if isinstance(value, bool):
+        return "boolean"
 
-    # |    key: "value"| -> |    key: string;|
-    config_type = re.sub(r': ".+?",?', ": string;", config_type)
-    config_type = re.sub(r": \d+,?", ": number;", config_type)
+    if isinstance(value, (int, float)):
+        return "number"
 
-    # In order to handle cases where there's a list of complex objects, we make the assumption that all children
-    # have the same keys. We then do two things:
-    # 1. We remove every entry in the array except the last one
-    # 2. We convert the entry from a formatted dict into a single line of key: type entries. Example:
-    #
-    # | [{              |
-    # |   key: string;  |
-    # |   key2: string; | -> | { key: string; key2: string; key3: string }[] |
-    # |   key3: string; |
-    # | }]              |
-    def fix_whitespace(match_obj):
-        lines = match_obj.group(2).split("\n")
-        return f"{{{' '.join(line.strip() for line in lines)}}}[]"
+    if isinstance(value, str):
+        return "string"
 
-    config_type = re.sub(r"\[\s+({([\s\S]+?)},?\s+)+]", fix_whitespace, config_type)
+    if isinstance(value, dict):
+        return _ts_object(value, depth, path)
 
-    # We can hardcode a few types here. These are optional regardless of the local configuration's values.
-    config_type = re.sub(
-        r"max_apikey_duration_amount: .+",
-        r"max_apikey_duration_amount?: number;",
-        config_type,
-    )
-    config_type = re.sub(
-        r"max_apikey_duration_unit: .+",
-        r"max_apikey_duration_unit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months' | 'years';",
-        config_type,
-    )
-    config_type = re.sub(
-        r"apps: \[\],?",
-        "apps: { alt: string; name: string; img_d: string; img_l: string; route: string; classification: string }[];",
-        config_type,
-    )
+    if isinstance(value, list):
+        # Empty lists can't be inspected, so assume a list of strings
+        if not value:
+            return "string[]"
 
-    # Empty lists can't be inspected, so assume a list of strings
-    config_type = re.sub(r": \[\],?$", ": string[];", config_type, flags=re.MULTILINE)
+        # Lists of objects are assumed to share the keys of their last entry, and are written on a single line
+        if isinstance(value[-1], dict):
+            members = " ".join(f"{_ts_key(k)}: {_ts_type(v, 0, ())};" for k, v in value[-1].items())
+            return f"{{ {members[:-1]} }}[]"
+
+        return f"{_ts_type(value[0], depth, path)}[]"
+
+    return "unknown"
+
+
+def _ts_object(obj: dict[str, Any], depth: int, path: tuple[str, ...]) -> str:
+    """Render a configuration object as a multiline TS object type."""
+    indent = "  " * (depth + 1)
+    lines = []
+    for key, value in obj.items():
+        if key in CONFIGURATION_TYPE_OVERRIDES:
+            lines.append(f"{indent}{key}{CONFIGURATION_TYPE_OVERRIDES[key]};")
+        elif value is None:
+            lines.append(f"{indent}{_ts_key(key)}?: unknown;")
+        else:
+            lines.append(f"{indent}{_ts_key(key)}: {_ts_type(value, depth + 1, (*path, key))};")
 
     # Plugins can register additional feature flags at runtime
-    config_type = re.sub(
-        r"(\n  features: \{\n(?:    .+\n)*)(  \};?)",
-        r"\1    [feature: string]: boolean;\n\2",
-        config_type,
-    )
+    if path == ("features",):
+        lines.append(f"{indent}[feature: string]: boolean;")
 
-    # Finally, we convert any null values into unknown types.
-    config_type = re.sub(r"(.+): null.+", r"\1?: unknown;", config_type)
+    return "{\n" + "\n".join(lines) + "\n" + "  " * depth + "}"
 
-    # We clean up a few remaining awkward bits
-    config_type = config_type.replace('"', "'")
-    config_type = config_type.replace("},", "};")
-    config_type = config_type.replace("}\n", "};\n")
-    config_type = config_type.replace("[],", "[];")
 
-    return config_type
+def _configuration_type(configuration: dict[str, Any]) -> str:
+    """Convert the configuration section into a TS interface, inferring types from its values."""
+    return "export interface APIConfiguration extends APIMappings " + _ts_object(configuration, 0, ())
 
 
 def generate_api_config_types():

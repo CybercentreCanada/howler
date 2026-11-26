@@ -40,16 +40,16 @@ def test_delegated_token_prefers_plugin_then_azure_scope_and_never_falls_back(mo
     monkeypatch.setattr(agent_service, "azure_obo", azure_obo)
 
     monkeypatch.setattr(agent_service, "get_plugins", lambda: [plugin({}), plugin({"ai_agent": lambda t: f"p-{t}"})])
-    assert agent_service.get_delegated_token.uncached("howler-token") == "p-howler-token"
+    assert agent_service.exchange_token("howler-token") == "p-howler-token"
     azure_obo.assert_not_called()
 
     monkeypatch.setattr(agent_service, "get_plugins", lambda: [])
-    assert agent_service.get_delegated_token.uncached("howler-token") == "azure-delegated-token"
+    assert agent_service.exchange_token("howler-token") == "azure-delegated-token"
     azure_obo.assert_called_once_with("howler-token", scope="api://agent/.default")
 
     monkeypatch.setattr(config.core, "ai", AIConfig())
     with pytest.raises(AITransportError, match="AI agent delegation is not configured"):
-        agent_service.get_delegated_token.uncached("howler-token")
+        agent_service.exchange_token("howler-token")
 
 
 def test_agent_token_exchanges_delegated_token_with_broker(session, monkeypatch):

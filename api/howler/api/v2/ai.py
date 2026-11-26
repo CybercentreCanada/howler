@@ -57,8 +57,8 @@ def generate_lucene(**kwargs):
         return bad_request(err=error)
 
     token = auth_service.get_token()
-    if not ai_lucene_service.has_credential(token):
-        return bad_request(err="AI query generation requires a Bearer authorization token.")
+    if error := ai_lucene_service.credential_error(token):
+        return bad_request(err=error)
 
     try:
         events = ai_lucene_service.start_generation(prompt, query, token)

@@ -139,6 +139,33 @@ describe('AiQueryButton', () => {
     expect(screen.getByTestId('current-query')).toHaveTextContent('howler.status:open');
   });
 
+  it('stops generating and keeps the analyst edit when the query changes during generation', async () => {
+    let signal: AbortSignal | undefined;
+    mockLucenePost.mockImplementation(
+      (_request, options) =>
+        new Promise((_resolve, reject) => {
+          signal = options.signal;
+          options.onText('partial');
+          options.signal.addEventListener('abort', () => {
+            options.onText('late update');
+            reject(new DOMException('Aborted', 'AbortError'));
+          });
+        })
+    );
+
+    render(<Harness />);
+    submitPrompt('anything');
+
+    await waitFor(() => expect(screen.getByTestId('current-query')).toHaveTextContent('partial'));
+    fireEvent.click(screen.getByTestId('edit-query'));
+
+    await waitFor(() => expect(signal?.aborted).toBe(true));
+    await waitFor(() => expect(screen.getByTestId('ai-query-button')).not.toBeDisabled());
+    expect(screen.getByTestId('current-query')).toHaveTextContent('edited:query');
+    expect(screen.queryByTestId('ai-query-progress')).not.toBeInTheDocument();
+    expect(mockShowErrorMessage).not.toHaveBeenCalled();
+  });
+
   it('stops generation without reporting an error', async () => {
     mockLucenePost.mockImplementation(
       (_request, { onText, signal }) =>

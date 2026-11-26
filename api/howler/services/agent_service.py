@@ -45,8 +45,7 @@ def has_delegation() -> bool:
     return _token_function() is not None or bool(config.core.ai.lucene.agent.scope)
 
 
-@cache.memoize(15 * 60, unless=_skip_cache)
-def get_delegated_token(access_token: str) -> str:
+def exchange_token(access_token: str) -> str:
     """Exchange a Howler bearer token for a token accepted by the AI agent platform.
 
     A plugin ``ai_agent`` token function takes precedence; otherwise Azure on-behalf-of is used with the
@@ -60,6 +59,12 @@ def get_delegated_token(access_token: str) -> str:
         raise AITransportError("AI agent delegation is not configured")
 
     return azure_obo(access_token, scope=scope)
+
+
+@cache.memoize(15 * 60, unless=_skip_cache)
+def get_delegated_token(access_token: str) -> str:
+    """Return a cached delegated token for the AI agent platform; see :func:`exchange_token`."""
+    return exchange_token(access_token)
 
 
 def _status_hook(service: str) -> Callable[..., requests.Response]:

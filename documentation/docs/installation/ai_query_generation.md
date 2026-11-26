@@ -6,7 +6,8 @@ generated query is streamed into the search bar as the provider produces it.
 Users review it before running the search. If a query is already present, it is
 sent so the model can refine it. A progress bar runs along the search bar while
 the query is generated, and agent progress messages, such as tool calls, appear
-in the stop button's tooltip.
+in the stop button's tooltip. Editing or clearing the query during generation
+stops it and keeps the analyst's change.
 
 The provider is asked to return the query in a fenced `lucene` code block,
 followed by an explanation of the fields, values, and time ranges it chose. Only
@@ -51,10 +52,14 @@ core:
 ```
 
 The provider must support OpenAI-compatible streaming (`"stream": true`)
-server-sent events. A provider that returns one complete JSON response is also
-accepted, but the query then appears all at once. Each request sends the
-configured `system_prompt`, followed by every searchable hit field and its type,
-including allowed values for enumerated fields such as `howler.status`.
+server-sent events, ending with a `data: [DONE]` marker. Streams that end without
+it, report an error, or stop because of a length or content filter limit are
+rejected rather than producing a partial query. A provider that returns one
+complete JSON response is also accepted, but the query then appears all at once.
+Each request sends the configured `system_prompt`, followed by every indexed hit
+field from the Elasticsearch mapping and its type, including allowed values for
+enumerated fields such as `howler.status`. Namespaces that accept arbitrary
+subfields, such as `labels`, are listed as `labels.*`.
 
 ## AI agent provider
 
@@ -96,10 +101,10 @@ For each request:
    streams artifact text into the search bar. If the agent produces no
    artifact, its final message is used.
 
-Analysts must sign in with OAuth: Basic and API-key credentials cannot be
-delegated. Exchange and broker failures are returned as HTTP 502 errors before
-streaming starts. Agent failures, failed, rejected, or canceled tasks, and
-JSON-RPC errors are reported in the stream without upstream details. If the
+Analysts must sign in with OAuth: Basic, API-key, and internal Howler token
+credentials cannot be delegated. Exchange and broker failures are returned as
+HTTP 502 errors before streaming starts. Agent failures, failed, rejected, or
+canceled tasks, and JSON-RPC errors are reported in the stream without upstream details. If the
 agent asks for more input, its question is shown so the analyst can rephrase the
 request. Redirects are not followed, and no tokens or upstream responses are
 logged.

@@ -33,6 +33,8 @@ const AiQueryButton: FC<AiQueryButtonProps> = ({ query, setQuery, disabled = fal
   const { showErrorMessage, showWarningMessage } = useMySnackbar();
 
   const controller = useRef<AbortController | null>(null);
+  // Queries written by the running generation, and whether the draft has since been changed by something else
+  const draft = useRef<{ written: Set<string>; lost: boolean } | null>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [prompt, setPrompt] = useState('');
@@ -43,6 +45,14 @@ const AiQueryButton: FC<AiQueryButtonProps> = ({ query, setQuery, disabled = fal
 
   useEffect(() => () => controller.current?.abort(), []);
 
+  useEffect(() => {
+    // The analyst edited or cleared the query, or the saved query changed: stop overwriting the draft
+    if (draft.current && !draft.current.written.has(query)) {
+      draft.current.lost = true;
+      controller.current?.abort();
+    }
+  }, [query]);
+
   const generate = useCallback(async () => {
     if (!prompt.trim() || generating) {
       return;
@@ -50,20 +60,29 @@ const AiQueryButton: FC<AiQueryButtonProps> = ({ query, setQuery, disabled = fal
 
     const original = query;
     const abort = new AbortController();
+    const owned = { written: new Set<string>(), lost: false };
     controller.current = abort;
+    draft.current = owned;
+
+    const write = (value: string) => {
+      if (!abort.signal.aborted) {
+        owned.written.add(value);
+        setQuery(value);
+      }
+    };
 
     setAnchorEl(null);
     setGenerating(true);
     setStatus('');
     setExplanation(null);
-    setQuery('');
+    write('');
 
     try {
       const result = await api.v2.ai.lucene.post(
         { prompt: prompt.trim(), query: original },
-        { onText: setQuery, onStatus: setStatus, signal: abort.signal }
+        { onText: write, onStatus: setStatus, signal: abort.signal }
       );
-      setQuery(result.query);
+      write(result.query);
       if (result.response && result.response.trim() !== result.query) {
         setExplanation({ query: result.query, response: result.response });
       }
@@ -71,12 +90,15 @@ const AiQueryButton: FC<AiQueryButtonProps> = ({ query, setQuery, disabled = fal
         showWarningMessage(result.warning);
       }
     } catch (error) {
-      setQuery(original);
+      if (!owned.lost) {
+        setQuery(original);
+      }
       if (!abort.signal.aborted) {
         showErrorMessage((error as Error).message);
       }
     } finally {
       controller.current = null;
+      draft.current = null;
       setGenerating(false);
       setStatus('');
     }

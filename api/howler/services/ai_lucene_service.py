@@ -13,8 +13,8 @@ from werkzeug.wsgi import ClosingIterator
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.config import config
-from howler.odm.base import Enum
-from howler.services import agent_service, ai_service
+from howler.odm.base import Mapping
+from howler.services import agent_service, ai_service, auth_service
 from howler.services.ai_service import AIUpdate
 
 logger = get_logger(__file__)
@@ -42,16 +42,24 @@ def is_available() -> bool:
     return config.core.ai.enabled
 
 
-def has_credential(token: str | None) -> bool:
-    """Return whether the request can authenticate to the configured provider.
+def credential_error(token: str | None) -> str | None:
+    """Check that the request can authenticate to the configured provider.
 
-    The agent provider always requires the user's bearer token for delegation; the OpenAI provider can use
-    a configured API key instead.
+    The agent provider delegates the user's identity, which requires an OAuth access token. The OpenAI provider
+    can use a configured API key or forward any bearer token.
+
+    Returns:
+        A user-visible error, or ``None`` when the request has a usable credential.
     """
     if config.core.ai.lucene.provider == "agent":
-        return bool(token)
+        if not auth_service.is_oauth_token(token):
+            return "AI query generation with an AI agent requires signing in with OAuth."
+        return None
 
-    return bool(config.core.ai.api_key or token)
+    if not config.core.ai.api_key and not token:
+        return "AI query generation requires a Bearer authorization token."
+
+    return None
 
 
 def validate_request(prompt: Any, query: Any) -> str | None:
@@ -78,16 +86,22 @@ def validate_request(prompt: Any, query: Any) -> str | None:
 
 @lru_cache(maxsize=1)
 def _field_context() -> str:
-    """Describe searchable hit fields, including allowed enumerated values."""
-    model_class = datastore().hit.model_class
-    fields = model_class.flat_fields(skip_mappings=True) if model_class else {}
+    """Describe indexed hit fields from the Elasticsearch mapping, including allowed enumerated values.
+
+    Mapping namespaces, such as ``labels``, accept arbitrary subfields and are listed as ``name.*``.
+    """
+    collection = datastore().hit
+    model_fields = collection.model_class.flat_fields() if collection.model_class else {}
 
     lines = []
-    for name, field in sorted(fields.items()):
-        if isinstance(field, Enum):
-            lines.append(f"{name}: enum[{'|'.join(sorted(field.values))}]")
-        else:
-            lines.append(f"{name}: {type(field).__name__.lower()}")
+    for name, field in sorted(collection.fields(skip_mapping_children=True).items()):
+        if not field.get("indexed"):
+            continue
+
+        label = f"{name}.*" if isinstance(model_fields.get(name), Mapping) else name
+        values = field.get("values")
+        field_type = f"enum[{'|'.join(sorted(values))}]" if values else field["type"]
+        lines.append(f"{label}: {field_type}")
 
     return "\n".join(lines)
 

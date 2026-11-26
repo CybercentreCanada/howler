@@ -17,17 +17,24 @@ def valid_queries(monkeypatch):
     monkeypatch.setattr(ai_lucene_service, "_query_warning", lambda _query: None)
 
 
-def test_field_context_lists_types_and_enum_values(monkeypatch):
+def test_field_context_lists_indexed_fields_namespaces_and_enum_values(monkeypatch):
+    fields = {
+        "howler.status": {"indexed": True, "type": "keyword", "values": ["resolved", "open"]},
+        "howler.analytic": {"indexed": True, "type": "keyword", "values": None},
+        "howler.dossier.content": {"indexed": False, "type": "keyword", "values": None},
+        "labels": {"indexed": True, "type": "keyword", "values": None},
+    }
+    hit = SimpleNamespace(model_class=Hit, fields=Mock(return_value=fields))
     ai_lucene_service._field_context.cache_clear()
-    monkeypatch.setattr(ai_lucene_service, "datastore", lambda: SimpleNamespace(hit=SimpleNamespace(model_class=Hit)))
+    monkeypatch.setattr(ai_lucene_service, "datastore", lambda: SimpleNamespace(hit=hit))
 
     try:
         context = ai_lucene_service._field_context().splitlines()
     finally:
         ai_lucene_service._field_context.cache_clear()
 
-    assert "howler.status: enum[in-progress|on-hold|open|resolved]" in context
-    assert "howler.analytic: caseinsensitivekeyword" in context
+    assert context == ["howler.analytic: keyword", "howler.status: enum[open|resolved]", "labels.*: keyword"]
+    hit.fields.assert_called_once_with(skip_mapping_children=True)
 
 
 def test_build_messages_includes_current_query_only_when_meaningful(monkeypatch):

@@ -38,7 +38,7 @@ def call_route(headers=None, body=None):
         with app.test_request_context(
             method="POST",
             path="/api/v2/ai/lucene",
-            headers=headers or {"Authorization": "Bearer request-token"},
+            headers=headers or {"Authorization": "Bearer oauth.access.token"},
             json={"prompt": "open hits"} if body is None else body,
         ):
             from howler.api.v2.ai import generate_lucene
@@ -85,7 +85,7 @@ def test_route_streams_with_forwarded_token(monkeypatch):
     assert 'data: {"text": "howler.status:open"}' in body
     done = {"query": "howler.status:open", "response": "```lucene\nhowler.status:open\n```\nBecause."}
     assert body.endswith(f"event: done\ndata: {json.dumps(done)}\n\n")
-    assert stream_chat.call_args.args[1] == "request-token"
+    assert stream_chat.call_args.args[1] == "oauth.access.token"
     assert stream_chat.call_args.args[2][1]["content"] == "Request:\nopen hits\n\nCurrent query:\na:b"
 
 
@@ -116,15 +116,21 @@ def agent_enabled(monkeypatch):
 
 
 @pytest.mark.usefixtures("agent_enabled")
-def test_agent_route_is_available_without_core_ai_and_requires_bearer_token(monkeypatch):
+@pytest.mark.parametrize(
+    "authorization",
+    ["Basic dXNlcjpwYXNz", "Bearer analyst:internal-token"],
+)
+def test_agent_route_is_available_without_core_ai_and_requires_oauth(monkeypatch, authorization):
     get_agent_token = Mock()
     monkeypatch.setattr(agent_service, "get_agent_token", get_agent_token)
 
-    response, _ = call_route(headers={"Authorization": "Basic dXNlcjpwYXNz"})
+    response, _ = call_route(headers={"Authorization": authorization})
 
     assert ai_lucene_service.is_available() is True
     assert response.status_code == 400
-    assert response.get_json()["api_error_message"] == "AI query generation requires a Bearer authorization token."
+    assert response.get_json()["api_error_message"] == (
+        "AI query generation with an AI agent requires signing in with OAuth."
+    )
     get_agent_token.assert_not_called()
 
 
@@ -156,7 +162,7 @@ def test_agent_route_streams_agent_answer_without_field_list(monkeypatch):
     assert 'event: status\ndata: {"status": "Checking fields"}' in body
     assert 'data: {"text": "howler.status:open"}' in body
     assert body.endswith(f"event: done\ndata: {json.dumps({'query': 'howler.status:open', 'response': answer})}\n\n")
-    assert get_agent_token.call_args.args[1] == "request-token"
+    assert get_agent_token.call_args.args[1] == "oauth.access.token"
     settings, token, text = stream_message.call_args.args
     assert (settings.agent_url, token) == ("https://agent.invalid/howler/", "agent-token")
     assert text.endswith("Request:\nopen hits")
