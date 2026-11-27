@@ -20,7 +20,7 @@ from datemath.helpers import DateMathException
 from elastic_transport import ApiResponseMeta
 from elasticsearch import dsl
 from opentelemetry import trace
-from pydantic import BaseModel, TypeAdapter, ValidationError
+from pydantic import BaseModel, TypeAdapter
 
 from howler.common.exceptions import HowlerRuntimeError, HowlerValueError, NonRecoverableError
 from howler.common.loader import DATASTORE_INDEX_PREFIX
@@ -88,14 +88,6 @@ ACCESS_FIELDS = (
     "__access_grp1__",
     "__access_grp2__",
 )
-
-
-class _SourceDocument(dict[str, Any]):
-    """Internal source mapping carrying Elasticsearch hit metadata."""
-
-    def __init__(self, data: dict[str, Any], metadata: dict[str, Any]):
-        super().__init__(data)
-        self.metadata = metadata
 
 
 def _response_metadata(result: dict[str, Any], *, doc_id: str | None = None) -> dict[str, Any]:
@@ -237,6 +229,7 @@ class ESCollection(Generic[ModelType]):
         UPDATE_SET,
         UPDATE_DELETE,
     ]
+    LIST_ITEM_OPERATIONS = frozenset({UPDATE_APPEND, UPDATE_APPEND_IF_MISSING, UPDATE_REMOVE})
     DEFAULT_SEARCH_VALUES: dict[str, typing.Any] = {
         "timeout": None,
         "field_list": None,
@@ -1250,8 +1243,7 @@ class ESCollection(Generic[ModelType]):
                 resolved[data_id] = data_output["__non_doc_raw__"]
             else:
                 metadata = _response_metadata(row or {}, doc_id=data_id)
-                source = deepcopy(data_output)
-                source.pop("id", None)
+                source = {name: value for name, value in data_output.items() if name != "id"}
                 resolved[data_id] = self.normalize(source, as_obj=as_obj, metadata=metadata, read=True)
 
         if missing_keys:
@@ -1319,9 +1311,6 @@ class ESCollection(Generic[ModelType]):
         data,
         *,
         partial: bool = False,
-        doc_id: str | None = None,
-        index: str | None = None,
-        score: float | None = None,
         metadata: dict[str, Any] | None = None,
         read: bool = False,
     ) -> ModelType | None: ...
@@ -1333,9 +1322,6 @@ class ESCollection(Generic[ModelType]):
         as_obj: Literal[True],
         *,
         partial: bool = False,
-        doc_id: str | None = None,
-        index: str | None = None,
-        score: float | None = None,
         metadata: dict[str, Any] | None = None,
         read: bool = False,
     ) -> ModelType | None: ...
@@ -1347,9 +1333,6 @@ class ESCollection(Generic[ModelType]):
         as_obj: Literal[False],
         *,
         partial: bool = False,
-        doc_id: str | None = None,
-        index: str | None = None,
-        score: float | None = None,
         metadata: dict[str, Any] | None = None,
         read: bool = False,
     ) -> dict[str, Any] | None: ...
@@ -1360,9 +1343,6 @@ class ESCollection(Generic[ModelType]):
         as_obj=True,
         *,
         partial: bool = False,
-        doc_id: str | None = None,
-        index: str | None = None,
-        score: float | None = None,
         metadata: dict[str, Any] | None = None,
         read: bool = False,
     ):
@@ -1370,81 +1350,39 @@ class ESCollection(Generic[ModelType]):
 
         :param as_obj: Return an object instead of a dictionary
         :param data: data to normalize
+        :param partial: Validate only the supplied fields, for projections and partial documents
+        :param metadata: Elasticsearch metadata to set on the model's meta, overriding any it already has
+        :param read: Ignore unknown fields, so documents written by older versions still load
         :return: instance of the model class
         """
         if data is None or self.model_class is None:
             return data
 
-        source_metadata = data.metadata if isinstance(data, _SourceDocument) else {}
-        if isinstance(data, self.model_class):
-            source_metadata = {
-                **data.meta.model_dump(exclude_none=True),
-                **source_metadata,
-            }
-        resolved_metadata = {
-            **source_metadata,
-            **(metadata or {}),
-            **{
-                key: value
-                for key, value in {
-                    "id": doc_id,
-                    "index": index,
-                    "score": score,
-                }.items()
-                if value is not None
-            },
-        }
-
+        metadata = metadata or {}
         if isinstance(data, self.model_class):
             if not as_obj:
                 return data.as_primitives()
+            metadata = {**data.meta.model_dump(exclude_none=True), **metadata}
             if partial:
-                model = data
-            else:
-                raw_data = data.model_dump(by_alias=True)
-                model_input = {
-                    key: value
-                    for key, value in raw_data.items()
-                    if key not in MODEL_BANNED_FIELDS and key not in {"id", "__index"}
-                }
-                model = self.model_class.model_validate({"meta": resolved_metadata, **model_input})
+                for name, value in metadata.items():
+                    setattr(data.meta, name, value)
+                return data
+            data = data.model_dump(by_alias=True)
+        elif isinstance(data, BaseModel):
+            data = data.model_dump(by_alias=True)
+        elif isinstance(data, dict):
+            data = deepcopy(data)
         else:
-            if isinstance(data, BaseModel):
-                raw_data = data.model_dump(by_alias=True)
-            elif isinstance(data, dict):
-                raw_data = deepcopy(data)
-            else:
-                raw_data = data
+            return data
 
-            if not isinstance(raw_data, dict):
-                return raw_data
+        data = {key: value for key, value in data.items() if key not in MODEL_BANNED_FIELDS and key != "id"}
+        if not as_obj:
+            return data
 
-            if not as_obj:
-                raw_data.pop("id", None)
-                return {key: value for key, value in raw_data.items() if key not in MODEL_BANNED_FIELDS}
-
-            model_input = {
-                key: value
-                for key, value in raw_data.items()
-                if key not in MODEL_BANNED_FIELDS and key not in {"id", "__index"}
-            }
-            model = (
-                construct_partial(
-                    self.model_class,
-                    model_input,
-                    meta=resolved_metadata,
-                    ignore_unknown=read,
-                )
-                if partial
-                else self.model_class.model_validate(
-                    {"meta": resolved_metadata, **model_input},
-                    extra="ignore" if read else None,
-                )
-            )
-
-        for name, value in resolved_metadata.items():
-            setattr(model.meta, name, value)
-        return model
+        data.pop("__index", None)
+        if partial:
+            return construct_partial(self.model_class, data, meta=metadata, ignore_unknown=read)
+        return self.model_class.model_validate({"meta": metadata, **data}, extra="ignore" if read else None)
 
     def _search_exists(self: Self, key, access_control: str | None = None) -> bool:
         """Check document existence with an alias-safe search query."""
@@ -1499,18 +1437,10 @@ class ESCollection(Generic[ModelType]):
         )
         raise elasticsearch.exceptions.NotFoundError(f"Document with id {key} not found", meta, result)
 
-    @overload
-    def _get(
-        self: Self, key, retries, version: Literal[False]
-    ) -> dict[str, Any]: ...  # codeql[py/ineffectual-statement]
+    def _get(self: Self, key, retries) -> tuple[dict[str, Any] | None, str]:
+        """Fetch a raw Elasticsearch document along with its version token.
 
-    @overload
-    def _get(
-        self: Self, key, retries, version: Literal[True]
-    ) -> tuple[dict[str, Any], str]: ...  # codeql[py/ineffectual-statement]
-
-    def _get(self: Self, key, retries, version=False):
-        """Versioned get-save for atomic update has two paths:
+        Versioned get-save for atomic update has two paths:
             1. Document doesn't exist at all. Create token will be returned for version.
                This way only the first query to try and create the document will succeed.
             2. Document exists. A version string with the info needed to do a versioned save is returned.
@@ -1519,14 +1449,6 @@ class ESCollection(Generic[ModelType]):
         document non-atomic (version=None)" and "I'm saving a new document
         atomically (version=CREATE_TOKEN)".
         """
-
-        def normalize_output(data_output, result):
-            if "__non_doc_raw__" in data_output:
-                return data_output["__non_doc_raw__"]
-            output = deepcopy(data_output)
-            output.pop("id", None)
-            return _SourceDocument(output, _response_metadata(result, doc_id=key))
-
         if retries is None:
             retries = self.RETRY_NONE
 
@@ -1541,16 +1463,9 @@ class ESCollection(Generic[ModelType]):
                     index = locations[0]
                 doc = response_body(self.with_retries(self.datastore.client.get, index=index, id=key))
 
-                if version:
-                    if self.ilm_config:
-                        version_token = f"{doc['_index']}---{doc['_seq_no']}---{doc['_primary_term']}"
-                    else:
-                        version_token = f"{doc['_seq_no']}---{doc['_primary_term']}"
-                    return (
-                        normalize_output(doc["_source"], doc),
-                        version_token,
-                    )
-                return normalize_output(doc["_source"], doc)
+                if self.ilm_config:
+                    return doc, f"{doc['_index']}---{doc['_seq_no']}---{doc['_primary_term']}"
+                return doc, f"{doc['_seq_no']}---{doc['_primary_term']}"
             except elasticsearch.exceptions.NotFoundError:
                 pass
 
@@ -1562,10 +1477,18 @@ class ESCollection(Generic[ModelType]):
             else:
                 done = True
 
-        if version:
-            return None, CREATE_TOKEN
+        return None, CREATE_TOKEN
 
-        return None
+    def _get_normalized(self: Self, key, retries, as_obj, version) -> Any:
+        doc, version_token = self._get(key, retries)
+        if doc is None:
+            data = None
+        elif "__non_doc_raw__" in doc["_source"]:
+            data = doc["_source"]["__non_doc_raw__"]
+        else:
+            source = {name: value for name, value in doc["_source"].items() if name != "id"}
+            data = self.normalize(source, as_obj=as_obj, metadata=_response_metadata(doc, doc_id=key), read=True)
+        return (data, version_token) if version else data
 
     def get_version_write_target(self: Self, version: str) -> tuple[str, str, str]:
         """Return the concrete write target and optimistic-concurrency values from a version token."""
@@ -1621,11 +1544,7 @@ class ESCollection(Generic[ModelType]):
         :param version: should the version number be returned by the call
         :return: an instance of the model class loaded with the document data
         """
-        data = self._get(key, self.RETRY_NORMAL, version=version)
-        if version:
-            data, version = data
-            return self.normalize(data, as_obj=as_obj, doc_id=key, read=True), version
-        return self.normalize(data, as_obj=as_obj, doc_id=key, read=True)
+        return self._get_normalized(key, self.RETRY_NORMAL, as_obj, version)
 
     @overload
     def get_if_exists(
@@ -1670,12 +1589,7 @@ class ESCollection(Generic[ModelType]):
         :param version: should the version number be returned by the call
         :return: an instance of the model class loaded with the document data
         """
-        data = self._get(key, self.RETRY_NONE, version=version)
-        if version:
-            data, version = data
-            return self.normalize(data, as_obj=as_obj, doc_id=key, read=True), version
-
-        return self.normalize(data, as_obj=as_obj, doc_id=key, read=True)
+        return self._get_normalized(key, self.RETRY_NONE, as_obj, version)
 
     def require(
         self: Self, key, as_obj=True, version=False
@@ -1693,11 +1607,7 @@ class ESCollection(Generic[ModelType]):
         :param version: should the version number be returned by the call
         :return: an instance of the model class loaded with the document data
         """
-        data = self._get(key, self.RETRY_INFINITY, version=version)
-        if version:
-            data, version = data
-            return self.normalize(data, as_obj=as_obj, doc_id=key, read=True), version
-        return self.normalize(data, as_obj=as_obj, doc_id=key, read=True)
+        return self._get_normalized(key, self.RETRY_INFINITY, as_obj, version)
 
     def save(self: Self, key, data, version=None, refresh: Literal["true", "false", "wait_for"] | None = None):
         """Save to document to the datastore using the key as its document id.
@@ -1929,50 +1839,42 @@ class ESCollection(Generic[ModelType]):
             if op not in self.UPDATE_OPERATIONS:
                 raise DataStoreException(f"Not a valid Update Operation: {op}")
 
-            if self.model_class and op == self.UPDATE_DELETE:
-                definition = model_registry.flat_field_view(self.model_class, show_compound=True).get(doc_key)
-                if definition is None or definition.metadata is None or definition.metadata.kind != "Mapping":
-                    raise DataStoreException(f"Invalid field for DELETE operation: {doc_key}")
+            if self.model_class:
+                # DataStoreException is not a ValueError, so explicit rejections below propagate unchanged.
+                # Pydantic's ValidationError is a ValueError subclass.
                 try:
-                    value = TypeAdapter(str).validate_python(value)
-                except (TypeError, ValueError, ValidationError) as error:
-                    raise DataStoreException(f"Invalid value for field {doc_key}: {value}") from error
-                sanitizer = (
-                    MODEL_NOT_INDEXED_SANITIZER
-                    if definition.metadata.index is False and definition.metadata.store is False
-                    else MODEL_FIELD_SANITIZER
-                )
-                if not sanitizer.fullmatch(value):
-                    raise DataStoreException(f"Invalid value for field {doc_key}: {value}")
-            elif self.model_class:
-                try:
-                    if op == self.UPDATE_SET and doc_key == "classification":
+                    if op == self.UPDATE_DELETE:
+                        definition = model_registry.flat_field_view(self.model_class, show_compound=True).get(doc_key)
+                        if definition is None or definition.metadata is None or definition.metadata.kind != "Mapping":
+                            raise DataStoreException(f"Invalid field for DELETE operation: {doc_key}")
+                        value = TypeAdapter(str).validate_python(value)
+                        sanitizer = (
+                            MODEL_NOT_INDEXED_SANITIZER
+                            if definition.metadata.index is False and definition.metadata.store is False
+                            else MODEL_FIELD_SANITIZER
+                        )
+                        if not sanitizer.fullmatch(value):
+                            raise DataStoreException(f"Invalid value for field {doc_key}: {value}")
+                    elif op == self.UPDATE_SET and doc_key == "classification":
                         classification_parts = partial_primitives(self.model_class, {"classification": value})
                         value = classification_parts.pop("classification")
                     else:
                         value = validate_field_value(
-                            self.model_class,
-                            doc_key,
-                            value,
-                            list_item=op
-                            in {
-                                self.UPDATE_APPEND,
-                                self.UPDATE_APPEND_IF_MISSING,
-                                self.UPDATE_REMOVE,
-                            },
+                            self.model_class, doc_key, value, list_item=op in self.LIST_ITEM_OPERATIONS
                         )
-                except (AttributeError, TypeError, ValueError, ValidationError) as error:
-                    if str(error).startswith("Invalid field for model:"):
-                        raise DataStoreException(str(error)) from error
-                    raise DataStoreException(f"Invalid value for field {doc_key}: {value}") from error
+                except (AttributeError, TypeError, ValueError) as error:
+                    message = str(error)
+                    if not message.startswith("Invalid field for model:"):
+                        message = f"Invalid value for field {doc_key}: {value}"
+                    raise DataStoreException(message) from error
 
             ret_ops.append((op, doc_key, value))
-            if self.model_class and op == self.UPDATE_SET and doc_key == "classification":
-                ret_ops.extend(
-                    (self.UPDATE_SET, name, classification_parts[name])
-                    for name in ACCESS_FIELDS
-                    if name in classification_parts
-                )
+            # Only populated for a classification SET; carries the derived hidden access fields.
+            ret_ops.extend(
+                (self.UPDATE_SET, name, classification_parts[name])
+                for name in ACCESS_FIELDS
+                if name in classification_parts
+            )
 
         return ret_ops
 
@@ -2169,12 +2071,6 @@ class ESCollection(Generic[ModelType]):
         if args is None:
             args = []
 
-        params: dict[str, Any] = {}
-        if deep_paging_id is not None:
-            params = {"scroll": self.SCROLL_TIMEOUT}
-        elif track_total_hits:
-            params["track_total_hits"] = track_total_hits
-
         parsed_values = deepcopy(self.DEFAULT_SEARCH_VALUES)
 
         # TODO: we should validate values for max rows, group length, history length...
@@ -2185,109 +2081,84 @@ class ESCollection(Generic[ModelType]):
 
             parsed_values[key] = value
 
-        # Use the public Search/Q builders for request components that preserve the existing
-        # wire shape exactly. Bool ``must`` is assembled explicitly because DSL normalizes a
-        # single clause into a list, which would change golden request payloads.
-        search_request = (
+        source = parsed_values["field_list"] or list(self.stored_fields.keys())
+        query_params = {"default_field": parsed_values["df"]} if parsed_values["df"] else {}
+
+        search = (
             dsl.Search()
-            .source(parsed_values["field_list"] or list(self.stored_fields.keys()))
+            .query("query_string", query=parsed_values["query"], **query_params)
+            .source(source)
             .sort(*(parse_sort(parsed_values["sort"]) or []))
             .extra(from_=parsed_values["start"], size=parsed_values["rows"])
         )
-        query_body = search_request.to_dict()
-        query_body["from_"] = query_body.pop("from")
-        must_query = dsl.Q("query_string", query=parsed_values["query"]).to_dict()
-        if parsed_values["df"]:
-            must_query["query_string"]["default_field"] = parsed_values["df"]
-        query_body["query"] = {
-            "bool": {
-                "must": must_query,
-                "filter": [
-                    dsl.Q("query_string", query=filter_query).to_dict() for filter_query in parsed_values["filters"]
-                ],
-            }
-        }
+
+        for filter_query in parsed_values["filters"]:
+            search = search.filter("query_string", query=filter_query)
 
         if parsed_values["script_fields"]:
-            fields = {}
-            for f_name, f_script in parsed_values["script_fields"]:
-                fields[f_name] = {"script": {"lang": "painless", "source": f_script}}
-            query_body["script_fields"] = fields
+            search = search.script_fields(
+                **{
+                    name: {"script": {"lang": "painless", "source": script}}
+                    for name, script in parsed_values["script_fields"]
+                }
+            )
 
-        # Time limit for the query
         if parsed_values["timeout"]:
-            query_body["timeout"] = parsed_values["timeout"]
+            search = search.extra(timeout=parsed_values["timeout"])
 
-        # Add an histogram aggregation
-        if parsed_values["histogram_active"]:
-            query_body.setdefault("aggregations", {})
-            if parsed_values["histogram_type"] == "date_histogram":
-                interval_type = "fixed_interval"
-            else:
-                interval_type = "interval"
-            query_body["aggregations"]["histogram"] = dsl.A(
-                cast(str, parsed_values["histogram_type"]),
-                **cast(
-                    dict[str, Any],
-                    {
-                        "field": parsed_values["histogram_field"],
-                        interval_type: parsed_values["histogram_gap"],
-                        "min_doc_count": parsed_values["histogram_mincount"],
-                        "extended_bounds": {
-                            "min": parsed_values["histogram_start"],
-                            "max": parsed_values["histogram_end"],
-                        },
-                    },
-                ),
-            ).to_dict()
+        if track_total_hits and deep_paging_id is None:
+            search = search.extra(track_total_hits=track_total_hits)
 
-        # Add a facet aggregation
-        if parsed_values["facet_active"]:
-            query_body.setdefault("aggregations", {})
-            for field in parsed_values["facet_fields"]:
-                field_script = parsed_values["field_script"]
-                if field_script:
-                    facet_body = {
-                        "script": {"source": field_script},
-                        "min_doc_count": parsed_values["facet_mincount"],
-                    }
-                else:
-                    facet_body = {
-                        "field": field,
-                        "min_doc_count": parsed_values["facet_mincount"],
-                        "size": parsed_values["rows"],
-                    }
-                query_body["aggregations"][field] = dsl.A("terms", **facet_body).to_dict()
-
-        # Add a facet aggregation
-        if parsed_values["stats_active"]:
-            query_body.setdefault("aggregations", {})
-            for field in parsed_values["stats_fields"]:
-                field_script = parsed_values["field_script"]
-                if field_script:
-                    stats_body = {"script": {"source": field_script}}
-                else:
-                    stats_body = {"field": field}
-
-                query_body["aggregations"][f"{field}_stats"] = dsl.A(
-                    "stats", **cast(dict[str, Any], stats_body)
-                ).to_dict()
-
-        # Add a group aggregation
         if parsed_values["group_active"]:
-            query_body["collapse"] = {
-                "field": parsed_values["group_field"],
-                "inner_hits": {
+            search = search.collapse(
+                parsed_values["group_field"],
+                inner_hits={
                     "name": "group",
-                    "_source": parsed_values["field_list"] or list(self.stored_fields.keys()),
+                    "_source": source,
                     "size": parsed_values["group_limit"],
                     "sort": parse_sort(parsed_values["group_sort"]) or [{parsed_values["group_field"]: "asc"}],
                 },
-            }
+            )
 
-        # Add any arbitrary aggregations
+        # Aggregations are added in place, so they must come after the last cloning call above
+        if parsed_values["histogram_active"]:
+            interval_type = "fixed_interval" if parsed_values["histogram_type"] == "date_histogram" else "interval"
+            search.aggs.bucket(
+                "histogram",
+                parsed_values["histogram_type"],
+                field=parsed_values["histogram_field"],
+                min_doc_count=parsed_values["histogram_mincount"],
+                extended_bounds={"min": parsed_values["histogram_start"], "max": parsed_values["histogram_end"]},
+                **{interval_type: parsed_values["histogram_gap"]},
+            )
+
+        field_script = parsed_values["field_script"]
+        if parsed_values["facet_active"]:
+            for field in parsed_values["facet_fields"]:
+                if field_script:
+                    search.aggs.bucket(
+                        field,
+                        "terms",
+                        script={"source": field_script},
+                        min_doc_count=parsed_values["facet_mincount"],
+                    )
+                else:
+                    search.aggs.bucket(
+                        field,
+                        "terms",
+                        field=field,
+                        min_doc_count=parsed_values["facet_mincount"],
+                        size=parsed_values["rows"],
+                    )
+
+        if parsed_values["stats_active"]:
+            for field in parsed_values["stats_fields"]:
+                if field_script:
+                    search.aggs.metric(f"{field}_stats", "stats", script={"source": field_script})
+                else:
+                    search.aggs.metric(f"{field}_stats", "stats", field=field)
+
         if parsed_values["aggregations"]:
-            query_body.setdefault("aggregations", {})
             cluster_settings = self.datastore.client.cluster.get_settings(include_defaults=True, flat_settings=True)
             flattened_settings = {
                 **cluster_settings["defaults"],
@@ -2303,7 +2174,10 @@ class ESCollection(Generic[ModelType]):
                         f"buckets of the cluster ({max_buckets}). Skipping aggregation."
                     )
                     continue
-                query_body["aggregations"][f"{self.CUSTOM_AGG_PREFIX}{agg_name}"] = dsl.A(agg_args).to_dict()
+                search.aggs.bucket(f"{self.CUSTOM_AGG_PREFIX}{agg_name}", dsl.A(agg_args))
+
+        scroll_params: dict[str, Any] = {"scroll": self.SCROLL_TIMEOUT} if deep_paging_id is not None else {}
+        query_body = search.to_dict()
 
         try:
             if deep_paging_id is not None and not deep_paging_id == "*":
@@ -2311,14 +2185,14 @@ class ESCollection(Generic[ModelType]):
                 result = self.with_retries(
                     self.datastore.client.scroll,
                     scroll_id=deep_paging_id,
-                    **params,
+                    **scroll_params,
                 )
             else:
                 # Run the query
                 result = self.with_retries(
                     self.datastore.client.search,
                     index=self.name,
-                    **params,
+                    **scroll_params,
                     **query_body,
                 )
 

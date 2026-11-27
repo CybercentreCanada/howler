@@ -122,7 +122,7 @@ def test_case_reads_and_resaves_legacy_source(monkeypatch):
     monkeypatch.setattr(ESCollection, "IGNORE_ENSURE_COLLECTION", True)
     collection = ESCollection(store, "case", model_class=Case)
 
-    case = collection.normalize(source, doc_id=source["id"], read=True)
+    case = collection.normalize(source, metadata={"id": source["id"]}, read=True)
     collection.save(case.meta.id, case)
 
     store.client.index.assert_called_once()
