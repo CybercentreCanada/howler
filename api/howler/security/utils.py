@@ -11,7 +11,6 @@ from howler.common.exceptions import HowlerValueError, InvalidClassification
 from howler.common.logging import get_logger
 from howler.config import CLASSIFICATION, config
 from howler.datastore.operations import OdmUpdateOperation
-from howler.models.fields import ClassificationValue
 
 if TYPE_CHECKING:
     from howler.models.user import User
@@ -22,7 +21,7 @@ logger = get_logger(__file__)
 
 def is_classification_accessible(
     user: "User | None",
-    classification: str | ClassificationValue | None,
+    classification: str | None,
 ) -> bool:
     """Check whether a user can access a document at the given classification.
 
@@ -47,7 +46,7 @@ def is_classification_accessible(
     if classification is None:
         return True
 
-    if not (isinstance(classification, str) or isinstance(classification, ClassificationValue)):
+    if not isinstance(classification, str):
         logger.warning("Invalid classification type")
         return False
 

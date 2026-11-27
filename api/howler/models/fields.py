@@ -23,6 +23,7 @@ from pydantic import (
 )
 from pydantic import Field as PydanticField
 from pydantic_core import PydanticUndefined
+from typing_extensions import Self
 
 from howler.common import loader
 from howler.common.classification import Classification as ClassificationEngine
@@ -173,24 +174,36 @@ def metadata(
     return field_info
 
 
-class ClassificationValue:
-    """Normalized classification value with its originating classification engine."""
+class ClassificationValue(str):
+    """Normalized classification string that remembers its originating classification engine."""
 
-    def __init__(self, engine: ClassificationEngine, value: TypingAny, is_user_classification: bool = False):
-        self.engine = engine
-        self.is_user_classification = is_user_classification
-        source = value.value if isinstance(value, ClassificationValue) else value
-        self.value: str = engine.normalize_classification(source, skip_auto_select=is_user_classification)
+    __slots__ = ("engine", "is_user_classification")
+
+    engine: ClassificationEngine
+    is_user_classification: bool
+
+    def __new__(cls, engine: ClassificationEngine, value: TypingAny, is_user_classification: bool = False) -> Self:
+        """Normalize the classification with the given engine."""
+        source = str(value) if isinstance(value, ClassificationValue) else value
+        normalized = engine.normalize_classification(source, skip_auto_select=is_user_classification)
+        instance = super().__new__(cls, normalized)
+        instance.engine = engine
+        instance.is_user_classification = is_user_classification
+        return instance
+
+    # Values are immutable, so copies share the instance instead of cloning the classification engine.
+    def __copy__(self) -> Self:
+        return self
+
+    def __deepcopy__(self, memo: dict[int, TypingAny]) -> Self:
+        return self
+
+    def __reduce__(self) -> tuple[TypingAny, ...]:
+        return (type(self), (self.engine, str(self), self.is_user_classification))
 
     def get_access_control_parts(self) -> dict[str, TypingAny]:
         """Return the hidden Elasticsearch access-control fields."""
-        return self.engine.get_access_control_parts(self.value, user_classification=self.is_user_classification)
-
-    def __str__(self) -> str:
-        return self.value
-
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, ClassificationValue) and self.value == other.value
+        return self.engine.get_access_control_parts(str(self), user_classification=self.is_user_classification)
 
 
 def _copy_to(value: str | Iterable[str] | None) -> tuple[str, ...]:

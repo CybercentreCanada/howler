@@ -284,9 +284,7 @@ class TestUpdateCase:
         """update_case raises before saving when classification escalation is requested."""
         mock_case = _make_case()
         mock_ds_fn.return_value.case.get.return_value = _versioned(mock_case)
-        mock_accessible.side_effect = lambda _user, classification: (
-            getattr(classification, "value", classification) != "RESTRICTED"
-        )
+        mock_accessible.side_effect = lambda _user, classification: classification != "RESTRICTED"
 
         with pytest.raises(ForbiddenException, match="Cannot set case to invalid classification"):
             case_service.update_case(
@@ -296,6 +294,26 @@ class TestUpdateCase:
             )
 
         mock_ds_fn.return_value.case.save.assert_not_called()
+
+    @patch("howler.services.case_service.datastore")
+    def test_update_case_classification_checks_item_classifications(self, mock_ds_fn):
+        """update_case compares the new classification against the case items' maximum classification."""
+        mock_ds_fn.return_value.case.get.return_value = _versioned(
+            _make_case(
+                items=[
+                    {"type": "hit", "value": "hit-001", "name": "hit-001", "classification": CLASSIFICATION.RESTRICTED},
+                    {"type": "hit", "value": "hit-002", "name": "hit-002"},
+                ]
+            )
+        )
+
+        result = case_service.update_case("case-001", {"classification": CLASSIFICATION.RESTRICTED}, _make_user())
+
+        assert result.classification == CLASSIFICATION.normalize_classification(CLASSIFICATION.RESTRICTED)
+        mock_ds_fn.return_value.case.save.assert_called_once()
+
+        with pytest.raises(ForbiddenException, match="Cannot lower case classification"):
+            case_service.update_case("case-001", {"classification": CLASSIFICATION.UNRESTRICTED}, _make_user())
 
     @patch("howler.services.case_service.datastore")
     def test_update_case_raises_not_found(self, mock_ds_fn):
@@ -1194,7 +1212,7 @@ class TestAppendCase:
         mock_ds.case.save.assert_not_called()
         assert len(mock_parent.items) == 1
         assert item.value == "child-001"
-        assert item.classification.value == mock_child.classification
+        assert item.classification == mock_child.classification
 
     @patch("howler.services.case_service.datastore")
     def test_append_case_missing_parent_raises(self, mock_ds_fn):
@@ -2397,7 +2415,7 @@ class TestCaseItemClassificationPropagation:
         item = CaseItem({"type": "hit", "value": "hit-001", "name": "hit-001"})
         case_service.append_hit(mock_case, item)
 
-        assert item.classification.value == CLASSIFICATION.normalize_classification("RESTRICTED")
+        assert item.classification == CLASSIFICATION.normalize_classification("RESTRICTED")
 
     @patch("howler.services.case_service.recompute_case_metadata")
     @patch("howler.services.case_service.add_backreference")
@@ -2422,7 +2440,7 @@ class TestCaseItemClassificationPropagation:
         item = CaseItem({"type": "hit", "value": "hit-001", "name": "hit-001"})
         case_service.append_hit(mock_case, item)
 
-        assert item.classification.value == CLASSIFICATION.normalize_classification("UNRESTRICTED")
+        assert item.classification == CLASSIFICATION.normalize_classification("UNRESTRICTED")
 
     @patch("howler.services.case_service.recompute_case_metadata")
     @patch("howler.services.case_service.add_backreference")
@@ -2446,7 +2464,7 @@ class TestCaseItemClassificationPropagation:
         item = CaseItem({"type": "event", "value": "event-001", "name": "event-001"})
         case_service.append_event(mock_case, item)
 
-        assert item.classification.value == CLASSIFICATION.normalize_classification("RESTRICTED")
+        assert item.classification == CLASSIFICATION.normalize_classification("RESTRICTED")
 
     @patch("howler.services.case_service.recompute_case_metadata")
     @patch("howler.services.case_service.add_backreference")
@@ -2472,7 +2490,7 @@ class TestCaseItemClassificationPropagation:
         item = CaseItem({"type": "event", "value": "event-001", "name": "event-001"})
         case_service.append_event(mock_case, item)
 
-        assert item.classification.value == CLASSIFICATION.normalize_classification("UNRESTRICTED")
+        assert item.classification == CLASSIFICATION.normalize_classification("UNRESTRICTED")
 
 
 # ---------------------------------------------------------------------------
@@ -3081,7 +3099,7 @@ class TestCreateCaseWithItems:
 
         delegated_item = mock_append_item.call_args.kwargs["item"]
         assert result.items == []
-        assert delegated_item.classification.value == CLASSIFICATION.normalize_classification(CLASSIFICATION.RESTRICTED)
+        assert delegated_item.classification == CLASSIFICATION.normalize_classification(CLASSIFICATION.RESTRICTED)
         assert mock_append_item.call_args.kwargs["user"] is user
 
 
