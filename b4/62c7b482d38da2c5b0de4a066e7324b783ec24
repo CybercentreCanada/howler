@@ -1,0 +1,29 @@
+ui/src/components/elements/display/handlebars/helpers.test.tsx
+  s_671fd6f4e3c6db::t_6827cb2162cc15 85-91
+ui/src/components/elements/display/handlebars/helpers.tsx
+  h_f221159cc9f457 8,305,308,311-313,315-320
+  s_671fd6f4e3c6db::t_ae70d093cfec94 42-56,291
+  s_671fd6f4e3c6db::t_9b5fdf58decc0c 309
+  h_f221159cc9f457 310
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b462c7b482d38da2c5b0de4a066e7324b783ec24",
+  "prompts": {},
+  "humans": {
+    "h_f221159cc9f457": {
+      "author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  },
+  "sessions": {
+    "s_671fd6f4e3c6db": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de214db45ffeI6vFf8wbvFNUcO",
+        "model": "us.anthropic.claude-opus-5-5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
