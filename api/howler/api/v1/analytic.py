@@ -138,7 +138,7 @@ def update_analytic(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @analytic_api.route("/<id>/comments", methods=["POST"])
 @api_login(audit=False, required_priv=["W"])
-def add_comment(id: str, user: dict[str, Any], **kwargs):
+def add_comment(id: str, user: User, **kwargs):
     """Add a comment
 
     Variables:
@@ -175,12 +175,7 @@ def add_comment(id: str, user: dict[str, Any], **kwargs):
     analytic = analytic_service.get_analytic(id, as_odm=True)
 
     try:
-        comment_value = {
-            "user": user["uname"],
-            "value": comment_data,
-            "detection": comment.get("detection", None),
-        }
-        analytic.comment.append(Comment.model_validate(comment_value))
+        analytic.comment.append(Comment(user=user.uname, value=comment_data, detection=comment.get("detection", None)))
 
         datastore().analytic.save(analytic.analytic_id, analytic)
     except (DataStoreException, HowlerException) as e:
@@ -543,13 +538,14 @@ def add_notebook(id: str, user: dict[str, Any], **kwargs):
     analytic = analytic_service.get_analytic(id, as_odm=True)
 
     try:
-        notebook_value = {
-            "user": user["uname"],
-            "name": name,
-            "value": link,
-            "detection": detection if detection else None,
-        }
-        analytic.notebooks.append(Notebook.model_validate(notebook_value))
+        analytic.notebooks.append(
+            Notebook(
+                user=user["uname"],
+                name=name,
+                value=link,
+                detection=detection if detection else None,
+            )
+        )
 
         datastore().analytic.save(analytic.analytic_id, analytic)
     except (DataStoreException, HowlerException) as e:

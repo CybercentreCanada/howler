@@ -52,25 +52,6 @@ def _apply_case_rule_patch(rule: CaseRule, patch: dict[str, Any]) -> tuple[CaseR
         raise InvalidDataException(str(ex)) from ex
 
 
-def save_case(
-    case: Case,
-    refresh: Literal["true", "false", "wait_for"] | None = None,
-    version: str | None = None,
-) -> bool:
-    """Persist a case, defaulting to a ``wait_for`` refresh like the legacy model ``save`` helper."""
-    refresh = refresh or "wait_for"
-    return datastore().case.save(case.case_id, case, refresh=refresh, version=version)
-
-
-def _save_record(
-    record: Hit | Event,
-    version: str,
-    refresh: Literal["true", "false", "wait_for"] | None = None,
-) -> bool:
-    index = "hit" if isinstance(record, Hit) else "event"
-    return datastore()[index].save(record.howler.id, record, version=version, refresh=refresh or "wait_for")
-
-
 @overload
 def get_case(
     id: str, as_odm: Literal[True], version: Literal[True], user: User | None = None
@@ -195,8 +176,10 @@ def create_case(
     case_type: type[Case] = datastore().case.model_class or Case
     case = case_type.model_validate(case_data)
     case.log = [
-        CaseLog.model_validate(
-            {"timestamp": "NOW", "explanation": "Case created", "user": user.uname if user else "system"}
+        CaseLog(
+            timestamp=now_as_datetime(),
+            explanation="Case created",
+            user=user.uname if user else "system",
         )
     ]
 
@@ -207,7 +190,7 @@ def create_case(
     for item in items:
         append_case_item(case, item=CaseItem.model_validate(item), user=user)
 
-    save_case(case, refresh=refresh, version=CREATE_TOKEN)
+    case.save(refresh=refresh, version=CREATE_TOKEN)
 
     comms_service.emit("cases", {"case": case.as_primitives()})
 
@@ -244,15 +227,13 @@ def hide_cases(case_ids: set[str], user: User, refresh: Literal["true", "false",
         # Only persist the related case if we actually changed something.
         if hidden_ids:
             related_case.log.append(
-                CaseLog.model_validate(
-                    {
-                        "timestamp": "NOW",
-                        "user": user.uname,
-                        "explanation": f"Referenced case(s) hidden: {', '.join(hidden_ids)}",
-                    },
+                CaseLog(
+                    timestamp=now_as_datetime(),
+                    user=user.uname,
+                    explanation=f"Referenced case(s) hidden: {', '.join(hidden_ids)}",
                 )
             )
-            save_case(related_case, refresh=refresh)
+            related_case.save(refresh=refresh)
 
     # Second pass: mark each target case itself as not visible.
     for case_id in case_ids:
@@ -262,16 +243,8 @@ def hide_cases(case_ids: set[str], user: User, refresh: Literal["true", "false",
             continue
 
         case.visible = False
-        case.log.append(
-            CaseLog.model_validate(
-                {
-                    "timestamp": "NOW",
-                    "user": user.uname,
-                    "explanation": "Case hidden",
-                },
-            )
-        )
-        save_case(case, refresh=refresh, version=version)
+        case.log.append(CaseLog(timestamp=now_as_datetime(), user=user.uname, explanation="Case hidden"))
+        case.save(refresh=refresh, version=version)
 
 
 def delete_cases(
@@ -299,7 +272,7 @@ def delete_cases(
         related_case, related_case_version = ds.case.get(related_case_id, as_obj=True, version=True)
         if related_case:
             related_case.items = [item for item in related_case.items if item.value not in case_ids]
-            save_case(related_case, refresh=refresh, version=related_case_version)
+            related_case.save(refresh=refresh, version=related_case_version)
 
     return ds.case.delete_by_query(f"case_id:({' OR '.join(case_ids)})", access_control=access_control, refresh=refresh)
 
@@ -467,21 +440,18 @@ def update_case(
         explanation, prev_str, new_str = _describe_field_change(key, previous_value, new_value, compound_fields)
 
         case.log.append(
-            CaseLog.model_validate(
-                {
-                    "timestamp": "NOW",
-                    "key": key,
-                    "previous_value": prev_str,
-                    "new_value": new_str,
-                    "user": user.uname,
-                    "explanation": explanation,
-                },
+            CaseLog(
+                key=key,
+                previous_value=prev_str,
+                new_value=new_str,
+                user=user.uname,
+                explanation=explanation,
             )
         )
         setattr(case, key, new_value)
 
     case.updated = now_as_datetime()
-    save_case(case, refresh=refresh, version=version)
+    case.save(refresh=refresh, version=version)
 
     comms_service.emit("cases", {"case": case.as_primitives()})
 
@@ -859,11 +829,11 @@ def remove_case_items(  # noqa: C901
 
     for backing_obj, backing_obj_version in backing_objs:
         remove_backreference(backing_obj, case.case_id, user=user)
-        _save_record(backing_obj, backing_obj_version)
+        backing_obj.save(version=backing_obj_version)
 
     recompute_case_metadata(case)
 
-    if not save_case(case, refresh=refresh, version=version):  # pragma: no cover
+    if not case.save(refresh=refresh, version=version):  # pragma: no cover
         raise DataStoreException("Failed to save case after item removal")
 
     comms_service.emit("cases", {"case": case.as_primitives()})
@@ -917,7 +887,7 @@ def append_hit(
     item.classification = hit.classification
     case.items.append(item)
     add_backreference(hit, case.case_id, user=user)
-    _save_record(hit, hit_version, refresh=refresh)
+    hit.save(version=hit_version, refresh=refresh)
     if recompute_metadata:
         recompute_case_metadata(case)
     return case
@@ -999,7 +969,7 @@ def append_event(
     case.items.append(item)
 
     add_backreference(event, case.case_id, user=user)
-    _save_record(event, event_version)
+    event.save(version=event_version)
 
     recompute_case_metadata(case)
 
@@ -1279,17 +1249,14 @@ def add_case_rule(
     case.rules.append(rule)
 
     case.log.append(
-        CaseLog.model_validate(
-            {
-                "timestamp": "NOW",
-                "user": user.uname,
-                "explanation": f"Added correlation rule targeting '{rule.destination}'",
-            },
+        CaseLog(
+            user=user.uname,
+            explanation=f"Added correlation rule targeting '{rule.destination}'",
         )
     )
 
     case.updated = now_as_datetime()
-    save_case(case, refresh=refresh, version=version)
+    case.save(refresh=refresh, version=version)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case
 
@@ -1321,18 +1288,10 @@ def remove_case_rule(
     if len(case.rules) == original_len:
         raise NotFoundException(f"Rule {rule_id} not found in case {case_id}")
 
-    case.log.append(
-        CaseLog.model_validate(
-            {
-                "timestamp": "NOW",
-                "user": user.uname,
-                "explanation": f"Removed correlation rule {rule_id}",
-            },
-        )
-    )
+    case.log.append(CaseLog(user=user.uname, explanation=f"Removed correlation rule {rule_id}"))
 
     case.updated = now_as_datetime()
-    save_case(case, refresh=refresh, version=version)
+    case.save(refresh=refresh, version=version)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case
 
@@ -1382,16 +1341,13 @@ def update_case_rule(
     case.rules[case.rules.index(rule)] = updated_rule
 
     case.log.append(
-        CaseLog.model_validate(
-            {
-                "timestamp": "NOW",
-                "user": user.uname,
-                "explanation": f"Updated correlation rule {rule_id}: {'; '.join(changes)}",
-            },
+        CaseLog(
+            user=user.uname,
+            explanation=f"Updated correlation rule {rule_id}: {'; '.join(changes)}",
         )
     )
 
     case.updated = now_as_datetime()
-    save_case(case, refresh=refresh, version=version)
+    case.save(refresh=refresh, version=version)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case

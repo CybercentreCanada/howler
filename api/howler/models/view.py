@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Annotated
 
+from pydantic import Field
+
 from howler.models import (
     UUID,
     Boolean,
@@ -17,6 +19,7 @@ from howler.models import (
     register_model,
 )
 from howler.models.ownership import Ownership
+from howler.utils.uid import get_random_id
 
 DEFAULT_INDEXES = ["hit"]
 
@@ -48,7 +51,7 @@ class Settings(HowlerEmbeddedModel):
 class View(Ownership, HowlerESModel):
     """Model of views."""
 
-    view_id: UUID
+    view_id: UUID = Field(default_factory=get_random_id)
     """A UUID for this view"""
     indexes: list[Keyword] = DEFAULT_INDEXES
     """What indexes this view applies to."""

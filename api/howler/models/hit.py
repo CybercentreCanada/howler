@@ -6,6 +6,7 @@ from typing import Annotated
 
 from howler.models import metadata, register_model
 from howler.models.howler_data import HowlerData
+from howler.models.mixins import DatastoreMixin
 from howler.models.record import Record
 
 
@@ -15,7 +16,7 @@ from howler.models.record import Record
     description="Howler Outline schema which is an extended version of Elastic Common Schema (ECS)",
     id_field="howler.id",
 )
-class Hit(Record):
+class Hit(Record, DatastoreMixin["Hit"]):
     """Howler Outline schema which is an extended version of Elastic Common Schema (ECS)."""
 
     # Howler extended fields. Deviates from ECS

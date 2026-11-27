@@ -14,7 +14,7 @@ from flask.app import Flask
 from howler.common.loader import datastore
 from howler.datastore.collection import CREATE_TOKEN
 from howler.datastore.exceptions import VersionConflictException
-from howler.models.case import CaseItem
+from howler.models.case import Case, CaseItem
 from howler.services import case_service, hit_service
 
 from sentinel.mapping.xdr_alert import XDRAlert
@@ -418,11 +418,11 @@ def test_update_incident_status_only_updates_sentinel_owned_case_hits(client, te
         item_value=analyst_hit.howler.id,
         item_name="Analyst-added hit",
     )
-    case_service.save_case(case)
+    case.save()
     datastore().case.commit()
     datastore().hit.commit()
 
-    monkeypatch.setattr(case_service, "save_case", Mock(side_effect=AssertionError("unexpected case save")))
+    monkeypatch.setattr(Case, "save", Mock(side_effect=AssertionError("unexpected case save")))
     case_events = []
     monkeypatch.setattr(ingest_service.comms_service, "emit", lambda event, data: case_events.append((event, data)))
 
@@ -695,10 +695,10 @@ def test_replay_repairs_missing_root_case_link_without_duplicate_case(client, te
     if missing_link == "root-backreference":
         root.howler.related.remove(case.case_id)
         root_version = datastore().hit.get(root.howler.id, as_obj=True, version=True)[1]
-        datastore().hit.save(root.howler.id, root, version=root_version, refresh="wait_for")
+        root.save(version=root_version)
     else:
         case.items = [item for item in case.items if item.value != root.howler.id]
-        case_service.save_case(case, version=case_version)
+        case.save(version=case_version)
 
     retry = _post(client, incident)
 
@@ -737,11 +737,11 @@ def test_replay_prefers_deterministic_case_over_changed_root_association(client,
     analyst_case_before = analyst_case.as_primitives()
 
     stable_case.items = [item for item in stable_case.items if item.value != root.howler.id]
-    case_service.save_case(stable_case, version=stable_case_version)
+    stable_case.save(version=stable_case_version)
     root, root_version = datastore().hit.get(root.howler.id, as_obj=True, version=True)
     assert root and root_version
     root.howler.related = [analyst_case_id]
-    datastore().hit.save(root.howler.id, root, version=root_version, refresh="wait_for")
+    root.save(version=root_version)
 
     replay = copy.deepcopy(incident)
     replay.pop("alerts")
@@ -790,7 +790,7 @@ def test_legacy_case_fallback_is_used_when_deterministic_case_is_absent(client, 
     root, root_version = datastore().hit.get(root.howler.id, as_obj=True, version=True)
     assert root and root_version
     root.howler.related = [legacy_case.case_id]
-    datastore().hit.save(root.howler.id, root, version=root_version, refresh="wait_for")
+    root.save(version=root_version)
 
     replay = copy.deepcopy(incident)
     replay.pop("alerts")
@@ -912,7 +912,7 @@ def test_case_creation_version_conflict_retries_same_deterministic_id(client, te
 
     incident = _incident("case-create-version-conflict", alerts=[])
     stable_case_id = _stable_hit_id(SAMPLE_TENANT_ID, incident["id"], "case")
-    original_save = case_service.save_case
+    original_save = Case.save
     conflict_state = {"pending": True}
 
     def conflict_before_first_case_save(case, *args, **kwargs):
@@ -921,7 +921,7 @@ def test_case_creation_version_conflict_retries_same_deterministic_id(client, te
             raise VersionConflictException("simulated case create conflict")
         return original_save(case, *args, **kwargs)
 
-    monkeypatch.setattr(case_service, "save_case", conflict_before_first_case_save)
+    monkeypatch.setattr(Case, "save", conflict_before_first_case_save)
     response = _post(client, incident)
 
     assert response.status_code == 201
@@ -936,7 +936,7 @@ def test_case_creation_version_conflict_retries_same_deterministic_id(client, te
 
 def test_initial_case_save_conflict_preserves_concurrent_analyst_edits(client, tenant_mapping, monkeypatch):
     incident = _incident("initial-case-save-conflict")
-    original_save = case_service.save_case
+    original_save = Case.save
     conflict_pending = True
 
     def save_with_concurrent_analyst_edit(case, *args, **kwargs):
@@ -950,7 +950,7 @@ def test_initial_case_save_conflict_preserves_concurrent_analyst_edits(client, t
             raise VersionConflictException("simulated overlapping analyst update")
         return original_save(case, *args, **kwargs)
 
-    monkeypatch.setattr(case_service, "save_case", save_with_concurrent_analyst_edit)
+    monkeypatch.setattr(Case, "save", save_with_concurrent_analyst_edit)
     response = _post(client, incident)
 
     assert response.status_code == 201
@@ -983,7 +983,7 @@ def test_zero_alert_incident_reconciles_alerts_after_case_conflict(
     alert["incidentId"] = incident["id"]
     later["alerts"] = [alert]
 
-    original_save = case_service.save_case
+    original_save = Case.save
     conflict_pending = True
     save_calls = 0
 
@@ -1007,7 +1007,7 @@ def test_zero_alert_incident_reconciles_alerts_after_case_conflict(
         "emit",
         lambda event, data: emitted_cases.append((event, copy.deepcopy(data["case"]))),
     )
-    monkeypatch.setattr(case_service, "save_case", save_with_concurrent_edit)
+    monkeypatch.setattr(Case, "save", save_with_concurrent_edit)
     second = _post(client, later)
 
     assert second.status_code == 200
@@ -1306,7 +1306,7 @@ def test_failed_case_save_does_not_emit_completion_until_retry(client, tenant_ma
     from sentinel.services import ingest_service
 
     incident = _incident("completion-save-retry")
-    original_save = case_service.save_case
+    original_save = Case.save
     save_failure_pending = True
     emitted_cases = []
 
@@ -1317,7 +1317,7 @@ def test_failed_case_save_does_not_emit_completion_until_retry(client, tenant_ma
             raise RuntimeError("simulated final case save failure")
         return original_save(case, *args, **kwargs)
 
-    monkeypatch.setattr(case_service, "save_case", fail_first_completion_save)
+    monkeypatch.setattr(Case, "save", fail_first_completion_save)
     monkeypatch.setattr(
         ingest_service.comms_service,
         "emit",

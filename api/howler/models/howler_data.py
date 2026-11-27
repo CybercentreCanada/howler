@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Annotated
 
+from pydantic import Field
+
 from howler.models import (
     UUID,
     CaseInsensitiveKeyword,
@@ -22,6 +24,8 @@ from howler.models.constants import HowlerStrEnum, Status
 from howler.models.header import Header as _Header
 from howler.models.lead import Lead
 from howler.models.log import Log as _Log
+from howler.utils.isotime import now_as_datetime
+from howler.utils.uid import get_random_id
 
 
 class Scrutiny(HowlerStrEnum):
@@ -115,11 +119,11 @@ class Link(HowlerEmbeddedModel):
 class Comment(HowlerEmbeddedModel):
     """Comment definition."""
 
-    id: UUID
+    id: UUID = Field(default_factory=get_random_id)
     """A unique ID for the comment."""
-    timestamp: Annotated[Date, metadata(default="NOW")]
+    timestamp: Date = Field(default_factory=now_as_datetime)
     """Timestamp at which the comment took place."""
-    modified: Annotated[Date, metadata(default="NOW")]
+    modified: Date = Field(default_factory=now_as_datetime)
     """Timestamp at which the comment was last edited."""
     value: Text
     """The comment itself."""
@@ -196,7 +200,7 @@ DEFAULT_ASSIGNMENT = "unassigned"
 class HowlerData(HowlerEmbeddedModel):
     """Howler specific definition of the hit that matches the outline."""
 
-    id: UUID
+    id: UUID = Field(default_factory=get_random_id)
     """A UUID for this hit."""
     analytic: CaseInsensitiveKeyword
     """Title of the analytic."""

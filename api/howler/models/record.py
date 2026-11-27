@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Annotated
 
+from pydantic import Field
+
 from howler.config import CLASSIFICATION
 from howler.models import (
     Classification,
@@ -49,6 +51,7 @@ from howler.models.ecs.user import User
 from howler.models.ecs.user_agent import UserAgent
 from howler.models.ecs.vulnerability import Vulnerability
 from howler.models.gcp import GCP
+from howler.utils.isotime import now_as_datetime
 
 ECS_REFERENCE = "https://www.elastic.co/guide/en/ecs/8.5/ecs-base.html"
 
@@ -67,7 +70,7 @@ class Record(HowlerESModel):
     _include_index = True
 
     # Base Fields
-    timestamp: Annotated[Date, metadata(default="NOW", reference=ECS_REFERENCE)]
+    timestamp: Annotated[Date, metadata(reference=ECS_REFERENCE)] = Field(default_factory=now_as_datetime)
     """Date/time when the event originated."""
     classification: Annotated[Classification, metadata(copyto="__text__", default=CLASSIFICATION.UNRESTRICTED)]
     """Maximum classification for the hit"""

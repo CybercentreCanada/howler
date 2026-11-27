@@ -389,7 +389,7 @@ def _ensure_incident_case(  # noqa: C901
         if case.case_id not in root_hit.howler.related:
             case_service.add_backreference(root_hit, case.case_id, user=SYSTEM_USER)
             try:
-                ds.hit.save(root_hit.howler.id, root_hit, version=root_hit_version, refresh="wait_for")
+                root_hit.save(version=root_hit_version)
             except VersionConflictException:
                 if attempt + 1 == _CASE_RECONCILIATION_ATTEMPTS:
                     raise
@@ -608,7 +608,7 @@ def _save_reconciled_case(
     writer may already have persisted every required item.
     """
     try:
-        case_service.save_case(case, version=case_version)
+        case.save(version=case_version)
         return case, True
     except VersionConflictException:
         case, case_version = datastore().case.get(case.case_id, as_obj=True, version=True)
@@ -634,7 +634,7 @@ def _save_reconciled_case(
             )
         changed = _case_item_membership(case) != case_items_before
         if changed:
-            case_service.save_case(case, version=case_version)
+            case.save(version=case_version)
         return case, changed
 
 
@@ -696,13 +696,13 @@ def _update_existing_incident(
     if new_status:
         status = incident_mapper.map_sentinel_status_to_howler(new_status)
         existing_hit.howler.status = status
-        ds.hit.save(existing_hit.howler.id, existing_hit)
+        existing_hit.save()
         updated_count = 1
         # Only Sentinel-owned descendants bearing this incident and tenant
         # metadata are managed. Analyst-added case hits are deliberately ignored.
         for descendant in descendants:
             descendant.howler.status = status
-            ds.hit.save(descendant.howler.id, descendant)
+            descendant.save()
             updated_count += 1
         _refresh_hit_alias()
 

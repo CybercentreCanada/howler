@@ -703,7 +703,7 @@ class TestILMBulkRouting:
             f"{col.name}-000002": {"aliases": {col.name: {}}},
             f"{col.name}-000003__reindex": {},
         }
-        action = Action.model_validate({"meta": {"index": old_index}, **_action_data()})
+        action = Action(meta={"index": old_index}, **_action_data())
         mock_datastore.client.search.return_value = {
             "hits": {
                 "hits": [
@@ -750,7 +750,7 @@ class TestILMBulkRouting:
         detached = f"{col.name}-000001"
         mock_datastore.client.indices.get.return_value = {detached: {"aliases": {}}}
         mock_datastore.client.search.return_value = {"hits": {"hits": []}}
-        action = Action.model_validate({"meta": {"index": detached}, **_action_data()})
+        action = Action(meta={"index": detached}, **_action_data())
         plan = col.get_bulk_plan()
         with pytest.raises(DataStoreException, match="not a physical member"):
             getattr(plan, f"add_{operation}_operation")("action-1", action)

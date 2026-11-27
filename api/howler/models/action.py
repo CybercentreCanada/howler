@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pydantic import Field
+
 from howler.models import (
     UUID,
     CaseInsensitiveKeyword,
@@ -12,6 +14,7 @@ from howler.models import (
     register_model,
 )
 from howler.models.ownership import Ownership
+from howler.utils.uid import get_random_id
 
 VALID_TRIGGERS = ["create", "demote", "promote", "add_label", "remove_label"]
 
@@ -30,7 +33,7 @@ class Operation(HowlerEmbeddedModel):
 class Action(Ownership, HowlerESModel):
     """Model of actions."""
 
-    action_id: UUID
+    action_id: UUID = Field(default_factory=get_random_id)
     """A UUID for this action"""
     name: CaseInsensitiveKeyword
     """The name of the action."""

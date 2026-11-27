@@ -175,30 +175,24 @@ def test_metadata_fields_use_case_insensitive_mappings_without_changing_serializ
 
 
 def test_optional_metadata_fields_allow_absence_and_view_dossier_values_keep_case():
-    view = View.model_validate(
-        {
-            "view_id": str(uuid4()),
-            "indexes": ["hit"],
-            "title": "Optional sort test",
-            "query": "Query MiXeD Case",
-            "type": "personal",
-            "owner": "OwnerMiXeD",
-        }
+    view = View(
+        view_id=str(uuid4()),
+        indexes=["hit"],
+        title="Optional sort test",
+        query="Query MiXeD Case",
+        type="personal",
+        owner="OwnerMiXeD",
     )
-    dossier = Dossier.model_validate(
-        {
-            "dossier_id": str(uuid4()),
-            "title": "Dossier MiXeD Case",
-            "owner": "OwnerMiXeD",
-            "type": "personal",
-            "leads": [],
-            "pivots": [],
-        }
+    dossier = Dossier(
+        dossier_id=str(uuid4()),
+        title="Dossier MiXeD Case",
+        owner="OwnerMiXeD",
+        type="personal",
+        leads=[],
+        pivots=[],
     )
-    template = Template.model_validate({"template_id": str(uuid4()), "analytic": "Analytic MiXeD", "type": "personal"})
-    overview = Overview.model_validate(
-        {"overview_id": str(uuid4()), "analytic": "Analytic MiXeD", "content": "Markdown"}
-    )
+    template = Template(template_id=str(uuid4()), analytic="Analytic MiXeD", type="personal")
+    overview = Overview(overview_id=str(uuid4()), analytic="Analytic MiXeD", content="Markdown")
 
     assert view.sort is None
     assert view.query == "Query MiXeD Case"

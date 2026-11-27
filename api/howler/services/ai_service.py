@@ -14,6 +14,7 @@ from howler.config_models import AITriage
 from howler.datastore.exceptions import VersionConflictException
 from howler.models.hit import Hit
 from howler.models.lead import Lead
+from howler.models.localized_label import LocalizedLabel
 from howler.models.user import User
 from howler.remote.datatypes.queues.named import NamedQueue
 from howler.services import auth_service, hit_service
@@ -339,13 +340,11 @@ def _managed_lead(content: str) -> Lead:
     Returns:
         A lead with the AI triage label and ownership metadata.
     """
-    return Lead.model_validate(
-        {
-            "label": {"en": "AI Triage", "fr": "Triage IA"},
-            "format": "markdown",
-            "content": content,
-            "metadata": json.dumps({"owner": LEAD_OWNER}),
-        }
+    return Lead(
+        label=LocalizedLabel(en="AI Triage", fr="Triage IA"),
+        format="markdown",
+        content=content,
+        metadata=json.dumps({"owner": LEAD_OWNER}),
     )
 
 

@@ -365,13 +365,11 @@ def create_templates(ds: HowlerDatastore):
         keys = sample(list(model_registry.flat_fields(hit_model)), 5)
 
         for detection in ["Detection 1", "Detection 2"]:
-            template = Template.model_validate(
-                {
-                    "analytic": choice(["Password Checker", "Bad Guy Finder", "SecretAnalytic"]),
-                    "detection": detection,
-                    "type": "global",
-                    "keys": keys,
-                }
+            template = Template(
+                analytic=choice(["Password Checker", "Bad Guy Finder", "SecretAnalytic"]),
+                detection=detection,
+                type="global",
+                keys=keys,
             )
 
             template = run_modifications("template", template, i == 0)
@@ -382,12 +380,10 @@ def create_templates(ds: HowlerDatastore):
             )
 
     for analytic in ["Password Checker", "Bad Guy Finder"]:
-        template = Template.model_validate(
-            {
-                "analytic": analytic,
-                "type": "global",
-                "keys": ["howler.id", "howler.hash"],
-            }
+        template = Template(
+            analytic=analytic,
+            type="global",
+            keys=["howler.id", "howler.hash"],
         )
 
         template = run_modifications("template", template)
@@ -397,13 +393,11 @@ def create_templates(ds: HowlerDatastore):
             template,
         )
 
-        template = Template.model_validate(
-            {
-                "analytic": analytic,
-                "owner": "admin",
-                "type": "personal",
-                "keys": ["howler.id", "howler.hash", "howler.analytic", "agent.id"],
-            }
+        template = Template(
+            analytic=analytic,
+            owner="admin",
+            type="personal",
+            keys=["howler.id", "howler.hash", "howler.analytic", "agent.id"],
         )
 
         template = run_modifications("template", template)
@@ -413,13 +407,11 @@ def create_templates(ds: HowlerDatastore):
             template,
         )
 
-        template = Template.model_validate(
-            {
-                "analytic": analytic,
-                "owner": "goose",
-                "type": "personal",
-                "keys": ["agent.id", "agent.type", "container.id"],
-            }
+        template = Template(
+            analytic=analytic,
+            owner="goose",
+            type="personal",
+            keys=["agent.id", "agent.type", "container.id"],
         )
 
         ds.template.save(
@@ -443,13 +435,11 @@ def create_overviews(ds: HowlerDatastore):
 
         for detection in ["Detection 1", "Detection 2"]:
             content = "\n\n".join(f"{{{key}}}" for key in keys)
-            overview = Overview.model_validate(
-                {
-                    "analytic": choice(["Password Checker", "Bad Guy Finder", "SecretAnalytic"]),
-                    "owner": "admin",
-                    "detection": detection,
-                    "content": f"# Hello, World!\n\n{content}",
-                }
+            overview = Overview(
+                analytic=choice(["Password Checker", "Bad Guy Finder", "SecretAnalytic"]),
+                owner="admin",
+                detection=detection,
+                content=f"# Hello, World!\n\n{content}",
             )
 
             overview = run_modifications("overview", overview, i == 0)
@@ -460,11 +450,10 @@ def create_overviews(ds: HowlerDatastore):
             )
 
     for analytic in ["Password Checker", "Bad Guy Finder"]:
-        overview = Overview.model_validate(
-            {
-                "analytic": analytic,
-                "owner": "admin",
-                "content": textwrap.dedent("""
+        overview = Overview(
+            analytic=analytic,
+            owner="admin",
+            content=textwrap.dedent("""
                     # {{howler.analytic}} Alert
                     {{#if (equals howler.status "open")}}
                     ![](https://img.shields.io/badge/open-blue)
@@ -495,7 +484,6 @@ def create_overviews(ds: HowlerDatastore):
                     </div>
                     {{/if}}
                     """),  # noqa: E501
-            }
         )
 
         overview = run_modifications("overview", overview)
@@ -740,12 +728,10 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
 
         if config.core.notebook.enabled:
             analytic.notebooks.append(
-                Notebook.model_validate(
-                    {
-                        "value": "Link to super notebook",
-                        "name": "Super notebook",
-                        "user": random.choice(users),
-                    }
+                Notebook(
+                    value="Link to super notebook",
+                    name="Super notebook",
+                    user=random.choice(users),
                 )
             )
 

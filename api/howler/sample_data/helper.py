@@ -231,15 +231,13 @@ def generate_useful_hit(  # noqa: C901
     ]
 
     hit.howler.links = [
-        Link.model_validate(
-            {
-                "title": "Goose",
-                "href": "https://en.wikipedia.org/wiki/Canada_goose",
-                "icon": (
-                    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Canada_goose_on_Seedskadee_NWR"
-                    "_%2827826185489%29.jpg/788px-Canada_goose_on_Seedskadee_NWR_%2827826185489%29.jpg"
-                ),
-            }
+        Link(
+            title="Goose",
+            href="https://en.wikipedia.org/wiki/Canada_goose",
+            icon=(
+                "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Canada_goose_on_Seedskadee_NWR"
+                "_%2827826185489%29.jpg/788px-Canada_goose_on_Seedskadee_NWR_%2827826185489%29.jpg"
+            ),
         )
     ]
 
@@ -889,29 +887,27 @@ def generate_useful_case(ds: HowlerDatastore, generated_case_ids: list[str] = []
     task_count = randint(3, 7)
     for _ in range(task_count):
         case.tasks.append(
-            CaseTask.model_validate(
-                {
-                    "id": get_random_id(),
-                    "complete": choice([True, False]),
-                    "assignment": choice(selected_participants or ["admin"]),
-                    "summary": choice(
-                        [
-                            "Review related indicators and determine additional pivots.",
-                            "Validate event context and identify correlations.",
-                            "Confirm scope and impacted entities for this thread.",
-                            "Assess whether this path supports active compromise.",
-                            "Collect supporting evidence and update confidence level.",
-                            "Compare this artifact against recent detection patterns.",
-                            "Identify additional systems requiring triage for this lead.",
-                            "Map this task output to containment or remediation actions.",
-                            "Verify timeline consistency with known suspicious activity.",
-                            "Check for related user and host activity across the same window.",
-                            "Validate whether this indicator appears in prior incidents.",
-                            "Document findings and propose next investigation pivots.",
-                        ]
-                    ),
-                    "item": choice([item.id for item in case.items]) if case.items else None,
-                }
+            CaseTask(
+                id=get_random_id(),
+                complete=choice([True, False]),
+                assignment=choice(selected_participants or ["admin"]),
+                summary=choice(
+                    [
+                        "Review related indicators and determine additional pivots.",
+                        "Validate event context and identify correlations.",
+                        "Confirm scope and impacted entities for this thread.",
+                        "Assess whether this path supports active compromise.",
+                        "Collect supporting evidence and update confidence level.",
+                        "Compare this artifact against recent detection patterns.",
+                        "Identify additional systems requiring triage for this lead.",
+                        "Map this task output to containment or remediation actions.",
+                        "Verify timeline consistency with known suspicious activity.",
+                        "Check for related user and host activity across the same window.",
+                        "Validate whether this indicator appears in prior incidents.",
+                        "Document findings and propose next investigation pivots.",
+                    ]
+                ),
+                item=choice([item.id for item in case.items]) if case.items else None,
             )
         )
 

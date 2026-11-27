@@ -98,7 +98,7 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
                 skipped.append(hit.howler.id)
 
         if len(case.items) != original_item_count:
-            case_service.save_case(case, refresh="wait_for")
+            case.save(refresh="wait_for")
             comms_service.emit("cases", {"case": case.as_primitives()})
 
         if skipped:

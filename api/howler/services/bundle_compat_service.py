@@ -137,7 +137,7 @@ def create_bundle(
         except (InvalidDataException, NotFoundException, DataStoreException) as exc:  # pragma: no cover
             logger.warning("Could not add child hit %s to case: %s", child_id, exc)
 
-    case_service.save_case(case)
+    case.save()
     comms_service.emit("cases", {"case": case.as_primitives()})
 
     return synthesize_bundle_response(case, odm, warnings=warnings, user=user)
@@ -195,7 +195,7 @@ def add_to_bundle(
 
         case_service.append_case_item(case, item_type="hit", item_value=hit_id)
 
-    case_service.save_case(case, refresh=refresh)
+    case.save(refresh=refresh)
     comms_service.emit("cases", {"case": case.as_primitives()})
 
     return synthesize_bundle_response(case, root_hit, user=user)

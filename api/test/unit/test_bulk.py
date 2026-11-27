@@ -114,15 +114,13 @@ def test_collection_bulk_returns_false_and_logs_errors():
 
 
 def _make_case() -> Case:
-    return Case.model_validate(
-        {
-            "case_id": "case-001",
-            "title": "Original Title",
-            "summary": "Original Summary",
-            "overview": "O",
-            "escalation": "normal",
-            "items": [CaseItem.model_validate({"id": "item-1", "type": "hit", "value": "hit-1", "name": "hit-1"})],
-        }
+    return Case(
+        case_id="case-001",
+        title="Original Title",
+        summary="Original Summary",
+        overview="O",
+        escalation="normal",
+        items=[CaseItem(id="item-1", type="hit", value="hit-1", name="hit-1")],
     )
 
 

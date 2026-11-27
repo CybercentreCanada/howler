@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Annotated
 
+from pydantic import Field
+
 from howler.models import (
     UUID,
     Date,
@@ -19,7 +21,9 @@ from howler.models.constants import HowlerStrEnum
 from howler.models.header import Header as _Header
 from howler.models.howler_data import Comment
 from howler.models.log import Log as _Log
+from howler.models.mixins import DatastoreMixin
 from howler.models.record import Record
+from howler.utils.uid import get_random_id
 
 
 class Escalation(HowlerStrEnum):
@@ -39,7 +43,7 @@ class Escalation(HowlerStrEnum):
 class EventData(HowlerEmbeddedModel):
     """Event metadata fields, howler specific."""
 
-    id: UUID
+    id: UUID = Field(default_factory=get_random_id)
     """A UUID for this event."""
     data: Annotated[list[Keyword], metadata(store=False)] = []
     """Raw telemetry records associated with this event."""
@@ -70,7 +74,7 @@ class EventData(HowlerEmbeddedModel):
     description="Event schema which is an extended version of Elastic Common Schema (ECS)",
     id_field="howler.id",
 )
-class Event(Record):
+class Event(Record, DatastoreMixin["Event"]):
     """Event schema which is an extended version of Elastic Common Schema (ECS)."""
 
     # Howler extended fields. Deviates from ECS

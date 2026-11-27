@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Annotated
 
+from pydantic import Field
+
 from howler.models import (
     UUID,
     Boolean,
@@ -19,6 +21,8 @@ from howler.models import (
     register_model,
 )
 from howler.models.howler_data import Assessment
+from howler.utils.isotime import now_as_datetime
+from howler.utils.uid import get_random_id
 
 DEFAULT_TRIAGE = {"skip_rationale": False, "valid_assessments": Assessment.list(), "rationales": []}
 
@@ -27,11 +31,11 @@ DEFAULT_TRIAGE = {"skip_rationale": False, "valid_assessments": Assessment.list(
 class Comment(HowlerEmbeddedModel):
     """Comment definition."""
 
-    id: UUID
+    id: UUID = Field(default_factory=get_random_id)
     """A unique ID for the comment"""
-    timestamp: Annotated[Date, metadata(default="NOW")]
+    timestamp: Date = Field(default_factory=now_as_datetime)
     """Timestamp at which the comment took place."""
-    modified: Annotated[Date, metadata(default="NOW")]
+    modified: Date = Field(default_factory=now_as_datetime)
     """Timestamp at which the comment was last edited."""
     detection: Keyword | None = None
     """The detection the comment applies to, if it applies to a particular detection"""
@@ -39,7 +43,7 @@ class Comment(HowlerEmbeddedModel):
     """The comment itself."""
     user: Keyword
     """User ID who created the comment."""
-    reactions: mapping(Keyword, default={})
+    reactions: mapping(Keyword) = {}
     """A list of reactions to the comment"""
 
 
@@ -61,7 +65,7 @@ class TriageOptions(HowlerEmbeddedModel):
 class Notebook(HowlerEmbeddedModel):
     """Notebook data."""
 
-    id: UUID
+    id: UUID = Field(default_factory=get_random_id)
     """A unique ID for the notebook"""
     detection: Keyword | None = None
     """The detection the notebook applies to, if it applies to a particular detection"""
@@ -77,7 +81,7 @@ class Notebook(HowlerEmbeddedModel):
 class Analytic(HowlerESModel):
     """Metadata concerning a howler analytic, including configuration."""
 
-    analytic_id: UUID
+    analytic_id: UUID = Field(default_factory=get_random_id)
     """A UUID for this analytic"""
     notebooks: list[Notebook] = []
     """A list of useful notebooks for the analytic"""

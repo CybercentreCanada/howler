@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+from pydantic import Field
+
 from howler.models import UUID, CaseInsensitiveKeyword, HowlerESModel, Keyword, Text, register_model
+from howler.utils.uid import get_random_id
 
 
 @register_model(index=True, store=True, description="Model of overviews")
 class Overview(HowlerESModel):
     """Model of overviews."""
 
-    overview_id: UUID
+    overview_id: UUID = Field(default_factory=get_random_id)
     """A UUID for this overview"""
     analytic: CaseInsensitiveKeyword
     """The analytic which this overview applies to."""

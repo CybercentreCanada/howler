@@ -269,7 +269,7 @@ def append_item(  # noqa: C901
 
         case_service.append_case_item(record, CaseItem.model_validate(body), user=user)
 
-        case_service.save_case(record, refresh=refresh, version=server_version)
+        record.save(refresh=refresh, version=server_version)
         comms_service.emit("cases", {"case": record.as_primitives()})
 
         case_service.filter_case_items_by_classification(record, user.classification)
@@ -430,7 +430,7 @@ def rename_item(
         if not result:
             return bad_request(err="At least one of 'name' or 'parent' is required.")
 
-        case_service.save_case(result, refresh=refresh, version=server_version)
+        result.save(refresh=refresh, version=server_version)
 
         case_service.filter_case_items_by_classification(result, user.classification)
 

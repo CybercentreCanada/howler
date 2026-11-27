@@ -9,6 +9,7 @@ from pydantic import Field
 from howler.datastore.store import ESStore
 from howler.models import HowlerEmbeddedModel, ModelExtensionRegistry, fields, register_model
 from howler.models.hit import Hit
+from howler.utils.isotime import now_as_datetime
 
 
 @register_model(index=True, store=True, embedded=True)
@@ -16,7 +17,7 @@ class ExtensionModel(HowlerEmbeddedModel):
     integer: fields.Integer = 1
     keyword: fields.Keyword = "keyword"
     boolean: fields.Boolean = True
-    date: Annotated[fields.Date, fields.metadata(default="NOW")]
+    date: fields.Date = Field(default_factory=now_as_datetime)
 
 
 @pytest.fixture(scope="module")

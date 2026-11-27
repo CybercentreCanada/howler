@@ -34,6 +34,8 @@ from howler.models.ecs.user import User
 from howler.models.ecs.user_agent import UserAgent
 from howler.models.ecs.vulnerability import Vulnerability
 from howler.models.record import ECS_REFERENCE, ECSVersion
+from howler.utils.isotime import now_as_datetime
+from pydantic import Field
 
 
 @register_model(index=True, store=True, description="Evidence fields add a list of additional ECS objects.")
@@ -41,9 +43,9 @@ class Evidence(HowlerEmbeddedModel):
     """Evidence fields add a list of additional ECS objects."""
 
     # Base Fields
-    timestamp: Annotated[Date, metadata(default="NOW", reference=ECS_REFERENCE)]
+    timestamp: Annotated[Date, metadata(reference=ECS_REFERENCE)] = Field(default_factory=now_as_datetime)
     """Date/time when the event originated."""
-    labels: mapping(Keyword, default={}, reference=ECS_REFERENCE)
+    labels: mapping(Keyword, reference=ECS_REFERENCE) = {}
     """Custom key/value pairs."""
     tags: Annotated[list[Keyword], metadata(reference=ECS_REFERENCE)] = []
     """List of keywords used to tag each event."""

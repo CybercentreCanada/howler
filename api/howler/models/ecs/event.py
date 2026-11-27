@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from pydantic import Field
 
-from howler.models import Date, Float, HowlerEmbeddedModel, Integer, Keyword, enum, metadata, register_model
+from howler.models import Date, Float, HowlerEmbeddedModel, Integer, Keyword, enum, register_model
+from howler.utils.isotime import now_as_datetime
 
 EVENT_CATEGORIES = [
     "authentication",
@@ -89,7 +90,7 @@ class ECSEvent(HowlerEmbeddedModel):
     """Hash (perhaps logstash fingerprint) of raw field to be able to demonstrate log integrity."""
     id: Keyword | None = None
     """Unique ID to describe the event."""
-    ingested: Annotated[Date, metadata(default="NOW")]
+    ingested: Date = Field(default_factory=now_as_datetime)
     """Timestamp when an event arrived in the central data store."""
     kind: enum(values=EVENT_KIND, optional=True)
     (

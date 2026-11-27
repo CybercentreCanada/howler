@@ -567,7 +567,7 @@ def save_hit(hit: Hit, version: Optional[str] = None, refresh: str | None = None
     Returns:
         Tuple of (hit_data_dict, version_string)
     """
-    datastore().hit.save(hit.howler.id, hit, version=version, refresh=refresh)
+    hit.save(version=version, refresh=refresh)
     data, _version = datastore().hit.get(hit.howler.id, as_obj=False, version=True)
     comms_service.emit("hits", {"hit": data, "version": _version})
 

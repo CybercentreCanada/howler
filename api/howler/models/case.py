@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
 from howler.config import CLASSIFICATION
 from howler.models import (
@@ -22,6 +22,9 @@ from howler.models import (
     register_model,
 )
 from howler.models.constants import CaseEscalation, HowlerStrEnum, Status
+from howler.models.mixins import DatastoreMixin
+from howler.utils.isotime import now_as_datetime
+from howler.utils.uid import get_random_id
 
 
 class RuleIndexTypes(HowlerStrEnum):
@@ -54,7 +57,7 @@ class CaseItemTypes(HowlerStrEnum):
 class CaseLog(HowlerEmbeddedModel):
     """Log definition."""
 
-    timestamp: Date
+    timestamp: Date = Field(default_factory=now_as_datetime)
     """Timestamp at which the Log event took place."""
     key: Keyword | None = None
     """The key whose value changed."""
@@ -84,7 +87,7 @@ class CaseLog(HowlerEmbeddedModel):
 class CaseItem(HowlerEmbeddedModel):
     """An item included in a case."""
 
-    id: UUID
+    id: UUID = Field(default_factory=get_random_id)
     """Unique identifier for this item."""
     parent: Keyword | None = None
     """ID of the parent folder item, or null for root-level items."""
@@ -125,7 +128,7 @@ class CaseItem(HowlerEmbeddedModel):
 class CaseRule(HowlerEmbeddedModel):
     """Rule used to place/query data into case paths."""
 
-    rule_id: UUID
+    rule_id: UUID = Field(default_factory=get_random_id)
     """Unique rule identifier."""
     destination: Keyword
     """Destination case path template."""
@@ -135,7 +138,7 @@ class CaseRule(HowlerEmbeddedModel):
     """Username who created the rule."""
     enabled: Boolean = True
     """Whether the rule is currently active."""
-    created_at: Annotated[Date, metadata(default="NOW")]
+    created_at: Date = Field(default_factory=now_as_datetime)
     """Timestamp when the rule was created."""
     timeframe: Annotated[Integer | None, metadata(ge=1)] = None
     """Number of days the rule stays active. Null means no expiry."""
@@ -162,7 +165,7 @@ class CaseRule(HowlerEmbeddedModel):
 class CaseTask(HowlerEmbeddedModel):
     """Task associated with a case item path."""
 
-    id: UUID
+    id: UUID = Field(default_factory=get_random_id)
     """Task identifier."""
     complete: Boolean = False
     """Whether the task is complete."""
@@ -187,12 +190,12 @@ class CaseEnrichment(HowlerEmbeddedModel):
 
 
 @register_model(index=True, store=True, description="Case model with items, enrichments, rules, and tasks.")
-class Case(HowlerESModel):
+class Case(HowlerESModel, DatastoreMixin["Case"]):
     """Case model with items, enrichments, rules, and tasks."""
 
     _include_index = True
 
-    case_id: UUID
+    case_id: UUID = Field(default_factory=get_random_id)
     """A unique identifier for this case."""
     classification: Annotated[Classification, metadata(copyto="__text__", default=CLASSIFICATION.UNRESTRICTED)]
     """Maximum classification for the case"""
@@ -206,7 +209,7 @@ class Case(HowlerESModel):
     """Escalation of the case."""
     status: enum(values=Status, default=Status.OPEN)
     """Status of the case."""
-    created: Annotated[Date | None, metadata(optional=True, default="NOW")]
+    created: Date = Field(default_factory=now_as_datetime)
     """Date/time when the case was created."""
     visible: Boolean = True
     """Whether the case is visible/accessible in the frontend."""
