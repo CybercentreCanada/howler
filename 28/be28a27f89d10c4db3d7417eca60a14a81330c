@@ -1,0 +1,19 @@
+plugins/sync/test/unit/iceberg/test_build_schema.py
+  s_7efb1d0a12c560::t_5d013f2e3858ce 146-148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "28be28a27f89d10c4db3d7417eca60a14a81330c",
+  "prompts": {},
+  "sessions": {
+    "s_7efb1d0a12c560": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de29014fbffe4mioIzwEj1rE3n",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
