@@ -1,0 +1,56 @@
+api/howler/datastore/collection.py
+  s_3582e165d88361::t_6d1473a63ae747 1877,2084-2087,2089-2090,2094-2096,2099-2104,2107,2109-2123,2125-2133,2135,2139-2144,2146-2152,2157,2159
+  h_f221159cc9f457 232
+  s_b2962a61e0c5a3::t_a290058ec939ec 1842
+  s_7403f268735c26::t_8cced291bf0fd7 1440-1441,1443,1466-1468,1480,1483-1488,1491
+  s_3582e165d88361::t_faf8ba0ba44379 2177,2180,2188,2195
+  s_7403f268735c26::t_36c625e024ce00 1547,1592,1610
+  s_3582e165d88361::t_2b0e6630170441 2179
+  s_7403f268735c26::t_22ed2947069733 1246
+  s_7403f268735c26::t_9cdf6342693900 1482
+  s_7403f268735c26::t_dd0a73770cd7bc 1353-1355,1361,1365,1367-1374,1376,1378-1380,1382-1385
+  s_7403f268735c26::t_7d6b2bdfe3ea4f 1489-1490
+  s_b2962a61e0c5a3::t_b1381e69707385 1843-1844
+  s_3582e165d88361::t_f34035a4efb985 1874-1876
+  s_3582e165d88361::t_9d92fdfe17b625 2178
+  s_3582e165d88361::t_bef669eb71537c 23,1846-1858,1863,1865-1869,1872-1873
+api/test/unit/models/test_legacy_parity.py
+  s_7403f268735c26::t_ff5bb4850143a0 125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "384706768d743e84dc1553e0d34c39f5ed840f6a",
+  "prompts": {},
+  "humans": {
+    "h_f221159cc9f457": {
+      "author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  },
+  "sessions": {
+    "s_3582e165d88361": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de1a8c7caffeCaCtxHrRd500dr",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_7403f268735c26": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de1da727dffefemX8JNTCnEF7q",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    },
+    "s_b2962a61e0c5a3": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "a6d63649-1b2a-463b-a043-4ecc00a879ce",
+        "model": "unknown"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
