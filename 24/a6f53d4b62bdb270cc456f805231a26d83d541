@@ -1,0 +1,30 @@
+api/howler/models/fields.py
+  s_95fc61e316a0ac::t_a7c1629ef42096 186
+  s_95fc61e316a0ac::t_93efdbe78a91c6 177-178,180,182-185,187-196,198-199,201-206
+  s_95fc61e316a0ac::t_a638994e82b2ae 26
+api/howler/common/classification.py
+  s_95fc61e316a0ac::t_22648504b07159 4
+  s_95fc61e316a0ac::t_a638994e82b2ae 760-761
+api/howler/security/utils.py
+  s_95fc61e316a0ac::t_a638994e82b2ae 24,49
+api/test/unit/services/test_case_service.py
+  s_95fc61e316a0ac::t_97259228f57f4b 287,298-316
+  s_95fc61e316a0ac::t_a638994e82b2ae 1215,2418,2443,2467,2493,3102
+  s_95fc61e316a0ac::t_844bdee3c26a77 317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "24a6f53d4b62bdb270cc456f805231a26d83d541",
+  "prompts": {},
+  "sessions": {
+    "s_95fc61e316a0ac": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de300c436ffeEjRKAS4916Q0T2",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

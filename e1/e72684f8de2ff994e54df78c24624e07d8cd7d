@@ -1,0 +1,67 @@
+api/test/unit/services/test_hit_service.py
+  s_a794dcbdad087a::t_33b0e242829481 2
+  s_a794dcbdad087a::t_8ff79e371d5cf4 6
+api/test/unit/services/test_user_service.py
+  s_a794dcbdad087a::t_f3104c3e51ddd6 238-239
+  s_a794dcbdad087a::t_3cd9b6288e5a78 228
+  s_a794dcbdad087a::t_845d71dddaa1d8 202-213,219,251-269
+  s_a794dcbdad087a::t_d68c512c5ddf1d 216,223-227,229-234,240-242,247,250
+api/test/unit/services/test_case_service.py
+  s_a794dcbdad087a::t_4317590feed2d6 25-28,2351
+  s_a794dcbdad087a::t_2a27f41c17f16b 3039-3041
+  s_a794dcbdad087a::t_4321d70d98dce9 739-741,750-751,754-756
+  s_a794dcbdad087a::t_8ec2f77b37d456 2
+  s_a794dcbdad087a::t_e7f5fb9c74c8e4 502,507,616-618,2158-2159,2166-2172
+  s_a794dcbdad087a::t_56c719b77fa3e8 1431,1434,1437,1440,1443-1446,1448,1450-1451,1453
+api/test/unit/services/test_ingest_service.py
+  s_a794dcbdad087a::t_8c78ea87a94924 36-46,50,55,60-61,71-79,81,109-110,112-113,123-132,135,137,140,142-143,147-148,152-154,157-166,168-177,183
+  s_a794dcbdad087a::t_9d6a7d497b6e43 95-96
+  s_a794dcbdad087a::t_fb5dcdca802572 28,59,80
+  s_a794dcbdad087a::t_4250b026e0138b 70
+  s_a794dcbdad087a::t_30ed771e1ffd05 84-85,87-90,93-94,97-100,103,105-108,111,116,118,120,179-180,182,184-189
+  s_a794dcbdad087a::t_e7510450f3054e 82-83
+api/test/unit/services/test_analytic_service.py
+  s_a794dcbdad087a::t_a213fc2f4002a9 17-19
+api/test/unit/services/test_event_service.py
+  s_a794dcbdad087a::t_fb5dcdca802572 2
+api/test/unit/services/test_dossier_group_service.py
+  s_a794dcbdad087a::t_33b0e242829481 1
+api/test/unit/services/test_view_cleanup.py
+  s_a794dcbdad087a::t_f6ab2d3297bac6 9-19,21-22
+api/test/integration/service/test_hit_service.py
+  s_a794dcbdad087a::t_33b0e242829481 316-318,369,375
+  s_a794dcbdad087a::t_888b9192f0fa08 362,371
+  s_a794dcbdad087a::t_8ff79e371d5cf4 365,376
+  s_a794dcbdad087a::t_b5be4ca0dddb32 368
+api/test/unit/services/test_search_service_user_fields.py
+  s_a794dcbdad087a::t_5ba31cf6b2370d 12,31-32
+api/test/unit/services/test_bundle_compat_service.py
+  s_a794dcbdad087a::t_82bd5f3fb08f49 13,31-33
+  s_a794dcbdad087a::t_58fbfca43b1470 17
+  s_a794dcbdad087a::t_27b60bf6851a35 25,30
+api/test/unit/services/test_lucene_service.py
+  s_a794dcbdad087a::t_b0c96e142807b4 3,95,105-109,124,127,136-137,140-158,161-163,165-166,170,180
+  s_a794dcbdad087a::t_b5be4ca0dddb32 35-40,43-44
+  s_a794dcbdad087a::t_660485ab284792 14-30,32-33,48-53,56-59,63-68,71-73,75-76,79,85,94,98-102,113,129,169,171-179,182
+  s_a794dcbdad087a::t_8484fc50ddc2ff 69-70
+  s_a794dcbdad087a::t_82bd5f3fb08f49 185-187
+  s_a794dcbdad087a::t_dafcc6169965f7 159-160
+  s_a794dcbdad087a::t_f8f4061903a4d9 41-42
+  s_a794dcbdad087a::t_f2a8ce7f222313 181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e1e72684f8de2ff994e54df78c24624e07d8cd7d",
+  "prompts": {},
+  "sessions": {
+    "s_a794dcbdad087a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de652931effe3kR5lRC6vFvCi7",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

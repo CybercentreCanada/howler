@@ -1,0 +1,58 @@
+api/test/unit/endpoints/test_auth_endpoint.py
+  s_36973a34c97d27::t_80b6bee3192c7c 69-77,80-97,100,106-110
+api/test/integration/api/test_template.py
+  s_36973a34c97d27::t_b1d10e0d6ea7d8 48
+api/test/integration/api/test_actions.py
+  s_36973a34c97d27::t_b1d10e0d6ea7d8 752
+api/test/integration/api/test_hit.py
+  s_36973a34c97d27::t_519917c8702917 906,911-912,914-916
+api/test/unit/actions/test_add_to_case.py
+  s_36973a34c97d27::t_651ebb7d689c16 43-45
+api/test/unit/actions/test_change_field.py
+  s_36973a34c97d27::t_54eb69b7a50d6b 23-25,32,37-44
+api/test/unit/actions/test_init.py
+  s_36973a34c97d27::t_37c49883a96013 400-402,405,415,417
+api/test/unit/test_config.py
+  s_36973a34c97d27::t_20fd2c70687448 5,8,78,80-82,85-86,94-96
+api/test/unit/endpoints/test_analytic_endpoint.py
+  s_36973a34c97d27::t_87449e27622b69 2,11-12,15,18-19,21,23-26,41-43,49-51
+  s_36973a34c97d27::t_6b29ba6660d2d6 4,34-40,44,47-48
+  s_36973a34c97d27::t_0a8211dbd82ada 20
+api/test/unit/endpoints/test_ingest_endpoint.py
+  s_36973a34c97d27::t_6e959d00fa0c20 698-699,701,703-708,712,715,753,755,774,778,782,786-787,800,820,832,837-838
+  s_36973a34c97d27::t_e34dd1963a3aeb 811-819,821-823,826,828
+  s_36973a34c97d27::t_9baaab7a6d8db4 702,776-777,779
+  s_36973a34c97d27::t_d07b61aeb85438 724,731,747-748
+api/test/unit/endpoints/test_search_endpoint.py
+  s_36973a34c97d27::t_73f99da5d96987 13,44-45,203,245,248,303-304,308,900
+  s_36973a34c97d27::t_c1b0d794dfaaf8 63-67,69-71,77-78
+api/test/unit/test_access_control.py
+  s_36973a34c97d27::t_0d37c84d099f05 531,533-537,540-542,545
+api/test/unit/endpoints/test_classification_access_control.py
+  s_36973a34c97d27::t_1372bf1832daec 181
+  s_36973a34c97d27::t_84458b1961c31d 167-177,183
+api/test/unit/endpoints/test_hit_endpoint.py
+  s_36973a34c97d27::t_c1d8df53e76f81 5,21,26,30,42,62-69,71,73-75
+  s_36973a34c97d27::t_4854433bf38edf 1,28-29
+  s_36973a34c97d27::t_c82c8cd0553e72 45,47,58
+  s_36973a34c97d27::t_519917c8702917 46,59
+  s_36973a34c97d27::t_f17cabe87631d1 43,49
+  s_36973a34c97d27::t_4365bf631396e9 78-82
+  s_36973a34c97d27::t_88679eddcec475 60-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ee38b500412f242fe150f1da4a38a04eb21e9bc5",
+  "prompts": {},
+  "sessions": {
+    "s_36973a34c97d27": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de6527c29ffekSqvVGNbEDQbYP",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

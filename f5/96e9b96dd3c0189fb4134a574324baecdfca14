@@ -1,0 +1,46 @@
+api/howler/services/case_service.py
+  s_95fc61e316a0ac::t_b2be3c25a427a7 49
+api/test/unit/models/test_base.py
+  s_95fc61e316a0ac::t_e1f105e4b33a8a 100
+api/test/unit/models/test_hit_event.py
+  s_95fc61e316a0ac::t_e1f105e4b33a8a 50
+api/test/unit/models/test_fields.py
+  s_95fc61e316a0ac::t_e1f105e4b33a8a 250-251,280,310,321-323
+  s_95fc61e316a0ac::t_efaffa91c84b39 60-63
+api/test/unit/models/test_legacy_parity.py
+  s_95fc61e316a0ac::t_e1f105e4b33a8a 143
+api/howler/models/base.py
+  s_95fc61e316a0ac::t_b2be3c25a427a7 153,155,160,165,268,372,376-377,639
+api/howler/services/user_service.py
+  s_95fc61e316a0ac::t_b2be3c25a427a7 95
+plugins/sync/sync/routes/sync.py
+  s_95fc61e316a0ac::t_e1f105e4b33a8a 78-82
+api/howler/api/v1/analytic.py
+  s_95fc61e316a0ac::t_b2be3c25a427a7 123
+api/howler/models/fields.py
+  s_95fc61e316a0ac::t_c5f1e8e729c950 563-564
+  s_95fc61e316a0ac::t_18eb956fd4b695 562
+  s_95fc61e316a0ac::t_b2be3c25a427a7 549-550
+api/howler/services/dossier_service.py
+  s_95fc61e316a0ac::t_b2be3c25a427a7 239
+api/howler/api/v1/view.py
+  s_95fc61e316a0ac::t_b2be3c25a427a7 217
+plugins/sync/test/unit/iceberg/test_build_schema.py
+  s_95fc61e316a0ac::t_e1f105e4b33a8a 148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f596e9b96dd3c0189fb4134a574324baecdfca14",
+  "prompts": {},
+  "sessions": {
+    "s_95fc61e316a0ac": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de300c436ffeEjRKAS4916Q0T2",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

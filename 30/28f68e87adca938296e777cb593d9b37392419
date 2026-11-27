@@ -1,0 +1,43 @@
+api/test/unit/models/test_pivot.py
+  s_16756670d403b5::t_a0e3a6916ab621 8-9,14,17-18,20,23,25-29,37-38
+  s_16756670d403b5::t_c591e2ca728ceb 30-36,40
+api/test/unit/models/test_hit_nested_ingest.py
+  s_16756670d403b5::t_cdad35c52c3f04 7,9,20,46-50,52,56-58
+  s_16756670d403b5::t_70270d6463b2ac 10-19,21-26,30-31,34,38,41-42,53-55
+api/test/unit/models/test_legacy_parity.py
+  s_16756670d403b5::t_44e77c1ea5fd7e 99-100,106-107
+  s_16756670d403b5::t_3195a7fdac6db3 198-207
+  s_16756670d403b5::t_1d3b1222b707ed 1,17-35,44-45,54-55,62-69,86,88,92,108-109,130,134,143,147,156,171-172,177-179
+  s_16756670d403b5::t_34d9a442f41094 93,120,129
+  s_16756670d403b5::t_c73fa925efb7ee 36-43,46-53,94-98,101-105,110-119,144-146,148-155,157-170,173-176
+api/test/unit/models/test_clue.py
+  s_16756670d403b5::t_2503873e03113e 10-17,19-36
+api/test/unit/models/test_hit_event.py
+  s_16756670d403b5::t_0c4e286de833ac 15-26,28,31,33-34,51-52,55
+  s_16756670d403b5::t_c591e2ca728ceb 8-14,37-39,42-46,60
+api/test/unit/models/test_related.py
+  s_16756670d403b5::t_2158246200360e 12-15,18-20,23-27,30-34,37-41,44-50
+api/test/unit/models/test_case.py
+  s_16756670d403b5::t_c591e2ca728ceb 25-28,51-62,77-82
+  s_16756670d403b5::t_44e77c1ea5fd7e 96-97
+  s_16756670d403b5::t_fcb32f65d61700 3,8,11-16,18,21-24,30-33,35-50,63-76,84-86,89-90,93,98-100,103
+api/test/unit/models/test_documents.py
+  s_16756670d403b5::t_c591e2ca728ceb 55-63
+  s_16756670d403b5::t_6ad7e183695185 14-54,64-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3028f68e87adca938296e777cb593d9b37392419",
+  "prompts": {},
+  "sessions": {
+    "s_16756670d403b5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de652ac42ffeFCgBd70HGEfjSb",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

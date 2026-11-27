@@ -1,0 +1,43 @@
+api/test/unit/models/test_fields.py
+  s_d472ad1c8e1da5::t_6cce2edfc7a832 484-485
+api/howler/datastore/collection.py
+  s_d472ad1c8e1da5::t_6cce2edfc7a832 1510-1513
+api/howler/models/__init__.py
+  s_d472ad1c8e1da5::t_6cce2edfc7a832 4,61
+api/howler/models/registry.py
+  s_d472ad1c8e1da5::t_6cce2edfc7a832 8,31-74,308-309,311,316-317,339-395
+api/howler/models/fields.py
+  s_d472ad1c8e1da5::t_6cce2edfc7a832 18-23,87,134,159-167,189-190,193-198,201-202,204-212,393-420,424,435,450,459,464,477,487,491-494,502,513,518,538,550,555,560,565,583,596,613,618,623,628,633,644,657,662,667,671-677,684,699,703,720,776,784,796-799
+api/pyproject.toml
+  s_d472ad1c8e1da5::t_6cce2edfc7a832 300
+api/test/integration/service/test_lucene_service.py
+  s_d472ad1c8e1da5::t_6cce2edfc7a832 32,183
+api/howler/models/base.py
+  s_d472ad1c8e1da5::t_6cce2edfc7a832 1,7-21,30,32,47-57,79-83,85-93,95-97,170,243,276-299,301-306,310-313,322-323,326-335,382,385-386,399-405,410,416-417,422-423,425,443,567-570,573-574
+api/howler/services/fuzzy_service.py
+  s_d472ad1c8e1da5::t_6cce2edfc7a832 15,129
+api/howler/services/event_service.py
+  s_d472ad1c8e1da5::t_6cce2edfc7a832 165
+api/test/unit/models/test_base.py
+  s_d472ad1c8e1da5::t_6cce2edfc7a832 5,16,266-267,269-270,274,297-298,303-305,309,323,499-564
+api/howler/models/schema.py
+  s_d472ad1c8e1da5::t_6cce2edfc7a832 23,41-42
+api/howler/services/hit_service.py
+  s_d472ad1c8e1da5::t_6cce2edfc7a832 297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "10796f27ce9e127307e2e3f08924de83bea0371e",
+  "prompts": {},
+  "sessions": {
+    "s_d472ad1c8e1da5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_deb67984dffeVnWX7NBYYPLi71",
+        "model": "gemini-4-hydrogen"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}

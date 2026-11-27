@@ -1,0 +1,20 @@
+api/howler/models/howler_data.py
+  h_f221159cc9f457 132
+api/howler/api/v1/analytic.py
+  h_f221159cc9f457 190,231,250,285,295,318,381,500,543
+api/howler/api/v1/overview.py
+  h_f221159cc9f457 146,197,206
+api/howler/api/v1/hit.py
+  h_f221159cc9f457 855
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0d579e87878501a5f6f92e2b2863f34a655f185e",
+  "prompts": {},
+  "humans": {
+    "h_f221159cc9f457": {
+      "author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
