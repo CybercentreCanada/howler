@@ -1,0 +1,122 @@
+api/test/unit/models/test_validation_errors.py
+  s_43c54947b76e2f::t_0e82d782ffd2a2 6,37-38
+api/test/integration/test_datastore_odm.py
+  s_43c54947b76e2f::t_7ccd32d5d4adcc 308-310,571,574-576,581-584,589,595-598,600
+api/test/unit/models/test_case.py
+  s_43c54947b76e2f::t_dc1a02ed3a5fa8 3,8,11-16,18,21-28,30-33,35-82,84-86,89-90,93,96-100,103
+api/test/integration/test_case_insensitive_metadata.py
+  s_43c54947b76e2f::t_7ccd32d5d4adcc 437
+api/test/unit/services/test_event_service.py
+  s_43c54947b76e2f::t_2ddf084b177fed 2
+api/test/unit/endpoints/test_analytic_endpoint.py
+  s_43c54947b76e2f::t_d3ee0137041056 2,4,11-12,15,18-21,23-26,34-44,47-51
+api/test/unit/services/test_analytic_service.py
+  s_43c54947b76e2f::t_2ddf084b177fed 17-19
+api/test/unit/endpoints/test_auth_endpoint.py
+  s_43c54947b76e2f::t_d3ee0137041056 69-77,80-97,100,106-110
+api/test/unit/models/test_schema.py
+  s_43c54947b76e2f::t_0e82d782ffd2a2 5,11,14,17-22,24-30,33-34,40-44
+api/test/unit/test_ilm_collection.py
+  s_43c54947b76e2f::t_7ccd32d5d4adcc 107-108,110-113,116,129,131-133,136,140,255,265,275,412,420,508,511-516,546-548,550-551,573-574,577-578,581,584,591,593-597,599-636,639,645,653,663-664,666,690,698-699,701-706,709-712,717-718,721-724,727,776,808-810,812,928-930,932-953,1050-1051,1053-1065,1074-1079,1081-1084,1222-1224,1266-1281,1406,1414-1415,1418-1424,1427,1429
+api/test/unit/services/test_ingest_service.py
+  s_43c54947b76e2f::t_2ddf084b177fed 28,36-46,50,55,59-61,70-85,87-90,93-100,103,105-113,116,118,120,123-132,135,137,140,142-143,147-148,152-154,157-166,168-177,179-180,182-189
+api/test/unit/endpoints/test_hit_endpoint.py
+  s_43c54947b76e2f::t_d3ee0137041056 1,5,21,26,28-30,42-43,45-47,49,58-69,71,73-75,78-82
+api/test/integration/api/test_hit.py
+  s_43c54947b76e2f::t_d3ee0137041056 906,911-912,914-916
+api/test/unit/endpoints/test_search_endpoint.py
+  s_43c54947b76e2f::t_d3ee0137041056 13,44-45,63-67,69-71,77-78,203,245,248,303-304,308,900
+api/test/unit/models/test_related.py
+  s_43c54947b76e2f::t_dc1a02ed3a5fa8 12-15,18-20,23-27,30-34,37-41,44-50
+api/test/unit/test_access_control.py
+  s_43c54947b76e2f::t_d3ee0137041056 531,533-537,540-542,545
+api/test/integration/api/test_actions.py
+  s_43c54947b76e2f::t_d3ee0137041056 752
+api/test/unit/endpoints/test_ingest_endpoint.py
+  s_43c54947b76e2f::t_d3ee0137041056 698-699,701-708,712,715,724,731,747-748,753,755,774,776-779,782,786-787,800,811-823,826,828,832,837-838
+plugins/sentinel/test/unit/test_actions.py
+  s_43c54947b76e2f::t_54a4138d2e51df 58-60,75
+api/test/unit/models/test_fields.py
+  s_43c54947b76e2f::t_0e82d782ffd2a2 7,10,56-57,94-95,98-102,138,141,143,146-147,153,156,159,161,163-168,172-173,176-215,218,224-225,233,235-237,239-247,249,252,254,259,262,273-276,279-282,284-294,299-302,305-325
+api/test/unit/models/test_base.py
+  s_43c54947b76e2f::t_0e82d782ffd2a2 31-32,39-40,43-44,48,50,52,57-59,65,68,70,74-81,84,87-89,91,97,99-103,105-107,109,112,114-126,130-131,134-135,138,142-148,150,153,156,159,166-167
+api/test/unit/services/test_view_cleanup.py
+  s_43c54947b76e2f::t_2ddf084b177fed 9-19,21-22
+api/test/unit/models/test_hit_event.py
+  s_43c54947b76e2f::t_dc1a02ed3a5fa8 8-26,28,31,33-34,37-39,42-46,51-52,55,60
+plugins/evidence/test/unit/models/test_evidence.py
+  s_43c54947b76e2f::t_54a4138d2e51df 10,29,31,34,39-42,47,58,60-62,65-66,68,76,82-85,87-89
+api/test/unit/services/test_hit_service.py
+  s_43c54947b76e2f::t_2ddf084b177fed 2,6
+api/test/unit/models/test_documents.py
+  s_43c54947b76e2f::t_dc1a02ed3a5fa8 14-65
+api/test/unit/models/test_extensions.py
+  s_43c54947b76e2f::t_0e82d782ffd2a2 25,30,32-43,46-47,50,53-67,72,78,80,83-84,87,90,92-93,96,98-99,101,103-105,107-116
+api/test/unit/models/test_clue.py
+  s_43c54947b76e2f::t_dc1a02ed3a5fa8 10-17,19-36
+api/test/integration/api/test_template.py
+  s_43c54947b76e2f::t_d3ee0137041056 48
+api/test/unit/endpoints/test_classification_access_control.py
+  s_43c54947b76e2f::t_d3ee0137041056 167-177,181,183
+plugins/sync/test/unit/iceberg/test_build_schema.py
+  s_43c54947b76e2f::t_54a4138d2e51df 6,8,10,16-50,54-86,89,93-120,122,125,132,136-139,141-146,148-156
+plugins/sentinel/test/unit/models/test_sentinel.py
+  s_43c54947b76e2f::t_54a4138d2e51df 5,16-17,19-23,27-28,32-40
+api/test/unit/test_config.py
+  s_43c54947b76e2f::t_d3ee0137041056 5,8,78,80-82,85-86,94-96
+api/test/unit/models/test_legacy_parity.py
+  s_43c54947b76e2f::t_dc1a02ed3a5fa8 1,17-55,62-69,86,88,92-120,129-130,134,143-179,198-207
+plugins/sentinel/test/unit/test_ingest.py
+  s_43c54947b76e2f::t_54a4138d2e51df 425,915,922,939,949,951,986,1000,1002,1309,1318
+plugins/sentinel/test/conftest.py
+  s_43c54947b76e2f::t_54a4138d2e51df 11-15
+  s_43c54947b76e2f::t_6cd4bd8291a006 16
+api/test/integration/service/test_hit_service.py
+  s_43c54947b76e2f::t_2ddf084b177fed 316-318,362,365,368-369,371,375-376
+api/test/unit/models/test_hit_nested_ingest.py
+  s_43c54947b76e2f::t_dc1a02ed3a5fa8 7,9-26,30-31,34,38,41-42,46-50,52-58
+api/test/unit/models/test_json_schema_export.py
+  s_43c54947b76e2f::t_0e82d782ffd2a2 37,40,53,57,64-67,70-72,74,76-77,80,110,115-116,118,123-124,126-127,132-133,135-136,143-145,147,152,159,163-179
+api/test/unit/services/test_lucene_service.py
+  s_43c54947b76e2f::t_2ddf084b177fed 3,14-30,32-33,35-44,48-53,56-59,63-73,75-76,79,85,94-95,98-102,105-109,113,124,127,129,136-137,140-163,165-166,169-182,185-187
+api/test/integration/test_datastore.py
+  s_43c54947b76e2f::t_7ccd32d5d4adcc 11,14,432-442,740,743,845,848
+api/test/unit/services/test_bundle_compat_service.py
+  s_43c54947b76e2f::t_2ddf084b177fed 13,17,25,30-33
+api/test/unit/services/test_user_service.py
+  s_43c54947b76e2f::t_2ddf084b177fed 202-213,216,219,223-234,238-242,247,250-269
+api/test/unit/services/test_case_service.py
+  s_43c54947b76e2f::t_2ddf084b177fed 2,25-28,502,507,616-618,739-741,750-751,754-756,1431,1434,1437,1440,1443-1446,1448,1450-1451,1453,2158-2159,2166-2172,2351,3039-3041
+api/test/unit/actions/test_add_to_case.py
+  s_43c54947b76e2f::t_d3ee0137041056 43-45
+plugins/sync/test/conftest.py
+  s_43c54947b76e2f::t_54a4138d2e51df 59-60
+api/test/unit/actions/test_change_field.py
+  s_43c54947b76e2f::t_d3ee0137041056 23-25,32,37-44
+api/test/unit/services/test_dossier_group_service.py
+  s_43c54947b76e2f::t_2ddf084b177fed 1
+api/test/unit/actions/test_init.py
+  s_43c54947b76e2f::t_d3ee0137041056 400-402,405,415,417
+api/test/unit/test_bulk.py
+  s_43c54947b76e2f::t_7ccd32d5d4adcc 138-147,149,152,154-158,164,171,173-174,198-206,209-213
+api/test/unit/models/test_pivot.py
+  s_43c54947b76e2f::t_dc1a02ed3a5fa8 8-9,14,17-18,20,23,25-38,40
+api/test/unit/services/test_search_service_user_fields.py
+  s_43c54947b76e2f::t_2ddf084b177fed 12,31-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d1860e4b5b6e61b2290a17a70db20674e000ad32",
+  "prompts": {},
+  "sessions": {
+    "s_43c54947b76e2f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de6571b0bffewSxAFxPGzllG4X",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
