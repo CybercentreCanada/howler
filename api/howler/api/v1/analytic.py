@@ -120,10 +120,9 @@ def update_analytic(id: str, user: User, **kwargs):
     try:
         existing_analytic.description = new_data.get("description", existing_analytic.description)
 
+        existing_triage_data = {}
         if existing_analytic.triage_settings is not None:
             existing_triage_data = existing_analytic.triage_settings.model_dump(by_alias=True)
-        else:
-            existing_triage_data = {}
 
         triage_data = {**existing_triage_data, **new_data.get("triage_settings", {})}
         existing_analytic.triage_settings = TriageOptions.model_validate(triage_data)

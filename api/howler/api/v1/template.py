@@ -153,7 +153,7 @@ def delete_template(id: str, user: User, **kwargs):
     if not storage.template.exists(id):
         return not_found(err="This template does not exist")
 
-    existing_template = storage.template.get_if_exists(id)
+    existing_template = storage.template.get(id)
     if not existing_template:
         return not_found(err="This template does not exist")
 
@@ -206,7 +206,7 @@ def update_template_fields(id: str, user: User, **kwargs):
     if not isinstance(new_fields, list) or not all(isinstance(f, str) for f in new_fields):
         return bad_request(err="List of new fields must be a list of strings.")
 
-    existing_template = storage.template.get_if_exists(id)
+    existing_template = storage.template.get(id)
     if not existing_template:
         return not_found(err="This template does not exist")
 
@@ -218,6 +218,6 @@ def update_template_fields(id: str, user: User, **kwargs):
     storage.template.save(existing_template.template_id, existing_template, refresh=refresh)
 
     try:
-        return ok(storage.template.get_if_exists(existing_template.template_id, as_obj=False))
+        return ok(storage.template.get(existing_template.template_id, as_obj=False))
     except HowlerException as e:
         return bad_request(err=str(e))
