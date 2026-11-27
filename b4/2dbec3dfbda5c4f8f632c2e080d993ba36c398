@@ -1,0 +1,67 @@
+api/howler/services/hit_service.py
+  s_95fc61e316a0ac::t_ee20d70a76252e 39,341
+api/howler/config_models.py
+  s_95fc61e316a0ac::t_7c07037836982c 655
+api/howler/services/case_service.py
+  s_95fc61e316a0ac::t_8f4d184c186db3 34
+  s_95fc61e316a0ac::t_ee20d70a76252e 483,1291,1334,1394
+api/test/unit/utils/test_lucene_utils.py
+  s_95fc61e316a0ac::t_9f632c9b5329ad 52
+  s_95fc61e316a0ac::t_9bacf28e2a720e 53-63,67-69
+  s_95fc61e316a0ac::t_d525c00870b82c 9-11
+api/test/integration/test_ai_triage_credentials.py
+  s_95fc61e316a0ac::t_f4c8c9406abe43 19
+api/howler/models/base.py
+  s_95fc61e316a0ac::t_015441b496bf3b 81-84
+  s_95fc61e316a0ac::t_8c40b534fb61d4 107-108
+api/howler/api/v1/analytic.py
+  s_95fc61e316a0ac::t_8f4d184c186db3 25
+  s_95fc61e316a0ac::t_ee20d70a76252e 240
+api/test/unit/ai_triage/test_service.py
+  s_95fc61e316a0ac::t_f618bf065c52e1 356
+  s_95fc61e316a0ac::t_f4c8c9406abe43 10
+api/test/integration/test_datastore_add_namespace.py
+  s_95fc61e316a0ac::t_15acc979d16a2e 19
+api/howler/models/case.py
+  s_95fc61e316a0ac::t_785da923899bc2 219,221,223,225,227,229,231,233,235
+api/howler/models/ecs/user.py
+  s_95fc61e316a0ac::t_785da923899bc2 32,59
+api/test/unit/ai_triage/support.py
+  s_95fc61e316a0ac::t_f4c8c9406abe43 3-4,8,20
+api/test/unit/ai_triage/test_transport_network.py
+  s_95fc61e316a0ac::t_f4c8c9406abe43 11
+api/howler/services/event_service.py
+  s_95fc61e316a0ac::t_ee20d70a76252e 19,181
+api/howler/utils/isotime.py
+  s_95fc61e316a0ac::t_ee20d70a76252e 2,18-22
+api/howler/sample_data/random_data.py
+  s_95fc61e316a0ac::t_4baccadfc59c50 40,607
+  s_95fc61e316a0ac::t_93d1d015f6c397 222
+api/howler/actions/transition.py
+  s_95fc61e316a0ac::t_324a8a30cc804c 281
+api/test/unit/ai_triage/test_transport.py
+  s_95fc61e316a0ac::t_f4c8c9406abe43 8
+api/test/unit/endpoints/test_ingest_endpoint.py
+  s_95fc61e316a0ac::t_dd967b4bd635e6 4
+  s_95fc61e316a0ac::t_15acc979d16a2e 777,780
+api/howler/sample_data/helper.py
+  s_95fc61e316a0ac::t_4baccadfc59c50 35
+  s_95fc61e316a0ac::t_ee20d70a76252e 15,57,68,70,379,381
+  s_95fc61e316a0ac::t_4ca63139bda9af 61,372
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b42dbec3dfbda5c4f8f632c2e080d993ba36c398",
+  "prompts": {},
+  "sessions": {
+    "s_95fc61e316a0ac": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de300c436ffeEjRKAS4916Q0T2",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
