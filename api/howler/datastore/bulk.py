@@ -11,60 +11,15 @@ from __future__ import annotations
 import json
 import warnings
 from copy import deepcopy
-from dataclasses import dataclass
-from typing import Any, Callable, List, Optional, TypedDict, cast
+from typing import Any, Callable, List, Optional, cast
 
 from pydantic import BaseModel
 
 from howler.config import config
-from howler.datastore.exceptions import DataStoreException
 from howler.datastore.utils import expand_field_patterns, prune_to_paths
 from howler.models import partial_primitives, validate_field_value
 
 _OPERATION_GROUP = tuple[str] | tuple[str, str]
-
-
-class _RoutingParams(TypedDict, total=False):
-    routing: str
-
-
-@dataclass(frozen=True)
-class DocumentLocation:
-    """The physical index and shard routing of an Elasticsearch document."""
-
-    index: str
-    routing: str | None = None
-
-    def routing_params(self) -> _RoutingParams:
-        return {"routing": self.routing} if self.routing is not None else {}
-
-    def operation(self, action: str, doc_id: str, body: str | None = None) -> _OPERATION_GROUP:
-        header = json.dumps({action: {"_index": self.index, "_id": doc_id, **self.routing_params()}})
-        return (header,) if body is None else (header, body)
-
-    @staticmethod
-    def newest(matches: list[DocumentLocation]) -> DocumentLocation:
-        if len(matches) > 1 and matches[0].index == matches[1].index:
-            raise DataStoreException(f"Ambiguous document ID on multiple routes in {matches[0].index}")
-        return matches[0]
-
-    @staticmethod
-    def all_generations(matches: list[DocumentLocation]) -> list[DocumentLocation]:
-        """Delete across generations only if each ID identifies a single shard in each index."""
-        seen = set()
-        for target in matches:
-            if target.index in seen:
-                raise DataStoreException(f"Ambiguous document ID on multiple routes in {target.index}")
-            seen.add(target.index)
-        return matches
-
-
-@dataclass(frozen=True)
-class _PendingRoute:
-    action: str
-    doc_id: str
-    mode: str
-    index: str | None
 
 
 _MODEL_HELPER_FIELDS = {
@@ -79,25 +34,22 @@ _MODEL_HELPER_FIELDS = {
 
 ELASTIC_MAX_REQUEST_SIZE = config.datastore.max_request_size
 DEFAULT_BATCH_SIZE = config.datastore.request_batch_size
-# Even a single unbatched write payload must not require an unbounded ID query.
-MAX_LOCATION_BATCH_SIZE = 500
 
 
 class ElasticBulkPlan(object):
     """Accumulate and render Elasticsearch bulk API operations.
 
-    Non-ILM plans retain the configured-index behavior. ILM-aware plans send new
-    documents to the write alias and resolve replacements, upserts, updates, and
-    deletes to the concrete backing index containing the logical document ID.
+    When ``document_locations`` is provided (ILM collections), operations without an
+    explicit index are resolved at render time: replacements, upserts and updates target
+    the newest rollover index containing the document, deletes target every index
+    containing it, and documents that do not exist yet go through the write alias.
 
     Args:
         indexes: Elasticsearch indices available to the plan. The first index
             is the default target for single-index operations.
         model: Optional finalized Pydantic/DSL model used to serialize document values before
             they are added to the request.
-        write_index: Logical write target. ILM collections pass their write alias.
-        document_locations: Resolve IDs visible through the alias, newest generation first.
-        index_aliases: Per-index alias metadata for validating hints and routing new documents.
+        document_locations: Map document IDs to the indexes containing them, newest first.
     """
 
     def __init__(
@@ -105,139 +57,50 @@ class ElasticBulkPlan(object):
         indexes: List[str],
         model: Optional[type] = None,
         *,
-        write_index: str | None = None,
-        document_locations: Callable[[list[str]], dict[str, list[DocumentLocation]]] | None = None,
-        index_aliases: Callable[[], dict[str, dict[str, Any]]] | None = None,
+        document_locations: Callable[[list[str]], dict[str, list[str]]] | None = None,
     ):
         self.indexes = indexes
         self.model = model
-        self.write_index = write_index or indexes[0]
         self.document_locations = document_locations
-        self.index_aliases = index_aliases
-        self._aliases: dict[str, dict[str, Any]] | None = None
-        self._pending_routes: dict[int, _PendingRoute] = {}
+        # Operation position -> (action, doc_id) awaiting location resolution
+        self._pending: dict[int, tuple[str, str]] = {}
         self.operations: list[_OPERATION_GROUP] = []
 
-    def _physical_aliases(self) -> dict[str, dict[str, Any]]:
-        if self._aliases is None:
-            self._aliases = self.index_aliases() if self.index_aliases else {}
-        return self._aliases
+    @staticmethod
+    def _operation(action: str, index: str, doc_id: str, body: str | None = None) -> _OPERATION_GROUP:
+        header = json.dumps({action: {"_index": index, "_id": doc_id}})
+        return (header,) if body is None else (header, body)
 
-    def _index_target(self, index: str) -> DocumentLocation:
-        if index == self.write_index:
-            return DocumentLocation(self.write_index)
-        if self.index_aliases is None:
-            # A legacy single-index collection uses its alias even for a model carrying the
-            # physical _hot index. Elasticsearch then applies the alias's current routing.
-            return DocumentLocation(self.write_index if index == self.indexes[0] else index)
-        aliases = self._physical_aliases()
-        if index not in aliases:
-            raise DataStoreException(f"Index {index!r} is not a physical member of this collection.")
-        alias = aliases[index]
-        return DocumentLocation(index, alias.get("index_routing", alias.get("routing")))
-
-    def _missing_operation(self, route: _PendingRoute, body: str | None) -> _OPERATION_GROUP:
-        # A filtered or search-routed alias can hide an existing ID. An unconditional fallback
-        # in that case could overwrite/delete a different document that the lookup did not see.
-        aliases = self._physical_aliases()
-        candidates = [aliases[route.index]] if route.index and self.index_aliases else aliases.values()
-        target = self._index_target(route.index) if route.index else DocumentLocation(self.write_index)
-        if any("filter" in alias or "search_routing" in alias or "routing" in alias for alias in candidates):
-            if route.action == "index":
-                return target.operation("create", route.doc_id, body)
-            if route.action == "update" and body and (update := json.loads(body)).get("doc_as_upsert"):
-                return target.operation("create", route.doc_id, json.dumps(update["doc"]))
-            raise DataStoreException(f"No visible location for {route.action} of {route.doc_id!r} through scoped alias")
-        return target.operation(route.action, route.doc_id, body)
-
-    def _model_index(self, doc: Any) -> str | None:
-        if not isinstance(doc, BaseModel):
-            return None
-        index = getattr(getattr(doc, "meta", None), "index", None)
-        if not isinstance(index, str) or not index:
-            return None
-        self._index_target(index)
-        return index
-
-    def _queue_pending_operation(
-        self,
-        action: str,
-        doc_id: str,
-        body: str | None,
-        *,
-        mode: str,
-        index: str | None,
+    def _add_operation(
+        self, action: str, doc_id: str, body: str | None = None, *, index: str | None = None, every: bool = False
     ) -> None:
-        position = len(self.operations)
-        self.operations.append(DocumentLocation(self.write_index).operation(action, doc_id, body))
-        self._pending_routes[position] = _PendingRoute(action=action, doc_id=doc_id, mode=mode, index=index)
-
-    def _add_routed_operation(
-        self,
-        action: str,
-        doc_id: str,
-        body: str | None = None,
-        *,
-        index: str | None = None,
-        doc: Any = None,
-        mode: str = "newest",
-        pending_mode: str | None = None,
-    ) -> None:
-        """Append an operation using the collection's explicit or resolved index route."""
-        if index:
-            self._index_target(index)
-        index = index or self._model_index(doc)
-        if index == self.write_index:
-            index = None  # The alias selects locations, not a particular physical generation.
-        if self.document_locations is not None:
-            # An index hint alone does not identify a shard. Resolve the actual document route
-            # even for a model read from a known physical index.
-            self._queue_pending_operation(action, doc_id, body, mode=pending_mode or mode, index=index)
+        if self.document_locations is not None and index in (None, self.indexes[0]):
+            self._pending[len(self.operations)] = (action, doc_id)
+            self.operations.append(self._operation(action, self.indexes[0], doc_id, body))
             return
-        targets = [index] if index else (self.indexes if mode == "all" else self.indexes[:1])
+        for target in [index] if index else self.indexes if every else self.indexes[:1]:
+            self.operations.append(self._operation(action, target, doc_id, body))
 
-        for target in targets:
-            self.operations.append(self._index_target(target).operation(action, doc_id, body))
-
-    def _resolve_pending_routes(self, batch_size: int | None = DEFAULT_BATCH_SIZE) -> None:
-        if batch_size is not None and batch_size < 1:
-            raise ValueError("batch_size must be positive")
-        if not self._pending_routes:
+    def _resolve_pending(self) -> None:
+        if not self._pending or self.document_locations is None:
             return
-        if self.document_locations is None:
-            raise DataStoreException("Bulk plan has unresolved routes without a document location resolver.")
 
-        lookup_size = min(batch_size or MAX_LOCATION_BATCH_SIZE, MAX_LOCATION_BATCH_SIZE)
-        doc_ids = list(dict.fromkeys(pending.doc_id for pending in self._pending_routes.values()))
-        locations = {}
-        for start in range(0, len(doc_ids), lookup_size):
-            locations.update(self.document_locations(doc_ids[start : start + lookup_size]))
-        resolved_operations: list[_OPERATION_GROUP] = []
+        locations = self.document_locations(list(dict.fromkeys(doc_id for _, doc_id in self._pending.values())))
+        resolved: list[_OPERATION_GROUP] = []
         for position, operation in enumerate(self.operations):
-            route = self._pending_routes.get(position)
-            if route is None:
-                resolved_operations.append(operation)
+            if position not in self._pending:
+                resolved.append(operation)
                 continue
 
-            existing = locations.get(route.doc_id, [])
-            if route.index is not None:
-                # An index hint narrows the alias search; it does not bypass its filter or search routing.
-                existing = [target for target in existing if target.index == route.index]
+            action, doc_id = self._pending[position]
+            targets = locations.get(doc_id) or self.indexes[:1]
+            if action != "delete":
+                targets = targets[:1]
             body = operation[1] if len(operation) == 2 else None
-            if not existing:
-                # Preserve the operation so Elasticsearch reports a missing/ambiguous alias target
-                # instead of silently treating a dropped update/delete as a successful bulk plan.
-                resolved_operations.append(self._missing_operation(route, body))
-                continue
-            targets = (
-                DocumentLocation.all_generations(existing)
-                if route.mode == "all"
-                else [DocumentLocation.newest(existing)]
-            )
-            resolved_operations.extend(target.operation(route.action, route.doc_id, body) for target in targets)
+            resolved.extend(self._operation(action, index, doc_id, body) for index in targets)
 
-        self.operations = resolved_operations
-        self._pending_routes.clear()
+        self.operations = resolved
+        self._pending.clear()
 
     @staticmethod
     def _input_primitives(doc: Any) -> Any:
@@ -303,7 +166,7 @@ class ElasticBulkPlan(object):
             index: Explicit index to target. When omitted, queues one delete
                 operation for each configured index.
         """
-        self._add_routed_operation("delete", doc_id, index=index, mode="all")
+        self._add_operation("delete", doc_id, index=index, every=True)
 
     def add_insert_operation(self, doc_id: str, doc, index=None):
         """Queue a create-only document insert operation.
@@ -320,10 +183,7 @@ class ElasticBulkPlan(object):
         """
         saved_doc = self._serialize_full(doc)
         saved_doc["id"] = doc_id
-        target = (
-            self._index_target(index) if index and index != self.write_index else DocumentLocation(self.write_index)
-        )
-        self.operations.append(target.operation("create", doc_id, json.dumps(saved_doc)))
+        self.operations.append(self._operation("create", index or self.indexes[0], doc_id, json.dumps(saved_doc)))
 
     def add_index_operation(self, doc_id, doc, index=None):
         """Queue a document index operation.
@@ -342,7 +202,7 @@ class ElasticBulkPlan(object):
         saved_doc["id"] = doc_id
         body = json.dumps(saved_doc)
 
-        self._add_routed_operation("index", doc_id, body, index=index, doc=doc)
+        self._add_operation("index", doc_id, body, index=index)
 
     def add_upsert_operation(self, doc_id, doc, index=None):
         """Queue an update operation that creates the document when absent.
@@ -360,7 +220,7 @@ class ElasticBulkPlan(object):
         saved_doc["id"] = doc_id
         body = json.dumps({"doc": saved_doc, "doc_as_upsert": True})
 
-        self._add_routed_operation("update", doc_id, body, index=index, doc=doc)
+        self._add_operation("update", doc_id, body, index=index)
 
     def add_update_operation(self, doc_id, doc, index=None, fields: Optional[List[str]] = None):
         """Queue a partial-merge Elasticsearch ``update`` operation.
@@ -394,15 +254,7 @@ class ElasticBulkPlan(object):
         else:
             saved_doc = self._serialize_partial(doc)
 
-        self._add_routed_operation(
-            "update",
-            doc_id,
-            json.dumps({"doc": saved_doc}),
-            index=index,
-            doc=doc,
-            mode="all",
-            pending_mode="newest",
-        )
+        self._add_operation("update", doc_id, json.dumps({"doc": saved_doc}), index=index, every=True)
 
     def get_plan_data(self):
         """Render all queued operations as an Elasticsearch bulk request.
@@ -411,7 +263,7 @@ class ElasticBulkPlan(object):
             Newline-delimited JSON with a final trailing newline, ready to send
             to Elasticsearch's ``_bulk`` endpoint.
         """
-        self._resolve_pending_routes()
+        self._resolve_pending()
         return self._get_plan_for_operations()
 
     def get_plan_batches(self, batch_size: int | None = DEFAULT_BATCH_SIZE):
@@ -424,7 +276,7 @@ class ElasticBulkPlan(object):
         Yields:
             Newline-delimited JSON payloads, each with a trailing newline.
         """
-        self._resolve_pending_routes(batch_size)
+        self._resolve_pending()
         write_size = batch_size or max(1, len(self.operations))
         for ptr in range(0, len(self.operations), write_size):
             yield self._get_plan_for_operations(self.operations[ptr : ptr + write_size])

@@ -25,7 +25,7 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 from howler.common.exceptions import HowlerRuntimeError, HowlerValueError, NonRecoverableError
 from howler.common.loader import DATASTORE_INDEX_PREFIX
 from howler.common.logging.format import HWL_DATE_FORMAT, HWL_LOG_FORMAT
-from howler.datastore.bulk import DocumentLocation, ElasticBulkPlan
+from howler.datastore.bulk import ElasticBulkPlan
 from howler.datastore.exceptions import (
     DataStoreException,
     HowlerScanError,
@@ -34,7 +34,7 @@ from howler.datastore.exceptions import (
     SearchRetryException,
     VersionConflictException,
 )
-from howler.datastore.ilm_contract import ilm_policy, normalized_field_mapping, shadowed_dynamic_templates
+from howler.datastore.ilm_contract import ilm_policy, normalized_field_mapping
 from howler.datastore.support.elastic import error_message, error_status, response_body, total_hits_value
 from howler.datastore.types import AggSearchResult, SearchResult
 from howler.datastore.utils import expand_field_patterns
@@ -328,39 +328,19 @@ class ESCollection(Generic[ModelType]):
         """Return the active physical write index for this collection.
 
         Historical ILM rollover indexes are intentionally excluded. ILM-aware bulk plans
-        use the logical write alias plus explicit document-location resolution instead.
+        use the write alias and resolve existing documents to their rollover index instead.
         """
         return [self.index_name]
 
-    def _ilm_index_generation(self, index: str) -> int | None:
-        """Return the canonical rollover generation for a physical ILM index."""
-        match = re.fullmatch(rf"{re.escape(self.name)}-(\d{{6}})", index)
-        return int(match.group(1)) if match else None
-
     def _get_ilm_index_names(self) -> list[str]:
         """Return physical ILM rollover indexes, excluding temporary maintenance indexes."""
-        return sorted(self._ilm_index_metadata())  # Canonical generation suffixes are fixed width.
-
-    def _ilm_index_metadata(self) -> dict[str, dict[str, Any]]:
-        """Find every canonical physical index, including detached generations."""
         try:
-            indices = self.datastore.client.indices.get(
-                index=f"{self.name}-*",
-                expand_wildcards="all",
-                ignore_unavailable=True,
-                filter_path="*.settings.index.uuid,*.aliases",
-            )
+            indices = self.datastore.client.indices.get(index=f"{self.name}-0*", ignore_unavailable=True)
         except elasticsearch.exceptions.NotFoundError:
-            return {}
-        return {index: data for index, data in indices.items() if self._ilm_index_generation(index) is not None}
+            return []
 
-    def _ilm_index_aliases(self) -> dict[str, dict[str, Any]]:
-        """Return only actual alias members, including those with empty alias metadata."""
-        return {
-            index: data["aliases"][self.name]
-            for index, data in self._ilm_index_metadata().items()
-            if self.name in data.get("aliases", {})
-        }
+        index_pattern = re.compile(rf"^{re.escape(self.name)}-\d{{6}}$")
+        return sorted(index for index in indices if index_pattern.fullmatch(index))
 
     def _refresh_ilm_index_name(self):
         """Set ``index_name`` to the latest existing ILM index, when one exists."""
@@ -766,14 +746,8 @@ class ESCollection(Generic[ModelType]):
         :return: The BulkPlan object
         """
         if self.ilm_config:
-            return ElasticBulkPlan(
-                [self.name],
-                self.model_class,
-                write_index=self.name,
-                document_locations=self._locate_ilm_documents,
-                index_aliases=self._ilm_index_aliases,
-            )
-        return ElasticBulkPlan(self.index_list, self.model_class, write_index=self.name)
+            return ElasticBulkPlan([self.name], self.model_class, document_locations=self._locate_ilm_documents)
+        return ElasticBulkPlan(self.index_list, self.model_class)
 
     @tracer.start_as_current_span(f"{__name__}.commit")
     def commit(self):
@@ -1283,20 +1257,16 @@ class ESCollection(Generic[ModelType]):
         if missing_keys:
             if self.ilm_config:
                 locations = self._locate_ilm_documents(missing_keys)
-                grouped_ids: dict[DocumentLocation, list[str]] = {}
+                grouped_ids: dict[str, list[str]] = {}
                 for data_id in missing_keys:
                     if locations.get(data_id):
-                        grouped_ids.setdefault(DocumentLocation.newest(locations[data_id]), []).append(data_id)
+                        grouped_ids.setdefault(locations[data_id][0], []).append(data_id)
             else:
-                grouped_ids = {DocumentLocation(self.name): missing_keys}
+                grouped_ids = {self.name: missing_keys}
 
             found_keys: set[str] = set()
-            for target, data_ids in grouped_ids.items():
-                data = response_body(
-                    self.with_retries(
-                        self.datastore.client.mget, ids=data_ids, index=target.index, **target.routing_params()
-                    )
-                )
+            for index, data_ids in grouped_ids.items():
+                data = response_body(self.with_retries(self.datastore.client.mget, ids=data_ids, index=index))
                 for row in data.get("docs", []):
                     if "found" in row and not row["found"]:
                         continue
@@ -1322,67 +1292,26 @@ class ESCollection(Generic[ModelType]):
 
         return out
 
-    def _locate_ilm_documents(self: Self, keys: list[str]) -> dict[str, list[DocumentLocation]]:
-        """Locate logical document IDs across every physical index behind an ILM alias."""
+    def _locate_ilm_documents(self: Self, keys: list[str]) -> dict[str, list[str]]:
+        """Map document IDs to the rollover indexes behind the alias that contain them, newest first."""
         keys = list(dict.fromkeys(keys))
-        locations: dict[str, list[DocumentLocation]] = {}
+        locations: dict[str, list[str]] = {}
         for start in range(0, len(keys), self.MAX_SEARCH_ROWS):
-            for row in self._ilm_location_hits(keys[start : start + self.MAX_SEARCH_ROWS]):
-                physical = row["_index"]
-                if self._ilm_index_generation(physical) is not None:
-                    routing = row.get("_routing", row.get("fields", {}).get("_routing"))
-                    if isinstance(routing, list) and len(routing) == 1:
-                        routing = routing[0]
-                    if routing is not None and not isinstance(routing, str):
-                        raise DataStoreException(f"Invalid Elasticsearch routing for document {row['_id']}")
-                    locations.setdefault(row["_id"], []).append(DocumentLocation(physical, routing))
-
-        for data_id, indexes in locations.items():
-            if len(set(indexes)) != len(indexes):
-                raise DataStoreException(f"Cannot distinguish the shard locations of duplicate document {data_id!r}")
-            indexes.sort(key=lambda target: target.index, reverse=True)
-            if len(locations[data_id]) > 1:
-                logger.warning(
-                    "Found duplicate document id %s across ILM indices for %s; using newest generation %s.",
-                    data_id,
-                    self.name,
-                    locations[data_id][0].index,
-                )
-        return locations
-
-    def _ilm_location_hits(self, keys: list[str]) -> list[dict[str, Any]]:
-        """Use a single search for the normal case, a scroll snapshot for overflowing duplicate matches."""
-        query = dsl.Q("ids", values=keys).to_dict()
-        result = response_body(
-            self.with_retries(
-                self.datastore.client.search,
-                index=self.name,
-                query=query,
-                size=self.MAX_SEARCH_ROWS,
-                _source=False,
-                stored_fields=["_routing"],
-                track_total_hits=True,
-                allow_partial_search_results=False,
-            )
-        )
-        if result.get("timed_out") or result.get("_shards", {}).get("failed"):
-            raise SearchException(f"Incomplete ILM location search for {self.name}.")
-        rows = result["hits"]["hits"]
-        total = total_hits_value(result["hits"].get("total"))
-        if total > len(rows):
-            rows = list(
-                self.scan_with_retry(
-                    query,
+            result = response_body(
+                self.with_retries(
+                    self.datastore.client.search,
                     index=self.name,
-                    sort=["_doc"],
-                    source=False,
+                    query=dsl.Q("ids", values=keys[start : start + self.MAX_SEARCH_ROWS]).to_dict(),
                     size=self.MAX_SEARCH_ROWS,
-                    stored_fields=["_routing"],
+                    _source=False,
                 )
             )
-            if len(rows) != total:
-                raise SearchException(f"Unable to locate every requested document across ILM indices for {self.name}.")
-        return rows
+            for row in result["hits"]["hits"]:
+                locations.setdefault(row["_id"], []).append(row["_index"])
+
+        for indexes in locations.values():
+            indexes.sort(reverse=True)
+        return locations
 
     @overload
     def normalize(
@@ -1604,19 +1533,17 @@ class ESCollection(Generic[ModelType]):
         done = False
         while not done:
             try:
-                target = DocumentLocation(self.name)
+                index = self.name
                 if self.ilm_config:
                     locations = self._locate_ilm_documents([key]).get(key, [])
                     if not locations:
                         self._raise_document_not_found(key, {"hits": {"hits": []}})
-                    target = DocumentLocation.newest(locations)
-                doc = response_body(
-                    self.with_retries(self.datastore.client.get, index=target.index, id=key, **target.routing_params())
-                )
+                    index = locations[0]
+                doc = response_body(self.with_retries(self.datastore.client.get, index=index, id=key))
 
                 if version:
                     if self.ilm_config:
-                        version_token = self._version_token(doc, target)
+                        version_token = f"{doc['_index']}---{doc['_seq_no']}---{doc['_primary_term']}"
                     else:
                         version_token = f"{doc['_seq_no']}---{doc['_primary_term']}"
                     return (
@@ -1640,41 +1567,18 @@ class ESCollection(Generic[ModelType]):
 
         return None
 
-    @staticmethod
-    def _version_token(doc: dict[str, Any], location: DocumentLocation) -> str:
-        token = f"{doc['_index']}---{doc['_seq_no']}---{doc['_primary_term']}"
-        # Keep the existing token for default routing. Custom routes may contain arbitrary text;
-        # encode them for use in ETag headers and to avoid collisions with the token separator.
-        return token if location.routing is None else f"{token}---{location.routing.encode().hex()}"
-
-    @staticmethod
-    def _version_location(alias: str, version: str) -> tuple[DocumentLocation, str, str]:
-        parts = version.split("---")
-        if len(parts) == 2:
-            return DocumentLocation(alias), parts[0], parts[1]
-        if len(parts) in (3, 4):
-            try:
-                routing = bytes.fromhex(parts[3]).decode() if len(parts) == 4 else None
-            except ValueError as exc:
-                raise DataStoreException(f"Invalid routing in version token for {alias}") from exc
-            return DocumentLocation(parts[0], routing), parts[1], parts[2]
-        raise DataStoreException(f"Invalid version token for {alias}: {version!r}")
-
     def get_version_write_target(self: Self, version: str) -> tuple[str, str, str]:
-        """Return the concrete index hint for bulk callers, which resolve their own shard routing."""
-        target, seq_no, primary_term = ESCollection._version_location(self.name, version)
-        return target.index, seq_no, primary_term
+        """Return the concrete write target and optimistic-concurrency values from a version token."""
+        version_parts = version.split("---")
+        if len(version_parts) == 3:
+            index, seq_no, primary_term = version_parts
+            return index, seq_no, primary_term
 
-    def _version_write_location(self, key: str, version: str) -> tuple[DocumentLocation, str, str]:
-        target, seq_no, primary_term = self._version_location(self.name, version)
-        if self.ilm_config and target.index == self.name:
-            # A pre-migration seq/term pair names neither a generation nor a shard. Never
-            # apply it to the write index if the same ID exists in another generation.
-            locations = self._locate_ilm_documents([key]).get(key, [])
-            if len(locations) != 1:
-                raise VersionConflictException(f"Cannot resolve legacy version of {key!r}; read a fresh version")
-            target = locations[0]
-        return target, seq_no, primary_term
+        if len(version_parts) == 2:
+            seq_no, primary_term = version_parts
+            return self.name, seq_no, primary_term
+
+        raise DataStoreException(f"Invalid version token for {self.name}: {version!r}")
 
     @overload
     def get(
@@ -1823,7 +1727,7 @@ class ESCollection(Generic[ModelType]):
 
         saved_data["id"] = key
         operation = "index"
-        target = DocumentLocation(self.name)
+        index = self.name
         seq_no = None
         primary_term = None
 
@@ -1833,7 +1737,7 @@ class ESCollection(Generic[ModelType]):
         if version == CREATE_TOKEN:
             operation = "create"
         elif version:
-            target, seq_no, primary_term = self._version_write_location(key, version)
+            index, seq_no, primary_term = self.get_version_write_target(version)
 
         if refresh == "true":
             logger.warning(
@@ -1843,9 +1747,8 @@ class ESCollection(Generic[ModelType]):
         try:
             self.with_retries(
                 self.datastore.client.index,
-                index=target.index,
+                index=index,
                 id=key,
-                **target.routing_params(),
                 document=json.dumps(saved_data),
                 op_type=operation,
                 if_seq_no=seq_no,
@@ -1872,15 +1775,14 @@ class ESCollection(Generic[ModelType]):
         if version:
             if version == CREATE_TOKEN:
                 raise DataStoreException("Cannot delete a document using the create version token.")
-            target, seq_no, primary_term = self._version_write_location(key, version)
+            index, seq_no, primary_term = self.get_version_write_target(version)
             try:
                 info = response_body(
                     self.with_retries(
                         self.datastore.client.delete,
                         raise_conflicts=True,
                         id=key,
-                        index=target.index,
-                        **target.routing_params(),
+                        index=index,
                         refresh=refresh,
                         if_seq_no=seq_no,
                         if_primary_term=primary_term,
@@ -1890,18 +1792,12 @@ class ESCollection(Generic[ModelType]):
             except elasticsearch.NotFoundError:
                 return False
 
-        locations = self._locate_ilm_documents([key]).get(key, []) if self.ilm_config else [DocumentLocation(self.name)]
+        indexes = self._locate_ilm_documents([key]).get(key, []) if self.ilm_config else [self.name]
         deleted = False
-        for target in DocumentLocation.all_generations(locations):
+        for index in indexes:
             try:
                 info = response_body(
-                    self.with_retries(
-                        self.datastore.client.delete,
-                        id=key,
-                        index=target.index,
-                        refresh=refresh,
-                        **target.routing_params(),
-                    )
+                    self.with_retries(self.datastore.client.delete, id=key, index=index, refresh=refresh)
                 )
                 deleted = info["result"] == "deleted" or deleted
             except elasticsearch.NotFoundError:
@@ -2095,7 +1991,7 @@ class ESCollection(Generic[ModelType]):
         """
         operations = self._validate_operations(operations)
         script = self._create_scripts_from_operations(operations)
-        target = DocumentLocation(self.name)
+        index = self.name
         seq_no = None
         primary_term = None
 
@@ -2105,15 +2001,14 @@ class ESCollection(Generic[ModelType]):
         if version == CREATE_TOKEN:
             return False
         if version:
-            target, seq_no, primary_term = self._version_write_location(key, version)
+            index, seq_no, primary_term = self.get_version_write_target(version)
 
         try:
             res = response_body(
                 self.with_retries(
                     self.datastore.client.update,
-                    index=target.index,
+                    index=index,
                     id=key,
-                    **target.routing_params(),
                     script=script,
                     if_seq_no=seq_no,
                     if_primary_term=primary_term,
@@ -2123,7 +2018,11 @@ class ESCollection(Generic[ModelType]):
             )
             return (
                 res["result"] == "updated",
-                (self._version_token(res, target) if self.ilm_config else f"{res['_seq_no']}---{res['_primary_term']}"),
+                (
+                    f"{res['_index']}---{res['_seq_no']}---{res['_primary_term']}"
+                    if self.ilm_config
+                    else f"{res['_seq_no']}---{res['_primary_term']}"
+                ),
             )
         except elasticsearch.NotFoundError as e:
             logger.warning("Update - elasticsearch.NotFoundError: %s %s", e.message, e.info)
@@ -3446,13 +3345,13 @@ class ESCollection(Generic[ModelType]):
         expected_templates: list[dict[str, Any]] | None = None,
         live_templates_by_index: dict[str, list[dict[str, Any]]] | None = None,
     ) -> None:
-        """Refuse missing/changed templates while tolerating harmless obsolete live templates.
+        """Refuse missing, changed, or reordered templates while tolerating extra live templates.
 
         Adding or changing a dynamic template after documents already exist can silently change
         how *future* dynamic keys are typed without touching already-indexed data, so any expected
-        template that is missing from a backing index or has changed is refused explicitly rather
-        than "fixed" automatically. Extra templates left by a disabled plugin do not alter fields
-        generated by the active schema and are retained with a warning.
+        template that is missing from a backing index, has changed, or is out of order is refused
+        explicitly rather than "fixed" automatically. Extra templates left by a disabled plugin are
+        retained with a warning.
         """
         if expected_templates is None:
             expected_templates = schema.document_mapping(self.model_class)["dynamic_templates"]
@@ -3461,7 +3360,6 @@ class ESCollection(Generic[ModelType]):
         expected_by_key = {next(iter(template)): template[next(iter(template))] for template in expected_templates}
 
         unsafe: set[str] = set()
-        shadows: list[str] = []
         extra: set[str] = set()
         reordered_indices: list[str] = []
         if live_templates_by_index is None:
@@ -3480,12 +3378,10 @@ class ESCollection(Generic[ModelType]):
             )
             if [key for key in live_order if key in expected_by_key] != expected_order:
                 reordered_indices.append(index_name)
-            for obsolete, active in shadowed_dynamic_templates(expected_templates, templates):
-                shadows.append(f"{obsolete} shadows {active} on {index_name}")
             extra.update(live_by_key.keys() - expected_by_key.keys())
 
-        if unsafe or shadows or reordered_indices:
-            details = [*sorted(unsafe), *shadows]
+        if unsafe or reordered_indices:
+            details: list[str] = sorted(unsafe)
             if reordered_indices:
                 details.append(f"order differs on {sorted(reordered_indices)}")
             raise HowlerValueError(
@@ -3612,9 +3508,7 @@ class ESCollection(Generic[ModelType]):
         legacy_hot = f"{self.name}_hot"
         existing = self._get_ilm_index_names()
         migrate_hot = not existing and self.with_retries(self.datastore.client.indices.exists, index=legacy_hot)
-        alias_actions = self._ilm_alias_actions(
-            existing or [ilm_initial_index], clone_source=legacy_hot if migrate_hot else None
-        )
+        alias_actions = self._ilm_alias_actions(existing or [ilm_initial_index])
         if existing or migrate_hot:
             self._check_fields(existing or [legacy_hot])
         self._create_ilm_policy(ilm_global)
@@ -3733,32 +3627,22 @@ class ESCollection(Generic[ModelType]):
             self._check_fields([ilm_initial_index])
         self._create_index_template(ilm_global)
 
-    def _ilm_alias_actions(self, generations: list[str], *, clone_source: str | None) -> list[dict[str, Any]]:
-        """Plan one atomic alias repair, retaining each member's own filter and routing."""
+    def _ilm_alias_actions(self, generations: list[str]) -> list[dict[str, Any]]:
+        """Plan one atomic alias update: every generation is a member, the newest is the write index."""
         try:
-            aliases = response_body(
-                self.with_retries(self.datastore.client.indices.get_alias, name=self.name, expand_wildcards="all")
-            )
+            aliases = response_body(self.with_retries(self.datastore.client.indices.get_alias, name=self.name))
         except elasticsearch.NotFoundError:
             aliases = {}
         members = {index: data["aliases"][self.name] for index, data in aliases.items()}
+
         legacy = f"{self.name}_hot"
-        unexpected = members.keys() - {legacy, *generations}
-        if unexpected:
-            raise HowlerRuntimeError(f"Alias {self.name} has unexpected physical members: {sorted(unexpected)}")
-
-        missing = set(generations) - members.keys()
-        if missing and not clone_source and any(data.keys() - {"is_write_index"} for data in members.values()):
-            raise HowlerRuntimeError(f"Cannot safely restore per-index alias metadata on {sorted(missing)}")
-
         actions: list[dict[str, Any]] = []
         if legacy in members:
             actions.append({"remove": {"index": legacy, "alias": self.name}})
         for index in generations:
             write = index == generations[-1]
-            metadata = members.get(index, members.get(clone_source, {}) if clone_source else {})
-            if index not in members or metadata.get("is_write_index", False) != write:
-                actions.append({"add": {"index": index, "alias": self.name, **metadata, "is_write_index": write}})
+            if index not in members or members[index].get("is_write_index", False) != write:
+                actions.append({"add": {"index": index, "alias": self.name, "is_write_index": write}})
         return actions
 
     def _add_fields(self, additions: dict[str, dict[str, Any]]) -> None:
