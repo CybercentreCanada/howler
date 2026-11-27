@@ -1,0 +1,26 @@
+api/test/unit/models/test_sample_data.py
+  s_413f0a9e448f3f::t_bf1226b3be44aa 3-5,13,25-99,101-102,104,115-134,136-155,159-170
+  s_413f0a9e448f3f::t_6961b19fedd077 9,158
+  s_413f0a9e448f3f::t_5a9ca0ccab1574 103,105-114,135,156-157
+  s_413f0a9e448f3f::t_c0181fe29eae68 100
+api/howler/sample_data/random_data.py
+  s_413f0a9e448f3f::t_f6369dc259f666 368-372,383-386,396-400,410-414,438-442,453-456,731-734
+api/howler/sample_data/helper.py
+  s_413f0a9e448f3f::t_fe6cbee8666fc1 234-240,890-910
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f10037fc51a828825ccf5f731567e9aaa62f2a4c",
+  "prompts": {},
+  "sessions": {
+    "s_413f0a9e448f3f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de2901528ffeVptZGhxQeNb0lD",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
