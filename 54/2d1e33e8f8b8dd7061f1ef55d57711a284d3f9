@@ -1,0 +1,39 @@
+api/howler/services/post_write_service.py
+  s_d23b66056b5799::t_7c200df10d1f0d 93
+  s_d23b66056b5799::t_2a527271d246d0 16-19,22-26,70-92,94-95
+api/test/unit/services/test_post_write_hook.py
+  s_d23b66056b5799::t_cb2b4c2f8e9187 35-61,65,72-74
+  s_d23b66056b5799::t_340645e71ae1dd 92,98-115,143,249,258-268
+  s_d23b66056b5799::t_0fce4ac1aedb7d 34
+  s_d23b66056b5799::t_8c767a97e42619 117,120,136,139-142,144,146-149,271
+  s_d23b66056b5799::t_29cdf46490434b 269,388-394,396
+  s_d23b66056b5799::t_f29674e986e5c9 62-64,66-71,116,118-119,121,270,272-275,360-363
+api/howler/services/hit_service.py
+  s_d23b66056b5799::t_7737a33a1f3df5 505,554
+api/howler/datastore/bulk.py
+  s_d23b66056b5799::t_20558c9add8f87 43-44
+api/howler/datastore/collection.py
+  s_d23b66056b5799::t_c3bf1051d22932 170-171,662-666,669-670,673-674,688-693
+api/howler/services/correlation_service.py
+  s_d23b66056b5799::t_46009b398e499b 468
+api/howler/services/event_service.py
+  s_d23b66056b5799::t_5a9055d3fcde92 261
+api/test/unit/test_bulk.py
+  s_d23b66056b5799::t_930dd42c5e477d 87-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "542d1e33e8f8b8dd7061f1ef55d57711a284d3f9",
+  "prompts": {},
+  "sessions": {
+    "s_d23b66056b5799": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de6ec1ca4ffebl534zONTamFNZ",
+        "model": "us.anthropic.claude-opus-5-5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
