@@ -12,6 +12,7 @@ from howler.helper.discover import get_apps_list
 from howler.models.case import Case, CaseItem, CaseRule, CaseTask
 from howler.models.dossier import Dossier
 from howler.models.event import Event
+from howler.models.fields import ClassificationValue
 from howler.models.hit import Hit
 from howler.models.howler_data import Escalation, Link
 from howler.models.lead import Lead
@@ -31,6 +32,7 @@ from howler.sample_data.randomizer import (
 from howler.security.utils import get_password_hash
 from howler.services import case_service
 from howler.utils.constants import TESTING
+from howler.utils.isotime import now_as_datetime
 from howler.utils.uid import get_random_id
 
 APPS = get_apps_list()
@@ -52,20 +54,20 @@ def generate_useful_hit(  # noqa: C901
     users = [user if isinstance(user, str) else user.uname for user in users]
 
     if CLASSIFICATION.enforce:
-        hit.classification = CLASSIFICATION.UNRESTRICTED
+        hit.classification = ClassificationValue(CLASSIFICATION, CLASSIFICATION.UNRESTRICTED)
 
     rand_seed = random()
 
-    timestamp = datetime.now() - timedelta(
+    timestamp = now_as_datetime() - timedelta(
         days=round(rand_seed * 30),
         hours=min(max(round(gauss(14, 3)), 0), 23),
         minutes=randint(0, 59),
         seconds=randint(0, 59),
     )
 
-    hit.event.created = timestamp.isoformat() + "Z"
+    hit.event.created = timestamp
     hit.event.provider = choice(["HBS", "NBS", "CBS", "AssemblyLine"])
-    hit.timestamp = timestamp.isoformat() + "Z"
+    hit.timestamp = timestamp
 
     hit.organization.name, hit.organization.id = random_department()
     hit.threat.framework = choice(["MITRE ATT&CK", "Custom"])
@@ -367,16 +369,16 @@ def generate_useful_event(  # noqa: C901
 
     rand_seed = random()
 
-    timestamp = datetime.now() - timedelta(
+    timestamp = now_as_datetime() - timedelta(
         days=round(rand_seed * 30),
         hours=min(max(round(gauss(14, 3)), 0), 23),
         minutes=randint(0, 59),
         seconds=randint(0, 59),
     )
 
-    event.event.created = timestamp.isoformat() + "Z"
+    event.event.created = timestamp
     event.event.provider = choice(["HBS", "NBS", "CBS", "AssemblyLine"])
-    event.timestamp = timestamp.isoformat() + "Z"
+    event.timestamp = timestamp
 
     event.organization.name, event.organization.id = random_department()
     event.threat.framework = choice(["MITRE ATT&CK", "Custom"])

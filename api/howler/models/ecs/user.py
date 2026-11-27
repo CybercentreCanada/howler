@@ -29,7 +29,7 @@ class UserNested(HowlerEmbeddedModel):
     """Unique identifier of the user."""
     name: Keyword | None = None
     """Short name or login of the user."""
-    roles: Annotated[list[Keyword] | None, metadata(optional=True)] = []
+    roles: Annotated[list[Keyword], metadata(optional=True)] = []
     """Array of user roles at the time of the event."""
 
 
@@ -56,7 +56,7 @@ class User(HowlerEmbeddedModel):
     """Unique identifier of the user."""
     name: Keyword | None = None
     """Short name or login of the user."""
-    roles: Annotated[list[Keyword] | None, metadata(optional=True)] = []
+    roles: Annotated[list[Keyword], metadata(optional=True)] = []
     """Array of user roles at the time of the event."""
 
 

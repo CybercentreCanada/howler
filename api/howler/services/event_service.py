@@ -16,6 +16,7 @@ from howler.models.registry import model_registry
 from howler.models.user import User
 from howler.security.utils import is_classification_accessible
 from howler.utils.dict_utils import extra_keys, flatten
+from howler.utils.isotime import now_as_datetime
 from howler.utils.uid import get_random_id
 
 logger = get_logger(__file__)
@@ -177,7 +178,7 @@ def convert_event(  # noqa: C901
     if odm.event:
         odm.event.id = odm.howler.id
         if not odm.event.created:
-            odm.event.created = "NOW"
+            odm.event.created = now_as_datetime()
     else:
         odm.event = ECSEvent.model_validate({"created": "NOW", "id": odm.howler.id})
 

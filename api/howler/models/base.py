@@ -78,6 +78,10 @@ def _is_nullable_annotation(annotation: Any) -> bool:
     metadata = field_metadata(annotation)
     if metadata is not None and metadata.optional:
         return True
+    return _annotation_includes_none(annotation)
+
+
+def _annotation_includes_none(annotation: Any) -> bool:
     current = annotation
     while get_origin(current) is Annotated:
         current = get_args(current)[0]
@@ -100,7 +104,8 @@ def _normalize_list_inputs(annotation: Any, value: Any) -> Any:
     unwrapped = unwrap_annotation(annotation)
     origin = get_origin(unwrapped)
     if value is None:
-        return [] if origin is list and not _is_nullable_annotation(annotation) else None
+        # Optional list fields without None in their annotation treat null input as empty.
+        return [] if origin is list and not _annotation_includes_none(annotation) else None
     if origin is list:
         child_annotation = get_args(unwrapped)[0]
         if isinstance(value, dict) and model_annotation(child_annotation) is not None:

@@ -31,6 +31,7 @@ from howler.models.registry import model_registry
 from howler.models.user import User
 from howler.security.utils import is_classification_accessible
 from howler.services import comms_service, event_service, hit_service
+from howler.utils.isotime import now_as_datetime
 
 logger = get_logger(__file__)
 
@@ -479,7 +480,7 @@ def update_case(
         )
         setattr(case, key, new_value)
 
-    case.updated = "NOW"
+    case.updated = now_as_datetime()
     save_case(case, refresh=refresh, version=version)
 
     comms_service.emit("cases", {"case": case.as_primitives()})
@@ -1287,7 +1288,7 @@ def add_case_rule(
         )
     )
 
-    case.updated = "NOW"
+    case.updated = now_as_datetime()
     save_case(case, refresh=refresh, version=version)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case
@@ -1330,7 +1331,7 @@ def remove_case_rule(
         )
     )
 
-    case.updated = "NOW"
+    case.updated = now_as_datetime()
     save_case(case, refresh=refresh, version=version)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case
@@ -1390,7 +1391,7 @@ def update_case_rule(
         )
     )
 
-    case.updated = "NOW"
+    case.updated = now_as_datetime()
     save_case(case, refresh=refresh, version=version)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case

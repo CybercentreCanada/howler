@@ -1,5 +1,5 @@
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 
 # DO NOT REMOVE!!! THIS IS MAGIC!
 # strptime Thread safe fix... yeah ...
@@ -15,3 +15,8 @@ def now_as_iso() -> str:
         from datetime import UTC
 
         return datetime.now(tz=UTC).isoformat().replace("+00:00", "Z")
+
+
+def now_as_datetime() -> datetime:
+    """Get the current time as a timezone-aware UTC datetime"""
+    return datetime.now(timezone.utc)

@@ -652,6 +652,7 @@ class AITriage(BaseModel):
 
     @model_validator(mode="after")
     def validate_enabled_configuration(self) -> "AITriage":
+        """Require a safe provider endpoint and model when AI triage is enabled."""
         if not self.enabled:
             return self
 

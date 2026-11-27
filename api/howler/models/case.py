@@ -216,21 +216,21 @@ class Case(HowlerESModel):
     """Date/time when telemetry/alerts in this case started."""
     end: Date | None = None
     """Date/time when telemetry/alerts in this case ended."""
-    targets: Annotated[list[Keyword] | None, metadata(optional=True)] = []
+    targets: Annotated[list[Keyword], metadata(optional=True)] = []
     """A list of target entities related to this case."""
-    threats: Annotated[list[Keyword] | None, metadata(optional=True)] = []
+    threats: Annotated[list[Keyword], metadata(optional=True)] = []
     """A list of known or suspected threat entities related to this case."""
-    indicators: Annotated[list[Keyword] | None, metadata(optional=True)] = []
+    indicators: Annotated[list[Keyword], metadata(optional=True)] = []
     """A list of indicators relevant to this case."""
-    participants: Annotated[list[Keyword] | None, metadata(optional=True)] = []
+    participants: Annotated[list[Keyword], metadata(optional=True)] = []
     """A list of users participating in this case."""
-    items: Annotated[list[CaseItem] | None, metadata(optional=True)] = []
+    items: Annotated[list[CaseItem], metadata(optional=True)] = []
     """Path-scoped case items referencing external object IDs or links."""
-    enrichments: Annotated[list[CaseEnrichment] | None, metadata(optional=True)] = []
+    enrichments: Annotated[list[CaseEnrichment], metadata(optional=True)] = []
     """Path-scoped enrichment annotations."""
-    rules: Annotated[list[CaseRule] | None, metadata(optional=True)] = []
+    rules: Annotated[list[CaseRule], metadata(optional=True)] = []
     """Rules for routing matched data into case paths."""
-    tasks: Annotated[list[CaseTask] | None, metadata(optional=True)] = []
+    tasks: Annotated[list[CaseTask], metadata(optional=True)] = []
     """Tasks associated with this case."""
-    log: Annotated[list[CaseLog] | None, metadata(optional=True)] = []
+    log: Annotated[list[CaseLog], metadata(optional=True)] = []
     """A list of changes to the case with timestamps and attribution."""

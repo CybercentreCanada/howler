@@ -1,6 +1,7 @@
 """Unit tests for the ingest API endpoint (howler.api.v2.ingest)."""
 
 import uuid
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -773,10 +774,10 @@ class TestOverwrite:
 
     def test_overwrite_success(self, overwrite_setup, request_context: Flask):
         """Returns 200 with the updated record on successful overwrite."""
-        from howler.security.login import auth_service
+        from howler.security import login
 
         user, index = overwrite_setup
-        auth_service.bearer_auth.return_value = (user, ["W"])
+        cast(MagicMock, login.auth_service).bearer_auth.return_value = (user, ["W"])
 
         existing = {"howler": {"id": "hit-001", "analytic": "A"}, "event": {"kind": "alert"}}
         index.get.side_effect = [

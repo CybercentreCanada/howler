@@ -22,6 +22,7 @@ from howler.models.analytic import Analytic, Comment, Notebook, TriageOptions
 from howler.models.user import User
 from howler.security.login import api_login
 from howler.services import analytic_service, user_service
+from howler.utils.isotime import now_as_datetime
 
 MAX_COMMENT_LEN = 5000
 SUB_API = "analytic"
@@ -236,7 +237,7 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
         return forbidden(err="Cannot edit comment that wasn't made by you.")
 
     comment.value = comment_data
-    comment.modified = "NOW"
+    comment.modified = now_as_datetime()
 
     analytic.comment = [c if c.id != comment.id else comment for c in analytic.comment]
 

@@ -278,7 +278,7 @@ def specification() -> ActionSpecification:
                 args={"transition": []},
                 options={
                     "transition": {
-                        f"status:{status}": sorted(map(str, hit_service.get_transitions(status)))
+                        f"status:{status}": sorted(map(str, hit_service.get_transitions(Status(status))))
                         for status in Status.list()
                     },
                 },

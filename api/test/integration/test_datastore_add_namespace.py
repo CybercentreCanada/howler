@@ -16,7 +16,7 @@ class ExtensionModel(HowlerEmbeddedModel):
     integer: fields.Integer = 1
     keyword: fields.Keyword = "keyword"
     boolean: fields.Boolean = True
-    date: fields.Date = "NOW"
+    date: Annotated[fields.Date, fields.metadata(default="NOW")]
 
 
 @pytest.fixture(scope="module")

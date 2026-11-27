@@ -37,6 +37,7 @@ from howler.models.action import Action
 from howler.models.analytic import Analytic, Comment, Notebook, TriageOptions
 from howler.models.dossier import Dossier
 from howler.models.ecs.event import EVENT_CATEGORIES
+from howler.models.fields import ClassificationValue
 from howler.models.hit import Hit
 from howler.models.howler_data import Assessment, Escalation, Scrutiny, Status
 from howler.models.overview import Overview
@@ -218,7 +219,7 @@ def create_users(ds):
 
     c12n = user_service.get_dynamic_classification(user_data.as_primitives())
     if c12n:
-        user_data.classification = c12n
+        user_data.classification = ClassificationValue(classification, c12n, is_user_classification=True)
 
     user_view = run_modifications("view", user_view)
     user_data = run_modifications("user", user_data)
@@ -603,7 +604,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
 
         # Ensure the first 20 hits have unrestricted classification for test access
         if hit_idx < 20:
-            hit.classification = classification.UNRESTRICTED
+            hit.classification = ClassificationValue(classification, classification.UNRESTRICTED)
 
         if hit_idx + 1 == hit_count:
             hit.howler.analytic = "SecretAnalytic"
