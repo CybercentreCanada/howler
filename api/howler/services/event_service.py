@@ -14,6 +14,7 @@ from howler.odm.models.event import Event
 from howler.odm.models.event import Log as EventLog
 from howler.odm.models.user import User
 from howler.security.utils import is_classification_accessible
+from howler.services import post_write_service
 from howler.utils.dict_utils import extra_keys, flatten
 from howler.utils.uid import get_random_id
 
@@ -227,7 +228,9 @@ def create_event(
         event.howler.log = [EventLog({"timestamp": "NOW", "explanation": "Created event", "user": user})]
 
     CREATED_EVENTS.inc()
-    return datastore().event.save(id, event, refresh=refresh)
+    result = datastore().event.save(id, event, refresh=refresh)
+    post_write_service.record_written({"type": "event", "id": id})
+    return result
 
 
 @tracer.start_as_current_span(f"{__name__}.create_events")
@@ -255,4 +258,4 @@ def create_events(
         else:
             bulk_plan.add_insert_operation(event.howler.id, event)
 
-    return storage.event.bulk(bulk_plan, refresh=refresh)
+    return post_write_service.bulk_write("event", storage.event, bulk_plan, refresh=refresh)

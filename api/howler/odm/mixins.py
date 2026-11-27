@@ -107,4 +107,11 @@ class DatastoreMixin(Generic[ModelType]):
         current_id = attrgetter(id_field)(self)
         collection = self.ds[index_name]
 
-        return collection.save(current_id, self, version=version, refresh=refresh)
+        result = collection.save(current_id, self, version=version, refresh=refresh)
+
+        # Deferred import: the services package imports the ODM models that use this mixin.
+        from howler.services import post_write_service
+
+        post_write_service.record_saved(index_name, current_id)
+
+        return result

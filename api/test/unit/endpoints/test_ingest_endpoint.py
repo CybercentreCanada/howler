@@ -690,12 +690,14 @@ class TestOverwrite:
     """Tests for the overwrite endpoint."""
 
     @patch("howler.api.v2.ingest.INDEXES", {"hit": None})
+    @patch("howler.services.ingest_service.datastore")
     @patch("howler.api.v2.ingest.datastore")
     @patch("howler.security.login.auth_service")
-    def test_overwrite_success(self, mock_auth_service, mock_ds, request_context: Flask):
+    def test_overwrite_success(self, mock_auth_service, mock_ds, mock_service_ds, request_context: Flask):
         """Returns 200 with the updated record on successful overwrite."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
+        mock_service_ds.return_value = mock_ds.return_value
 
         existing = {"howler": {"id": "hit-001", "analytic": "A"}, "event": {"kind": "alert"}}
         mock_ds.return_value.__getitem__.return_value.get.side_effect = [

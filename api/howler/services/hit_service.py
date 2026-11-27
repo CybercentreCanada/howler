@@ -33,7 +33,14 @@ from howler.odm.models.howler_data import HitStatusTransition, Status
 from howler.odm.models.log import Log, LogOperationType
 from howler.odm.models.user import User
 from howler.security.utils import is_classification_accessible
-from howler.services import action_service, analytic_service, dossier_service, overview_service, template_service
+from howler.services import (
+    action_service,
+    analytic_service,
+    dossier_service,
+    overview_service,
+    post_write_service,
+    template_service,
+)
 from howler.utils.dict_utils import extra_keys, flatten
 from howler.utils.uid import get_random_id
 
@@ -465,7 +472,9 @@ def create_hit(
         hit.howler.log = [Log({"timestamp": "NOW", "explanation": "Created hit", "user": user})]
 
     CREATED_HITS.labels(hit.howler.analytic).inc()
-    return datastore().hit.save(id, hit, refresh=refresh)
+    result = datastore().hit.save(id, hit, refresh=refresh)
+    post_write_service.record_written({"type": "hit", "id": id})
+    return result
 
 
 @tracer.start_as_current_span(f"{__name__}.create_hits")
@@ -493,7 +502,7 @@ def create_hits(
         else:
             bulk_plan.add_insert_operation(hit.howler.id, hit)
 
-    return storage.hit.bulk(bulk_plan, refresh=refresh)
+    return post_write_service.bulk_write("hit", storage.hit, bulk_plan, refresh=refresh)
 
 
 @tracer.start_as_current_span(f"{__name__}.update_hit")
@@ -542,7 +551,7 @@ def overwrite_hits(hits: list[Hit], refresh: str | None = None) -> bool:
     for hit in hits:
         bulk_plan.add_index_operation(hit.howler.id, hit)
 
-    return storage.hit.bulk(bulk_plan, refresh=refresh)
+    return post_write_service.bulk_write("hit", storage.hit, bulk_plan, refresh=refresh)
 
 
 @typing.no_type_check
@@ -562,10 +571,17 @@ def save_hit(hit: Hit, version: Optional[str] = None, refresh: str | None = None
         Tuple of (hit_data_dict, version_string)
     """
     datastore().hit.save(hit.howler.id, hit, version=version, refresh=refresh)
+    post_write_service.record_written({"type": "hit", "id": hit.howler.id})
     data, _version = datastore().hit.get(hit.howler.id, as_obj=False, version=True)
     comms_service.emit("hits", {"hit": data, "version": _version})
 
     return data, _version
+
+
+def _record_updated(hit_id: str, update_result: tuple[bool, str] | bool) -> None:
+    """Call the post-write hook if a partial update changed the hit."""
+    if isinstance(update_result, tuple) and update_result[0]:
+        post_write_service.record_written({"type": "hit", "id": hit_id})
 
 
 @tracer.start_as_current_span(f"{__name__}._update_hit")
@@ -654,7 +670,8 @@ def _update_hit(
                 )
             )
 
-    datastore().hit.update(hit_id, final_operations, version, refresh=refresh)
+    update_result = datastore().hit.update(hit_id, final_operations, version, refresh=refresh)
+    _record_updated(hit_id, update_result)
     # Need to fetch the new data of the hit for the comms_service
     data, _version = datastore().hit.get(hit_id, as_obj=True, version=True) or (None, None)
     if data and _version:

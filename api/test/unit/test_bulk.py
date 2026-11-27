@@ -84,6 +84,75 @@ def test_collection_bulk_returns_false_and_logs_errors():
     )
 
 
+def _bulk_item(action: str, doc_id: str, result: str = "created", error: dict | None = None) -> dict:
+    item: dict = {"_index": "test_index", "_id": doc_id, "status": 400 if error else 201, "result": result}
+    if error:
+        item["error"] = error
+        del item["result"]
+    return {action: item}
+
+
+def _collection_with_responses(*responses) -> ESCollection:
+    """An ESCollection whose bulk requests return (or raise) ``responses`` in order."""
+    collection = object.__new__(ESCollection)
+    collection.max_attempts = 1
+    collection.datastore = MagicMock()
+    collection.datastore.client.bulk.side_effect = list(responses)
+    return collection
+
+
+def test_collection_bulk_records_written_ids_per_chunk():
+    """Only records each chunk actually wrote are reported; failed and no-op items are not."""
+    plan = ElasticBulkPlan(indexes=["test_index"], model=None)
+    for doc_id in ("a", "b", "c", "d"):
+        plan.add_index_operation(doc_id, {"name": doc_id})
+
+    collection = _collection_with_responses(
+        {"errors": True, "items": [_bulk_item("index", "a"), _bulk_item("index", "b", error={"type": "x"})]},
+        {"errors": False, "items": [_bulk_item("update", "c", result="noop"), _bulk_item("index", "d", "updated")]},
+    )
+
+    with patch.object(plan, "get_plan_batches", return_value=iter(["chunk-1", "chunk-2"])):
+        assert ESCollection.bulk(collection, plan) is False
+
+    assert plan.written_ids == ["a", "d"]
+
+
+def test_collection_bulk_keeps_written_ids_when_a_later_chunk_raises():
+    """Records written by earlier chunks stay reported when a later request fails outright."""
+    from howler.common.exceptions import HowlerRuntimeError
+
+    plan = ElasticBulkPlan(indexes=["test_index"], model=None)
+    collection = _collection_with_responses(
+        {"errors": False, "items": [_bulk_item("index", "a"), _bulk_item("index", "b")]},
+        HowlerRuntimeError("Maximum of 1 retries reached. Aborting ES connection"),
+    )
+
+    with patch.object(plan, "get_plan_batches", return_value=iter(["chunk-1", "chunk-2"])):
+        with pytest.raises(HowlerRuntimeError):
+            ESCollection.bulk(collection, plan)
+
+    assert plan.written_ids == ["a", "b"]
+
+
+def test_collection_bulk_resets_written_ids_and_reports_each_record_once():
+    """Each run starts fresh, and a record written to several indexes is reported once."""
+    plan = ElasticBulkPlan(indexes=["test_index"], model=None)
+    plan.written_ids = ["stale"]
+    collection = _collection_with_responses(
+        {"errors": False, "items": [_bulk_item("update", "a", "updated"), _bulk_item("update", "a", "updated")]},
+    )
+
+    with patch.object(plan, "get_plan_batches", return_value=iter(["chunk-1"])):
+        assert ESCollection.bulk(collection, plan) is True
+
+    assert plan.written_ids == ["a"]
+
+
+def test_new_bulk_plan_has_no_written_ids():
+    assert ElasticBulkPlan(indexes=["test_index"], model=None).written_ids == []
+
+
 # ---------------------------------------------------------------------------
 # add_update_operation() field scoping
 # ---------------------------------------------------------------------------

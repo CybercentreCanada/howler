@@ -40,6 +40,8 @@ class ElasticBulkPlan(object):
         self.indexes = indexes
         self.model = model
         self.operations: list[_OPERATION_GROUP] = []
+        # Set by ESCollection.bulk: the IDs of documents the last run created or changed, in order.
+        self.written_ids: list[str] = []
 
     @property
     def empty(self):
