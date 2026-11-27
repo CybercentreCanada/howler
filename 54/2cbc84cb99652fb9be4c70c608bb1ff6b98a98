@@ -1,0 +1,40 @@
+api/howler/api/v1/analytic.py
+  s_7c99133fcda392::t_d68b88a49a15a8 546-553
+api/howler/models/case.py
+  s_7c99133fcda392::t_d68b88a49a15a8 7,25,88,129,166,196
+api/howler/models/howler_data.py
+  s_7c99133fcda392::t_d68b88a49a15a8 7-8,27,121,202
+api/howler/models/view.py
+  s_7c99133fcda392::t_d68b88a49a15a8 7-8,22,54
+api/howler/models/template.py
+  s_7c99133fcda392::t_d68b88a49a15a8 5-6,8,15
+api/test/unit/models/test_analytic_uuid.py
+  s_7c99133fcda392::t_88d1b813c9513d 1,3-4,6,8-59,68-86
+  s_7c99133fcda392::t_37f2013b9b23e3 2,5,7,60-67,87-93
+api/howler/models/dossier.py
+  s_7c99133fcda392::t_d68b88a49a15a8 5-6,11,22
+api/howler/models/overview.py
+  s_7c99133fcda392::t_d68b88a49a15a8 5-6,8,15
+api/howler/models/event.py
+  s_7c99133fcda392::t_d68b88a49a15a8 7-8,25,45
+api/howler/models/action.py
+  s_7c99133fcda392::t_d68b88a49a15a8 5-6,17,36
+api/howler/models/analytic.py
+  s_7c99133fcda392::t_d68b88a49a15a8 7-8,24,33,67,83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "542cbc84cb99652fb9be4c70c608bb1ff6b98a98",
+  "prompts": {},
+  "sessions": {
+    "s_7c99133fcda392": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de2b16b78ffebtmvi6ZqWZrItl",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
