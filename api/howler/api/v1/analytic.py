@@ -187,7 +187,7 @@ def add_comment(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @analytic_api.route("/<id>/comments/<comment_id>", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
-def edit_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
+def edit_comment(id: str, comment_id: str, user: User, **kwargs):
     """Edit a comment
 
     Variables:
@@ -228,7 +228,7 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
     if not comment:
         return not_found(err=f"Comment {comment_id} does not exist")
 
-    if comment.user != user["uname"]:
+    if comment.user != user.uname:
         return forbidden(err="Cannot edit comment that wasn't made by you.")
 
     comment.value = comment_data
@@ -247,7 +247,7 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
 @generate_swagger_docs()
 @analytic_api.route("/<id>/comments/<comment_id>/react", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
-def react_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
+def react_comment(id: str, comment_id: str, user: User, **kwargs):
     """React to a comment
 
     Variables:
@@ -282,7 +282,7 @@ def react_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
 
     for comment in analytic.comment:
         if comment.id == comment_id:
-            comment.reactions[user["uname"]] = react_data
+            comment.reactions[user.uname] = react_data
 
     datastore().analytic.save(analytic.analytic_id, analytic)
 
@@ -292,7 +292,7 @@ def react_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
 @generate_swagger_docs()
 @analytic_api.route("/<id>/comments/<comment_id>/react", methods=["DELETE"])
 @api_login(audit=False, required_priv=["W"])
-def remove_react_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
+def remove_react_comment(id: str, comment_id: str, user: User, **kwargs):
     """React to a comment
 
     Variables:
@@ -315,7 +315,7 @@ def remove_react_comment(id: str, comment_id: str, user: dict[str, Any], **kwarg
     for comment in analytic.comment:
         if comment.id == comment_id:
             reactions = comment.reactions
-            reactions.pop(user["uname"], None)
+            reactions.pop(user.uname, None)
             comment["reactions"] = {**reactions}
 
     datastore().analytic.save(analytic.analytic_id, analytic)
@@ -378,7 +378,7 @@ def delete_comments(id: str, user: User, **kwargs):
 @analytic_api.route("/<id>/owner", methods=["POST"])
 @api_login(required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def set_analytic_owner(id: str, user: dict[str, Any], **kwargs):
+def set_analytic_owner(id: str, user: User, **kwargs):
     """Set the analytic's owner
 
     Variables:
@@ -497,7 +497,7 @@ def remove_as_favourite(id: str, user: User | None, **kwargs):
 @generate_swagger_docs()
 @analytic_api.route("/<id>/notebooks", methods=["POST"])
 @api_login(audit=False, required_priv=["W"])
-def add_notebook(id: str, user: dict[str, Any], **kwargs):
+def add_notebook(id: str, user: User, **kwargs):
     """Add a notebook
 
     Variables:
@@ -540,7 +540,7 @@ def add_notebook(id: str, user: dict[str, Any], **kwargs):
     try:
         analytic.notebooks.append(
             Notebook(
-                user=user["uname"],
+                user=user.uname,
                 name=name,
                 value=link,
                 detection=detection if detection else None,

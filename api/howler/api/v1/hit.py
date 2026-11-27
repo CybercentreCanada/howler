@@ -852,7 +852,7 @@ def add_comment(id: str, user: User, record: Hit | None, server_version: str | N
             [
                 hit_helper.list_add(
                     "howler.comment",
-                    Comment.model_validate({"user": user.uname, "value": comment_value}),
+                    Comment(user=user.uname, value=comment_value),
                     explanation=f"Added a comment:\n\n{comment_value}",
                     if_missing=True,
                 ),

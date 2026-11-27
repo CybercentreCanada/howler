@@ -129,7 +129,7 @@ class Comment(HowlerEmbeddedModel):
     """The comment itself."""
     user: Keyword
     """User ID who created the comment."""
-    reactions: mapping(Keyword, default={})
+    reactions: mapping(Keyword) = {}
     """A list of reactions to the comment."""
 
 

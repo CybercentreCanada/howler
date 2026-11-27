@@ -143,7 +143,7 @@ def delete_overview(id: str, user: User, **kwargs):
     if not storage.overview.exists(id):
         return not_found(err="This overview does not exist")
 
-    existing_overview = storage.overview.get_if_exists(id)
+    existing_overview = storage.overview.get(id)
     if not existing_overview:
         return not_found(err="This overview does not exist")
 
@@ -194,7 +194,7 @@ def update_overview_content(id: str, user: User, **kwargs):
 
     content = data["content"]
 
-    existing_overview = storage.overview.get_if_exists(id)
+    existing_overview = storage.overview.get(id)
     if not existing_overview:
         return not_found(err="This overview does not exist")
 
@@ -203,6 +203,6 @@ def update_overview_content(id: str, user: User, **kwargs):
     storage.overview.save(existing_overview.overview_id, existing_overview, refresh=refresh)
 
     try:
-        return ok(storage.overview.get_if_exists(existing_overview.overview_id, as_obj=False))
+        return ok(storage.overview.get(existing_overview.overview_id, as_obj=False))
     except HowlerException as e:
         return bad_request(err=str(e))
