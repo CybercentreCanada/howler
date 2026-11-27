@@ -5,7 +5,7 @@ import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import { flatten } from 'flat';
 import Handlebars from 'handlebars';
-import { capitalize, get, groupBy, isNil, isObject } from 'lodash-es';
+import { capitalize, get, groupBy, isNil, isObject, isString } from 'lodash-es';
 import howlerPluginStore from 'plugins/store';
 import { useMemo, type ReactElement } from 'react';
 import { usePluginStore } from 'react-pluggable';
@@ -38,6 +38,21 @@ export class HowlerHelperError extends Error {
 }
 
 const FETCH_RESULTS: { [url: string]: Promise<any> } = {};
+
+// Values are sometimes JSON-encoded more than once (e.g. "\"{\\\"a\\\": 1}\""), so keep unwrapping string layers
+const parseJson = (str: string): unknown => {
+  let result: unknown = JSON.parse(str);
+
+  while (isString(result)) {
+    try {
+      result = JSON.parse(result);
+    } catch {
+      break;
+    }
+  }
+
+  return result;
+};
 
 export const useHelpers = (opts = { async: true, components: true }): HowlerHelper[] => {
   const pluginStore = usePluginStore();
@@ -273,7 +288,7 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
               throw new HowlerHelperError('Parse JSON expects a string argument');
             }
             try {
-              return JSON.parse(str);
+              return parseJson(str);
             } catch {
               throw new HowlerHelperError('Invalid JSON string');
             }
@@ -287,13 +302,22 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             fr: "Retourne la clé donnée (aplatie) de l'objet fourni."
           },
           callback: (...args: any[]) => {
-            args.pop(); // remove options
-            const [data, key] = args;
+            let [data, key] = args;
 
             try {
+              if (isString(data)) {
+                data = parseJson(data);
+              }
+
+              console.log(data);
+
               return get(data, key);
-            } catch {
-              return '';
+            } catch (e) {
+              if (e instanceof SyntaxError) {
+                throw new HowlerHelperError('data must be either a JSON object or JSON-parseable string.');
+              }
+
+              throw new HowlerHelperError('Invalid input for get helper.');
             }
           },
           hint: 'Usage: {{get obj key}}'

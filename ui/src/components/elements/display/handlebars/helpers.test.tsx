@@ -82,6 +82,13 @@ describe('handlebars helpers', () => {
     expect(() => helperMap.parse_json.callback?.(undefined, options)).toThrow('Parse JSON expects a string argument');
     expect(() => helperMap.parse_json.callback?.('{oops}', options)).toThrow('Invalid JSON string');
     expect(helperMap.get.callback?.({ nested: { value: 7 } }, 'nested.value', options)).toBe(7);
+    expect(helperMap.parse_json.callback?.(JSON.stringify('{"id":1}'), options)).toEqual({ id: 1 });
+    expect(helperMap.parse_json.callback?.('"plain"', options)).toBe('plain');
+    expect(helperMap.get.callback?.('{"Hash.MD5":"abc"}', 'Hash.MD5', options)).toBe('abc');
+    expect(helperMap.get.callback?.(JSON.stringify('{"Hash.MD5":"abc"}'), 'Hash.MD5', options)).toBe('abc');
+    expect(() => helperMap.get.callback?.('{oops}', 'key', options)).toThrow(
+      'data must be either a JSON object or JSON-parseable string.'
+    );
     expect(helperMap.includes.callback?.('abcdef', 'cd', options)).toBe(true);
     expect(helperMap.entries.callback?.({ a: 1 }, options)).toEqual([{ key: 'a', value: 1 }]);
     expect(String(helperMap.entries.callback?.(null, options))).toBe('Invalid Object.');
