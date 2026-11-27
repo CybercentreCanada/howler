@@ -1,0 +1,22 @@
+api/test/unit/test_common.py
+  s_95fc61e316a0ac::t_4c0977fbd02074 108-132
+  s_95fc61e316a0ac::t_709b71b573c69d 2
+api/howler/common/loader.py
+  s_95fc61e316a0ac::t_ce26541036c7cc 33,36-39,41-45,47-50,52-56,85-86,88-89,91-93,95-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "eced58fd3fcde7fe702ffc81f6c6a6ff1b795e19",
+  "prompts": {},
+  "sessions": {
+    "s_95fc61e316a0ac": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_de300c436ffeEjRKAS4916Q0T2",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Matthew Rafuse <Matthew.Rafuse@cyber.gc.ca>"
+    }
+  }
+}
