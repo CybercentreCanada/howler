@@ -140,7 +140,7 @@ def test_hit_serialized_primitives():
             "source": {"ip": "127.0.0.1", "original": {"domain": "Example.COM"}},
         }
     )
-    assert hit.as_primitives(ip_format="int") == {
+    assert hit.model_dump(by_alias=True, exclude_none=True, context={"include_index": True, "ip_format": "int"}) == {
         "__index": "hit",
         "classification": "UNRESTRICTED",
         "ecs": {"version": "8.3.0"},

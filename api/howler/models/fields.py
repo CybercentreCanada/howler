@@ -546,12 +546,8 @@ def _mapping_validator(pattern: re.Pattern[str]) -> Callable[[TypingAny], Typing
     return validate
 
 
-def format_datetime(value: datetime, output_format: str | None = None) -> str | int:
-    """Format a datetime using a Howler primitive timestamp mode."""
-    if output_format == "iso":
-        return value.isoformat()
-    if output_format == "posix":
-        return int(value.timestamp())
+def format_datetime(value: datetime) -> str:
+    """Format a datetime as a Howler primitive timestamp."""
     normalized = value.astimezone(timezone.utc) if value.tzinfo is not None else value
     return normalized.strftime(DATEFORMAT)
 
@@ -563,11 +559,9 @@ def _ip_serializer(value: str | None, info: SerializationInfo) -> str | int | No
     return ip_to_primitive(value, ip_format)
 
 
-def _date_serializer(value: datetime | None, info: SerializationInfo) -> str | int | None:
-    if value is None:
-        return None
-    timestamp_format = info.context.get("timestamp_format") if info.context else None
-    return format_datetime(value, timestamp_format)
+def _date_serializer(value: TypingAny) -> TypingAny:
+    # JSON schema generation also passes input defaults such as "NOW" through this serializer.
+    return format_datetime(value) if isinstance(value, datetime) else value
 
 
 def _classification_serializer(value: ClassificationValue | None) -> str | None:

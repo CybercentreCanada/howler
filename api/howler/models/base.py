@@ -37,8 +37,6 @@ from howler.models.fields import (
 from howler.models.registry import field_metadata, model_annotation, unwrap_annotation
 
 ModelType = TypeVar("ModelType", bound=BaseModel)
-IPFormat = Literal["str", "int", "encoded_bytes"]
-TimestampFormat = Literal["iso", "posix"]
 ADAPTER_CONFIG = ConfigDict(arbitrary_types_allowed=True)
 ACCESS_FIELDS = {
     "__access_lvl__",
@@ -152,24 +150,19 @@ def _normalize_field_input(
     return _normalize_scalar_input(annotation, value, default=default, default_factory=default_factory)
 
 
-def _finalize_primitives(
-    value: Any,
-    *,
-    strip_null: bool,
-    timestamp_format: TimestampFormat | None,
-) -> Any:
+def _finalize_primitives(value: Any, *, strip_null: bool) -> Any:
     if isinstance(value, datetime):
-        return format_datetime(value, timestamp_format)
+        return format_datetime(value)
     if isinstance(value, ClassificationValue):
         return str(value)
     if isinstance(value, dict):
         return {
-            key: _finalize_primitives(item, strip_null=strip_null, timestamp_format=timestamp_format)
+            key: _finalize_primitives(item, strip_null=strip_null)
             for key, item in value.items()
             if not (strip_null and item is None)
         }
     if isinstance(value, list):
-        return [_finalize_primitives(item, strip_null=strip_null, timestamp_format=timestamp_format) for item in value]
+        return [_finalize_primitives(item, strip_null=strip_null) for item in value]
     return value
 
 
@@ -272,15 +265,7 @@ class HowlerModelMixin:
     def _serialize_model(self, handler: SerializerFunctionWrapHandler, info: SerializationInfo):  # noqa: ANN202
         output: dict[str, Any] = handler(self)
         context = info.context or {}
-        timestamp_format = context.get("timestamp_format")
-        output = {
-            key: _finalize_primitives(
-                value,
-                strip_null=info.exclude_none,
-                timestamp_format=timestamp_format,
-            )
-            for key, value in output.items()
-        }
+        output = {key: _finalize_primitives(value, strip_null=info.exclude_none) for key, value in output.items()}
         if context.get("hidden_fields") and isinstance(self, HowlerESModel):
             for python_name in type(self).model_fields:
                 if python_name == "meta":
@@ -384,24 +369,12 @@ class HowlerModelMixin:
         except ValidationError as error:
             raise HowlerModelValidationError(error) from error
 
-    def as_primitives(
-        self,
-        *,
-        hidden_fields: bool = False,
-        strip_null: bool = True,
-        ip_format: IPFormat | None = None,
-        timestamp_format: TimestampFormat | None = None,
-    ) -> dict[str, Any]:
+    def as_primitives(self, *, hidden_fields: bool = False) -> dict[str, Any]:
         """Return the legacy stored/API primitive representation."""
         return cast(BaseModel, self).model_dump(
             by_alias=True,
-            exclude_none=strip_null,
-            context={
-                "hidden_fields": hidden_fields,
-                "include_index": True,
-                "ip_format": ip_format,
-                "timestamp_format": timestamp_format,
-            },
+            exclude_none=True,
+            context={"hidden_fields": hidden_fields, "include_index": True},
         )
 
     def __getitem__(self, name: str) -> Any:
@@ -663,11 +636,7 @@ def validate_field_value(
         raise HowlerModelValidationError(error) from error
     if isinstance(validated, datetime):
         return validated.isoformat()
-    return _finalize_primitives(
-        adapter.dump_python(validated, by_alias=True, exclude_none=True),
-        strip_null=True,
-        timestamp_format=None,
-    )
+    return _finalize_primitives(adapter.dump_python(validated, by_alias=True, exclude_none=True), strip_null=True)
 
 
 def _python_field_name(model_type: type[BaseModel], serialized_name: str) -> str:

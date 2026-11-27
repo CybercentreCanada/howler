@@ -57,6 +57,10 @@ CONFIG = str(Path(__file__).parents[2] / "classification.yml")
 ADAPTER_CONFIG = ConfigDict(arbitrary_types_allowed=True)
 
 
+def _dump_ips(model: Any, ip_format: Any) -> dict[str, Any]:
+    return model.model_dump(by_alias=True, exclude_none=True, context={"ip_format": ip_format})
+
+
 @pytest.mark.parametrize(
     ("annotation", "value", "expected"),
     [
@@ -243,8 +247,8 @@ def test_optional_metadata_preserves_mapping_and_ip_serialization() -> None:
     assert values.index is True and values.store is True
     assert model_registry.mapping(Probe)["properties"]["values"]["type"] == "object"
     probe = Probe.model_validate({"wire": "192.0.2.1"})
-    assert probe.as_primitives(ip_format="int") == {"wire": int(ip_address("192.0.2.1"))}
-    assert base64.b64decode(probe.as_primitives(ip_format="encoded_bytes")["wire"]) == ip_address("192.0.2.1").packed
+    assert _dump_ips(probe, "int") == {"wire": int(ip_address("192.0.2.1"))}
+    assert base64.b64decode(_dump_ips(probe, "encoded_bytes")["wire"]) == ip_address("192.0.2.1").packed
     with pytest.raises(HowlerModelValidationError):
         Probe.model_validate({"wire": "invalid"})
 
@@ -273,7 +277,7 @@ def test_optional_index_reaches_storage(builder, indexed, array):
     value = "192.0.2.1"
     model = probe.model_validate({"wire": [value] if array else value})
     expected = int(ip_address(value)) if builder is IP else value
-    assert model.as_primitives(ip_format="int") == {"wire": [expected] if array else expected}
+    assert _dump_ips(model, "int") == {"wire": [expected] if array else expected}
 
 
 def test_serialization_modes() -> None:
@@ -303,7 +307,7 @@ def test_serialization_modes() -> None:
         }
     )
     for mode in ("encoded_bytes", "int", "str", "unsupported", None):
-        data = model.as_primitives(ip_format=mode)
+        data = _dump_ips(model, mode)
 
         def convert(value):
             if mode == "encoded_bytes":
@@ -314,12 +318,6 @@ def test_serialization_modes() -> None:
         assert data["addresses"] == [convert("1.1.1.1"), convert("ff02::1")]
         assert data["optional_address"] == convert("192.168.0.1") and data["child"]["address"] == convert("10.0.0.1")
         assert data["text"] == "192.0.2.1"
-    for mode, expected in [
-        ("posix", 1767225600),
-        ("iso", "2026-01-01T00:00:00+00:00"),
-        ("unsupported", timestamp),
-        (None, timestamp),
-    ]:
-        data = model.as_primitives(timestamp_format=mode)
-        assert data["created"] == data["child"]["created"] == expected
-        assert data["created_by_key"] == {"key": expected}
+    data = model.as_primitives()
+    assert data["created"] == data["child"]["created"] == timestamp
+    assert data["created_by_key"] == {"key": timestamp}

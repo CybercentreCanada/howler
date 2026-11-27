@@ -47,7 +47,7 @@ def test_hit_mapping_and_optional_ip_serialization():
         }
     )
     assert hit.source.original.domain == "example.com"
-    assert hit.as_primitives(ip_format="int")["source"]["ip"] == 2130706433
+    assert hit.model_dump(by_alias=True, context={"ip_format": "int"})["source"]["ip"] == 2130706433
     access = {"__access_lvl__", "__access_req__", "__access_grp1__", "__access_grp2__"}
     assert access <= properties.keys() and access <= hit.as_primitives(hidden_fields=True).keys()
 

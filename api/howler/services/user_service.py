@@ -92,7 +92,7 @@ def convert_user(user: User) -> dict[str, Any]:
     }
 
     user_data["apikeys"] = [
-        (key, value.acl, value.as_primitives(strip_null=False)["expiry_date"])
+        (key, value.acl, value.as_primitives().get("expiry_date"))
         for key, value in datastore().user.get_if_exists(model_user.uname).apikeys.items()
     ]
 

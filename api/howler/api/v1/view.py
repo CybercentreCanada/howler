@@ -214,7 +214,7 @@ def update_view(view_id: str, user: User, **kwargs):  # noqa: C901
         if "query" in new_data:
             storage.hit.search(new_data["query"])
 
-        new_view = View.model_validate(cast(dict, merge({}, existing_view.as_primitives(), new_data)))
+        new_view = View.model_validate(cast(dict, merge({}, existing_view.model_dump(by_alias=True), new_data)))
     except SearchException:
         return bad_request(err="You must use a valid query when updating a view.")
     except HowlerException as e:

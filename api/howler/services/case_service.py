@@ -46,7 +46,7 @@ def _apply_case_rule_patch(rule: CaseRule, patch: dict[str, Any]) -> tuple[CaseR
         changes.append(f"{key}: '{getattr(rule, key, None)}' → '{value}'")
 
     try:
-        return CaseRule.model_validate({**rule.as_primitives(), **patch}), changes
+        return CaseRule.model_validate({**rule.model_dump(by_alias=True), **patch}), changes
     except HowlerValueError as ex:
         raise InvalidDataException(str(ex)) from ex
 

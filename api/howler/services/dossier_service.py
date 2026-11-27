@@ -236,7 +236,7 @@ def update_dossier(  # noqa: C901
 
         # Merge the new data with existing dossier data
         new_data = type(existing_dossier).model_validate(
-            cast(dict, merge({}, existing_dossier.as_primitives(), dossier_data))
+            cast(dict, merge({}, existing_dossier.model_dump(by_alias=True), dossier_data))
         )
 
         storage.dossier.save(dossier_id, new_data, version=server_version, refresh=refresh)

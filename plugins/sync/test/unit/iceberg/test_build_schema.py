@@ -145,7 +145,7 @@ def test_hit_plugin_schema_and_null_batches(monkeypatch):
     assert fields["sentinel"].nullable and fields["sentinel"].dataType["alert_id"].nullable
     row = model.model_validate(
         {"howler": {"analytic": "Test", "hash": "ab"}, "batch": None, "batches": [None, ["abc"]]}
-    ).as_primitives(strip_null=False)
+    ).model_dump(by_alias=True)
     assert row["batch"] is None and row["batches"] == [None, ["abc"]]
     s._make_type_verifier(s.StructType([fields["batches"], fields["batch"]]))(row)
     assert not fields["batches"].nullable
