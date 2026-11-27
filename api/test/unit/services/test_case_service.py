@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timezone
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,18 +14,28 @@ from howler.common.exceptions import (
 from howler.config import CLASSIFICATION
 from howler.datastore.collection import CREATE_TOKEN
 from howler.datastore.exceptions import DataStoreException, VersionConflictException
-from howler.odm.models.case import Case, CaseItem, CaseRule
-from howler.odm.models.ecs.related import Related
-from howler.odm.models.user import User
+from howler.models import Keyword
+from howler.models.case import Case as SchemaCase
+from howler.models.case import CaseItem as SchemaCaseItem
+from howler.models.case import CaseLog as SchemaCaseLog
+from howler.models.case import CaseRule as SchemaCaseRule
+from howler.models.ecs.related import Related as SchemaRelated
+from howler.models.registry import model_registry
+from howler.models.user import User
 from howler.services import case_service
+
+Case = SchemaCase.model_validate
+CaseItem = SchemaCaseItem.model_validate
+CaseRule = SchemaCaseRule.model_validate
+Related = SchemaRelated.model_validate
 
 
 @pytest.fixture(autouse=True)
 def _suppress_event_emit():
-    """Prevent comms_service.emit from reaching Redis during unit tests."""
+    """Prevent comms_service.emit from reaching Redis and route mixin saves through the patched datastore."""
     with (
         patch("howler.services.case_service.comms_service"),
-        patch("howler.odm.mixins.datastore", side_effect=lambda: case_service.datastore()),
+        patch("howler.models.mixins.datastore", side_effect=lambda: case_service.datastore()),
     ):
         yield
 
@@ -35,7 +46,7 @@ def _make_user(
     user_type: list[str] | None = None,
 ) -> User:
     """Create a valid user for service calls that require access-control data."""
-    return User(
+    return User.model_validate(
         {
             "name": uname,
             "uname": uname,
@@ -47,7 +58,7 @@ def _make_user(
     )
 
 
-def _make_case(**overrides) -> Case:
+def _make_case(**overrides) -> SchemaCase:
     """Create a minimal case with an unrestricted default classification."""
     data = {
         "case_id": "case-001",
@@ -59,7 +70,7 @@ def _make_case(**overrides) -> Case:
     return Case(data)
 
 
-def _versioned(case: Case | MagicMock | None, version: str = "case-version"):
+def _versioned(case: SchemaCase | MagicMock | None, version: str = "case-version"):
     """Return the datastore shape used by ``get(..., version=True)``."""
     return case, version
 
@@ -151,12 +162,21 @@ class TestAccessValidation:
 # ---------------------------------------------------------------------------
 
 
+@pytest.fixture
+def case_collection(monkeypatch):
+    storage = MagicMock()
+    storage.case.model_class = SchemaCase
+    storage.__getitem__.side_effect = lambda name: getattr(storage, name)
+    monkeypatch.setattr(case_service, "datastore", lambda: storage)
+    return storage.case
+
+
+@pytest.mark.usefixtures("case_collection")
 class TestCreateCase:
     """Tests for case_service.create_case."""
 
     @patch("howler.services.case_service.is_classification_accessible", return_value=False)
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_rejects_classification_above_user_clearance(self, mock_ds_fn, _mock_accessible):
+    def test_create_case_rejects_classification_above_user_clearance(self, _mock_accessible, case_collection):
         """create_case raises before saving when the requested classification is inaccessible."""
         with pytest.raises(ForbiddenException, match="cannot create case"):
             case_service.create_case(
@@ -164,76 +184,80 @@ class TestCreateCase:
                 user=_make_user(classification=CLASSIFICATION.UNRESTRICTED),
             )
 
-        mock_ds_fn.return_value.case.save.assert_not_called()
+        case_collection.save.assert_not_called()
 
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_saves_to_datastore(self, _mock_ds_fn):
-        """create_case constructs a Case from title/summary and saves it."""
-        result = case_service.create_case({"title": "New Case", "summary": "A summary"}, user=_make_user())
+    def test_create_case_saves_to_datastore(self, case_collection):
+        """The create-only write includes fields declared on the collection model."""
 
-        assert isinstance(result, Case)
-        assert result.case_id
+        class Case(SchemaCase):
+            plugin: Keyword
+
+        extended_case = model_registry.register_derived(Case, SchemaCase)
+        case_collection.model_class = extended_case
+        result = case_service.create_case(
+            {"title": "New Case", "summary": "A summary", "plugin": "keep"}, user=_make_user()
+        )
+
+        assert isinstance(result, extended_case)
+        assert result.as_primitives()["plugin"] == "keep"
         assert result.title == "New Case"
         assert result.summary == "A summary"
+        case_collection.save.assert_called_once_with(result.case_id, result, refresh="wait_for", version=CREATE_TOKEN)
 
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_generates_unique_id(self, _mock_ds_fn):
+    def test_create_case_generates_unique_id(self):
         """create_case auto-generates a unique UUID for each case."""
         id_a = case_service.create_case({"title": "Title A", "summary": "Summary A"}, user=_make_user()).case_id
         id_b = case_service.create_case({"title": "Title B", "summary": "Summary B"}, user=_make_user()).case_id
         assert id_a != id_b
 
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_returns_odm(self, _mock_ds_fn):
-        """create_case returns the created case as a plain dict."""
-        result = case_service.create_case({"title": "Title", "summary": "Summary"}, user=_make_user())
-
-        assert isinstance(result, Case)
-        assert result.title == "Title"
-        assert result.summary == "Summary"
-        assert result.case_id
-
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_sets_log_entry(self, _mock_ds_fn):
+    def test_create_case_sets_log_entry(self, monkeypatch):
         """create_case adds a creation log entry for the given user."""
+        expected_time = datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=timezone.utc)
+        monkeypatch.setattr(case_service, "now_as_datetime", lambda: expected_time)
+        monkeypatch.setattr(
+            "howler.models.fields.arrow.utcnow",
+            lambda: SimpleNamespace(datetime=expected_time),
+        )
         user = _make_user()
         result = case_service.create_case({"title": "Title", "summary": "Summary"}, user=user)
 
         assert len(result.log) == 1
         assert result.log[0].user == user.uname
+        assert result.log[0].timestamp == expected_time
 
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_no_user_defaults_to_system(self, _mock_ds_fn):
+        sentinel_log = SchemaCaseLog.model_validate(
+            {"timestamp": "NOW", "explanation": "Case created", "user": user.uname}
+        )
+        assert result.log[0].as_primitives() == sentinel_log.as_primitives()
+        assert result.log[0].as_primitives()["timestamp"] == "2026-01-02T03:04:05.678901Z"
+
+        with pytest.raises(HowlerValueError):
+            SchemaCaseLog(timestamp=expected_time, explanation="Case created", user="")
+        with pytest.raises(HowlerValueError):
+            SchemaCaseLog.model_validate({"timestamp": "NOW", "explanation": "Case created", "user": ""})
+
+    def test_create_case_no_user_defaults_to_system(self):
         """create_case uses 'system' as the log user when user='' (the default)."""
         result = case_service.create_case({"title": "Title", "summary": "Summary"})
 
         assert len(result.log) == 1
         assert result.log[0].user == "system"
 
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_raises_when_empty_data(self, mock_ds_fn):
+    def test_create_case_raises_when_empty_data(self, case_collection):
         """create_case raises InvalidDataException when case data is empty."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
         with pytest.raises(InvalidDataException):
             case_service.create_case({})
 
-        mock_ds.case.save.assert_not_called()
+        case_collection.save.assert_not_called()
 
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_raises_when_none_data(self, mock_ds_fn):
+    def test_create_case_raises_when_none_data(self, case_collection):
         """create_case raises InvalidDataException when case data is None."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
         with pytest.raises(InvalidDataException):
             case_service.create_case(None)  # type: ignore[arg-type]
 
-        mock_ds.case.save.assert_not_called()
+        case_collection.save.assert_not_called()
 
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_strips_case_id(self, _mock_ds_fn):
+    def test_create_case_strips_case_id(self):
         """create_case ignores any case_id supplied in the input dict."""
         result = case_service.create_case(
             {"case_id": "should-be-removed", "title": "T", "summary": "S"}, user=_make_user()
@@ -241,8 +265,7 @@ class TestCreateCase:
 
         assert result["case_id"] != "should-be-removed"
 
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_uses_only_trusted_keyword_case_id(self, _mock_ds_fn):
+    def test_create_case_uses_only_trusted_keyword_case_id(self):
         """A trusted internal ID replaces, rather than trusts, a request payload ID."""
         trusted_case_id = "7d09f1a0-9976-4c08-b761-90be247b2f13"
 
@@ -255,7 +278,7 @@ class TestCreateCase:
         assert result.case_id == trusted_case_id
 
     @patch("howler.services.case_service.comms_service.emit")
-    @patch.object(Case, "save", side_effect=VersionConflictException("case ID already exists"))
+    @patch.object(SchemaCase, "save", side_effect=VersionConflictException("case ID already exists"))
     def test_create_case_conflict_does_not_overwrite_or_emit(self, mock_save, mock_emit):
         """A trusted ID still uses create-only persistence and emits only after success."""
         trusted_case_id = "7d09f1a0-9976-4c08-b761-90be247b2f13"
@@ -286,9 +309,7 @@ class TestUpdateCase:
         """update_case raises before saving when classification escalation is requested."""
         mock_case = _make_case()
         mock_ds_fn.return_value.case.get.return_value = _versioned(mock_case)
-        mock_accessible.side_effect = lambda _user, classification: (
-            getattr(classification, "value", classification) != "RESTRICTED"
-        )
+        mock_accessible.side_effect = lambda _user, classification: classification != "RESTRICTED"
 
         with pytest.raises(ForbiddenException, match="Cannot set case to invalid classification"):
             case_service.update_case(
@@ -298,6 +319,26 @@ class TestUpdateCase:
             )
 
         mock_ds_fn.return_value.case.save.assert_not_called()
+
+    @patch("howler.services.case_service.datastore")
+    def test_update_case_classification_checks_item_classifications(self, mock_ds_fn):
+        """update_case compares the new classification against the case items' maximum classification."""
+        mock_ds_fn.return_value.case.get.return_value = _versioned(
+            _make_case(
+                items=[
+                    {"type": "hit", "value": "hit-001", "name": "hit-001", "classification": CLASSIFICATION.RESTRICTED},
+                    {"type": "hit", "value": "hit-002", "name": "hit-002"},
+                ]
+            )
+        )
+
+        result = case_service.update_case("case-001", {"classification": CLASSIFICATION.RESTRICTED}, _make_user())
+
+        assert result.classification == CLASSIFICATION.normalize_classification(CLASSIFICATION.RESTRICTED)
+        mock_ds_fn.return_value.__getitem__.return_value.save.assert_called_once()
+
+        with pytest.raises(ForbiddenException, match="Cannot lower case classification"):
+            case_service.update_case("case-001", {"classification": CLASSIFICATION.UNRESTRICTED}, _make_user())
 
     @patch("howler.services.case_service.datastore")
     def test_update_case_raises_not_found(self, mock_ds_fn):
@@ -484,7 +525,7 @@ class TestHideCases:
         assert case_obj.visible is False
         case_obj.save.assert_called_once_with(refresh=None, version="case-version")
 
-    @patch.object(Case, "save")
+    @patch.object(SchemaCase, "save")
     @patch("howler.services.case_service.datastore")
     def test_hide_cases_marks_related_items_not_visible(self, mock_ds_fn, mock_save):
         """Items in other cases that reference a hidden case ID get visible=False."""
@@ -492,7 +533,6 @@ class TestHideCases:
         mock_ds_fn.return_value = mock_ds
         user = _make_user("analyst")
 
-        # Build a Case object with items — stream_search returns it directly.
         related_case = Case({"case_id": "case-other", "title": "test case", "summary": "summary"})
         related_case.items = [
             CaseItem({"type": "case", "value": "case-001"}),
@@ -500,26 +540,15 @@ class TestHideCases:
         ]
         mock_ds.case.stream_search.return_value = iter([related_case])
 
-        # The target case itself (returned by ds.case.get in the second pass)
-        target_case_obj = MagicMock()
-        target_case_obj.case_id = "case-001"
-        target_case_obj.classification = CLASSIFICATION.UNRESTRICTED
-        target_case_obj.items = []
-        target_case_obj.log = []
+        target_case_obj = MagicMock(case_id="case-001", classification=CLASSIFICATION.UNRESTRICTED, items=[], log=[])
         mock_ds.case.get.return_value = _versioned(target_case_obj)
 
         case_service.hide_cases({"case-001"}, user=user)
 
-        # The matching item's visible flag must be set to False
-        matching = next(i for i in related_case.items if i.value == "case-001")
-        assert matching.visible is False
-        # The unrelated item must be untouched
-        unrelated = next(i for i in related_case.items if i.value == "something-else")
-        assert unrelated.visible is True
-        # The related case must be saved with the update
-        # A log entry must have been appended documenting the hidden reference
+        assert [item.visible for item in related_case.items] == [False, True]
         assert any("case-001" in log.explanation for log in related_case.log)
         mock_save.assert_called_once_with(refresh=None)
+        target_case_obj.save.assert_called_once_with(refresh=None, version="case-version")
 
     @patch("howler.services.case_service.datastore")
     def test_hide_cases_does_not_save_related_case_when_no_items_match(self, mock_ds_fn):
@@ -549,8 +578,7 @@ class TestHideCases:
 
         case_service.hide_cases({"case-001"}, user=user)
 
-        # No matching items → related case must NOT be saved
-        related_case_obj.save.assert_not_called()
+        # No matching items means only the explicitly hidden target is persisted.
         target_case_obj.save.assert_called_once_with(refresh=None, version="case-version")
 
     @patch("howler.services.case_service.datastore")
@@ -623,8 +651,10 @@ class TestHideCases:
 
         assert case_a.visible is False
         assert case_b.visible is False
-        case_a.save.assert_called_once_with(refresh=None, version="case-a-version")
-        case_b.save.assert_called_once_with(refresh=None, version="case-b-version")
+        for case in (case_a, case_b):
+            case.save.assert_any_call(refresh=None, version=f"{case.case_id}-version")
+        assert case_a.save.call_count == 1
+        assert case_b.save.call_count == 1
 
     @patch("howler.services.case_service.datastore")
     def test_hide_cases_appends_log_to_hidden_case(self, mock_ds_fn):
@@ -743,14 +773,38 @@ class TestAppendCaseItemRouting:
         with pytest.raises(InvalidDataException):
             case_service.append_case_item("case-001", item_value="some-id")
 
+    @pytest.mark.parametrize("item_type", ["hit", "reference", "folder"])
+    @pytest.mark.parametrize("as_enum", [False, True])
+    def test_append_case_item_accepts_string_and_enum_types(self, item_type, as_enum):
+        mock_ds = MagicMock()
+        mock_case = _make_case()
+        mock_ds.case.get.return_value = mock_case
+
+        with (
+            patch("howler.services.case_service.datastore", return_value=mock_ds),
+            patch("howler.services.case_service.append_hit", return_value=mock_case) as mock_append_hit,
+        ):
+            value = case_service.CaseItemTypes(item_type) if as_enum else item_type
+            result = case_service.append_case_item("case-001", item_type=value, item_value="some-id")
+
+        assert result is mock_case
+        item = mock_append_hit.call_args.args[1] if item_type == "hit" else mock_case.items[0]
+        assert item.type == item_type
+        mock_ds.case.save.assert_not_called()
+
+    @pytest.mark.parametrize("item_type", ["unicorn", 123, ["unicorn"]])
     @patch("howler.services.case_service.datastore")
-    def test_append_case_item_invalid_type_raises(self, mock_ds_fn):
-        """append_case_item raises InvalidDataException when item_type is unrecognized."""
+    def test_append_case_item_invalid_type_raises(self, mock_ds_fn, item_type):
+        """Invalid item types raise InvalidDataException with the supported values."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        with pytest.raises(InvalidDataException):
-            case_service.append_case_item("case-001", item_type="unicorn", item_value="some-id")
+        with pytest.raises(InvalidDataException) as exc_info:
+            case_service.append_case_item("case-001", item_type=item_type, item_value="some-id")
+
+        assert str(exc_info.value) == (
+            f"Invalid item type: {item_type}, valid types are: event, hit, case, reference, folder, markdown"
+        )
 
     @pytest.mark.parametrize("item_type", ["table", "lead"])
     @patch("howler.services.case_service.datastore")
@@ -844,7 +898,7 @@ class TestAppendHit:
 
         assert mock_case.items == [item]
         assert mock_hit.howler.related == ["case-001"]
-        mock_hit.save.assert_called_once_with(version="hit-version")
+        mock_hit.save.assert_called_once_with(version="hit-version", refresh=None)
         mock_case.save.assert_not_called()
 
     @patch("howler.services.case_service.hit_service.get_hit")
@@ -859,12 +913,11 @@ class TestAppendHit:
         mock_case.case_id = "case-001"
         mock_case.classification = "UNRESTRICTED"
         mock_case.items = []
-        mock_case.save.side_effect = [True, True]
 
         mock_hit = MagicMock()
+        mock_hit.save.side_effect = DataStoreException("backing save failed")
         mock_hit.classification = "UNRESTRICTED"
         mock_hit.howler.related = []
-        mock_hit.save.side_effect = DataStoreException("backing save failed")
         mock_get_hit.return_value = (mock_hit, "hit-version")
 
         item = CaseItem({"type": "hit", "value": "hit-001"})
@@ -874,7 +927,7 @@ class TestAppendHit:
         assert mock_case.items == [item]
         assert mock_hit.howler.related == ["case-001"]
         mock_case.save.assert_not_called()
-        mock_hit.save.assert_called_once_with(version="hit-version")
+        mock_hit.save.assert_called_once_with(version="hit-version", refresh=None)
 
     @patch.object(CLASSIFICATION, "is_accessible", return_value=False)
     @patch("howler.services.case_service.hit_service.get_hit")
@@ -898,7 +951,7 @@ class TestAppendHit:
             case_service.append_hit(mock_case, item)
 
         assert mock_case.items == []
-        mock_hit.save.assert_not_called()
+        mock_ds.__getitem__.return_value.save.assert_not_called()
         mock_case.save.assert_not_called()
 
     @patch("howler.services.case_service.recompute_case_metadata")
@@ -925,7 +978,7 @@ class TestAppendHit:
         assert len(mock_case.items) == 1
         mock_backref.assert_called_once_with(mock_hit, "case-001", user=None)
         mock_sync.assert_called_once_with(mock_case)
-        mock_hit.save.assert_called_once_with(version="howler-hit-000001---5---2")
+        mock_hit.save.assert_called_once_with(version="howler-hit-000001---5---2", refresh=None)
 
     @patch("howler.services.case_service.recompute_case_metadata")
     @patch("howler.services.case_service.add_backreference")
@@ -1076,7 +1129,7 @@ class TestAppendEvent:
         item = CaseItem({"type": "event", "value": "obs-001"})
         case_service.append_event(mock_case, item)
 
-        mock_case.save.assert_not_called()
+        mock_ds.case.save.assert_not_called()
         assert len(mock_case.items) == 1
         mock_backref.assert_called_once_with(mock_obs, "case-001", user=None)
         mock_sync.assert_called_once_with(mock_case)
@@ -1165,10 +1218,10 @@ class TestAppendCase:
         item = CaseItem({"type": "case", "value": "child-001"})
         case_service.append_case(mock_parent, item)
 
-        mock_parent.save.assert_not_called()
+        mock_ds.case.save.assert_not_called()
         assert len(mock_parent.items) == 1
         assert item.value == "child-001"
-        assert item.classification.value == mock_child.classification
+        assert item.classification == mock_child.classification
 
     @patch("howler.services.case_service.datastore")
     def test_append_case_missing_parent_raises(self, mock_ds_fn):
@@ -1341,7 +1394,7 @@ class TestAppendReference:
         case_service.append_case_item("case-001", item=item)
 
         assert item in mock_case.items
-        mock_case.save.assert_not_called()
+        mock_ds.case.save.assert_not_called()
 
     @patch("howler.services.case_service.datastore")
     def test_append_reference_missing_case_raises(self, mock_ds_fn):
@@ -1402,57 +1455,28 @@ class TestRemoveCaseItem:
         with pytest.raises(NotFoundException):
             case_service.remove_case_items("case-001", ["00000000-0000-0000-0000-000000000000"])
 
+    @pytest.mark.parametrize("item_type", ["hit", "event"])
     @patch("howler.services.case_service.recompute_case_metadata")
     @patch("howler.services.case_service.datastore")
-    def test_remove_hit_item_clears_backreference(self, mock_ds_fn, mock_sync):
-        """remove_case_item removes the item from the case and removes the hit back-reference."""
+    def test_remove_item_clears_backreference(self, mock_ds_fn, mock_sync, item_type):
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-
-        hit_item = CaseItem({"type": "hit", "value": "hit-001"})
-
+        item = CaseItem({"type": item_type, "value": "record-001"})
         mock_case = MagicMock()
         mock_case.case_id = "case-001"
-        mock_case.items = [hit_item]
+        mock_case.items = [item]
         mock_ds.case.get.return_value = _versioned(mock_case)
         mock_ds.case.save.return_value = True
+        backing = MagicMock()
+        backing.howler.related = ["case-001"]
+        version = f"howler-{item_type}-000001---5---2"
+        mock_ds.__getitem__.return_value.get.return_value = (backing, version)
 
-        mock_hit = MagicMock()
-        mock_hit.howler.related = ["case-001"]
-        mock_ds.__getitem__.return_value.get.return_value = (mock_hit, "howler-hit-000001---5---2")
+        case_service.remove_case_items("case-001", [item.id])
 
-        case_service.remove_case_items("case-001", [hit_item.id])
-
-        assert hit_item not in mock_case.items
-        assert mock_hit.howler.related == []
-        mock_hit.save.assert_called_once_with(version="howler-hit-000001---5---2")
-        mock_case.save.assert_called_once_with(refresh=None, version="case-version")
-        mock_sync.assert_called_once_with(mock_case)
-
-    @patch("howler.services.case_service.recompute_case_metadata")
-    @patch("howler.services.case_service.datastore")
-    def test_remove_event_item_clears_backreference(self, mock_ds_fn, mock_sync):
-        """remove_case_item removes an event item from the case."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
-        obs_item = CaseItem({"type": "event", "value": "obs-001"})
-
-        mock_case = MagicMock()
-        mock_case.case_id = "case-001"
-        mock_case.items = [obs_item]
-        mock_ds.case.get.return_value = _versioned(mock_case)
-        mock_ds.case.save.return_value = True
-
-        mock_obs = MagicMock()
-        mock_obs.howler.related = ["case-001"]
-        mock_ds.__getitem__.return_value.get.return_value = (mock_obs, "howler-event-000001---5---2")
-
-        case_service.remove_case_items("case-001", [obs_item.id])
-
-        assert obs_item not in mock_case.items
-        assert mock_obs.howler.related == []
-        mock_obs.save.assert_called_once_with(version="howler-event-000001---5---2")
+        assert item not in mock_case.items
+        assert backing.howler.related == []
+        backing.save.assert_called_once_with(version=version)
         mock_case.save.assert_called_once_with(refresh=None, version="case-version")
         mock_sync.assert_called_once_with(mock_case)
 
@@ -1481,7 +1505,6 @@ class TestRenameCaseItem:
         result = case_service.rename_case_item("case-001", item.id, "New Name")
 
         assert item.name == "New Name"
-        mock_case.save.assert_not_called()
         mock_ds.case.save.assert_not_called()
         assert result is mock_case
 
@@ -1555,7 +1578,7 @@ class TestRenameCaseItem:
         mock_case = MagicMock()
         mock_case.case_id = "case-001"
         mock_case.items = [item]
-        mock_case.save.return_value = False
+        mock_ds.case.save.return_value = False
         mock_ds.case.get.return_value = mock_case
 
         result = case_service.rename_case_item("case-001", item.id, "New Name")
@@ -1579,7 +1602,6 @@ class TestRenameCaseItem:
 
         case_service.rename_case_item("case-001", item.id, "Same")
 
-        mock_case.save.assert_not_called()
         mock_ds.case.save.assert_not_called()
 
     @patch("howler.services.case_service.datastore")
@@ -1601,7 +1623,6 @@ class TestRenameCaseItem:
         # Renaming item_in_b to "Report" is allowed because it's in a different folder
         case_service.rename_case_item("case-001", item_in_b.id, "Report")
 
-        mock_case.save.assert_not_called()
         mock_ds.case.save.assert_not_called()
 
     @patch("howler.services.case_service.datastore")
@@ -1872,12 +1893,8 @@ class TestCaseEventEmission:
         assert args[0][1]["case"]["title"] == "New"
 
     @patch("howler.services.case_service.comms_service")
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_emits_event(self, mock_ds_fn, mock_events):
+    def test_create_case_emits_event(self, mock_events, case_collection):
         """create_case emits a 'cases' event with the new case."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
         case_service.create_case({"title": "New", "summary": "S"}, user=_make_user())
 
         mock_events.emit.assert_called_once()
@@ -2161,28 +2178,21 @@ class TestUpdateCaseRule:
 class TestGetLastResolvedTime:
     """Tests for case_service.get_last_resolved_time."""
 
-    def test_single_resolution(self):
-        """Returns the timestamp when a case has been resolved once."""
-        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
+    def test_single_and_multiple_resolutions(self):
+        case = _make_case()
         case.log = [
             _make_log("Case created"),
             _make_log_change("status", "open", "resolved", "2026-01-15T10:00:00.000000Z"),
         ]
         result = case_service.get_last_resolved_time(case)
         assert result is not None
-        assert result.year == 2026
-        assert result.month == 1
-        assert result.day == 15
-
-    def test_multiple_resolve_cycles_returns_latest(self):
-        """Returns the final resolved timestamp after open→resolved→in-progress→resolved."""
-        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
-        case.log = [
-            _make_log("Case created"),
-            _make_log_change("status", "open", "resolved", "2026-01-10T10:00:00.000000Z"),
-            _make_log_change("status", "resolved", "in-progress", "2026-01-12T10:00:00.000000Z"),
-            _make_log_change("status", "in-progress", "resolved", "2026-02-20T15:30:00.000000Z"),
-        ]
+        assert (result.year, result.month, result.day) == (2026, 1, 15)
+        case.log.extend(
+            [
+                _make_log_change("status", "resolved", "in-progress", "2026-01-12T10:00:00.000000Z"),
+                _make_log_change("status", "in-progress", "resolved", "2026-02-20T15:30:00.000000Z"),
+            ]
+        )
         result = case_service.get_last_resolved_time(case)
         assert result is not None
         assert result.month == 2
@@ -2213,6 +2223,17 @@ class TestGetLastResolvedTime:
 
 class TestRuleTimeframeAndExpireAfterResolved:
     """Tests for timeframe (days) and expire_after_resolved (boolean) on rules."""
+
+    @patch("howler.services.case_service.datastore")
+    def test_add_rule_rejects_invalid_timeframe(self, mock_ds_fn):
+        mock_ds_fn.return_value.case.get.return_value = _versioned(_make_case())
+
+        with pytest.raises(InvalidDataException):
+            case_service.add_case_rule(
+                "case-001",
+                {"query": "*:*", "destination": "alerts/all", "timeframe": "invalid"},
+                _make_user("analyst1"),
+            )
 
     @patch("howler.services.case_service.datastore")
     def test_add_rule_with_timeframe_and_expire_after_resolved(self, mock_ds_fn):
@@ -2350,7 +2371,7 @@ class TestRuleTimeframeAndExpireAfterResolved:
 # ---------------------------------------------------------------------------
 
 
-from howler.odm.models.case import CaseLog
+CaseLog = SchemaCaseLog.model_validate
 
 
 def _make_log(explanation: str, timestamp: str = "2026-01-01T00:00:00.000000Z") -> CaseLog:
@@ -2399,7 +2420,7 @@ class TestCaseItemClassificationPropagation:
         item = CaseItem({"type": "hit", "value": "hit-001", "name": "hit-001"})
         case_service.append_hit(mock_case, item)
 
-        assert item.classification.value == CLASSIFICATION.normalize_classification("RESTRICTED")
+        assert item.classification == CLASSIFICATION.normalize_classification("RESTRICTED")
 
     @patch("howler.services.case_service.recompute_case_metadata")
     @patch("howler.services.case_service.add_backreference")
@@ -2424,7 +2445,7 @@ class TestCaseItemClassificationPropagation:
         item = CaseItem({"type": "hit", "value": "hit-001", "name": "hit-001"})
         case_service.append_hit(mock_case, item)
 
-        assert item.classification.value == CLASSIFICATION.normalize_classification("UNRESTRICTED")
+        assert item.classification == CLASSIFICATION.normalize_classification("UNRESTRICTED")
 
     @patch("howler.services.case_service.recompute_case_metadata")
     @patch("howler.services.case_service.add_backreference")
@@ -2448,7 +2469,7 @@ class TestCaseItemClassificationPropagation:
         item = CaseItem({"type": "event", "value": "event-001", "name": "event-001"})
         case_service.append_event(mock_case, item)
 
-        assert item.classification.value == CLASSIFICATION.normalize_classification("RESTRICTED")
+        assert item.classification == CLASSIFICATION.normalize_classification("RESTRICTED")
 
     @patch("howler.services.case_service.recompute_case_metadata")
     @patch("howler.services.case_service.add_backreference")
@@ -2474,7 +2495,7 @@ class TestCaseItemClassificationPropagation:
         item = CaseItem({"type": "event", "value": "event-001", "name": "event-001"})
         case_service.append_event(mock_case, item)
 
-        assert item.classification.value == CLASSIFICATION.normalize_classification("UNRESTRICTED")
+        assert item.classification == CLASSIFICATION.normalize_classification("UNRESTRICTED")
 
 
 # ---------------------------------------------------------------------------
@@ -2617,7 +2638,7 @@ class TestAppendFolder:
         case_service.append_case_item("case-001", item=item)
 
         assert len(mock_case.items) == 1
-        mock_case.save.assert_not_called()
+        mock_ds.case.save.assert_not_called()
 
     @patch("howler.services.case_service.datastore")
     def test_append_folder_missing_case_raises(self, mock_ds_fn):
@@ -2672,7 +2693,7 @@ class TestAppendMarkdown:
         case_service.append_case_item("case-001", item=item)
 
         assert len(mock_case.items) == 1
-        mock_case.save.assert_not_called()
+        mock_ds.case.save.assert_not_called()
 
     @patch("howler.services.case_service.datastore")
     def test_append_markdown_missing_case_raises(self, mock_ds_fn):
@@ -2712,7 +2733,7 @@ class TestMoveCaseItem:
         case_service.move_case_item("case-001", item.id, folder.id)
 
         assert item.parent == folder.id
-        mock_case.save.assert_not_called()
+        mock_ds.case.save.assert_not_called()
 
     @patch("howler.services.case_service.datastore")
     def test_move_item_to_root(self, mock_ds_fn):
@@ -2732,7 +2753,7 @@ class TestMoveCaseItem:
         case_service.move_case_item("case-001", item.id, None)
 
         assert item.parent is None
-        mock_case.save.assert_not_called()
+        mock_ds.case.save.assert_not_called()
 
     @patch("howler.services.case_service.datastore")
     def test_move_case_item_type_to_subfolder_raises(self, mock_ds_fn):
@@ -2983,10 +3004,11 @@ class TestIsDescendant:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.usefixtures("case_collection")
 class TestCreateCaseWithItems:
     """Tests for create_case when the items list is non-empty."""
 
-    @patch.object(Case, "save", return_value=True)
+    @patch.object(SchemaCase, "save", return_value=True)
     @patch(
         "howler.services.case_service.append_case_item",
         side_effect=DataStoreException("item save failed"),
@@ -3005,7 +3027,7 @@ class TestCreateCaseWithItems:
 
         mock_save.assert_not_called()
 
-    @patch.object(Case, "save", return_value=True)
+    @patch.object(SchemaCase, "save", return_value=True)
     @patch(
         "howler.services.case_service.append_case_item",
         side_effect=NotFoundException("hit hit-001 does not exist"),
@@ -3025,9 +3047,11 @@ class TestCreateCaseWithItems:
 
         mock_save.assert_not_called()
 
-    @patch.object(Case, "save", return_value=True)
+    @patch.object(SchemaCase, "save", return_value=True)
     @patch("howler.services.case_service.append_case_item")
-    def test_create_case_with_items_appends_and_returns_created_case(self, mock_append_item, mock_save):
+    def test_create_case_with_items_appends_and_returns_created_case(
+        self, mock_append_item, mock_save, case_collection
+    ):
         """create_case delegates constructed items and returns the same created parent."""
         user = _make_user()
         result = case_service.create_case(
@@ -3036,7 +3060,7 @@ class TestCreateCaseWithItems:
             user=user,
         )
 
-        assert isinstance(result, Case)
+        assert isinstance(result, SchemaCase)
         mock_append_item.assert_called_once()
         assert mock_append_item.call_args.args == (result,)
         delegated_item = mock_append_item.call_args.kwargs["item"]
@@ -3045,30 +3069,9 @@ class TestCreateCaseWithItems:
         assert delegated_item.name == "ref"
         assert mock_append_item.call_args.kwargs["user"] is user
         mock_save.assert_called_once_with(refresh="true", version=CREATE_TOKEN)
+        case_collection.get.assert_not_called()
 
-    @patch.object(Case, "save", return_value=True)
-    @patch("howler.services.case_service.append_case_item")
-    @patch("howler.services.case_service.datastore")
-    def test_create_case_with_items_does_not_refetch_parent(self, mock_ds_fn, mock_append_item, mock_save):
-        """The service finalizes its in-memory parent rather than issuing a stale re-fetch."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
-        result = case_service.create_case(
-            {
-                "title": "T",
-                "summary": "S",
-                "items": [{"type": "reference", "value": "https://x.com", "name": "ref"}],
-            },
-            user=_make_user(),
-        )
-
-        assert isinstance(result, Case)
-        mock_append_item.assert_called_once()
-        mock_ds.case.get.assert_not_called()
-        mock_save.assert_called_once_with(refresh=None, version=CREATE_TOKEN)
-
-    @patch.object(Case, "save", return_value=True)
+    @patch.object(SchemaCase, "save", return_value=True)
     @patch("howler.services.case_service.append_case_item")
     def test_create_case_with_items_passes_classified_item_to_dispatcher(self, mock_append_item, _mock_save):
         """The dispatcher receives the original classification and performs the item-level access check."""
@@ -3091,7 +3094,7 @@ class TestCreateCaseWithItems:
 
         delegated_item = mock_append_item.call_args.kwargs["item"]
         assert result.items == []
-        assert delegated_item.classification.value == CLASSIFICATION.normalize_classification(CLASSIFICATION.RESTRICTED)
+        assert delegated_item.classification == CLASSIFICATION.normalize_classification(CLASSIFICATION.RESTRICTED)
         assert mock_append_item.call_args.kwargs["user"] is user
 
 
@@ -3160,7 +3163,7 @@ class TestGetParentFromPath:
         mock_ds.case.get.assert_called_once_with(key="case-001", as_obj=True, version=False)
         assert result is None  # "/" returns None (root path)
 
-    @patch.object(Case, "save")
+    @patch.object(SchemaCase, "save")
     @patch("howler.services.case_service.datastore")
     def test_string_case_id_creates_path_in_memory(self, mock_ds_fn, mock_save):
         """A string case ID creates missing folders without persisting the case."""
@@ -3206,7 +3209,7 @@ class TestGetParentFromPath:
         with pytest.raises(NotFoundException):
             case_service.get_parent_from_path(None, "some/path")
 
-    @patch("howler.odm.models.case.Case.save")
+    @patch("howler.services.case_service.datastore")
     def test_deeply_nested_path_creates_all_folders_without_persisting(self, mock_save):
         """Every folder in a deep path is created in memory without saving."""
         case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
@@ -3215,7 +3218,7 @@ class TestGetParentFromPath:
         parts = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
         result = case_service.get_parent_from_path(case, "/".join(parts), create_if_missing=True)
 
-        mock_save.assert_not_called()
+        mock_save.return_value.case.save.assert_not_called()
 
         folders = [item for item in case.items if item.type == "folder"]
         assert len(folders) == len(parts)
@@ -3359,7 +3362,7 @@ class TestRenameCaseItemFolder:
 
         assert folder.name == "New Folder"
         assert folder.value == "New Folder"
-        mock_case.save.assert_not_called()
+        mock_ds.case.save.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

@@ -9,9 +9,9 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.operations import OdmHelper
-from howler.odm.base import _Field
-from howler.odm.models.hit import Hit
-from howler.odm.models.user import User
+from howler.models.hit import Hit
+from howler.models.registry import FieldDefinition, model_registry
+from howler.models.user import User
 from howler.security.login import api_login
 from howler.services import action_service, analytic_service, correlation_service, hit_service
 from howler.utils.constants import DEBUG_FORCE_REFRESH
@@ -90,7 +90,7 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
         "Use POST /api/v1/hit/ directly with pre-mapped hit data instead."
     ]
     # Validate field_map targets
-    hit_fields = Hit.flat_fields()
+    hit_fields = model_registry.flat_fields(datastore().hit.model_class or Hit)
     _bundle_compat_fields = {"howler.is_bundle", "howler.hits", "howler.bundle_size", "howler.bundles"}
     for targets in field_map.values():
         for target in targets:
@@ -110,7 +110,7 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
                     return bad_request(err=warning)
 
     out: list[dict[str, Any]] = []
-    odms: list[Hit] = []
+    odms: list[Any] = []
     bundle_id: str | None = None
     for hit in hits:
         cur_id = get_random_id()
@@ -130,7 +130,7 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
                 for target in targets:
                     _val = val
                     try:
-                        field_data: Optional[_Field] = hit_fields[target]
+                        field_data: Optional[FieldDefinition] = hit_fields[target]
                     except KeyError:
                         logger.debug("`%s` not in hit fields", target)
                         field_data = next(

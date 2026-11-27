@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.random_data import create_templates, wipe_templates
+from howler.sample_data.random_data import create_templates, wipe_templates
 from test.conftest import APIError, get_api_data
 
 
@@ -45,7 +45,7 @@ def test_add_template(datastore: HowlerDatastore, login_session):
             data=json.dumps(template_data),
         )
 
-    assert "template.analytic" in str(err.value)
+    assert "analytic\n  Field required" in str(err.value)
 
     template_data["analytic"] = "test"
     with pytest.raises(APIError) as err:

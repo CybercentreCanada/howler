@@ -1,15 +1,14 @@
 import math
-from types import SimpleNamespace
 
 import pytest
 from luqum.parser import parser
 from luqum.tree import BoolOperation
 from luqum.utils import UnknownOperationResolver
 
-from howler import odm
-from howler.common import loader
 from howler.common.exceptions import InvalidDataException
-from howler.odm.models.hit import Hit
+from howler.models import HowlerEmbeddedModel, model_extensions, register_model
+from howler.models.fields import Boolean, CaseInsensitiveKeyword, Float
+from howler.models.hit import Hit
 from howler.services import lucene_service
 from howler.services.lucene_service import LuceneProcessor, is_case_insensitive_field
 from howler.utils.lucene import coerce, normalize_phrase, try_parse_ip, try_parse_number
@@ -50,27 +49,24 @@ def test_is_case_insensitive_field_and_plugin_refresh(monkeypatch):
     for field in ("threat.indicator.provider", "organization.name", "file.hash.ssdeep", "labels.env_t", "custom_b"):
         assert is_case_insensitive_field(field) is False
 
-    @odm.model(index=True, store=True)
-    class PluginData(odm.Model):
-        tag = odm.CaseInsensitiveKeyword()
-        score = odm.Float()
-        active = odm.Boolean()
+    @register_model(index=True, store=True, embedded=True)
+    class PluginData(HowlerEmbeddedModel):
+        tag: CaseInsensitiveKeyword | None = None
+        score: Float | None = None
+        active: Boolean | None = None
 
-    odm_mod = SimpleNamespace(modify_odm={"hit": lambda t: t.add_namespace("fake", odm.Compound(PluginData))})
-    monkeypatch.setattr(
-        "howler.datastore.howler_store.get_plugins",
-        lambda: [SimpleNamespace(name="fake", modules=SimpleNamespace(odm=odm_mod))],
-    )
-    monkeypatch.setattr(loader, "_datastore", None)
-    monkeypatch.setattr(lucene_service, "_HIT_FIELDS_CACHE", None)
-    try:
+    with model_extensions.isolated():
+        model_extensions.declare(Hit, "fake", PluginData | None, plugin="fake")
+        extended_hit = model_extensions.finalize(Hit)
+
+        monkeypatch.setattr(lucene_service, "_HIT_FIELDS_CACHE", None)
+        monkeypatch.setattr(lucene_service, "_get_hit_model", lambda: extended_hit)
         assert is_case_insensitive_field("fake.tag") is True
         assert _eval_tree("fake.score:[-440990.34 TO -440990.34]", {"fake.score": -440990.3408391987}) is True
         assert _eval_tree("fake.active:T", {"fake.active": "true"}) is True
-    finally:
-        if "fake" in Hit.fields():
-            Hit.remove_namespace("fake")
-    assert is_case_insensitive_field("fake.tag") is False
+
+        monkeypatch.setattr(lucene_service, "_get_hit_model", lambda: Hit)
+        assert is_case_insensitive_field("fake.tag") is False
 
 
 def test_lucene_processor_edge_cases():

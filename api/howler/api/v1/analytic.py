@@ -18,10 +18,11 @@ from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import DataStoreException
 from howler.datastore.operations import OdmHelper
-from howler.odm.models.analytic import Analytic, Comment, Notebook, TriageOptions
-from howler.odm.models.user import User
+from howler.models.analytic import Analytic, Comment, Notebook, TriageOptions
+from howler.models.user import User
 from howler.security.login import api_login
 from howler.services import analytic_service, user_service
+from howler.utils.isotime import now_as_datetime
 
 MAX_COMMENT_LEN = 5000
 SUB_API = "analytic"
@@ -119,14 +120,12 @@ def update_analytic(id: str, user: User, **kwargs):
     try:
         existing_analytic.description = new_data.get("description", existing_analytic.description)
 
+        existing_triage_data = {}
         if existing_analytic.triage_settings is not None:
-            existing_triage_data = existing_analytic.triage_settings.as_primitives()
-        else:
-            existing_triage_data = {}
+            existing_triage_data = existing_analytic.triage_settings.model_dump(by_alias=True)
 
-        existing_analytic.triage_settings = TriageOptions(
-            {**existing_triage_data, **new_data.get("triage_settings", {})}
-        )
+        triage_data = {**existing_triage_data, **new_data.get("triage_settings", {})}
+        existing_analytic.triage_settings = TriageOptions.model_validate(triage_data)
 
         storage.analytic.save(existing_analytic.analytic_id, existing_analytic, refresh=refresh)
 
@@ -138,7 +137,7 @@ def update_analytic(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @analytic_api.route("/<id>/comments", methods=["POST"])
 @api_login(audit=False, required_priv=["W"])
-def add_comment(id: str, user: dict[str, Any], **kwargs):
+def add_comment(id: str, user: User, **kwargs):
     """Add a comment
 
     Variables:
@@ -175,18 +174,10 @@ def add_comment(id: str, user: dict[str, Any], **kwargs):
     analytic = analytic_service.get_analytic(id, as_odm=True)
 
     try:
-        analytic.comment.append(
-            Comment(
-                {
-                    "user": user["uname"],
-                    "value": comment_data,
-                    "detection": comment.get("detection", None),
-                }
-            )
-        )
+        analytic.comment.append(Comment(user=user.uname, value=comment_data, detection=comment.get("detection", None)))
 
         datastore().analytic.save(analytic.analytic_id, analytic)
-    except DataStoreException as e:
+    except (DataStoreException, HowlerException) as e:
         return bad_request(err=str(e))
 
     return ok(analytic)
@@ -195,7 +186,7 @@ def add_comment(id: str, user: dict[str, Any], **kwargs):
 @generate_swagger_docs()
 @analytic_api.route("/<id>/comments/<comment_id>", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
-def edit_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
+def edit_comment(id: str, comment_id: str, user: User, **kwargs):
     """Edit a comment
 
     Variables:
@@ -231,16 +222,16 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
 
     analytic = analytic_service.get_analytic(id, as_odm=True)
 
-    comment: Optional[Comment] = next((c for c in analytic.comment if c.id == comment_id), None)
+    comment = next((c for c in analytic.comment if c.id == comment_id), None)
 
     if not comment:
         return not_found(err=f"Comment {comment_id} does not exist")
 
-    if comment.user != user["uname"]:
+    if comment.user != user.uname:
         return forbidden(err="Cannot edit comment that wasn't made by you.")
 
-    comment["value"] = comment_data
-    comment["modified"] = "NOW"
+    comment.value = comment_data
+    comment.modified = now_as_datetime()
 
     analytic.comment = [c if c.id != comment.id else comment for c in analytic.comment]
 
@@ -255,7 +246,7 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
 @generate_swagger_docs()
 @analytic_api.route("/<id>/comments/<comment_id>/react", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
-def react_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
+def react_comment(id: str, comment_id: str, user: User, **kwargs):
     """React to a comment
 
     Variables:
@@ -290,7 +281,7 @@ def react_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
 
     for comment in analytic.comment:
         if comment.id == comment_id:
-            comment.reactions[user["uname"]] = react_data
+            comment.reactions[user.uname] = react_data
 
     datastore().analytic.save(analytic.analytic_id, analytic)
 
@@ -300,7 +291,7 @@ def react_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
 @generate_swagger_docs()
 @analytic_api.route("/<id>/comments/<comment_id>/react", methods=["DELETE"])
 @api_login(audit=False, required_priv=["W"])
-def remove_react_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
+def remove_react_comment(id: str, comment_id: str, user: User, **kwargs):
     """React to a comment
 
     Variables:
@@ -323,7 +314,7 @@ def remove_react_comment(id: str, comment_id: str, user: dict[str, Any], **kwarg
     for comment in analytic.comment:
         if comment.id == comment_id:
             reactions = comment.reactions
-            reactions.pop(user["uname"], None)
+            reactions.pop(user.uname, None)
             comment["reactions"] = {**reactions}
 
     datastore().analytic.save(analytic.analytic_id, analytic)
@@ -365,7 +356,7 @@ def delete_comments(id: str, user: User, **kwargs):
     new_comments = []
     for comment in analytic.comment:
         if comment.id in comment_ids:
-            if ("admin" not in user["type"]) and comment.user != user["uname"]:
+            if ("admin" not in user.type) and comment.user != user.uname:
                 return forbidden(err="You cannot delete the comment of someone else.")
 
             continue
@@ -386,7 +377,7 @@ def delete_comments(id: str, user: User, **kwargs):
 @analytic_api.route("/<id>/owner", methods=["POST"])
 @api_login(required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
-def set_analytic_owner(id: str, user: dict[str, Any], **kwargs):
+def set_analytic_owner(id: str, user: User, **kwargs):
     """Set the analytic's owner
 
     Variables:
@@ -493,7 +484,7 @@ def remove_as_favourite(id: str, user: User | None, **kwargs):
         return forbidden(err="User was not found.")
 
     try:
-        user.favourite_analytics = list(filter(lambda f: f != id, user.favourite_analytics))
+        user.favourite_analytics = [f for f in user.favourite_analytics if f != id]
 
         storage.user.save(user.uname, user)
 
@@ -505,7 +496,7 @@ def remove_as_favourite(id: str, user: User | None, **kwargs):
 @generate_swagger_docs()
 @analytic_api.route("/<id>/notebooks", methods=["POST"])
 @api_login(audit=False, required_priv=["W"])
-def add_notebook(id: str, user: dict[str, Any], **kwargs):
+def add_notebook(id: str, user: User, **kwargs):
     """Add a notebook
 
     Variables:
@@ -548,17 +539,15 @@ def add_notebook(id: str, user: dict[str, Any], **kwargs):
     try:
         analytic.notebooks.append(
             Notebook(
-                {
-                    "user": user["uname"],
-                    "name": name,
-                    "value": link,
-                    "detection": detection if detection else None,
-                }
+                user=user.uname,
+                name=name,
+                value=link,
+                detection=detection if detection else None,
             )
         )
 
         datastore().analytic.save(analytic.analytic_id, analytic)
-    except DataStoreException as e:
+    except (DataStoreException, HowlerException) as e:
         return bad_request(err=str(e))
 
     return ok(analytic)
@@ -598,7 +587,7 @@ def delete_notebook(id: str, user: User, **kwargs):
     new_notebooks = []
     for notebook in analytic.notebooks:
         if notebook.id in notebook_ids:
-            if ("admin" not in user["type"]) and notebook.user != user["uname"]:
+            if ("admin" not in user.type) and notebook.user != user.uname:
                 return forbidden(err="You cannot delete the notebook of someone else.")
 
             continue

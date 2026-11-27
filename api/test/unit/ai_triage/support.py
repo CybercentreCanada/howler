@@ -1,11 +1,11 @@
 import json
 
-from howler.odm.models.hit import Hit
-from howler.odm.models.user import User
+from howler.models.hit import Hit
+from howler.models.user import User
 
 
 def make_user(name="analyst"):
-    return User(
+    return User.model_validate(
         {
             "uname": name,
             "name": name,
@@ -17,7 +17,7 @@ def make_user(name="analyst"):
 
 
 def make_hit(**howler):
-    return Hit(
+    return Hit.model_validate(
         {
             "classification": "U",
             "howler": {"analytic": "QA detection", "hash": "123abc", **howler},

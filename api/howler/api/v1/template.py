@@ -16,8 +16,8 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.operations import OdmHelper
-from howler.odm.models.template import Template
-from howler.odm.models.user import User
+from howler.models.template import Template
+from howler.models.user import User
 from howler.security.login import api_login
 from howler.utils.str_utils import sanitize_lucene_query
 
@@ -98,7 +98,7 @@ def create_template(**kwargs):
     storage = datastore()
 
     try:
-        template = Template(template_data)
+        template = Template.model_validate(template_data)
 
         if template.type == "personal":
             template.owner = kwargs["user"]["uname"]
@@ -153,7 +153,9 @@ def delete_template(id: str, user: User, **kwargs):
     if not storage.template.exists(id):
         return not_found(err="This template does not exist")
 
-    existing_template: Template = storage.template.get_if_exists(id)
+    existing_template = storage.template.get(id)
+    if not existing_template:
+        return not_found(err="This template does not exist")
 
     if existing_template.type == "personal" and existing_template.owner != user.uname:
         return forbidden(err="You cannot delete a personal template that is not owned by you.")
@@ -204,7 +206,9 @@ def update_template_fields(id: str, user: User, **kwargs):
     if not isinstance(new_fields, list) or not all(isinstance(f, str) for f in new_fields):
         return bad_request(err="List of new fields must be a list of strings.")
 
-    existing_template: Template = storage.template.get_if_exists(id)
+    existing_template = storage.template.get(id)
+    if not existing_template:
+        return not_found(err="This template does not exist")
 
     if existing_template.type == "personal" and existing_template.owner != user.uname:
         return forbidden(err="You cannot update a personal template that is not owned by you.")
@@ -214,6 +218,6 @@ def update_template_fields(id: str, user: User, **kwargs):
     storage.template.save(existing_template.template_id, existing_template, refresh=refresh)
 
     try:
-        return ok(storage.template.get_if_exists(existing_template.template_id, as_obj=False))
+        return ok(storage.template.get(existing_template.template_id, as_obj=False))
     except HowlerException as e:
         return bad_request(err=str(e))

@@ -1,7 +1,7 @@
 import itertools
 import logging
 from copy import copy
-from typing import TYPE_CHECKING, Any, Dict, KeysView, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Dict, KeysView, List, Optional, Set, Tuple, Union, cast
 
 from howler.common.exceptions import (
     HowlerKeyError,
@@ -9,9 +9,6 @@ from howler.common.exceptions import (
     InvalidDefinition,
 )
 from howler.common.loader import APP_NAME
-
-if TYPE_CHECKING:
-    from howler.odm.base import ClassificationObject
 
 log = logging.getLogger(f"{APP_NAME}.classification")
 
@@ -760,8 +757,8 @@ class Classification(object):
 
     def is_accessible(
         self,
-        user_c12n: "str | ClassificationObject",
-        c12n: "str | ClassificationObject | None",
+        user_c12n: str,
+        c12n: str | None,
         ignore_invalid: bool = False,
     ) -> bool:
         """
@@ -782,12 +779,6 @@ class Classification(object):
 
         if c12n is None:
             return True
-
-        if not isinstance(user_c12n, str):
-            user_c12n = user_c12n.value
-
-        if not isinstance(c12n, str):
-            c12n = c12n.value
 
         try:
             user_lvl, user_req, user_groups, user_subgroups = self._get_classification_parts(user_c12n)

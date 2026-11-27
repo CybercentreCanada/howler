@@ -12,7 +12,7 @@
       "name": "Create default data",
       "type": "python",
       "request": "launch",
-      "program": "api/howler/odm/random_data.py",
+      "program": "api/howler/sample_data/random_data.py",
       "env": {
         "PYTHONPATH": "${workspaceFolder}"
       },

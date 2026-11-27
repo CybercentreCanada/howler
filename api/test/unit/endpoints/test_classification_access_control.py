@@ -19,7 +19,6 @@ enforcement semantics independent of local configuration.
 """
 
 import uuid
-from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -27,11 +26,11 @@ from flask import Flask, Response
 
 from howler.common.exceptions import HowlerValueError, InvalidDataException, NotFoundException
 from howler.common.loader import datastore
-from howler.odm import Model
-from howler.odm.models.case import Case
-from howler.odm.models.hit import Hit
-from howler.odm.models.user import User
-from howler.odm.randomizer import random_model_obj
+from howler.models.case import Case
+from howler.models.fields import ClassificationValue
+from howler.models.hit import Hit
+from howler.models.user import User
+from howler.sample_data.randomizer import random_model_obj
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -94,19 +93,10 @@ def stub_classification(monkeypatch):
         and would otherwise normalize values against the deployment's
         classification.yml (which may be missing/invalid in CI).
     """
-    import howler.common.loader as loader
     import howler.security.utils as security_utils
-    from howler.odm.base import Classification
-    from howler.odm.models.hit import Hit as HitModel
 
     engine = StubClassificationEngine()
     monkeypatch.setattr(security_utils, "CLASSIFICATION", engine)
-    monkeypatch.setattr(loader, "get_classification", lambda yml_config=None: engine)
-
-    for model in (User, HitModel, Case):
-        for field in model.flat_fields().values():
-            if isinstance(field, Classification):
-                monkeypatch.setattr(field, "engine", engine)
 
     return engine
 
@@ -116,7 +106,7 @@ def _build_user(
     classification: str = "UNRESTRICTED",
 ) -> User:
     """Build a random valid user with a deterministic type and classification."""
-    user: User = random_model_obj(cast(Model, User))
+    user: User = random_model_obj(User)
     user.type = user_type or ["user"]
     user.classification = classification
     user.uname = f"test_{uuid.uuid4().hex[:12]}"
@@ -135,9 +125,9 @@ def _mock_auth(mock_auth_service, user: User, priv=None):
 
 
 def _build_case(case_id: str = "case-001", classification: str = "UNRESTRICTED") -> Case:
-    case = Case({"case_id": case_id, "title": "Test Case", "summary": "S", "classification": classification})
-    object.__setattr__(case, "save", MagicMock())
-    return case
+    return Case.model_validate(
+        {"case_id": case_id, "title": "Test Case", "summary": "S", "classification": classification}
+    )
 
 
 @pytest.fixture(scope="module")
@@ -174,80 +164,28 @@ class TestValidateBulkOperationTargets:
 class TestIsClassificationAccessible:
     """Tests for the shared per-document classification check."""
 
-    def test_admin_bypasses_access_control(self, stub_classification):
+    @pytest.mark.parametrize(
+        ("roles", "clearance", "classification", "expected"),
+        [
+            (["admin", "user"], "UNRESTRICTED", "RESTRICTED", True),
+            (["user"], "RESTRICTED", "RESTRICTED", True),
+            (["user"], "RESTRICTED", "UNRESTRICTED", True),
+            (["user"], "UNRESTRICTED", "RESTRICTED", False),
+            (["user"], "UNRESTRICTED", None, True),
+        ],
+    )
+    def test_classification_access(self, stub_classification, roles, clearance, classification, expected):
         from howler.security.utils import is_classification_accessible
 
-        admin = User(
-            {
-                "name": "admin",
-                "uname": "admin",
-                "password": "__NO_PASSWORD__",
-                "type": ["admin", "user"],
-                "classification": "UNRESTRICTED",
-            }
+        user = User.model_validate(
+            {"name": "user", "uname": "user", "password": "__NO_PASSWORD__", "type": roles, "classification": clearance}
         )
-        assert is_classification_accessible(admin, "RESTRICTED") is True
-
-    def test_user_can_access_at_own_level(self, stub_classification):
-        from howler.security.utils import is_classification_accessible
-
-        user = User(
-            {
-                "name": "user",
-                "uname": "user",
-                "password": "__NO_PASSWORD__",
-                "type": ["user"],
-                "classification": "RESTRICTED",
-            }
-        )
-        assert is_classification_accessible(user, "RESTRICTED") is True
-
-    def test_user_can_access_below_own_level(self, stub_classification):
-        from howler.security.utils import is_classification_accessible
-
-        user = User(
-            {
-                "name": "user",
-                "uname": "user",
-                "password": "__NO_PASSWORD__",
-                "type": ["user"],
-                "classification": "RESTRICTED",
-            }
-        )
-        assert is_classification_accessible(user, "UNRESTRICTED") is True
-
-    def test_denied_above_own_level(self, stub_classification):
-        from howler.security.utils import is_classification_accessible
-
-        user = User(
-            {
-                "name": "user",
-                "uname": "user",
-                "password": "__NO_PASSWORD__",
-                "type": ["user"],
-                "classification": "UNRESTRICTED",
-            }
-        )
-        assert is_classification_accessible(user, "RESTRICTED") is False
-
-    def test_unclassified_document_is_accessible(self, stub_classification):
-        from howler.security.utils import is_classification_accessible
-
-        user = User(
-            {
-                "name": "user",
-                "uname": "user",
-                "password": "__NO_PASSWORD__",
-                "type": ["user"],
-                "classification": "UNRESTRICTED",
-            }
-        )
-        assert is_classification_accessible(user, None) is True
+        assert is_classification_accessible(user, classification) is expected
 
     def test_rejects_non_string_document_classification(self, stub_classification):
         from howler.security.utils import is_classification_accessible
 
-        user = User(
+        user = User.model_validate(
             {
                 "name": "user",
                 "uname": "user",
@@ -262,7 +200,7 @@ class TestIsClassificationAccessible:
     def test_missing_user_classification_defaults_to_unrestricted(self, stub_classification):
         from howler.security.utils import is_classification_accessible
 
-        user = User({"name": "user", "uname": "user", "password": "__NO_PASSWORD__", "type": ["user"]})
+        user = User.model_validate({"name": "user", "uname": "user", "password": "__NO_PASSWORD__", "type": ["user"]})
         assert is_classification_accessible(user, "UNRESTRICTED") is True
         assert is_classification_accessible(user, "RESTRICTED") is False
 
@@ -276,11 +214,10 @@ class TestIsClassificationAccessible:
         assert is_classification_accessible(restricted_clearance_denied, "RESTRICTED") is False
 
     def test_accepts_document_odm_classification(self, stub_classification):
-        from howler.odm.base import ClassificationObject
         from howler.security.utils import is_classification_accessible
 
         admin = _build_user(user_type=["admin"], classification="UNRESTRICTED")
-        document_classification = ClassificationObject(stub_classification, "RESTRICTED")
+        document_classification = ClassificationValue(stub_classification, "RESTRICTED")
 
         assert is_classification_accessible(admin, document_classification) is True
 
@@ -289,7 +226,7 @@ class TestIsClassificationAccessible:
         from howler.security.utils import is_classification_accessible
 
         stub_classification.is_accessible = MagicMock(side_effect=InvalidClassification("invalid"))
-        user = User(
+        user = User.model_validate(
             {
                 "name": "user",
                 "uname": "user",
@@ -488,7 +425,9 @@ class TestCaseMutationClassification:
         mock_datastore.return_value.__getitem__.return_value.get.return_value = {
             "classification": "RESTRICTED",
         }
-        mock_case_service.append_case_item.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
+        mock_case_service.append_case_item.return_value = Case.model_validate(
+            {"case_id": "case-001", "title": "T", "summary": "S"}
+        )
 
         with request_context.test_request_context(
             method="POST",
@@ -657,7 +596,7 @@ class TestCreateHitsClassification:
         user = _build_user(user_type=["admin", "user"], classification="RESTRICTED")
         _mock_auth(mock_auth_service, user)
 
-        accessible_hit: Hit = random_model_obj(cast(Model, Hit))
+        accessible_hit: Hit = random_model_obj(Hit)
         accessible_hit.classification = "RESTRICTED"
         accessible_hit.event = None
         mock_hit_service.convert_hit.return_value = (accessible_hit, [])
@@ -818,7 +757,7 @@ class TestBundleEndpointClassification:
         user = _build_user(classification="UNRESTRICTED")
         _mock_auth(mock_auth_service, user)
 
-        root: Hit = random_model_obj(cast(Model, Hit))
+        root: Hit = random_model_obj(Hit)
         root.classification = "RESTRICTED"
         mock_hit_service.get_hit.return_value = root
 
@@ -856,11 +795,11 @@ class TestBundleEndpointClassification:
         user = _build_user(classification="UNRESTRICTED")
         _mock_auth(mock_auth_service, user)
 
-        root: Hit = random_model_obj(cast(Model, Hit))
+        root: Hit = random_model_obj(Hit)
         root.classification = "UNRESTRICTED"
-        accessible_child: Hit = random_model_obj(cast(Model, Hit))
+        accessible_child: Hit = random_model_obj(Hit)
         accessible_child.classification = "UNRESTRICTED"
-        restricted_child: Hit = random_model_obj(cast(Model, Hit))
+        restricted_child: Hit = random_model_obj(Hit)
         restricted_child.classification = "RESTRICTED"
 
         hits_by_id = {
@@ -902,7 +841,7 @@ class TestBundleEndpointClassification:
         user = _build_user(classification="UNRESTRICTED")
         _mock_auth(mock_auth_service, user)
 
-        root: Hit = random_model_obj(cast(Model, Hit))
+        root: Hit = random_model_obj(Hit)
         root.classification = "UNRESTRICTED"
         mock_hit_service.get_hit.return_value = root
         mock_find_case_for_bundle.return_value = _build_case(classification="RESTRICTED")
@@ -937,7 +876,7 @@ class TestBundleEndpointClassification:
         user = _build_user(classification="UNRESTRICTED")
         _mock_auth(mock_auth_service, user)
 
-        root: Hit = random_model_obj(cast(Model, Hit))
+        root: Hit = random_model_obj(Hit)
         root.classification = "UNRESTRICTED"
         mock_hit_service.get_hit.return_value = root
         mock_find_case_for_bundle.return_value = _build_case(classification="RESTRICTED")

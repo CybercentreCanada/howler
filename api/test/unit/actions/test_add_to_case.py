@@ -5,11 +5,20 @@ from howler.actions.models import ActionStep
 from howler.common import loader
 from howler.common.loader import datastore
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.helper import generate_useful_hit
-from howler.odm.models.case import Case
-from howler.odm.models.hit import Hit
-from howler.odm.random_data import wipe_cases, wipe_hits
+from howler.models.case import Case
+from howler.models.hit import Hit
+from howler.sample_data.helper import generate_useful_hit
+from howler.sample_data.random_data import wipe_cases, wipe_hits
 from howler.services import case_service
+
+
+def _make_case(data: dict) -> Case:
+    return Case.model_validate(data)
+
+
+def _make_hit(lookups, users) -> Hit:
+    hit_model = datastore().hit.model_class
+    return generate_useful_hit(lookups, users, prune_hit=False, model=hit_model)
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -31,23 +40,15 @@ def setup_datastore(datastore_connection: HowlerDatastore):
 # ---------------------------------------------------------------------------
 
 
-def test_execute_missing_case_id():
-    result = execute("howler.id:*")
+@pytest.mark.parametrize("case_id", [None, ""])
+def test_execute_missing_case_id(case_id):
+    result = execute("howler.id:*", **({} if case_id is None else {"case_id": case_id}))
 
     assert len(result) == 1
     r = result[0]
     assert r["outcome"] == "error"
     assert r["title"] == "Missing Case ID"
     assert "case_id" in r["message"]
-
-
-def test_execute_missing_case_id_empty_string():
-    result = execute("howler.id:*", case_id="")
-
-    assert len(result) == 1
-    r = result[0]
-    assert r["outcome"] == "error"
-    assert r["title"] == "Missing Case ID"
 
 
 def test_execute_case_not_found():
@@ -68,7 +69,7 @@ def test_execute_case_not_found():
 def test_execute_no_matching_hits():
     ds = datastore()
 
-    _case = Case({"title": "Test Case", "summary": "For testing"})
+    _case = _make_case({"title": "Test Case", "summary": "For testing"})
     ds.case.save(_case.case_id, _case)
     ds.case.commit()
 
@@ -93,11 +94,11 @@ def test_execute_adds_hits():
 
     ds = datastore()
 
-    _case = Case({"title": "Add To Case Test", "summary": "Testing"})
+    _case = _make_case({"title": "Add To Case Test", "summary": "Testing"})
     ds.case.save(_case.case_id, _case)
     ds.case.commit()
 
-    hit: Hit = generate_useful_hit(lookups, [u["uname"] for u in users], prune_hit=False)
+    hit: Hit = _make_hit(lookups, [u["uname"] for u in users])
     hit.howler.analytic = "TestingAddToCase"
     ds.hit.save(hit.howler.id, hit)
     ds.hit.commit()
@@ -124,11 +125,11 @@ def test_execute_default_item_path_uses_analytic_and_id():
 
     ds = datastore()
 
-    _case = Case({"title": "Path Test Case", "summary": "Testing default path"})
+    _case = _make_case({"title": "Path Test Case", "summary": "Testing default path"})
     ds.case.save(_case.case_id, _case)
     ds.case.commit()
 
-    hit: Hit = generate_useful_hit(lookups, [u["uname"] for u in users], prune_hit=False)
+    hit: Hit = _make_hit(lookups, [u["uname"] for u in users])
     hit.howler.analytic = "TestingDefaultPath"
     ds.hit.save(hit.howler.id, hit)
     ds.hit.commit()
@@ -148,11 +149,11 @@ def test_execute_custom_path():
 
     ds = datastore()
 
-    _case = Case({"title": "Custom Path Case", "summary": "Testing custom path"})
+    _case = _make_case({"title": "Custom Path Case", "summary": "Testing custom path"})
     ds.case.save(_case.case_id, _case)
     ds.case.commit()
 
-    hit: Hit = generate_useful_hit(lookups, [u["uname"] for u in users], prune_hit=False)
+    hit: Hit = _make_hit(lookups, [u["uname"] for u in users])
     hit.howler.analytic = "TestingCustomPath"
     ds.hit.save(hit.howler.id, hit)
     ds.hit.commit()
@@ -182,11 +183,11 @@ def test_execute_custom_title_template():
 
     ds = datastore()
 
-    _case = Case({"title": "Template Test Case", "summary": "Testing custom template"})
+    _case = _make_case({"title": "Template Test Case", "summary": "Testing custom template"})
     ds.case.save(_case.case_id, _case)
     ds.case.commit()
 
-    hit: Hit = generate_useful_hit(lookups, [u["uname"] for u in users], prune_hit=False)
+    hit: Hit = _make_hit(lookups, [u["uname"] for u in users])
     hit.howler.analytic = "TestingTitleTemplate"
     ds.hit.save(hit.howler.id, hit)
     ds.hit.commit()
@@ -216,11 +217,11 @@ def test_execute_duplicate_hit_reported_as_skipped():
 
     ds = datastore()
 
-    _case = Case({"title": "Duplicate Test Case", "summary": "Testing duplicates"})
+    _case = _make_case({"title": "Duplicate Test Case", "summary": "Testing duplicates"})
     ds.case.save(_case.case_id, _case)
     ds.case.commit()
 
-    hit: Hit = generate_useful_hit(lookups, [u["uname"] for u in users], prune_hit=False)
+    hit: Hit = _make_hit(lookups, [u["uname"] for u in users])
     hit.howler.analytic = "TestingDuplicate"
     ds.hit.save(hit.howler.id, hit)
     ds.hit.commit()
@@ -249,15 +250,15 @@ def test_execute_mixed_results():
 
     ds = datastore()
 
-    _case = Case({"title": "Mixed Results Case", "summary": "Testing mixed"})
+    _case = _make_case({"title": "Mixed Results Case", "summary": "Testing mixed"})
     ds.case.save(_case.case_id, _case)
     ds.case.commit()
 
-    hit_new: Hit = generate_useful_hit(lookups, [u["uname"] for u in users], prune_hit=False)
+    hit_new: Hit = _make_hit(lookups, [u["uname"] for u in users])
     hit_new.howler.analytic = "TestingMixed"
     ds.hit.save(hit_new.howler.id, hit_new)
 
-    hit_existing: Hit = generate_useful_hit(lookups, [u["uname"] for u in users], prune_hit=False)
+    hit_existing: Hit = _make_hit(lookups, [u["uname"] for u in users])
     hit_existing.howler.analytic = "TestingMixed"
     ds.hit.save(hit_existing.howler.id, hit_existing)
 
@@ -320,11 +321,11 @@ def test_execute_empty_path_and_simple_title():
 
     ds = datastore()
 
-    _case = Case({"title": "No Path Case", "summary": "Testing empty path"})
+    _case = _make_case({"title": "No Path Case", "summary": "Testing empty path"})
     ds.case.save(_case.case_id, _case)
     ds.case.commit()
 
-    hit: Hit = generate_useful_hit(lookups, [u["uname"] for u in users], prune_hit=False)
+    hit: Hit = _make_hit(lookups, [u["uname"] for u in users])
     hit.howler.analytic = "TestingEmptyPath"
     ds.hit.save(hit.howler.id, hit)
     ds.hit.commit()

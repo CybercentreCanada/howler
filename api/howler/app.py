@@ -12,7 +12,7 @@ load_dotenv()
 PLUGIN_PATH = Path(os.environ.get("HWL_PLUGIN_DIRECTORY", "/etc/howler/plugins"))
 sys.path.insert(0, str(PLUGIN_PATH))
 
-from howler.odm.models.config import config
+from howler.config_models import config
 
 if config.ui.debug and PLUGIN_PATH.exists():
     for _plugin in PLUGIN_PATH.iterdir():

@@ -5,8 +5,8 @@ from typing import Any
 import pytest
 
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.models.dossier import Dossier
-from howler.odm.random_data import create_dossiers, wipe_dossiers
+from howler.models.dossier import Dossier
+from howler.sample_data.random_data import create_dossiers, wipe_dossiers
 from test.conftest import APIError, get_api_data
 
 
@@ -26,7 +26,7 @@ def pivot_group_dossiers(datastore: HowlerDatastore):
     created_ids = []
 
     def create(groups: list[str], owner: str = "admin", dossier_type: str = "global") -> Dossier:
-        dossier = Dossier(
+        dossier = Dossier.model_validate(
             {
                 "title": f"Pivot group API integration test {uuid.uuid4().hex}",
                 "query": "howler.id:*",
@@ -132,7 +132,7 @@ def test_get_pivot_groups_scopes_results_and_matches_prefix(
     session, host = login_session
     prefix = f"integration-{uuid.uuid4().hex[:12]}"
 
-    global_dossier = Dossier(
+    global_dossier = Dossier.model_validate(
         {
             "title": "Global Pivot Group Test",
             "query": "howler.id:*",
@@ -149,7 +149,7 @@ def test_get_pivot_groups_scopes_results_and_matches_prefix(
             "leads": [],
         }
     )
-    other_user_dossier = Dossier(
+    other_user_dossier = Dossier.model_validate(
         {
             "title": "Other User Pivot Group Test",
             "query": "howler.id:*",
@@ -429,9 +429,9 @@ def test_get_dossier_for_hit_user_scoping(datastore: HowlerDatastore, login_sess
     personal_admin_dossier_id = personal_admin_res["dossier_id"]
 
     # Directly save a personal dossier owned by another user - should NOT be returned for admin
-    from howler.odm.models.dossier import Dossier as DossierModel
+    from howler.models.dossier import Dossier as DossierModel
 
-    other_user_dossier = DossierModel(
+    other_user_dossier = DossierModel.model_validate(
         {
             "title": "Other User Personal Dossier",
             "query": matching_query,

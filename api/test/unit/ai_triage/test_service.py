@@ -7,8 +7,8 @@ from pydantic import ValidationError
 from howler import actions
 from howler.actions import ai_triage
 from howler.config import CLASSIFICATION
+from howler.config_models import AITriage, config
 from howler.datastore.exceptions import VersionConflictException
-from howler.odm.models.config import AITriage, config
 from howler.services import ai_service as service
 from howler.utils.dict_utils import remove_path
 
@@ -353,4 +353,4 @@ def test_save_stops_after_retries_are_exhausted(settings, monkeypatch):
 def test_lead_owner_handles_malformed_or_non_object_metadata(metadata):
     lead = make_lead("bad metadata")
     lead["metadata"] = metadata
-    assert service._lead_owner(service.Lead(lead)) is None
+    assert service._lead_owner(service.Lead.model_validate(lead)) is None

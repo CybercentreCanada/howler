@@ -7,7 +7,7 @@ from howler.api.v1.utils.params import parse_parameters
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.types import SearchResult
-from howler.odm.models.hit import Hit
+from howler.models.hit import Hit
 from howler.security.login import api_login
 
 from sync.services import sync_service
@@ -75,7 +75,11 @@ def get_upserted_hits(
     res = sync_service.get_upserted_hits(data_interval_start=from_date, data_interval_end=to_date, **search_args)
     parsed: SearchResult[dict[str, Any]] = {
         **res,
-        "items": [hit.as_primitives(ip_format=ip_format) for hit in res["items"]],
+        # as_primitives() has no IP format option, so this endpoint builds the same output with its ip_format.
+        "items": [
+            hit.model_dump(by_alias=True, exclude_none=True, context={"include_index": True, "ip_format": ip_format})
+            for hit in res["items"]
+        ],
     }
 
     return ok(parsed)

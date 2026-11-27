@@ -137,7 +137,6 @@ dmypy.json
 # Old APIs
 howler/api/old/
 
-howler/odm/sigma/
 
 # Random script directory
 script/

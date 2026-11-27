@@ -1,5 +1,5 @@
 name: evidence
 modules:
-  odm:
-    modify_odm:
+  models:
+    declare_extensions:
       hit: true

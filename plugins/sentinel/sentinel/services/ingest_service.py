@@ -7,8 +7,8 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.config import CLASSIFICATION
 from howler.datastore.exceptions import VersionConflictException
-from howler.odm.models.case import Case, CaseItem
-from howler.odm.models.user import User
+from howler.models.case import Case, CaseItem
+from howler.models.user import User
 from howler.remote.datatypes.lock import Lock as RedisLock
 from howler.services import action_service, analytic_service, case_service, comms_service, hit_service
 from howler.utils.str_utils import sanitize_lucene_query
@@ -18,7 +18,7 @@ from sentinel.mapping.xdr_alert import XDRAlert
 
 logger = get_logger(__file__)
 
-SYSTEM_USER = User(
+SYSTEM_USER = User.model_validate(
     {
         "uname": "system",
         "name": "system",
@@ -406,7 +406,7 @@ def _queue_case_hit(case: Case, pending: list[CaseItem], hit_id: str, name: str,
         item.type == "hit" and item.value == hit_id for item in pending
     ):
         return
-    pending.append(CaseItem({"type": "hit", "value": hit_id, "parent": parent_id, "name": name}))
+    pending.append(CaseItem.model_validate({"type": "hit", "value": hit_id, "parent": parent_id, "name": name}))
 
 
 def _record_matches_incident(hit: Any, tenant_id: str, incident_identity: str) -> bool:
@@ -696,13 +696,13 @@ def _update_existing_incident(
     if new_status:
         status = incident_mapper.map_sentinel_status_to_howler(new_status)
         existing_hit.howler.status = status
-        ds.hit.save(existing_hit.howler.id, existing_hit)
+        existing_hit.save()
         updated_count = 1
         # Only Sentinel-owned descendants bearing this incident and tenant
         # metadata are managed. Analyst-added case hits are deliberately ignored.
         for descendant in descendants:
             descendant.howler.status = status
-            ds.hit.save(descendant.howler.id, descendant)
+            descendant.save()
             updated_count += 1
         _refresh_hit_alias()
 

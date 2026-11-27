@@ -16,8 +16,8 @@ from flask import Flask
 from howler import actions
 from howler.actions import ai_triage
 from howler.config import CLASSIFICATION, config
+from howler.config_models import AITriage
 from howler.cronjobs import ai_triage_worker
-from howler.odm.models.config import AITriage
 from howler.remote.datatypes import get_client
 from howler.services import action_service, ai_service, auth_service, hit_service, user_service
 from howler.utils.uid import get_random_id

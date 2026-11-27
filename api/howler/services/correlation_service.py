@@ -19,11 +19,11 @@ from howler.common.exceptions import HowlerRuntimeError, InvalidDataException, N
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.config import CORRELATION_QUEUE_NAME
-from howler.odm.models.case import Case, CaseItem, CaseRule, RuleIndexTypes
-from howler.odm.models.config import config
-from howler.odm.models.event import Event
-from howler.odm.models.hit import Hit
-from howler.odm.models.user import User
+from howler.config_models import config
+from howler.models.case import Case, CaseItem, CaseRule, RuleIndexTypes
+from howler.models.event import Event
+from howler.models.hit import Hit
+from howler.models.user import User
 from howler.remote.datatypes.queues.named import NamedQueue
 from howler.services import case_service, comms_service, search_service
 from howler.utils.str_utils import sanitize_lucene_query
@@ -186,7 +186,13 @@ def _add_record_to_case(
 
         parent = case_service.get_parent_from_path(case, path, create_if_missing=True)
 
-        item = CaseItem({"type": item_type, "value": record_id, "parent": parent.id if parent else None, "name": name})
+        item_data = {
+            "type": item_type,
+            "value": record_id,
+            "parent": parent.id if parent else None,
+            "name": name,
+        }
+        item = CaseItem.model_validate(item_data)
         if item.name is None:
             item.name = item.value
 
@@ -242,8 +248,9 @@ def count_backfill_matches(case_id: str, rule_id: str, since_value: object, user
     rule, since = get_backfill_rule(case_id, rule_id, user, since_value)
     # SearchService applies classification access control for this user. Tracking
     # the full total ensures the confirmation count is exact even above 10,000.
+    indexes = [str(index) for index in rule.indexes] if rule.indexes else [RuleIndexTypes.HIT.value]
     result = search_service.search(
-        indexes=rule.indexes or [RuleIndexTypes.HIT],
+        indexes=indexes,
         query=rule.query,
         filters=[f'timestamp:["{since.isoformat()}" TO *]'],
         rows=0,
@@ -256,7 +263,7 @@ def count_backfill_matches(case_id: str, rule_id: str, since_value: object, user
 def enqueue_backfill(case_id: str, rule_id: str, since_value: object, user: User) -> int:
     """Stream matching accessible records into the rule-scoped correlation queue."""
     rule, since = get_backfill_rule(case_id, rule_id, user, since_value)
-    indexes = rule.indexes or [RuleIndexTypes.HIT]
+    indexes = [str(index) for index in rule.indexes] if rule.indexes else [RuleIndexTypes.HIT.value]
     query = rule.query
     count = 0
     # Deep paging keeps memory bounded for large historical ranges. Only fetch the

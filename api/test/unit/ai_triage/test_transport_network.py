@@ -8,7 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from howler.odm.models.config import AITriage
+from howler.config_models import AITriage
 from howler.services import ai_service as transport
 
 BODY = json.dumps({"choices": [{"message": {"content": "opinion"}}]}).encode()

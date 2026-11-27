@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 
 from flask import request
 from werkzeug.exceptions import UnsupportedMediaType
@@ -16,8 +16,8 @@ from howler.common.exceptions import (
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import DataStoreException
-from howler.odm.models.case import Case, CaseItem
-from howler.odm.models.user import User
+from howler.models.case import Case, CaseItem
+from howler.models.user import User
 from howler.security.login import api_login
 from howler.services import case_service, comms_service, correlation_service
 
@@ -267,7 +267,7 @@ def append_item(  # noqa: C901
 
             body["parent"] = parent.id if parent else None
 
-        case_service.append_case_item(record, CaseItem(body), user=user)
+        case_service.append_case_item(record, CaseItem.model_validate(body), user=user)
 
         record.save(refresh=refresh, version=server_version)
         comms_service.emit("cases", {"case": record.as_primitives()})
@@ -283,6 +283,8 @@ def append_item(  # noqa: C901
     except NotFoundException as e:  # pragma: no cover
         return not_found(err=str(e))
     except InvalidDataException as e:
+        return bad_request(err=str(e))
+    except HowlerException as e:
         return bad_request(err=str(e))
 
 
@@ -408,7 +410,7 @@ def rename_item(
     item_id = body["id"]
 
     try:
-        result: Case | None = None
+        result: Any = None
         if "name" in body:
             result = case_service.rename_case_item(
                 record,

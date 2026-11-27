@@ -30,7 +30,7 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.config import config
-from howler.odm.models.user import ApiKey, User
+from howler.models.user import ApiKey
 from howler.security.login import api_login
 from howler.security.utils import generate_random_secret
 from howler.services import jwt_service
@@ -140,7 +140,7 @@ def add_apikey(**kwargs):  # noqa: C901
         if expiry:
             new_key["expiry_date"] = expiry.isoformat()
 
-        user_data.apikeys[key_name] = ApiKey(new_key)
+        user_data.apikeys[key_name] = ApiKey.model_validate(new_key)
     except HowlerException as e:
         return bad_request(err=e.message)
 
@@ -168,7 +168,7 @@ def delete_apikey(name, **kwargs):
     """
     user = kwargs["user"]
     storage = datastore()
-    user_data: User = storage.user.get_if_exists(user["uname"])
+    user_data = storage.user.get_if_exists(user["uname"])
 
     if name not in user_data.apikeys:
         return not_found("Api key does not exist")

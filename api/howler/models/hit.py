@@ -1,0 +1,26 @@
+"""Hit model — Howler's primary alert document."""
+
+from __future__ import annotations
+
+from typing import Annotated
+
+from howler.models import metadata, register_model
+from howler.models.howler_data import HowlerData
+from howler.models.mixins import DatastoreMixin
+from howler.models.record import Record
+
+
+@register_model(
+    index=True,
+    store=True,
+    description="Howler Outline schema which is an extended version of Elastic Common Schema (ECS)",
+    id_field="howler.id",
+)
+class Hit(Record, DatastoreMixin["Hit"]):
+    """Howler Outline schema which is an extended version of Elastic Common Schema (ECS)."""
+
+    # Howler extended fields. Deviates from ECS
+    howler: Annotated[
+        HowlerData, metadata(reference="https://confluence.devtools.cse-cst.gc.ca/display/~jjgalar/Hit+Schema")
+    ]
+    """Howler specific definition of the hit that matches the outline."""

@@ -1,16 +1,14 @@
 import json
 from pathlib import Path
-from typing import cast
 
 import pytest
 
 from howler.common import loader
 from howler.common.logging import get_logger
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm import Model
-from howler.odm.helper import generate_useful_hit
-from howler.odm.models.hit import Hit
-from howler.odm.randomizer import random_model_obj
+from howler.models.hit import Hit
+from howler.sample_data.helper import generate_useful_hit
+from howler.sample_data.randomizer import random_model_obj
 from howler.services import lucene_service
 from test.utils.queries import generate_lucene_query
 
@@ -31,7 +29,7 @@ def hit(datastore_connection):
             json.dump(_hit.as_primitives(), _file)
     else:
         with hit_file_path.open("r") as _file:
-            _hit = Hit(json.load(_file))
+            _hit = Hit.model_validate(json.load(_file), extra="ignore")
 
     return _hit
 
@@ -89,7 +87,7 @@ def test_lucene_wildcard_with_spaces(datastore: HowlerDatastore):
     would fail to match hits in lucene_service.match() even though the same query returns
     results from Elasticsearch. The test validates that both agree on the result.
     """
-    powershell_hit: Hit = random_model_obj(cast(Model, Hit))
+    powershell_hit: Hit = random_model_obj(Hit)
     powershell_hit.process.name = "powershell.exe"
     powershell_hit.process.command_line = "powershell.exe -EncodedCommand dGVzdA=="
 
@@ -137,7 +135,7 @@ def test_lucene_and_not(datastore: HowlerDatastore):
     validates that lucene_service.match() and Elasticsearch agree on the result for each query.
     """
     # Hit WITH "example_label" label — should be *excluded* by `NOT howler.labels.assignments:example_label`
-    example_hit: Hit = random_model_obj(cast(Model, Hit))
+    example_hit: Hit = random_model_obj(Hit)
     example_hit.howler.labels.assignments = ["example_label"]
     example_hit.howler.analytic = "TEST_ANALYTIC"
     example_hit.threat.technique.id = "T1001"
@@ -145,7 +143,7 @@ def test_lucene_and_not(datastore: HowlerDatastore):
     example_hit.organization.name = "Example Corp"
 
     # Hit WITHOUT "example_label" label — should be *included* by `NOT howler.labels.assignments:example_label`
-    clean_hit: Hit = random_model_obj(cast(Model, Hit))
+    clean_hit: Hit = random_model_obj(Hit)
     clean_hit.howler.labels.assignments = []
     clean_hit.howler.analytic = "TEST_ANALYTIC"
     clean_hit.threat.technique.id = "T1001"
@@ -182,7 +180,7 @@ def test_lucene_and_not(datastore: HowlerDatastore):
 
 def test_lucene_case_sensitivity_and_negative_ranges(datastore: HowlerDatastore):
     """Regression test for field case-sensitivity, missing fields, zero values, and negative float ranges."""
-    test_hit: Hit = random_model_obj(cast(Model, Hit))
+    test_hit: Hit = random_model_obj(Hit)
     test_hit.threat.indicator.provider = "To"
     test_hit.howler.analytic = "Exploit Patcher"
     test_hit.labels["env_t"] = "prod"

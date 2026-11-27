@@ -1,38 +1,44 @@
 """Tests for schema-aware stored source selection and projection."""
 
 from types import SimpleNamespace
+from typing import Annotated
 
 import pytest
 
-from howler import odm
 from howler.datastore.exceptions import SearchException
 from howler.datastore.utils import project_stored_fields, select_stored_fields
+from howler.models import HowlerEmbeddedModel, HowlerESModel, Keyword, mapping, metadata, register_model
+from howler.models.registry import model_registry
 
 
-@odm.model(index=True, store=True)
-class _Entry(odm.Model):
-    name = odm.Keyword()
-    secret = odm.Keyword(store=False)
+@register_model(index=True, store=True, embedded=True, id_field="name")
+class _Entry(HowlerEmbeddedModel):
+    name: Keyword
+    secret: Annotated[Keyword, metadata(store=False)]
 
 
-@odm.model(index=True, store=True)
-class _Container(odm.Model):
-    labels = odm.Mapping(odm.Keyword())
+@register_model(index=True, store=True, embedded=True, id_field="labels")
+class _Container(HowlerEmbeddedModel):
+    labels: mapping(Keyword)
 
 
-@odm.model(index=True, store=True)
-class _SelectionModel(odm.Model):
-    name = odm.Keyword()
-    not_stored = odm.Keyword(store=False)
-    labels = odm.Mapping(odm.Keyword())
-    container = odm.Optional(odm.Compound(_Container))
-    entries = odm.List(odm.Compound(_Entry))
+@register_model(index=True, store=True, id_field="name")
+class _SelectionModel(HowlerESModel):
+    name: Keyword
+    not_stored: Annotated[Keyword, metadata(store=False)]
+    labels: mapping(Keyword)
+    container: _Container | None = None
+    entries: list[_Entry] = []
 
 
 def _collection():
     return SimpleNamespace(
         model_class=_SelectionModel,
-        stored_fields={name: field for name, field in _SelectionModel.flat_fields().items() if field.store},
+        stored_fields={
+            name: field
+            for name, field in model_registry.flat_fields(_SelectionModel).items()
+            if field.metadata is not None and field.metadata.store
+        },
     )
 
 

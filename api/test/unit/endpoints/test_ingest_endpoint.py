@@ -8,9 +8,10 @@ import pytest
 from flask import Flask, Response
 
 from howler.common.loader import datastore
-from howler.odm import Model
-from howler.odm.models.user import User
-from howler.odm.randomizer import random_model_obj
+from howler.models import Keyword, mapping
+from howler.models.hit import Hit
+from howler.models.user import User
+from howler.sample_data.randomizer import random_model_obj
 
 
 @pytest.fixture(scope="module")
@@ -21,7 +22,7 @@ def request_context():
 
 
 def _build_user(user_type: list[str] | None = None) -> User:
-    user_data: User = random_model_obj(cast(Model, User))
+    user_data: User = random_model_obj(User)
     user_data.type = user_type or ["admin", "user"]
     user_data.uname = f"test_{uuid.uuid4().hex[:12]}"
     user_data.api_quota = 1000
@@ -689,20 +690,102 @@ class TestIngestionQueueing:
 class TestOverwrite:
     """Tests for the overwrite endpoint."""
 
-    @patch("howler.api.v2.ingest.INDEXES", {"hit": None})
-    @patch("howler.api.v2.ingest.datastore")
-    @patch("howler.security.login.auth_service")
-    def test_overwrite_success(self, mock_auth_service, mock_ds, request_context: Flask):
-        """Returns 200 with the updated record on successful overwrite."""
+    @pytest.fixture(autouse=True)
+    def offline_auth(self, monkeypatch):
+        """These direct calls need only bearer authentication and an available quota."""
+        monkeypatch.setattr("howler.api.QUOTA_TRACKER", MagicMock())
+        monkeypatch.setattr("howler.security.login.QUOTA_TRACKER", MagicMock())
+
+    @pytest.fixture
+    def overwrite_setup(self, monkeypatch):
         user = _build_user()
-        _mock_auth(mock_auth_service, user)
+        auth = MagicMock()
+        auth.bearer_auth.return_value = (user, ["R", "W", "E"])
+        index = MagicMock()
+        store = MagicMock()
+        store.__getitem__.return_value = index
+        monkeypatch.setattr("howler.security.login.auth_service", auth)
+        monkeypatch.setattr("howler.api.v2.ingest.datastore", lambda: store)
+        return user, index
+
+    @pytest.mark.parametrize("replace, expected", [("false", ["old", "new"]), ("true", ["new"])])
+    def test_overwrite_ignores_stored_index_helper_but_preserves_read_response(
+        self, overwrite_setup, request_context: Flask, replace, expected
+    ):
+        """A synthetic index field from storage is excluded from validation but remains in the response shape."""
+        user, index = overwrite_setup
+
+        class ExtendedHit(Hit):
+            groups: mapping(list[Keyword])
+
+        existing = ExtendedHit.model_validate(
+            {"howler.analytic": "Original", "howler.hash": "ab", "groups": {"team": ["old"]}}
+        ).as_primitives()
+        existing["__index"] = "howler-hit-index"
+        updated = {**existing, "howler": {**existing["howler"], "detection": "Updated detection"}}
+
+        index.get.side_effect = [(existing, "v1"), (updated, "v2")]
+        index.model_class = ExtendedHit
+
+        with request_context.test_request_context(
+            method="PATCH",
+            json={"howler": {"analytic": {}, "detection": "Updated detection"}, "groups": {"team": ["new"]}},
+            query_string={"refresh": "wait_for", "replace": replace},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.ingest import overwrite
+
+            result: Response = overwrite(index="hit", id=existing["howler"]["id"], user=user)
+
+        assert result.status_code == 200
+        assert result.headers.get("ETag") == "v2"
+        assert result.get_json()["api_response"]["__index"] == "howler-hit-index"
+        index.save.assert_called_once()
+        saved_hit = index.save.call_args.args[1]
+        assert isinstance(saved_hit, ExtendedHit)
+        assert saved_hit.groups == {"team": expected}
+        assert existing["groups"] == {"team": ["old"]}
+        assert saved_hit.howler.analytic == "Original"
+        assert saved_hit.howler.detection == "Updated detection"
+        assert "__index" not in Hit.model_fields
+        assert "__index" not in (saved_hit.__pydantic_extra__ or {})
+        assert index.save.call_args.kwargs == {"version": "v1", "refresh": "wait_for"}
+
+    def test_overwrite_rejects_client_supplied_index_helper(self, overwrite_setup, request_context: Flask):
+        """A caller cannot smuggle the synthetic index field through strict Hit validation."""
+        user, index = overwrite_setup
+
+        existing = random_model_obj(Hit).as_primitives()
+        existing["__index"] = "howler-hit-index"
+        index.get.return_value = (existing, "v1")
+        index.model_class = Hit
+
+        with request_context.test_request_context(
+            method="PATCH",
+            json={"__index": "attacker-controlled-index"},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.ingest import overwrite
+
+            result: Response = overwrite(index="hit", id=existing["howler"]["id"], user=user)
+
+        assert result.status_code == 400
+        assert index.save.call_count == 0
+
+    def test_overwrite_success(self, overwrite_setup, request_context: Flask):
+        """Returns 200 with the updated record on successful overwrite."""
+        from howler.security import login
+
+        user, index = overwrite_setup
+        cast(MagicMock, login.auth_service).bearer_auth.return_value = (user, ["W"])
 
         existing = {"howler": {"id": "hit-001", "analytic": "A"}, "event": {"kind": "alert"}}
-        mock_ds.return_value.__getitem__.return_value.get.side_effect = [
+        index.get.side_effect = [
             (existing, "v1"),
             ({"howler": {"id": "hit-001", "analytic": "B"}, "event": {"kind": "alert"}}, "v2"),
         ]
-        mock_ds.return_value.__getitem__.return_value.save.return_value = True
+        index.save.return_value = True
+        index.model_class = None
 
         with request_context.test_request_context(
             method="PATCH",
@@ -715,7 +798,7 @@ class TestOverwrite:
 
             assert result.status_code == 200
             assert result.headers.get("ETag") == "v2"
-            mock_ds.return_value.__getitem__.return_value.save.assert_called_once_with(
+            index.save.assert_called_once_with(
                 "hit-001",
                 {
                     "howler.id": "hit-001",
@@ -726,63 +809,47 @@ class TestOverwrite:
                 refresh=None,
             )
 
-    @patch("howler.api.v2.ingest.datastore")
-    @patch("howler.security.login.auth_service")
-    def test_overwrite_multi_index_returns_400(self, mock_auth_service, mock_ds, request_context: Flask):
-        """Returns 400 when index contains a comma."""
-        user = _build_user()
-        _mock_auth(mock_auth_service, user)
+    @pytest.mark.parametrize(
+        ("indexes", "record", "payload", "status"),
+        [
+            ("hit,event", None, {"howler": {"analytic": "B"}}, 400),
+            ("hit", None, {"howler": {"analytic": "B"}}, 404),
+            ("hit", {"howler": {"id": "hit-001"}}, ["not", "a", "dict"], 400),
+        ],
+    )
+    def test_overwrite_rejects_bad_request(self, overwrite_setup, request_context, indexes, record, payload, status):
+        user, index = overwrite_setup
+        index.get.return_value = (record, "v1" if record else "create")
 
-        with request_context.test_request_context(
-            method="PATCH",
-            json={"howler": {"analytic": "B"}},
-            headers={"Authorization": "Bearer ."},
-        ):
+        with request_context.test_request_context(method="PATCH", json=payload, headers={"Authorization": "Bearer ."}):
             from howler.api.v2.ingest import overwrite
 
-            result: Response = overwrite(index="hit,event", id="hit-001", server_version="v1", user=user)
+            result: Response = overwrite(index=indexes, id="hit-001", server_version="v1", user=user)
 
-            assert result.status_code == 400
+        assert result.status_code == status
 
-    @patch("howler.api.v2.ingest.datastore")
-    @patch("howler.security.login.auth_service")
-    def test_overwrite_not_found(self, mock_auth_service, mock_ds, request_context: Flask):
-        """Returns 404 when the record does not exist."""
-        user = _build_user()
-        _mock_auth(mock_auth_service, user)
+    @pytest.mark.parametrize("stored_classification, expected_status", [("", 404), (None, 400)])
+    def test_denies_inaccessible_existing_or_proposed_classification(
+        self, overwrite_setup, request_context, stored_classification, expected_status
+    ):
+        from howler.api.v2.ingest import overwrite
+        from howler.models.event import Event
 
-        mock_ds.return_value.__getitem__.return_value.get.return_value = (None, "create")
-
+        user, collection = overwrite_setup
+        user.type = ["user"]
+        collection.get.return_value = ({"classification": stored_classification}, "v1")
+        collection.model_class = Event
         with request_context.test_request_context(
-            method="PATCH",
-            json={"howler": {"analytic": "B"}},
-            headers={"Authorization": "Bearer ."},
+            method="PATCH", json={"classification": "", "unknown": 1}, headers={"Authorization": "Bearer ."}
         ):
-            from howler.api.v2.ingest import overwrite
+            response = overwrite(index="event", id="event-1")
 
-            result: Response = overwrite(index="hit", id="hit-001", server_version="v1", user=user)
-
-            assert result.status_code == 404
-
-    @patch("howler.api.v2.ingest.datastore")
-    @patch("howler.security.login.auth_service")
-    def test_overwrite_non_dict_body_returns_400(self, mock_auth_service, mock_ds, request_context: Flask):
-        """Returns 400 when the JSON payload is not a dict."""
-        user = _build_user()
-        _mock_auth(mock_auth_service, user)
-
-        mock_ds.return_value.__getitem__.return_value.get.return_value = ({"howler": {"id": "hit-001"}}, "v1")
-
-        with request_context.test_request_context(
-            method="PATCH",
-            json=["not", "a", "dict"],
-            headers={"Authorization": "Bearer ."},
-        ):
-            from howler.api.v2.ingest import overwrite
-
-            result: Response = overwrite(index="hit", id="hit-001", server_version="v1", user=user)
-
-            assert result.status_code == 400
+        assert response.status_code == expected_status
+        assert response.get_json()["api_error_message"] == (
+            "Record event-1 does not exist" if expected_status == 404 else "Cannot set classification to "
+        )
+        assert "ETag" not in response.headers
+        collection.save.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

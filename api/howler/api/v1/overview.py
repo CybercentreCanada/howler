@@ -15,8 +15,8 @@ from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
-from howler.odm.models.overview import Overview
-from howler.odm.models.user import User
+from howler.models.overview import Overview
+from howler.models.user import User
 from howler.security.login import api_login
 from howler.utils.str_utils import sanitize_lucene_query
 
@@ -94,7 +94,7 @@ def create_overview(**kwargs):
     storage = datastore()
 
     try:
-        overview = Overview(overview_data)
+        overview = Overview.model_validate(overview_data)
 
         overview.owner = kwargs["user"]["uname"]
 
@@ -143,7 +143,9 @@ def delete_overview(id: str, user: User, **kwargs):
     if not storage.overview.exists(id):
         return not_found(err="This overview does not exist")
 
-    existing_overview: Overview = storage.overview.get_if_exists(id)
+    existing_overview = storage.overview.get(id)
+    if not existing_overview:
+        return not_found(err="This overview does not exist")
 
     if existing_overview.owner != user.uname and "admin" not in user.type:
         return forbidden(err="You cannot delete an overview that is not owned by you.")
@@ -192,13 +194,15 @@ def update_overview_content(id: str, user: User, **kwargs):
 
     content = data["content"]
 
-    existing_overview: Overview = storage.overview.get_if_exists(id)
+    existing_overview = storage.overview.get(id)
+    if not existing_overview:
+        return not_found(err="This overview does not exist")
 
     existing_overview.content = content
 
     storage.overview.save(existing_overview.overview_id, existing_overview, refresh=refresh)
 
     try:
-        return ok(storage.overview.get_if_exists(existing_overview.overview_id, as_obj=False))
+        return ok(storage.overview.get(existing_overview.overview_id, as_obj=False))
     except HowlerException as e:
         return bad_request(err=str(e))

@@ -10,9 +10,14 @@ from pydantic import Field, ValidationError
 from howler.actions import _load_specification, ai_triage, check_hit_limit, execute, specifications
 from howler.actions.models import DISPATCHER_ARGUMENTS, ActionArguments, ActionSpecification, ActionStep
 from howler.config import config
-from howler.odm.models.howler_data import HitStatusTransition
-from howler.odm.models.user import User
-from howler.odm.randomizer import random_model_obj
+from howler.models.howler_data import HitStatusTransition
+from howler.models.user import User
+from howler.sample_data.randomizer import random_model_obj
+
+
+def _user(*roles: str) -> User:
+    return User.model_validate({"uname": "test", "name": "Test User", "password": "hash", "type": list(roles)})
+
 
 PLUGIN_PATH = Path(os.environ.get("HWL_PLUGIN_DIRECTORY", "/etc/howler/plugins"))
 
@@ -41,7 +46,7 @@ def test_execute_bad_plugin():
     result = execute(
         "doesntexistandneverwillpleasedontusethisid",
         "howler.id:*",
-        user=random_model_obj(User),
+        user=_user("user"),
     )
 
     assert len(result) == 1
@@ -58,9 +63,7 @@ def test_execute_bad_plugin():
 
 
 def test_execute_missing_roles():
-    bad_user: User = random_model_obj(User)
-
-    bad_user.type = []
+    bad_user = _user()
 
     result = execute("add_label", "howler.id:*", user=bad_user)
 
@@ -360,8 +363,7 @@ def test_optional_argument_options_validate_against_the_specification(options, e
 @patch("howler.actions.datastore")
 def test_execute_basic_user_hit_limit_exceeded(mock_ds):
     """Test that basic users are blocked when exceeding hit limits."""
-    basic_user: User = random_model_obj(User)
-    basic_user.type = ["user", "actionrunner_basic"]
+    basic_user = _user("user", "actionrunner_basic")
 
     # Mock datastore to return a hit count exceeding the basic limit
     mock_ds.return_value.hit.search.return_value = {"total": 100}  # Exceeds MAX_HITS_BASIC of 20 for add_label
@@ -378,15 +380,15 @@ def test_execute_basic_user_hit_limit_exceeded(mock_ds):
 
 
 @patch("howler.actions.datastore")
-def test_execute_advanced_user_higher_limit(mock_ds):
+@patch("howler.actions.add_label.datastore")
+def test_execute_advanced_user_higher_limit(mock_action_ds, mock_ds):
     """Test that advanced users have higher limits."""
-    advanced_user: User = random_model_obj(User)
-    advanced_user.type = ["user", "actionrunner_advanced"]
+    advanced_user = _user("user", "actionrunner_advanced")
 
     # Mock datastore to return a hit count that exceeds basic but not advanced limit
     # This should pass the limit check - action itself will be called
     mock_ds.return_value.hit.search.return_value = {"total": 50, "items": []}
-    mock_ds.return_value.hit.update_by_query.return_value = None
+    mock_action_ds.return_value.hit.search.return_value = {"total": 0, "items": []}
 
     result = execute("add_label", "howler.id:*", user=advanced_user, category="generic", label="test")
 
@@ -395,14 +397,12 @@ def test_execute_advanced_user_higher_limit(mock_ds):
     assert all(r["title"] != "Hit limit exceeded" for r in result)
 
 
+@pytest.mark.parametrize(
+    ("roles", "total"), [(("admin", "user"), 500), (("user", "actionrunner_basic", "actionrunner_advanced"), 50)]
+)
 @patch("howler.actions.add_label.execute")
 @patch("howler.actions.datastore")
-def test_execute_admin_user_bypasses_role_check_and_gets_advanced_limit(mock_ds, mock_add_label_execute):
-    """Test that admin users bypass role checks and get the advanced hit limit."""
-    admin_user: User = random_model_obj(User)
-    admin_user.type = ["admin", "user"]  # Admin without explicit actionrunner roles
-
-    # Isolate execute() role/limit behavior from add_label's own datastore interactions.
+def test_execute_advanced_limit(mock_ds, mock_add_label_execute, roles, total):
     mock_add_label_execute.return_value = [
         {
             "query": "howler.id:*",
@@ -412,41 +412,11 @@ def test_execute_admin_user_bypasses_role_check_and_gets_advanced_limit(mock_ds,
         }
     ]
 
-    # Mock datastore to return a hit count that exceeds basic (20) but not advanced (1000)
-    mock_ds.return_value.hit.search.return_value = {"total": 500, "items": []}
-    mock_ds.return_value.hit.update_by_query.return_value = None
+    mock_ds.return_value.hit.search.return_value = {"total": total, "items": []}
 
-    result = execute("add_label", "howler.id:*", user=admin_user, category="generic", label="test")
+    result = execute("add_label", "howler.id:*", user=_user(*roles), category="generic", label="test")
 
-    # Admin should bypass role check and use advanced limit, so 500 hits should be allowed
     assert all(r["title"] != "Insufficient permissions" for r in result)
-    assert all(r["title"] != "Hit limit exceeded" for r in result)
-
-
-@patch("howler.actions.add_label.execute")
-@patch("howler.actions.datastore")
-def test_execute_user_with_both_basic_and_advanced_roles(mock_ds, mock_add_label_execute):
-    """Test that users with both basic and advanced roles get the higher (advanced) limit."""
-    mixed_user: User = random_model_obj(User)
-    mixed_user.type = ["user", "actionrunner_basic", "actionrunner_advanced"]
-
-    # Isolate execute() role/limit behavior from add_label's own datastore interactions.
-    mock_add_label_execute.return_value = [
-        {
-            "query": "howler.id:*",
-            "outcome": "success",
-            "title": "Executed Successfully",
-            "message": "ok",
-        }
-    ]
-
-    # Mock datastore to return a hit count that exceeds basic (20) but not advanced (1000)
-    mock_ds.return_value.hit.search.return_value = {"total": 50, "items": []}
-    mock_ds.return_value.hit.update_by_query.return_value = None
-
-    result = execute("add_label", "howler.id:*", user=mixed_user, category="generic", label="test")
-
-    # Should use advanced limit, so 50 hits should be allowed
     assert all(r["title"] != "Hit limit exceeded" for r in result)
 
 

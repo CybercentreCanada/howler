@@ -14,7 +14,7 @@ from flask.app import Flask
 from howler.common.loader import datastore
 from howler.datastore.collection import CREATE_TOKEN
 from howler.datastore.exceptions import VersionConflictException
-from howler.odm.models.case import Case, CaseItem
+from howler.models.case import Case, CaseItem
 from howler.services import case_service, hit_service
 
 from sentinel.mapping.xdr_alert import XDRAlert
@@ -45,7 +45,7 @@ def mock_post(url: str, **kwargs):
 
 
 @pytest.fixture(scope="module")
-def client():
+def client(datastore_connection):
     from sentinel.routes.ingest import sentinel_api
 
     app = Flask("test_app")
@@ -422,7 +422,7 @@ def test_update_incident_status_only_updates_sentinel_owned_case_hits(client, te
     datastore().case.commit()
     datastore().hit.commit()
 
-    monkeypatch.setattr(Case, "save", Mock(side_effect=AssertionError("status-only replay should not save a case")))
+    monkeypatch.setattr(Case, "save", Mock(side_effect=AssertionError("unexpected case save")))
     case_events = []
     monkeypatch.setattr(ingest_service.comms_service, "emit", lambda event, data: case_events.append((event, data)))
 
@@ -694,7 +694,8 @@ def test_replay_repairs_missing_root_case_link_without_duplicate_case(client, te
 
     if missing_link == "root-backreference":
         root.howler.related.remove(case.case_id)
-        root.save(version=datastore().hit.get(root.howler.id, as_obj=True, version=True)[1])
+        root_version = datastore().hit.get(root.howler.id, as_obj=True, version=True)[1]
+        root.save(version=root_version)
     else:
         case.items = [item for item in case.items if item.value != root.howler.id]
         case.save(version=case_version)
@@ -944,7 +945,7 @@ def test_initial_case_save_conflict_preserves_concurrent_analyst_edits(client, t
             conflict_pending = False
             concurrent, version = datastore().case.get(case.case_id, as_obj=True, version=True)
             concurrent.title = "Analyst-edited title"
-            concurrent.items.append(CaseItem({"type": "folder", "name": "Analyst notes"}))
+            concurrent.items.append(CaseItem.model_validate({"type": "folder", "name": "Analyst notes"}))
             original_save(concurrent, version=version)
             raise VersionConflictException("simulated overlapping analyst update")
         return original_save(case, *args, **kwargs)
@@ -995,7 +996,7 @@ def test_zero_alert_incident_reconciles_alerts_after_case_conflict(
             concurrent, version = datastore().case.get(case.case_id, as_obj=True, version=True)
             if concurrent_replay:
                 concurrent.items = case.items
-            concurrent.items.append(CaseItem({"type": "folder", "name": "Analyst notes"}))
+            concurrent.items.append(CaseItem.model_validate({"type": "folder", "name": "Analyst notes"}))
             original_save(concurrent, version=version)
             raise VersionConflictException("simulated overlapping update")
         return original_save(case, *args, **kwargs)

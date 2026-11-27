@@ -1,6 +1,6 @@
+import inspect
 import uuid
 from datetime import datetime, timedelta
-from typing import cast
 
 import pytest
 from flask import Flask, Response
@@ -8,9 +8,8 @@ from mock import MagicMock, patch
 
 from howler.common.loader import datastore
 from howler.config import config
-from howler.odm import Model
-from howler.odm.models.user import User
-from howler.odm.randomizer import random_model_obj
+from howler.models.user import User
+from howler.sample_data.randomizer import random_model_obj
 
 time = datetime.now() + timedelta(seconds=10)
 
@@ -25,7 +24,7 @@ def request_context():
 
 
 def _build_user() -> User:
-    user_data: User = random_model_obj(cast(Model, User))
+    user_data: User = random_model_obj(User)
     user_data.api_quota = 1000
     user_data.type = ["admin", "user"]
 
@@ -67,129 +66,70 @@ def test_add_apikey(mock_auth_service, mock_jwt_service, request_context: Flask)
         assert result.status_code < 300
 
 
+@pytest.mark.parametrize(
+    ("case", "expected_error"),
+    [
+        ("extended", None),
+        ("bad_date", "Invalid expiry date format. Please use ISO format."),
+        ("too_long", "Expiry date must be before"),
+        ("missing", "API keys must have an expiry date."),
+    ],
+)
 @patch("howler.api.v1.auth.jwt_service")
 @patch("howler.security.login.auth_service")
-def test_add_apikey_no_extended(mock_auth_service, mock_jwt_service, request_context: Flask):
-    config.auth.allow_extended_apikeys = False
-
-    mock_auth_service.bearer_auth = MagicMock()
-    mock_jwt_service.decode = MagicMock(return_value={"exp": (datetime.now() + timedelta(minutes=5)).timestamp()})
-
-    user_data = _build_user()
-
-    datastore().user.save(user_data.uname, user_data)
-
-    mock_auth_service.bearer_auth.return_value = (
-        user_data,
-        ["R", "W", "E"],
-    )
-
-    with request_context.test_request_context(
-        headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
-        json={
-            "name": "tester_key_name",
-            "priv": "RWE",
-            "expiry_date": (datetime.now() + timedelta(minutes=1)).isoformat(),
-        },
-    ):
-        from howler.api.v1.auth import add_apikey
-
-        result: Response = add_apikey()
-
-        assert result.status_code == 400
-
-
-@patch("howler.api.v1.auth.jwt_service")
-@patch("howler.security.login.auth_service")
-def test_add_apikey_bad_date_format(mock_auth_service, mock_jwt_service, request_context: Flask):
-    config.auth.allow_extended_apikeys = False
-
-    mock_auth_service.basic_auth = MagicMock()
-    mock_jwt_service.decode = MagicMock(return_value={"exp": (datetime.now() + timedelta(minutes=5)).timestamp()})
-
-    user_data = _build_user()
-
-    datastore().user.save(user_data.uname, user_data)
-    mock_auth_service.basic_auth.return_value = (
-        user_data,
-        ["R", "W", "E"],
-    )
-
-    with request_context.test_request_context(
-        headers={"Authorization": "Basic potato", "Content-Type": "application/json"},
-        json={
-            "name": "tester_key_name",
-            "priv": "RW",
-            "expiry_date": "2023/09/10 12:45",
-        },
-    ):
-        from howler.api.v1.auth import add_apikey
-
-        result: Response = add_apikey()
-
-        assert result.status_code == 400
-        assert (
-            result.json is not None
-            and result.json["api_error_message"] == "Invalid expiry date format. Please use ISO format."
+def test_add_apikey_invalid_config(
+    mock_auth_service, mock_jwt_service, request_context, monkeypatch, case, expected_error
+):
+    if case in ("extended", "bad_date"):
+        monkeypatch.setattr(config.auth, "allow_extended_apikeys", False)
+    else:
+        monkeypatch.setattr(config.auth, "max_apikey_duration_amount", 10)
+        monkeypatch.setattr(config.auth, "max_apikey_duration_unit", "days")
+    user = _build_user()
+    datastore().user.save(user.uname, user)
+    mock_auth_service.basic_auth.return_value = mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+    mock_jwt_service.decode.return_value = {"exp": (datetime.now() + timedelta(minutes=5)).timestamp()}
+    body = {"name": "tester_key_name", "priv": "RWE" if case == "extended" else "RW"}
+    if case != "missing":
+        body["expiry_date"] = (
+            "2023/09/10 12:45"
+            if case == "bad_date"
+            else (datetime.now() + (timedelta(days=20) if case == "too_long" else timedelta(minutes=1))).isoformat()
         )
-
-
-@patch("howler.security.login.auth_service")
-def test_add_apikey_bad_config(mock_auth_service, request_context: Flask):
-    config.auth.max_apikey_duration_amount = 10
-    config.auth.max_apikey_duration_unit = "days"
-
-    mock_auth_service.basic_auth = MagicMock()
-
-    user_data = _build_user()
-
-    datastore().user.save(user_data.uname, user_data)
-    mock_auth_service.basic_auth.return_value = (
-        user_data,
-        ["R", "W", "E"],
-    )
-
     with request_context.test_request_context(
-        headers={"Authorization": "Basic potato", "Content-Type": "application/json"},
-        json={
-            "name": "tester_key_name",
-            "priv": "RW",
-            "expiry_date": (datetime.now() + timedelta(days=20)).isoformat(),
-        },
+        headers={"Authorization": "Bearer ." if case == "extended" else "Basic potato"}, json=body
     ):
         from howler.api.v1.auth import add_apikey
 
         result: Response = add_apikey()
 
-        assert result.status_code == 400
-        assert result.json is not None and result.json["api_error_message"].startswith("Expiry date must be before")
+    assert result.status_code == 400
+    if expected_error is not None:
+        assert result.json is not None
+        message = result.json["api_error_message"]
+        assert message.startswith(expected_error) if case == "too_long" else message == expected_error
 
 
-@patch("howler.security.login.auth_service")
-def test_add_apikey_no_exp(mock_auth_service, request_context: Flask):
-    config.auth.max_apikey_duration_amount = 10
-    config.auth.max_apikey_duration_unit = "days"
+def test_add_apikey_saves_the_generated_key_on_the_user(request_context: Flask):
+    from howler.api.v1 import auth as auth_api
 
-    mock_auth_service.basic_auth = MagicMock()
+    user = User.model_validate({"uname": "user-1", "name": "User One", "password": "hash", "apikeys": {}})
+    storage = MagicMock()
+    storage.user.get_if_exists.return_value = user
 
-    user_data = _build_user()
-
-    datastore().user.save(user_data.uname, user_data)
-    mock_auth_service.basic_auth.return_value = (
-        user_data,
-        ["R", "W", "E"],
-    )
-
-    with request_context.test_request_context(
-        headers={"Authorization": "Basic potato", "Content-Type": "application/json"},
-        json={
-            "name": "tester_key_name",
-            "priv": "RW",
-        },
+    with (
+        request_context.test_request_context(json={"name": "automation", "priv": "RW"}),
+        patch.object(auth_api, "datastore", return_value=storage),
+        patch.object(auth_api, "generate_random_secret", return_value="secret"),
+        patch.object(auth_api.bcrypt, "hash", return_value="bcrypt-hash"),
+        patch.object(auth_api.auth_service, "invalidate_apikey_cache"),
+        patch.object(auth_api.config.auth, "max_apikey_duration_amount", None),
+        patch.object(auth_api.config.auth, "max_apikey_duration_unit", None),
     ):
-        from howler.api.v1.auth import add_apikey
+        response: Response = inspect.unwrap(auth_api.add_apikey)(user={"uname": "user-1"})
 
-        result: Response = add_apikey()
-
-        assert result.status_code == 400
-        assert result.json is not None and result.json["api_error_message"] == "API keys must have an expiry date."
+    assert response.status_code == 200
+    assert response.get_json()["api_response"] == {"apikey": "automation:secret"}
+    assert user.apikeys["automation"].acl == ["R", "W"]
+    assert user.apikeys["automation"].password == "bcrypt-hash"
+    storage.user.save.assert_called_once_with("user-1", user)

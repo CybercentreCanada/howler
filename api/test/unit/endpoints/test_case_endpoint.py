@@ -1,5 +1,4 @@
 import uuid
-from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -7,10 +6,9 @@ from flask import Flask, Response
 
 from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.loader import datastore
-from howler.odm import Model
-from howler.odm.models.case import Case
-from howler.odm.models.user import User
-from howler.odm.randomizer import random_model_obj
+from howler.models.case import Case
+from howler.models.user import User
+from howler.sample_data.randomizer import random_model_obj
 
 
 @pytest.fixture(scope="module")
@@ -21,7 +19,7 @@ def request_context():
 
 
 def _build_user(user_type: list[str] | None = None) -> User:
-    user_data: User = random_model_obj(cast(Model, User))
+    user_data: User = random_model_obj(User)
     user_data.type = user_type or ["admin", "user"]
 
     # The randomizer draws unames from ["admin", "user", "shawnh"], which are
@@ -34,7 +32,7 @@ def _build_user(user_type: list[str] | None = None) -> User:
 
 
 def _build_case(case_id: str = "case-001") -> Case:
-    case = Case({"case_id": case_id, "title": "Test Case", "summary": "S"})
+    case = Case.model_validate({"case_id": case_id, "title": "Test Case", "summary": "S"})
     object.__setattr__(case, "save", MagicMock())
     return case
 
@@ -294,13 +292,11 @@ class TestUpdateCaseEndpoint:
     @patch("howler.services.case_service.datastore")
     def test_update_case_success(self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask):
         """Returns 200 with updated case data when the update succeeds."""
-        from howler.odm.models.case import Case
-
         user = _build_user()
         _mock_auth(mock_auth_service, user)
         mock_datastore.return_value.case.get.return_value = {"case_id": "case-001", "title": "T"}
 
-        updated = Case(
+        updated = Case.model_validate(
             {
                 "case_id": "case-001",
                 "title": "Updated Title",
@@ -382,14 +378,14 @@ class TestAppendItemEndpoint:
     @patch("howler.services.case_service.datastore")
     def test_append_item_success(self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask):
         """Returns 200 when a valid item is appended."""
-        from howler.odm.models.case import Case
-
         user = _build_user()
         _mock_auth(mock_auth_service, user)
         mock_datastore.return_value.case.get.return_value = {"case_id": "case-001", "title": "T"}
         mock_datastore.return_value.__getitem__.return_value.get.return_value = {"classification": "UNRESTRICTED"}
 
-        mock_case_service.append_case_item.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
+        mock_case_service.append_case_item.return_value = Case.model_validate(
+            {"case_id": "case-001", "title": "T", "summary": "S"}
+        )
         record = _build_case()
 
         with request_context.test_request_context(
@@ -412,8 +408,6 @@ class TestAppendItemEndpoint:
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
         """Resolves `path` to a parent folder id before appending."""
-        from howler.odm.models.case import Case
-
         user = _build_user()
         _mock_auth(mock_auth_service, user)
         mock_datastore.return_value.case.get.return_value = {"case_id": "case-001", "title": "T"}
@@ -422,7 +416,9 @@ class TestAppendItemEndpoint:
         resolved_parent.id = "folder-123"
 
         mock_case_service.get_parent_from_path.return_value = resolved_parent
-        mock_case_service.append_case_item.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
+        mock_case_service.append_case_item.return_value = Case.model_validate(
+            {"case_id": "case-001", "title": "T", "summary": "S"}
+        )
         record = _build_case()
 
         with request_context.test_request_context(
@@ -449,13 +445,13 @@ class TestAppendItemEndpoint:
         self, mock_datastore, mock_auth_service, mock_case_service, request_context: Flask
     ):
         """Uses the provided parent id directly when no `path` is supplied."""
-        from howler.odm.models.case import Case
-
         user = _build_user()
         _mock_auth(mock_auth_service, user)
         mock_datastore.return_value.case.get.return_value = {"case_id": "case-001", "title": "T"}
 
-        mock_case_service.append_case_item.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
+        mock_case_service.append_case_item.return_value = Case.model_validate(
+            {"case_id": "case-001", "title": "T", "summary": "S"}
+        )
 
         with request_context.test_request_context(
             method="POST",

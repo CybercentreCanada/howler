@@ -3,7 +3,7 @@
 import json
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, call, patch
 from uuid import UUID
 
@@ -13,14 +13,24 @@ from howler.common.exceptions import HowlerRuntimeError, InvalidDataException
 from howler.config import CLASSIFICATION
 from howler.datastore.bulk import ElasticBulkPlan
 from howler.datastore.collection import ESCollection
-from howler.odm.models.case import Case, CaseItem, CaseRule
-from howler.odm.models.event import Event
-from howler.odm.models.hit import Hit
+from howler.models.case import Case, CaseItem, CaseRule
+from howler.models.event import Event
+from howler.models.hit import Hit
 from howler.services import correlation_service
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def share_correlation_datastore_with_case_service(monkeypatch):
+    """Keep case metadata recomputation on the datastore mocked by each correlation test."""
+    monkeypatch.setattr(
+        correlation_service.case_service,
+        "datastore",
+        lambda: correlation_service.datastore(),
+    )
 
 
 def _make_rule(
@@ -29,7 +39,7 @@ def _make_rule(
     query: str = "*:*",
     destination: str = "related",
     indexes: list[str] | None = None,
-) -> CaseRule:
+) -> Any:
     data: dict[str, Any] = {
         "query": query,
         "destination": destination,
@@ -41,10 +51,10 @@ def _make_rule(
     if indexes is not None:
         data["indexes"] = indexes
 
-    return CaseRule(data)
+    return cast(Any, CaseRule).model_validate(data)
 
 
-def _make_case_obj(case_id: str, rules: list[CaseRule]) -> MagicMock:
+def _make_case_obj(case_id: str, rules: list[Any]) -> MagicMock:
     case = MagicMock()
     case.case_id = case_id
     case.rules = rules
@@ -491,11 +501,11 @@ def _uuid(value: int) -> str:
 
 
 def _make_real_case(case_id: str) -> Case:
-    return Case({"case_id": case_id, "title": f"case {case_id}", "summary": "keep this summary"})
+    return Case.model_validate({"case_id": case_id, "title": f"case {case_id}", "summary": "keep this summary"})
 
 
 def _make_real_hit(record_id: str) -> Hit:
-    return Hit(
+    return Hit.model_validate(
         {
             "howler": {"id": record_id, "analytic": "Correlation test", "hash": "0123456789abcdef"},
             "message": "keep this hit message",
@@ -504,7 +514,9 @@ def _make_real_hit(record_id: str) -> Hit:
 
 
 def _make_real_event(record_id: str) -> Event:
-    return Event({"howler": {"id": record_id, "hash": "abcdef0123456789"}, "message": "keep this event message"})
+    return Event.model_validate(
+        {"howler": {"id": record_id, "hash": "abcdef0123456789"}, "message": "keep this event message"}
+    )
 
 
 def _bulk_updates(plan: ElasticBulkPlan) -> list[tuple[str, str, dict[str, Any]]]:
@@ -617,7 +629,7 @@ class TestProcessBatch:
     @patch("howler.services.correlation_service.datastore")
     def test_skips_duplicates(self, mock_ds_fn, mock_get_rules, mock_search_svc, mock_comms):
         """Records that would conflict with an existing item are silently skipped."""
-        existing = CaseItem({"type": "hit", "value": "hit-0", "name": "related"})
+        existing = cast(Any, CaseItem).model_validate({"type": "hit", "value": "hit-0", "name": "related"})
         case = _make_case("case-1", items=[existing])
         mock_ds = _setup_ds(mock_ds_fn, {"case-1": case})
 
@@ -965,6 +977,29 @@ class TestProcessBatch:
         assert added == 0
         mock_ds.case.bulk.assert_not_called()
 
+    def test_added_case_item_is_serialized_for_bulk_update(self):
+        case = _make_real_case("case-1")
+        rule = _make_rule(destination="related")
+        backing = MagicMock()
+        backing.classification = CLASSIFICATION.UNRESTRICTED
+
+        with (
+            patch.object(correlation_service.case_service, "get_parent_from_path", return_value=None),
+            patch.object(correlation_service.case_service, "check_conflicts", return_value=False),
+            patch.object(correlation_service.case_service, "add_backreference", return_value=False),
+        ):
+            correlation_service._add_record_to_case(
+                case,
+                {"howler": {"id": "hit-1"}},
+                rule,
+                {("hit", "hit-1"): (backing, "hit-version")},
+            )
+
+        assert isinstance(case.items[-1], CaseItem)
+        plan = ElasticBulkPlan(["case"], Case)
+        plan.add_update_operation("case-1", case, fields=["items"])
+        assert _bulk_updates(plan)[0][2]["items"][0]["value"] == "hit-1"
+
 
 class TestCorrelationBulkRouting:
     """Regression coverage for routing correlation partial updates by read version."""
@@ -1169,7 +1204,7 @@ class TestCorrelationUnreachableBranches:
         rule = _make_rule(destination="related")
 
         with (
-            patch.object(correlation_service, "CaseItem", return_value=item),
+            patch.object(correlation_service.CaseItem, "model_validate", return_value=item),
             patch.object(
                 correlation_service,
                 "_resolve_backing_object",

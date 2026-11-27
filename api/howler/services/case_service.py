@@ -22,18 +22,34 @@ from howler.common.logging import get_logger
 from howler.config import CLASSIFICATION
 from howler.datastore.collection import CREATE_TOKEN
 from howler.datastore.exceptions import DataStoreException
-from howler.odm.models.case import Case, CaseItem, CaseItemTypes, CaseLog, CaseRule
-from howler.odm.models.ecs.related import Related
-from howler.odm.models.event import Event
-from howler.odm.models.hit import Hit
-from howler.odm.models.log import Log
-from howler.odm.models.user import User
+from howler.models.case import Case, CaseItem, CaseItemTypes, CaseLog, CaseRule
+from howler.models.ecs.related import Related
+from howler.models.event import Event
+from howler.models.hit import Hit
+from howler.models.log import Log
+from howler.models.registry import model_registry
+from howler.models.user import User
 from howler.security.utils import is_classification_accessible
 from howler.services import comms_service, event_service, hit_service
+from howler.utils.isotime import now_as_datetime
 
 logger = get_logger(__file__)
 
 CREATED_CASES = Counter(f"{APP_NAME.replace('-', '_')}_created_cases_total", "The number of created cases")
+
+
+def _apply_case_rule_patch(rule: CaseRule, patch: dict[str, Any]) -> tuple[CaseRule, list[str]]:
+    """Validate and apply a rule patch without partially mutating Pydantic rules."""
+    changes: list[str] = []
+    for key, value in patch.items():
+        if key == "timeframe" and value is not None and (not isinstance(value, int) or value <= 0):
+            raise HowlerValueError("Rule timeframe must be a positive integer or None")
+        changes.append(f"{key}: '{getattr(rule, key, None)}' → '{value}'")
+
+    try:
+        return CaseRule.model_validate({**rule.model_dump(by_alias=True), **patch}), changes
+    except HowlerValueError as ex:
+        raise InvalidDataException(str(ex)) from ex
 
 
 @overload
@@ -157,15 +173,22 @@ def create_case(
         case_data["case_id"] = case_id
     items = case_data.pop("items", [])
 
-    case = Case(case_data)
-    case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user.uname if user else "system"})]
+    case_type: type[Case] = datastore().case.model_class or Case
+    case = case_type.model_validate(case_data)
+    case.log = [
+        CaseLog(
+            timestamp=now_as_datetime(),
+            explanation="Case created",
+            user=user.uname if user else "system",
+        )
+    ]
 
     if not is_classification_accessible(user, case.classification):
         raise ForbiddenException(f"User cannot create case at classification {case.classification}")
 
     # Accumulate initial case items in memory and write the case once after validation.
     for item in items:
-        append_case_item(case, item=CaseItem(item), user=user)
+        append_case_item(case, item=CaseItem.model_validate(item), user=user)
 
     case.save(refresh=refresh, version=CREATE_TOKEN)
 
@@ -205,11 +228,9 @@ def hide_cases(case_ids: set[str], user: User, refresh: Literal["true", "false",
         if hidden_ids:
             related_case.log.append(
                 CaseLog(
-                    {
-                        "timestamp": "NOW",
-                        "user": user.uname,
-                        "explanation": f"Referenced case(s) hidden: {', '.join(hidden_ids)}",
-                    }
+                    timestamp=now_as_datetime(),
+                    user=user.uname,
+                    explanation=f"Referenced case(s) hidden: {', '.join(hidden_ids)}",
                 )
             )
             related_case.save(refresh=refresh)
@@ -222,15 +243,7 @@ def hide_cases(case_ids: set[str], user: User, refresh: Literal["true", "false",
             continue
 
         case.visible = False
-        case.log.append(
-            CaseLog(
-                {
-                    "timestamp": "NOW",
-                    "user": user.uname,
-                    "explanation": "Case hidden",
-                }
-            )
-        )
+        case.log.append(CaseLog(timestamp=now_as_datetime(), user=user.uname, explanation="Case hidden"))
         case.save(refresh=refresh, version=version)
 
 
@@ -428,19 +441,16 @@ def update_case(
 
         case.log.append(
             CaseLog(
-                {
-                    "timestamp": "NOW",
-                    "key": key,
-                    "previous_value": prev_str,
-                    "new_value": new_str,
-                    "user": user.uname,
-                    "explanation": explanation,
-                }
+                key=key,
+                previous_value=prev_str,
+                new_value=new_str,
+                user=user.uname,
+                explanation=explanation,
             )
         )
         setattr(case, key, new_value)
 
-    case.updated = "NOW"
+    case.updated = now_as_datetime()
     case.save(refresh=refresh, version=version)
 
     comms_service.emit("cases", {"case": case.as_primitives()})
@@ -498,7 +508,9 @@ def get_parent_from_path(
             if not create_if_missing:
                 return None
             # Create the folder
-            folder_item = CaseItem({"type": CaseItemTypes.FOLDER, "name": part, "parent": current_parent, "value": ""})
+            folder_item = CaseItem.model_validate(
+                {"type": CaseItemTypes.FOLDER, "name": part, "parent": current_parent, "value": ""},
+            )
             case.items.append(folder_item)
             current_parent = folder_item.id
         else:
@@ -574,13 +586,17 @@ def append_case_item(  # noqa: C901
         if not all([item_type, item_value]):
             raise InvalidDataException("item_type and item_value are required if item is not provided")
 
-        if item_type not in CaseItemTypes:
+        try:
+            item_type = CaseItemTypes(item_type)
+        except (TypeError, ValueError):
             raise InvalidDataException(f"Invalid item type: {item_type}, valid types are: {', '.join(CaseItemTypes)}")
 
         data: dict = {"type": item_type, "value": item_value, "parent": item_parent}
         if item_name is not None:
             data["name"] = item_name
-        item = CaseItem(data)
+        elif item_type == CaseItemTypes.FOLDER:
+            data["name"] = item_value
+        item = CaseItem.model_validate(data)
 
     if item.name is None:
         item.name = item.value
@@ -871,10 +887,7 @@ def append_hit(
     item.classification = hit.classification
     case.items.append(item)
     add_backreference(hit, case.case_id, user=user)
-    if refresh is None:
-        hit.save(version=hit_version)
-    else:
-        hit.save(version=hit_version, refresh=refresh)
+    hit.save(version=hit_version, refresh=refresh)
     if recompute_metadata:
         recompute_case_metadata(case)
     return case
@@ -1011,8 +1024,8 @@ def _collect_indicators_from_related(related: Related | None) -> set[str]:
         return set()
 
     indicators: set[str] = set()
-    for key in related.fields().keys():
-        value = related[key]
+    values = (getattr(related, name) for name in model_registry.fields(type(related)))
+    for value in values:
         if value:
             indicators.update(str(v) for v in value if v)
 
@@ -1092,7 +1105,7 @@ def add_backreference(
 
     backing_obj.howler.related.append(case_id)
     backing_obj.howler.log.append(
-        Log(
+        Log.model_validate(
             {
                 "timestamp": "NOW",
                 "explanation": f"Added to case {case_id}",
@@ -1132,7 +1145,7 @@ def remove_backreference(
         backing_obj.howler.related.remove(case_id)
 
         backing_obj.howler.log.append(
-            Log(
+            Log.model_validate(
                 {
                     "timestamp": "NOW",
                     "explanation": f"Removed from case {case_id}",
@@ -1229,7 +1242,7 @@ def add_case_rule(
     rule_data.setdefault("expire_after_resolved", False)
 
     try:
-        rule = CaseRule(rule_data)
+        rule = CaseRule.model_validate(rule_data)
     except HowlerValueError as ex:
         raise InvalidDataException(str(ex)) from ex
 
@@ -1237,15 +1250,12 @@ def add_case_rule(
 
     case.log.append(
         CaseLog(
-            {
-                "timestamp": "NOW",
-                "user": user.uname,
-                "explanation": f"Added correlation rule targeting '{rule.destination}'",
-            }
+            user=user.uname,
+            explanation=f"Added correlation rule targeting '{rule.destination}'",
         )
     )
 
-    case.updated = "NOW"
+    case.updated = now_as_datetime()
     case.save(refresh=refresh, version=version)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case
@@ -1278,17 +1288,9 @@ def remove_case_rule(
     if len(case.rules) == original_len:
         raise NotFoundException(f"Rule {rule_id} not found in case {case_id}")
 
-    case.log.append(
-        CaseLog(
-            {
-                "timestamp": "NOW",
-                "user": user.uname,
-                "explanation": f"Removed correlation rule {rule_id}",
-            }
-        )
-    )
+    case.log.append(CaseLog(user=user.uname, explanation=f"Removed correlation rule {rule_id}"))
 
-    case.updated = "NOW"
+    case.updated = now_as_datetime()
     case.save(refresh=refresh, version=version)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case
@@ -1335,31 +1337,17 @@ def update_case_rule(
     if rule is None:
         raise NotFoundException(f"Rule {rule_id} not found in case {case_id}")
 
-    changes: list[str] = []
-    for key, value in patch.items():
-        if key == "timeframe" and value is not None and (not isinstance(value, int) or value <= 0):
-            raise HowlerValueError("Rule timeframe must be a positive integer or None")
-
-        old_value = getattr(rule, key, None)
-        setattr(rule, key, value)
-        changes.append(f"{key}: '{old_value}' → '{value}'")
-
-    if rule.timeframe is not None and (not isinstance(rule.timeframe, int) or rule.timeframe <= 0):
-        raise HowlerValueError("Rule timeframe must be a positive integer or None")
-    elif rule.timeframe is None and rule.expire_after_resolved:
-        raise InvalidDataException("Rule cannot expire after resolved when no timeframe is set")
+    updated_rule, changes = _apply_case_rule_patch(rule, patch)
+    case.rules[case.rules.index(rule)] = updated_rule
 
     case.log.append(
         CaseLog(
-            {
-                "timestamp": "NOW",
-                "user": user.uname,
-                "explanation": f"Updated correlation rule {rule_id}: {'; '.join(changes)}",
-            }
+            user=user.uname,
+            explanation=f"Updated correlation rule {rule_id}: {'; '.join(changes)}",
         )
     )
 
-    case.updated = "NOW"
+    case.updated = now_as_datetime()
     case.save(refresh=refresh, version=version)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case

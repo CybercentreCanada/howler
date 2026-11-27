@@ -12,8 +12,8 @@ from howler.common.exceptions import (
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
-from howler.odm.models.dossier import Dossier
-from howler.odm.models.user import User
+from howler.models.dossier import Dossier
+from howler.models.user import User
 from howler.security.login import api_login
 from howler.services import dossier_service
 
@@ -45,7 +45,7 @@ def get_dossiers(user: User, **kwargs):
     try:
         return ok(
             datastore().dossier.search(
-                f"type:global OR owner:({user['uname']} OR none)",
+                f"type:global OR owner:({user.uname} OR none)",
                 as_obj=False,
                 rows=1000,
             )["items"]
@@ -202,7 +202,7 @@ def delete_dossier(id: str, user: User, **kwargs):
 
     storage = datastore()
 
-    existing_dossier: Dossier = storage.dossier.get_if_exists(id)
+    existing_dossier = storage.dossier.get_if_exists(id)
     if not existing_dossier:
         return not_found(err="This dossier does not exist")
 

@@ -1,9 +1,8 @@
-from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, AnyStr, Optional, cast
+from collections.abc import Iterator, Mapping
+from typing import Any, AnyStr, Optional, cast, get_args, get_origin
 from typing import Mapping as _Mapping
 
-if TYPE_CHECKING:
-    from howler.odm.base import Model, _Field
+from pydantic import BaseModel
 
 
 def strip_nulls(d: Any):
@@ -92,13 +91,20 @@ def get_recursive_delta(
     return out
 
 
-def flatten(data: _Mapping, parent_key: Optional[str] = None, odm: Optional[type["Model"]] = None) -> dict[str, Any]:
+def flatten(
+    data: _Mapping,
+    parent_key: Optional[str] = None,
+    odm: Optional[type[BaseModel]] = None,
+    *,
+    preserve_empty: bool = True,
+) -> dict[str, Any]:
     """Flatten a nested dict.
 
     Args:
         data: The mapping to flatten
         parent_key: Optional parent key for nested flattening
         odm: Optional ODM model for field validation
+        preserve_empty: Keep empty dictionaries instead of flattening them away
 
     Returns:
         Flattened dictionary with dot-notation keys
@@ -106,7 +112,9 @@ def flatten(data: _Mapping, parent_key: Optional[str] = None, odm: Optional[type
     # Pre-compute ODM valid keys if provided
     valid_keys_set: set[str] | None = None
     if odm:
-        valid_keys_set = set(odm.flat_fields().keys())
+        from howler.models.registry import model_registry
+
+        valid_keys_set = set(model_registry.flat_fields(odm))
 
     def _flatten_recursive(mapping: _Mapping, prefix: str = "") -> dict[str, Any]:
         """Inner recursive function for flattening."""
@@ -115,7 +123,7 @@ def flatten(data: _Mapping, parent_key: Optional[str] = None, odm: Optional[type
         for key, value in mapping.items():
             current_key = f"{prefix}.{key}" if prefix else key
 
-            if isinstance(value, dict):
+            if isinstance(value, dict) and (value or not preserve_empty):
                 # ODM validation check
                 if valid_keys_set and not any(valid_key.startswith(f"{current_key}.") for valid_key in valid_keys_set):
                     result[current_key] = value
@@ -131,29 +139,25 @@ def flatten(data: _Mapping, parent_key: Optional[str] = None, odm: Optional[type
     return flattened
 
 
-def flatten_deep(data: _Mapping):
+def flatten_deep(data: _Mapping) -> dict[str, Any]:
     "Aggressively and completely flatten an object."
     partially_flattened = flatten(data)
 
     final: dict[str, Any] = {}
     for key, value in partially_flattened.items():
-        if not isinstance(value, list) or len(value) == 0 or all(not isinstance(entry, dict) for entry in value):
+        if not isinstance(value, list):
             final[key] = value
+        elif not any(isinstance(entry, dict) for entry in value):
+            # A later compound list can contribute to this same dotted key.
+            final[key] = value.copy()
         else:
             for entry in value:
                 flat_value = flatten_deep(entry)
                 for child_key, child_value in flat_value.items():
                     full_key = f"{key}.{child_key}"
-                    if full_key not in final:
-                        if isinstance(child_value, list):
-                            final[full_key] = child_value
-                        else:
-                            final[full_key] = [child_value]
-                    else:
-                        if isinstance(child_value, list):
-                            final[full_key].extend(child_value)
-                        else:
-                            final[full_key].append(child_value)
+                    final.setdefault(full_key, []).extend(
+                        child_value if isinstance(child_value, list) else [child_value]
+                    )
 
     return final
 
@@ -172,36 +176,54 @@ def unflatten(data: _Mapping) -> _Mapping:
     return out
 
 
-def extra_keys(odm: type["Model"], data: _Mapping) -> set[str]:
-    "Geta list of extra keys when compared to a list of permitted keys"
-    from howler.odm.base import Mapping, Optional
+def _leaf_paths(value: Any, path: str) -> Iterator[str]:
+    """Walk document fields, keeping the same field path across array elements."""
+    if isinstance(value, Mapping) and value:
+        for key, child in value.items():
+            yield from _leaf_paths(child, f"{path}.{key}")
+    elif isinstance(value, list) and value:
+        for child in value:
+            yield from _leaf_paths(child, path)
+    else:
+        yield path
 
-    data = flatten_deep(data)
 
-    result: set[str] = set()
-    for key in data.keys():
-        parts = key.split(".")
-        current_odm = odm
-        for part in parts:
-            sub_fields: dict[str, Any] = current_odm.fields()
+def _known_field_path(model: type[BaseModel], path: str) -> bool:
+    """Follow serialized field names and consume one dynamic key per typed mapping."""
+    from howler.models.registry import field_metadata, model_registry, unwrap_annotation
 
-            if part in sub_fields:
-                current_odm = sub_fields[part]
-            else:
-                if isinstance(current_odm, Optional):
-                    current_odm = current_odm.child_type
+    annotation: Any = model
+    metadata = None
+    for part in path.split("."):
+        value_type = unwrap_annotation(annotation)
+        while get_origin(value_type) is list:
+            annotation = get_args(value_type)[0]
+            metadata = field_metadata(annotation)
+            value_type = unwrap_annotation(annotation)
 
-                if isinstance(current_odm, Mapping):
-                    current_odm = current_odm.child_type
-                else:
-                    result.add(key)
-                    break
+        if isinstance(value_type, type) and issubclass(value_type, BaseModel):
+            definition = model_registry.fields(value_type).get(part)
+            if definition is None:
+                return False
+            annotation, metadata = definition.annotation, definition.metadata
+        elif metadata and metadata.kind in {"FlattenedObject", "FlattenedListObject", "Json"}:
+            return True
+        elif metadata and metadata.kind == "Mapping" and get_origin(value_type) is dict:
+            annotation = get_args(value_type)[1]
+            metadata = field_metadata(annotation)
+        else:
+            return False
+    return True
 
-    return result
+
+def extra_keys(model: type[BaseModel], data: _Mapping) -> set[str]:
+    """Return unknown flattened paths, allowing dynamic mapping keys."""
+    paths = {path for key, value in data.items() for path in _leaf_paths(value, key)}
+    return {path for path in paths if not _known_field_path(model, path)}
 
 
 def prune(  # noqa: C901
-    data: _Mapping, keys: list[str], fields: dict[str, "_Field"], mapping_class: type, parent_key: Optional[str] = None
+    data: _Mapping, keys: list[str], mapping_paths: set[str], parent_key: Optional[str] = None
 ) -> dict[str, Any]:
     "Remove all keys in the given list from the dict if they exist"
     pruned_items: list[tuple[str, Any]] = []
@@ -210,13 +232,13 @@ def prune(  # noqa: C901
         cur_key = f"{parent_key}.{key}" if parent_key else key
 
         # If this key is a mapping, preserve all children
-        if isinstance(fields.get(cur_key, None), mapping_class):
+        if cur_key in mapping_paths:
             pruned_items.append((key, val))
         elif isinstance(val, dict):
             child_keys = [_key for _key in keys if _key.startswith(cur_key)]
 
             if len(child_keys) > 0:
-                pruned_items.append((key, prune(val, child_keys, fields, mapping_class, cur_key)))
+                pruned_items.append((key, prune(val, child_keys, mapping_paths, cur_key)))
         elif isinstance(val, list):
             if cur_key not in keys and not any(_key.startswith(cur_key) for _key in keys):
                 continue
@@ -227,7 +249,7 @@ def prune(  # noqa: C901
                     child_keys = [_key for _key in keys if _key.startswith(cur_key)]
 
                     if len(child_keys) > 0:
-                        pruned_items.append((key, prune(val, child_keys, fields, mapping_class, cur_key)))
+                        pruned_items.append((key, prune(val, child_keys, mapping_paths, cur_key)))
                 else:
                     list_result.append(entry)
 

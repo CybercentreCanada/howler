@@ -5,7 +5,7 @@ import pytest
 import requests
 from urllib3.exceptions import ReadTimeoutError
 
-from howler.odm.models.config import AITriage
+from howler.config_models import AITriage
 from howler.services import ai_service as transport
 
 OK = {"choices": [{"message": {"content": "opinion"}}]}

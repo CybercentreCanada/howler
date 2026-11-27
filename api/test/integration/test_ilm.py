@@ -15,12 +15,12 @@ from uuid import uuid4
 import pytest
 
 from howler.common.loader import DATASTORE_INDEX_PREFIX
+from howler.config_models import ILMIndexConfig
 from howler.datastore.collection import ESCollection
 from howler.datastore.store import ESStore
-from howler.odm.models.case import Case, CaseRule
-from howler.odm.models.config import ILMIndexConfig
-from howler.odm.models.event import Event
-from howler.odm.models.hit import Hit
+from howler.models.case import Case, CaseRule
+from howler.models.event import Event
+from howler.models.hit import Hit
 from howler.services import correlation_service
 
 logger = logging.getLogger(__name__)
@@ -374,10 +374,10 @@ class TestILMCorrelationUpdates:
 
         historical_case_id, historical_hit_id, historical_event_id = str(uuid4()), str(uuid4()), str(uuid4())
         current_case_id, current_hit_id, current_event_id = str(uuid4()), str(uuid4()), str(uuid4())
-        historical_case = Case(
+        historical_case = Case.model_validate(
             {"case_id": historical_case_id, "title": "Historical case title", "summary": "Preserve this summary"}
         )
-        historical_hit = Hit(
+        historical_hit = Hit.model_validate(
             {
                 "howler": {
                     "id": historical_hit_id,
@@ -387,7 +387,7 @@ class TestILMCorrelationUpdates:
                 "message": "Preserve historical hit message",
             }
         )
-        historical_event = Event(
+        historical_event = Event.model_validate(
             {
                 "howler": {"id": historical_event_id, "hash": "abcdef1234567890"},
                 "message": "Preserve historical event message",
@@ -402,14 +402,16 @@ class TestILMCorrelationUpdates:
             es_store.client.indices.rollover(alias=collection.name, conditions={"max_docs": 1})
             collection._refresh_ilm_index_name()
 
-        current_case = Case({"case_id": current_case_id, "title": "Newest case sentinel", "summary": "Untouched"})
-        current_hit = Hit(
+        current_case = Case.model_validate(
+            {"case_id": current_case_id, "title": "Newest case sentinel", "summary": "Untouched"}
+        )
+        current_hit = Hit.model_validate(
             {
                 "howler": {"id": current_hit_id, "analytic": "Newest sentinel", "hash": "1234567890abcdef"},
                 "message": "Untouched current hit",
             }
         )
-        current_event = Event(
+        current_event = Event.model_validate(
             {"howler": {"id": current_event_id, "hash": "abcdef1234567890"}, "message": "Untouched current event"}
         )
         case_collection.save(current_case_id, current_case, refresh="wait_for")
@@ -418,7 +420,7 @@ class TestILMCorrelationUpdates:
         latest_indexes = {kind: collections[kind].index_name for kind in collection_names}
         assert all(latest_indexes[kind] != historical_indexes[kind] for kind in collection_names)
 
-        rule = CaseRule(
+        rule = CaseRule.model_validate(
             {
                 "rule_id": str(uuid4()),
                 "query": "*:*",

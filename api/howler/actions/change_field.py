@@ -1,20 +1,18 @@
-import functools
 from typing import Annotated, Any
 
 from howler.actions.models import ActionArguments, ActionDescription, ActionSpecification, ActionStep, one_of
 from howler.common.loader import datastore
+from howler.datastore.howler_store import get_action_hit_model
 from howler.datastore.operations import OdmHelper
-from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.hit import Hit
-
-hit_helper = OdmHelper(Hit)
+from howler.models.action import VALID_TRIGGERS
+from howler.models.hit import Hit
+from howler.models.registry import model_registry
 
 OPERATION_ID = "change_field"
 
 
-@functools.cache
 def _hit_fields() -> list[str]:
-    return list(Hit.flat_fields().keys())
+    return list(model_registry.flat_fields(get_action_hit_model()))
 
 
 class ChangeFieldArguments(ActionArguments):
@@ -32,12 +30,24 @@ def execute(query: str, field: str, value: str, **kwargs):
         field (str): The field to update.
         value (str): The value to set it to. Must be a string.
     """
+    ds = datastore()
+    hit_model = ds.hit.model_class or get_action_hit_model() or Hit
+    if field not in model_registry.flat_fields(hit_model):
+        return [
+            {
+                "query": query,
+                "outcome": "error",
+                "title": "Invalid field",
+                "message": (f"Field '{field}' does not exist. You must pick a valid entry from the howler index."),
+            }
+        ]
+
     report = []
 
     try:
-        datastore().hit.update_by_query(
+        ds.hit.update_by_query(
             query,
-            [hit_helper.update(field, value)],
+            [OdmHelper(hit_model).update(field, value)],
         )
 
         report.append(
