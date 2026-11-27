@@ -1,4 +1,5 @@
 import os
+import shutil
 from copy import deepcopy
 
 import pytest
@@ -102,6 +103,31 @@ def test_classification():
     assert cl_engine.max_classification(dyn1, dyn2) == "UNRESTRICTED//ADMIN//REL TO TEST"
     assert cl_engine.normalize_classification(dyn1, long_format=True) == "UNRESTRICTED//REL TO TEST"
     assert cl_engine.normalize_classification(dyn1, long_format=False) == "U//REL TO TEST"
+
+
+def test_default_classification_is_cached_until_the_file_changes(tmp_path, monkeypatch):
+    source = os.path.join(os.path.dirname(os.path.dirname(__file__)), "classification.yml")
+    for version in ("..v1", "..v2"):
+        (tmp_path / version).mkdir()
+        shutil.copy(source, tmp_path / version / "classification.yml")
+    (tmp_path / "..data").symlink_to("..v1")
+    (tmp_path / "classification.yml").symlink_to("..data/classification.yml")
+    monkeypatch.setenv("HWL_CONF_FOLDER", str(tmp_path))
+    monkeypatch.setattr(loader, "_DEFAULT_CLASSIFICATIONS", {})
+
+    first = loader.get_classification()
+    assert loader.get_classification() is first
+
+    # A configmap update repoints ..data at a new directory.
+    (tmp_path / "..data").unlink()
+    (tmp_path / "..data").symlink_to("..v2")
+    second = loader.get_classification()
+    assert second is not first
+
+    edited = tmp_path / "..v2" / "classification.yml"
+    stat = edited.stat()
+    os.utime(edited, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000))
+    assert loader.get_classification() is not second
 
 
 def test_dict_flatten():

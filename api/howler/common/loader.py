@@ -30,42 +30,30 @@ def env_substitute(buffer):
 
 
 _CLASSIFICATIONS: dict[Union[str, Path], "Classification"] = {}
+_DEFAULT_CLASSIFICATIONS: dict[tuple[str, Optional[int]], "Classification"] = {}
 
 
-def get_classification(yml_config: Optional[str] = None) -> "Classification":  # noqa: C901
-    "Get the classification from a given classification.yml file, caching results"
-    if yml_config in _CLASSIFICATIONS:
-        return _CLASSIFICATIONS[yml_config]
+def _default_classification_path() -> Path:
+    "Resolve the configured classification.yml, following Kubernetes configmap symlinks"
+    root_path = Path("/etc") / APP_NAME.replace("-dev", "").replace("-stg", "") / "conf"
+    yml_config_path = Path(os.environ.get("HWL_CONF_FOLDER", root_path)) / "classification.yml"
 
+    if yml_config_path.is_symlink():
+        if str(yml_config_path.readlink()).startswith("..data"):
+            yml_config_path = yml_config_path.parent / yml_config_path.readlink()
+        else:
+            yml_config_path = Path(os.path.realpath(yml_config_path.readlink()))
+
+    if not yml_config_path.exists():
+        yml_config_path = Path("/etc") / APP_NAME.replace("-dev", "") / "classification.yml"
+
+    return yml_config_path
+
+
+def _load_classification(yml_config_path: Path) -> "Classification":
+    "Parse a classification definition, falling back to the packaged default definition"
     log = logging.getLogger(f"{APP_NAME}.common.loader")
-
-    if not yml_config:
-        root_path = Path("/etc") / APP_NAME.replace("-dev", "").replace("-stg", "") / "conf"
-        yml_config_path = Path(os.environ.get("HWL_CONF_FOLDER", root_path)) / "classification.yml"
-
-        if yml_config_path.is_symlink():
-            log.info("%s is a symbolic link!", yml_config_path)
-            if str(yml_config_path.readlink()).startswith("..data"):
-                yml_config_path = yml_config_path.parent / yml_config_path.readlink()
-                log.info(
-                    "This symbolic link links to a configmap, handling accordingly. Reading from %s",
-                    yml_config_path,
-                )
-            else:
-                yml_config_path = Path(os.path.realpath(yml_config_path.readlink()))
-                log.info(
-                    "Reading from %s",
-                    yml_config_path,
-                )
-
-        if not yml_config_path.exists():
-            log.warning("%s does not exist!", yml_config_path)
-            yml_config_path = Path("/etc") / APP_NAME.replace("-dev", "") / "classification.yml"
-            log.warning("Checking at %s instead.", yml_config_path)
-    else:
-        yml_config_path = Path(yml_config)
-
-    log.debug("Loading classification definition from %s", yml_config_path)
+    log.info("Loading classification definition from %s", yml_config_path)
 
     classification_definition = None
     # Load modifiers from the yaml config
@@ -94,12 +82,26 @@ def get_classification(yml_config: Optional[str] = None) -> "Classification":  #
     if not classification_definition:
         raise InvalidDefinition("Could not find any classification definition to load.")
 
-    _classification = Classification(classification_definition)
+    return Classification(classification_definition)
 
+
+def get_classification(yml_config: Optional[str] = None) -> "Classification":
+    "Get the classification from a given classification.yml file, caching results"
     if yml_config:
-        _CLASSIFICATIONS[yml_config] = _classification
+        if yml_config not in _CLASSIFICATIONS:
+            _CLASSIFICATIONS[yml_config] = _load_classification(Path(yml_config))
+        return _CLASSIFICATIONS[yml_config]
 
-    return _classification
+    # The default file is cached per resolved file and modification time, so configmap updates and edits still load.
+    yml_config_path = _default_classification_path()
+    try:
+        modified: Optional[int] = yml_config_path.stat().st_mtime_ns
+    except OSError:
+        modified = None
+    cache_key = (os.path.realpath(yml_config_path), modified)
+    if cache_key not in _DEFAULT_CLASSIFICATIONS:
+        _DEFAULT_CLASSIFICATIONS[cache_key] = _load_classification(yml_config_path)
+    return _DEFAULT_CLASSIFICATIONS[cache_key]
 
 
 def get_lookups(lookup_folder: Optional[str] = None):
