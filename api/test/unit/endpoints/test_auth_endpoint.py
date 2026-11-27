@@ -66,132 +66,48 @@ def test_add_apikey(mock_auth_service, mock_jwt_service, request_context: Flask)
         assert result.status_code < 300
 
 
+@pytest.mark.parametrize(
+    ("case", "expected_error"),
+    [
+        ("extended", None),
+        ("bad_date", "Invalid expiry date format. Please use ISO format."),
+        ("too_long", "Expiry date must be before"),
+        ("missing", "API keys must have an expiry date."),
+    ],
+)
 @patch("howler.api.v1.auth.jwt_service")
 @patch("howler.security.login.auth_service")
-def test_add_apikey_no_extended(mock_auth_service, mock_jwt_service, request_context: Flask):
-    config.auth.allow_extended_apikeys = False
-
-    mock_auth_service.bearer_auth = MagicMock()
-    mock_jwt_service.decode = MagicMock(return_value={"exp": (datetime.now() + timedelta(minutes=5)).timestamp()})
-
-    user_data = _build_user()
-
-    datastore().user.save(user_data.uname, user_data)
-
-    mock_auth_service.bearer_auth.return_value = (
-        user_data,
-        ["R", "W", "E"],
-    )
-
-    with request_context.test_request_context(
-        headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
-        json={
-            "name": "tester_key_name",
-            "priv": "RWE",
-            "expiry_date": (datetime.now() + timedelta(minutes=1)).isoformat(),
-        },
-    ):
-        from howler.api.v1.auth import add_apikey
-
-        result: Response = add_apikey()
-
-        assert result.status_code == 400
-
-
-@patch("howler.api.v1.auth.jwt_service")
-@patch("howler.security.login.auth_service")
-def test_add_apikey_bad_date_format(mock_auth_service, mock_jwt_service, request_context: Flask):
-    config.auth.allow_extended_apikeys = False
-
-    mock_auth_service.basic_auth = MagicMock()
-    mock_jwt_service.decode = MagicMock(return_value={"exp": (datetime.now() + timedelta(minutes=5)).timestamp()})
-
-    user_data = _build_user()
-
-    datastore().user.save(user_data.uname, user_data)
-    mock_auth_service.basic_auth.return_value = (
-        user_data,
-        ["R", "W", "E"],
-    )
-
-    with request_context.test_request_context(
-        headers={"Authorization": "Basic potato", "Content-Type": "application/json"},
-        json={
-            "name": "tester_key_name",
-            "priv": "RW",
-            "expiry_date": "2023/09/10 12:45",
-        },
-    ):
-        from howler.api.v1.auth import add_apikey
-
-        result: Response = add_apikey()
-
-        assert result.status_code == 400
-        assert (
-            result.json is not None
-            and result.json["api_error_message"] == "Invalid expiry date format. Please use ISO format."
+def test_add_apikey_invalid_config(
+    mock_auth_service, mock_jwt_service, request_context, monkeypatch, case, expected_error
+):
+    if case in ("extended", "bad_date"):
+        monkeypatch.setattr(config.auth, "allow_extended_apikeys", False)
+    else:
+        monkeypatch.setattr(config.auth, "max_apikey_duration_amount", 10)
+        monkeypatch.setattr(config.auth, "max_apikey_duration_unit", "days")
+    user = _build_user()
+    datastore().user.save(user.uname, user)
+    mock_auth_service.basic_auth.return_value = mock_auth_service.bearer_auth.return_value = (user, ["R", "W", "E"])
+    mock_jwt_service.decode.return_value = {"exp": (datetime.now() + timedelta(minutes=5)).timestamp()}
+    body = {"name": "tester_key_name", "priv": "RWE" if case == "extended" else "RW"}
+    if case != "missing":
+        body["expiry_date"] = (
+            "2023/09/10 12:45"
+            if case == "bad_date"
+            else (datetime.now() + (timedelta(days=20) if case == "too_long" else timedelta(minutes=1))).isoformat()
         )
-
-
-@patch("howler.security.login.auth_service")
-def test_add_apikey_bad_config(mock_auth_service, request_context: Flask):
-    config.auth.max_apikey_duration_amount = 10
-    config.auth.max_apikey_duration_unit = "days"
-
-    mock_auth_service.basic_auth = MagicMock()
-
-    user_data = _build_user()
-
-    datastore().user.save(user_data.uname, user_data)
-    mock_auth_service.basic_auth.return_value = (
-        user_data,
-        ["R", "W", "E"],
-    )
-
     with request_context.test_request_context(
-        headers={"Authorization": "Basic potato", "Content-Type": "application/json"},
-        json={
-            "name": "tester_key_name",
-            "priv": "RW",
-            "expiry_date": (datetime.now() + timedelta(days=20)).isoformat(),
-        },
+        headers={"Authorization": "Bearer ." if case == "extended" else "Basic potato"}, json=body
     ):
         from howler.api.v1.auth import add_apikey
 
         result: Response = add_apikey()
 
-        assert result.status_code == 400
-        assert result.json is not None and result.json["api_error_message"].startswith("Expiry date must be before")
-
-
-@patch("howler.security.login.auth_service")
-def test_add_apikey_no_exp(mock_auth_service, request_context: Flask):
-    config.auth.max_apikey_duration_amount = 10
-    config.auth.max_apikey_duration_unit = "days"
-
-    mock_auth_service.basic_auth = MagicMock()
-
-    user_data = _build_user()
-
-    datastore().user.save(user_data.uname, user_data)
-    mock_auth_service.basic_auth.return_value = (
-        user_data,
-        ["R", "W", "E"],
-    )
-
-    with request_context.test_request_context(
-        headers={"Authorization": "Basic potato", "Content-Type": "application/json"},
-        json={
-            "name": "tester_key_name",
-            "priv": "RW",
-        },
-    ):
-        from howler.api.v1.auth import add_apikey
-
-        result: Response = add_apikey()
-
-        assert result.status_code == 400
-        assert result.json is not None and result.json["api_error_message"] == "API keys must have an expiry date."
+    assert result.status_code == 400
+    if expected_error is not None:
+        assert result.json is not None
+        message = result.json["api_error_message"]
+        assert message.startswith(expected_error) if case == "too_long" else message == expected_error
 
 
 def test_add_apikey_saves_the_generated_key_on_the_user(request_context: Flask):

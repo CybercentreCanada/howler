@@ -903,12 +903,17 @@ def test_overwrite_hit(datastore: HowlerDatastore, login_session):
     datastore.hit.save(hit_to_update.howler.id, hit_to_update)
     datastore.hit.commit()
 
-    result = get_api_data(
+    response = get_api_data(
         session=session,
         url=f"{host}/api/v1/hit/{hit_to_update.howler.id}/overwrite",
         data=json.dumps({"source.ip": "127.0.0.1"}),
         method="PUT",
+        params={"refresh": "wait_for"},
+        raw=True,
     )
+    assert response.status_code == 200
+    assert response.headers.get("ETag")
+    result = response.json()["api_response"]
 
     assert result["source"]["ip"] == "127.0.0.1"
     assert result["howler"]["assignment"] == hit_to_update.howler.assignment

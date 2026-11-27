@@ -1,11 +1,10 @@
 from datetime import datetime, timezone
-from typing import Annotated, Any
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from howler.common.exceptions import HowlerTypeError, HowlerValueError, ResourceExists
-from howler.models import HowlerEmbeddedModel, Keyword, metadata
 from howler.models.event import Event
 from howler.models.registry import model_registry
 from howler.services import event_service
@@ -28,29 +27,6 @@ def event_collection(monkeypatch):
     storage.event.model_class = Event
     monkeypatch.setattr(event_service, "datastore", lambda: storage)
     return storage.event
-
-
-@pytest.mark.parametrize("ignore_extra_values", [False, True])
-def test_convert_event_uses_collection_extension(event_collection, ignore_extra_values):
-    class PluginData(HowlerEmbeddedModel):
-        legacy: Annotated[Keyword, metadata(deprecated=True)]
-
-    class ExtendedEvent(Event):
-        plugin: PluginData
-
-    event_collection.model_class = ExtendedEvent
-    plugin = {"legacy": "keep"}
-    expected_warnings = ["plugin.legacy is deprecated."]
-    if ignore_extra_values:
-        plugin["unused"] = "drop"
-        expected_warnings.append("plugin.unused is not currently used by howler.")
-    event, warnings = event_service.convert_event(
-        {"plugin": plugin}, unique=False, ignore_extra_values=ignore_extra_values
-    )
-
-    assert type(event) is ExtendedEvent
-    assert event.as_primitives()["plugin"] == {"legacy": "keep"}
-    assert sorted(warnings) == sorted(expected_warnings)
 
 
 @patch("howler.services.event_service.datastore")

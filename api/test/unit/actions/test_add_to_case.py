@@ -40,23 +40,15 @@ def setup_datastore(datastore_connection: HowlerDatastore):
 # ---------------------------------------------------------------------------
 
 
-def test_execute_missing_case_id():
-    result = execute("howler.id:*")
+@pytest.mark.parametrize("case_id", [None, ""])
+def test_execute_missing_case_id(case_id):
+    result = execute("howler.id:*", **({} if case_id is None else {"case_id": case_id}))
 
     assert len(result) == 1
     r = result[0]
     assert r["outcome"] == "error"
     assert r["title"] == "Missing Case ID"
     assert "case_id" in r["message"]
-
-
-def test_execute_missing_case_id_empty_string():
-    result = execute("howler.id:*", case_id="")
-
-    assert len(result) == 1
-    r = result[0]
-    assert r["outcome"] == "error"
-    assert r["title"] == "Missing Case ID"
 
 
 def test_execute_case_not_found():

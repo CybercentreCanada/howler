@@ -46,7 +46,6 @@ def mock_post(url: str, **kwargs):
 
 @pytest.fixture(scope="module")
 def client(datastore_connection):
-    # Arrange: Setup Flask app and register blueprint
     from sentinel.routes.ingest import sentinel_api
 
     app = Flask("test_app")
@@ -423,11 +422,7 @@ def test_update_incident_status_only_updates_sentinel_owned_case_hits(client, te
     datastore().case.commit()
     datastore().hit.commit()
 
-    monkeypatch.setattr(
-        case_service,
-        "save_case",
-        Mock(side_effect=AssertionError("status-only replay should not save a case")),
-    )
+    monkeypatch.setattr(case_service, "save_case", Mock(side_effect=AssertionError("unexpected case save")))
     case_events = []
     monkeypatch.setattr(ingest_service.comms_service, "emit", lambda event, data: case_events.append((event, data)))
 
@@ -917,14 +912,14 @@ def test_case_creation_version_conflict_retries_same_deterministic_id(client, te
 
     incident = _incident("case-create-version-conflict", alerts=[])
     stable_case_id = _stable_hit_id(SAMPLE_TENANT_ID, incident["id"], "case")
-    original_save_case = case_service.save_case
+    original_save = case_service.save_case
     conflict_state = {"pending": True}
 
     def conflict_before_first_case_save(case, *args, **kwargs):
         if case.case_id == stable_case_id and conflict_state["pending"]:
             conflict_state["pending"] = False
             raise VersionConflictException("simulated case create conflict")
-        return original_save_case(case, *args, **kwargs)
+        return original_save(case, *args, **kwargs)
 
     monkeypatch.setattr(case_service, "save_case", conflict_before_first_case_save)
     response = _post(client, incident)
@@ -941,7 +936,7 @@ def test_case_creation_version_conflict_retries_same_deterministic_id(client, te
 
 def test_initial_case_save_conflict_preserves_concurrent_analyst_edits(client, tenant_mapping, monkeypatch):
     incident = _incident("initial-case-save-conflict")
-    original_save_case = case_service.save_case
+    original_save = case_service.save_case
     conflict_pending = True
 
     def save_with_concurrent_analyst_edit(case, *args, **kwargs):
@@ -951,9 +946,9 @@ def test_initial_case_save_conflict_preserves_concurrent_analyst_edits(client, t
             concurrent, version = datastore().case.get(case.case_id, as_obj=True, version=True)
             concurrent.title = "Analyst-edited title"
             concurrent.items.append(CaseItem.model_validate({"type": "folder", "name": "Analyst notes"}))
-            original_save_case(concurrent, version=version)
+            original_save(concurrent, version=version)
             raise VersionConflictException("simulated overlapping analyst update")
-        return original_save_case(case, *args, **kwargs)
+        return original_save(case, *args, **kwargs)
 
     monkeypatch.setattr(case_service, "save_case", save_with_concurrent_analyst_edit)
     response = _post(client, incident)
@@ -988,7 +983,7 @@ def test_zero_alert_incident_reconciles_alerts_after_case_conflict(
     alert["incidentId"] = incident["id"]
     later["alerts"] = [alert]
 
-    original_save_case = case_service.save_case
+    original_save = case_service.save_case
     conflict_pending = True
     save_calls = 0
 
@@ -1002,9 +997,9 @@ def test_zero_alert_incident_reconciles_alerts_after_case_conflict(
             if concurrent_replay:
                 concurrent.items = case.items
             concurrent.items.append(CaseItem.model_validate({"type": "folder", "name": "Analyst notes"}))
-            original_save_case(concurrent, version=version)
+            original_save(concurrent, version=version)
             raise VersionConflictException("simulated overlapping update")
-        return original_save_case(case, *args, **kwargs)
+        return original_save(case, *args, **kwargs)
 
     emitted_cases = []
     monkeypatch.setattr(
@@ -1311,7 +1306,7 @@ def test_failed_case_save_does_not_emit_completion_until_retry(client, tenant_ma
     from sentinel.services import ingest_service
 
     incident = _incident("completion-save-retry")
-    original_save_case = case_service.save_case
+    original_save = case_service.save_case
     save_failure_pending = True
     emitted_cases = []
 
@@ -1320,7 +1315,7 @@ def test_failed_case_save_does_not_emit_completion_until_retry(client, tenant_ma
         if case.case_id and kwargs.get("version") != CREATE_TOKEN and save_failure_pending:
             save_failure_pending = False
             raise RuntimeError("simulated final case save failure")
-        return original_save_case(case, *args, **kwargs)
+        return original_save(case, *args, **kwargs)
 
     monkeypatch.setattr(case_service, "save_case", fail_first_completion_save)
     monkeypatch.setattr(

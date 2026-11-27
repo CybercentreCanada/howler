@@ -8,9 +8,8 @@ import pytest
 
 from howler.api.search_utils import issue_scroll_token
 from howler.datastore.exceptions import SearchException, SearchRetryException
-from howler.models.fields import HowlerFieldMetadata
 from howler.models.hit import Hit
-from howler.models.registry import FieldDefinition, model_registry
+from howler.models.registry import model_registry
 from howler.models.user import User
 from howler.services.search_service import (
     USER_STORED_FIELDS,
@@ -29,17 +28,8 @@ class _Caller(dict):
         return self[name]
 
 
-def _stored_field(name: str) -> FieldDefinition:
-    return FieldDefinition(
-        name=name,
-        path=name,
-        annotation=str,
-        metadata=HowlerFieldMetadata(kind="Keyword", index=True, store=True),
-        required=False,
-        default=None,
-        default_factory=None,
-        description=None,
-    )
+def _stored_field(_name: str):
+    return SimpleNamespace(metadata=SimpleNamespace(kind="Keyword", store=True))
 
 
 def _caller(access_control: str | None = None) -> _Caller:

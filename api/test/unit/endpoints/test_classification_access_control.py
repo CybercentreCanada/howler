@@ -164,75 +164,23 @@ class TestValidateBulkOperationTargets:
 class TestIsClassificationAccessible:
     """Tests for the shared per-document classification check."""
 
-    def test_admin_bypasses_access_control(self, stub_classification):
-        from howler.security.utils import is_classification_accessible
-
-        admin = User.model_validate(
-            {
-                "name": "admin",
-                "uname": "admin",
-                "password": "__NO_PASSWORD__",
-                "type": ["admin", "user"],
-                "classification": "UNRESTRICTED",
-            }
-        )
-        assert is_classification_accessible(admin, "RESTRICTED") is True
-
-    def test_user_can_access_at_own_level(self, stub_classification):
+    @pytest.mark.parametrize(
+        ("roles", "clearance", "classification", "expected"),
+        [
+            (["admin", "user"], "UNRESTRICTED", "RESTRICTED", True),
+            (["user"], "RESTRICTED", "RESTRICTED", True),
+            (["user"], "RESTRICTED", "UNRESTRICTED", True),
+            (["user"], "UNRESTRICTED", "RESTRICTED", False),
+            (["user"], "UNRESTRICTED", None, True),
+        ],
+    )
+    def test_classification_access(self, stub_classification, roles, clearance, classification, expected):
         from howler.security.utils import is_classification_accessible
 
         user = User.model_validate(
-            {
-                "name": "user",
-                "uname": "user",
-                "password": "__NO_PASSWORD__",
-                "type": ["user"],
-                "classification": "RESTRICTED",
-            }
+            {"name": "user", "uname": "user", "password": "__NO_PASSWORD__", "type": roles, "classification": clearance}
         )
-        assert is_classification_accessible(user, "RESTRICTED") is True
-
-    def test_user_can_access_below_own_level(self, stub_classification):
-        from howler.security.utils import is_classification_accessible
-
-        user = User.model_validate(
-            {
-                "name": "user",
-                "uname": "user",
-                "password": "__NO_PASSWORD__",
-                "type": ["user"],
-                "classification": "RESTRICTED",
-            }
-        )
-        assert is_classification_accessible(user, "UNRESTRICTED") is True
-
-    def test_denied_above_own_level(self, stub_classification):
-        from howler.security.utils import is_classification_accessible
-
-        user = User.model_validate(
-            {
-                "name": "user",
-                "uname": "user",
-                "password": "__NO_PASSWORD__",
-                "type": ["user"],
-                "classification": "UNRESTRICTED",
-            }
-        )
-        assert is_classification_accessible(user, "RESTRICTED") is False
-
-    def test_unclassified_document_is_accessible(self, stub_classification):
-        from howler.security.utils import is_classification_accessible
-
-        user = User.model_validate(
-            {
-                "name": "user",
-                "uname": "user",
-                "password": "__NO_PASSWORD__",
-                "type": ["user"],
-                "classification": "UNRESTRICTED",
-            }
-        )
-        assert is_classification_accessible(user, None) is True
+        assert is_classification_accessible(user, classification) is expected
 
     def test_rejects_non_string_document_classification(self, stub_classification):
         from howler.security.utils import is_classification_accessible

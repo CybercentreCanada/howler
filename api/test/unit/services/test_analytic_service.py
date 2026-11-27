@@ -14,6 +14,9 @@ def test_save_from_hits_builds_an_analytic_from_detection_metadata():
 
     with patch.object(analytic_service, "datastore", return_value=storage):
         analytic_service.save_from_hits([hit], user)
+        assert analytic_service.get_matching_analytics([hit]) == []
+
+    assert storage.analytic.search.call_args.args[0] == 'name:("New Analytic")'
 
     plan = storage.analytic.get_bulk_plan.return_value
     action_id, analytic = plan.add_index_operation.call_args.args
@@ -23,14 +26,3 @@ def test_save_from_hits_builds_an_analytic_from_detection_metadata():
     assert analytic.detections == ["New Detection"]
     assert analytic.triage_settings.valid_assessments
     storage.analytic.bulk.assert_called_once_with(plan, refresh=None)
-
-
-def test_matching_analytics_searches_names_from_hit_models():
-    hit = construct_partial(Hit, {"howler": {"analytic": "New Analytic"}})
-    storage = MagicMock()
-    storage.analytic.search.return_value = {"items": []}
-
-    with patch.object(analytic_service, "datastore", return_value=storage):
-        assert analytic_service.get_matching_analytics([hit]) == []
-
-    assert storage.analytic.search.call_args.args[0] == 'name:("New Analytic")'

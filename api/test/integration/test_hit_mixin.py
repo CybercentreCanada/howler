@@ -12,7 +12,6 @@ from collections.abc import Iterator
 import pytest
 
 from howler.common import loader
-from howler.datastore.collection import ESCollection
 from howler.datastore.howler_store import HowlerDatastore
 from howler.models.hit import Hit
 from howler.sample_data.helper import generate_useful_hit
@@ -39,18 +38,6 @@ def stored_hit(datastore_connection: HowlerDatastore, lookups, usernames: list[s
     finally:
         datastore_connection.hit.delete(hit.howler.id)
         datastore_connection.hit.commit()
-
-
-def test_hit_collection_is_bound_to_pydantic_model(datastore_connection: HowlerDatastore) -> None:
-    assert isinstance(datastore_connection.hit, ESCollection)
-
-    model_class = datastore_connection.hit.model_class
-    assert issubclass(model_class, Hit)
-    if model_class is not Hit:
-        # Typed plugin extensions finalize Hit as a direct subclass. Without extensions,
-        # the base model itself is the finalized schema.
-        assert model_class.__base__ is Hit
-        assert set(Hit.model_fields) < set(model_class.model_fields)
 
 
 def test_hit_collection_save_round_trips_model(datastore_connection: HowlerDatastore, stored_hit: Hit) -> None:

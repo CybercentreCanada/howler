@@ -135,99 +135,43 @@ def _get_update_body(plan: ElasticBulkPlan) -> dict:
     return json.loads(body)["doc"]
 
 
-def test_add_update_operation_without_fields_keeps_everything():
-    """Without a `fields` filter, the full serialized document is sent."""
+@pytest.mark.parametrize(
+    ("fields", "expected"),
+    [
+        (None, {"title": "Original Title", "summary": "Original Summary", "items": [{"id": "item-1"}]}),
+        (["items"], {"items": [{"id": "item-1", "value": "hit-1", "name": "hit-1"}]}),
+        (["items.*"], {"items": [{"type": "hit", "value": "hit-1", "name": "hit-1"}]}),
+        (["items.type"], {"items": [{"type": "hit"}]}),
+    ],
+)
+def test_add_update_operation_field_selection(fields, expected):
     plan = ElasticBulkPlan(indexes=["case"], model=Case)
-    plan.add_update_operation("case-001", _make_case())
+    plan.add_update_operation("case-001", _make_case(), fields=fields)
 
     doc = _get_update_body(plan)
-    assert doc["title"] == "Original Title"
-    assert doc["summary"] == "Original Summary"
+    assert all(doc[key] == value for key, value in expected.items() if key != "items")
     assert len(doc["items"]) == 1
-
-
-def test_add_update_operation_exact_field_keeps_whole_subtree():
-    """An exact field name (no wildcard) keeps that field's entire subtree."""
-    plan = ElasticBulkPlan(indexes=["case"], model=Case)
-    plan.add_update_operation("case-001", _make_case(), fields=["items"])
-
-    doc = _get_update_body(plan)
-    assert set(doc.keys()) == {"items"}
-    assert doc["items"][0]["id"] == "item-1"
-    assert doc["items"][0]["value"] == "hit-1"
-    assert doc["items"][0]["name"] == "hit-1"
-
-
-def test_add_update_operation_wildcard_field_expands_against_model():
-    """A `*`-suffixed pattern expands to every subfield of that field via the model."""
-    plan = ElasticBulkPlan(indexes=["case"], model=Case)
-    plan.add_update_operation("case-001", _make_case(), fields=["items.*"])
-
-    doc = _get_update_body(plan)
-    assert set(doc.keys()) == {"items"}
-    # Every subfield of the CaseItem is present, since "items.*" expands to all of them.
-    assert doc["items"][0]["value"] == "hit-1"
-    assert doc["items"][0]["type"] == "hit"
-    assert doc["items"][0]["name"] == "hit-1"
-
-
-def test_add_update_operation_specific_subfield_prunes_siblings():
-    """A specific dotted subfield pattern keeps only that subfield in each list entry."""
-    plan = ElasticBulkPlan(indexes=["case"], model=Case)
-    plan.add_update_operation("case-001", _make_case(), fields=["items.type"])
-
-    doc = _get_update_body(plan)
-    assert set(doc.keys()) == {"items"}
-    assert doc["items"][0] == {"type": "hit"}
-
-
-def test_add_update_operation_drops_unselected_top_level_fields():
-    """Fields not selected (e.g. title/summary) are absent from the update body entirely."""
-    plan = ElasticBulkPlan(indexes=["case"], model=Case)
-    plan.add_update_operation("case-001", _make_case(), fields=["items", "targets"])
-
-    doc = _get_update_body(plan)
-    assert "title" not in doc
-    assert "summary" not in doc
+    assert expected["items"][0].items() <= doc["items"][0].items()
+    if fields:
+        assert set(doc) == {"items"}
+    if fields == ["items.type"]:
+        assert doc["items"] == expected["items"]
 
 
 def test_add_update_operation_validates_partial_dict_without_full_required_fields():
-    """A partial merge validates selected registry fields without requiring a full Case."""
     plan = ElasticBulkPlan(indexes=["case"], model=Case)
     plan.add_update_operation(
-        "case-001",
-        {"items": [{"type": "hit"}], "unselected_unknown": object()},
-        fields=["items.type"],
+        "case-001", {"items": [{"type": "hit"}], "unselected_unknown": object()}, fields=["items.type"]
     )
-
     assert _get_update_body(plan) == {"items": [{"type": "hit"}]}
 
 
 def test_add_update_operation_fully_validates_exact_compound_field():
-    """Replacing a whole compound field runs nested model validators."""
     plan = ElasticBulkPlan(indexes=["case"], model=Case)
-
+    rule = {"destination": "/alerts", "query": "event.kind:alert", "author": "analyst", "expire_after_resolved": True}
     with pytest.raises(Exception):
-        plan.add_update_operation(
-            "case-001",
-            {
-                "rules": [
-                    {
-                        "destination": "/alerts",
-                        "query": "event.kind:alert",
-                        "author": "analyst",
-                        "expire_after_resolved": True,
-                    }
-                ]
-            },
-            fields=["rules"],
-        )
-
-    plan.add_update_operation(
-        "case-001",
-        {"rules": [{"enabled": False}]},
-        fields=["rules.enabled"],
-    )
+        plan.add_update_operation("case-001", {"rules": [rule]}, fields=["rules"])
+    plan.add_update_operation("case-001", {"rules": [{"enabled": False}]}, fields=["rules.enabled"])
     assert _get_update_body(plan) == {"rules": [{"enabled": False}]}
 
 
@@ -251,25 +195,20 @@ def test_full_bulk_operations_reject_projected_model_instances(operation):
     assert plan.empty
 
 
-def test_full_operation_helpers_preserve_exact_ndjson_actions_and_stored_id():
-    """Create/index/upsert helpers retain their public bulk action and body shapes."""
+@pytest.mark.parametrize(
+    ("operation", "action", "index"),
+    [
+        ("insert", "create", "case"),
+        ("index", "index", "case-000001"),
+        ("upsert", "update", "case"),
+    ],
+)
+def test_full_operation_helpers_preserve_exact_ndjson_actions_and_stored_id(operation, action, index):
     case = _make_case()
     plan = ElasticBulkPlan(indexes=["case"], model=Case)
-
-    plan.add_insert_operation("case-001", case)
-    plan.add_index_operation("case-001", case, index="case-000001")
-    plan.add_upsert_operation("case-001", case)
-
-    create_header, create_body = plan.operations[0]  # pyright: ignore[reportAssignmentType]
-    index_header, index_body = plan.operations[1]  # pyright: ignore[reportAssignmentType]
-    upsert_header, upsert_body = plan.operations[2]  # pyright: ignore[reportAssignmentType]
-    assert json.loads(create_header) == {"create": {"_index": "case", "_id": "case-001"}}
-    assert json.loads(index_header) == {"index": {"_index": "case-000001", "_id": "case-001"}}
-    assert json.loads(upsert_header) == {"update": {"_index": "case", "_id": "case-001"}}
-    assert json.loads(create_body)["id"] == "case-001"
-    assert json.loads(index_body)["id"] == "case-001"
-    assert json.loads(upsert_body) == {
-        "doc": {**json.loads(create_body)},
-        "doc_as_upsert": True,
-    }
+    getattr(plan, f"add_{operation}_operation")("case-001", case, index=index)
+    header, body = map(json.loads, plan.operations[0])
+    assert header == {action: {"_index": index, "_id": "case-001"}}
+    expected = {**case.as_primitives(hidden_fields=True), "id": "case-001"}
+    assert body == ({"doc": expected, "doc_as_upsert": True} if operation == "upsert" else expected)
     assert plan.get_plan_data().endswith("\n")

@@ -1,231 +1,156 @@
-"""Spark schema compatibility against annotated Howler Pydantic fields."""
-
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Annotated
 
 import pytest
+from howler import models as m
 from howler.common.exceptions import HowlerValueError
-from howler.models import (
-    UUID,
-    Boolean,
-    Date,
-    Float,
-    HowlerEmbeddedModel,
-    Integer,
-    Keyword,
-    ModelExtensionRegistry,
-    Text,
-    clue,
-    mapping,
-    metadata,
-    register_model,
-)
+from howler.models import clue
 from howler.models.hit import Hit
-from pyspark.sql.types import (
-    ArrayType,
-    BooleanType,
-    DoubleType,
-    IntegerType,
-    MapType,
-    StringType,
-    StructType,
-    TimestampType,
-    _make_type_verifier,
-)
+from pyspark.sql import types as s
 
 from sync.iceberg.build import build_schema
 from sync.services import sync_service
 
 
-@register_model(embedded=True)
-class Simple(HowlerEmbeddedModel):
-    keyword_field: Keyword
-    boolean_field: Boolean
-    integer_field: Integer
-    float_field: Float
-    text_field: Text
-    date_field: Date
+@m.register_model(embedded=True)
+class Nested(m.HowlerEmbeddedModel):
+    value: m.Keyword
+    mapping: m.mapping(m.Text)
 
 
-@register_model(embedded=True)
-class Nested(HowlerEmbeddedModel):
-    nested_keyword: Keyword
-    nested_integer: Integer
-    nested_date: Date
-    nested_complex_type: mapping(Text)
+@m.register_model(embedded=True)
+class Probe(m.HowlerEmbeddedModel):
+    keyword: m.Keyword
+    boolean: m.Boolean
+    integer: m.Integer
+    floating: m.Float
+    text: m.Text
+    date: m.Date
+    compound: Nested
+    described: Annotated[m.Keyword, m.metadata(description="parent")]
+    items: list[Annotated[m.Integer, m.metadata(description="child")]]
+    mapped: m.mapping(m.Text, description="parent")
+    optional_items: list[Annotated[m.Integer | None, m.metadata(description="optional", optional=True)]]
+    optional: m.Integer | None = None
+    default_date: m.Date = "NOW"
+    optional_default: Annotated[m.Text | None, m.metadata(optional=True)] = "value"
+    optional_list: list[m.Text] | None = None
+    nullable_items: list[Annotated[m.Text | None, m.metadata(optional=True, default="value")]] = []
+    default_items: list[Annotated[m.Integer, m.metadata(default=0)]]
+    optional_map: m.mapping(m.Text, optional=True)
+    nullable_values: m.mapping(m.Text | None, default={})
+    generated_values: m.mapping(m.UUID)
+    lists: m.mapping(list[Annotated[m.Date, m.metadata(default="NOW")]])
+    optional_compound: Nested | None = None
+    excluded: Annotated[m.Keyword, m.metadata(sync=False)]
 
 
-@register_model(embedded=True)
-class Containers(HowlerEmbeddedModel):
-    top_level_field: Annotated[Keyword, metadata(description="top level description")]
-    compound_field: Nested
-    list_field: list[Annotated[Integer, metadata(description="internal description")]]
-    mapping_field: mapping(Text, description="parent level description")
-    optional_items: list[Annotated[Integer | None, metadata(description="optional item description", optional=True)]]
-
-
-@register_model(embedded=True)
-class Defaults(HowlerEmbeddedModel):
-    required_field: Keyword
-    optional_field: Integer | None = None
-    default_value_field: Date = "NOW"
-    nullable_default_field: Annotated[Text | None, metadata(optional=True)] = "value"
-    nullable_list: list[Text] | None = None
-    list_with_nullable_elements: list[Annotated[Text | None, metadata(optional=True, default="value")]] = []
-    list_with_defaulted_elements: list[Annotated[Integer, metadata(default=0)]]
-    nullable_mapping: mapping(Text, optional=True)
-    mapping_with_nullable_values: mapping(Text | None, default={})
-    mapping_with_generated_values: mapping(UUID)
-    mapping_of_lists: mapping(list[Annotated[Date, metadata(default="NOW")]])
-    nullable_compound: Nested | None = None
-
-
-@register_model(embedded=True)
-class SyncFalse(HowlerEmbeddedModel):
-    included: Keyword
-    excluded: Annotated[Keyword, metadata(sync=False)]
-
-
-@register_model(embedded=True)
-class AnyField(HowlerEmbeddedModel):
+@m.register_model(embedded=True)
+class AnyField(m.HowlerEmbeddedModel):
     raw: object
 
 
-@register_model()
-class ExtendedHit(Hit):
-    plugin_field: Keyword | None = None
-
-
-def test_basic_types_and_instance():
-    for model in (Simple, Simple.model_construct()):
-        schema = build_schema(model)
-        assert schema.fieldNames() == list(Simple.model_fields)
-        assert schema["keyword_field"].dataType == StringType()
-        assert schema["boolean_field"].dataType == BooleanType()
-        assert schema["integer_field"].dataType == IntegerType()
-        assert schema["float_field"].dataType == DoubleType()
-        assert schema["text_field"].dataType == StringType()
-        assert schema["date_field"].dataType == TimestampType()
-
-
-def test_nested_types_and_descriptions():
-    schema = build_schema(Containers)
-    assert schema.fieldNames() == list(Containers.model_fields)
-    nested = schema["compound_field"].dataType
-    assert isinstance(nested, StructType)
-    assert nested.fieldNames() == list(Nested.model_fields)
-    assert isinstance(nested["nested_complex_type"].dataType, MapType)
-    assert schema["list_field"].dataType == ArrayType(IntegerType(), containsNull=True)
-    assert schema["mapping_field"].dataType == MapType(StringType(), StringType(), valueContainsNull=True)
-    assert schema["top_level_field"].metadata == {"description": "top level description"}
-    assert schema["list_field"].metadata == {"description": "internal description"}
-    assert schema["mapping_field"].metadata == {"description": "parent level description"}
-    assert schema["optional_items"].metadata == {"description": "optional item description"}
-
-
-def test_optional_fields_and_elements():
-    schema = build_schema(Defaults)
-    assert schema["required_field"].nullable
-    assert schema["optional_field"].nullable
-    assert not schema["default_value_field"].nullable
-    assert schema["nullable_default_field"].nullable
-    assert schema["nullable_list"].nullable
-    assert not schema["list_with_nullable_elements"].nullable
-    assert schema["list_with_nullable_elements"].dataType.containsNull
-    assert not schema["list_with_defaulted_elements"].dataType.containsNull
-    assert schema["nullable_mapping"].nullable
-    assert not schema["mapping_with_nullable_values"].nullable
-    assert schema["mapping_with_nullable_values"].dataType.valueContainsNull
-    assert not schema["mapping_with_generated_values"].dataType.valueContainsNull
-    assert schema["mapping_of_lists"].dataType == MapType(
-        StringType(), ArrayType(TimestampType(), containsNull=False), valueContainsNull=True
-    )
-    assert schema["nullable_compound"].nullable
-    assert isinstance(schema["nullable_compound"].dataType, StructType)
-
-
-def test_sync_false_excluded_and_any_fallback():
-    assert build_schema(SyncFalse).fieldNames() == ["included"]
+def test_schema_types_and_nullability():
+    for model in (Probe, Probe.model_construct()):
+        fields = build_schema(model)
+        assert fields.fieldNames() == [name for name in Probe.model_fields if name != "excluded"]
+        for name, kind in {
+            "keyword": s.StringType,
+            "boolean": s.BooleanType,
+            "integer": s.IntegerType,
+            "floating": s.DoubleType,
+            "text": s.StringType,
+            "date": s.TimestampType,
+        }.items():
+            assert fields[name].dataType == kind()
+        assert fields["compound"].dataType["mapping"].dataType == s.MapType(s.StringType(), s.StringType())
+        assert fields["items"].dataType == s.ArrayType(s.IntegerType(), containsNull=True)
+        assert fields["mapped"].dataType == s.MapType(s.StringType(), s.StringType())
+        for name, description in {
+            "described": "parent",
+            "items": "child",
+            "mapped": "parent",
+            "optional_items": "optional",
+        }.items():
+            assert fields[name].metadata == {"description": description}
+        for name in ("keyword", "optional", "optional_default", "optional_list", "optional_map", "optional_compound"):
+            assert fields[name].nullable
+        for name in ("default_date", "nullable_items", "nullable_values"):
+            assert not fields[name].nullable
+        assert fields["nullable_items"].dataType.containsNull
+        assert not fields["default_items"].dataType.containsNull
+        assert fields["nullable_values"].dataType.valueContainsNull
+        assert not fields["generated_values"].dataType.valueContainsNull
+        assert fields["lists"].dataType == s.MapType(s.StringType(), s.ArrayType(s.TimestampType(), containsNull=False))
+        assert isinstance(fields["optional_compound"].dataType, s.StructType)
     with pytest.raises(HowlerValueError, match="``Any`` type is not supported"):
         build_schema(AnyField)
-    assert build_schema(AnyField, allow_any_as_string=True)["raw"].dataType == StringType()
+    assert build_schema(AnyField, allow_any_as_string=True)["raw"].dataType == s.StringType()
 
 
 def test_public_hit_schema_matches_legacy_fields():
-    """Representative build_schema(Hit).jsonValue() fields at 3bd051b72cf7e3fbd96fba2d495c8d83f1ae2f4c."""
-    schema = build_schema(Hit)
-    assert schema["tags"].jsonValue() == {
-        "name": "tags",
-        "type": {"type": "array", "elementType": "string", "containsNull": True},
-        "nullable": False,
-        "metadata": {"description": "List of keywords used to tag each event."},
+    fields = build_schema(Hit)
+    assert {name: fields[name].jsonValue() for name in ("tags", "labels", "timestamp")} | {
+        "related.ip": fields["related"].dataType["ip"].jsonValue()
+    } == {
+        "tags": {
+            "name": "tags",
+            "type": {"type": "array", "elementType": "string", "containsNull": True},
+            "nullable": False,
+            "metadata": {"description": "List of keywords used to tag each event."},
+        },
+        "labels": {
+            "name": "labels",
+            "type": {"type": "map", "keyType": "string", "valueType": "string", "valueContainsNull": True},
+            "nullable": False,
+            "metadata": {"description": "Custom key/value pairs."},
+        },
+        "timestamp": {
+            "name": "timestamp",
+            "type": "timestamp",
+            "nullable": False,
+            "metadata": {"description": "Date/time when the event originated."},
+        },
+        "related.ip": {
+            "name": "ip",
+            "type": {"type": "array", "elementType": "binary", "containsNull": True},
+            "nullable": False,
+            "metadata": {"description": "All of the IPs seen on your event."},
+        },
     }
-    assert schema["labels"].jsonValue() == {
-        "name": "labels",
-        "type": {"type": "map", "keyType": "string", "valueType": "string", "valueContainsNull": True},
-        "nullable": False,
-        "metadata": {"description": "Custom key/value pairs."},
-    }
-    assert schema["howler"].dataType["labels"].nullable
-    assert schema["timestamp"].dataType == TimestampType()
-    assert not schema["timestamp"].nullable
-    assert isinstance(schema["related"].dataType, StructType)
-    assert isinstance(schema["related"].dataType["ip"].dataType, ArrayType)
-    assert schema["related"].dataType["ip"].dataType.elementType.typeName() == "binary"
+    assert fields["howler"].dataType["labels"].nullable
 
 
-def test_finalized_hit_extension_schema(monkeypatch):
-    """Read the same public schema fields as on the legacy Hit with all three extensions enabled."""
+def test_hit_plugin_schema_and_null_batches(monkeypatch):
     plugins = Path(__file__).resolve().parents[4]
     monkeypatch.syspath_prepend(plugins / "evidence")
     monkeypatch.syspath_prepend(plugins / "sentinel")
     from evidence.models import hit as evidence
     from sentinel.models import hit as sentinel
 
-    registry = ModelExtensionRegistry()
+    registry = m.ModelExtensionRegistry()
     for module in (clue, evidence, sentinel):
         monkeypatch.setattr(module, "model_extensions", registry)
         module.declare_hit_extension()
-    schema = build_schema(registry.finalize(Hit))
-
-    field = schema["evidence"]
-    assert not field.nullable
-    assert field.dataType.containsNull
-    assert field.dataType.elementType["tags"].dataType == ArrayType(StringType(), containsNull=True)
-    assert field.dataType.elementType["labels"].dataType == MapType(StringType(), StringType(), valueContainsNull=True)
-    assert schema["clue"].nullable
-    assert schema["clue"].dataType["types"].dataType.containsNull
-    assert schema["sentinel"].nullable
-    assert schema["sentinel"].dataType["alert_id"].nullable
-
-
-def test_spark_accepts_null_batches_from_finalized_hit():
-    registry = ModelExtensionRegistry()
-    batch = Annotated[list[Keyword] | None, metadata(optional=True, default=[])]
-    registry.declare(Hit, "batch", batch, plugin="test")
-    registry.declare(Hit, "batches", Annotated[list[list[Keyword] | None], metadata(default=[])], plugin="test")
-    model = registry.finalize(Hit)
-
-    hit = model.model_validate(
-        {"howler": {"analytic": "Test", "hash": "ab"}, "batch": None, "batches": [None, ["abc"]]}
+    registry.declare(
+        Hit, "batch", Annotated[list[m.Keyword] | None, m.metadata(optional=True, default=[])], plugin="test"
     )
-    row = hit.as_primitives(strip_null=False)
-    assert row["batch"] is None
-    assert row["batches"] == [None, ["abc"]]
-
-    schema = build_schema(model)
-    # Use Spark's createDataFrame row verifier on the extension columns, without starting a JVM.
-    _make_type_verifier(StructType([schema["batches"], schema["batch"]]))(row)
-    assert not schema["batches"].nullable
-    assert not schema["timestamp"].nullable  # date(default="NOW")
-
-
-@pytest.mark.parametrize("model", [ExtendedHit, None])
-def test_hit_service_schema_uses_datastore_model(monkeypatch, model):
-    monkeypatch.setattr(sync_service, "datastore", lambda: SimpleNamespace(hit=SimpleNamespace(model_class=model)))
-
-    schema = sync_service.get_model_struct_schema(Hit)
-
-    assert schema == build_schema(model or Hit)
-    assert ("plugin_field" in schema.fieldNames()) is (model is ExtendedHit)
+    registry.declare(Hit, "batches", Annotated[list[list[m.Keyword] | None], m.metadata(default=[])], plugin="test")
+    model = registry.finalize(Hit)
+    fields = build_schema(model)
+    evidence_field = fields["evidence"]
+    assert not evidence_field.nullable and evidence_field.dataType.containsNull
+    assert fields["clue"].nullable and fields["clue"].dataType["types"].dataType.containsNull
+    assert fields["sentinel"].nullable and fields["sentinel"].dataType["alert_id"].nullable
+    row = model.model_validate(
+        {"howler": {"analytic": "Test", "hash": "ab"}, "batch": None, "batches": [None, ["abc"]]}
+    ).as_primitives(strip_null=False)
+    assert row["batch"] is None and row["batches"] == [None, ["abc"]]
+    s._make_type_verifier(s.StructType([fields["batches"], fields["batch"]]))(row)
+    assert not fields["batches"].nullable
+    for selected in (model, None):
+        monkeypatch.setattr(
+            sync_service, "datastore", lambda: SimpleNamespace(hit=SimpleNamespace(model_class=selected))
+        )
+        assert sync_service.get_model_struct_schema(Hit) == build_schema(selected or Hit)

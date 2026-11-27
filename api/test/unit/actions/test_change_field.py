@@ -20,26 +20,28 @@ def isolated_models():
         yield
 
 
-def test_change_field_accepts_finalized_hit_extension(monkeypatch, isolated_models):
-    field = "plugin_extension"
-    model_extensions.declare(Hit, field, Keyword, plugin="test-plugin")
+@pytest.mark.parametrize(("field", "outcome"), [("plugin_extension", "success"), ("missing_extension", "error")])
+def test_change_field_validates_finalized_hit_extension(monkeypatch, isolated_models, field, outcome):
+    model_extensions.declare(Hit, "plugin_extension", Keyword, plugin="test-plugin")
     hit_model = model_extensions.finalize(Hit)
 
     hit_collection = SimpleNamespace(model_class=hit_model, update_by_query=MagicMock())
     datastore = MagicMock(return_value=SimpleNamespace(hit=hit_collection))
     monkeypatch.setattr(change_field, "datastore", datastore)
 
-    options = change_field.specification()["steps"][0]["options"]["field"]
-    assert field in options
+    assert (field in change_field.specification().steps[0].options["field"]) == (outcome == "success")
     datastore.assert_not_called()
 
     result = change_field.execute("*:*", field, "updated")
 
-    assert result[0]["outcome"] == "success"
-    hit_collection.update_by_query.assert_called_once()
-    update = hit_collection.update_by_query.call_args.args[1][0]
-    assert update.key == field
-    assert update.value == "updated"
+    assert result[0]["outcome"] == outcome
+    if outcome == "success":
+        hit_collection.update_by_query.assert_called_once()
+        update = hit_collection.update_by_query.call_args.args[1][0]
+        assert update.key == field
+        assert update.value == "updated"
+    else:
+        hit_collection.update_by_query.assert_not_called()
 
 
 def test_cold_action_model_uses_configured_hooks_without_touching_pending_declarations(monkeypatch, isolated_models):

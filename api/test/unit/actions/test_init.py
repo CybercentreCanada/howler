@@ -397,13 +397,12 @@ def test_execute_advanced_user_higher_limit(mock_action_ds, mock_ds):
     assert all(r["title"] != "Hit limit exceeded" for r in result)
 
 
+@pytest.mark.parametrize(
+    ("roles", "total"), [(("admin", "user"), 500), (("user", "actionrunner_basic", "actionrunner_advanced"), 50)]
+)
 @patch("howler.actions.add_label.execute")
 @patch("howler.actions.datastore")
-def test_execute_admin_user_bypasses_role_check_and_gets_advanced_limit(mock_ds, mock_add_label_execute):
-    """Test that admin users bypass role checks and get the advanced hit limit."""
-    admin_user = _user("admin", "user")  # Admin without explicit actionrunner roles
-
-    # Isolate execute() role/limit behavior from add_label's own datastore interactions.
+def test_execute_advanced_limit(mock_ds, mock_add_label_execute, roles, total):
     mock_add_label_execute.return_value = [
         {
             "query": "howler.id:*",
@@ -413,38 +412,11 @@ def test_execute_admin_user_bypasses_role_check_and_gets_advanced_limit(mock_ds,
         }
     ]
 
-    # Mock datastore to return a hit count that exceeds basic (20) but not advanced (1000)
-    mock_ds.return_value.hit.search.return_value = {"total": 500, "items": []}
+    mock_ds.return_value.hit.search.return_value = {"total": total, "items": []}
 
-    result = execute("add_label", "howler.id:*", user=admin_user, category="generic", label="test")
+    result = execute("add_label", "howler.id:*", user=_user(*roles), category="generic", label="test")
 
-    # Admin should bypass role check and use advanced limit, so 500 hits should be allowed
     assert all(r["title"] != "Insufficient permissions" for r in result)
-    assert all(r["title"] != "Hit limit exceeded" for r in result)
-
-
-@patch("howler.actions.add_label.execute")
-@patch("howler.actions.datastore")
-def test_execute_user_with_both_basic_and_advanced_roles(mock_ds, mock_add_label_execute):
-    """Test that users with both basic and advanced roles get the higher (advanced) limit."""
-    mixed_user = _user("user", "actionrunner_basic", "actionrunner_advanced")
-
-    # Isolate execute() role/limit behavior from add_label's own datastore interactions.
-    mock_add_label_execute.return_value = [
-        {
-            "query": "howler.id:*",
-            "outcome": "success",
-            "title": "Executed Successfully",
-            "message": "ok",
-        }
-    ]
-
-    # Mock datastore to return a hit count that exceeds basic (20) but not advanced (1000)
-    mock_ds.return_value.hit.search.return_value = {"total": 50, "items": []}
-
-    result = execute("add_label", "howler.id:*", user=mixed_user, category="generic", label="test")
-
-    # Should use advanced limit, so 50 hits should be allowed
     assert all(r["title"] != "Hit limit exceeded" for r in result)
 
 

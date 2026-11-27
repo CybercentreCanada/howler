@@ -528,17 +528,21 @@ def count_collection(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    ("filters", "expected_filters"),
+    ("filters", "access_control", "expected_filters"),
     [
-        (["status:open", "owner:alice"], ["status:open", "owner:alice", "classification:U"]),
-        ("status:open", ["status:open", "classification:U"]),
-        (None, ["classification:U"]),
+        (["status:open", "owner:alice"], "classification:U", ["status:open", "owner:alice", "classification:U"]),
+        ("status:open", "classification:U", ["status:open", "classification:U"]),
+        (None, "classification:U", ["classification:U"]),
+        (["status:open"], None, ["status:open"]),
+        (["status:open"], "", ["status:open"]),
     ],
 )
-def test_collection_count_applies_access_control_without_mutating_filters(count_collection, filters, expected_filters):
+def test_collection_count_applies_access_control_without_mutating_filters(
+    count_collection, filters, access_control, expected_filters
+):
     original_filters = filters.copy() if isinstance(filters, list) else filters
 
-    result = count_collection.count("id:*", filters, access_control="classification:U")
+    result = count_collection.count("id:*", filters, access_control=access_control)
 
     assert result == {"count": 8}
     count_collection.datastore.client.count.assert_called_once_with(
@@ -551,22 +555,3 @@ def test_collection_count_applies_access_control_without_mutating_filters(count_
         },
     )
     assert filters == original_filters
-
-
-@pytest.mark.parametrize("access_control", [None, ""])
-def test_collection_count_leaves_admin_queries_unrestricted(count_collection, access_control):
-    filters = ["status:open"]
-
-    result = count_collection.count("id:*", filters, access_control=access_control)
-
-    assert result == {"count": 8}
-    count_collection.datastore.client.count.assert_called_once_with(
-        index=count_collection.name,
-        query={
-            "bool": {
-                "must": {"query_string": {"query": "id:*"}},
-                "filter": [{"query_string": {"query": "status:open"}}],
-            }
-        },
-    )
-    assert filters == ["status:open"]

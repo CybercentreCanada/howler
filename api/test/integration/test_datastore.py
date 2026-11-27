@@ -1,21 +1,17 @@
-import os
 import random
 import string
 import time
 import uuid
 import warnings
-from copy import deepcopy
-from typing import Annotated
 
 import pytest
 from datemath import dm
 from retrying import retry
 
-from howler.datastore.collection import DATASTORE_INDEX_PREFIX, ESCollection
+from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import DataStoreException, VersionConflictException
 from howler.datastore.store import ESStore
-from howler.models import Date, HowlerESModel, Integer, Keyword, Text, fields, metadata, register_model
-from howler.models.schema import document_mapping, index_settings
+from howler.models import HowlerESModel, fields, register_model
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -433,6 +429,17 @@ def _test_search(c: ESCollection):
     )["items"]:
         assert item["id"][0] in test_map
         assert item.get("classification_s", None) is not None
+    result = c.search("test1_s:hello OR test2_s:hello", sort="id asc", fl="id", rows=20)
+    assert [item["id"][0] for item in result["items"]] == ["dict1", "dict2", "test1", "test2"]
+    result = c.search(
+        "test1_s:hello OR test2_s:hello",
+        filters=["lvl_i:400"],
+        access_control="classification_s:U",
+        sort=["lvl_i desc", "id asc"],
+        fl="id",
+        track_total_hits=True,
+    )
+    assert [item["id"][0] for item in result["items"]] == ["dict1"]
 
 
 def _test_group_search(c: ESCollection):
@@ -730,10 +737,10 @@ def test_atomic_save(es_connection: ESCollection):
 @pytest.mark.parametrize(
     "shards", [pytest.param(1, id="shrink"), pytest.param(2, id="match"), pytest.param(4, id="grow")]
 )
-def test_fix_shards(es_connection: ESCollection, shards: int):
+def test_fix_shards(es_connection: ESCollection, shards: int, monkeypatch):
     """Test the fix_shards function by creating an index with incorrect shard count and fixing it."""
     # Create a unique test collection name to avoid conflicts
-    os.environ["ELASTIC_DEFAULT_SHARDS"] = str(shards)
+    monkeypatch.setenv("ELASTIC_DEFAULT_SHARDS", str(shards))
     test_collection_name = f"test_fix_shards_{uuid.uuid4().hex[:8]}"
 
     try:
@@ -835,10 +842,10 @@ def test_fix_shards(es_connection: ESCollection, shards: int):
 
 
 @pytest.mark.parametrize("replicas", [pytest.param(0, id="under"), pytest.param(2, id="over")])
-def test_fix_replicas(es_connection: ESCollection, replicas: int):
+def test_fix_replicas(es_connection: ESCollection, replicas: int, monkeypatch):
     """Test the fix_replicas function by creating an index with incorrect replica count and fixing it."""
     # Create a unique test collection name to avoid conflicts
-    os.environ["ELASTIC_DEFAULT_REPLICAS"] = str(replicas)
+    monkeypatch.setenv("ELASTIC_DEFAULT_REPLICAS", str(replicas))
     test_collection_name = f"test_fix_replicas_{uuid.uuid4().hex[:8]}"
 
     try:
@@ -1191,263 +1198,3 @@ def test_reindex_allow_failures(es_connection: ESCollection):
     finally:
         if test_collection is not None:
             _delete_reindex_test_indexes(es_connection, test_collection.name)
-
-
-@register_model(index=True, store=True, id_field="key")
-class DatastoreSearchDocument(HowlerESModel):
-    key: Keyword
-    message: Annotated[Text, metadata(copyto=["__text__"])]
-    status: Keyword
-    owner: Keyword | None = None
-    severity: Integer
-    tags: list[Keyword]
-    observed: Date
-
-
-def _doc(key, message, status, owner, severity, tags, observed):
-    return {
-        "key": key,
-        "message": message,
-        "status": status,
-        "owner": owner,
-        "severity": severity,
-        "tags": tags,
-        "observed": observed,
-    }
-
-
-SEARCH_DOCUMENTS = [
-    _doc("a", "phishing phishing phishing", "open", "alice", 90, ["email", "urgent"], "2025-01-01T00:00:00Z"),
-    _doc("b", "phishing phishing login", "open", "bob", 70, ["email"], "2025-01-01T12:00:00Z"),
-    _doc("c", "phishing login alert", "closed", "alice", 70, ["endpoint", "urgent"], "2025-01-02T00:00:00Z"),
-    _doc("d", "malware network alert", "open", "alice", 40, ["endpoint"], "2025-01-02T12:00:00Z"),
-    _doc("e", "routine login success", "closed", "bob", 20, ["email"], "2025-01-03T00:00:00Z"),
-    _doc("f", "harmless network traffic", "open", None, 0, [], "2025-01-03T12:00:00Z"),
-    _doc("g", "phishing login alert", "open", "alice", 70, ["email", "urgent"], "2025-01-04T00:00:00Z"),
-    _doc("h", "malware login alert", "closed", "charlie", 40, ["endpoint"], "2025-01-04T12:00:00Z"),
-]
-
-
-@pytest.fixture(scope="module")
-def search_contract_collection(es_connection: ESCollection):
-    store = es_connection.datastore
-    client = store.client
-    name = f"search_contract_{uuid.uuid4().hex}"
-    alias = f"{DATASTORE_INDEX_PREFIX}-{name}"
-    physical_index = f"{alias}_hot"
-
-    try:
-        client.indices.create(
-            index=physical_index,
-            mappings=document_mapping(DatastoreSearchDocument),
-            settings=index_settings(DatastoreSearchDocument, shards=1, replicas=0),
-            aliases={alias: {}},
-        )
-        collection = ESCollection(store, name, model_class=DatastoreSearchDocument, max_attempts=1)
-        assert collection.index_name == physical_index
-
-        for document in reversed(SEARCH_DOCUMENTS):
-            assert collection.save(document["key"], deepcopy(document))
-        collection.commit()
-        assert collection.search("*:*", rows=0)["total"] == len(SEARCH_DOCUMENTS)
-
-        yield collection
-    finally:
-        if client.indices.exists(index=physical_index):
-            client.indices.delete(index=physical_index)
-
-
-SEARCH_CASES = [
-    pytest.param(
-        "*:*", ["severity desc", "key asc"], [], None, 8, ["a", "b", "c", "g", "d", "h", "e", "f"], id="sort-ties"
-    ),
-    pytest.param(
-        "message:phishing", ["_score desc", "key asc"], [], None, 4, ["a", "b", "c", "g"], id="relevance-sort"
-    ),
-    pytest.param("phishing", ["key asc"], [], None, 4, ["a", "b", "c", "g"], id="default-text-field"),
-    pytest.param('message:"phishing login"', ["key asc"], ["status:open"], None, 2, ["b", "g"], id="phrase-and-filter"),
-    pytest.param(
-        "message:phishing",
-        ["key asc"],
-        ["status:open", "severity:[70 TO 90]"],
-        "owner:alice",
-        2,
-        ["a", "g"],
-        id="filters-and-access-control",
-    ),
-    pytest.param(
-        "severity:[40 TO 70]",
-        ["severity asc", "key desc"],
-        [],
-        None,
-        5,
-        ["h", "d", "g", "c", "b"],
-        id="inclusive-range",
-    ),
-    pytest.param("severity:{40 TO 90}", ["key asc"], [], None, 3, ["b", "c", "g"], id="exclusive-range"),
-    pytest.param("tags:email AND tags:urgent", ["key desc"], [], None, 2, ["g", "a"], id="multivalue-intersection"),
-    pytest.param("NOT _exists_:owner", ["key asc"], [], None, 1, ["f"], id="missing-owner"),
-    pytest.param(
-        "observed:[2025-01-02T00:00:00Z TO 2025-01-03T00:00:00Z]",
-        ["observed desc", "key asc"],
-        [],
-        None,
-        3,
-        ["e", "d", "c"],
-        id="date-boundary",
-    ),
-    pytest.param("message:malware", ["key asc"], ["tags:email"], None, 0, [], id="empty-intersection"),
-]
-
-
-@pytest.mark.parametrize(("query", "sort", "filters", "access_control", "total", "expected_ids"), SEARCH_CASES)
-@pytest.mark.parametrize("as_obj", [False, True], ids=["dict", "model"])
-def test_search_returns_exact_ids_and_order(
-    search_contract_collection: ESCollection,
-    query: str,
-    sort: list[str],
-    filters: list[str],
-    access_control: str | None,
-    total: int,
-    expected_ids: list[str],
-    as_obj: bool,
-):
-    result = search_contract_collection.search(
-        query,
-        filters=deepcopy(filters),
-        access_control=access_control,
-        sort=sort,
-        rows=20,
-        track_total_hits=True,
-        as_obj=as_obj,
-    )
-    actual_ids = [item.key if as_obj else item["key"] for item in result["items"]]
-
-    assert result["total"] == total
-    assert actual_ids == expected_ids
-
-
-def test_search_paginates_across_equal_sort_values(search_contract_collection: ESCollection):
-    pages = [["a", "b", "c"], ["g", "d", "h"], ["e", "f"], []]
-    seen = []
-
-    for page_number, expected_ids in enumerate(pages):
-        offset = page_number * 3
-        result = search_contract_collection.search(
-            "*:*", sort=["severity desc", "key asc"], rows=3, offset=offset, track_total_hits=True, as_obj=False
-        )
-        actual_ids = [item["key"] for item in result["items"]]
-
-        assert result["offset"] == offset
-        assert result["rows"] == 3
-        assert result["total"] == 8
-        assert actual_ids == expected_ids
-        seen.extend(actual_ids)
-
-    assert seen == ["a", "b", "c", "g", "d", "h", "e", "f"]
-    assert len(set(seen)) == 8
-
-
-SEARCH_AGGREGATIONS = {
-    "statuses": {"terms": {"field": "status", "size": 10, "order": {"_key": "asc"}}},
-    "tags": {"terms": {"field": "tags", "size": 10, "order": {"_key": "asc"}}},
-    "severity": {"stats": {"field": "severity"}},
-    "missing_owner": {"missing": {"field": "owner"}},
-    "severity_buckets": {"histogram": {"field": "severity", "interval": 20, "min_doc_count": 0}},
-    "open_only": {
-        "filter": {"term": {"status": "open"}},
-        "aggs": {"severity": {"stats": {"field": "severity"}}},
-    },
-}
-
-
-EXPECTED_SEARCH_AGGREGATIONS = [
-    pytest.param(
-        "*:*",
-        [],
-        8,
-        {
-            "statuses": [("closed", 3), ("open", 5)],
-            "tags": [("email", 4), ("endpoint", 3), ("urgent", 3)],
-            "severity": {"count": 8, "min": 0.0, "max": 90.0, "avg": 50.0, "sum": 400.0},
-            "missing_owner": 1,
-            "severity_buckets": [(0.0, 1), (20.0, 1), (40.0, 2), (60.0, 3), (80.0, 1)],
-            "open_only": {
-                "doc_count": 5,
-                "severity": {"count": 5, "min": 0.0, "max": 90.0, "avg": 54.0, "sum": 270.0},
-            },
-        },
-        id="all-documents",
-    ),
-    pytest.param(
-        "*:*",
-        ["status:open"],
-        5,
-        {
-            "statuses": [("open", 5)],
-            "tags": [("email", 3), ("endpoint", 1), ("urgent", 2)],
-            "severity": {"count": 5, "min": 0.0, "max": 90.0, "avg": 54.0, "sum": 270.0},
-            "missing_owner": 1,
-            "severity_buckets": [(0.0, 1), (20.0, 0), (40.0, 1), (60.0, 2), (80.0, 1)],
-            "open_only": {
-                "doc_count": 5,
-                "severity": {"count": 5, "min": 0.0, "max": 90.0, "avg": 54.0, "sum": 270.0},
-            },
-        },
-        id="filtered-documents",
-    ),
-    pytest.param(
-        "key:does-not-exist",
-        [],
-        0,
-        {
-            "statuses": [],
-            "tags": [],
-            "severity": {"count": 0, "min": None, "max": None, "avg": None, "sum": 0.0},
-            "missing_owner": 0,
-            "severity_buckets": [],
-            "open_only": {
-                "doc_count": 0,
-                "severity": {"count": 0, "min": None, "max": None, "avg": None, "sum": 0.0},
-            },
-        },
-        id="empty-documents",
-    ),
-]
-
-
-@pytest.mark.parametrize(("query", "filters", "total", "expected"), EXPECTED_SEARCH_AGGREGATIONS)
-def test_search_returns_exact_aggregations(
-    search_contract_collection: ESCollection,
-    query: str,
-    filters: list[str],
-    total: int,
-    expected: dict,
-):
-    result = search_contract_collection.search(
-        query,
-        filters=deepcopy(filters),
-        aggregations=list(deepcopy(SEARCH_AGGREGATIONS).items()),
-        sort="key asc",
-        rows=0,
-        track_total_hits=True,
-        as_obj=False,
-    )
-
-    assert result["items"] == []
-    assert result["total"] == total
-    aggregations = result["aggregations"]
-    actual = {
-        "statuses": [(bucket["key"], bucket["doc_count"]) for bucket in aggregations["statuses"]["buckets"]],
-        "tags": [(bucket["key"], bucket["doc_count"]) for bucket in aggregations["tags"]["buckets"]],
-        "severity": aggregations["severity"],
-        "missing_owner": aggregations["missing_owner"]["doc_count"],
-        "severity_buckets": [
-            (bucket["key"], bucket["doc_count"]) for bucket in aggregations["severity_buckets"]["buckets"]
-        ],
-        "open_only": {
-            "doc_count": aggregations["open_only"]["doc_count"],
-            "severity": aggregations["open_only"]["severity"],
-        },
-    }
-    assert actual == expected

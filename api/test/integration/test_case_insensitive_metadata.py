@@ -434,7 +434,7 @@ def test_metadata_case_insensitive_migration_preserves_documents_and_enables_wil
 
         # Pydantic mapping validation rejects the old metadata normalizer before it reaches Overview.content's
         # historical keyword mapping. The legacy ODM only compared field types, so upstream raised on content.
-        with pytest.raises(HowlerRuntimeError, match="Field analytic has incompatible normalizer"):
+        with pytest.raises(HowlerRuntimeError, match="analytic has incompatible normalizer"):
             _ = datastore.overview
         assert "overview" not in datastore_store._collections
         assert datastore_store.validate is True

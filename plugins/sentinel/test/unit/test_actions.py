@@ -55,13 +55,9 @@ def test_send_to_sentinel(datastore_connection: HowlerDatastore):
         from sentinel.actions.send_to_sentinel import execute
         from sentinel.config import config
 
-        hit = datastore_connection.hit.model_class.model_validate(
-            {
-                "howler": {"analytic": "Configured Sentinel tenant", "hash": "a" * 64},
-                "azure": {"tenant_id": config.ingestors[0].tenant_id},
-                "event": {"ingested": "2026-01-01T00:00:00Z"},
-            }
-        )
+        data = {"howler.analytic": "Configured", "howler.hash": "a" * 64, "event.ingested": "2026-01-01T00:00:00Z"}
+        data["azure.tenant_id"] = config.ingestors[0].tenant_id
+        hit = datastore_connection.hit.model_class.model_validate(data)
         hit_id = hit.howler.id
         datastore_connection.hit.save(hit_id, hit)
         datastore_connection.hit.commit()
@@ -76,10 +72,7 @@ def test_send_to_sentinel(datastore_connection: HowlerDatastore):
         }
 
         broken_hit = datastore_connection.hit.model_class.model_validate(
-            {
-                "howler": {"analytic": "Unconfigured Sentinel tenant", "hash": "b" * 64},
-                "azure": {"tenant_id": "unconfigured-tenant"},
-            }
+            {"howler.analytic": "Unconfigured", "howler.hash": "b" * 64, "azure.tenant_id": "unconfigured-tenant"}
         )
 
         datastore_connection.hit.save(broken_hit.howler.id, broken_hit)

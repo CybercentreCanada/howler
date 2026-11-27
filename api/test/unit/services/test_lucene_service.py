@@ -1,5 +1,6 @@
 from hashlib import sha256
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import elasticsearch
 import pytest
@@ -10,162 +11,106 @@ from howler.models.hit import Hit
 from howler.services import lucene_service
 
 
-def test_response_body_accepts_mappings_and_elasticsearch_responses():
-    body = {"valid": True, "explanations": []}
-    meta = ApiResponseMeta(status=200, http_version="1.1", headers={}, duration=0.0, node=None)
-
-    assert lucene_service.response_body(body) == body
-    assert lucene_service.response_body(SimpleNamespace(body=body)) == body
-    assert lucene_service.response_body(ObjectApiResponse(body, meta)) == body
-
-
-def test_prepare_lucene_query_protects_phrases_and_wildcards():
-    query = r'howler.analytic:"Password Sprayer" OR process.command_line:*\ -E\ *'
-
-    prepared = lucene_service.prepare_lucene_query(query)
-
-    assert "Password Sprayer" not in prepared
-    assert r"*\ -E\ *" not in prepared
-    assert len(prepared.split('"')[1]) == 64
-    assert len(prepared.rsplit(":", 1)[1]) == 64
-
-
-def test_prepare_lucene_query_preserves_syntax_around_protected_terms():
-    phrase = r'"a \"quoted\" term?"'
-    wildcard = r"two\ words\(v1\)*"
-    bare = r"label\:part?"
-    literal = r"literal\*\?"
-    query = f"field:({phrase} OR (+{wildcard} -{bare})) AND *:* AND name:{literal}"
+@pytest.mark.parametrize(
+    "query,protected,wildcards",
+    [
+        (
+            r'field:("a \"quoted\" term?" OR (+two\ words\(v1\)* -label\:part?)) AND *:* AND name:literal\*\?',
+            {r'"a \"quoted\" term?"', r"two\ words\(v1\)*", r"label\:part?", r"literal\*\?"},
+            True,
+        ),
+        ("name:two\\\twords? OR name:one*\\\\ AND status:open", {"two\\\twords?", "one*\\\\"}, True),
+        (
+            r'field:(two\ words* OR "two words") AND ip:"2001:db8::1" AND date:"2025-03-27T11:52:37.477958Z"',
+            {'"two words"'},
+            False,
+        ),
+    ],
+)
+def test_prepare_lucene_roundtrips_protected_terms(query, protected, wildcards):
     tokens = {}
-
-    prepared = lucene_service.prepare_lucene_query(query, tokens=tokens)
-
+    prepared = lucene_service.prepare_lucene_query(query, protect_wildcards=wildcards, tokens=tokens)
+    assert set(tokens.values()) == protected
     keys = {value: key for key, value in tokens.items()}
-    assert keys.keys() == {phrase, wildcard, bare, literal}
-    assert prepared == f'field:("{keys[phrase]}" OR (+{keys[wildcard]} -{keys[bare]})) AND *:* AND name:{keys[literal]}'
-    assert lucene_service.normalize_lucene_explanation(prepared, tokens) == query
-
-
-def test_prepare_lucene_query_distinguishes_escaped_whitespace_from_escaped_backslash():
-    query = "name:two\\\twords? OR name:one*\\\\ AND status:open"
-    tokens = {}
-
-    prepared = lucene_service.prepare_lucene_query(query, tokens=tokens)
-
-    assert set(tokens.values()) == {"two\\\twords?", "one*\\\\"}
-    assert lucene_service.normalize_lucene_explanation(prepared, tokens) == query
-
-
-def test_prepare_lucene_query_for_explain_preserves_wildcards_and_typed_phrases():
-    query = r'field:(two\ words* OR "two words") AND ip:"2001:db8::1" AND date:"2025-03-27T11:52:37.477958Z"'
-    tokens = {}
-
-    prepared = lucene_service.prepare_lucene_query(query, protect_wildcards=False, tokens=tokens)
-
-    assert list(tokens.values()) == ['"two words"']
-    assert prepared == query.replace('"two words"', f'"{next(iter(tokens))}"').replace(
-        "2001:db8::1", "2001@colondb8@colon@colon1"
-    )
+    if query.startswith("field:(") and wildcards:
+        phrase, wildcard, bare, literal = (
+            keys[value] for value in (r'"a \"quoted\" term?"', r"two\ words\(v1\)*", r"label\:part?", r"literal\*\?")
+        )
+        assert prepared == f'field:("{phrase}" OR (+{wildcard} -{bare})) AND *:* AND name:{literal}'
+    if not wildcards:
+        phrase_hash = keys['"two words"']
+        assert prepared == query.replace('"two words"', f'"{phrase_hash}"').replace(
+            "2001:db8::1", "2001@colondb8@colon@colon1"
+        )
     assert lucene_service.normalize_lucene_explanation(prepared, tokens) == query
 
 
 @pytest.mark.parametrize(
     "bounds", ["[80 TO *]", "[* TO 100]", "{80 TO *}", "[* TO *}", '["a] b" TO *}', r'{a\}b TO "z*"]']
 )
-def test_prepare_lucene_query_preserves_unbounded_ranges(bounds):
-    query = f"howler.score:{bounds} AND howler.analytic:malware*"
-    prepared = lucene_service.prepare_lucene_query(query)
-    assert prepared.startswith(f"howler.score:{bounds} AND howler.analytic:")
-    assert "malware*" not in prepared
-
-
-def test_normalize_lucene_explanation_handles_nested_query_wrappers():
-    query = 'howler.analytic:"Password Sprayer"'
-    tokens = {}
-    lucene_service.prepare_lucene_query(query, tokens=tokens)
-    phrase_hash = next(iter(tokens))
-
-    explanation = (
-        "ConstantScoreQuery("
-        "BoostQuery("
-        f"IndexOrDocValuesQuery(indexQuery=howler.analytic:{phrase_hash}, "
-        f"dvQuery=howler.analytic:{phrase_hash}), boost=1.0))"
-    )
-
-    assert lucene_service.normalize_lucene_explanation(explanation, tokens) == query
-    # An explanation from another request may contain the same hash as a literal term.
-    assert lucene_service.normalize_lucene_explanation(explanation) == f"howler.analytic:{phrase_hash}"
+def test_prepare_lucene_preserves_ranges(bounds):
+    prepared = lucene_service.prepare_lucene_query(f"howler.score:{bounds} AND howler.analytic:malware*")
+    assert prepared.startswith(f"howler.score:{bounds} AND howler.analytic:") and "malware*" not in prepared
 
 
 @pytest.mark.parametrize("wrapper", ["FieldExistsQuery", "DocValuesFieldExistsQuery"])
 @pytest.mark.parametrize("shape", ["ConstantScore({} [field=howler.id])", "ConstantScoreQuery({}(field=howler.id))"])
-def test_normalize_lucene_explanation_handles_exists_query_shapes(wrapper, shape):
+def test_normalize_exists_queries(wrapper, shape):
     assert lucene_service.normalize_lucene_explanation(shape.format(wrapper)) == "_exists_:howler.id"
 
 
 @pytest.mark.parametrize(
-    "explanation",
-    ["OtherDocValuesFieldExistsQuery [field=howler.id]", "OtherFieldExistsQuery(field=howler.id)", "MyBoostQuery(foo)"],
+    "explanation,expected",
+    [
+        ("OtherDocValuesFieldExistsQuery [field=howler.id]", "OtherDocValuesFieldExistsQuery [field=howler.id]"),
+        ("OtherFieldExistsQuery(field=howler.id)", "OtherFieldExistsQuery(field=howler.id)"),
+        ("MyBoostQuery(foo)", "MyBoostQuery(foo)"),
+        (
+            "ConstantScore(IndexOrDocValuesQuery(indexQuery=howler.score:[50 TO 100], "
+            "dvQuery=howler.score:[50 TO 100]))",
+            "howler.score:[50 TO 100]",
+        ),
+    ],
 )
-def test_normalize_lucene_explanation_preserves_unknown_wrapper_names(explanation):
-    assert lucene_service.normalize_lucene_explanation(explanation) == explanation
+def test_normalize_query_wrappers(explanation, expected):
+    assert lucene_service.normalize_lucene_explanation(explanation) == expected
 
 
-def test_normalize_lucene_explanation_preserves_nested_range_queries():
+def test_normalize_nested_wrappers_uses_only_request_tokens():
+    query = 'howler.analytic:"Password Sprayer"'
+    tokens = {}
+    lucene_service.prepare_lucene_query(query, tokens=tokens)
+    phrase_hash = next(iter(tokens))
     explanation = (
-        "ConstantScore(IndexOrDocValuesQuery(indexQuery=howler.score:[50 TO 100], dvQuery=howler.score:[50 TO 100]))"
+        f"ConstantScoreQuery(BoostQuery(IndexOrDocValuesQuery(indexQuery=howler.analytic:{phrase_hash}, "
+        f"dvQuery=howler.analytic:{phrase_hash}), boost=1.0))"
     )
-
-    assert lucene_service.normalize_lucene_explanation(explanation) == "howler.score:[50 TO 100]"
-
-
-def test_match_accepts_elasticsearch_response_wrappers(monkeypatch):
-    class Cache:
-        def get(self, key):
-            return None
-
-        def set(self, key, value):
-            self.value = value
-
-    fake_client = SimpleNamespace(
-        indices=SimpleNamespace(
-            validate_query=lambda **kwargs: ObjectApiResponse(
-                {"valid": True, "explanations": [{"explanation": kwargs["q"]}]},
-                ApiResponseMeta(status=200, http_version="1.1", headers={}, duration=0.0, node=None),
-            )
-        )
-    )
-    fake_datastore = SimpleNamespace(
-        hit=SimpleNamespace(datastore=SimpleNamespace(client=fake_client), index_name="howler-hit")
-    )
-    monkeypatch.setattr(lucene_service, "datastore", lambda: fake_datastore)
-    cache = Cache()
-    monkeypatch.setattr(lucene_service, "NORMALIZED_QUERY_CACHE", cache)
-
-    assert lucene_service.match("howler.status:op?n", {"howler.status": "open"}) is True
-    assert cache.value == "howler.status:op?n"
+    assert lucene_service.normalize_lucene_explanation(explanation, tokens) == query
+    assert lucene_service.normalize_lucene_explanation(explanation) == f"howler.analytic:{phrase_hash}"
 
 
 @pytest.fixture
 def explanations(monkeypatch):
-    """Replay the isolated Hit index's validate_query renderings for the prepared queries."""
-    responses = {}
-
-    def validate_query(*, q, index, explain):
-        return {"valid": True, "explanations": [{"explanation": responses[q]}]}
-
+    responses, cache = {}, {}
+    validate_query = MagicMock(side_effect=lambda **kwargs: responses[kwargs["q"]])
     client = SimpleNamespace(indices=SimpleNamespace(validate_query=validate_query))
     hit = SimpleNamespace(index_name="hit", datastore=SimpleNamespace(client=client))
-    store = SimpleNamespace(get_models=lambda: {"hit": Hit})
-    monkeypatch.setattr(lucene_service, "datastore", lambda: SimpleNamespace(hit=hit, ds=store))
-    cache = {}
+    monkeypatch.setattr(
+        lucene_service,
+        "datastore",
+        lambda: SimpleNamespace(hit=hit, ds=SimpleNamespace(get_models=lambda: {"hit": Hit})),
+    )
     monkeypatch.setattr(lucene_service, "NORMALIZED_QUERY_CACHE", SimpleNamespace(get=cache.get, set=cache.__setitem__))
     monkeypatch.setattr(lucene_service, "TESTING", False)
-    return responses
+    return responses, validate_query
+
+
+def response(explanation):
+    return {"valid": True, "explanations": [{"explanation": explanation}]}
 
 
 @pytest.mark.parametrize(
-    ("field", "term", "matches", "misses"),
+    "field,term,matches,misses",
     [
         ("process.name", r"label\*", ["label*"], ["LABEL*", "labelXYZ"]),
         ("process.name", r"label\?", ["label?"], ["LABEL?", "labelX"]),
@@ -176,80 +121,67 @@ def explanations(monkeypatch):
     ],
 )
 def test_match_preserves_escaped_wildcards(explanations, field, term, matches, misses):
+    explanations, _ = explanations
     query = f"{field}:{term}"
     prepared = f"{field}:{sha256(term.encode()).hexdigest()}"
-    explanations[prepared] = prepared
-
+    explanations[prepared] = response(prepared)
     assert lucene_service.match(query, {field: matches[0]})
-    explanations.clear()  # Subsequent hits must use the cached explanation.
+    explanations.clear()
     for candidate in matches:
         assert lucene_service.match(query, {field: candidate})
     for candidate in misses:
         assert not lucene_service.match(query, {field: candidate})
 
 
-@pytest.mark.parametrize("regex", [r"/foo.*[0-9]/", r"/foo\/bar[0-9]/", r"/foo[() ?*]/"])
-def test_match_preserves_regex_as_one_clause(explanations, regex):
-    query = f"process.name:{regex} OR process.name:ok"
-    explanations[query] = (
-        "process.name:AutomatonQuery {\norg.apache.lucene.util.automaton.Automaton@26998730} process.name:ok"
-    )
-
-    assert lucene_service.prepare_lucene_query(query, protect_wildcards=False) == query
-    assert lucene_service.match(query, {"process": {"name": "ok"}})
-    assert not lucene_service.match(query, {"process": {"name": "other"}})
+AUTOMATON = "process.name:AutomatonQuery {\norg.apache.lucene.util.automaton.Automaton@4469500b}"
+ONE, TWO = (sha256(phrase.encode()).hexdigest() for phrase in ('"one"', '"two"'))
 
 
-def test_match_does_not_skip_required_or_prohibited_opaque_regex(explanations):
-    regex = "process.name:/foo.*[0-9]/"
-    automaton = "process.name:AutomatonQuery {\norg.apache.lucene.util.automaton.Automaton@4469500b}"
-    required = f"{regex} AND process.name:ok"
-    prohibited = f"process.name:foo1 AND NOT {regex}"
-    explanations[required] = f"+{automaton} +process.name:ok"
-    explanations[prohibited] = f"+process.name:foo1 -{automaton}"
-
-    assert not lucene_service.match(required, {"process": {"name": "ok"}})
-    assert not lucene_service.match(prohibited, {"process": {"name": "foo1"}})
-
-
-def test_match_keeps_phrase_boundaries_next_to_boolean_operators(explanations):
-    one, two = (sha256(phrase.encode()).hexdigest() for phrase in ('"one"', '"two"'))
-    query = 'process.name:"one"OR process.name:"two"'
-    explanations[f'process.name:"{one}"OR process.name:"{two}"'] = f"process.name:{one} process.name:{two}"
-
-    for name in ("one", "two"):
+@pytest.mark.parametrize(
+    "query,rendering,matches,misses",
+    [
+        (f"process.name:{regex} OR process.name:ok", f"{AUTOMATON} process.name:ok", ["ok"], ["other"])
+        for regex in (r"/foo.*[0-9]/", r"/foo\/bar[0-9]/", r"/foo[() ?*]/")
+    ]
+    + [
+        ("process.name:/foo.*[0-9]/ AND process.name:ok", f"+{AUTOMATON} +process.name:ok", [], ["ok"]),
+        ("process.name:foo1 AND NOT process.name:/foo.*[0-9]/", f"+process.name:foo1 -{AUTOMATON}", [], ["foo1"]),
+        (
+            'process.name:"one"OR process.name:"two"',
+            f"process.name:{ONE} process.name:{TWO}",
+            ["one", "two"],
+            ["three"],
+        ),
+    ],
+)
+def test_match_regex_and_phrase_boundaries(explanations, query, rendering, matches, misses):
+    explanations, _ = explanations
+    if "/foo" in query:
+        assert lucene_service.prepare_lucene_query(query, protect_wildcards=False) == query
+    prepared = lucene_service.prepare_lucene_query(query)
+    explanations[prepared] = response(rendering)
+    for name in matches:
         assert lucene_service.match(query, {"process": {"name": name}})
-    assert not lucene_service.match(query, {"process": {"name": "three"}})
+    for name in misses:
+        assert not lucene_service.match(query, {"process": {"name": name}})
 
 
-def test_match_returns_false_for_query_validation_errors(monkeypatch):
-    fake_client = SimpleNamespace(
-        indices=SimpleNamespace(
-            validate_query=lambda **kwargs: {
-                "valid": False,
-                "error": {"type": "query_shard_exception", "reason": "invalid query"},
-            }
-        )
-    )
-    fake_datastore = SimpleNamespace(
-        hit=SimpleNamespace(datastore=SimpleNamespace(client=fake_client), index_name="howler-hit")
-    )
-    monkeypatch.setattr(lucene_service, "datastore", lambda: fake_datastore)
-    monkeypatch.setattr(lucene_service, "NORMALIZED_QUERY_CACHE", SimpleNamespace(get=lambda key: None))
-
-    assert lucene_service.match("howler.status:open", {"howler.status": "open"}) is False
-
-
-def test_match_propagates_operational_validation_failures(monkeypatch):
-    failure = elasticsearch.ConnectionTimeout("validation timed out")
-    fake_client = SimpleNamespace(
-        indices=SimpleNamespace(validate_query=lambda **kwargs: (_ for _ in ()).throw(failure))
-    )
-    fake_datastore = SimpleNamespace(
-        hit=SimpleNamespace(datastore=SimpleNamespace(client=fake_client), index_name="howler-hit")
-    )
-    monkeypatch.setattr(lucene_service, "datastore", lambda: fake_datastore)
-    monkeypatch.setattr(lucene_service, "NORMALIZED_QUERY_CACHE", SimpleNamespace(get=lambda key: None))
-
+def test_match_validation_responses(explanations):
+    explanations, validate_query = explanations
+    query = "howler.status:op?n"
+    prepared = f"howler.status:{sha256('op?n'.encode()).hexdigest()}"
+    meta = ApiResponseMeta(status=200, http_version="1.1", headers={}, duration=0.0, node=None)
+    body = {"valid": True, "explanations": [{"explanation": prepared}]}
+    assert lucene_service.response_body(body) == lucene_service.response_body(SimpleNamespace(body=body)) == body
+    explanations[prepared] = ObjectApiResponse(body, meta)
+    assert lucene_service.match(query, {"howler.status": "open"})
+    explanations["status:bad"] = {"valid": False, "error": {"type": "query_shard_exception", "reason": "invalid query"}}
+    assert not lucene_service.match("status:bad", {})
+    validate_query.side_effect = elasticsearch.ConnectionTimeout("validation timed out")
     with pytest.raises(SearchRetryException):
-        lucene_service.match("howler.status:open", {"howler.status": "open"})
+        lucene_service.match("status:timeout", {})
+
+
+def test_missing_datastore_model_uses_default(monkeypatch):
+    monkeypatch.setattr(lucene_service, "datastore", lambda: SimpleNamespace())
+    assert lucene_service._get_hit_model() is Hit

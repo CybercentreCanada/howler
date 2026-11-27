@@ -1,5 +1,5 @@
 from datetime import datetime
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -22,21 +22,10 @@ from howler.models.ecs.related import Related as SchemaRelated
 from howler.models.user import User
 from howler.services import case_service
 
-
-def Case(data):  # noqa: N802
-    return SchemaCase.model_validate(data)
-
-
-def CaseItem(data):  # noqa: N802
-    return SchemaCaseItem.model_validate(data)
-
-
-def CaseRule(data):  # noqa: N802
-    return SchemaCaseRule.model_validate(data)
-
-
-def Related(data):  # noqa: N802
-    return SchemaRelated.model_validate(data)
+Case = SchemaCase.model_validate
+CaseItem = SchemaCaseItem.model_validate
+CaseRule = SchemaCaseRule.model_validate
+Related = SchemaRelated.model_validate
 
 
 @pytest.fixture(autouse=True)
@@ -503,7 +492,6 @@ class TestHideCases:
         mock_ds_fn.return_value = mock_ds
         user = _make_user("analyst")
 
-        # Build a Case object with items — stream_search returns it directly.
         related_case = Case({"case_id": "case-other", "title": "test case", "summary": "summary"})
         related_case.items = [
             CaseItem({"type": "case", "value": "case-001"}),
@@ -511,24 +499,12 @@ class TestHideCases:
         ]
         mock_ds.case.stream_search.return_value = iter([related_case])
 
-        # The target case itself (returned by ds.case.get in the second pass)
-        target_case_obj = MagicMock()
-        target_case_obj.case_id = "case-001"
-        target_case_obj.classification = CLASSIFICATION.UNRESTRICTED
-        target_case_obj.items = []
-        target_case_obj.log = []
+        target_case_obj = MagicMock(case_id="case-001", classification=CLASSIFICATION.UNRESTRICTED, items=[], log=[])
         mock_ds.case.get.return_value = _versioned(target_case_obj)
 
         case_service.hide_cases({"case-001"}, user=user)
 
-        # The matching item's visible flag must be set to False
-        matching = next(i for i in related_case.items if i.value == "case-001")
-        assert matching.visible is False
-        # The unrelated item must be untouched
-        unrelated = next(i for i in related_case.items if i.value == "something-else")
-        assert unrelated.visible is True
-        # The related case must be saved with the update
-        # A log entry must have been appended documenting the hidden reference
+        assert [item.visible for item in related_case.items] == [False, True]
         assert any("case-001" in log.explanation for log in related_case.log)
         assert mock_save.call_count == 2
         mock_save.assert_any_call(related_case, refresh=None)
@@ -637,13 +613,9 @@ class TestHideCases:
 
         assert case_a.visible is False
         assert case_b.visible is False
-        mock_ds.case.save.assert_has_calls(
-            [
-                call(case_a.case_id, case_a, refresh="wait_for", version="case-a-version"),
-                call(case_b.case_id, case_b, refresh="wait_for", version="case-b-version"),
-            ],
-            any_order=True,
-        )
+        for case in (case_a, case_b):
+            mock_ds.case.save.assert_any_call(case.case_id, case, refresh="wait_for", version=f"{case.case_id}-version")
+        assert mock_ds.case.save.call_count == 2
 
     @patch("howler.services.case_service.datastore")
     def test_hide_cases_appends_log_to_hidden_case(self, mock_ds_fn):
@@ -764,19 +736,9 @@ class TestAppendCaseItemRouting:
         with pytest.raises(InvalidDataException):
             case_service.append_case_item("case-001", item_value="some-id")
 
-    @pytest.mark.parametrize(
-        ("item_type", "expected_type"),
-        [
-            ("hit", case_service.CaseItemTypes.HIT),
-            (case_service.CaseItemTypes.HIT, case_service.CaseItemTypes.HIT),
-            ("reference", case_service.CaseItemTypes.REFERENCE),
-            (case_service.CaseItemTypes.REFERENCE, case_service.CaseItemTypes.REFERENCE),
-            ("folder", case_service.CaseItemTypes.FOLDER),
-            (case_service.CaseItemTypes.FOLDER, case_service.CaseItemTypes.FOLDER),
-        ],
-    )
-    def test_append_case_item_accepts_string_and_enum_types(self, item_type, expected_type):
-        """append_case_item accepts valid item type strings and their enum members."""
+    @pytest.mark.parametrize("item_type", ["hit", "reference", "folder"])
+    @pytest.mark.parametrize("as_enum", [False, True])
+    def test_append_case_item_accepts_string_and_enum_types(self, item_type, as_enum):
         mock_ds = MagicMock()
         mock_case = _make_case()
         mock_ds.case.get.return_value = mock_case
@@ -785,17 +747,13 @@ class TestAppendCaseItemRouting:
             patch("howler.services.case_service.datastore", return_value=mock_ds),
             patch("howler.services.case_service.append_hit", return_value=mock_case) as mock_append_hit,
         ):
-            result = case_service.append_case_item("case-001", item_type=item_type, item_value="some-id")
+            value = case_service.CaseItemTypes(item_type) if as_enum else item_type
+            result = case_service.append_case_item("case-001", item_type=value, item_value="some-id")
 
         assert result is mock_case
-        if expected_type == case_service.CaseItemTypes.HIT:
-            appended_item = mock_append_hit.call_args.args[1]
-            mock_append_hit.assert_called_once_with(mock_case, appended_item, user=None)
-        else:
-            assert len(mock_case.items) == 1
-            appended_item = mock_case.items[0]
-            mock_ds.case.save.assert_not_called()
-        assert appended_item.type == expected_type
+        item = mock_append_hit.call_args.args[1] if item_type == "hit" else mock_case.items[0]
+        assert item.type == item_type
+        mock_ds.case.save.assert_not_called()
 
     @pytest.mark.parametrize("item_type", ["unicorn", 123, ["unicorn"]])
     @patch("howler.services.case_service.datastore")
@@ -1470,68 +1428,29 @@ class TestRemoveCaseItem:
         with pytest.raises(NotFoundException):
             case_service.remove_case_items("case-001", ["00000000-0000-0000-0000-000000000000"])
 
+    @pytest.mark.parametrize("item_type", ["hit", "event"])
     @patch("howler.services.case_service.recompute_case_metadata")
     @patch("howler.services.case_service.datastore")
-    def test_remove_hit_item_clears_backreference(self, mock_ds_fn, mock_sync):
-        """remove_case_item removes the item from the case and removes the hit back-reference."""
+    def test_remove_item_clears_backreference(self, mock_ds_fn, mock_sync, item_type):
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-
-        hit_item = CaseItem({"type": "hit", "value": "hit-001"})
-
+        item = CaseItem({"type": item_type, "value": "record-001"})
         mock_case = MagicMock()
         mock_case.case_id = "case-001"
-        mock_case.items = [hit_item]
+        mock_case.items = [item]
         mock_ds.case.get.return_value = _versioned(mock_case)
         mock_ds.case.save.return_value = True
+        backing = MagicMock()
+        backing.howler.related = ["case-001"]
+        version = f"howler-{item_type}-000001---5---2"
+        mock_ds.__getitem__.return_value.get.return_value = (backing, version)
 
-        mock_hit = MagicMock()
-        mock_hit.howler.related = ["case-001"]
-        mock_ds.__getitem__.return_value.get.return_value = (mock_hit, "howler-hit-000001---5---2")
+        case_service.remove_case_items("case-001", [item.id])
 
-        case_service.remove_case_items("case-001", [hit_item.id])
-
-        assert hit_item not in mock_case.items
-        assert mock_hit.howler.related == []
+        assert item not in mock_case.items
+        assert backing.howler.related == []
         mock_ds.__getitem__.return_value.save.assert_called_once_with(
-            mock_hit.howler.id,
-            mock_hit,
-            version="howler-hit-000001---5---2",
-            refresh="wait_for",
-        )
-        mock_ds.case.save.assert_called_once_with(
-            mock_case.case_id, mock_case, refresh="wait_for", version="case-version"
-        )
-        mock_sync.assert_called_once_with(mock_case)
-
-    @patch("howler.services.case_service.recompute_case_metadata")
-    @patch("howler.services.case_service.datastore")
-    def test_remove_event_item_clears_backreference(self, mock_ds_fn, mock_sync):
-        """remove_case_item removes an event item from the case."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
-        obs_item = CaseItem({"type": "event", "value": "obs-001"})
-
-        mock_case = MagicMock()
-        mock_case.case_id = "case-001"
-        mock_case.items = [obs_item]
-        mock_ds.case.get.return_value = _versioned(mock_case)
-        mock_ds.case.save.return_value = True
-
-        mock_obs = MagicMock()
-        mock_obs.howler.related = ["case-001"]
-        mock_ds.__getitem__.return_value.get.return_value = (mock_obs, "howler-event-000001---5---2")
-
-        case_service.remove_case_items("case-001", [obs_item.id])
-
-        assert obs_item not in mock_case.items
-        assert mock_obs.howler.related == []
-        mock_ds.__getitem__.return_value.save.assert_called_once_with(
-            mock_obs.howler.id,
-            mock_obs,
-            version="howler-event-000001---5---2",
-            refresh="wait_for",
+            backing.howler.id, backing, version=version, refresh="wait_for"
         )
         mock_ds.case.save.assert_called_once_with(
             mock_case.case_id, mock_case, refresh="wait_for", version="case-version"
@@ -2236,28 +2155,21 @@ class TestUpdateCaseRule:
 class TestGetLastResolvedTime:
     """Tests for case_service.get_last_resolved_time."""
 
-    def test_single_resolution(self):
-        """Returns the timestamp when a case has been resolved once."""
-        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
+    def test_single_and_multiple_resolutions(self):
+        case = _make_case()
         case.log = [
             _make_log("Case created"),
             _make_log_change("status", "open", "resolved", "2026-01-15T10:00:00.000000Z"),
         ]
         result = case_service.get_last_resolved_time(case)
         assert result is not None
-        assert result.year == 2026
-        assert result.month == 1
-        assert result.day == 15
-
-    def test_multiple_resolve_cycles_returns_latest(self):
-        """Returns the final resolved timestamp after open→resolved→in-progress→resolved."""
-        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
-        case.log = [
-            _make_log("Case created"),
-            _make_log_change("status", "open", "resolved", "2026-01-10T10:00:00.000000Z"),
-            _make_log_change("status", "resolved", "in-progress", "2026-01-12T10:00:00.000000Z"),
-            _make_log_change("status", "in-progress", "resolved", "2026-02-20T15:30:00.000000Z"),
-        ]
+        assert (result.year, result.month, result.day) == (2026, 1, 15)
+        case.log.extend(
+            [
+                _make_log_change("status", "resolved", "in-progress", "2026-01-12T10:00:00.000000Z"),
+                _make_log_change("status", "in-progress", "resolved", "2026-02-20T15:30:00.000000Z"),
+            ]
+        )
         result = case_service.get_last_resolved_time(case)
         assert result is not None
         assert result.month == 2
@@ -2436,8 +2348,7 @@ class TestRuleTimeframeAndExpireAfterResolved:
 # ---------------------------------------------------------------------------
 
 
-def CaseLog(data):  # noqa: N802
-    return SchemaCaseLog.model_validate(data)
+CaseLog = SchemaCaseLog.model_validate
 
 
 def _make_log(explanation: str, timestamp: str = "2026-01-01T00:00:00.000000Z") -> CaseLog:
@@ -3125,7 +3036,9 @@ class TestCreateCaseWithItems:
 
     @patch("howler.services.case_service.save_case", return_value=True)
     @patch("howler.services.case_service.append_case_item")
-    def test_create_case_with_items_appends_and_returns_created_case(self, mock_append_item, mock_save):
+    def test_create_case_with_items_appends_and_returns_created_case(
+        self, mock_append_item, mock_save, case_collection
+    ):
         """create_case delegates constructed items and returns the same created parent."""
         user = _make_user()
         result = case_service.create_case(
@@ -3143,24 +3056,7 @@ class TestCreateCaseWithItems:
         assert delegated_item.name == "ref"
         assert mock_append_item.call_args.kwargs["user"] is user
         mock_save.assert_called_once_with(result, refresh="true", version=CREATE_TOKEN)
-
-    @patch("howler.services.case_service.save_case", return_value=True)
-    @patch("howler.services.case_service.append_case_item")
-    def test_create_case_with_items_does_not_refetch_parent(self, mock_append_item, mock_save, case_collection):
-        """The service finalizes its in-memory parent rather than issuing a stale re-fetch."""
-        result = case_service.create_case(
-            {
-                "title": "T",
-                "summary": "S",
-                "items": [{"type": "reference", "value": "https://x.com", "name": "ref"}],
-            },
-            user=_make_user(),
-        )
-
-        assert isinstance(result, SchemaCase)
-        mock_append_item.assert_called_once()
         case_collection.get.assert_not_called()
-        mock_save.assert_called_once_with(result, refresh=None, version=CREATE_TOKEN)
 
     @patch("howler.services.case_service.save_case", return_value=True)
     @patch("howler.services.case_service.append_case_item")

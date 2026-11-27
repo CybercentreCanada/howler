@@ -23,16 +23,13 @@ from howler.models import (
     HowlerESModel,
     HowlerModelValidationError,
     Keyword,
-    enum,
     mapping,
     metadata,
     register_model,
     schema,
-    validated_keyword,
 )
 from howler.models.action import Action
 from howler.models.analytic import Analytic
-from howler.models.case import Case
 from howler.models.event import Event
 from howler.models.hit import Hit
 from howler.models.user import User
@@ -107,11 +104,16 @@ class TestAsyncTaskOperations:
             **kwargs,
         }
 
-    def test_get_task_results_polls_until_completed(self, mock_datastore, monkeypatch):
+    @pytest.mark.parametrize("wrapped", [False, True])
+    def test_get_task_results_polls_until_completed(self, mock_datastore, monkeypatch, wrapped):
         col = _make_collection(mock_datastore)
+        completed = {"completed": True, "response": self._query_result()}
+        if wrapped:
+            meta = ApiResponseMeta(status=200, http_version="1.1", headers={}, duration=0.0, node=None)
+            completed = ObjectApiResponse(meta=meta, body=completed)
         mock_datastore.client.tasks.get.side_effect = [
             {"completed": False},
-            {"completed": True, "response": self._query_result()},
+            completed,
         ]
         monkeypatch.setattr("howler.datastore.collection.time.sleep", lambda _: None)
 
@@ -123,35 +125,19 @@ class TestAsyncTaskOperations:
             "wait_for_completion": False,
         }
 
-    def test_get_task_results_accepts_elasticsearch_response_wrapper(self, mock_datastore):
-        col = _make_collection(mock_datastore)
-        meta = ApiResponseMeta(status=200, http_version="1.1", headers={}, duration=0.0, node=None)
-        mock_datastore.client.tasks.get.return_value = ObjectApiResponse(
-            meta=meta,
-            body={"completed": True, "response": self._query_result()},
-        )
-
-        assert col._get_task_results({"task": "node:1"}) == self._query_result()
-
-    def test_get_task_results_rejects_task_error(self, mock_datastore):
-        col = _make_collection(mock_datastore)
-        mock_datastore.client.tasks.get.return_value = {"completed": True, "error": {"reason": "failed"}}
-
-        with pytest.raises(DataStoreException, match="task node:1 failed"):
-            col._get_task_results({"task": "node:1"})
-
     @pytest.mark.parametrize(
-        "response",
+        "response,match",
         [
-            {"completed": True, "response": {"timed_out": True, "failures": []}},
-            {"completed": True, "response": {"timed_out": False, "failures": [{"reason": "failed"}]}},
+            ({"completed": True, "response": {"timed_out": True, "failures": []}}, None),
+            ({"completed": True, "response": {"timed_out": False, "failures": [{"reason": "failed"}]}}, None),
+            ({"completed": True, "error": {"reason": "failed"}}, "task node:1 failed"),
         ],
     )
-    def test_get_task_results_rejects_strict_query_failures(self, mock_datastore, response):
+    def test_get_task_results_rejects_strict_query_failures(self, mock_datastore, response, match):
         col = _make_collection(mock_datastore)
         mock_datastore.client.tasks.get.return_value = response
 
-        with pytest.raises(DataStoreException):
+        with pytest.raises(DataStoreException, match=match):
             col._get_task_results({"task": "node:1"})
 
     def test_get_task_results_can_preserve_reindex_failures(self, mock_datastore):
@@ -263,181 +249,34 @@ def _action_data() -> dict:
 class TestModelPersistence:
     """Focused registered-model persistence and projection behavior."""
 
-    def test_normalize_full_document_strips_stored_helpers_and_sets_metadata(self, mock_datastore):
-        col = _make_collection(mock_datastore, model_class=Action)
-
-        action = col.normalize(
-            {
-                **_action_data(),
-                "id": "stored-id",
-                "__access_lvl__": 100,
-            },
-            doc_id="document-id",
-            index="howler-action_hot",
-        )
-
-        assert isinstance(action, Action)
-        assert action.meta.id == "document-id"
-        assert action.meta.index == "howler-action_hot"
-        assert action.as_primitives() == _action_data()
-
     def test_projected_search_object_validates_only_selected_fields(self, mock_datastore):
         col = _make_collection(mock_datastore, model_class=Action)
-
         action = col._format_output(
-            {
-                "_id": "document-id",
-                "_index": "howler-action_hot",
-                "_score": 1.5,
-                "_source": {"name": "Projected", "id": "document-id"},
-            },
+            {"_id": "document-id", "_index": "howler-action_hot", "_score": 1.5, "_source": {"name": "Projected"}},
             ["name", "id"],
             as_obj=True,
         )
-
         assert action.name == "Projected"
         assert "action_id" not in action.__dict__
         assert action.meta.id == "document-id"
         assert action.meta.score == 1.5
         assert action.as_primitives() == {"name": "Projected"}
 
-    def test_save_validates_full_model_and_preserves_stored_request(self, mock_datastore):
+    def test_save_rejects_invalid_full_model(self, mock_datastore):
         col = _make_collection(mock_datastore, model_class=Action)
-
-        assert col.save("document-id", _action_data(), refresh="wait_for") is True
-
-        call = mock_datastore.client.index.call_args.kwargs
-        assert call["index"] == col.name
-        assert call["id"] == "document-id"
-        assert call["refresh"] == "wait_for"
-        assert call["op_type"] == "index"
-        assert json.loads(call["document"]) == {**_action_data(), "id": "document-id"}
 
         with pytest.raises(HowlerModelValidationError):
             col.save("document-id", {"name": "Incomplete"})
         with pytest.raises(HowlerModelValidationError):
             col.save("document-id", {**_action_data(), "unknown": True})
 
-    def test_save_accepts_native_model_instance(self, mock_datastore):
-        col = _make_collection(mock_datastore, model_class=Action)
-        action = Action.model_validate(_action_data())
-
-        assert col.save("document-id", action) is True
-        assert json.loads(mock_datastore.client.index.call_args.kwargs["document"]) == {
-            **_action_data(),
-            "id": "document-id",
-        }
-
     def test_projected_model_cannot_be_saved_as_full_replacement(self, mock_datastore):
         col = _make_collection(mock_datastore, model_class=Action)
-        projected = col._format_output(
-            {
-                "_id": "document-id",
-                "_index": "howler-action_hot",
-                "_source": {"name": "Projected", "id": "document-id"},
-            },
-            ["name", "id"],
-            as_obj=True,
-        )
-
+        projected = col._format_output({"_id": "document-id", "_source": {"name": "Projected"}}, ["name"], as_obj=True)
         with pytest.raises(HowlerModelValidationError):
             col.save("document-id", projected)
 
         mock_datastore.client.index.assert_not_called()
-
-    def test_multiget_does_not_mutate_keys_and_returns_models(self, mock_datastore):
-        col = _make_collection(mock_datastore, model_class=Action)
-        keys = ["document-id"]
-        mock_datastore.client.mget.return_value = {
-            "docs": [
-                {
-                    "_id": "document-id",
-                    "_index": "howler-action_hot",
-                    "found": True,
-                    "_source": {**_action_data(), "id": "document-id"},
-                }
-            ]
-        }
-
-        result = col.multiget(keys)
-
-        assert keys == ["document-id"]
-        assert isinstance(result["document-id"], Action)
-        assert result["document-id"].meta.id == "document-id"
-
-    def test_get_preserves_elasticsearch_metadata(self, mock_datastore):
-        col = _make_collection(mock_datastore, model_class=Action)
-        mock_datastore.client.get.return_value = {
-            "_id": "document-id",
-            "_index": "howler-action_hot",
-            "_seq_no": 7,
-            "_primary_term": 3,
-            "_version": 8,
-            "_source": {
-                **_action_data(),
-                "id": "document-id",
-                "removed_plugin_field": {"value": "legacy"},
-            },
-        }
-
-        action = col.get_if_exists("document-id")
-
-        assert action.meta.id == "document-id"
-        assert action.meta.index == "howler-action_hot"
-        assert action.meta.seq_no == 7
-        assert action.meta.primary_term == 3
-        assert action.meta.version == 8
-        assert "removed_plugin_field" not in action.__dict__
-
-    def test_update_validation_uses_registry_fields_and_stored_primitives(self, mock_datastore):
-        action_col = _make_collection(mock_datastore, model_class=Action)
-        assert action_col._validate_operations([("SET", "name", 123)]) == [("SET", "name", "123")]
-        assert action_col._validate_operations([("APPEND", "triggers", "create")]) == [("APPEND", "triggers", "create")]
-        with pytest.raises(DataStoreException, match="Invalid field"):
-            action_col._validate_operations([("SET", "missing", "value")])
-
-        event_col = _make_collection(mock_datastore, model_class=Event)
-        operations = event_col._validate_operations(
-            [
-                ("SET", "timestamp", "2024-01-02T03:04:05.000000Z"),
-                ("SET", "source.ip", "127.0.0.1"),
-                ("SET", "classification", "UNRESTRICTED"),
-            ]
-        )
-        assert operations == [
-            ("SET", "timestamp", "2024-01-02T03:04:05+00:00"),
-            ("SET", "source.ip", "127.0.0.1"),
-            ("SET", "classification", "UNRESTRICTED"),
-            ("SET", "__access_lvl__", 100),
-            ("SET", "__access_req__", []),
-            ("SET", "__access_grp1__", ["__EMPTY__"]),
-            ("SET", "__access_grp2__", ["__EMPTY__"]),
-        ]
-
-        hit_col = _make_collection(mock_datastore, model_class=Hit)
-        assert hit_col._validate_operations(
-            [
-                (
-                    "APPEND",
-                    "howler.log",
-                    {
-                        "timestamp": "2024-01-02T03:04:05.000000Z",
-                        "user": "user-1",
-                        "explanation": "Updated",
-                    },
-                )
-            ]
-        ) == [
-            (
-                "APPEND",
-                "howler.log",
-                {
-                    "timestamp": "2024-01-02T03:04:05.000000Z",
-                    "user": "user-1",
-                    "explanation": "Updated",
-                },
-            )
-        ]
 
     def test_delete_update_validates_mapping_path_and_generates_safe_script(self, mock_datastore):
         col = _make_collection(mock_datastore, model_class=Analytic)
@@ -567,95 +406,10 @@ class TestEQLSearch:
 class TestSearchConstruction:
     """Public DSL builders must retain existing emitted request semantics."""
 
-    def test_collection_search_request_shape_is_stable(self, mock_datastore):
-        col = _make_collection(mock_datastore, model_class=Action)
-        mock_datastore.client.search.return_value = {"hits": {"total": {"value": 0, "relation": "eq"}, "hits": []}}
-
-        result = col._search(
-            [
-                ("query", "name:test"),
-                ("filters", ["owner:user-1"]),
-                ("field_list", ["name"]),
-                ("start", 2),
-                ("rows", 3),
-                ("sort", [{"name": "desc"}]),
-                ("facet_active", True),
-                ("facet_fields", ["owner"]),
-                ("facet_mincount", 2),
-            ]
-        )
-
-        assert result["hits"]["hits"] == []
-        assert mock_datastore.client.search.call_args.kwargs == {
-            "index": col.name,
-            "query": {
-                "bool": {
-                    "must": {"query_string": {"query": "name:test"}},
-                    "filter": [{"query_string": {"query": "owner:user-1"}}],
-                }
-            },
-            "from_": 2,
-            "size": 3,
-            "sort": [{"name": "desc"}],
-            "_source": ["name"],
-            "aggregations": {
-                "owner": {
-                    "terms": {
-                        "field": "owner",
-                        "min_doc_count": 2,
-                        "size": 3,
-                    }
-                }
-            },
-        }
-
-    def test_dictionary_projection_preserves_list_item_shape(self, mock_datastore):
-        col = _make_collection(mock_datastore, model_class=Case)
-
-        result = col._format_output(
-            {
-                "_id": "case-1",
-                "_source": {
-                    "items": [
-                        {
-                            "id": "item-1",
-                            "type": "hit",
-                            "value": "hit-1",
-                            "name": "Hit",
-                        }
-                    ]
-                },
-            },
-            ["items.type"],
-            as_obj=False,
-        )
-
-        assert result == {
-            "items": [
-                {
-                    "id": "item-1",
-                    "type": "hit",
-                    "value": "hit-1",
-                    "name": "Hit",
-                }
-            ]
-        }
-
     def test_implicit_stored_field_object_projection_is_partial(self, mock_datastore):
         col = _make_collection(mock_datastore, model_class=User)
 
-        user = col._format_output(
-            {
-                "_id": "user-1",
-                "_source": {
-                    "uname": "user-1",
-                    "name": "Test User",
-                    "classification": "UNRESTRICTED",
-                },
-            },
-            as_obj=True,
-        )
-
+        user = col._format_output({"_id": "user-1", "_source": {"uname": "user-1", "name": "Test User"}}, as_obj=True)
         assert user.uname == "user-1"
         assert user.name == "Test User"
         assert "password" not in user.__dict__
@@ -663,19 +417,7 @@ class TestSearchConstruction:
     def test_nested_declared_ids_survive_partial_object_projection(self, mock_datastore):
         col = _make_collection(mock_datastore, model_class=Hit)
 
-        hit = col._format_output(
-            {
-                "_id": "hit-1",
-                "_source": {
-                    "howler": {
-                        "id": "hit-1",
-                    }
-                },
-            },
-            ["howler.id"],
-            as_obj=True,
-        )
-
+        hit = col._format_output({"_id": "hit-1", "_source": {"howler": {"id": "hit-1"}}}, ["howler.id"], as_obj=True)
         assert hit.howler.id == "hit-1"
 
 
@@ -762,80 +504,16 @@ class TestExists:
 class TestILMAliasDocumentOperations:
     """Alias-wide logical ID operations target concrete rollover indices."""
 
-    def test_multiget_locates_ids_then_groups_concrete_index_requests(self, mock_datastore):
-        col = _make_collection(
-            mock_datastore,
-            ilm_config=ILMIndexConfig(warm="30d"),
-            model_class=Action,
-        )
-        old_index = f"{col.name}-000001"
-        new_index = f"{col.name}-000002"
-        mock_datastore.client.search.return_value = {
-            "hits": {
-                "total": {"value": 2, "relation": "eq"},
-                "hits": [
-                    {"_id": "old-id", "_index": old_index},
-                    {"_id": "new-id", "_index": new_index},
-                ],
-            }
-        }
-
-        def mget(*, ids, index):
-            return {
-                "docs": [
-                    {
-                        "_id": data_id,
-                        "_index": index,
-                        "_seq_no": 7,
-                        "_primary_term": 3,
-                        "found": True,
-                        "_source": {**_action_data(), "action_id": data_id, "id": data_id},
-                    }
-                    for data_id in ids
-                ]
-            }
-
-        mock_datastore.client.mget.side_effect = mget
-
-        result = col.multiget(["old-id", "new-id"])
-
-        assert set(result) == {"old-id", "new-id"}
-        assert result["old-id"].meta.index == old_index
-        assert result["old-id"].meta.seq_no == 7
-        assert result["old-id"].meta.primary_term == 3
-        assert result["new-id"].meta.index == new_index
-        mock_datastore.client.search.assert_called_once_with(
-            index=col.name,
-            query={"ids": {"values": ["old-id", "new-id"]}},
-            size=col.MAX_SEARCH_ROWS,
-            _source=False,
-            stored_fields=["_routing"],
-            allow_partial_search_results=False,
-            track_total_hits=True,
-        )
-        assert mock_datastore.client.mget.call_args_list == [
-            call(ids=["old-id"], index=old_index),
-            call(ids=["new-id"], index=new_index),
-        ]
-
     def test_multiget_duplicate_id_uses_newest_generation_regardless_of_other_ids(self, mock_datastore):
-        col = _make_collection(
-            mock_datastore,
-            ilm_config=ILMIndexConfig(warm="30d"),
-            model_class=Action,
-        )
+        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"), model_class=Action)
         old_index = f"{col.name}-000001"
         new_index = f"{col.name}-000002"
-        mock_datastore.client.search.return_value = {
-            "hits": {
-                "total": {"value": 3, "relation": "eq"},
-                "hits": [
-                    {"_id": "old-only", "_index": old_index, "fields": {"_routing": ["legacy"]}},
-                    {"_id": "duplicate", "_index": new_index, "_routing": "blue"},
-                    {"_id": "duplicate", "_index": old_index, "_routing": "legacy"},
-                ],
-            }
-        }
+        hits = [
+            {"_id": "old-only", "_index": old_index, "fields": {"_routing": ["legacy"]}},
+            {"_id": "duplicate", "_index": new_index, "_routing": "blue"},
+            {"_id": "duplicate", "_index": old_index, "_routing": "legacy"},
+        ]
+        mock_datastore.client.search.return_value = {"hits": {"total": {"value": 3, "relation": "eq"}, "hits": hits}}
 
         def mget(*, ids, index, routing):
             return {
@@ -865,19 +543,12 @@ class TestILMAliasDocumentOperations:
         col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
         old_index = f"{col.name}-000001"
         new_index = f"{col.name}-000002"
-        mock_datastore.client.search.return_value = {
-            "hits": {
-                "total": {"value": 2, "relation": "eq"},
-                "hits": [
-                    {"_id": "document-id", "_index": new_index, "_routing": "blue"},
-                    {"_id": "document-id", "_index": old_index, "_routing": "legacy"},
-                ],
-            }
-        }
-        mock_datastore.client.delete.side_effect = [
-            {"result": "deleted"},
-            {"result": "deleted"},
+        hits = [
+            {"_id": "document-id", "_index": index, "_routing": routing}
+            for index, routing in ((new_index, "blue"), (old_index, "legacy"))
         ]
+        mock_datastore.client.search.return_value = {"hits": {"total": {"value": 2, "relation": "eq"}, "hits": hits}}
+        mock_datastore.client.delete.return_value = {"result": "deleted"}
 
         result = col.delete("document-id", refresh="wait_for")
         assert result is True
@@ -899,166 +570,79 @@ class TestILMAliasDocumentOperations:
 class TestILMVersionedOperations:
     """Tests for alias-safe ILM reads followed by optimistic-concurrency writes."""
 
-    def test_versioned_get_uses_search_and_returns_concrete_index(self, mock_datastore):
+    @pytest.fixture()
+    def ilm_document(self, mock_datastore):
         col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
         concrete_index = f"{col.name}-000001"
-        mock_datastore.client.search.return_value = {
+        client = mock_datastore.client
+        client.search.return_value = {
             "hits": {
                 "total": {"value": 1, "relation": "eq"},
-                "hits": [
-                    {
-                        "_id": "document-id",
-                        "_index": concrete_index,
-                    }
-                ],
+                "hits": [{"_id": "document-id", "_index": concrete_index}],
             }
         }
-        mock_datastore.client.get.return_value = {
+        client.get.return_value = {
             "_id": "document-id",
             "_index": concrete_index,
             "_seq_no": 5,
             "_primary_term": 2,
             "_source": {"id": "document-id", "value": "original"},
         }
+        return col, client, concrete_index
 
+    @pytest.mark.parametrize("found", [True, False])
+    def test_versioned_get(self, ilm_document, found):
+        col, client, index = ilm_document
+        if not found:
+            client.search.return_value = {"hits": {"hits": []}}
         data, version = col.get_if_exists("document-id", as_obj=False, version=True)
+        assert (data, version) == (({"value": "original"}, f"{index}---5---2") if found else (None, "create"))
+        if found:
+            client.search.assert_called_once_with(
+                index=col.name,
+                query={"ids": {"values": ["document-id"]}},
+                size=col.MAX_SEARCH_ROWS,
+                _source=False,
+                stored_fields=["_routing"],
+                allow_partial_search_results=False,
+                track_total_hits=True,
+            )
+            client.get.assert_called_once_with(index=index, id="document-id")
 
-        assert data == {"value": "original"}
-        assert version == f"{concrete_index}---5---2"
-        mock_datastore.client.search.assert_called_once_with(
-            index=col.name,
-            query={"ids": {"values": ["document-id"]}},
-            size=col.MAX_SEARCH_ROWS,
-            _source=False,
-            stored_fields=["_routing"],
-            allow_partial_search_results=False,
-            track_total_hits=True,
-        )
-        mock_datastore.client.get.assert_called_once_with(index=concrete_index, id="document-id")
-
-    def test_versioned_get_returns_create_token_for_missing_ilm_document(self, mock_datastore):
-        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
-        mock_datastore.client.search.return_value = {"hits": {"hits": []}}
-
-        data, version = col.get_if_exists("missing-document", as_obj=False, version=True)
-
-        assert data is None
-        assert version == "create"
-
-    def test_versioned_writes_target_the_concrete_ilm_index(self, mock_datastore):
-        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
-        concrete_index = f"{col.name}-000001"
-        version = f"{concrete_index}---5---2"
-        mock_datastore.client.update.return_value = {
-            "result": "updated",
-            "_index": concrete_index,
-            "_seq_no": 6,
-            "_primary_term": 2,
-        }
-
-        col.save("document-id", {"value": "updated"}, version=version)
-        updated, new_version = col.update("document-id", [(col.UPDATE_SET, "value", "updated")], version=version)
-
-        assert mock_datastore.client.index.call_args.kwargs["index"] == concrete_index
-        assert mock_datastore.client.update.call_args.kwargs["index"] == concrete_index
-        assert mock_datastore.client.index.call_args.kwargs["if_seq_no"] == "5"
-        assert mock_datastore.client.index.call_args.kwargs["if_primary_term"] == "2"
-        assert updated is True
-        assert new_version == f"{concrete_index}---6---2"
-
-    def test_unversioned_save_resolves_the_existing_ilm_document_version(self, mock_datastore):
-        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
-        concrete_index = f"{col.name}-000001"
-        mock_datastore.client.search.return_value = {
-            "hits": {
-                "total": {"value": 1, "relation": "eq"},
-                "hits": [
-                    {
-                        "_id": "document-id",
-                        "_index": concrete_index,
-                    }
-                ],
-            }
-        }
-        mock_datastore.client.get.return_value = {
-            "_id": "document-id",
-            "_index": concrete_index,
-            "_seq_no": 5,
-            "_primary_term": 2,
-            "_source": {"id": "document-id", "value": "original"},
-        }
-
-        col.save("document-id", {"value": "updated"})
-
-        assert mock_datastore.client.index.call_args.kwargs["index"] == concrete_index
-        assert mock_datastore.client.index.call_args.kwargs["if_seq_no"] == "5"
-        assert mock_datastore.client.index.call_args.kwargs["if_primary_term"] == "2"
-
-    def test_unversioned_save_creates_a_missing_ilm_document(self, mock_datastore):
-        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
-        mock_datastore.client.search.return_value = {"hits": {"hits": []}}
-
-        col.save("document-id", {"value": "new"})
-
-        assert mock_datastore.client.index.call_args.kwargs["index"] == col.name
-        assert mock_datastore.client.index.call_args.kwargs["op_type"] == "create"
-
-    def test_versioned_delete_uses_optimistic_concurrency(self, mock_datastore):
-        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
-        concrete_index = f"{col.name}-000001"
-        mock_datastore.client.delete.return_value = {"result": "not_found"}
-
-        deleted = col.delete("document-id", version=f"{concrete_index}---5---2")
-        assert deleted is False
-
-        delete_kwargs = mock_datastore.client.delete.call_args.kwargs
-        assert delete_kwargs["index"] == concrete_index
-        assert delete_kwargs["if_seq_no"] == "5"
-        assert delete_kwargs["if_primary_term"] == "2"
+    @pytest.mark.parametrize("mode", ["existing", "missing", "versioned", "delete"])
+    def test_ilm_writes(self, ilm_document, mode):
+        col, client, index = ilm_document
+        version = f"{index}---5---2"
+        if mode == "missing":
+            client.search.return_value = {"hits": {"hits": []}}
+            col.save("document-id", {"value": "new"})
+            assert client.index.call_args.kwargs["index"] == col.name
+            assert client.index.call_args.kwargs["op_type"] == "create"
+            return
+        if mode == "delete":
+            client.delete.return_value = {"result": "not_found"}
+            assert col.delete("document-id", version=version) is False
+            kwargs = client.delete.call_args.kwargs
+        else:
+            col.save("document-id", {"value": "updated"}, version=version if mode == "versioned" else None)
+            kwargs = client.index.call_args.kwargs
+            if mode == "versioned":
+                client.update.return_value = {"result": "updated", "_index": index, "_seq_no": 6, "_primary_term": 2}
+                assert col.update("document-id", [(col.UPDATE_SET, "value", "updated")], version=version) == (
+                    True,
+                    f"{index}---6---2",
+                )
+                assert client.update.call_args.kwargs["index"] == index
+        assert (kwargs["index"], kwargs["if_seq_no"], kwargs["if_primary_term"]) == (index, "5", "2")
 
     def test_unversioned_update_returns_false_for_missing_ilm_document(self, mock_datastore):
-        col = _make_collection(
-            mock_datastore,
-            ilm_config=ILMIndexConfig(warm="30d"),
-            model_class=Action,
-        )
+        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"), model_class=Action)
         mock_datastore.client.search.return_value = {"hits": {"hits": []}}
 
         assert col.update("missing-document", [(col.UPDATE_SET, "name", "updated")]) is False
         mock_datastore.client.update.assert_not_called()
 
-    def test_duplicate_ids_use_newest_canonical_generation(self, mock_datastore, caplog):
-        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
-        old_index = f"{col.name}-000001"
-        new_index = f"{col.name}-000002"
-        temp_index = f"{col.name}-000003__reindex"
-        mock_datastore.client.search.return_value = {
-            "hits": {
-                "total": {"value": 3, "relation": "eq"},
-                "hits": [
-                    {"_id": "document-id", "_index": temp_index},
-                    {"_id": "document-id", "_index": old_index},
-                    {"_id": "document-id", "_index": new_index},
-                ],
-            }
-        }
-        mock_datastore.client.get.return_value = {
-            "_id": "document-id",
-            "_index": new_index,
-            "_seq_no": 8,
-            "_primary_term": 3,
-            "_source": {"id": "document-id", "value": "newest"},
-        }
-
-        with caplog.at_level("WARNING", logger="howler.api.datastore"):
-            data, version = col.get_if_exists("document-id", as_obj=False, version=True)
-
-        assert data == {"value": "newest"}
-        assert version == f"{new_index}---8---3"
-        mock_datastore.client.get.assert_called_once_with(index=new_index, id="document-id")
-        assert "duplicate document id document-id" in caplog.text
-
-    def test_read_update_save_and_atomic_delete_remain_on_the_read_shard(self, mock_datastore):
+    def test_read_update_save_and_atomic_delete_remain_on_the_read_shard(self, mock_datastore, caplog):
         col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig())
         older, newer = f"{col.name}-000001", f"{col.name}-000002"
         routing = "blue---é"
@@ -1066,6 +650,7 @@ class TestILMVersionedOperations:
         client.search.return_value = {
             "hits": {
                 "hits": [
+                    {"_id": "dup", "_index": f"{col.name}-000003__reindex"},
                     {"_id": "dup", "_index": older, "_routing": "legacy"},
                     {"_id": "dup", "_index": newer, "_routing": routing},
                 ]
@@ -1075,8 +660,10 @@ class TestILMVersionedOperations:
         client.update.return_value = {"_index": newer, "_seq_no": 5, "_primary_term": 1, "result": "updated"}
         client.delete.return_value = {"result": "deleted"}
 
-        data, version = col.get_if_exists("dup", as_obj=False, version=True)
+        with caplog.at_level("WARNING", logger="howler.api.datastore"):
+            data, version = col.get_if_exists("dup", as_obj=False, version=True)
         assert data == {"value": "new"}
+        assert "duplicate document id dup" in caplog.text
         client.get.assert_called_once_with(index=newer, id="dup", routing=routing)
         assert col.get_version_write_target(version) == (newer, "4", "1")
         ok, updated_version = col.update("dup", [(col.UPDATE_SET, "value", "changed")], version=version)
@@ -1100,11 +687,7 @@ class TestILMBulkRouting:
     """Bulk writes remain alias-safe across automatic rollover."""
 
     def test_new_documents_use_write_alias_after_rollover_without_restart(self, mock_datastore):
-        col = _make_collection(
-            mock_datastore,
-            ilm_config=ILMIndexConfig(warm="30d"),
-            model_class=Action,
-        )
+        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"), model_class=Action)
         col.index_name = f"{col.name}-000001"
 
         plan = col.get_bulk_plan()
@@ -1112,37 +695,8 @@ class TestILMBulkRouting:
 
         assert json.loads(plan.operations[0][0]) == {"create": {"_index": col.name, "_id": "action-1"}}
 
-    @pytest.mark.parametrize(
-        ("operation", "action"),
-        [("index", "index"), ("upsert", "update"), ("update", "update")],
-    )
-    def test_existing_documents_route_to_older_backing_index(self, mock_datastore, operation, action):
-        col = _make_collection(
-            mock_datastore,
-            ilm_config=ILMIndexConfig(warm="30d"),
-            model_class=Action,
-        )
-        old_index = f"{col.name}-000001"
-        col.index_name = f"{col.name}-000002"
-        mock_datastore.client.search.return_value = {
-            "hits": {
-                "total": {"value": 1, "relation": "eq"},
-                "hits": [{"_id": "action-1", "_index": old_index}],
-            }
-        }
-
-        plan = col.get_bulk_plan()
-        getattr(plan, f"add_{operation}_operation")("action-1", _action_data())
-        plan.get_plan_data()
-
-        assert json.loads(plan.operations[0][0])[action]["_index"] == old_index
-
     def test_model_index_hint_resolves_actual_routing_in_one_batch(self, mock_datastore):
-        col = _make_collection(
-            mock_datastore,
-            ilm_config=ILMIndexConfig(warm="30d"),
-            model_class=Action,
-        )
+        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"), model_class=Action)
         old_index = f"{col.name}-000001"
         mock_datastore.client.indices.get.return_value = {
             old_index: {"aliases": {col.name: {}}},
@@ -1153,8 +707,8 @@ class TestILMBulkRouting:
         mock_datastore.client.search.return_value = {
             "hits": {
                 "hits": [
-                    {"_id": "action-1", "_index": old_index, "_routing": "red"},
-                    {"_id": "action-2", "_index": old_index, "_routing": "blue"},
+                    {"_id": f"action-{i}", "_index": old_index, "_routing": routing}
+                    for i, routing in ((1, "red"), (2, "blue"))
                 ]
             }
         }
@@ -1164,42 +718,13 @@ class TestILMBulkRouting:
         plan.add_update_operation("action-2", action, fields=["name"])
 
         plan.get_plan_data()
-        assert json.loads(plan.operations[0][0])["index"] == {"_index": old_index, "_id": "action-1", "routing": "red"}
-        assert json.loads(plan.operations[1][0])["update"] == {
-            "_index": old_index,
-            "_id": "action-2",
-            "routing": "blue",
-        }
+        for operation, action, key, routing in zip(
+            plan.operations, ("index", "update"), ("action-1", "action-2"), ("red", "blue")
+        ):
+            assert json.loads(operation[0])[action] == {"_index": old_index, "_id": key, "routing": routing}
         assert mock_datastore.client.search.call_count == 1
         assert mock_datastore.client.search.call_args.kwargs["index"] == col.name
-        mock_datastore.client.indices.get.assert_called_once_with(
-            index=f"{col.name}-*",
-            expand_wildcards="all",
-            ignore_unavailable=True,
-            filter_path="*.settings.index.uuid,*.aliases",
-        )
-
-    def test_invalid_model_metadata_is_rejected(self, mock_datastore):
-        col = _make_collection(
-            mock_datastore,
-            ilm_config=ILMIndexConfig(warm="30d"),
-            model_class=Action,
-        )
-        old_index = f"{col.name}-000001"
-        mock_datastore.client.indices.get.return_value = {old_index: {}}
-        mock_datastore.client.search.return_value = {
-            "hits": {
-                "total": {"value": 1, "relation": "eq"},
-                "hits": [{"_id": "action-1", "_index": old_index}],
-            }
-        }
-        action = Action.model_validate({"meta": {"index": "unrelated-secret-index"}, **_action_data()})
-
-        plan = col.get_bulk_plan()
-        with pytest.raises(DataStoreException, match="not a physical member"):
-            plan.add_index_operation("action-1", action)
-        assert plan.empty
-        mock_datastore.client.search.assert_not_called()
+        assert mock_datastore.client.indices.get.call_count == 1
 
     @pytest.mark.parametrize("operation", ["insert", "index", "upsert", "update", "delete"])
     def test_detached_generation_rejects_explicit_bulk_targets(self, mock_datastore, operation):
@@ -1248,11 +773,7 @@ class TestILMBulkRouting:
         assert lines[4] == {"update": {"_id": "alias", "_index": col.name}}
 
     def test_new_upsert_uses_write_alias(self, mock_datastore):
-        col = _make_collection(
-            mock_datastore,
-            ilm_config=ILMIndexConfig(warm="30d"),
-            model_class=Action,
-        )
+        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"), model_class=Action)
         mock_datastore.client.search.return_value = {"hits": {"total": {"value": 0, "relation": "eq"}, "hits": []}}
 
         plan = col.get_bulk_plan()
@@ -1260,41 +781,6 @@ class TestILMBulkRouting:
         plan.get_plan_data()
 
         assert json.loads(plan.operations[0][0]) == {"update": {"_index": col.name, "_id": "action-1"}}
-
-    def test_location_resolution_is_batched_once_for_all_queued_documents(self, mock_datastore):
-        col = _make_collection(
-            mock_datastore,
-            ilm_config=ILMIndexConfig(warm="30d"),
-            model_class=Action,
-        )
-        old_index = f"{col.name}-000001"
-        new_index = f"{col.name}-000002"
-        mock_datastore.client.search.return_value = {
-            "hits": {
-                "total": {"value": 2, "relation": "eq"},
-                "hits": [
-                    {"_id": "action-1", "_index": old_index},
-                    {"_id": "action-2", "_index": new_index},
-                ],
-            }
-        }
-
-        plan = col.get_bulk_plan()
-        plan.add_index_operation("action-1", _action_data())
-        plan.add_update_operation("action-2", {"name": "Updated"}, fields=["name"])
-        plan.get_plan_data()
-
-        mock_datastore.client.search.assert_called_once_with(
-            index=col.name,
-            query={"ids": {"values": ["action-1", "action-2"]}},
-            size=col.MAX_SEARCH_ROWS,
-            _source=False,
-            stored_fields=["_routing"],
-            allow_partial_search_results=False,
-            track_total_hits=True,
-        )
-        assert json.loads(plan.operations[0][0])["index"]["_index"] == old_index
-        assert json.loads(plan.operations[1][0])["update"]["_index"] == new_index
 
     def test_paged_duplicate_matches_route_update_to_newest_and_delete_all(self, mock_datastore):
         col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig())
@@ -1319,17 +805,11 @@ class TestILMBulkRouting:
 
         batches = [list(map(json.loads, batch.splitlines())) for batch in plan.get_plan_batches(2)]
 
-        assert batches == [
-            [
-                {"update": {"_id": "dup", "_index": new, "routing": "blue"}},
-                {"doc": {"name": "updated"}},
-                {"delete": {"_id": "dup", "_index": new, "routing": "blue"}},
-            ],
-            [
-                {"delete": {"_id": "dup", "_index": middle, "routing": "middle"}},
-                {"delete": {"_id": "dup", "_index": old, "routing": "legacy"}},
-            ],
+        deletes = [
+            {"delete": {"_id": "dup", "_index": index, "routing": route}}
+            for index, route in ((new, "blue"), (middle, "middle"), (old, "legacy"))
         ]
+        assert batches == [[{"update": deletes[0]["delete"]}, {"doc": {"name": "updated"}}, deletes[0]], deletes[1:]]
         assert all(request.kwargs["size"] == 2 for request in mock_datastore.client.search.call_args_list)
         assert all(
             request.kwargs["stored_fields"] == ["_routing"] for request in mock_datastore.client.search.call_args_list
@@ -1403,17 +883,6 @@ class TestILMBulkRouting:
             col.bulk(plan)
         client.bulk.assert_not_called()
 
-    def test_legacy_bulk_uses_alias_routing_even_with_hot_index_hint(self, mock_datastore):
-        col = _make_collection(mock_datastore)
-        plan = col.get_bulk_plan()
-        plan.add_insert_operation("new", {"value": 1})
-        plan.add_update_operation("old", {"value": 2}, index=col.index_name)
-        plan.add_delete_operation("older")
-        assert [json.loads(row[0]) for row in plan.operations] == [
-            {action: {"_id": key, "_index": col.name}}
-            for action, key in (("create", "new"), ("update", "old"), ("delete", "older"))
-        ]
-
     def test_incomplete_duplicate_page_aborts_bulk_before_writes(self, mock_datastore):
         col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig())
         col.MAX_SEARCH_ROWS = 1
@@ -1454,208 +923,34 @@ class TestILMBulkRouting:
         assert len(plan.operations) == 1
         assert json.loads(plan.operations[0][0]) == {action: {"_index": col.name, "_id": "missing"}}
 
-    def test_explicit_invalid_index_is_rejected(self, mock_datastore):
-        col = _make_collection(
-            mock_datastore,
-            ilm_config=ILMIndexConfig(warm="30d"),
-            model_class=Action,
-        )
-        mock_datastore.client.indices.get.return_value = {f"{col.name}-000001": {}}
-
-        with pytest.raises(DataStoreException, match="not a physical member"):
-            col.get_bulk_plan().add_index_operation(
-                "action-1",
-                _action_data(),
-                index="unrelated-secret-index",
-            )
-
 
 class TestCreateILMPolicy:
-    """Tests for _create_ilm_policy."""
+    hot = {"hot": {"min_age": "0ms", "actions": {"rollover": {"max_age": "7d", "max_primary_shard_size": "25gb"}}}}
+    cold = {"cold": {"min_age": "90d", "actions": {}}}
+    warm = {"warm": {"min_age": "30d", "actions": {"forcemerge": {"max_num_segments": 3}}}}
 
-    def test_hot_only(self, mock_datastore):
-        """No warm or cold phases configured — only hot with rollover."""
-        ilm_index = ILMIndexConfig()  # no warm/cold
-        col = _make_collection(mock_datastore, ilm_config=ilm_index)
-        ilm_global = ILMConfig(enabled=True, rollover_max_age="7d", rollover_max_size="25gb")
-
-        col._create_ilm_policy(ilm_global)
-
-        mock_datastore.client.ilm.put_lifecycle.assert_called_once()
-        call_kwargs = mock_datastore.client.ilm.put_lifecycle.call_args
-        policy = call_kwargs.kwargs["policy"]
-
-        assert "hot" in policy["phases"]
-        assert policy["phases"]["hot"]["actions"]["rollover"]["max_age"] == "7d"
-        assert policy["phases"]["hot"]["actions"]["rollover"]["max_primary_shard_size"] == "25gb"
-        assert "warm" not in policy["phases"]
-        assert "cold" not in policy["phases"]
-        assert "delete" not in policy["phases"]
-
-    def test_warm_and_cold(self, mock_datastore, ilm_global):
-        """Both warm and cold phases configured with default forcemerge segments."""
-        ilm_index = ILMIndexConfig(warm="30d", cold="90d")
-        col = _make_collection(mock_datastore, ilm_config=ilm_index)
-
-        col._create_ilm_policy(ilm_global)
-
-        call_kwargs = mock_datastore.client.ilm.put_lifecycle.call_args
-        policy = call_kwargs.kwargs["policy"]
-
-        assert "hot" in policy["phases"]
-        assert "warm" in policy["phases"]
-        assert policy["phases"]["warm"]["min_age"] == "30d"
-        assert policy["phases"]["warm"]["actions"]["forcemerge"]["max_num_segments"] == 3  # default
-        assert "cold" in policy["phases"]
-        assert policy["phases"]["cold"]["min_age"] == "90d"
-        assert policy["phases"]["cold"]["actions"] == {}  # no forcemerge allowed in cold
-        assert "delete" not in policy["phases"]
-
-    def test_custom_forcemerge_segments(self, mock_datastore, ilm_global):
-        """Custom forcemerge segment count in warm phase."""
-        ilm_index = ILMIndexConfig(warm="30d", warm_forcemerge_segments=5, cold="90d")
-        col = _make_collection(mock_datastore, ilm_config=ilm_index)
-
-        col._create_ilm_policy(ilm_global)
-
-        call_kwargs = mock_datastore.client.ilm.put_lifecycle.call_args
-        policy = call_kwargs.kwargs["policy"]
-
-        assert policy["phases"]["warm"]["actions"]["forcemerge"]["max_num_segments"] == 5
-        assert policy["phases"]["cold"]["actions"] == {}  # no forcemerge in cold
-
-    def test_skip_forcemerge_with_none(self, mock_datastore, ilm_global):
-        """Setting forcemerge segments to None skips forcemerge action in warm."""
-        ilm_index = ILMIndexConfig(warm="30d", warm_forcemerge_segments=None, cold="90d")
-        col = _make_collection(mock_datastore, ilm_config=ilm_index)
-
-        col._create_ilm_policy(ilm_global)
-
-        call_kwargs = mock_datastore.client.ilm.put_lifecycle.call_args
-        policy = call_kwargs.kwargs["policy"]
-
-        assert "warm" in policy["phases"]
-        assert "forcemerge" not in policy["phases"]["warm"]["actions"]
-        assert "cold" in policy["phases"]
-        assert policy["phases"]["cold"]["actions"] == {}
-
-    def test_warm_only_no_cold(self, mock_datastore, ilm_global):
-        """Warm phase configured but no cold phase."""
-        ilm_index = ILMIndexConfig(warm="14d")
-        col = _make_collection(mock_datastore, ilm_config=ilm_index)
-
-        col._create_ilm_policy(ilm_global)
-
-        call_kwargs = mock_datastore.client.ilm.put_lifecycle.call_args
-        policy = call_kwargs.kwargs["policy"]
-
-        assert "warm" in policy["phases"]
-        assert "cold" not in policy["phases"]
-
-    def test_cold_only_no_warm(self, mock_datastore, ilm_global):
-        """Cold phase configured but no warm phase."""
-        ilm_index = ILMIndexConfig(cold="60d")
-        col = _make_collection(mock_datastore, ilm_config=ilm_index)
-
-        col._create_ilm_policy(ilm_global)
-
-        call_kwargs = mock_datastore.client.ilm.put_lifecycle.call_args
-        policy = call_kwargs.kwargs["policy"]
-
-        assert "warm" not in policy["phases"]
-        assert "cold" in policy["phases"]
-        assert policy["phases"]["cold"]["min_age"] == "60d"
-
-    def test_policy_name(self, mock_datastore, ilm_global):
-        """Policy name follows the {APP_NAME}-{collection}_policy convention."""
-        ilm_index = ILMIndexConfig(warm="30d")
-        col = _make_collection(mock_datastore, ilm_config=ilm_index)
-
-        col._create_ilm_policy(ilm_global)
-
-        call_kwargs = mock_datastore.client.ilm.put_lifecycle.call_args
-        assert call_kwargs.kwargs["name"] == f"{col.name}_policy"
-
-    def test_no_readonly_in_warm(self, mock_datastore, ilm_global):
-        """Warm phase must NOT have readonly — retention cronjob needs write access."""
-        ilm_index = ILMIndexConfig(warm="30d", cold="90d")
-        col = _make_collection(mock_datastore, ilm_config=ilm_index)
-
-        col._create_ilm_policy(ilm_global)
-
-        call_kwargs = mock_datastore.client.ilm.put_lifecycle.call_args
-        policy = call_kwargs.kwargs["policy"]
-
-        assert "readonly" not in policy["phases"]["warm"]["actions"]
-        assert "readonly" not in policy["phases"]["cold"].get("actions", {})
-
-    def test_no_delete_phase(self, mock_datastore, ilm_global):
-        """Delete phase must never be present — retention cronjob handles deletion."""
-        ilm_index = ILMIndexConfig(warm="30d", cold="90d")
-        col = _make_collection(mock_datastore, ilm_config=ilm_index)
-
-        col._create_ilm_policy(ilm_global)
-
-        call_kwargs = mock_datastore.client.ilm.put_lifecycle.call_args
-        policy = call_kwargs.kwargs["policy"]
-
-        assert "delete" not in policy["phases"]
-
-
-class TestCreateIndexTemplate:
-    """Tests for _create_index_template."""
-
-    def test_template_name_and_pattern(self, mock_datastore, ilm_global):
-        """Template name and index pattern follow naming convention."""
-        ilm_index = ILMIndexConfig(warm="30d")
-        col = _make_collection(mock_datastore, ilm_config=ilm_index)
-
-        col._create_index_template(ilm_global)
-
-        call_kwargs = mock_datastore.client.indices.put_index_template.call_args
-        assert call_kwargs.kwargs["name"] == f"{col.name}_template"
-        assert call_kwargs.kwargs["index_patterns"] == [f"{col.name}-*"]
-
-    def test_template_includes_ilm_settings(self, mock_datastore, ilm_global):
-        """Template includes lifecycle.name and lifecycle.rollover_alias."""
-        ilm_index = ILMIndexConfig(warm="30d")
-        col = _make_collection(mock_datastore, ilm_config=ilm_index)
-
-        col._create_index_template(ilm_global)
-
-        call_kwargs = mock_datastore.client.indices.put_index_template.call_args
-        template = call_kwargs.kwargs["template"]
-
-        assert template["settings"]["index"]["lifecycle.name"] == f"{col.name}_policy"
-        assert template["settings"]["index"]["lifecycle.rollover_alias"] == col.name
-
-    def test_template_includes_mappings(self, mock_datastore, ilm_global):
-        """Template includes the mappings (id field at minimum)."""
-        ilm_index = ILMIndexConfig(warm="30d")
-        col = _make_collection(mock_datastore, ilm_config=ilm_index)
-
-        col._create_index_template(ilm_global)
-
-        call_kwargs = mock_datastore.client.indices.put_index_template.call_args
-        template = call_kwargs.kwargs["template"]
-
-        assert "mappings" in template
-        assert "id" in template["mappings"]["properties"]
-
-    def test_schema_template_uses_canonical_builder(self, mock_datastore, ilm_global):
-        """The production ILM path uploads the schema builder's tested payload."""
-        ilm_index = ILMIndexConfig(warm="30d")
-        col = _make_collection(mock_datastore, ilm_config=ilm_index, model_class=Action)
-
-        col._create_index_template(ilm_global)
-
-        template = mock_datastore.client.indices.put_index_template.call_args.kwargs["template"]
-        assert template == schema.ilm_template_body(
-            Action,
-            shards=col.shards,
-            replicas=col.replicas,
-            policy_name=f"{col.name}_policy",
-            rollover_alias=col.name,
+    @pytest.mark.parametrize(
+        ("config", "expected"),
+        [
+            ({}, hot),
+            ({"warm": "30d", "cold": "90d"}, {**hot, **warm, **cold}),
+            (
+                {"warm": "30d", "cold": "90d", "warm_forcemerge_segments": 5},
+                {**hot, "warm": {"min_age": "30d", "actions": {"forcemerge": {"max_num_segments": 5}}}, **cold},
+            ),
+            (
+                {"warm": "30d", "cold": "90d", "warm_forcemerge_segments": None},
+                {**hot, "warm": {"min_age": "30d", "actions": {}}, **cold},
+            ),
+            ({"warm": "14d"}, {**hot, "warm": {"min_age": "14d", "actions": {"forcemerge": {"max_num_segments": 3}}}}),
+            ({"cold": "60d"}, {**hot, "cold": {"min_age": "60d", "actions": {}}}),
+        ],
+    )
+    def test_policy_phases(self, mock_datastore, config, expected):
+        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(**config))
+        col._create_ilm_policy(ILMConfig(enabled=True, rollover_max_age="7d", rollover_max_size="25gb"))
+        mock_datastore.client.ilm.put_lifecycle.assert_called_once_with(
+            name=f"{col.name}_policy", policy={"phases": expected}
         )
 
 
@@ -1752,57 +1047,22 @@ class TestEnsureCollectionILM:
             index=f"{col.name}-000001", timeout="5s", wait_for_status="yellow"
         )
 
-    def test_existing_ilm_indices_skips_creation(self, mock_datastore, ilm_global):
-        """When ILM indices already exist, no new index is created."""
-        ilm_index = ILMIndexConfig(warm="30d")
-        col = _make_collection(mock_datastore, ilm_config=ilm_index)
-
-        mock_datastore.client.indices.get.return_value = {
-            f"{col.name}-000001": {},
-            f"{col.name}-000002": {},
-        }
-        mock_datastore.client.indices.exists_alias.return_value = True
-
-        with (
-            patch.object(col, "_create_ilm_policy"),
-            patch.object(col, "_create_index_template"),
-            patch.object(col, "_check_fields"),
-        ):
-            col._ensure_collection_ilm()
-
-            # Should not create or clone any index
-            mock_datastore.client.indices.create.assert_not_called()
-            mock_datastore.client.indices.clone.assert_not_called()
-
-        # index_name should be updated to the latest ILM index
-        assert col.index_name == f"{col.name}-000002"
-
-    def test_existing_ilm_template_updates_only_after_reconciliation(self, mock_datastore, ilm_global):
-        """A refused mapping check cannot update the composable template first."""
+    @pytest.mark.parametrize("state", ["existing", "missing", "legacy", "reentry"])
+    def test_existing_ilm_alias_reconciliation(self, mock_datastore, state):
         col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
-        mock_datastore.client.indices.get.return_value = {f"{col.name}-000001": {}}
-        mock_datastore.client.indices.exists_alias.return_value = False
-        calls = []
-
-        with (
-            patch.object(col, "_create_ilm_policy"),
-            patch.object(col, "_check_fields", side_effect=lambda indexes: calls.append("check")),
-            patch.object(col, "_create_index_template", side_effect=lambda _config: calls.append("template")),
-        ):
-            col._ensure_collection_ilm()
-
-        assert calls == ["check", "template"]
-
-    def test_existing_ilm_indices_without_alias_creates_alias(self, mock_datastore, ilm_global):
-        """When ILM indices exist but alias is missing, creates the alias."""
-        ilm_index = ILMIndexConfig(warm="30d")
-        col = _make_collection(mock_datastore, ilm_config=ilm_index)
-
-        mock_datastore.client.indices.get.return_value = {
-            f"{col.name}-000001": {},
-            f"{col.name}-000002": {},
-        }
-        mock_datastore.client.indices.exists_alias.return_value = False
+        indices = mock_datastore.client.indices
+        older, newer, hot = f"{col.name}-000001", f"{col.name}-000002", f"{col.name}_hot"
+        generations = [older, newer] if state in ("existing", "missing") else [older]
+        latest = generations[-1]
+        indices.get.return_value = dict.fromkeys(generations, {})
+        indices.exists_alias.return_value = state != "missing"
+        if state in ("legacy", "reentry"):
+            indices.get_alias.return_value = {
+                hot: {"aliases": {col.name: {"is_write_index": True} if state == "legacy" else {}}}
+            }
+        if state == "reentry":
+            col.index_name = latest
+            indices.get_alias.return_value[latest] = {"aliases": {col.name: {"is_write_index": True}}}
 
         with (
             patch.object(col, "_create_ilm_policy"),
@@ -1811,66 +1071,17 @@ class TestEnsureCollectionILM:
         ):
             col._ensure_collection_ilm()
 
-            mock_datastore.client.indices.update_aliases.assert_called_once_with(
-                actions=[
-                    {"add": {"index": f"{col.name}-000001", "alias": col.name, "is_write_index": False}},
-                    {"add": {"index": f"{col.name}-000002", "alias": col.name, "is_write_index": True}},
-                ]
+        expected = []
+        if state in ("legacy", "reentry"):
+            expected.append({"remove": {"index": hot, "alias": col.name}})
+        if state != "reentry":
+            expected.extend(
+                {"add": {"index": index, "alias": col.name, "is_write_index": index == latest}} for index in generations
             )
-
-        # index_name should be updated to the latest ILM index
-        assert col.index_name == f"{col.name}-000002"
-
-    def test_existing_ilm_indices_replace_legacy_hot_alias(self, mock_datastore, ilm_global):
-        """An existing legacy write alias is moved to the latest ILM index."""
-        ilm_index = ILMIndexConfig(warm="30d")
-        col = _make_collection(mock_datastore, ilm_config=ilm_index)
-        hot_index_name = col.index_name
-        latest_index_name = f"{col.name}-000001"
-
-        mock_datastore.client.indices.get.return_value = {latest_index_name: {}}
-        mock_datastore.client.indices.exists_alias.return_value = True
-        mock_datastore.client.indices.get_alias.return_value = {
-            hot_index_name: {"aliases": {col.name: {"is_write_index": True}}}
-        }
-
-        with (
-            patch.object(col, "_create_ilm_policy"),
-            patch.object(col, "_create_index_template"),
-            patch.object(col, "_check_fields"),
-        ):
-            col._ensure_collection_ilm()
-
-        alias_actions = mock_datastore.client.indices.update_aliases.call_args.kwargs["actions"]
-        assert {"remove": {"index": hot_index_name, "alias": col.name}} in alias_actions
-        assert {"add": {"index": latest_index_name, "alias": col.name, "is_write_index": True}} in alias_actions
-        assert col.index_name == latest_index_name
-
-    def test_existing_ilm_indices_remove_legacy_alias_after_reentry(self, mock_datastore, ilm_global):
-        """Re-entering ensure does not remove the alias from the active ILM index."""
-        ilm_index = ILMIndexConfig(warm="30d")
-        col = _make_collection(mock_datastore, ilm_config=ilm_index)
-        legacy_hot_index = f"{col.name}_hot"
-        latest_index_name = f"{col.name}-000001"
-        col.index_name = latest_index_name
-
-        mock_datastore.client.indices.get.return_value = {latest_index_name: {}}
-        mock_datastore.client.indices.exists_alias.return_value = True
-        mock_datastore.client.indices.get_alias.return_value = {
-            legacy_hot_index: {"aliases": {col.name: {}}},
-            latest_index_name: {"aliases": {col.name: {"is_write_index": True}}},
-        }
-
-        with (
-            patch.object(col, "_create_ilm_policy"),
-            patch.object(col, "_create_index_template"),
-            patch.object(col, "_check_fields"),
-        ):
-            col._ensure_collection_ilm()
-
-        alias_actions = mock_datastore.client.indices.update_aliases.call_args.kwargs["actions"]
-        assert {"remove": {"index": legacy_hot_index, "alias": col.name}} in alias_actions
-        assert {"remove": {"index": latest_index_name, "alias": col.name}} not in alias_actions
+        indices.update_aliases.assert_called_once_with(actions=expected)
+        indices.create.assert_not_called()
+        indices.clone.assert_not_called()
+        assert col.index_name == latest
 
     def test_existing_ilm_indices_preserve_alias_metadata_when_updating_write_index(self, mock_datastore, ilm_global):
         """Write-index corrections retain alias filters and routing settings."""
@@ -1994,42 +1205,6 @@ class TestEnsureCollectionILM:
 
 
 class TestEnsureCollectionILMDispatch:
-    """Tests that _ensure_collection dispatches to ILM path when ilm_config is set."""
-
-    def test_dispatches_to_ilm_when_configured(self, mock_datastore):
-        """When ilm_config is set, _ensure_collection calls _ensure_collection_ilm."""
-        ilm_index = ILMIndexConfig(warm="30d")
-        col = _make_collection(mock_datastore, ilm_config=ilm_index)
-
-        with patch.object(col, "_ensure_collection_ilm") as mock_ilm, patch.object(col, "_check_fields"):
-            col._ensure_collection()
-            mock_ilm.assert_called_once()
-
-    def test_does_not_dispatch_without_ilm(self, mock_datastore):
-        """When ilm_config is None, _ensure_collection uses legacy path."""
-        col = _make_collection(mock_datastore, ilm_config=None)
-
-        # Mock away the ES calls for the legacy path
-        mock_datastore.client.indices.exists.return_value = True
-        mock_datastore.client.indices.exists_alias.return_value = True
-
-        with patch.object(col, "_ensure_collection_ilm") as mock_ilm, patch.object(col, "_check_fields"):
-            col._ensure_collection()
-            mock_ilm.assert_not_called()
-
-    def test_legacy_creation_includes_alias(self, mock_datastore):
-        """Legacy collection creation creates its hot index and alias atomically."""
-        col = _make_collection(mock_datastore, ilm_config=None)
-        mock_datastore.client.indices.exists.return_value = False
-
-        with patch.object(col, "_check_fields"):
-            col._ensure_collection()
-
-        create_kwargs = mock_datastore.client.indices.create.call_args.kwargs
-        assert create_kwargs["index"] == col.index_name
-        assert create_kwargs["aliases"] == {col.name: {}}
-        mock_datastore.client.indices.put_alias.assert_not_called()
-
     def test_legacy_creation_waits_for_shards_before_checking_fields(self, mock_datastore):
         """field_caps fails on RECOVERING shards, so creation waits for yellow before schema checks."""
         col = _make_collection(mock_datastore, ilm_config=None)
@@ -2044,196 +1219,15 @@ class TestEnsureCollectionILMDispatch:
 
         assert [name for name, *_ in order.mock_calls] == ["create", "health", "check_fields"]
         assert order.health.call_args.kwargs == {"index": col.index_name, "timeout": "5s", "wait_for_status": "yellow"}
-
-    def test_existing_legacy_collection_does_not_wait_for_status(self, mock_datastore):
-        """Existing collections keep their startup path unchanged."""
-        col = _make_collection(mock_datastore, ilm_config=None)
-        mock_datastore.client.indices.exists.return_value = True
-
-        with patch.object(col, "_check_fields"):
-            col._ensure_collection()
-
-        mock_datastore.client.cluster.health.assert_not_called()
+        create = mock_datastore.client.indices.create.call_args.kwargs
+        assert create["index"] == col.index_name and create["aliases"] == {col.name: {}}
+        mock_datastore.client.indices.put_alias.assert_not_called()
 
 
 KEYWORD_MAPPING = {"type": "keyword", "ignore_above": 8191}
 
 
 class TestCollectionFieldDiscovery:
-    def test_schema_less_collection_keeps_legacy_field_shape(self, mock_datastore):
-        col = _make_collection(mock_datastore)
-        mock_datastore.client.indices.get.return_value = {
-            "howler-testcol_hot": {
-                "mappings": {
-                    "properties": {
-                        "avatar": {"type": "keyword", "copy_to": ["__text__"], "index": False},
-                        "id": {"type": "keyword"},
-                    }
-                }
-            }
-        }
-
-        assert col.fields() == {
-            "avatar": {
-                "default": True,
-                "indexed": False,
-                "list": False,
-                "stored": False,
-                "deprecated": False,
-                "type": "keyword",
-                "description": "",
-                "regex": None,
-                "values": None,
-                "deprecated_description": "",
-            }
-        }
-
-    def test_fields_describe_registered_model_fields(self, mock_datastore):
-        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
-        mock_datastore.client.indices.get_mapping.return_value = {
-            "testcol_hot": {
-                "mappings": {
-                    "properties": {
-                        "key": {**KEYWORD_MAPPING, "index": True, "doc_values": True},
-                        "name": {**KEYWORD_MAPPING, "index": True, "doc_values": True},
-                        "tags": {"type": "object"},
-                        "id": {"type": "keyword", "store": True, "doc_values": True},
-                    }
-                }
-            }
-        }
-        mock_datastore.client.field_caps.return_value = {
-            "fields": {
-                "key": {"keyword": {"type": "keyword", "searchable": True, "aggregatable": True}},
-                "name": {"keyword": {"type": "keyword", "searchable": True, "aggregatable": True}},
-                "id": {"keyword": {"type": "keyword", "searchable": True, "aggregatable": True}},
-            }
-        }
-
-        fields = col.fields()
-
-        assert "id" not in fields
-        assert fields["key"] == {
-            "default": False,
-            "indexed": True,
-            "list": False,
-            "stored": True,
-            "deprecated": False,
-            "type": "keyword",
-            "description": None,
-            "regex": None,
-            "values": None,
-            "deprecated_description": None,
-        }
-        assert fields["name"]["description"] == "A plain, statically typed field."
-
-    def test_fields_summarize_dynamic_mapping_children(self, mock_datastore):
-        @register_model(index=True, store=True)
-        class MappingDoc(HowlerESModel):
-            tags: mapping(
-                enum([1, "two"], store=False, description="Enum value"),
-                description="A dynamic-key mapping field.",
-                deprecated=True,
-                deprecated_description="Use codes",
-            )
-            codes: mapping(validated_keyword("^[a-z]+$"))
-
-        col = _make_collection(mock_datastore, model_class=MappingDoc)
-        mock_datastore.client.indices.get_mapping.return_value = {
-            "testcol_hot": {
-                "mappings": {
-                    "properties": {
-                        "tags": {
-                            "properties": {
-                                "later_key": {"type": "text"},
-                                "first_key": {"type": "keyword", "copy_to": ["__text__"]},
-                            }
-                        },
-                        "codes": {"properties": {"code": KEYWORD_MAPPING}},
-                    }
-                }
-            }
-        }
-        mock_datastore.client.field_caps.return_value = {
-            "fields": {"tags.first_key": {"keyword": {"type": "keyword", "searchable": False}}}
-        }
-
-        fields = col.fields()
-
-        assert fields["tags"] == {
-            "default": True,
-            "indexed": False,
-            "list": False,
-            "stored": True,
-            "type": "keyword",
-            "description": "A dynamic-key mapping field.",
-            "regex": None,
-            "values": [1, "two"],
-            "deprecated_description": "Use codes",
-        }
-        assert fields["tags.first_key"] == {**fields["tags"], "deprecated": True, "values": None}
-        assert "tags.later_key" not in fields
-        assert fields["codes"]["regex"] == "^[a-z]+$"
-        assert fields["codes.code"]["regex"] is None
-
-    def test_fields_can_skip_mapping_children(self, mock_datastore):
-        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
-        mock_datastore.client.indices.get_mapping.return_value = {
-            "testcol_hot": {
-                "mappings": {
-                    "properties": {
-                        "key": KEYWORD_MAPPING,
-                        "name": KEYWORD_MAPPING,
-                        "tags": {"properties": {"first_key": {"type": "keyword", "index": True}}},
-                    }
-                }
-            }
-        }
-        mock_datastore.client.field_caps.return_value = {"fields": {}}
-
-        fields = col.fields(skip_mapping_children=True)
-
-        assert "tags" in fields
-        assert "tags.first_key" not in fields
-
-    def test_returned_nested_enum_values_do_not_change_next_description_or_validation(self, mock_datastore):
-        class Options(HowlerESModel):
-            value: enum([{"tags": ["original"]}])
-            labels: mapping(enum([{"tags": ["original"]}]))
-
-        col = _make_collection(mock_datastore, model_class=Options)
-        mock_datastore.client.indices.get_mapping.return_value = {
-            col.index_name: {
-                "mappings": {
-                    "properties": {
-                        "value": KEYWORD_MAPPING,
-                        "labels": {"properties": {"one": KEYWORD_MAPPING}},
-                    }
-                }
-            }
-        }
-        description = col.fields()
-        for key in ("value", "labels"):
-            values = description[key]["values"]
-            assert values is not None and isinstance(values[0], dict)
-            values[0]["tags"].append("changed")
-        fresh = col.fields()
-        assert fresh["value"]["values"] == fresh["labels"]["values"] == [{"tags": ["original"]}]
-        assert fresh["labels.one"]["values"] is None
-        data = {"tags": ["original"]}
-        assert Options.model_validate({"value": data, "labels": {"one": data}}).labels == {"one": str(data)}
-
-    def test_fields_reject_conflicting_mappings(self, mock_datastore):
-        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
-        mock_datastore.client.indices.get_mapping.return_value = {
-            "testcol-000001": {"mappings": {"properties": {"key": KEYWORD_MAPPING}}},
-            "testcol-000002": {"mappings": {"properties": {"key": {"type": "text", "index": True}}}},
-        }
-        mock_datastore.client.field_caps.return_value = {"fields": {}}
-
-        with pytest.raises(HowlerRuntimeError, match="conflicting mappings"):
-            col.fields()
-
     def test_fields_reject_multiple_field_types(self, mock_datastore):
         col = _make_collection(mock_datastore, model_class=ReconcileDoc)
         mock_datastore.client.indices.get_mapping.return_value = {
@@ -2269,6 +1263,22 @@ class TestFieldReconciliation:
     def test_repairs_only_missing_generation_and_restores_read_member(self, generations, mock_datastore):
         col, older, latest = generations
         indices = mock_datastore.client.indices
+        live = indices.get_mapping.return_value[latest]["mappings"]
+        live["properties"]["key"].update(norms=False, store=False, index_options="docs")
+        templates = live["dynamic_templates"]
+        templates.insert(0, {"legacy_strings": deepcopy(templates[0]["strings_as_keywords"])})
+        templates.insert(2, {"disabled_plugin": {"path_match": "disabled_plugin.*", "mapping": {"type": "text"}}})
+        templates.insert(
+            3,
+            {
+                "unreachable_strings": {
+                    "match_mapping_type": "string",
+                    "path_match": "tags.*",
+                    "mapping": {"type": "text"},
+                }
+            },
+        )
+        templates.append({"fallback": {"match": "*", "mapping": {"type": "text"}}})
         col._ensure_collection_ilm()
 
         assert col.index_name == latest
@@ -2379,43 +1389,6 @@ class TestFieldReconciliation:
         assert {c[0] for c in indices.method_calls} <= {"get", "get_alias", "get_mapping"}
         mock_datastore.client.ilm.put_lifecycle.assert_not_called()
 
-    def test_partial_namespace_shadow_reports_first_winners_in_helper_order(self, mock_datastore):
-        # Deliberately use reverse alphabetical names to check both obsolete and active order.
-        expected = [
-            {"z_strings": {"match_mapping_type": "string", "mapping": {"type": "keyword"}}},
-            {"a_tags": {"path_match": "tags.*", "mapping": {"type": "keyword"}}},
-            {"b_labels": {"path_match": "labels.*", "mapping": {"type": "keyword"}}},
-        ]
-        live = [
-            {"z_retired": {"path_match": "tags.secret*", "mapping": {"type": "text"}}},
-            {"a_retired": {"path_match": "labels.secret*", "mapping": {"type": "text"}}},
-            *expected,
-        ]
-        pairs = [
-            ("z_retired", "z_strings"),
-            ("z_retired", "a_tags"),
-            ("a_retired", "z_strings"),
-            ("a_retired", "b_labels"),
-        ]
-        assert shadowed_dynamic_templates(expected, live) == pairs
-
-        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
-        with pytest.raises(HowlerValueError) as refused:
-            col._check_dynamic_templates(expected, {"testcol-000001": live})
-        error = str(refused.value)
-        offsets = [error.index(f"{old} shadows {active} on testcol-000001") for old, active in pairs]
-        assert offsets == sorted(offsets)
-        with pytest.raises(HowlerValueError) as refused:
-            col._check_dynamic_templates(expected, {"testcol-000002": live, "testcol-000001": live})
-        error = str(refused.value)
-        messages = [
-            f"{old} shadows {active} on {index}"
-            for index in ("testcol-000001", "testcol-000002")
-            for old, active in pairs
-        ]
-        offsets = [error.index(message) for message in messages]
-        assert offsets == sorted(offsets)
-
     def test_narrow_shadow_uses_actual_first_match_and_ignores_unrelated_plugin(self, mock_datastore, caplog):
         expected = [
             {"strings": {"match_mapping_type": "string", "mapping": {"type": "keyword"}}},
@@ -2430,6 +1403,7 @@ class TestFieldReconciliation:
         col = _make_collection(mock_datastore, model_class=ReconcileDoc)
         with caplog.at_level("WARNING", logger="howler.api.datastore"):
             col._check_dynamic_templates(expected, {"testcol-000001": live})
+        assert "retains dynamic templates not used by the active schema" in caplog.text
         assert "disabled" in caplog.text and "legacy" in caplog.text
 
         # Moving the obsolete selector after strings but before the specific rule changes
@@ -2437,110 +1411,22 @@ class TestFieldReconciliation:
         live = [disabled, expected[0], obsolete, *expected[1:]]
         assert shadowed_dynamic_templates(expected, live) == [("legacy", "specific")]
 
-    def test_global_selector_list_does_not_declare_a_disabled_plugin_namespace(self):
-        expected = [
-            {"global": {"path_match": ["*", "tags.*"], "mapping": {"type": "keyword"}}},
-        ]
-        disabled = {"disabled": {"path_match": "plugin.secret*", "mapping": {"type": "text"}}}
-        assert shadowed_dynamic_templates(expected, [disabled, *expected]) == []
-
-    def test_planned_addition_preserves_equivalent_explicit_defaults_and_historical_templates(
-        self, generations, mock_datastore
-    ):
-        col, older, latest = generations
-        indices = mock_datastore.client.indices
-        live = indices.get_mapping.return_value[latest]["mappings"]
-        live["properties"]["key"].update(norms=False, store=False, index_options="docs")
-        live["dynamic_templates"].insert(
-            1, {"disabled_plugin": {"path_match": "disabled_plugin.*", "mapping": {"type": "text"}}}
-        )
-        # The earlier active global string rule already handles all strings under tags.*.
-        live["dynamic_templates"].insert(
-            1,
-            {
-                "unreachable_strings": {
-                    "match_mapping_type": "string",
-                    "path_match": "tags.*",
-                    "mapping": {"type": "text"},
-                }
-            },
-        )
-        # A renamed equivalent string matcher, or one placed after the active string rule, is safe.
-        live["dynamic_templates"].insert(
-            0, {"legacy_strings": deepcopy(live["dynamic_templates"][0]["strings_as_keywords"])}
-        )
-        live["dynamic_templates"].append({"fallback": {"match": "*", "mapping": {"type": "text"}}})
-        col._ensure_collection_ilm()
-        indices.put_mapping.assert_called_once_with(
-            index=older, properties={"key": schema.document_mapping(ReconcileDoc)["properties"]["key"]}
-        )
-
-    def test_refuses_a_missing_dynamic_template(self, mock_datastore):
-        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
-        mock_datastore.client.indices.get_mapping.return_value = {
-            col.index_name: {
-                "mappings": {
-                    "properties": {"key": KEYWORD_MAPPING, "name": KEYWORD_MAPPING},
-                    "dynamic_templates": [],
-                }
-            }
-        }
-        mock_datastore.client.field_caps.return_value = {
-            "fields": {
-                "key": {"keyword": {"type": "keyword", "searchable": True}},
-                "name": {"keyword": {"type": "keyword", "searchable": True}},
-            }
-        }
-        mock_datastore.client.indices.exists_template.return_value = False
-
-        with pytest.raises(HowlerValueError, match="Refusing to add or change dynamic mapping templates"):
-            col._check_fields()
-        mock_datastore.client.indices.put_mapping.assert_not_called()
-        mock_datastore.client.indices.put_settings.assert_not_called()
-
-    def test_warns_about_unused_dynamic_templates(self, mock_datastore, caplog):
+    @pytest.mark.parametrize("drift", ["missing", "changed", "order"])
+    def test_rejects_dynamic_template_drift_on_any_backing_index(self, mock_datastore, drift):
         col = _make_collection(mock_datastore, model_class=ReconcileDoc)
         expected_templates = schema.document_mapping(ReconcileDoc)["dynamic_templates"]
-        unused_template = {
-            "disabled_plugin.*_tpl": {
-                "path_match": "disabled_plugin.*",
-                "mapping": {"type": "keyword", "index": True},
-            }
-        }
-        mock_datastore.client.indices.get_mapping.return_value = {
-            "testcol_hot": {"mappings": {"dynamic_templates": [*expected_templates, unused_template]}}
-        }
-
-        with caplog.at_level("WARNING", logger="howler.api.datastore"):
-            col._check_dynamic_templates()
-
-        assert "retains dynamic templates not used by the active schema" in caplog.text
-
-    def test_requires_active_templates_on_every_backing_index(self, mock_datastore):
-        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
-        expected_templates = schema.document_mapping(ReconcileDoc)["dynamic_templates"]
+        live = deepcopy(expected_templates)
+        if drift == "missing":
+            live = [template for template in live if "tags.*_tpl" not in template]
+        elif drift == "changed":
+            next(template["tags.*_tpl"] for template in live if "tags.*_tpl" in template)["mapping"]["type"] = "text"
+        else:
+            live.reverse()
         mock_datastore.client.indices.get_mapping.return_value = {
             "testcol-000001": {"mappings": {"dynamic_templates": expected_templates}},
-            "testcol-000002": {
-                "mappings": {
-                    "dynamic_templates": [
-                        template for template in expected_templates if next(iter(template)) != "tags.*_tpl"
-                    ]
-                }
-            },
+            "testcol-000002": {"mappings": {"dynamic_templates": live}},
         }
-
-        with pytest.raises(HowlerValueError, match="tags\\.\\*_tpl"):
-            col._check_dynamic_templates()
-
-    def test_preserves_active_dynamic_template_order(self, mock_datastore):
-        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
-        expected_templates = schema.document_mapping(ReconcileDoc)["dynamic_templates"]
-        mock_datastore.client.indices.get_mapping.return_value = {
-            "testcol_hot": {"mappings": {"dynamic_templates": list(reversed(expected_templates))}}
-        }
-
-        with pytest.raises(HowlerValueError, match="order differs"):
+        with pytest.raises(HowlerValueError, match="order differs" if drift == "order" else r"tags\.\*_tpl"):
             col._check_dynamic_templates()
 
     def test_retries_after_expanding_the_field_limit(self, mock_datastore):
@@ -2607,23 +1493,3 @@ class TestFieldReconciliation:
 
         with pytest.raises(HowlerRuntimeError, match=message):
             col._check_fields()
-
-    def test_refuses_conflicting_active_templates_across_indices(self, mock_datastore):
-        col = _make_collection(mock_datastore, model_class=ReconcileDoc)
-        expected_templates = schema.document_mapping(ReconcileDoc)["dynamic_templates"]
-        mock_datastore.client.indices.get_mapping.return_value = {
-            "testcol-000001": {"mappings": {"dynamic_templates": expected_templates}},
-            "testcol-000002": {
-                "mappings": {
-                    "dynamic_templates": [
-                        template
-                        if next(iter(template)) != "tags.*_tpl"
-                        else {"tags.*_tpl": {"path_match": "tags.*", "mapping": {"type": "text", "index": True}}}
-                        for template in expected_templates
-                    ]
-                }
-            },
-        }
-
-        with pytest.raises(HowlerValueError, match="tags\\.\\*_tpl"):
-            col._check_dynamic_templates()

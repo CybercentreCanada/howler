@@ -5,81 +5,37 @@ from howler.models import HowlerModelValidationError
 from howler.models.dossier import Dossier
 from howler.models.pivot import Pivot, validate_group
 
-
-def pivot_data(**overrides):
-    data = {
-        "label": {"en": "Pivot", "fr": "Pivot"},
-        "value": "pivot.value",
-        "format": "link",
-        "mappings": [{"key": "hostname", "field": "host.name"}],
-    }
-    data.update(overrides)
-    return data
+PIVOT = {"label": {"en": "Pivot", "fr": "Pivot"}, "value": "pivot.value", "format": "link"}
+DUPLICATES = [{"key": "host", "field": "host.name"}, {"key": "host", "field": "host.hostname"}]
 
 
 @pytest.mark.parametrize("group", ["Folder with spaces/alert #1", "case-id_v1/report.pdf"])
 def test_pivot_accepts_case_item_style_group_paths(group):
-    assert Pivot(**pivot_data(group=group)).group == group
+    assert Pivot(**PIVOT, group=group).group == group
 
 
-@pytest.mark.parametrize("group", ["", "/group", "group/", "group//child"])
-def test_pivot_rejects_empty_group_segments(group):
+@pytest.mark.parametrize("group", ["", "/group", "group/", "group//child", 1, ["group"], {"group": "value"}, True])
+def test_pivot_rejects_invalid_groups(group):
     with pytest.raises(HowlerValueError):
-        Pivot(**pivot_data(group=group))
+        Pivot(**PIVOT, group=group)
 
 
-@pytest.mark.parametrize("group", [1, ["group"], {"group": "value"}, True])
-def test_pivot_rejects_invalid_group_types(group):
-    with pytest.raises(HowlerValueError):
-        Pivot(**pivot_data(group=group))
-
-
-def test_pivot_rejects_duplicate_mapping_keys():
-    with pytest.raises(HowlerValueError, match="duplicate keys"):
-        Pivot(
-            **pivot_data(
-                mappings=[
-                    {"key": "hostname", "field": "host.name"},
-                    {"key": "hostname", "field": "host.hostname"},
-                ]
-            )
-        )
-
-
-def test_pivot_icon_uses_the_link_default():
-    assert Pivot(**pivot_data()).icon == "material-symbols:link"
-
-
-def test_validate_group_accepts_none():
+def test_pivot_defaults_and_duplicate_mappings():
     validate_group(None)
+    assert Pivot(**PIVOT).icon == "material-symbols:link"
+    with pytest.raises(HowlerValueError, match="duplicate keys"):
+        Pivot(**PIVOT, mappings=DUPLICATES)
 
 
-def test_pivot_validators_run_via_model_validate_and_nested_dossier():
-    with pytest.raises(HowlerModelValidationError, match="empty segments"):
+@pytest.mark.parametrize(
+    ("extra", "error"),
+    [
+        ({"group": "bad//group"}, "empty segments"),
+        ({"mappings": DUPLICATES}, "duplicate keys"),
+    ],
+)
+def test_pivot_validators_run_in_nested_dossier(extra, error):
+    with pytest.raises(HowlerModelValidationError, match=error):
         Dossier.model_validate(
-            {
-                "dossier_id": "dossier-1",
-                "title": "Dossier",
-                "type": "global",
-                "owner": "analyst",
-                "pivots": [pivot_data(group="bad//group")],
-            }
-        )
-
-    with pytest.raises(HowlerModelValidationError, match="duplicate keys"):
-        Dossier.model_validate(
-            {
-                "dossier_id": "dossier-1",
-                "title": "Dossier",
-                "type": "global",
-                "owner": "analyst",
-                "pivots": [
-                    pivot_data(
-                        mappings=[
-                            {"key": "hostname", "field": "host.name"},
-                            {"key": "hostname", "field": "host.hostname"},
-                        ]
-                    )
-                ],
-            }
+            {"title": "Dossier", "type": "global", "owner": "analyst", "pivots": [{**PIVOT, **extra}]}
         )

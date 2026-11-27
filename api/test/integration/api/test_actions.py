@@ -749,7 +749,7 @@ def test_unmigrated_action_rejects_metadata_update_and_execution(datastore: Howl
     """Stored unmigrated actions with obsolete arguments fail metadata-only updates and execution."""
     session, host = login_session
     legacy_arguments = {"category": "generic", "label": "legacy", "obsolete": "stored value"}
-    action = Action(
+    action = Action.model_validate(
         {
             "owner": "admin",
             "name": "Legacy action",

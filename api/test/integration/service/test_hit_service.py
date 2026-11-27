@@ -313,7 +313,9 @@ def test_delete_hits_refresh_removes_hits_from_search(config):
         collection = getattr(store, name)
         # Disable periodic refresh so it cannot conceal a missing deletion refresh.
         store.client.indices.put_settings(index=collection.index_name, settings={"refresh_interval": "-1"})
-        hit = Hit({"howler": {"id": "deleted-hit", "analytic": "Test delete refresh", "hash": "abc123", "score": 0}})
+        hit = Hit.model_validate(
+            {"howler": {"id": "deleted-hit", "analytic": "Test delete refresh", "hash": "abc123", "score": 0}}
+        )
         collection.save(hit.howler.id, hit, refresh="true")
         query = f"howler.id:{hit.howler.id}"
         assert collection.search(query, as_obj=False)["total"] == 1
@@ -357,22 +359,21 @@ def test_update_hit_fetches_version_when_missing():
 
 
 def test_update_hit_preserves_provided_version():
-    hit = construct_partial(Hit, {"howler": {"id": "test-hit"}})
+    hit = construct_partial(Hit, {"howler": {"id": "test-hit", "labels": {"generic": []}}})
     version = "hit-index---2---3"
     storage = MagicMock()
-    storage.hit.get.return_value = (hit, version)
+    storage.hit.get.return_value = (hit, "hit-index---2---4")
     storage.hit.get_if_exists.return_value = hit
 
-    with (
-        patch("howler.services.hit_service.datastore", return_value=storage),
-        patch("howler.services.hit_service.get_hit", return_value=hit),
-    ):
-        hit_service._update_hit(
+    with patch("howler.services.hit_service.datastore", return_value=storage):
+        updated, new_version = hit_service._update_hit(
             hit.howler.id,
-            [OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.score", 100, silent=True)],
+            [OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.labels.generic", ["label"], silent=True)],
             version=version,
         )
 
+    assert updated is hit
+    assert new_version == "hit-index---2---4"
     storage.hit.get.assert_called_once_with(hit.howler.id, as_obj=True, version=True)
     storage.hit.update.assert_called_once()
     assert storage.hit.update.call_args.args[2] == version

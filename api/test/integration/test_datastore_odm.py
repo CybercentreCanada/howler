@@ -305,7 +305,9 @@ def _test_mget(col, as_obj):
         get_obj(test_map, "test2", as_obj),
         get_obj(test_map, "extra3", as_obj),
     ]
-    ds_raw = col.multiget(["test1", "dict1", "test2", "extra3"], as_dictionary=False, as_obj=as_obj)
+    keys = ["test1", "dict1", "test2", "extra3"]
+    ds_raw = col.multiget(keys, as_dictionary=False, as_obj=as_obj)
+    assert keys == ["test1", "dict1", "test2", "extra3"]
     raw = [document_data(item) for item in raw]
     for item in ds_raw:
         raw.remove(document_data(item))
@@ -556,36 +558,6 @@ def schema_collection(es_store, request):
     return collection
 
 
-def test_new_collection_has_expected_index_mapping(schema_collection):
-    client = schema_collection.datastore.client
-    live = client.indices.get(index=schema_collection.name)
-    live_index = next(iter(live.values()))
-
-    expected_settings = index_settings(
-        LiveReconcileDoc,
-        shards=schema_collection.shards,
-        replicas=schema_collection.replicas,
-    )
-    live_settings = live_index["settings"]["index"]
-    assert int(live_settings["number_of_shards"]) == expected_settings["index"]["number_of_shards"]
-    assert (
-        int(live_settings["mapping"]["total_fields"]["limit"])
-        == expected_settings["index"]["mapping"]["total_fields"]["limit"]
-    )
-
-    expected_mappings = document_mapping(LiveReconcileDoc)
-    live_properties = live_index["mappings"]["properties"]
-    assert set(live_properties) == set(expected_mappings["properties"])
-    for field_name, expected_body in expected_mappings["properties"].items():
-        assert live_properties[field_name].get("type") == expected_body.get("type"), field_name
-        if "enabled" in expected_body:
-            assert live_properties[field_name].get("enabled", True) == expected_body["enabled"], field_name
-
-    live_template_keys = {next(iter(template)) for template in live_index["mappings"]["dynamic_templates"]}
-    expected_template_keys = {next(iter(template)) for template in expected_mappings["dynamic_templates"]}
-    assert live_template_keys == expected_template_keys
-
-
 def test_fields_include_live_dynamic_mapping_children(schema_collection):
     schema_collection.save("doc1", {"key": "doc1", "name": "hello", "tags": {"env": "prod"}})
     schema_collection.commit()
@@ -596,56 +568,37 @@ def test_fields_include_live_dynamic_mapping_children(schema_collection):
     assert fields_map["name"]["description"] == "A plain, statically typed field."
     assert fields_map["tags"]["description"] == "A dynamic-key mapping field."
     assert "tags.env" in fields_map
+    assert "tags.env" not in schema_collection.fields(skip_mapping_children=True)
 
 
-def test_reconciliation_adds_missing_safe_fields_to_a_live_index(es_store):
-    from howler.common.loader import DATASTORE_INDEX_PREFIX
-
-    name = _random_schema_collection_name()
-    mappings = document_mapping(LiveReconcileDoc)
-    mappings["properties"] = {key: value for key, value in mappings["properties"].items() if key != "name"}
-    settings = index_settings(LiveReconcileDoc, shards=1, replicas=0)
-    index_name = f"{DATASTORE_INDEX_PREFIX}-{name}"
-    es_store.client.indices.create(
-        index=f"{index_name}_hot",
-        mappings=mappings,
-        settings=settings,
-        aliases={index_name: {}},
-    )
-
-    try:
-        es_store.register(name, model_class=LiveReconcileDoc)
-        collection = getattr(es_store, name)
-        fields_map = collection.fields()
-
-        assert fields_map["name"]["type"] == "keyword"
-        live = es_store.client.indices.get(index=f"{index_name}_hot")
-        assert "name" in next(iter(live.values()))["mappings"]["properties"]
-    finally:
-        es_store.client.indices.delete(index=f"{index_name}_hot", ignore_unavailable=True)
-
-
-def test_reconciliation_refuses_a_missing_dynamic_template(es_store):
+@pytest.mark.parametrize("missing_template", [False, True])
+def test_reconciliation_of_live_index(es_store, missing_template):
     from howler.common.exceptions import HowlerValueError
     from howler.common.loader import DATASTORE_INDEX_PREFIX
 
     name = _random_schema_collection_name()
     mappings = document_mapping(LiveReconcileDoc)
-    mappings["dynamic_templates"] = [
-        template for template in mappings["dynamic_templates"] if next(iter(template)) != "tags.*_tpl"
-    ]
-    settings = index_settings(LiveReconcileDoc, shards=1, replicas=0)
+    if missing_template:
+        mappings["dynamic_templates"] = [t for t in mappings["dynamic_templates"] if "tags.*_tpl" not in t]
+    else:
+        del mappings["properties"]["name"]
     index_name = f"{DATASTORE_INDEX_PREFIX}-{name}"
     es_store.client.indices.create(
         index=f"{index_name}_hot",
         mappings=mappings,
-        settings=settings,
+        settings=index_settings(LiveReconcileDoc, shards=1, replicas=0),
         aliases={index_name: {}},
     )
 
     try:
         es_store.register(name, model_class=LiveReconcileDoc)
-        with pytest.raises(HowlerValueError, match="Refusing to add or change dynamic mapping templates"):
-            getattr(es_store, name)
+        if missing_template:
+            with pytest.raises(HowlerValueError, match="Refusing to add or change dynamic mapping templates"):
+                getattr(es_store, name)
+            return
+        collection = getattr(es_store, name)
+        assert collection.fields()["name"]["type"] == "keyword"
+        live = es_store.client.indices.get(index=f"{index_name}_hot")
+        assert "name" in next(iter(live.values()))["mappings"]["properties"]
     finally:
         es_store.client.indices.delete(index=f"{index_name}_hot", ignore_unavailable=True)

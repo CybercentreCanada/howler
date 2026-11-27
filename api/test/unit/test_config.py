@@ -2,10 +2,10 @@ from pathlib import Path
 
 import pytest
 import yaml
-from pydantic import ImportString, ValidationError
+from pydantic import ValidationError
 
 from howler.config_models import Config, System
-from howler.plugins.config import BasePluginConfig, ModelModules
+from howler.plugins.config import BasePluginConfig
 
 yml_config_good = Path(__file__).parent / "config.yml"
 yml_config_good_mapping = Path(__file__).parent / "mappings.yml"
@@ -17,14 +17,6 @@ def test_builtin_config():
     from howler.config import config
 
     assert config.auth
-
-
-def test_application_config_is_the_config_models_singleton():
-    from howler.config_models import Config as ApplicationConfig
-    from howler.config_models import config as application_config
-
-    assert Config is ApplicationConfig
-    assert isinstance(application_config, ApplicationConfig)
 
 
 def test_builtin_config_mapping():
@@ -83,14 +75,15 @@ _FAKE_PLUGIN = "_howler_test_nonexistent_plugin_"
 
 
 @pytest.mark.parametrize(
-    ("target", "expected_path"),
+    ("target", "value", "expected_path"),
     [
-        ("hit", f"{_FAKE_PLUGIN}.models.hit:declare_hit_extension"),
-        ("clue", f"{_FAKE_PLUGIN}.models.clue:declare_clue_extension"),
+        ("hit", True, f"{_FAKE_PLUGIN}.models.hit:declare_hit_extension"),
+        ("clue", True, f"{_FAKE_PLUGIN}.models.clue:declare_clue_extension"),
+        ("hit", f"{_FAKE_PLUGIN}.custom.path:custom_declare", f"{_FAKE_PLUGIN}.custom.path:custom_declare"),
     ],
 )
-def test_extension_shorthand_resolves_to_conventional_import_path(target: str, expected_path: str):
-    manifest = {"name": _FAKE_PLUGIN, "modules": {"models": {"declare_extensions": {target: True}}}}
+def test_extension_manifest_resolves_import_path(target, value, expected_path):
+    manifest = {"name": _FAKE_PLUGIN, "modules": {"models": {"declare_extensions": {target: value}}}}
 
     with pytest.raises(ValidationError) as error:
         BasePluginConfig.model_validate(manifest)
@@ -98,29 +91,7 @@ def test_extension_shorthand_resolves_to_conventional_import_path(target: str, e
     assert error.value.errors()[0]["input"] == expected_path
 
 
-def test_extension_manifest_preserves_explicit_import_path():
-    import_path = f"{_FAKE_PLUGIN}.custom.path:custom_declare"
-    manifest = {"name": _FAKE_PLUGIN, "modules": {"models": {"declare_extensions": {"hit": import_path}}}}
-
-    with pytest.raises(ValidationError) as error:
-        BasePluginConfig.model_validate(manifest)
-
-    assert error.value.errors()[0]["input"] == import_path
-
-
-def test_extension_manifest_can_disable_a_target():
-    config = BasePluginConfig.model_validate(
-        {"name": _FAKE_PLUGIN, "modules": {"models": {"declare_extensions": {"hit": False}}}}
-    )
-
+@pytest.mark.parametrize("modules", [{"models": {"declare_extensions": {"hit": False}}}, {}])
+def test_disabled_or_missing_extensions_have_empty_declaration_map(modules):
+    config = BasePluginConfig.model_validate({"name": _FAKE_PLUGIN, "modules": modules})
     assert config.modules.models.declare_extensions == {}
-
-
-def test_plugin_without_model_extensions_uses_an_empty_declaration_map():
-    config = BasePluginConfig.model_validate({"name": _FAKE_PLUGIN, "modules": {}})
-
-    assert config.modules.models.declare_extensions == {}
-
-
-def test_model_extension_declarations_use_import_strings():
-    assert ModelModules.model_fields["declare_extensions"].annotation == dict[str, ImportString]

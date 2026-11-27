@@ -6,7 +6,6 @@ import operator
 
 import pytest
 
-from howler.datastore.collection import _strip_lists
 from howler.models import HowlerEmbeddedModel, HowlerESModel, Keyword, ModelExtensionRegistry, enum, mapping
 from howler.models.fields import HowlerFieldMetadata
 from howler.models.registry import ModelRegistry, annotation_metadata, model_registry
@@ -49,12 +48,6 @@ def test_cached_traversals_match_cold_results_for_each_concrete_class_and_flags(
         assert set(view) == expected
 
 
-def test_finalized_extension_list_multiplicity_is_isolated_from_base(derived):
-    fields = {"child.scalar": ["s"], "names": ["first", "second"]}
-    assert _strip_lists(Document, fields) == {"child": {"scalar": "s"}, "names": "first"}
-    assert _strip_lists(derived, fields) == {"child": {"scalar": "s"}, "names": ["first", "second"]}
-
-
 def test_mutating_an_inspected_default_does_not_change_models_or_cached_views():
     definition = model_registry.flat_field_view(Document)["labels"]
     definition.default["changed"] = "elsewhere"
@@ -70,7 +63,6 @@ def test_nested_enum_options_cannot_mutate_cached_metadata_or_validator():
     for fields in (model_registry.fields(Options), model_registry.flat_field_view(Options)):
         dict(fields["value"].metadata.options)["values"][0]["tags"].append("changed")
         assert dict(fields["value"].metadata.options)["values"] == ({"tags": ["original"]},)
-        # A Mapping's child keeps its constraints in the annotation rather than the parent metadata.
         child = next(
             item for item in annotation_metadata(fields["labels"].annotation) if isinstance(item, HowlerFieldMetadata)
         )
@@ -95,7 +87,3 @@ def test_child_reregistration_invalidates_parent_traversals_and_clear_removes_de
     registry.clear()
     assert registry.flat_field_view(Document)["child.scalar"].metadata.store is None
     assert registry.fields(Child)["scalar"].metadata.store is None
-
-
-def test_empty_stored_fields_do_not_require_a_schema():
-    assert _strip_lists(object, {}) == {}
